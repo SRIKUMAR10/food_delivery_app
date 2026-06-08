@@ -356,6 +356,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     required String hintText,
     required IconData icon,
     bool isPassword = false,
+    Widget? suffixIcon,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator, // Added validator for form fields
   }) {
@@ -372,6 +373,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: Colors.black54, size: 20),
           hintText: hintText,
+          suffixIcon: suffixIcon,
           hintStyle: GoogleFonts.poppins(color: Colors.black38, fontSize: 14),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(

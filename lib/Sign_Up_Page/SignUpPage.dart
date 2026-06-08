@@ -17,6 +17,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   void _handleSignUp() {
     // Sign-up logic
@@ -259,9 +260,20 @@ class _SignUpPageState extends State<SignUpPage> {
         _buildTextField(
           controller: _passwordController,
           hintText: "Enter Password",
-          icon: Icons
-              .more_horiz, // படத்தில் உள்ளவாறு மூன்று புள்ளிகள் போன்ற ஐகான்
-          isPassword: true,
+          icon: Icons.lock_outline,
+          isPassword: _obscurePassword,
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              color: Colors.black54,
+              size: 20,
+            ),
+            onPressed: () {
+              setState(() {
+                _obscurePassword = !_obscurePassword;
+              });
+            },
+          ),
         ),
         const SizedBox(height: 32),
 
@@ -366,6 +378,7 @@ class _SignUpPageState extends State<SignUpPage> {
     required String hintText,
     required IconData icon,
     bool isPassword = false,
+    Widget? suffixIcon,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Container(
@@ -381,6 +394,7 @@ class _SignUpPageState extends State<SignUpPage> {
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: Colors.black54, size: 20),
           hintText: hintText,
+          suffixIcon: suffixIcon,
           hintStyle: GoogleFonts.poppins(color: Colors.black38, fontSize: 14),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(

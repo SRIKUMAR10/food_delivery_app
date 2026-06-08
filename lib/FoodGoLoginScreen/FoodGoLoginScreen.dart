@@ -17,6 +17,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _obscurePassword = true;
 
   void _handleLogin() {
     if (_formKey.currentState!.validate()) {
@@ -229,8 +230,20 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
           _buildTextField(
             controller: _passwordController,
             hintText: "Enter Password",
-            icon: Icons.more_horiz,
-            isPassword: true,
+            icon: Icons.lock_outline,
+            isPassword: _obscurePassword,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                color: Colors.black54,
+                size: 20,
+              ),
+              onPressed: () {
+                setState(() {
+                  _obscurePassword = !_obscurePassword;
+                });
+              },
+            ),
           ),
           const SizedBox(height: 12),
           Align(
@@ -339,6 +352,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
     required String hintText,
     required IconData icon,
     bool isPassword = false,
+    Widget? suffixIcon,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Container(
@@ -354,6 +368,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: Colors.black54, size: 20),
           hintText: hintText,
+          suffixIcon: suffixIcon,
           hintStyle: GoogleFonts.poppins(color: Colors.black38, fontSize: 14),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
