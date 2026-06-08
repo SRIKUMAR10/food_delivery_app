@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../FoodGoLoginScreen/FoodGoLoginScreen.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -17,15 +19,20 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _passwordController = TextEditingController();
 
   void _handleSignUp() {
-    // உங்கள் தற்போதைய சைன்-அப் லாஜிக் இங்கே வரும்
+    // Sign-up logic
     debugPrint("Name: ${_nameController.text}");
     debugPrint("Email: ${_emailController.text}");
     debugPrint("Password: ${_passwordController.text}");
   }
 
   void _navigateToLogin() {
-    // லாகின் பக்கத்திற்கு செல்லும் லாஜிக்
-    debugPrint("Navigate to Login Screen");
+    // Login பக்கத்திற்குச் சென்று, தற்போதைய SignUp பக்கத்தை ஸ்டாக்கில் இருந்து நீக்கவும்.
+    // இது அங்கீகாரப் பக்கங்களின் ஸ்டாக் குவிவதைத் தடுக்கிறது மற்றும்
+    // Login முதல் பக்கமாக இருந்தால் பின் பொத்தான் பயன்பாட்டை விட்டு வெளியேற அனுமதிக்கிறது.
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const FoodGoLoginScreen()),
+    );
   }
 
   @override
@@ -94,9 +101,12 @@ class _SignUpPageState extends State<SignUpPage> {
                 SvgPicture.asset(
                   'assets/images/FoodGo.svg',
                   height: 60,
-                  errorBuilder: (context, error, stackTrace) => const Text(
+                  errorBuilder: (context, error, stackTrace) => Text(
                     "FoodGo",
-                    style: TextStyle(fontSize: 46, fontWeight: FontWeight.bold),
+                    style: GoogleFonts.poppins(
+                      fontSize: 46,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -185,26 +195,27 @@ class _SignUpPageState extends State<SignUpPage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         // SignUp தலைப்பு
-        const Center(
+        Center(
           child: Text(
             "SignUp",
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              letterSpacing: 0.5,
+            style: GoogleFonts.poppins(
+              fontSize: isDesktop ? 36 : 30,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
+              color: Colors.black,
             ),
           ),
         ),
         const SizedBox(height: 24),
 
         // Name புலம்
-        const Text(
+        Text(
           "Name",
-          style: TextStyle(
-            fontSize: 15,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF555555),
+            color: const Color(0xFF333333),
+            letterSpacing: 0.1,
           ),
         ),
         const SizedBox(height: 8),
@@ -216,12 +227,13 @@ class _SignUpPageState extends State<SignUpPage> {
         const SizedBox(height: 20),
 
         // Email புலம்
-        const Text(
+        Text(
           "Email",
-          style: TextStyle(
-            fontSize: 15,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF555555),
+            color: const Color(0xFF333333),
+            letterSpacing: 0.1,
           ),
         ),
         const SizedBox(height: 8),
@@ -234,12 +246,13 @@ class _SignUpPageState extends State<SignUpPage> {
         const SizedBox(height: 20),
 
         // Password புலம்
-        const Text(
+        Text(
           "Password",
-          style: TextStyle(
-            fontSize: 15,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF555555),
+            color: const Color(0xFF333333),
+            letterSpacing: 0.1,
           ),
         ),
         const SizedBox(height: 8),
@@ -279,8 +292,9 @@ class _SignUpPageState extends State<SignUpPage> {
                       "Sign Up",
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
                       ),
                     ),
                   ),
@@ -296,17 +310,21 @@ class _SignUpPageState extends State<SignUpPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 "Already have an account? ",
-                style: TextStyle(color: Colors.black54, fontSize: 14),
+                style: GoogleFonts.poppins(
+                  color: Colors.black54,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
                   onTap: _navigateToLogin,
-                  child: const Text(
+                  child: Text(
                     "Login",
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       color: Colors.black,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
@@ -355,15 +373,15 @@ class _SignUpPageState extends State<SignUpPage> {
         color: const Color(0xFFECEFF6), // உள்ளீட்டு புலத்தின் சாம்பல் நிறம்
         borderRadius: BorderRadius.circular(12),
       ),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         obscureText: isPassword,
         keyboardType: keyboardType,
-        style: const TextStyle(fontSize: 15, color: Colors.black87),
+        style: GoogleFonts.poppins(fontSize: 15, color: Colors.black87),
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: Colors.black54, size: 20),
           hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
+          hintStyle: GoogleFonts.poppins(color: Colors.black38, fontSize: 14),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             vertical: 14,

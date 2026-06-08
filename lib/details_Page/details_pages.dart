@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 // Class பெயரிடல் மரபுப்படி (PascalCase) மாற்றி அமைக்கப்பட்டுள்ளது
 class DetailsPages extends StatefulWidget {
@@ -18,10 +19,10 @@ class DetailsPages extends StatefulWidget {
 }
 
 class _DetailsPagesState extends State<DetailsPages> {
-  int _quantity = 1; 
+  int _quantity = 1;
   late double _unitPrice;
-  late String _pizzaName; 
-  late String _pizzaImageUrl; 
+  late String _pizzaName;
+  late String _pizzaImageUrl;
 
   @override
   void initState() {
@@ -31,7 +32,7 @@ class _DetailsPagesState extends State<DetailsPages> {
     _pizzaImageUrl = widget.foodImage;
   }
 
-  final String _pizzaDescription = 
+  final String _pizzaDescription =
       "We've established that most cheeses will melt when baked atop pizza. "
       "But which will not only melt but stretch into those gooey, messy strands "
       "that can make pizza eating such a delightfully challenging endeavor?";
@@ -51,13 +52,17 @@ class _DetailsPagesState extends State<DetailsPages> {
   }
 
   void _handleOrder() {
-    debugPrint("Ordering $_quantity $_pizzaName for \$${_quantity * _unitPrice}");
+    debugPrint(
+      "Ordering $_quantity $_pizzaName for \$${_quantity * _unitPrice}",
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F9), // Background color matching the image
+      backgroundColor: const Color(
+        0xFFFFF9F9,
+      ), // Background color matching the image
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -85,11 +90,7 @@ class _DetailsPagesState extends State<DetailsPages> {
         // Top App Bar Area (Back Button Only)
         Padding(
           padding: const EdgeInsets.only(left: 16.0, top: 16.0, bottom: 8.0),
-          child: Row(
-            children: [
-              _buildBackButton(),
-            ],
-          ),
+          child: Row(children: [_buildBackButton()]),
         ),
 
         // Scrollable Content
@@ -108,7 +109,11 @@ class _DetailsPagesState extends State<DetailsPages> {
                     height: 280,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.local_pizza, size: 200, color: Colors.amber);
+                      return const Icon(
+                        Icons.local_pizza,
+                        size: 200,
+                        color: Colors.amber,
+                      );
                     },
                   ),
                 ),
@@ -117,10 +122,11 @@ class _DetailsPagesState extends State<DetailsPages> {
                 // Pizza Name
                 Text(
                   _pizzaName,
-                  style: const TextStyle(
+                  style: GoogleFonts.poppins(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: const Color(0xFF1A1A1A),
+                    letterSpacing: -0.5,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -128,10 +134,10 @@ class _DetailsPagesState extends State<DetailsPages> {
                 // Price Tag
                 Text(
                   "\$${_unitPrice.toStringAsFixed(0)}",
-                  style: const TextStyle(
+                  style: GoogleFonts.poppins(
                     fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black54,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF666666),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -139,18 +145,19 @@ class _DetailsPagesState extends State<DetailsPages> {
                 // Description
                 Text(
                   _pizzaDescription,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                    height: 1.5,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    color: const Color(0xFF444444),
+                    height: 1.6,
+                    letterSpacing: 0.2,
                   ),
                 ),
                 const SizedBox(height: 28),
 
                 // Quantity Selector Label
-                const Text(
+                Text(
                   "Quantity",
-                  style: TextStyle(
+                  style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
@@ -188,18 +195,17 @@ class _DetailsPagesState extends State<DetailsPages> {
             color: const Color(0xFFFFF1F1),
             child: Stack(
               children: [
-                Positioned(
-                  top: 24,
-                  left: 24,
-                  child: _buildBackButton(),
-                ),
+                Positioned(top: 24, left: 24, child: _buildBackButton()),
                 Center(
                   child: Image.network(
                     _pizzaImageUrl,
                     width: width * 0.35,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => 
-                        const Icon(Icons.local_pizza, size: 300, color: Colors.amber),
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.local_pizza,
+                      size: 300,
+                      color: Colors.amber,
+                    ),
                   ),
                 ),
               ],
@@ -218,22 +224,39 @@ class _DetailsPagesState extends State<DetailsPages> {
               children: [
                 Text(
                   _pizzaName,
-                  style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.poppins(
+                    fontSize: 42,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1.0,
+                    color: const Color(0xFF1A1A1A),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   "\$${_unitPrice.toStringAsFixed(0)}",
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black54),
+                  style: GoogleFonts.poppins(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black54,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   _pizzaDescription,
-                  style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.6),
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: const Color(0xFF444444),
+                    height: 1.6,
+                    letterSpacing: 0.3,
+                  ),
                 ),
                 const SizedBox(height: 32),
-                const Text(
+                Text(
                   "Quantity",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 _buildQuantitySelector(),
@@ -261,14 +284,10 @@ class _DetailsPagesState extends State<DetailsPages> {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: const BoxDecoration(
-          color: Color(0xFFE52121), 
+          color: Color(0xFFE52121),
           shape: BoxShape.circle,
         ),
-        child: const Icon(
-          Icons.arrow_back,
-          color: Colors.white,
-          size: 24,
-        ),
+        child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
       ),
     );
   }
@@ -283,7 +302,7 @@ class _DetailsPagesState extends State<DetailsPages> {
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Text(
             "$_quantity",
-            style: const TextStyle(
+            style: GoogleFonts.poppins(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.black,
@@ -305,7 +324,7 @@ class _DetailsPagesState extends State<DetailsPages> {
           width: 44,
           height: 40,
           decoration: BoxDecoration(
-            color: const Color(0xFFE52121), 
+            color: const Color(0xFFE52121),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: Colors.white, size: 20),
@@ -318,8 +337,8 @@ class _DetailsPagesState extends State<DetailsPages> {
   Widget _buildBottomActionBar(double totalPrice, {bool isDesktop = false}) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? 0 : 24.0, 
-        vertical: 20.0
+        horizontal: isDesktop ? 0 : 24.0,
+        vertical: 20.0,
       ),
       color: isDesktop ? Colors.transparent : const Color(0xFFFFF9F9),
       child: Row(
@@ -329,13 +348,13 @@ class _DetailsPagesState extends State<DetailsPages> {
             height: 54,
             padding: const EdgeInsets.symmetric(horizontal: 28),
             decoration: BoxDecoration(
-              color: const Color(0xFFE52121), 
+              color: const Color(0xFFE52121),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Center(
               child: Text(
                 "\$${totalPrice.toStringAsFixed(0)}",
-                style: const TextStyle(
+                style: GoogleFonts.poppins(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -344,7 +363,7 @@ class _DetailsPagesState extends State<DetailsPages> {
             ),
           ),
           const SizedBox(width: 16),
-          
+
           // Order Now Button
           Expanded(
             child: MouseRegion(
@@ -354,7 +373,7 @@ class _DetailsPagesState extends State<DetailsPages> {
                 child: Container(
                   height: 54,
                   decoration: BoxDecoration(
-                    color: Colors.black, 
+                    color: Colors.black,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Center(
@@ -362,9 +381,9 @@ class _DetailsPagesState extends State<DetailsPages> {
                       "ORDER NOW",
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
                       ),
                     ),
                   ),
