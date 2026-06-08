@@ -3,28 +3,26 @@ workflows:
   android-workflow:
     name: Android Workflow
     max_build_duration: 60
-    instance_type: mac_mini_m1
+    instance_type: mac_mini_m1 # Can also use linux instances for Android
     environment:
       flutter: stable
       groups:
-        # Define these groups in the Codemagic UI to store sensitive keys
-        - android_signing_configs # Suggested: keystore, keystore_password, etc.
-        - api_credentials         # Suggested: Backend URLs or API keys
+        - android_signing_configs # Store: CM_KEYSTORE, CM_KEYSTORE_PASSWORD, etc.
+        - api_credentials         # Store: API_BASE_URL, etc.
+        - firebase_configs        # Store: FIREBASE_API_KEY, etc.
       vars:
         PACKAGE_NAME: "com.example.food_delivery_app"
     scripts:
-      - name: Fetch dependencies
+      - name: Pre-build - Fetch dependencies
         script: flutter pub get
-      - name: Static code analysis
+      - name: Pre-build - Static code analysis
         script: flutter analyze
-      - name: Execute unit and widget tests
+      - name: Pre-build - Execute unit and widget tests
         script: flutter test
       - name: Build Release APK
         script: flutter build apk --release
       - name: Build Release AAB for Play Store
-        script: |
-          # Building the Android App Bundle for distribution
-          flutter build appbundle --release
+        script: flutter build appbundle --release
     artifacts:
       - build/**/outputs/**/*.apk
       - build/**/outputs/**/*.aab
@@ -32,32 +30,86 @@ workflows:
   ios-workflow:
     name: iOS Workflow
     max_build_duration: 60
-    instance_type: mac_mini_m1 # macOS machine is required for iOS builds
+    instance_type: mac_mini_m1
     environment:
       flutter: stable
       groups:
-        # Define these groups in the Codemagic UI for certificates and profiles
-        - ios_signing_configs # Suggested: APP_STORE_CONNECT_KEY, etc.
+        - ios_signing_configs # Store: CERTIFICATE, PROVISIONING_PROFILE, etc.
         - api_credentials
+        - firebase_configs
     scripts:
-      - name: Fetch dependencies
+      - name: Pre-build - Fetch dependencies
         script: flutter pub get
-      - name: Install CocoaPods
+      - name: Pre-build - Install CocoaPods
         script: |
-          # Checks for Podfile and installs dependencies for iOS
           if [ -d "ios" ]; then
             cd ios && pod install && cd ..
           fi
-      - name: Static code analysis
+      - name: Pre-build - Static code analysis
         script: flutter analyze
-      - name: Execute unit and widget tests
+      - name: Pre-build - Execute unit and widget tests
         script: flutter test
       - name: Build iOS Release IPA
         script: |
-          # Note: Code signing must be configured in Codemagic UI for this to produce a signed IPA.
-          # Using --no-codesign for an initial generic setup.
+          # For a signed IPA, configure Code Signing in Codemagic UI or use CLI args
           flutter build ipa --release --no-codesign
     artifacts:
       - build/ios/ipa/*.ipa
 
-# Publishing section can be added here for Google Play or App Store Connect
+  web-workflow:
+    name: Web Workflow
+    max_build_duration: 30
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      groups:
+        - api_credentials
+        - firebase_configs
+    scripts:
+      - name: Pre-build - Fetch dependencies
+        script: flutter pub get
+      - name: Pre-build - Static code analysis
+        script: flutter analyze
+      - name: Pre-build - Execute unit and widget tests
+        script: flutter test
+      - name: Build Web Release
+        script: |
+          # Enables web if not already enabled
+          flutter config --enable-web
+          flutter build web --release
+    artifacts:
+      - build/web/**
+
+  windows-workflow:
+    name: Windows Workflow
+    max_build_duration: 60
+    instance_type: windows_full # Required for Windows native builds
+    environment:
+      flutter: stable
+      groups:
+        - api_credentials
+        - firebase_configs
+    scripts:
+      - name: Pre-build - Fetch dependencies
+        script: flutter pub get
+      - name: Pre-build - Static code analysis
+        script: flutter analyze
+      - name: Pre-build - Execute unit and widget tests
+        script: flutter test
+      - name: Build Windows Release
+        script: |
+          # Enables windows if not already enabled
+          flutter config --enable-windows-desktop
+          flutter build windows --release
+    artifacts:
+      - build/windows/runner/Release/**
+
+publishing:
+  # You can configure automated deployment to stores here
+  email:
+    recipients:
+      - user@example.com
+    notifying:
+      on_build_start: false
+      on_success: true
+      on_failure: true
