@@ -1,0 +1,63 @@
+# Codemagic configuration for Flutter Food Delivery App
+workflows:
+  android-workflow:
+    name: Android Workflow
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      groups:
+        # Define these groups in the Codemagic UI to store sensitive keys
+        - android_signing_configs # Suggested: keystore, keystore_password, etc.
+        - api_credentials         # Suggested: Backend URLs or API keys
+      vars:
+        PACKAGE_NAME: "com.example.food_delivery_app"
+    scripts:
+      - name: Fetch dependencies
+        script: flutter pub get
+      - name: Static code analysis
+        script: flutter analyze
+      - name: Execute unit and widget tests
+        script: flutter test
+      - name: Build Release APK
+        script: flutter build apk --release
+      - name: Build Release AAB for Play Store
+        script: |
+          # Building the Android App Bundle for distribution
+          flutter build appbundle --release
+    artifacts:
+      - build/**/outputs/**/*.apk
+      - build/**/outputs/**/*.aab
+
+  ios-workflow:
+    name: iOS Workflow
+    max_build_duration: 60
+    instance_type: mac_mini_m1 # macOS machine is required for iOS builds
+    environment:
+      flutter: stable
+      groups:
+        # Define these groups in the Codemagic UI for certificates and profiles
+        - ios_signing_configs # Suggested: APP_STORE_CONNECT_KEY, etc.
+        - api_credentials
+    scripts:
+      - name: Fetch dependencies
+        script: flutter pub get
+      - name: Install CocoaPods
+        script: |
+          # Checks for Podfile and installs dependencies for iOS
+          if [ -d "ios" ]; then
+            cd ios && pod install && cd ..
+          fi
+      - name: Static code analysis
+        script: flutter analyze
+      - name: Execute unit and widget tests
+        script: flutter test
+      - name: Build iOS Release IPA
+        script: |
+          # Note: Code signing must be configured in Codemagic UI for this to produce a signed IPA.
+          # Using --no-codesign for an initial generic setup.
+          flutter build ipa --release --no-codesign
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+# Publishing section can be added here for Google Play or App Store Connect
