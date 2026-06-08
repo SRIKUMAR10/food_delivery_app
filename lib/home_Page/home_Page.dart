@@ -3,24 +3,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../FoodGoLoginScreen/FoodGoLoginScreen.dart'; // Login Screen-ஐ இறக்குமதி செய்யவும்
 
-void main() {
-  runApp(const FoodGoApp());
-}
-
-class FoodGoApp extends StatelessWidget {
-  const FoodGoApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'FoodGo App',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(scaffoldBackgroundColor: const Color(0xFFF9F9F9)),
-      home: const HomePage(),
-    );
-  }
-}
-
 class FoodCategory {
   final String id;
   final String name;
