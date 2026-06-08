@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../ForgotPasswordPage/ForgotPasswordPage.dart'; // Import the new ForgotPasswordPage
 
+import '../Repository/user_repository.dart';
 import '../Sign_Up_Page/SignUpPage.dart'; // SignUpPage ஐ இறக்குமதி செய்யவும்
 
 class FoodGoLoginScreen extends StatefulWidget {
@@ -19,10 +20,33 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
 
-  void _handleLogin() {
+  final UserRepository _userRepository = UserRepository();
+
+  Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      debugPrint("Email: ${_emailController.text}");
-      debugPrint("Password: ${_passwordController.text}");
+      try {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
+        );
+
+        await _userRepository.signIn(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+
+        if (!mounted) return;
+        Navigator.pop(context); // Dialog-ஐ மூட
+        // இங்கே வெற்றிகரமான லாகினுக்குப் பிறகு முகப்புப் பக்கத்திற்குச் செல்லலாம்.
+      } catch (e) {
+        if (!mounted) return;
+        Navigator.pop(context); // Dialog-ஐ மூட
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 

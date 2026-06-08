@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen.dart';
+import '../Repository/user_repository.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -18,12 +19,32 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  final UserRepository _userRepository = UserRepository();
 
-  void _handleSignUp() {
-    // Sign-up logic
-    debugPrint("Name: ${_nameController.text}");
-    debugPrint("Email: ${_emailController.text}");
-    debugPrint("Password: ${_passwordController.text}");
+  Future<void> _handleSignUp() async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      await _userRepository.signUp(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        _nameController.text.trim(),
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Dialog-ஐ மூட
+      _navigateToLogin();
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Dialog-ஐ மூட
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
   }
 
   void _navigateToLogin() {
