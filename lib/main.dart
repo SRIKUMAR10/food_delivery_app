@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:food_delivery_app/Sign_Up_Page/SignUpPage.dart';
+
 import 'package:google_fonts/google_fonts.dart';
+
+import 'onboarding_page/onboarding_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +26,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFFBF5F5),
       ),
       debugShowCheckedModeBanner: false,
-      home: const SignUpPage(),
+      home: const OnboardingPage(),
     );
   }
 }

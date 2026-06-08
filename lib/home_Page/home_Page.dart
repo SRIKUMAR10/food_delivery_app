@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../details_Page/details_pages.dart';
+
+import '../FoodGoLoginScreen/FoodGoLoginScreen.dart'; // Login Screen-ஐ இறக்குமதி செய்யவும்
 
 void main() {
   runApp(const FoodGoApp());
@@ -361,15 +362,13 @@ class _FoodCardState extends State<FoodCard> {
       onExit: (_) => setState(() => isHovered = false),
       child: GestureDetector(
         onTap: () {
+          // Login பக்கத்திற்குச் செல்லவும், FoodItem விவரங்களை அனுப்பவும்.
+          // வெற்றிகரமான Login-க்குப் பிறகு, பயனர் DetailsPages-க்கு திருப்பி விடப்படுவார்.
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => DetailsPages(
-                foodName: widget.item.name,
-                foodPrice:
-                    double.tryParse(widget.item.price.replaceAll('\$', '')) ??
-                    0.0,
-                foodImage: widget.item.image,
+              builder: (context) => FoodGoLoginScreen(
+                foodItemToAccess: widget.item, // Food item-ஐ அனுப்பவும்
               ),
             ),
           );

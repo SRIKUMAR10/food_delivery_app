@@ -3,11 +3,19 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../ForgotPasswordPage/ForgotPasswordPage.dart'; // Import the new ForgotPasswordPage
 
+import '../details_Page/details_pages.dart'; // DetailsPages-ஐ இறக்குமதி செய்யவும்
 import '../Repository/user_repository.dart';
 import '../Sign_Up_Page/SignUpPage.dart'; // SignUpPage ஐ இறக்குமதி செய்யவும்
+import '../home_Page/home_Page.dart'; // HomePage மற்றும் FoodItem-ஐ இறக்குமதி செய்யவும்
 
 class FoodGoLoginScreen extends StatefulWidget {
-  const FoodGoLoginScreen({super.key});
+  final FoodItem?
+  foodItemToAccess; // Login-க்குப் பிறகு செல்ல வேண்டிய FoodItem (விருப்பத்தேர்வு)
+
+  const FoodGoLoginScreen({
+    super.key,
+    this.foodItemToAccess,
+  }); // constructor-ஐ புதுப்பிக்கவும்
 
   @override
   State<FoodGoLoginScreen> createState() => _LoginScreenState();
@@ -39,7 +47,31 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
 
         if (!mounted) return;
         Navigator.pop(context); // Dialog-ஐ மூட
-        // இங்கே வெற்றிகரமான லாகினுக்குப் பிறகு முகப்புப் பக்கத்திற்குச் செல்லலாம்.
+
+        // Login-க்கு முன் ஒரு குறிப்பிட்ட உணவுப் பொருள் கோரப்பட்டதா எனச் சரிபார்க்கவும்
+        if (widget.foodItemToAccess != null) {
+          // கோரப்பட்ட உணவுப் பொருளின் DetailsPages-க்கு செல்லவும், Login screen-ஐ மாற்றவும்
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DetailsPages(
+                foodName: widget.foodItemToAccess!.name,
+                foodPrice:
+                    double.tryParse(
+                      widget.foodItemToAccess!.price.replaceAll('\$', ''),
+                    ) ??
+                    0.0,
+                foodImage: widget.foodItemToAccess!.image,
+              ),
+            ),
+          );
+        } else {
+          // குறிப்பிட்ட பொருள் எதுவும் இல்லை என்றால், வெற்றிகரமான Login-க்குப் பிறகு முக்கிய HomePage-க்கு செல்லவும்
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+          );
+        }
       } catch (e) {
         if (!mounted) return;
         Navigator.pop(context); // Dialog-ஐ மூட
@@ -62,7 +94,11 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
     // SignUp பக்கத்திற்குச் சென்று, தற்போதைய Login பக்கத்தை ஸ்டாக்கில் இருந்து நீக்கவும்.
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const SignUpPage()),
+      MaterialPageRoute(
+        builder: (context) => SignUpPage(
+          foodItemToAccess: widget.foodItemToAccess, // Food item-ஐ கடத்தவும்
+        ),
+      ),
     );
   }
   // --------------------------------------------

@@ -3,9 +3,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen.dart';
 import '../Repository/user_repository.dart';
+import '../home_Page/home_Page.dart'; // FoodItem definition-க்காக தேவை
 
 class SignUpPage extends StatefulWidget {
-  const SignUpPage({super.key});
+  final FoodItem? foodItemToAccess; // லாகினுக்குப் பிறகு செல்ல வேண்டிய டேட்டா
+
+  const SignUpPage({super.key, this.foodItemToAccess});
 
   @override
   State<SignUpPage> createState() => _SignUpPageState();
@@ -53,7 +56,12 @@ class _SignUpPageState extends State<SignUpPage> {
     // Login முதல் பக்கமாக இருந்தால் பின் பொத்தான் பயன்பாட்டை விட்டு வெளியேற அனுமதிக்கிறது.
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const FoodGoLoginScreen()),
+      MaterialPageRoute(
+        builder: (context) => FoodGoLoginScreen(
+          foodItemToAccess: widget
+              .foodItemToAccess, // திரும்பவும் லாகின் பக்கத்திற்கு அனுப்பவும்
+        ),
+      ),
     );
   }
 
