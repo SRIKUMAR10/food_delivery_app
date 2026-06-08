@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_app/Sign_Up_Page/SignUpPage.dart';
-import 'package:food_delivery_app/home_Page/home_Page.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-import 'details_Page/details_pages.dart';
 
 void main() {
   runApp(const MyApp());
