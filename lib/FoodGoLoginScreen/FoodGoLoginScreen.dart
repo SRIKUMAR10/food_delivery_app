@@ -50,8 +50,8 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
 
         // Login-க்கு முன் ஒரு குறிப்பிட்ட உணவுப் பொருள் கோரப்பட்டதா எனச் சரிபார்க்கவும்
         if (widget.foodItemToAccess != null) {
-          // கோரப்பட்ட உணவுப் பொருளின் DetailsPages-க்கு செல்லவும், Login screen-ஐ மாற்றவும்
-          Navigator.pushReplacement(
+          // கோரப்பட்ட உணவுப் பொருளின் DetailsPages-க்கு செல்லவும், பழைய ஸ்டாக்கை நீக்கவும்
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
               builder: (context) => DetailsPages(
@@ -64,12 +64,14 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
                 foodImage: widget.foodItemToAccess!.image,
               ),
             ),
+            (route) => false,
           );
         } else {
           // குறிப்பிட்ட பொருள் எதுவும் இல்லை என்றால், வெற்றிகரமான Login-க்குப் பிறகு முக்கிய HomePage-க்கு செல்லவும்
-          Navigator.pushReplacement(
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const HomePage()),
+            (route) => false,
           );
         }
       } catch (e) {
@@ -84,7 +86,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
 
   void _handleForgotPassword() {
     // Navigate to the ForgotPasswordPage
-    Navigator.push(
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
     );
