@@ -71,7 +71,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   // -------------------------------------------------------------
   Widget _buildMobileLayout() {
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       child: Stack(
         children: [
           // 1. Background and Top Content (reused from Login/SignUp)

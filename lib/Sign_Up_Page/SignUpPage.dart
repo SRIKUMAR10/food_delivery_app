@@ -98,7 +98,7 @@ class _SignUpPageState extends State<SignUpPage> {
   // -------------------------------------------------------------
   Widget _buildMobileLayout() {
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       child: Stack(
         children: [
           // 1. பின்னணி மற்றும் மேல் பகுதி (Background & Top Content)

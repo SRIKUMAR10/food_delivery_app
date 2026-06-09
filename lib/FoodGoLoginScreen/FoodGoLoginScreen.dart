@@ -132,7 +132,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
 
   Widget _buildMobileLayout() {
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       child: Stack(
         children: [
           // 1. Top Section (Same as SignUpPage)
