@@ -2,19 +2,22 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  Future<dynamic> get(String url) async {
+  // Base URL-ஐ இங்கே வரையறுப்பதன் மூலம், ஒவ்வொரு முறையும் முழு URL கொடுக்கத் தேவையில்லை
+  static const String _baseUrl = 'https://api.yourdomain.com/v1';
+
+  Future<dynamic> get(String endpoint) async {
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse('$_baseUrl/$endpoint'));
       return _handleResponse(response);
     } catch (e) {
       throw Exception('GET Request failed: $e');
     }
   }
 
-  Future<dynamic> post(String url, Map<String, dynamic> body) async {
+  Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
     try {
       final response = await http.post(
-        Uri.parse(url),
+        Uri.parse('$_baseUrl/$endpoint'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(body),
       );
@@ -24,10 +27,10 @@ class ApiService {
     }
   }
 
-  Future<dynamic> put(String url, Map<String, dynamic> body) async {
+  Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
     try {
       final response = await http.put(
-        Uri.parse(url),
+        Uri.parse('$_baseUrl/$endpoint'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(body),
       );
@@ -37,9 +40,9 @@ class ApiService {
     }
   }
 
-  Future<dynamic> delete(String url) async {
+  Future<dynamic> delete(String endpoint) async {
     try {
-      final response = await http.delete(Uri.parse(url));
+      final response = await http.delete(Uri.parse('$_baseUrl/$endpoint'));
       return _handleResponse(response);
     } catch (e) {
       throw Exception('DELETE Request failed: $e');
