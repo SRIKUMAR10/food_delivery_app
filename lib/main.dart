@@ -4,7 +4,7 @@ import 'firebase_options.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
-import 'onboarding_page/onboarding_page.dart';
+import 'Buyer Bloc Architecture/onboarding_page/onboarding_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

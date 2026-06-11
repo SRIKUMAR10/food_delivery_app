@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:razorpay_web/razorpay_web.dart';
-import '../API Service/RazorpayApiService.dart';
+import '../../API Service/RazorpayApiService.dart';
 
 /// **Wallet Events**
 abstract class WalletEvent {}

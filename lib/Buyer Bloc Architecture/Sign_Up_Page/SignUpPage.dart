@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen.dart';
-import '../Repository/user_repository.dart';
+import '../../Repository/user_repository.dart';
 import '../home_Page/home_Page.dart'; // FoodItem definition-க்காக தேவை
 
 class SignUpPage extends StatefulWidget {

@@ -3,8 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../ForgotPasswordPage/ForgotPasswordPage.dart'; // Import the new ForgotPasswordPage
 
-import '../details_Page/details_pages.dart'; // DetailsPages-ஐ இறக்குமதி செய்யவும்
-import '../Repository/user_repository.dart';
+import '../Details_Page/details_pages.dart'; // DetailsPages-ஐ இறக்குமதி செய்யவும்
+import '../../Repository/user_repository.dart';
 import '../Sign_Up_Page/SignUpPage.dart'; // SignUpPage ஐ இறக்குமதி செய்யவும்
 import '../home_Page/home_Page.dart'; // HomePage மற்றும் FoodItem-ஐ இறக்குமதி செய்யவும்
 
