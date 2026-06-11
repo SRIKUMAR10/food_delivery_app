@@ -41,6 +41,22 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <!-- flutter_inappwebview Web stub
+       The real plugin uses native platform channels that don't exist in a
+       browser. This no-op object prevents JS errors when the plugin tries
+       to register itself, while the Dart-side conditional import already
+       routes all WebView usage through url_launcher on Web. -->
+  <script>
+    window.flutter_inappwebview_plugin = window.flutter_inappwebview_plugin || {
+      // Called by the plugin to register the JS channel handler.
+      registerHandlers: function() {},
+      // No-op for any method channel calls the plugin may attempt.
+      callFlutterHandler: function() { return Promise.resolve(null); },
+      // Placeholder for any postMessage / event bridge the plugin wires up.
+      onCallFlutterHandler: null,
+    };
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
