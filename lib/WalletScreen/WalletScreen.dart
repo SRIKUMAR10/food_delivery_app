@@ -188,7 +188,6 @@ class _WalletViewState extends State<WalletView> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     final db = WalletDatabase();
 
     return BlocListener<WalletBloc, WalletState>(
