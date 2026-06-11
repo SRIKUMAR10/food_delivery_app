@@ -225,18 +225,24 @@ class _WalletViewState extends State<WalletView> {
               }
 
               return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
                     Text(
                       'Wallet',
-                      style: Theme.of(context).textTheme.headlineMedium,
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
-                    _buildBalanceCard(db, size),
+                    _buildBalanceCard(db),
 
                     const SizedBox(height: 30),
 
@@ -248,7 +254,7 @@ class _WalletViewState extends State<WalletView> {
 
                     const SizedBox(height: 30),
 
-                    _buildTransactionList(db, size),
+                    _buildTransactionList(db),
                   ],
                 ),
               );
@@ -259,7 +265,7 @@ class _WalletViewState extends State<WalletView> {
     );
   }
 
-  Widget _buildBalanceCard(WalletDatabase db, Size size) {
+  Widget _buildBalanceCard(WalletDatabase db) {
     return StreamBuilder<DocumentSnapshot>(
       stream: db.getWalletStream(),
       builder: (context, snapshot) {
@@ -271,11 +277,17 @@ class _WalletViewState extends State<WalletView> {
         }
 
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20),
           padding: const EdgeInsets.all(25),
           decoration: BoxDecoration(
-            color: const Color(0xFF8B5E3C),
+            color: const Color(0xFFE52121), // App Primary Color
             borderRadius: BorderRadius.circular(25),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFE52121).withOpacity(0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -289,9 +301,12 @@ class _WalletViewState extends State<WalletView> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text(
+                  Text(
                     'Your Balance',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                    style: GoogleFonts.poppins(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
                   ),
 
                   Text(
@@ -315,51 +330,48 @@ class _WalletViewState extends State<WalletView> {
     final primaryColor = Theme.of(context).primaryColor;
     final List<int> amounts = [100, 200, 300];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: amounts.map((amount) {
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  context.read<WalletBloc>().add(
-                    AddFundsRequested(amount.toDouble()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: primaryColor.withOpacity(0.7),
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  '+ ₹$amount',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: amounts.map((amount) {
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: ElevatedButton(
+              onPressed: () {
+                context.read<WalletBloc>().add(
+                  AddFundsRequested(amount.toDouble()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: primaryColor.withOpacity(0.7),
+                    width: 1.5,
                   ),
                 ),
               ),
+              child: Text(
+                '+ ₹$amount',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
+                ),
+              ),
             ),
-          );
-        }).toList(),
-      ),
+          ),
+        );
+      }).toList(),
     );
   }
 
   Widget _buildAddMoneyButton() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: ElevatedButton(
         onPressed: () => _showAddMoneyDialog(),
         style: ElevatedButton.styleFrom(
@@ -367,9 +379,13 @@ class _WalletViewState extends State<WalletView> {
           minimumSize: const Size(double.infinity, 55),
           shape: const StadiumBorder(),
         ),
-        child: const Text(
+        child: Text(
           'Add Money',
-          style: TextStyle(color: Colors.white, fontSize: 18),
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
@@ -412,20 +428,20 @@ class _WalletViewState extends State<WalletView> {
     );
   }
 
-  Widget _buildTransactionList(WalletDatabase db, Size size) {
+  Widget _buildTransactionList(WalletDatabase db) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(25),
-      decoration: BoxDecoration(
-        color: Colors.brown.withOpacity(0.1),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Recent Transactions',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
 
           const SizedBox(height: 20),
