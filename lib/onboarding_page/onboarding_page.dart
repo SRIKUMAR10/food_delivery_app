@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import '../home_Page/home_Page.dart';
 
 class OnboardingPage extends StatefulWidget {
@@ -86,7 +87,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const HomePage(),
+                      builder: (context) => const CurvedNavigationBarView(),
                     ),
                   );
                 },
@@ -147,54 +148,57 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF7A4A28).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        '⚡ Express Delivery',
-                        style: TextStyle(
-                          color: Color(0xFF7A4A28),
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7A4A28).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          '⚡ Express Delivery',
+                          style: TextStyle(
+                            color: Color(0xFF7A4A28),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'The Fastest\nFood Delivery',
-                      style: TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        height: 1.15,
+                      const SizedBox(height: 24),
+                      const Text(
+                        'The Fastest\nFood Delivery',
+                        style: TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          height: 1.15,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Craving something delicious? Order now and get your favorites delivered right to your doorstep in record time.',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.black54,
-                        height: 1.5,
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Craving something delicious? Order now and get your favorites delivered right to your doorstep in record time.',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.black54,
+                          height: 1.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 40),
-                    HoverButton(
-                      onTap: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const HomePage(),
-                          ),
-                        );
-                      },
-                      text: 'Get Started',
-                    ),
-                  ],
-                ),
+                      const SizedBox(height: 40),
+                      HoverButton(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HomePage(),
+                            ),
+                          );
+                        },
+                        text: 'Get Started',
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -209,11 +213,7 @@ class HoverButton extends StatefulWidget {
   final VoidCallback onTap;
   final String text;
 
-  const HoverButton({
-    super.key,
-    required this.onTap,
-    required this.text,
-  });
+  const HoverButton({super.key, required this.onTap, required this.text});
 
   @override
   State<HoverButton> createState() => _HoverButtonState();
