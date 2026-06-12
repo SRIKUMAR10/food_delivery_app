@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../API Service/RazorpayApiService.dart';
+import 'dart:ui';
 
 /// **Wallet Events**
 abstract class WalletEvent {}
@@ -153,11 +155,16 @@ class _WalletViewState extends State<WalletView> {
   @override
   void initState() {
     super.initState();
+    _loadInitialData();
     // RazorpayApiService மூலம் listeners-ஐ initialize செய்கிறோம்
     context.read<RazorpayApiService>().initialize(
       onSuccess: _handlePaymentSuccess,
       onFailure: _handlePaymentError,
     );
+  }
+
+  void _loadInitialData() {
+    context.read<WalletBloc>().add(LoadWalletData());
   }
 
   @override
@@ -168,6 +175,7 @@ class _WalletViewState extends State<WalletView> {
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    HapticFeedback.heavyImpact();
     context.read<WalletBloc>().add(LoadWalletData());
   }
 
@@ -186,6 +194,9 @@ class _WalletViewState extends State<WalletView> {
     );
   }
 
+  bool _isBalanceVisible = true;
+  double? _selectedAmount;
+
   @override
   Widget build(BuildContext context) {
     final db = WalletDatabase();
@@ -195,71 +206,85 @@ class _WalletViewState extends State<WalletView> {
         if (state.pendingAmount != null && state.isLoading) {
           _startRazorpay(state.pendingAmount!);
         }
-
         if (state.successMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.successMessage!),
-              backgroundColor: Colors.green,
-            ),
-          );
+          _showTopSnackBar(context, state.successMessage!, Colors.green);
         }
-
         if (state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage!),
-              backgroundColor: Colors.red,
-            ),
-          );
+          _showTopSnackBar(context, state.errorMessage!, Colors.red);
         }
       },
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: SafeArea(
-          child: BlocBuilder<WalletBloc, WalletState>(
-            builder: (context, state) {
-              if (state.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 24),
-
-                    Text(
-                      'Wallet',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 800),
+        builder: (context, value, child) {
+          return Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 20 * (1 - value)),
+              child: child,
+            ),
+          );
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFFFBFBFB),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: false,
+            title: Text(
+              'Wallet',
+              style: GoogleFonts.poppins(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          body: RefreshIndicator(
+            onRefresh: () async => _loadInitialData(),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: BlocBuilder<WalletBloc, WalletState>(
+                builder: (context, state) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
+                      _buildBalanceCard(db),
+                      const SizedBox(height: 30),
+                      Text(
+                        "Quick Top-up",
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    _buildBalanceCard(db),
-
-                    const SizedBox(height: 30),
-
-                    _buildQuickAmountSelection(context),
-
-                    const SizedBox(height: 30),
-
-                    _buildAddMoneyButton(),
-
-                    const SizedBox(height: 30),
-
-                    _buildTransactionList(db),
-                  ],
-                ),
-              );
-            },
+                      const SizedBox(height: 15),
+                      _buildQuickAmountSelection(context),
+                      const SizedBox(height: 40),
+                      _buildAddMoneyButton(),
+                      const SizedBox(height: 40),
+                      _buildTransactionList(db),
+                      const SizedBox(height: 20),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showTopSnackBar(BuildContext context, String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: GoogleFonts.poppins()),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: color,
+        margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
       ),
     );
   }
@@ -275,50 +300,95 @@ class _WalletViewState extends State<WalletView> {
           balance = (data['wallet'] as num?)?.toDouble() ?? 0.0;
         }
 
-        return Container(
-          padding: const EdgeInsets.all(25),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE52121), // App Primary Color
-            borderRadius: BorderRadius.circular(25),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFE52121).withOpacity(0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
+        return AspectRatio(
+          aspectRatio: 1.8,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFE52121), Color(0xFFFF5252)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Icon(
-                Icons.account_balance_wallet,
-                color: Colors.white,
-                size: 50,
-              ),
-
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Your Balance',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFE52121).withOpacity(0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  right: -20,
+                  top: -20,
+                  child: CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.white.withOpacity(0.1),
                   ),
-
-                  Text(
-                    '₹${balance.toStringAsFixed(2)}',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Icon(
+                          Icons.account_balance_wallet,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _isBalanceVisible
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: Colors.white70,
+                          ),
+                          onPressed: () {
+                            HapticFeedback.mediumImpact();
+                            setState(
+                              () => _isBalanceVisible = !_isBalanceVisible,
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Total Balance',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: Text(
+                            _isBalanceVisible
+                                ? '₹${balance.toStringAsFixed(2)}'
+                                : '••••••',
+                            key: ValueKey(_isBalanceVisible),
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: _isBalanceVisible ? 0 : 4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -327,56 +397,81 @@ class _WalletViewState extends State<WalletView> {
 
   Widget _buildQuickAmountSelection(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
-    final List<int> amounts = [100, 200, 300];
+    final List<int> amounts = [100, 200, 500, 1000, 2000];
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: amounts.map((amount) {
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: ElevatedButton(
-              onPressed: () {
-                context.read<WalletBloc>().add(
-                  AddFundsRequested(amount.toDouble()),
-                );
+    return SizedBox(
+      height: 45,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: amounts.length,
+        itemBuilder: (context, index) {
+          final amount = amounts[index].toDouble();
+          final isSelected = _selectedAmount == amount;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _selectedAmount = amount);
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  color: isSelected ? primaryColor : Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: primaryColor.withOpacity(0.7),
-                    width: 1.5,
+                  border: Border.all(
+                    color: isSelected
+                        ? primaryColor
+                        : Colors.grey.withOpacity(0.2),
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: primaryColor.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : [],
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '₹$amount',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : Colors.black87,
                   ),
                 ),
               ),
-              child: Text(
-                '+ ₹$amount',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: primaryColor,
-                ),
-              ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildAddMoneyButton() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 0),
       child: ElevatedButton(
-        onPressed: () => _showAddMoneyDialog(),
+        onPressed: () {
+          if (_selectedAmount != null) {
+            context.read<WalletBloc>().add(AddFundsRequested(_selectedAmount!));
+          } else {
+            _showAddMoneyBottomSheet();
+          }
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: Theme.of(context).primaryColor,
-          minimumSize: const Size(double.infinity, 55),
-          shape: const StadiumBorder(),
+          minimumSize: const Size(double.infinity, 60),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          elevation: 2,
         ),
         child: Text(
           'Add Money',
@@ -390,39 +485,92 @@ class _WalletViewState extends State<WalletView> {
     );
   }
 
-  void _showAddMoneyDialog() {
-    showDialog(
+  void _showAddMoneyBottomSheet() {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Money'),
-        content: TextField(
-          controller: _amountController,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(prefixText: '₹ ', hintText: '0.00'),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 30,
+          left: 24,
+          right: 24,
+          top: 24,
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-
-          ElevatedButton(
-            onPressed: () {
-              double? amt = double.tryParse(_amountController.text);
-
-              if (amt != null && amt > 0) {
-                Navigator.pop(context);
-
-                this.context.read<WalletBloc>().add(AddFundsRequested(amt));
-
-                _amountController.clear();
-              }
-            },
-            child: const Text('Proceed'),
-          ),
-        ],
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 25),
+            Text(
+              "Enter Amount",
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _amountController,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFFE52121),
+              ),
+              decoration: InputDecoration(
+                hintText: "₹ 0.00",
+                border: InputBorder.none,
+                hintStyle: TextStyle(color: Colors.grey[300]),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "Min: ₹10 | Max: ₹50,000",
+              style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () {
+                double? amt = double.tryParse(_amountController.text);
+                if (amt != null && amt >= 10 && amt <= 50000) {
+                  Navigator.pop(context);
+                  this.context.read<WalletBloc>().add(AddFundsRequested(amt));
+                  _amountController.clear();
+                } else {
+                  HapticFeedback.vibrate();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE52121),
+                minimumSize: const Size(double.infinity, 55),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Text(
+                "Proceed to Pay",
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
