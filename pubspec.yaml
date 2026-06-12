@@ -51,6 +51,7 @@ dependencies:
   file_picker: ^11.0.2
   flutter_inappwebview: ^6.1.5
   image: ^4.8.0
+  razorpay_web: ^3.1.0
 
 dev_dependencies:
   flutter_test:

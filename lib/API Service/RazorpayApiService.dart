@@ -33,11 +33,13 @@ class RazorpayApiService {
     required double amount,
     required String email,
     String name = 'Food Delivery App',
+    String description = 'Wallet Top-up',
   }) {
     var options = {
       'key': apiKey,
-      'amount': (amount * 100).toInt(),
+      'amount': (amount * 100).toInt(), // Razorpay expects amount in paise
       'name': name,
+      'description': description,
       'prefill': {'email': email},
     };
 
