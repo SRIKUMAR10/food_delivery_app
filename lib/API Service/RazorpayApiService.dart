@@ -11,11 +11,11 @@ class RazorpayApiService {
 
   // Do NOT keep apiSecret inside Flutter app.
   // Keep apiSecret only in backend / Firebase Cloud Functions.
-  final String apiSecret;
+  final String? apiSecret;
 
   late Razorpay _razorpay;
 
-  RazorpayApiService({required this.apiSecret}) {
+  RazorpayApiService({this.apiSecret}) {
     _razorpay = Razorpay();
   }
 
@@ -55,6 +55,12 @@ class RazorpayApiService {
     String currency = "INR",
     required String receipt,
   }) async {
+    if (apiSecret == null) {
+      throw Exception(
+        "API Secret is required for order creation via REST API.",
+      );
+    }
+
     final String basicAuth =
         'Basic ${base64Encode(utf8.encode('$apiKey:$apiSecret'))}';
 

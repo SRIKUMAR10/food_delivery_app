@@ -6,7 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../API Service/RazorpayApiService.dart';
-import 'dart:ui';
 
 /// **Wallet Events**
 abstract class WalletEvent {}
@@ -17,6 +16,8 @@ class AddFundsRequested extends WalletEvent {
   final double amount;
   AddFundsRequested(this.amount);
 }
+
+class PaymentSuccessEvent extends WalletEvent {}
 
 class PaymentFailedEvent extends WalletEvent {
   final String message;
@@ -57,13 +58,51 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
   final WalletDatabase database;
   WalletBloc(this.database) : super(WalletState()) {
     on<LoadWalletData>((event, emit) {
-      emit(state.copyWith(successMessage: "Wallet Updated Successfully"));
+      // மெசேஜ் இல்லாமல் டேட்டாவை மட்டும் புதுப்பிக்கிறது
+      emit(state.copyWith(isLoading: false));
     });
     on<AddFundsRequested>((event, emit) {
-      emit(state.copyWith(isLoading: true, pendingAmount: event.amount));
+      emit(
+        state.copyWith(
+          isLoading: true,
+          pendingAmount: event.amount,
+          successMessage: null,
+          errorMessage: null,
+        ),
+      );
+    });
+    on<PaymentSuccessEvent>((event, emit) async {
+      final amount = state.pendingAmount;
+      if (amount != null && amount > 0) {
+        try {
+          // Firestore-ல் Wallet பேலன்ஸ் மற்றும் Transaction-ஐ அப்டேட் செய்கிறோம்
+          await database.addTransaction(amount, "Wallet Top-up", true);
+          emit(
+            state.copyWith(
+              isLoading: false,
+              pendingAmount: null,
+              successMessage: "Funds added successfully!",
+              errorMessage: null,
+            ),
+          );
+        } catch (e) {
+          emit(
+            state.copyWith(
+              isLoading: false,
+              errorMessage: "Failed to update wallet: $e",
+            ),
+          );
+        }
+      }
     });
     on<PaymentFailedEvent>((event, emit) {
-      emit(state.copyWith(errorMessage: event.message));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          pendingAmount: null,
+          errorMessage: event.message,
+        ),
+      );
     });
   }
 }
@@ -127,10 +166,8 @@ class WalletScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RepositoryProvider(
-      create: (context) => RazorpayApiService(
-        apiSecret:
-            'rzp_test_secret_here', // பாதுகாப்பு காரணங்களுக்காக இதை கவனமாக கையாளவும்
-      ),
+      create: (context) =>
+          RazorpayApiService(), // Client-side orders create செய்யாததால் secret தேவையில்லை
       child: BlocProvider(
         create: (context) => WalletBloc(WalletDatabase()),
         child: const WalletView(),
@@ -176,7 +213,8 @@ class _WalletViewState extends State<WalletView> {
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
     HapticFeedback.heavyImpact();
-    context.read<WalletBloc>().add(LoadWalletData());
+    context.read<WalletBloc>().add(PaymentSuccessEvent());
+    _loadInitialData(); // பேலன்ஸ்-ஐ அப்டேட் செய்ய
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
@@ -186,11 +224,11 @@ class _WalletViewState extends State<WalletView> {
   }
 
   void _startRazorpay(double amount) {
-    final db = WalletDatabase();
+    final bloc = context.read<WalletBloc>();
     // Service மூலம் payment-ஐத் தொடங்குகிறோம்
     context.read<RazorpayApiService>().startPayment(
       amount: amount,
-      email: db.currentUserEmail ?? '',
+      email: bloc.database.currentUserEmail ?? '',
     );
   }
 
@@ -199,14 +237,21 @@ class _WalletViewState extends State<WalletView> {
 
   @override
   Widget build(BuildContext context) {
-    final db = WalletDatabase();
+    final bloc = context.read<WalletBloc>();
+    final db = bloc.database;
 
     return BlocListener<WalletBloc, WalletState>(
+      listenWhen: (previous, current) {
+        return previous.isLoading != current.isLoading ||
+            previous.successMessage != current.successMessage ||
+            previous.errorMessage != current.errorMessage;
+      },
       listener: (context, state) {
         if (state.pendingAmount != null && state.isLoading) {
           _startRazorpay(state.pendingAmount!);
         }
-        if (state.successMessage != null) {
+        // இங்கே ஏற்கனவே listenWhen ஃபில்டர் செய்திருப்பதால், தேவையற்ற பாப்-அப்கள் வராது
+        if (state.successMessage != null && state.successMessage!.isNotEmpty) {
           _showTopSnackBar(context, state.successMessage!, Colors.green);
         }
         if (state.errorMessage != null) {
