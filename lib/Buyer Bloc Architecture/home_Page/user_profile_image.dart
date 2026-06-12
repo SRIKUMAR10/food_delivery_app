@@ -302,7 +302,7 @@ class _user_profile_imageState extends State<user_profile_image> {
                               ),
                             )
                           : Text(
-                              "Save Changes",
+                              "Save Profile",
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
