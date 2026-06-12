@@ -1,35 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
-import '../ForgotPasswordPage/ForgotPasswordPage.dart'; // Import the new ForgotPasswordPage
+import 'package:firebase_auth/firebase_auth.dart';
+import '../Seller_SignUpPage/Seller_SignUpPage.dart';
+import '../Seller_Add_Products/seller_add_product_screen.dart';
+import '../Seller_ForgotPasswordPage/Seller_ForgotPasswordPage.dart'; // Import the new ForgotPasswordPage
+import '../../Repository/seller_repository.dart';
 
-// DetailsPage-ஐ இறக்குமதி செய்யவும்
-import '../../Repository/user_repository.dart';
-import '../Sign_Up_Page/SignUpPage.dart'; // SignUpPage ஐ இறக்குமதி செய்யவும்
-import '../home_Page/home_Page.dart'; // HomePage மற்றும் FoodItem-ஐ இறக்குமதி செய்யவும்
-
-class FoodGoLoginScreen extends StatefulWidget {
-  final FoodItem?
-  foodItemToAccess; // Login-க்குப் பிறகு செல்ல வேண்டிய FoodItem (விருப்பத்தேர்வு)
-
-  const FoodGoLoginScreen({
-    super.key,
-    this.foodItemToAccess,
-  }); // constructor-ஐ புதுப்பிக்கவும்
+class SellerLoginScreen extends StatefulWidget {
+  const SellerLoginScreen({super.key}); // constructor-ஐ புதுப்பிக்கவும்
 
   @override
-  State<FoodGoLoginScreen> createState() => _LoginScreenState();
+  State<SellerLoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<FoodGoLoginScreen> {
+class _LoginScreenState extends State<SellerLoginScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // பயனர் ஏற்கனவே லாகின் செய்திருந்தால், நேரடியாக Add Product பக்கத்திற்குச் செல்லவும்
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (FirebaseAuth.instance.currentUser != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SellerAddProductScreen(),
+          ),
+        );
+      }
+    });
+  }
+
   // --- KEEP YOUR EXISTING DATA / LOGIC HERE ---
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
 
-  final UserRepository _userRepository = UserRepository();
+  final SellerRepository _sellerRepository = SellerRepository();
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
@@ -41,7 +49,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
               const Center(child: CircularProgressIndicator()),
         );
 
-        await _userRepository.signIn(
+        await _sellerRepository.signIn(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
@@ -49,12 +57,11 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
         if (!mounted) return;
         Navigator.pop(context); // Dialog-ஐ மூட
 
-        // வெற்றிகரமான Login-க்குப் பிறகு பயனர் நேரடியாக CurvedNavigationBarView பக்கத்திற்கு செல்லவும்
-        // குறிப்பு: CurvedNavigationBarView இருக்கும் கோப்பை இங்கே import செய்ய மறக்காதீர்கள்.
+        // வெற்றிகரமான Login-க்குப் பிறகு Seller Add Product பக்கத்திற்கு செல்லவும்
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-            builder: (context) => const CurvedNavigationBarView(),
+            builder: (context) => const SellerAddProductScreen(),
           ),
           (route) => false,
         );
@@ -69,8 +76,9 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
   }
 
   void _handleForgotPassword() {
-    // Navigate to the ForgotPasswordPage
-    Navigator.pushReplacement(
+    // Navigate to the ForgotPasswordPage without removing login from stack
+    // so they can come back to login
+    Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
     );
@@ -80,11 +88,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
     // SignUp பக்கத்திற்குச் சென்று, தற்போதைய Login பக்கத்தை ஸ்டாக்கில் இருந்து நீக்கவும்.
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) => SignUpPage(
-          foodItemToAccess: widget.foodItemToAccess, // Food item-ஐ கடத்தவும்
-        ),
-      ),
+      MaterialPageRoute(builder: (context) => const SellerSignUpPage()),
     );
   }
   // --------------------------------------------

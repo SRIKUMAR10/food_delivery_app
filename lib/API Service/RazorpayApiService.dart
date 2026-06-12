@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:razorpay_web/razorpay_web.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 /// [RazorpayApiService] handles all direct communication with the Razorpay REST API.
 class RazorpayApiService {

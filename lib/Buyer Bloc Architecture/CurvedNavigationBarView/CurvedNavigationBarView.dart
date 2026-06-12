@@ -19,7 +19,7 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
 
   // 4. List of pages for the bottom navigation
   final List<Widget> _pages = [
-    const HomePage(),
+    const HomePage(), // Ensure this matches the class name in home_Page.dart
     const WalletScreen(),
     const CartPage(),
     const OrdersListScreen(),

@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore-ஐ இறக்குமதி செய்யவும்
+import 'package:firebase_auth/firebase_auth.dart'; // Auth நிலையைச் சரிபார்க்க
+import 'package:google_fonts/google_fonts.dart'; // GoogleFonts-ஐ இறக்குமதி செய்யவும்
+import 'package:intl/intl.dart'; // பண மதிப்பை வடிவமைக்க
+// Login Screen-ஐ இறக்குமதி செய்யவும்
+import '../FoodGoLoginScreen/FoodGoLoginScreen.dart';
+import '../Details_Page/DetailsPage.dart'; // DetailsPage-ஐ இறக்குமதி செய்யவும்
+import 'user_profile_image.dart'; // User Profile Drawer-ஐ இறக்குமதி செய்யவும்
 
-import '../FoodGoLoginScreen/FoodGoLoginScreen.dart'; // Login Screen-ஐ இறக்குமதி செய்யவும்
+const String _kDefaultFoodImageUrl =
+    "https://firebasestorage.googleapis.com/v0/b/food-delivery-app-cd4ca.firebasestorage.app/o/product_images%2FWpN6x21MmWUjG1DS9BfLnX2M3Js2%2F2026-06-12T00%3A40%3A44.162_images%20(1).jpg?alt=media&token=de903631-0a43-438e-b01c-effe404bd982";
 
 class FoodCategory {
   final String id;
@@ -19,16 +28,45 @@ class FoodCategory {
   });
 }
 
+// FoodItem class-ஐ Firebase-இல் உள்ள product collection-க்கு ஏற்றவாறு மாற்றியமைக்கவும்
 class FoodItem {
+  final String id; // Firestore document ID
   final String name;
-  final String price;
-  final String image;
+  final double price; // Changed to double
+  final String description; // New field
+  final String category; // New field
+  final String? image; // Made nullable
+  final String sellerId; // New field to link to seller
 
   const FoodItem({
+    required this.id,
     required this.name,
     required this.price,
-    required this.image,
+    required this.description,
+    required this.category,
+    this.image,
+    required this.sellerId,
   });
+
+  // Firestore DocumentSnapshot-லிருந்து FoodItem உருவாக்க ஒரு factory constructor
+  factory FoodItem.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    debugPrint(
+      "DEBUG 1 (Firestore Data): $data",
+    ); // Firestore-லிருந்து வரும் முழு டேட்டா
+    return FoodItem(
+      id: doc.id,
+      name: data['name'] ?? 'Unknown Product',
+      price:
+          (data['price'] as num?)?.toDouble() ??
+          0.0, // num-ஐ double-ஆக மாற்றவும்
+      description: data['description'] ?? 'No description available.',
+      category: data['category'] ?? 'Uncategorized',
+      image: (data['imageUrl'] as String?)
+          ?.trim(), // Firestore-ல் 'imageUrl' என்று சேமிக்கப்படும்
+      sellerId: data['sellerId'] ?? 'Unknown Seller',
+    );
+  }
 }
 
 class HomePage extends StatefulWidget {
@@ -39,48 +77,49 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<FoodCategory> categories = const [
-    FoodCategory(
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+
+  final List<FoodCategory> categories = [
+    const FoodCategory(
       id: '1',
       name: 'Pizza',
       emoji: '🍕',
       isSelected: true,
       size: 35,
     ),
-    FoodCategory(id: '2', name: 'Burger', emoji: '🍔', size: 35),
-    FoodCategory(id: '3', name: 'Chicken', emoji: '🍗', size: 35),
-    FoodCategory(id: '4', name: 'Sushi', emoji: '🍣', size: 35),
-    FoodCategory(id: '5', name: 'Dessert', emoji: '🍰', size: 35),
+    const FoodCategory(id: '2', name: 'Burger', emoji: '🍔', size: 35),
+    const FoodCategory(id: '3', name: 'Pasta', emoji: '🍝', size: 35),
+    const FoodCategory(id: '4', name: 'Drinks', emoji: '🥤', size: 35),
+    const FoodCategory(id: '5', name: 'Dessert', emoji: '🍰', size: 35),
   ];
 
-  final List<FoodItem> foodItems = const [
-    FoodItem(
-      name: 'Cheese Pizza',
-      price: '\$50',
-      image:
-          'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=400&auto=format&fit=crop',
-    ),
-    FoodItem(
-      name: 'Margherita pizza',
-      price: '\$80',
-      image:
-          'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?q=80&w=400&auto=format&fit=crop',
-    ),
-    FoodItem(
-      name: 'Margherita pizza',
-      price: '\$80',
-      image:
-          'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?q=80&w=400&auto=format&fit=crop',
-    ),
-    FoodItem(
-      name: 'Margherita pizza',
-      price: '\$80',
-      image:
-          'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?q=80&w=400&auto=format&fit=crop',
-    ),
-  ];
+  // Firestore-லிருந்து products-ஐப் பெற ஒரு Stream
+  Stream<List<FoodItem>> _getProductsStream(String categoryName) {
+    return FirebaseFirestore.instance
+        .collection('products')
+        .where(
+          'category',
+          isEqualTo: categoryName,
+        ) // Category மூலம் வடிகட்டவும்
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            final item = FoodItem.fromFirestore(doc);
+            debugPrint(
+              "DEBUG 2 (Mapped Item Image): ${item.image}",
+            ); // Model-ல் மேப் ஆன பிறகு
+            return item;
+          }).toList();
+        });
+  }
 
   late String selectedCategoryId;
+
+  // தேர்ந்தெடுக்கப்பட்ட category-ன் பெயரைக் கண்டறிய
+  String get _selectedCategoryName {
+    return categories.firstWhere((cat) => cat.id == selectedCategoryId).name;
+  }
 
   @override
   void initState() {
@@ -88,11 +127,23 @@ class _HomePageState extends State<HomePage> {
     selectedCategoryId = categories
         .firstWhere((cat) => cat.isSelected, orElse: () => categories.first)
         .id;
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      endDrawer: const user_profile_image(), // Drawer-ஐ இங்கே இணைக்கவும்
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -101,6 +152,11 @@ class _HomePageState extends State<HomePage> {
             int crossAxisCount = 2;
             double horizontalPadding = 16.0;
             bool isMobile = true;
+
+            // GoogleFonts-ஐப் பயன்படுத்தவும்
+            final TextStyle defaultTextStyle = GoogleFonts.poppins(
+              color: const Color(0xDE000000),
+            );
 
             if (maxWidth >= 1024) {
               crossAxisCount = 4;
@@ -126,12 +182,12 @@ class _HomePageState extends State<HomePage> {
                         _buildTopBar(isMobile, maxWidth),
                         if (isMobile) ...[
                           const SizedBox(height: 16),
-                          const Text(
-                            'Order your favourite food!',
-                            style: TextStyle(
+                          Text(
+                            'Order your favourite food!', // GoogleFonts-ஐப் பயன்படுத்தவும்
+                            style: defaultTextStyle.copyWith(
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xDE000000),
+                              color: const Color(0xDE000000),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -142,7 +198,7 @@ class _HomePageState extends State<HomePage> {
                           Center(
                             child: Text(
                               'Order your favourite food!',
-                              style: TextStyle(
+                              style: GoogleFonts.poppins(
                                 fontSize: maxWidth >= 1024 ? 36 : 28,
                                 fontWeight: FontWeight.bold,
                                 color: const Color(0xFF1C1C1C),
@@ -157,20 +213,66 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
-                SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                  sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      childAspectRatio: 0.76,
-                      mainAxisSpacing: 20,
-                      crossAxisSpacing: 20,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => FoodCard(item: foodItems[index]),
-                      childCount: foodItems.length,
-                    ),
-                  ),
+                StreamBuilder<List<FoodItem>>(
+                  stream: _getProductsStream(_selectedCategoryName),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SliverFillRemaining(
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return SliverFillRemaining(
+                        child: Center(child: Text('Error: ${snapshot.error}')),
+                      );
+                    }
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return SliverFillRemaining(
+                        child: Center(
+                          child: Text(
+                            'No products available',
+                            style: GoogleFonts.poppins(fontSize: 16),
+                          ),
+                        ),
+                      );
+                    }
+
+                    // தேடல் வினவல் (search query) மூலம் பொருட்களை வடிகட்டவும்
+                    final List<FoodItem> foodItems = snapshot.data!.where((
+                      item,
+                    ) {
+                      return item.name.toLowerCase().contains(_searchQuery);
+                    }).toList();
+
+                    if (foodItems.isEmpty) {
+                      return SliverFillRemaining(
+                        child: Center(
+                          child: Text(
+                            'No products match "$_searchQuery"',
+                            style: GoogleFonts.poppins(fontSize: 16),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return SliverPadding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                      ),
+                      sliver: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          childAspectRatio: 0.76,
+                          mainAxisSpacing: 20,
+                          crossAxisSpacing: 20,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => FoodCard(item: foodItems[index]),
+                          childCount: foodItems.length,
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
@@ -193,7 +295,30 @@ class _HomePageState extends State<HomePage> {
             fit: BoxFit.contain,
             semanticsLabel: 'FoodGo Logo',
           ),
-          _buildProfileAvatar(),
+          Row(
+            children: [
+              // _buildCartIcon() removed
+              // const SizedBox(width: 12) removed
+              Builder(
+                builder: (context) => GestureDetector(
+                  onTap: () {
+                    if (FirebaseAuth.instance.currentUser == null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FoodGoLoginScreen(),
+                        ),
+                      );
+                    } else {
+                      // லாகின் ஆகியிருந்தால் Drawer-ஐத் திறக்கவும்
+                      Scaffold.of(context).openEndDrawer();
+                    }
+                  },
+                  child: _buildProfileAvatar(),
+                ),
+              ),
+            ],
+          ),
         ],
       );
     }
@@ -213,7 +338,25 @@ class _HomePageState extends State<HomePage> {
           children: [
             SizedBox(width: maxWidth * 0.4, child: _buildSearchBar()),
             const SizedBox(width: 16),
-            _buildProfileAvatar(),
+            // _buildCartIcon() removed
+            // const SizedBox(width: 16) removed
+            Builder(
+              builder: (context) => GestureDetector(
+                onTap: () {
+                  if (FirebaseAuth.instance.currentUser == null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FoodGoLoginScreen(),
+                      ),
+                    );
+                  } else {
+                    Scaffold.of(context).openEndDrawer();
+                  }
+                },
+                child: _buildProfileAvatar(),
+              ),
+            ),
           ],
         ),
       ],
@@ -247,8 +390,9 @@ class _HomePageState extends State<HomePage> {
               borderRadius: BorderRadius.circular(14),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: const TextField(
-              decoration: InputDecoration(
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
                 hintText: 'Search food item...',
                 hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
                 border: InputBorder.none,
@@ -294,7 +438,7 @@ class _HomePageState extends State<HomePage> {
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: const Color(0xFFEF2A39).withOpacity(0.2),
+                          color: const Color(0xFFEF2A39).withValues(alpha: 0.2),
                           blurRadius: 6,
                           offset: const Offset(0, 3),
                         ),
@@ -338,22 +482,48 @@ class _FoodCardState extends State<FoodCard> {
 
   @override
   Widget build(BuildContext context) {
+    // பண மதிப்பை வடிவமைக்க
+    final NumberFormat currencyFormatter = NumberFormat.currency(
+      locale: 'en_US', // அல்லது உங்கள் தேவைக்கேற்ப மாற்றவும்
+      symbol: '\$', // அல்லது உங்கள் தேவைக்கேற்ப மாற்றவும்
+      decimalDigits: 2,
+    );
+    debugPrint(
+      "DEBUG 3 (FoodCard Image URL): ${widget.item.image}",
+    ); // UI-க்கு வரும்போது
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => isHovered = true),
       onExit: (_) => setState(() => isHovered = false),
       child: GestureDetector(
         onTap: () {
-          // Login பக்கத்திற்குச் செல்லவும், FoodItem விவரங்களை அனுப்பவும்.
-          // வெற்றிகரமான Login-க்குப் பிறகு, பயனர் DetailsPages-க்கு திருப்பி விடப்படுவார்.
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FoodGoLoginScreen(
-                foodItemToAccess: widget.item, // Food item-ஐ அனுப்பவும்
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            // பயனர் ஏற்கனவே லாகின் செய்திருந்தால் நேரடியாக DetailsPage-க்குச் செல்லவும்
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DetailsPage(
+                  id: widget.item.id,
+                  name: widget.item.name,
+                  price: widget.item.price,
+                  description: widget.item.description,
+                  sellerId: widget.item.sellerId,
+                  image: widget.item.image,
+                ),
               ),
-            ),
-          );
+            );
+          } else {
+            // லாகின் செய்யவில்லை என்றால் லாகின் பக்கத்திற்குச் செல்லவும்
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    FoodGoLoginScreen(foodItemToAccess: widget.item),
+              ),
+            );
+          }
         },
         child: AnimatedScale(
           scale: isHovered ? 1.03 : 1.0,
@@ -363,12 +533,14 @@ class _FoodCardState extends State<FoodCard> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.grey.withOpacity(0.12),
+                color: Colors.grey.withValues(alpha: 0.12),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isHovered ? 0.06 : 0.02),
+                  color: Colors.black.withValues(
+                    alpha: isHovered ? 0.06 : 0.02,
+                  ),
                   blurRadius: isHovered ? 10 : 4,
                   offset: const Offset(0, 4),
                 ),
@@ -385,15 +557,62 @@ class _FoodCardState extends State<FoodCard> {
                         child: Center(
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
-                            child: Image.network(
-                              widget.item.image,
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const Icon(
-                                    Icons.local_pizza,
-                                    size: 50,
-                                    color: Colors.orange,
+                            child: Builder(
+                              builder: (context) {
+                                // URL-ல் உள்ள தேவையற்ற ஸ்பேஸ் அல்லது நியூ-லைன்களை நீக்குதல்
+                                final imageUri = Uri.tryParse(
+                                  widget.item.image ?? '',
+                                );
+
+                                if (imageUri != null &&
+                                    imageUri.hasAbsolutePath) {
+                                  return Image.network(
+                                    imageUri.toString(),
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    loadingBuilder: (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value:
+                                              progress.expectedTotalBytes !=
+                                                  null
+                                              ? progress.cumulativeBytesLoaded /
+                                                    progress.expectedTotalBytes!
+                                              : null,
+                                          strokeWidth: 2,
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      debugPrint("Image Load Error: $error");
+                                      return Image.network(
+                                        _kDefaultFoodImageUrl,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        errorBuilder: (context, e, s) =>
+                                            Image.asset(
+                                              'assets/images/chef.png',
+                                              fit: BoxFit.contain,
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                            ),
+                                      );
+                                    },
+                                  );
+                                }
+                                return Container(
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  color: Colors.grey[100],
+                                  child: Image.network(
+                                    _kDefaultFoodImageUrl,
+                                    fit: BoxFit.cover,
                                   ),
+                                );
+                              },
                             ),
                           ),
                         ),
@@ -401,8 +620,6 @@ class _FoodCardState extends State<FoodCard> {
                       const SizedBox(height: 12),
                       Text(
                         widget.item.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -411,7 +628,9 @@ class _FoodCardState extends State<FoodCard> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        widget.item.price,
+                        currencyFormatter.format(
+                          widget.item.price,
+                        ), // Format price
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,

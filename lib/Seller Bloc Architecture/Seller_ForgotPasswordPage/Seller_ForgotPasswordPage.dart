@@ -1,111 +1,89 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
-import '../ForgotPasswordPage/ForgotPasswordPage.dart'; // Import the new ForgotPasswordPage
+import 'package:firebase_auth/firebase_auth.dart'; // For password reset logic
 
-// DetailsPage-ஐ இறக்குமதி செய்யவும்
-import '../../Repository/user_repository.dart';
-import '../Sign_Up_Page/SignUpPage.dart'; // SignUpPage ஐ இறக்குமதி செய்யவும்
-import '../home_Page/home_Page.dart'; // HomePage மற்றும் FoodItem-ஐ இறக்குமதி செய்யவும்
+import '../Seller_LoginScreen/Seller_LoginScreen.dart'; // Navigate to Seller's own Login
 
-class FoodGoLoginScreen extends StatefulWidget {
-  final FoodItem?
-  foodItemToAccess; // Login-க்குப் பிறகு செல்ல வேண்டிய FoodItem (விருப்பத்தேர்வு)
-
-  const FoodGoLoginScreen({
-    super.key,
-    this.foodItemToAccess,
-  }); // constructor-ஐ புதுப்பிக்கவும்
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  State<FoodGoLoginScreen> createState() => _LoginScreenState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _LoginScreenState extends State<FoodGoLoginScreen> {
-  // --- KEEP YOUR EXISTING DATA / LOGIC HERE ---
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _obscurePassword = true;
 
-  final UserRepository _userRepository = UserRepository();
-
-  Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
+  void _handleResetPassword() {
+    if (_formKey.currentState?.validate() ?? false) {
+      final String email = _emailController.text.trim();
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
       try {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) =>
-              const Center(child: CircularProgressIndicator()),
-        );
-
-        await _userRepository.signIn(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
-
-        if (!mounted) return;
-        Navigator.pop(context); // Dialog-ஐ மூட
-
-        // வெற்றிகரமான Login-க்குப் பிறகு பயனர் நேரடியாக CurvedNavigationBarView பக்கத்திற்கு செல்லவும்
-        // குறிப்பு: CurvedNavigationBarView இருக்கும் கோப்பை இங்கே import செய்ய மறக்காதீர்கள்.
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CurvedNavigationBarView(),
-          ),
-          (route) => false,
-        );
+        FirebaseAuth.instance
+            .sendPasswordResetEmail(email: email)
+            .then((_) {
+              if (!mounted) return;
+              Navigator.pop(context); // Close loading dialog
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Password reset link sent to $email"),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              Future.delayed(const Duration(seconds: 2), () {
+                _navigateToLogin();
+              });
+            })
+            .catchError((error) {
+              if (!mounted) return;
+              Navigator.pop(context); // Close loading dialog
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to send reset email: ${error.message}'),
+                ),
+              );
+            });
       } catch (e) {
-        if (!mounted) return;
-        Navigator.pop(context); // Dialog-ஐ மூட
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        // This catch block might be redundant if .catchError handles all exceptions
       }
     }
   }
 
-  void _handleForgotPassword() {
-    // Navigate to the ForgotPasswordPage
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
-    );
-  }
-
-  void _handleSignUp() {
-    // SignUp பக்கத்திற்குச் சென்று, தற்போதைய Login பக்கத்தை ஸ்டாக்கில் இருந்து நீக்கவும்.
+  void _navigateToLogin() {
+    // Navigate to the Login page and remove the current ForgotPassword page from the stack.
+    // This prevents the stack of authentication pages from building up.
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => SignUpPage(
-          foodItemToAccess: widget.foodItemToAccess, // Food item-ஐ கடத்தவும்
-        ),
-      ),
+        builder: (context) => const SellerLoginScreen(),
+      ), // Navigate to SellerLoginScreen
     );
   }
-  // --------------------------------------------
 
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF5F5),
+      backgroundColor: const Color(0xFFFBF5F5), // App background color
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            // Desktop/Tablet layout if width > 800px
             if (constraints.maxWidth > 800) {
               return _buildWideLayout(constraints.maxWidth);
             } else {
+              // Mobile layout
               return _buildMobileLayout();
             }
           },
@@ -114,17 +92,20 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
     );
   }
 
+  // -------------------------------------------------------------
+  // MOBILE LAYOUT (Consistent with Login/SignUp)
+  // -------------------------------------------------------------
   Widget _buildMobileLayout() {
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       child: Stack(
         children: [
-          // 1. Top Section (Same as SignUpPage)
+          // 1. Background and Top Content (reused from Login/SignUp)
           Container(
             height: 480,
             width: double.infinity,
             decoration: const BoxDecoration(
-              color: Color(0xFFFEEBC1),
+              color: Color(0xFFFEEBC1), // Biscuit/yellow color
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(60),
                 bottomRight: Radius.circular(60),
@@ -133,6 +114,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 50),
+                // Food Image (reused for consistent branding)
                 Image.asset(
                   'assets/images/Sign up.png',
                   height: 220,
@@ -144,6 +126,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                // FoodGo SVG Logo
                 SvgPicture.asset(
                   'assets/images/FoodGo.svg',
                   height: 60,
@@ -159,21 +142,24 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
             ),
           ),
 
-          // 2. Overlapping Card
+          // 2. White Overlapping Card
           Padding(
             padding: const EdgeInsets.only(
-              top: 410,
+              top: 410, // Shifted downward so the logo above is fully visible
               left: 20.0,
               right: 20.0,
               bottom: 30.0,
             ),
-            child: _buildLoginCard(),
+            child: _buildForgotPasswordCard(),
           ),
         ],
       ),
     );
   }
 
+  // -------------------------------------------------------------
+  // DESKTOP / TABLET WEB LAYOUT (Consistent with Login/SignUp)
+  // -------------------------------------------------------------
   Widget _buildWideLayout(double width) {
     return Center(
       child: Container(
@@ -193,6 +179,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
         ),
         child: Row(
           children: [
+            // Left Side: Branding Area
             Expanded(
               flex: 1,
               child: Container(
@@ -212,12 +199,13 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
                 ),
               ),
             ),
+            // Right Side: Forgot Password Form
             Expanded(
               flex: 1,
               child: Center(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(60),
-                  child: _buildLoginCard(isDesktop: true),
+                  child: _buildForgotPasswordCard(isDesktop: true),
                 ),
               ),
             ),
@@ -227,16 +215,20 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
     );
   }
 
-  Widget _buildLoginCard({bool isDesktop = false}) {
+  // -------------------------------------------------------------
+  // REUSABLE FORGOT PASSWORD CARD (Styled consistently)
+  // -------------------------------------------------------------
+  Widget _buildForgotPasswordCard({bool isDesktop = false}) {
     final cardContent = Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Title
           Center(
             child: Text(
-              "LogIn",
+              "Forgot Password",
               style: GoogleFonts.poppins(
                 fontSize: isDesktop ? 36 : 30,
                 fontWeight: FontWeight.w700,
@@ -246,6 +238,23 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
             ),
           ),
           const SizedBox(height: 24),
+
+          // Instruction Text
+          Center(
+            // Centering the instruction text
+            child: Text(
+              "Enter your email address below and we'll send you a link to reset your password.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.black54,
+                height: 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Email Field Label
           Text(
             "Email",
             style: GoogleFonts.poppins(
@@ -256,67 +265,35 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          // Email Text Field
           _buildTextField(
             controller: _emailController,
             hintText: "Enter Email",
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 20),
-          Text(
-            "Password",
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF333333),
-              letterSpacing: 0.1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildTextField(
-            controller: _passwordController,
-            hintText: "Enter Password",
-            icon: Icons.lock_outline,
-            isPassword: _obscurePassword,
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                color: Colors.black54,
-                size: 20,
-              ),
-              onPressed: () {
-                setState(() {
-                  _obscurePassword = !_obscurePassword;
-                });
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: _handleForgotPassword,
-              child: Text(
-                'Forgot Password?',
-                style: GoogleFonts.poppins(
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your email';
+              }
+              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                return 'Please enter a valid email address';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 32),
+
+          // Submit Button
           Center(
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
-                onTap: _handleLogin,
+                onTap: _handleResetPassword,
                 child: Container(
                   width: double.infinity,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE52121),
+                    color: const Color(0xFFE52121), // Bright red color
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
@@ -326,9 +303,9 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
                       ),
                     ],
                   ),
-                  child: Center(
+                  child: const Center(
                     child: Text(
-                      "Log In",
+                      "Submit",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -342,26 +319,31 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
             ),
           ),
           const SizedBox(height: 24),
+
+          // Back to Login Link
           Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Don't have account? ",
+                  "Remember your password? ",
                   style: GoogleFonts.poppins(
                     color: Colors.black54,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                GestureDetector(
-                  onTap: _handleSignUp,
-                  child: Text(
-                    "SignUp",
-                    style: GoogleFonts.poppins(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: _navigateToLogin,
+                    child: Text(
+                      "Login",
+                      style: GoogleFonts.poppins(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -372,6 +354,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
       ),
     );
 
+    // White card background and rounded corners only for mobile layout
     if (isDesktop) {
       return cardContent;
     } else {
@@ -393,6 +376,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
     }
   }
 
+  // Common Text Field styling (Custom Text Field)
   Widget _buildTextField({
     required TextEditingController controller,
     required String hintText,
@@ -400,10 +384,11 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
     bool isPassword = false,
     Widget? suffixIcon,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator, // Added validator for form fields
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFECEFF6),
+        color: const Color(0xFFECEFF6), // Gray color for input field
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextFormField(
@@ -422,6 +407,7 @@ class _LoginScreenState extends State<FoodGoLoginScreen> {
             horizontal: 16,
           ),
         ),
+        validator: validator, // Apply the validator
       ),
     );
   }
