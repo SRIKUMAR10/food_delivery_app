@@ -1,11 +1,14 @@
-import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'home_Page.dart'; // HomePage-ஐ இறக்குமதி செய்யவும்
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
+import 'package:image/image.dart'
+    as img; // Step 1: Image package for compression
 
 class user_profile_image extends StatefulWidget {
   const user_profile_image({super.key});
@@ -70,12 +73,30 @@ class _user_profile_imageState extends State<user_profile_image> {
       final user = _auth.currentUser;
       if (user == null) return;
 
-      // Upload to Firebase Storage
-      Reference ref = _storage.ref().child('profile_images/${user.uid}.jpg');
-      await ref.putFile(File(image.path));
+      // Step 1: Image Compression (70% quality)
+      final bytes = await image.readAsBytes();
+      img.Image? decodedImage = img.decodeImage(bytes);
+      final compressedBytes = img.encodeJpg(decodedImage!, quality: 70);
+
+      // Firebase Storage - 'user/image' folder as per request
+      Reference ref = _storage.ref().child('user/image/${user.uid}.jpg');
+
+      // Step 2: Uploading compressed bytes
+      if (kIsWeb) {
+        await ref.putData(
+          compressedBytes,
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
+      } else {
+        await ref.putData(
+          compressedBytes,
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
+      }
+
       String downloadUrl = await ref.getDownloadURL();
 
-      // Update Firestore
+      // Update Firestore 'imageUrl' for the logged-in user
       await _firestore.collection('users').doc(user.uid).set({
         'imageUrl': downloadUrl,
       }, SetOptions(merge: true));
@@ -115,13 +136,23 @@ class _user_profile_imageState extends State<user_profile_image> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile saved successfully!')),
+        const SnackBar(
+          content: Text('Profile saved successfully!'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.green,
+        ),
       );
 
-      // Home Page-க்கு நேவிகேட் செய்யவும் மற்றும் ஸ்டாக்கை கிளியர் செய்யவும்
+      // Step 6: Smooth Navigation with Fade Transition
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
+        PageRouteBuilder(
+          pageBuilder: (context, anim, secAnim) =>
+              const CurvedNavigationBarView(),
+          transitionsBuilder: (context, anim, secAnim, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 500),
+        ),
         (route) => false,
       );
     } catch (e) {
@@ -283,6 +314,7 @@ class _user_profile_imageState extends State<user_profile_image> {
                   SizedBox(
                     width: double.infinity,
                     height: 55,
+                    // Step 4: Button state disabled during loading
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _saveProfile,
                       style: ElevatedButton.styleFrom(
@@ -319,7 +351,7 @@ class _user_profile_imageState extends State<user_profile_image> {
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const HomePage(),
+                          builder: (context) => const CurvedNavigationBarView(),
                         ),
                         (route) => false,
                       );
@@ -384,7 +416,8 @@ class _user_profile_imageState extends State<user_profile_image> {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        // Step 5: More breathing space between fields
+        const SizedBox(height: 28),
       ],
     );
   }

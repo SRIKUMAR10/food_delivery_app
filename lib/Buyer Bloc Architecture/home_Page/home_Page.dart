@@ -267,7 +267,8 @@ class _HomePageState extends State<HomePage> {
                           crossAxisSpacing: 20,
                         ),
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) => FoodCard(item: foodItems[index]),
+                          (context, index) =>
+                              FoodCard(item: foodItems[index], index: index),
                           childCount: foodItems.length,
                         ),
                       ),
@@ -364,18 +365,57 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildProfileAvatar() {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        image: const DecorationImage(
-          image: NetworkImage(
-            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150&auto=format&fit=crop',
-          ),
-          fit: BoxFit.cover,
+    final user = FirebaseAuth.instance.currentUser;
+
+    return Column(
+      children: [
+        StreamBuilder<DocumentSnapshot>(
+          stream: user != null
+              ? FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .snapshots()
+              : null,
+          builder: (context, snapshot) {
+            String? imageUrl;
+            if (snapshot.hasData && snapshot.data!.exists) {
+              imageUrl =
+                  (snapshot.data!.data() as Map<String, dynamic>?)?['imageUrl'];
+            }
+
+            return Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFEEF4),
+                borderRadius: BorderRadius.circular(12),
+                image: imageUrl != null && imageUrl.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(imageUrl),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: imageUrl == null || imageUrl.isEmpty
+                  ? const Icon(
+                      Icons.person_outline_rounded,
+                      color: Color(0xFFEF2A39),
+                      size: 24,
+                    )
+                  : null,
+            );
+          },
         ),
-      ),
+        const SizedBox(height: 4),
+        const Text(
+          "Profile",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+            color: Colors.black,
+          ),
+        ),
+      ],
     );
   }
 
@@ -419,6 +459,7 @@ class _HomePageState extends State<HomePage> {
     return SizedBox(
       height: 46,
       child: ListView.separated(
+        physics: const BouncingScrollPhysics(),
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -428,19 +469,21 @@ class _HomePageState extends State<HomePage> {
 
           return GestureDetector(
             onTap: () => setState(() => selectedCategoryId = cat.id),
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
                     ? const Color(0xFFEF2A39)
                     : const Color(0xFFEFEEF4),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(isSelected ? 20 : 14),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
                           color: const Color(0xFFEF2A39).withValues(alpha: 0.2),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
                         ),
                       ]
                     : [],
@@ -451,7 +494,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 8),
                   Text(
                     cat.name,
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                       color: isSelected
@@ -471,7 +514,9 @@ class _HomePageState extends State<HomePage> {
 
 class FoodCard extends StatefulWidget {
   final FoodItem item;
-  const FoodCard({super.key, required this.item});
+  final int index;
+
+  const FoodCard({super.key, required this.item, this.index = 0});
 
   @override
   State<FoodCard> createState() => _FoodCardState();
@@ -492,175 +537,194 @@ class _FoodCardState extends State<FoodCard> {
       "DEBUG 3 (FoodCard Image URL): ${widget.item.image}",
     ); // UI-க்கு வரும்போது
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => isHovered = true),
-      onExit: (_) => setState(() => isHovered = false),
-      child: GestureDetector(
-        onTap: () {
-          final user = FirebaseAuth.instance.currentUser;
-          if (user != null) {
-            // பயனர் ஏற்கனவே லாகின் செய்திருந்தால் நேரடியாக DetailsPage-க்குச் செல்லவும்
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DetailsPage(
-                  id: widget.item.id,
-                  name: widget.item.name,
-                  price: widget.item.price,
-                  description: widget.item.description,
-                  sellerId: widget.item.sellerId,
-                  image: widget.item.image,
-                ),
-              ),
-            );
-          } else {
-            // லாகின் செய்யவில்லை என்றால் லாகின் பக்கத்திற்குச் செல்லவும்
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    FoodGoLoginScreen(foodItemToAccess: widget.item),
-              ),
-            );
-          }
-        },
-        child: AnimatedScale(
-          scale: isHovered ? 1.03 : 1.0,
-          duration: const Duration(milliseconds: 180),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.grey.withValues(alpha: 0.12),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: isHovered ? 0.06 : 0.02,
+    // நுழைவு அனிமேஷன் (Fade and Slide)
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 400 + (widget.index * 50).clamp(0, 400)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 30 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: MouseRegion(
+        // Added missing closing parenthesis for TweenAnimationBuilder child
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => isHovered = true),
+        onExit: (_) => setState(() => isHovered = false),
+        child: GestureDetector(
+          onTap: () {
+            final user = FirebaseAuth.instance.currentUser;
+            if (user != null) {
+              // பயனர் ஏற்கனவே லாகின் செய்திருந்தால் நேரடியாக DetailsPage-க்குச் செல்லவும்
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DetailsPage(
+                    id: widget.item.id,
+                    name: widget.item.name,
+                    price: widget.item.price,
+                    description: widget.item.description,
+                    sellerId: widget.item.sellerId,
+                    image: widget.item.image,
                   ),
-                  blurRadius: isHovered ? 10 : 4,
-                  offset: const Offset(0, 4),
                 ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Center(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Builder(
-                              builder: (context) {
-                                // URL-ல் உள்ள தேவையற்ற ஸ்பேஸ் அல்லது நியூ-லைன்களை நீக்குதல்
-                                final imageUri = Uri.tryParse(
-                                  widget.item.image ?? '',
-                                );
+              );
+            } else {
+              // லாகின் செய்யவில்லை என்றால் லாகின் பக்கத்திற்குச் செல்லவும்
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      FoodGoLoginScreen(foodItemToAccess: widget.item),
+                ),
+              );
+            }
+          },
+          child: AnimatedScale(
+            scale: isHovered ? 1.03 : 1.0,
+            duration: const Duration(milliseconds: 180),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.grey.withValues(alpha: 0.12),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: isHovered ? 0.06 : 0.02,
+                    ),
+                    blurRadius: isHovered ? 10 : 4,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Center(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Builder(
+                                builder: (context) {
+                                  // URL-ல் உள்ள தேவையற்ற ஸ்பேஸ் அல்லது நியூ-லைன்களை நீக்குதல்
+                                  final imageUri = Uri.tryParse(
+                                    widget.item.image ?? '',
+                                  );
 
-                                if (imageUri != null &&
-                                    imageUri.hasAbsolutePath) {
-                                  return Image.network(
-                                    imageUri.toString(),
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    loadingBuilder: (context, child, progress) {
-                                      if (progress == null) return child;
-                                      return Center(
-                                        child: CircularProgressIndicator(
-                                          value:
-                                              progress.expectedTotalBytes !=
-                                                  null
-                                              ? progress.cumulativeBytesLoaded /
-                                                    progress.expectedTotalBytes!
-                                              : null,
-                                          strokeWidth: 2,
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      debugPrint("Image Load Error: $error");
-                                      return Image.network(
-                                        _kDefaultFoodImageUrl,
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        errorBuilder: (context, e, s) =>
-                                            Image.asset(
-                                              'assets/images/chef.png',
-                                              fit: BoxFit.contain,
+                                  if (imageUri != null &&
+                                      imageUri.hasAbsolutePath) {
+                                    return Image.network(
+                                      imageUri.toString(),
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      loadingBuilder: (context, child, progress) {
+                                        if (progress == null) return child;
+                                        return Center(
+                                          child: CircularProgressIndicator(
+                                            value:
+                                                progress.expectedTotalBytes !=
+                                                    null
+                                                ? progress.cumulativeBytesLoaded /
+                                                      progress
+                                                          .expectedTotalBytes!
+                                                : null,
+                                            strokeWidth: 2,
+                                          ),
+                                        );
+                                      },
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                            debugPrint(
+                                              "Image Load Error: $error",
+                                            );
+                                            return Image.network(
+                                              _kDefaultFoodImageUrl,
+                                              fit: BoxFit.cover,
                                               width: double.infinity,
                                               height: double.infinity,
-                                            ),
-                                      );
-                                    },
+                                              errorBuilder: (context, e, s) =>
+                                                  Image.asset(
+                                                    'assets/images/chef.png',
+                                                    fit: BoxFit.contain,
+                                                    width: double.infinity,
+                                                    height: double.infinity,
+                                                  ),
+                                            );
+                                          },
+                                    );
+                                  }
+                                  return Container(
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    color: Colors.grey[100],
+                                    child: Image.network(
+                                      _kDefaultFoodImageUrl,
+                                      fit: BoxFit.cover,
+                                    ),
                                   );
-                                }
-                                return Container(
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  color: Colors.grey[100],
-                                  child: Image.network(
-                                    _kDefaultFoodImageUrl,
-                                    fit: BoxFit.cover,
-                                  ),
-                                );
-                              },
+                                },
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        widget.item.name,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1C1C1C),
+                        const SizedBox(height: 12),
+                        Text(
+                          widget.item.name,
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1C1C1C),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        currencyFormatter.format(
-                          widget.item.price,
-                        ), // Format price
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF1C1C1C),
+                        const SizedBox(height: 2),
+                        Text(
+                          currencyFormatter.format(
+                            widget.item.price,
+                          ), // Format price
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            color: const Color.fromARGB(255, 146, 142, 142),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    width: 48,
-                    height: 38,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEF2A39),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        bottomRight: Radius.circular(24),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_forward,
-                      color: Colors.white,
-                      size: 18,
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 48,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF2A39),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          bottomRight: Radius.circular(24),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

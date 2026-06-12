@@ -7,11 +7,6 @@
 
 # The following line activates a set of recommended lints for Flutter apps,
 # packages, and plugins designed to encourage good coding practices.
-analyzer:
-  errors:
-    camel_case_types: ignore
-    unused_field: ignore ignore
-include: package:flutter_lints/flutter.yaml
 
 linter:
   # The lint rules applied to this project can be customized in the
