@@ -70,7 +70,9 @@ class FoodItem {
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final VoidCallback? onNavigateToCart;
+
+  const HomePage({super.key, this.onNavigateToCart});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -79,6 +81,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+
+  Stream<DocumentSnapshot>? _userProfileStream;
+  late Stream<List<FoodItem>> _productsStream;
 
   final List<FoodCategory> categories = [
     const FoodCategory(
@@ -127,6 +132,16 @@ class _HomePageState extends State<HomePage> {
     selectedCategoryId = categories
         .firstWhere((cat) => cat.isSelected, orElse: () => categories.first)
         .id;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _userProfileStream = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots();
+    }
+    _productsStream = _getProductsStream(_selectedCategoryName);
+
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.trim().toLowerCase();
@@ -214,7 +229,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 StreamBuilder<List<FoodItem>>(
-                  stream: _getProductsStream(_selectedCategoryName),
+                  stream: _productsStream,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const SliverFillRemaining(
@@ -267,8 +282,11 @@ class _HomePageState extends State<HomePage> {
                           crossAxisSpacing: 20,
                         ),
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) =>
-                              FoodCard(item: foodItems[index], index: index),
+                          (context, index) => FoodCard(
+                            item: foodItems[index],
+                            index: index,
+                            onNavigateToCart: widget.onNavigateToCart,
+                          ),
                           childCount: foodItems.length,
                         ),
                       ),
@@ -370,12 +388,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         StreamBuilder<DocumentSnapshot>(
-          stream: user != null
-              ? FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(user.uid)
-                    .snapshots()
-              : null,
+          stream: _userProfileStream,
           builder: (context, snapshot) {
             String? imageUrl;
             if (snapshot.hasData && snapshot.data!.exists) {
@@ -468,7 +481,10 @@ class _HomePageState extends State<HomePage> {
           final isSelected = cat.id == selectedCategoryId;
 
           return GestureDetector(
-            onTap: () => setState(() => selectedCategoryId = cat.id),
+            onTap: () => setState(() {
+              selectedCategoryId = cat.id;
+              _productsStream = _getProductsStream(_selectedCategoryName);
+            }),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
@@ -515,8 +531,14 @@ class _HomePageState extends State<HomePage> {
 class FoodCard extends StatefulWidget {
   final FoodItem item;
   final int index;
+  final VoidCallback? onNavigateToCart;
 
-  const FoodCard({super.key, required this.item, this.index = 0});
+  const FoodCard({
+    super.key,
+    required this.item,
+    this.index = 0,
+    this.onNavigateToCart,
+  });
 
   @override
   State<FoodCard> createState() => _FoodCardState();
@@ -529,8 +551,8 @@ class _FoodCardState extends State<FoodCard> {
   Widget build(BuildContext context) {
     // பண மதிப்பை வடிவமைக்க
     final NumberFormat currencyFormatter = NumberFormat.currency(
-      locale: 'en_US', // அல்லது உங்கள் தேவைக்கேற்ப மாற்றவும்
-      symbol: '\$', // அல்லது உங்கள் தேவைக்கேற்ப மாற்றவும்
+      locale: 'en_IN', // WalletScreen உடன் சீராக இருக்க
+      symbol: '₹', // ருபாய் குறியீடு பயன்படுத்தவும்
       decimalDigits: 2,
     );
     debugPrint(
@@ -556,11 +578,11 @@ class _FoodCardState extends State<FoodCard> {
         onEnter: (_) => setState(() => isHovered = true),
         onExit: (_) => setState(() => isHovered = false),
         child: GestureDetector(
-          onTap: () {
+          onTap: () async {
             final user = FirebaseAuth.instance.currentUser;
             if (user != null) {
               // பயனர் ஏற்கனவே லாகின் செய்திருந்தால் நேரடியாக DetailsPage-க்குச் செல்லவும்
-              Navigator.push(
+              final result = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(
                   builder: (context) => DetailsPage(
@@ -573,6 +595,11 @@ class _FoodCardState extends State<FoodCard> {
                   ),
                 ),
               );
+              // Add to Cart button-ஐ அழுத்தினால் result == true
+              // Cart tab-க்கு (index 2) navigate பண்ணுகிறோம்
+              if (result == true && context.mounted) {
+                widget.onNavigateToCart?.call();
+              }
             } else {
               // லாகின் செய்யவில்லை என்றால் லாகின் பக்கத்திற்குச் செல்லவும்
               Navigator.push(

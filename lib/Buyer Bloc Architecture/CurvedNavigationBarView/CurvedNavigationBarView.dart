@@ -18,12 +18,25 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
   int _selectedIndex = 0;
 
   // 4. List of pages for the bottom navigation
-  final List<Widget> _pages = [
-    const HomePage(), // Ensure this matches the class name in home_Page.dart
-    const WalletScreen(),
-    const CartPage(),
-    const OrdersListScreen(),
-  ];
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomePage(onNavigateToCart: _navigateToCart),
+      const WalletScreen(),
+      const CartPage(),
+      const OrdersListScreen(),
+    ];
+  }
+
+  void _navigateToCart() {
+    if (!mounted) return;
+    setState(() {
+      _selectedIndex = 2;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

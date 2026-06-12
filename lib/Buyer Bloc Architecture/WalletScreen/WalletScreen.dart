@@ -7,8 +7,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../API Service/RazorpayApiService.dart';
+import '../FoodGoLoginScreen/FoodGoLoginScreen.dart';
 
-/// **Wallet Events**
+// ─────────────────────────────────────────────
+//  WALLET EVENTS
+// ─────────────────────────────────────────────
+
 abstract class WalletEvent {}
 
 class LoadWalletData extends WalletEvent {}
@@ -18,14 +22,20 @@ class AddFundsRequested extends WalletEvent {
   AddFundsRequested(this.amount);
 }
 
-class PaymentSuccessEvent extends WalletEvent {}
+class PaymentSuccessEvent extends WalletEvent {
+  final String paymentId;
+  PaymentSuccessEvent(this.paymentId);
+}
 
 class PaymentFailedEvent extends WalletEvent {
   final String message;
   PaymentFailedEvent(this.message);
 }
 
-/// **Wallet State**
+// ─────────────────────────────────────────────
+//  WALLET STATE
+// ─────────────────────────────────────────────
+
 class WalletState {
   final bool isLoading;
   final double? pendingAmount;
@@ -41,22 +51,23 @@ class WalletState {
 
   WalletState copyWith({
     bool? isLoading,
-    double? Function()? pendingAmount, // Allows resetting to null explicitly
-    String? successMessage,
-    String? errorMessage,
+    double? Function()? pendingAmount,
+    String? Function()? successMessage,
+    String? Function()? errorMessage,
   }) {
     return WalletState(
       isLoading: isLoading ?? this.isLoading,
-      pendingAmount: pendingAmount != null
-          ? pendingAmount()
-          : this.pendingAmount,
-      successMessage: successMessage ?? this.successMessage,
-      errorMessage: errorMessage ?? this.errorMessage,
+      pendingAmount: pendingAmount != null ? pendingAmount() : this.pendingAmount,
+      successMessage: successMessage != null ? successMessage() : this.successMessage,
+      errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
     );
   }
 }
 
-/// **Wallet BLoC**
+// ─────────────────────────────────────────────
+//  WALLET BLOC
+// ─────────────────────────────────────────────
+
 class WalletBloc extends Bloc<WalletEvent, WalletState> {
   final WalletDatabase database;
 
@@ -70,8 +81,8 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
         state.copyWith(
           isLoading: true,
           pendingAmount: () => event.amount,
-          successMessage: null,
-          errorMessage: null,
+          successMessage: () => null,
+          errorMessage: () => null,
         ),
       );
     });
@@ -80,21 +91,23 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
       final amount = state.pendingAmount;
       if (amount != null && amount > 0) {
         try {
-          // Firestore-ல் Wallet பேலன்ஸ் மற்றும் Transaction-ஐ அப்டேட் செய்கிறோம்
-          await database.addTransaction(amount, "Wallet Top-up", true);
+          // Firestore-ல் புதிய schema-வுடன் transaction save செய்கிறோம்
+          await database.addTransaction(amount, event.paymentId);
           emit(
             state.copyWith(
               isLoading: false,
               pendingAmount: () => null,
-              successMessage: "Funds added successfully!",
-              errorMessage: null,
+              successMessage: () => "₹${amount.toStringAsFixed(0)} added successfully! 🎉",
+              errorMessage: () => null,
             ),
           );
         } catch (e) {
           emit(
             state.copyWith(
               isLoading: false,
-              errorMessage: "Failed to update wallet: $e",
+              pendingAmount: () => null,
+              successMessage: () => null,
+              errorMessage: () => "Failed to update wallet: $e",
             ),
           );
         }
@@ -106,14 +119,18 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
         state.copyWith(
           isLoading: false,
           pendingAmount: () => null,
-          errorMessage: event.message,
+          successMessage: () => null,
+          errorMessage: () => event.message,
         ),
       );
     });
   }
 }
 
-/// **Wallet Database Helper**
+// ─────────────────────────────────────────────
+//  WALLET DATABASE HELPER
+// ─────────────────────────────────────────────
+
 class WalletDatabase {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -130,15 +147,12 @@ class WalletDatabase {
         .collection('users')
         .doc(_uid)
         .collection('transactions')
-        .orderBy('timestamp', descending: true)
+        .orderBy('createdAt', descending: true)
         .snapshots();
   }
 
-  Future<void> addTransaction(
-    double amount,
-    String title,
-    bool isCredit,
-  ) async {
+  /// புதிய schema: amount, currency, status, paymentId, createdAt
+  Future<void> addTransaction(double amount, String paymentId) async {
     if (_uid == null) return;
 
     final userRef = _firestore.collection('users').doc(_uid);
@@ -146,24 +160,29 @@ class WalletDatabase {
     await _firestore.runTransaction((transaction) async {
       DocumentSnapshot snapshot = await transaction.get(userRef);
       double currentBalance =
-          (snapshot.data() as Map<String, dynamic>)['wallet']?.toDouble() ??
-          0.0;
+          (snapshot.data() as Map<String, dynamic>)['wallet']?.toDouble() ?? 0.0;
 
+      // Wallet balance update
       transaction.update(userRef, {
-        'wallet': isCredit ? currentBalance + amount : currentBalance - amount,
+        'wallet': currentBalance + amount,
       });
 
+      // புதிய transaction doc – requested schema
       transaction.set(userRef.collection('transactions').doc(), {
         'amount': amount,
-        'title': title,
-        'isCredit': isCredit,
-        'timestamp': FieldValue.serverTimestamp(),
+        'currency': 'INR',
+        'status': 'success',
+        'paymentId': paymentId,
+        'createdAt': FieldValue.serverTimestamp(),
       });
     });
   }
 }
 
-/// **WalletScreen**
+// ─────────────────────────────────────────────
+//  WALLET SCREEN (DI layer)
+// ─────────────────────────────────────────────
+
 /// Acts as the dependency injection layer providing the [WalletBloc]
 class WalletScreen extends StatelessWidget {
   const WalletScreen({super.key});
@@ -172,19 +191,56 @@ class WalletScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return RepositoryProvider(
       create: (context) => RazorpayApiService(
-        apiSecret:
-            'rzp_test_secret_here', // Client-side தேவைகளுக்கு ஏற்ப மாற்றிக்கொள்ளவும்
+        apiSecret: 'rzp_test_secret_here',
       ),
       child: BlocProvider(
         create: (context) => WalletBloc(WalletDatabase()),
-        child: const WalletView(),
+        child: const _WalletAuthGate(),
       ),
     );
   }
 }
 
-/// **WalletView**
-/// The visual presentation layer using UX 1 and Business Logic from UX 2
+// ─────────────────────────────────────────────
+//  AUTH GATE — Login check
+// ─────────────────────────────────────────────
+
+/// Firebase Auth state-ஐ listen செய்கிறோம்.
+/// Login ஆகலன்னா [FoodGoLoginScreen] திரும்பும்;
+/// Login ஆனா மட்டும் [WalletView] காட்டும்.
+class _WalletAuthGate extends StatelessWidget {
+  const _WalletAuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        // Connection waiting
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final user = snapshot.data;
+
+        // Not logged in → Login page
+        if (user == null) {
+          return const FoodGoLoginScreen();
+        }
+
+        // Logged in → Wallet UI
+        return const WalletView();
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  WALLET VIEW
+// ─────────────────────────────────────────────
+
 class WalletView extends StatefulWidget {
   const WalletView({super.key});
 
@@ -193,7 +249,6 @@ class WalletView extends StatefulWidget {
 }
 
 class _WalletViewState extends State<WalletView> {
-  final TextEditingController _amountController = TextEditingController();
   bool _isBalanceVisible = true;
   double? _selectedAmount;
 
@@ -214,21 +269,22 @@ class _WalletViewState extends State<WalletView> {
   @override
   void dispose() {
     context.read<RazorpayApiService>().dispose();
-    _amountController.dispose();
     super.dispose();
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
     if (!mounted) return;
     HapticFeedback.heavyImpact();
-    context.read<WalletBloc>().add(PaymentSuccessEvent());
-    _loadInitialData();
+    // paymentId-ஐ event-க்கு அனுப்புகிறோம்
+    context.read<WalletBloc>().add(
+      PaymentSuccessEvent(response.paymentId ?? ''),
+    );
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
     if (!mounted) return;
     context.read<WalletBloc>().add(
-      PaymentFailedEvent(response.message ?? "Payment Failed"),
+      PaymentFailedEvent(response.message ?? 'Payment Failed'),
     );
   }
 
@@ -253,22 +309,22 @@ class _WalletViewState extends State<WalletView> {
             previous.errorMessage != current.errorMessage;
       },
       listener: (context, state) {
-        // Trigger Razorpay SDK when state changes to loading and amount is present
+        // Razorpay SDK-ஐ trigger செய்கிறோம்
         if (state.isLoading && state.pendingAmount != null) {
           _startRazorpay(state.pendingAmount!);
         }
 
         if (state.successMessage != null && state.successMessage!.isNotEmpty) {
-          _showTopSnackBar(context, state.successMessage!, Colors.green);
+          _showSnackBar(context, state.successMessage!, Colors.green.shade600);
         }
 
         if (state.errorMessage != null) {
-          _showTopSnackBar(context, state.errorMessage!, Colors.red);
+          _showSnackBar(context, state.errorMessage!, Colors.red.shade600);
         }
       },
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.0, end: 1.0),
-        duration: const Duration(milliseconds: 800),
+        duration: const Duration(milliseconds: 700),
         builder: (context, value, child) {
           return Opacity(
             opacity: value,
@@ -308,20 +364,28 @@ class _WalletViewState extends State<WalletView> {
                         _buildBalanceCard(db, size),
                         const SizedBox(height: 30),
                         Text(
-                          "Quick Top-up",
+                          'Quick Top-up',
                           style: GoogleFonts.poppins(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.black,
                           ),
                         ),
-                        const SizedBox(height: 15),
-                        _buildQuickAmountSelection(context),
-                        const SizedBox(height: 40),
-                        _buildAddMoneyButton(),
-                        const SizedBox(height: 40),
-                        _buildTransactionList(db, size),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Amount செலெக்ட் பண்ணி confirm பண்ணி payment தொடங்கும்',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.black45,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildQuickAmountSelection(context, state),
                         const SizedBox(height: 20),
+                        _buildAddMoneyButton(context, state),
+                        const SizedBox(height: 40),
+                        _buildTransactionList(db),
+                        const SizedBox(height: 30),
                       ],
                     );
                   },
@@ -334,23 +398,25 @@ class _WalletViewState extends State<WalletView> {
     );
   }
 
-  void _showTopSnackBar(BuildContext context, String message, Color color) {
+  void _showSnackBar(BuildContext context, String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.poppins()),
+        content: Text(message, style: GoogleFonts.poppins(color: Colors.white)),
         behavior: SnackBarBehavior.floating,
         backgroundColor: color,
         margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
+
+  // ── Balance Card ────────────────────────────
 
   Widget _buildBalanceCard(WalletDatabase db, Size size) {
     return StreamBuilder<DocumentSnapshot>(
       stream: db.getWalletStream(),
       builder: (context, snapshot) {
         double balance = 0.0;
-
         if (snapshot.hasData && snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>;
           balance = (data['wallet'] as num?)?.toDouble() ?? 0.0;
@@ -385,6 +451,14 @@ class _WalletViewState extends State<WalletView> {
                     backgroundColor: Colors.white.withOpacity(0.1),
                   ),
                 ),
+                Positioned(
+                  right: 20,
+                  bottom: -15,
+                  child: CircleAvatar(
+                    radius: 35,
+                    backgroundColor: Colors.white.withOpacity(0.07),
+                  ),
+                ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -406,9 +480,7 @@ class _WalletViewState extends State<WalletView> {
                           ),
                           onPressed: () {
                             HapticFeedback.mediumImpact();
-                            setState(
-                              () => _isBalanceVisible = !_isBalanceVisible,
-                            );
+                            setState(() => _isBalanceVisible = !_isBalanceVisible);
                           },
                         ),
                       ],
@@ -451,81 +523,106 @@ class _WalletViewState extends State<WalletView> {
     );
   }
 
-  Widget _buildQuickAmountSelection(BuildContext context) {
+  // ── Quick Amount Selection (100, 200, 500) ───
+
+  Widget _buildQuickAmountSelection(BuildContext context, WalletState state) {
     final primaryColor = Theme.of(context).primaryColor;
-    final List<int> amounts = [100, 200, 500, 1000, 2000];
+    const List<int> amounts = [100, 200, 500];
 
-    return SizedBox(
-      height: 45,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: amounts.length,
-        itemBuilder: (context, index) {
-          final amount = amounts[index].toDouble();
-          final isSelected = _selectedAmount == amount;
+    return Row(
+      children: amounts.map((amt) {
+        final amount = amt.toDouble();
+        final isSelected = _selectedAmount == amount;
+        final isProcessing = state.isLoading && state.pendingAmount == amount;
 
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(right: 10),
             child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedAmount = amount);
-              },
+              onTap: state.isLoading
+                  ? null
+                  : () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _selectedAmount = amount);
+                      // செலெக்ட் பண்ணி confirm dialog காட்டு
+                      _showConfirmDialog(context, amount);
+                    },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                height: 64,
                 decoration: BoxDecoration(
                   color: isSelected ? primaryColor : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected
                         ? primaryColor
                         : Colors.grey.withOpacity(0.2),
+                    width: isSelected ? 2 : 1,
                   ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
                             color: primaryColor.withOpacity(0.3),
-                            blurRadius: 8,
+                            blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
                         ]
-                      : [],
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  '₹$amount',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : Colors.black87,
-                  ),
+                child: Center(
+                  child: isProcessing
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: isSelected ? Colors.white : primaryColor,
+                          ),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '₹$amt',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              'Tap to Add',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                color: isSelected
+                                    ? Colors.white70
+                                    : Colors.black38,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      }).toList(),
     );
   }
 
-  Widget _buildAddMoneyButton() {
-    return ElevatedButton(
-      onPressed: () {
-        if (_selectedAmount != null) {
-          context.read<WalletBloc>().add(AddFundsRequested(_selectedAmount!));
-        } else {
-          _showAddMoneyBottomSheet();
-        }
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Theme.of(context).primaryColor,
-        minimumSize: const Size(double.infinity, 60),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        elevation: 2,
-      ),
-      child: Text(
+  // ── Add Money Button (custom amount) ───────────
+
+  Widget _buildAddMoneyButton(BuildContext context, WalletState state) {
+    return ElevatedButton.icon(
+      onPressed: state.isLoading ? null : () => _showAddMoneyBottomSheet(context),
+      icon: const Icon(Icons.add_rounded, color: Colors.white),
+      label: Text(
         'Add Money',
         style: GoogleFonts.poppins(
           color: Colors.white,
@@ -533,124 +630,304 @@ class _WalletViewState extends State<WalletView> {
           fontWeight: FontWeight.bold,
         ),
       ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFE52121),
+        minimumSize: const Size(double.infinity, 58),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 2,
+      ),
     );
   }
 
-  void _showAddMoneyBottomSheet() {
+  // ── Confirm Dialog ───────────────────────
+
+  /// Quick amount-க்கு confirm dialog காட்டு.
+  /// Confirm பண்ணினா மட்டும் AddFundsRequested பாய்கிரோம்.
+  void _showConfirmDialog(BuildContext context, double amount) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        contentPadding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE52121).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Color(0xFFE52121),
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Confirm Payment',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 10),
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.black54,
+                  height: 1.5,
+                ),
+                children: [
+                  const TextSpan(text: 'Wallet-ல் '),
+                  TextSpan(
+                    text: '₹${amount.toStringAsFixed(0)}',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const TextSpan(text: ' சேர்க்கும்.\nRazorpay மூலம் payment தொடங்கும்.'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() => _selectedAmount = null);
+            },
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(
+                color: Colors.black45,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // கொஞ்சம் Confirm பண்ணினா மட்டும் BLoC ஐ event அன்புகிறோம்
+              context.read<WalletBloc>().add(AddFundsRequested(amount));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE52121),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+            ),
+            child: Text(
+              'Pay ₹${amount.toStringAsFixed(0)}',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Add Money Bottom Sheet (custom amount) ───
+
+  /// Custom amount-க்கு bottom sheet: amount enter பண்ணி confirm பண்ணி
+  /// மட்டும் Razorpay start ஆகும்.
+  void _showAddMoneyBottomSheet(BuildContext context) {
+    final TextEditingController amountCtrl = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
+      builder: (sheetCtx) => Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 30,
-          left: 24,
-          right: 24,
-          top: 24,
+          bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
         ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 25),
+              const SizedBox(height: 24),
+              Text(
+                'Enter Amount',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Amount input
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: TextField(
+                  controller: amountCtrl,
+                  autofocus: true,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 34,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFE52121),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: '₹ 0',
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 18,
+                      horizontal: 20,
+                    ),
+                    hintStyle: GoogleFonts.poppins(
+                      color: Colors.grey.shade300,
+                      fontSize: 34,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Min: ₹10  |  Max: ₹50,000',
+                style: GoogleFonts.poppins(
+                  color: Colors.black38,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 28),
+              ElevatedButton(
+                onPressed: () {
+                  final double? amt = double.tryParse(amountCtrl.text.trim());
+                  if (amt == null || amt < 10 || amt > 50000) {
+                    HapticFeedback.vibrate();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '₹10 தொடர்ந்து ₹50,000 வரை சரியான amount எடுத்துக்கோ',
+                          style: GoogleFonts.poppins(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.red.shade600,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        margin: const EdgeInsets.all(16),
+                      ),
+                    );
+                    return;
+                  }
+                  // Sheet மூடி confirm dialog காட்டு
+                  Navigator.pop(sheetCtx);
+                  setState(() => _selectedAmount = amt);
+                  _showConfirmDialog(context, amt);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE52121),
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'Proceed',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).whenComplete(() => amountCtrl.dispose());
+  }
+
+  // ── Transaction List ─────────────────────────
+
+  Widget _buildTransactionList(WalletDatabase db) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
             Text(
-              "Enter Amount",
+              'Recent Transactions',
               style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
             ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _amountController,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFFE52121),
-              ),
-              decoration: InputDecoration(
-                hintText: "₹ 0.00",
-                border: InputBorder.none,
-                hintStyle: TextStyle(color: Colors.grey[300]),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              "Min: ₹10 | Max: ₹50,000",
-              style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12),
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: () {
-                double? amt = double.tryParse(_amountController.text);
-                if (amt != null && amt >= 10 && amt <= 50000) {
-                  Navigator.pop(context);
-                  this.context.read<WalletBloc>().add(AddFundsRequested(amt));
-                  _amountController.clear();
-                } else {
-                  HapticFeedback.vibrate();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE52121),
-                minimumSize: const Size(double.infinity, 55),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE52121).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                "Proceed to Pay",
+                'Live',
                 style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  color: const Color(0xFFE52121),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTransactionList(WalletDatabase db, Size size) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Recent Transactions',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         StreamBuilder<QuerySnapshot>(
           stream: db.getTransactionsStream(),
           builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(30),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return _buildEmptyTransactions();
             }
 
             final docs = snapshot.data!.docs;
-
-            if (docs.isEmpty) {
-              return const Center(child: Text("No transactions yet"));
-            }
 
             return ListView.builder(
               shrinkWrap: true,
@@ -658,7 +935,7 @@ class _WalletViewState extends State<WalletView> {
               itemCount: docs.length,
               itemBuilder: (context, index) {
                 final data = docs[index].data() as Map<String, dynamic>;
-                return _buildTransactionItem(data);
+                return _buildTransactionItem(data, context);
               },
             );
           },
@@ -667,58 +944,282 @@ class _WalletViewState extends State<WalletView> {
     );
   }
 
-  Widget _buildTransactionItem(Map<String, dynamic> data) {
-    final bool isCredit = data['isCredit'] ?? true;
-    final Timestamp? ts = data['timestamp'];
-
-    final String dateStr = ts != null
-        ? "${ts.toDate().day}/${ts.toDate().month}/${ts.toDate().year}"
-        : "";
-
-    final double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
-
+  Widget _buildEmptyTransactions() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: isCredit
-                ? Colors.green.withOpacity(0.1)
-                : Colors.red.withOpacity(0.1),
-            child: Icon(
-              isCredit ? Icons.add : Icons.remove,
-              color: isCredit ? Colors.green : Colors.red,
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 60,
+              color: Colors.grey.shade300,
             ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 16),
+            Text(
+              'No transactions yet',
+              style: GoogleFonts.poppins(
+                color: Colors.black38,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Top-up your wallet to get started!',
+              style: GoogleFonts.poppins(
+                color: Colors.black26,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionItem(
+    Map<String, dynamic> data,
+    BuildContext context,
+  ) {
+    // புதிய schema support + பழைய schema fallback
+    final double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+    final String status = data['status'] ?? 'success';
+
+    // createdAt (new) or timestamp (old)
+    final Timestamp? ts =
+        data['createdAt'] as Timestamp? ?? data['timestamp'] as Timestamp?;
+    final String dateStr = ts != null
+        ? _formatDate(ts.toDate())
+        : '';
+
+    final bool isSuccess = status == 'success';
+
+    return GestureDetector(
+      onTap: () => _showTransactionDetail(context, data),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Icon
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.add_circle_outline_rounded,
+                color: Colors.green,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Wallet Top-up',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    dateStr,
+                    style: GoogleFonts.poppins(
+                      color: Colors.black38,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Right side
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  data['title'] ?? 'Transaction',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  '+₹${amount.toStringAsFixed(2)}',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: Colors.green.shade600,
+                  ),
                 ),
-                Text(
-                  dateStr,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isSuccess
+                        ? Colors.green.withOpacity(0.1)
+                        : Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    status,
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: isSuccess ? Colors.green.shade700 : Colors.orange,
+                    ),
+                  ),
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final hour = date.hour > 12 ? date.hour - 12 : date.hour;
+    final ampm = date.hour >= 12 ? 'PM' : 'AM';
+    final min = date.minute.toString().padLeft(2, '0');
+    return '${date.day} ${months[date.month - 1]} ${date.year}, $hour:$min $ampm';
+  }
+
+  void _showTransactionDetail(BuildContext context, Map<String, dynamic> data) {
+    final double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+    final String status = data['status'] ?? 'success';
+    final String currency = data['currency'] ?? 'INR';
+    final String paymentId = data['paymentId'] ?? data['title'] ?? 'N/A';
+    final Timestamp? ts =
+        data['createdAt'] as Timestamp? ?? data['timestamp'] as Timestamp?;
+    final String dateStr = ts != null ? _formatDate(ts.toDate()) : 'N/A';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(28),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Icon
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.green,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Transaction Details',
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _detailRow('Amount', '₹${amount.toStringAsFixed(2)}',
+                valueColor: Colors.green.shade600),
+            _detailRow('Currency', currency),
+            _detailRow('Status', status,
+                valueColor: Colors.green.shade600),
+            _detailRow('Payment ID', paymentId,
+                isSmall: true),
+            _detailRow('Date & Time', dateStr),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE52121),
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Text(
+                'Close',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, {
+    Color? valueColor,
+    bool isSmall = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: Colors.black45,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-          Text(
-            '₹${amount.toStringAsFixed(2)}',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-              color: isCredit ? Colors.green : Colors.red,
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: GoogleFonts.poppins(
+                fontSize: isSmall ? 12 : 14,
+                fontWeight: FontWeight.w600,
+                color: valueColor ?? Colors.black87,
+              ),
             ),
           ),
         ],

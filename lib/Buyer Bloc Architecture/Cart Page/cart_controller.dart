@@ -30,7 +30,7 @@ class CartController extends ChangeNotifier {
   void addItem(CartItem newItem) {
     // Check if item already exists
     int index = _items.indexWhere((item) => item.id == newItem.id);
-
+    
     if (index != -1) {
       _items[index].quantity += newItem.quantity;
     } else {
@@ -64,10 +64,6 @@ class CartController extends ChangeNotifier {
   }
 
   double get totalAmount {
-    return _items
-        .where((item) => item.isSelected)
-        .fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+    return _items.where((item) => item.isSelected).fold(0.0, (sum, item) => sum + (item.price * item.quantity));
   }
 }
-
-class DetailsPage {}
