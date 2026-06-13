@@ -1,134 +1,110 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../Seller_SignUpPage/Seller_SignUpPage.dart';
-import '../Seller_Add_Products/seller_add_product_screen.dart';
-import '../Seller_ForgotPasswordPage/Seller_ForgotPasswordPage.dart'; // Import the new ForgotPasswordPage
-import '../../Repository/seller_repository.dart';
 
-class SellerLoginScreen extends StatefulWidget {
-  const SellerLoginScreen({super.key}); // update the constructor
+import '../Seller_LoginScreen/Seller_LoginScreen_UI.dart'; // To navigate back to login
+import 'Seller_ForgotPasswordPage_Bloc.dart';
+import 'Seller_ForgotPasswordPage_Event.dart';
+import 'Seller_ForgotPasswordPage_State.dart';
+
+/// The entry point for the Seller Forgot Password Screen.
+/// This widget provides the SellerForgotPasswordBloc to its children and wraps the responsive UI view.
+class SellerForgotPasswordScreenUI extends StatelessWidget {
+  const SellerForgotPasswordScreenUI({super.key});
 
   @override
-  State<SellerLoginScreen> createState() => _LoginScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => SellerForgotPasswordBloc(),
+      child: const _SellerForgotPasswordView(),
+    );
+  }
 }
 
-class _LoginScreenState extends State<SellerLoginScreen> {
+class _SellerForgotPasswordView extends StatefulWidget {
+  const _SellerForgotPasswordView();
+
   @override
-  void initState() {
-    super.initState();
-    // If user is already logged in, navigate directly to Add Product page
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (FirebaseAuth.instance.currentUser != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const SellerAddProductScreen(),
-          ),
-        );
-      }
-    });
-  }
+  State<_SellerForgotPasswordView> createState() => _SellerForgotPasswordViewState();
+}
 
-  // --- KEEP YOUR EXISTING DATA / LOGIC HERE ---
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView> {
   final _formKey = GlobalKey<FormState>();
-  bool _obscurePassword = true;
 
-  final SellerRepository _sellerRepository = SellerRepository();
-
-  Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) =>
-              const Center(child: CircularProgressIndicator()),
-        );
-
-        await _sellerRepository.signIn(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
-
-        if (!mounted) return;
-        Navigator.pop(context); // Close the dialog
-
-        // Navigate to Seller Add Product page after successful Login
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const SellerAddProductScreen(),
-          ),
-          (route) => false,
-        );
-      } catch (e) {
-        if (!mounted) return;
-        Navigator.pop(context); // Close the dialog
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
+  /// Validates the form and dispatches the submit event to the BLoC.
+  void _handleResetPassword() {
+    if (_formKey.currentState?.validate() ?? false) {
+      context.read<SellerForgotPasswordBloc>().add(const SellerForgotPasswordSubmitted());
     }
   }
 
-  void _handleForgotPassword() {
-    // Navigate to the ForgotPasswordPage without removing login from stack
-    // so they can come back to login
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
-    );
-  }
-
-  void _handleSignUp() {
-    // Navigate to SignUp page and remove the current Login page from the stack.
+  /// Navigates to the Seller Login page and removes the current page from the stack.
+  void _navigateToLogin() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const SellerSignUpPage()),
+      MaterialPageRoute(builder: (context) => const SellerLoginScreenUI()),
     );
-  }
-  // --------------------------------------------
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF5F5),
+      backgroundColor: const Color(0xFFFBF5F5), // App background color
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth > 800) {
-              return _buildWideLayout(constraints.maxWidth);
-            } else {
-              return _buildMobileLayout();
+        child: BlocConsumer<SellerForgotPasswordBloc, SellerForgotPasswordState>(
+          listenWhen: (previous, current) => previous.status != current.status,
+          listener: (context, state) {
+            if (state.status == SellerForgotPasswordStatus.success) {
+              // Show a success snackbar
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Password reset link sent to ${state.email}"),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              // Small delay to allow the user to read the message
+              Future.delayed(const Duration(seconds: 2), () {
+                if (mounted) {
+                  _navigateToLogin();
+                }
+              });
+            } else if (state.status == SellerForgotPasswordStatus.failure) {
+              // Show an error snackbar
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.errorMessage ?? 'An error occurred')),
+              );
             }
+          },
+          builder: (context, state) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                // Render web/desktop layout if width is greater than 800px, otherwise render mobile layout.
+                if (constraints.maxWidth > 800) {
+                  return _buildWideLayout(context, state);
+                } else {
+                  return _buildMobileLayout(context, state);
+                }
+              },
+            );
           },
         ),
       ),
     );
   }
 
-  Widget _buildMobileLayout() {
+  // --- Mobile Layout ---
+  Widget _buildMobileLayout(BuildContext context, SellerForgotPasswordState state) {
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       child: Stack(
         children: [
-          // 1. Top Section (Same as SignUpPage)
+          // Top Decorative Section containing the illustration and logo.
           Container(
             height: 480,
             width: double.infinity,
             decoration: const BoxDecoration(
-              color: Color(0xFFFEEBC1),
+              color: Color(0xFFFEEBC1), // Biscuit/yellow color
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(60),
                 bottomRight: Radius.circular(60),
@@ -137,6 +113,7 @@ class _LoginScreenState extends State<SellerLoginScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 50),
+                // Food Image
                 Image.asset(
                   'assets/images/Sign up.png',
                   height: 220,
@@ -148,6 +125,7 @@ class _LoginScreenState extends State<SellerLoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                // FoodGo SVG Logo
                 SvgPicture.asset(
                   'assets/images/FoodGo.svg',
                   height: 60,
@@ -163,7 +141,7 @@ class _LoginScreenState extends State<SellerLoginScreen> {
             ),
           ),
 
-          // 2. Overlapping Card
+          // Overlapping Form Card.
           Padding(
             padding: const EdgeInsets.only(
               top: 410,
@@ -171,14 +149,15 @@ class _LoginScreenState extends State<SellerLoginScreen> {
               right: 20.0,
               bottom: 30.0,
             ),
-            child: _buildLoginCard(),
+            child: _buildForgotPasswordCard(context, state, isDesktop: false),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildWideLayout(double width) {
+  // --- Web Layout ---
+  Widget _buildWideLayout(BuildContext context, SellerForgotPasswordState state) {
     return Center(
       child: Container(
         constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 750),
@@ -197,6 +176,7 @@ class _LoginScreenState extends State<SellerLoginScreen> {
         ),
         child: Row(
           children: [
+            // Left Panel containing branding and illustration.
             Expanded(
               flex: 1,
               child: Container(
@@ -216,12 +196,13 @@ class _LoginScreenState extends State<SellerLoginScreen> {
                 ),
               ),
             ),
+            // Right Panel containing the forgot password form.
             Expanded(
               flex: 1,
               child: Center(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(60),
-                  child: _buildLoginCard(isDesktop: true),
+                  child: _buildForgotPasswordCard(context, state, isDesktop: true),
                 ),
               ),
             ),
@@ -231,16 +212,20 @@ class _LoginScreenState extends State<SellerLoginScreen> {
     );
   }
 
-  Widget _buildLoginCard({bool isDesktop = false}) {
+  // --- Shared Forgot Password Card ---
+  Widget _buildForgotPasswordCard(BuildContext context, SellerForgotPasswordState state, {bool isDesktop = false}) {
+    final bloc = context.read<SellerForgotPasswordBloc>();
+
     final cardContent = Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Title
           Center(
             child: Text(
-              "LogIn",
+              "Forgot Password",
               style: GoogleFonts.poppins(
                 fontSize: isDesktop ? 36 : 30,
                 fontWeight: FontWeight.w700,
@@ -250,6 +235,22 @@ class _LoginScreenState extends State<SellerLoginScreen> {
             ),
           ),
           const SizedBox(height: 24),
+
+          // Instruction Text
+          Center(
+            child: Text(
+              "Enter your email address below and we'll send you a link to reset your password.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.black54,
+                height: 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Email Field Label
           Text(
             "Email",
             style: GoogleFonts.poppins(
@@ -260,67 +261,39 @@ class _LoginScreenState extends State<SellerLoginScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          
+          // Email Text Field
           _buildTextField(
-            controller: _emailController,
+            initialValue: state.email,
             hintText: "Enter Email",
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 20),
-          Text(
-            "Password",
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF333333),
-              letterSpacing: 0.1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildTextField(
-            controller: _passwordController,
-            hintText: "Enter Password",
-            icon: Icons.lock_outline,
-            isPassword: _obscurePassword,
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                color: Colors.black54,
-                size: 20,
-              ),
-              onPressed: () {
-                setState(() {
-                  _obscurePassword = !_obscurePassword;
-                });
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: _handleForgotPassword,
-              child: Text(
-                'Forgot Password?',
-                style: GoogleFonts.poppins(
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
+            onChanged: (val) => bloc.add(SellerForgotPasswordEmailChanged(val)),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your email';
+              }
+              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
+                return 'Please enter a valid email address';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 32),
+
+          // Submit Button
           Center(
             child: MouseRegion(
-              cursor: SystemMouseCursors.click,
+              cursor: state.status == SellerForgotPasswordStatus.loading 
+                  ? SystemMouseCursors.wait 
+                  : SystemMouseCursors.click,
               child: GestureDetector(
-                onTap: _handleLogin,
+                onTap: state.status == SellerForgotPasswordStatus.loading ? null : _handleResetPassword,
                 child: Container(
                   width: double.infinity,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE52121),
+                    color: const Color(0xFFE52121), // Bright red color
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
@@ -331,41 +304,55 @@ class _LoginScreenState extends State<SellerLoginScreen> {
                     ],
                   ),
                   child: Center(
-                    child: Text(
-                      "Log In",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
+                    child: state.status == SellerForgotPasswordStatus.loading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            "Submit",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
                   ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 24),
+
+          // Back to Login Link
           Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Don't have account? ",
+                  "Remember your password? ",
                   style: GoogleFonts.poppins(
                     color: Colors.black54,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                GestureDetector(
-                  onTap: _handleSignUp,
-                  child: Text(
-                    "SignUp",
-                    style: GoogleFonts.poppins(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: _navigateToLogin,
+                    child: Text(
+                      "Login",
+                      style: GoogleFonts.poppins(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -376,6 +363,7 @@ class _LoginScreenState extends State<SellerLoginScreen> {
       ),
     );
 
+    // White card background and rounded corners only for mobile layout
     if (isDesktop) {
       return cardContent;
     } else {
@@ -397,28 +385,29 @@ class _LoginScreenState extends State<SellerLoginScreen> {
     }
   }
 
+  // --- Reusable TextField Widget ---
   Widget _buildTextField({
-    required TextEditingController controller,
+    required String initialValue,
     required String hintText,
     required IconData icon,
-    bool isPassword = false,
-    Widget? suffixIcon,
+    required ValueChanged<String> onChanged,
     TextInputType keyboardType = TextInputType.text,
+    FormFieldValidator<String>? validator,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFECEFF6),
+        color: const Color(0xFFECEFF6), // Gray color for input field
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextFormField(
-        controller: controller,
-        obscureText: isPassword,
+        initialValue: initialValue,
+        onChanged: onChanged,
+        validator: validator,
         keyboardType: keyboardType,
         style: GoogleFonts.poppins(fontSize: 15, color: Colors.black87),
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: Colors.black54, size: 20),
           hintText: hintText,
-          suffixIcon: suffixIcon,
           hintStyle: GoogleFonts.poppins(color: Colors.black38, fontSize: 14),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(

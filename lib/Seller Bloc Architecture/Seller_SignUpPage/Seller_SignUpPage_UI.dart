@@ -1,75 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // For password reset logic
 
-import '../Seller_LoginScreen/Seller_LoginScreen.dart'; // Navigate to Seller's own Login
+import '../Seller_LoginScreen/Seller_LoginScreen_UI.dart'; // Navigate to Seller's own Login
+import 'Seller_SignUpPage_Bloc.dart';
+import 'Seller_SignUpPage_Event.dart';
+import 'Seller_SignUpPage_State.dart';
 
-class ForgotPasswordPage extends StatefulWidget {
-  const ForgotPasswordPage({super.key});
+/// The entry point for the Seller Sign Up Screen.
+/// This widget provides the SellerSignUpBloc to its children and wraps the responsive UI view.
+class SellerSignUpScreenUI extends StatelessWidget {
+  const SellerSignUpScreenUI({super.key});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => SellerSignUpBloc(),
+      child: const _SellerSignUpView(),
+    );
+  }
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final TextEditingController _emailController = TextEditingController();
+class _SellerSignUpView extends StatefulWidget {
+  const _SellerSignUpView();
+
+  @override
+  State<_SellerSignUpView> createState() => _SellerSignUpViewState();
+}
+
+class _SellerSignUpViewState extends State<_SellerSignUpView> {
   final _formKey = GlobalKey<FormState>();
 
-  void _handleResetPassword() {
-    if (_formKey.currentState?.validate() ?? false) {
-      final String email = _emailController.text.trim();
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-      try {
-        FirebaseAuth.instance
-            .sendPasswordResetEmail(email: email)
-            .then((_) {
-              if (!mounted) return;
-              Navigator.pop(context); // Close loading dialog
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Password reset link sent to $email"),
-                  backgroundColor: Colors.green,
-                ),
-              );
-              Future.delayed(const Duration(seconds: 2), () {
-                _navigateToLogin();
-              });
-            })
-            .catchError((error) {
-              if (!mounted) return;
-              Navigator.pop(context); // Close loading dialog
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Failed to send reset email: ${error.message}'),
-                ),
-              );
-            });
-      } catch (e) {
-        // This catch block might be redundant if .catchError handles all exceptions
-      }
+  /// Validates the form and dispatches the submit event to the BLoC.
+  void _handleSignUp() {
+    if (_formKey.currentState!.validate()) {
+      context.read<SellerSignUpBloc>().add(const SellerSignUpSubmitted());
     }
   }
 
+  /// Navigates to Login page and removes the current SignUp page from the stack.
   void _navigateToLogin() {
-    // Navigate to the Login page and remove the current ForgotPassword page from the stack.
-    // This prevents the stack of authentication pages from building up.
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => const SellerLoginScreen(),
-      ), // Navigate to SellerLoginScreen
+        builder: (context) => const SellerLoginScreenUI(),
+      ),
     );
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
   }
 
   @override
@@ -77,30 +54,43 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF5F5), // App background color
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // Desktop/Tablet layout if width > 800px
-            if (constraints.maxWidth > 800) {
-              return _buildWideLayout(constraints.maxWidth);
-            } else {
-              // Mobile layout
-              return _buildMobileLayout();
+        child: BlocConsumer<SellerSignUpBloc, SellerSignUpState>(
+          listenWhen: (previous, current) => previous.status != current.status,
+          listener: (context, state) {
+            if (state.status == SellerSignUpStatus.success) {
+              // Navigate to Login page after successful SignUp
+              _navigateToLogin();
+            } else if (state.status == SellerSignUpStatus.failure) {
+              // Show an error snackbar
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.errorMessage ?? 'An error occurred')),
+              );
             }
+          },
+          builder: (context, state) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                // Render web/desktop layout if width is greater than 800px, otherwise render mobile layout.
+                if (constraints.maxWidth > 800) {
+                  return _buildWideLayout(context, state);
+                } else {
+                  return _buildMobileLayout(context, state);
+                }
+              },
+            );
           },
         ),
       ),
     );
   }
 
-  // -------------------------------------------------------------
-  // MOBILE LAYOUT (Consistent with Login/SignUp)
-  // -------------------------------------------------------------
-  Widget _buildMobileLayout() {
+  // --- Mobile Layout ---
+  Widget _buildMobileLayout(BuildContext context, SellerSignUpState state) {
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       child: Stack(
         children: [
-          // 1. Background and Top Content (reused from Login/SignUp)
+          // Top Decorative Section containing the illustration and logo.
           Container(
             height: 480,
             width: double.infinity,
@@ -114,7 +104,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             child: Column(
               children: [
                 const SizedBox(height: 50),
-                // Food Image (reused for consistent branding)
+                // Food Image
                 Image.asset(
                   'assets/images/Sign up.png',
                   height: 220,
@@ -142,28 +132,26 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ),
           ),
 
-          // 2. White Overlapping Card
+          // Overlapping Form Card.
           Padding(
             padding: const EdgeInsets.only(
-              top: 410, // Shifted downward so the logo above is fully visible
+              top: 410,
               left: 20.0,
               right: 20.0,
               bottom: 30.0,
             ),
-            child: _buildForgotPasswordCard(),
+            child: _buildSignUpCard(context, state, isDesktop: false),
           ),
         ],
       ),
     );
   }
 
-  // -------------------------------------------------------------
-  // DESKTOP / TABLET WEB LAYOUT (Consistent with Login/SignUp)
-  // -------------------------------------------------------------
-  Widget _buildWideLayout(double width) {
+  // --- Web Layout ---
+  Widget _buildWideLayout(BuildContext context, SellerSignUpState state) {
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 750),
+        constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 850), // slightly taller for sign up
         margin: const EdgeInsets.all(32),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -179,7 +167,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         child: Row(
           children: [
-            // Left Side: Branding Area
+            // Left Panel containing branding and illustration.
             Expanded(
               flex: 1,
               child: Container(
@@ -199,13 +187,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 ),
               ),
             ),
-            // Right Side: Forgot Password Form
+            // Right Panel containing the sign up form.
             Expanded(
               flex: 1,
               child: Center(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(60),
-                  child: _buildForgotPasswordCard(isDesktop: true),
+                  child: _buildSignUpCard(context, state, isDesktop: true),
                 ),
               ),
             ),
@@ -215,10 +203,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  // -------------------------------------------------------------
-  // REUSABLE FORGOT PASSWORD CARD (Styled consistently)
-  // -------------------------------------------------------------
-  Widget _buildForgotPasswordCard({bool isDesktop = false}) {
+  // --- Shared Sign Up Card ---
+  Widget _buildSignUpCard(BuildContext context, SellerSignUpState state, {bool isDesktop = false}) {
+    final bloc = context.read<SellerSignUpBloc>();
+
     final cardContent = Form(
       key: _formKey,
       child: Column(
@@ -228,7 +216,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           // Title
           Center(
             child: Text(
-              "Forgot Password",
+              "Sign Up",
               style: GoogleFonts.poppins(
                 fontSize: isDesktop ? 36 : 30,
                 fontWeight: FontWeight.w700,
@@ -237,22 +225,34 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
-          // Instruction Text
-          Center(
-            // Centering the instruction text
-            child: Text(
-              "Enter your email address below and we'll send you a link to reset your password.",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.black54,
-                height: 1.5,
-              ),
+          // Name Field Label
+          Text(
+            "Name",
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF333333),
+              letterSpacing: 0.1,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
+
+          // Name Text Field
+          _buildTextField(
+            initialValue: state.name,
+            hintText: "Enter Name",
+            icon: Icons.person_outline,
+            onChanged: (val) => bloc.add(SellerSignUpNameChanged(val)),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your name';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 20),
 
           // Email Field Label
           Text(
@@ -265,30 +265,73 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ),
           ),
           const SizedBox(height: 8),
+          
           // Email Text Field
           _buildTextField(
-            controller: _emailController,
+            initialValue: state.email,
             hintText: "Enter Email",
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
+            onChanged: (val) => bloc.add(SellerSignUpEmailChanged(val)),
             validator: (value) {
-              if (value == null || value.isEmpty) {
+              if (value == null || value.trim().isEmpty) {
                 return 'Please enter your email';
               }
-              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
                 return 'Please enter a valid email address';
               }
               return null;
             },
+          ),
+          const SizedBox(height: 20),
+
+          // Password Field Label
+          Text(
+            "Password",
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF333333),
+              letterSpacing: 0.1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          
+          // Password Text Field
+          _buildTextField(
+            initialValue: state.password,
+            hintText: "Enter Password",
+            icon: Icons.lock_outline,
+            isPassword: state.obscurePassword,
+            onChanged: (val) => bloc.add(SellerSignUpPasswordChanged(val)),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your password';
+              }
+              if (value.trim().length < 6) {
+                return 'Password must be at least 6 characters long';
+              }
+              return null;
+            },
+            suffixIcon: IconButton(
+              icon: Icon(
+                state.obscurePassword ? Icons.visibility_off : Icons.visibility,
+                color: Colors.black54,
+                size: 20,
+              ),
+              onPressed: () => bloc.add(const SellerSignUpPasswordVisibilityToggled()),
+            ),
           ),
           const SizedBox(height: 32),
 
           // Submit Button
           Center(
             child: MouseRegion(
-              cursor: SystemMouseCursors.click,
+              cursor: state.status == SellerSignUpStatus.loading 
+                  ? SystemMouseCursors.wait 
+                  : SystemMouseCursors.click,
               child: GestureDetector(
-                onTap: _handleResetPassword,
+                onTap: state.status == SellerSignUpStatus.loading ? null : _handleSignUp,
                 child: Container(
                   width: double.infinity,
                   height: 52,
@@ -303,16 +346,25 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Text(
-                      "Submit",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
+                  child: Center(
+                    child: state.status == SellerSignUpStatus.loading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            "Sign Up",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -320,13 +372,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
           const SizedBox(height: 24),
 
-          // Back to Login Link
+          // Login Link
           Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Remember your password? ",
+                  "Already have an account? ",
                   style: GoogleFonts.poppins(
                     color: Colors.black54,
                     fontSize: 14,
@@ -376,15 +428,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     }
   }
 
-  // Common Text Field styling (Custom Text Field)
+  // --- Reusable TextField Widget ---
   Widget _buildTextField({
-    required TextEditingController controller,
+    required String initialValue,
     required String hintText,
     required IconData icon,
+    required ValueChanged<String> onChanged,
     bool isPassword = false,
     Widget? suffixIcon,
     TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator, // Added validator for form fields
+    FormFieldValidator<String>? validator,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -392,8 +445,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextFormField(
-        controller: controller,
+        initialValue: initialValue,
+        onChanged: onChanged,
         obscureText: isPassword,
+        validator: validator,
         keyboardType: keyboardType,
         style: GoogleFonts.poppins(fontSize: 15, color: Colors.black87),
         decoration: InputDecoration(
@@ -407,7 +462,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             horizontal: 16,
           ),
         ),
-        validator: validator, // Apply the validator
       ),
     );
   }

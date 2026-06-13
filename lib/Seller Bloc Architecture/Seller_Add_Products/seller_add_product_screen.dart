@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import '../Seller_LoginScreen/Seller_LoginScreen.dart';
+import '../Seller_LoginScreen/Seller_LoginScreen_UI.dart';
 import 'app_constants.dart';
 import 'seller_product_bloc.dart';
 import 'seller_product_event.dart';
@@ -53,7 +53,7 @@ class _SellerAddProductScreenState extends State<SellerAddProductScreen> {
   void _redirectToLogin() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const SellerLoginScreen()),
+      MaterialPageRoute(builder: (context) => const SellerLoginScreenUI()),
     );
   }
 
