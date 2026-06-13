@@ -19,7 +19,7 @@ class RazorpayApiService {
     _razorpay = Razorpay();
   }
 
-  /// Razorpay event listeners-ஐத் தொடங்குவதற்கான முறை
+  /// Method to initialize Razorpay event listeners
   void initialize({
     required Function(PaymentSuccessResponse) onSuccess,
     required Function(PaymentFailureResponse) onFailure,
@@ -28,7 +28,7 @@ class RazorpayApiService {
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, onFailure);
   }
 
-  /// Payment-ஐத் தொடங்குவதற்கான centralized method
+  /// Centralized method to start Payment
   void startPayment({
     required double amount,
     required String email,
@@ -46,7 +46,7 @@ class RazorpayApiService {
     _razorpay.open(options);
   }
 
-  /// Resources-ஐ விடுவிப்பதற்கான முறை
+  /// Method to release resources
   void dispose() {
     _razorpay.clear();
   }

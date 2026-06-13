@@ -36,11 +36,11 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
       );
 
       if (!mounted) return;
-      Navigator.pop(context); // Dialog-ஐ மூட
+      Navigator.pop(context); // Close the dialog
       _navigateToLogin();
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Dialog-ஐ மூட
+      Navigator.pop(context); // Close the dialog
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -48,9 +48,9 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
   }
 
   void _navigateToLogin() {
-    // Login பக்கத்திற்குச் சென்று, தற்போதைய SignUp பக்கத்தை ஸ்டாக்கில் இருந்து நீக்கவும்.
-    // இது அங்கீகாரப் பக்கங்களின் ஸ்டாக் குவிவதைத் தடுக்கிறது மற்றும்
-    // Login முதல் பக்கமாக இருந்தால் பின் பொத்தான் பயன்பாட்டை விட்டு வெளியேற அனுமதிக்கிறது.
+    // Navigate to Login page and remove the current SignUp page from the stack.
+    // This prevents the authentication pages stack from building up and
+    // allows the back button to exit the app if Login is the first page.
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -71,15 +71,15 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF5F5), // ஆப்-இன் பின்னணி நிறம்
+      backgroundColor: const Color(0xFFFBF5F5), // App background color
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // திரையின் அகலம் 800px-க்கு மேல் இருந்தால் Desktop/Tablet வடிவமைப்பு
+            // Desktop/Tablet layout if screen width is more than 800px
             if (constraints.maxWidth > 800) {
               return _buildWideLayout(constraints.maxWidth);
             } else {
-              // மொபைல் வடிவமைப்பு (Exact match to your image)
+              // Mobile layout (Exact match to your image)
               return _buildMobileLayout();
             }
           },
@@ -96,12 +96,12 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
       physics: const ClampingScrollPhysics(),
       child: Stack(
         children: [
-          // 1. பின்னணி மற்றும் மேல் பகுதி (Background & Top Content)
+          // 1. Background and Top Content
           Container(
             height: 480, // Increased height to provide more room for branding
             width: double.infinity,
             decoration: const BoxDecoration(
-              color: Color(0xFFFEEBC1), // பிஸ்கட்/மஞ்சள் நிறம்
+              color: Color(0xFFFEEBC1), // Biscuit/Yellow color
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(60),
                 bottomRight: Radius.circular(60),
@@ -110,7 +110,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
             child: Column(
               children: [
                 const SizedBox(height: 50),
-                // உணவுப் படம் (Food Image)
+                // Food Image
                 Image.asset(
                   'assets/images/Sign up.png',
                   height: 220, // Adjusted height for better vertical balance
@@ -122,7 +122,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                // FoodGo SVG லோகோ
+                // FoodGo SVG logo
                 SvgPicture.asset(
                   'assets/images/FoodGo.svg',
                   height: 60,
@@ -138,7 +138,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
             ),
           ),
 
-          // 2. வெள்ளை நிற கார்டு (Overlapping SignUp Card)
+          // 2. Overlapping SignUp Card
           Padding(
             padding: const EdgeInsets.only(
               top: 410, // Shifted downward so the logo above is fully visible
@@ -175,7 +175,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
         ),
         child: Row(
           children: [
-            // இடது பக்கம்: பிராண்டிங் பகுதி
+            // Left side: Branding area
             Expanded(
               flex: 1,
               child: Container(
@@ -195,7 +195,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
                 ),
               ),
             ),
-            // வலது பக்கம்: சைன்-அப் படிவம்
+            // Right side: Sign-up form
             Expanded(
               flex: 1,
               child: Center(
@@ -219,7 +219,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // SignUp தலைப்பு
+        // SignUp title
         Center(
           child: Text(
             "SignUp",
@@ -233,7 +233,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
         ),
         const SizedBox(height: 24),
 
-        // Name புலம்
+        // Name field
         Text(
           "Name",
           style: GoogleFonts.poppins(
@@ -251,7 +251,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
         ),
         const SizedBox(height: 20),
 
-        // Email புலம்
+        // Email field
         Text(
           "Email",
           style: GoogleFonts.poppins(
@@ -270,7 +270,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
         ),
         const SizedBox(height: 20),
 
-        // Password புலம்
+        // Password field
         Text(
           "Password",
           style: GoogleFonts.poppins(
@@ -301,7 +301,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
         ),
         const SizedBox(height: 32),
 
-        // Sign Up பொத்தான் (Button)
+        // Sign Up button
         Center(
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
@@ -311,7 +311,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
                 width: double.infinity,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE52121), // பிரகாசமான சிவப்பு நிறம்
+                  color: const Color(0xFFE52121), // Bright red color
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
@@ -341,7 +341,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
         ),
         const SizedBox(height: 24),
 
-        // Login செய்வதற்கான லிங்க்
+        // Link for login
         Center(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -374,7 +374,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
       ],
     );
 
-    // மொபைலில் மட்டும் வெள்ளை கார்டு பின்னணி மற்றும் வளைந்த ஓரங்கள்
+    // White card background and rounded corners only on mobile
     if (isDesktop) {
       return cardContent;
     } else {
@@ -396,7 +396,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
     }
   }
 
-  // பொதுவான டெக்ஸ்ட் ஃபீல்டு வடிவமைப்பு (Custom Text Field)
+  // Custom Text Field design
   Widget _buildTextField({
     required TextEditingController controller,
     required String hintText,
@@ -407,7 +407,7 @@ class _SellerSignUpPageState extends State<SellerSignUpPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFECEFF6), // உள்ளீட்டு புலத்தின் சாம்பல் நிறம்
+        color: const Color(0xFFECEFF6), // Gray color of the input field
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextFormField(

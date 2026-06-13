@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SellerUserCollection {
-  // 'seller_users' என்ற பெயரில் Firestore collection-க்கான reference
+  // Reference to the Firestore collection named 'seller_users'
   final CollectionReference _sellerCollection = FirebaseFirestore.instance
       .collection('seller_users');
 
-  /// Seller விவரங்களை ஒரு Map ஆகப் பெற்று, UID-ஐ அடிப்படையாகக் கொண்டு
-  /// Firestore-இல் புதிய ஆவணமாகச் சேர்க்கும் அல்லது மாற்றியமைக்கும் செயல்பாடு.
+  /// Function to receive Seller details as a Map and, based on UID,
+  /// add or modify it as a new document in Firestore.
   Future<void> addSeller(String uid, Map<String, dynamic> sellerData) async {
     try {
       await _sellerCollection.doc(uid).set(sellerData);
@@ -15,7 +15,7 @@ class SellerUserCollection {
     }
   }
 
-  /// ஒரு குறிப்பிட்ட Seller-இன் விவரங்களைப் பெறுதல்
+  /// Getting details of a specific Seller
   Future<DocumentSnapshot> getSeller(String uid) async {
     try {
       return await _sellerCollection.doc(uid).get();

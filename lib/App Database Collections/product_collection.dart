@@ -1,15 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProductCollection {
-  // 'products' என்ற பெயரில் Firestore collection-க்கான reference
+  // Reference to the Firestore collection named 'products'
   final CollectionReference _collection = FirebaseFirestore.instance.collection(
     'products',
   );
 
-  /// தயாரிப்பு விவரங்களை (Product details) ஒரு Map ஆகப் பெற்று,
-  /// அதை Firestore-இல் புதிய ஆவணமாக (Document) சேர்க்கும் செயல்பாடு.
+  /// Receives product details as a Map and 
+  /// adds them as a new Document in Firestore.
   Future<DocumentReference> addProduct(Map<String, dynamic> productData) async {
-    // Firestore-இல் ஆவணத்தைச் சேர்த்து அதன் reference-ஐத் திருப்பி அளிக்கும்
+    // Adds the document to Firestore and returns its reference
     return await _collection.add(productData);
   }
 }

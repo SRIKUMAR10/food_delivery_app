@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // TextInputFormatter-க்காக இதைச் சேர்க்கவும்
+import 'package:flutter/services.dart'; // Add this for TextInputFormatter
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart'
-    show kIsWeb; // kIsWeb-ஐ இறக்குமதி செய்யவும்
+    show kIsWeb; // Import kIsWeb
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -27,14 +27,14 @@ class _SellerAddProductScreenState extends State<SellerAddProductScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  // Firebase Auth பயனர் நிலையை நேரடியாகக் கண்காணிக்க
+  // Directly monitor Firebase Auth user state
   bool get _isLoggedIn => FirebaseAuth.instance.currentUser != null;
 
   @override
   void initState() {
     super.initState();
-    // Bloc-ல் ஏற்கனவே உள்ள தரவுகளை (Memory) மீட்டெடுத்தல்
-    // இது லாகின் முடிந்து வந்த பிறகு டேட்டா அழியாமல் இருக்க உதவும்
+    // Restore data already in Bloc (Memory)
+    // This helps prevent data loss after returning from login
     final state = context.read<SellerProductBloc>().state;
     _nameController.text = state.productName;
     _priceController.text = state.productPrice;
@@ -49,7 +49,7 @@ class _SellerAddProductScreenState extends State<SellerAddProductScreen> {
     super.dispose();
   }
 
-  // லாகின் பக்கத்திற்கு அனுப்பும் பொதுவான செயல்பாடு
+  // Common function to navigate to login page
   void _redirectToLogin() {
     Navigator.pushReplacement(
       context,
@@ -57,7 +57,7 @@ class _SellerAddProductScreenState extends State<SellerAddProductScreen> {
     );
   }
 
-  // படத்தைத் தேர்ந்தெடுக்கும் செயல்பாடு (Web-க்கு image_picker, மற்ற தளங்களுக்கு file_picker)
+  // Image picking function (image_picker for Web, file_picker for other platforms)
   Future<void> _pickImage() async {
     if (!_isLoggedIn) {
       _redirectToLogin();
@@ -172,7 +172,7 @@ class _SellerAddProductScreenState extends State<SellerAddProductScreen> {
                       decimal: true,
                     ),
                     inputFormatters: [
-                      // எண்கள் மற்றும் ஒரு புள்ளி மட்டுமே அனுமதிக்கப்படும்
+                      // Only numbers and one decimal point are allowed
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                     ],
                     onChanged: (value) => context.read<SellerProductBloc>().add(
@@ -261,9 +261,9 @@ class _SellerAddProductScreenState extends State<SellerAddProductScreen> {
     int maxLines = 1,
     ValueChanged<String>? onChanged,
     String? Function(String?)? validator,
-    List<TextInputFormatter>? inputFormatters, // புதிய parameter
+    List<TextInputFormatter>? inputFormatters, // New parameter
   }) {
-    // லாகின் செய்திருந்தால் மட்டுமே டைப் செய்ய முடியும், இல்லையெனில் லாகின் பக்கம் செல்லும்
+    // Can type only if logged in, otherwise navigates to login page
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFECEFF6),
@@ -275,7 +275,7 @@ class _SellerAddProductScreenState extends State<SellerAddProductScreen> {
         readOnly: !_isLoggedIn,
         onTap: _isLoggedIn ? null : _redirectToLogin,
         maxLines: maxLines,
-        inputFormatters: inputFormatters, // இங்கே பயன்படுத்தவும்
+        inputFormatters: inputFormatters, // Use here
         style: GoogleFonts.poppins(fontSize: 15, color: Colors.black87),
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: Colors.black54, size: 20),
@@ -301,7 +301,7 @@ class _SellerAddProductScreenState extends State<SellerAddProductScreen> {
       'Drinks',
       'Dessert',
     ];
-    // லாகின் செய்யாத போது Dropdown-ஐ கிளிக் செய்தால் லாகின் பக்கத்திற்குச் செல்லும்
+    // If clicked when not logged in, navigates to login page
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {

@@ -6,7 +6,7 @@ class SellerRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final SellerUserCollection _sellerCollection = SellerUserCollection();
 
-  // Seller Auth மற்றும் தரவு சேமிப்பு செயல்பாடுகள்
+  // Seller Auth and Data Storage Operations
   Future<UserCredential> signUp(
     String email,
     String password,
@@ -18,12 +18,12 @@ class SellerRepository {
         password: password,
       );
 
-      // Auth வெற்றிகரமாக முடிந்தால், விவரங்களை 'seller_users' collection-இல் சேமித்தல்
+      // If Auth is successful, save details in 'seller_users' collection
       if (credential.user != null) {
         await _sellerCollection.addSeller(credential.user!.uid, {
           'name': name,
           'email': email,
-          'role': 'seller', // பயனர் வகை
+          'role': 'seller', // User role
           'createdAt': FieldValue.serverTimestamp(),
         });
       }

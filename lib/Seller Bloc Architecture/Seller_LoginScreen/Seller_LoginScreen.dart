@@ -8,7 +8,7 @@ import '../Seller_ForgotPasswordPage/Seller_ForgotPasswordPage.dart'; // Import 
 import '../../Repository/seller_repository.dart';
 
 class SellerLoginScreen extends StatefulWidget {
-  const SellerLoginScreen({super.key}); // constructor-ஐ புதுப்பிக்கவும்
+  const SellerLoginScreen({super.key}); // update the constructor
 
   @override
   State<SellerLoginScreen> createState() => _LoginScreenState();
@@ -18,7 +18,7 @@ class _LoginScreenState extends State<SellerLoginScreen> {
   @override
   void initState() {
     super.initState();
-    // பயனர் ஏற்கனவே லாகின் செய்திருந்தால், நேரடியாக Add Product பக்கத்திற்குச் செல்லவும்
+    // If user is already logged in, navigate directly to Add Product page
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (FirebaseAuth.instance.currentUser != null) {
         Navigator.pushReplacement(
@@ -55,9 +55,9 @@ class _LoginScreenState extends State<SellerLoginScreen> {
         );
 
         if (!mounted) return;
-        Navigator.pop(context); // Dialog-ஐ மூட
+        Navigator.pop(context); // Close the dialog
 
-        // வெற்றிகரமான Login-க்குப் பிறகு Seller Add Product பக்கத்திற்கு செல்லவும்
+        // Navigate to Seller Add Product page after successful Login
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
@@ -67,7 +67,7 @@ class _LoginScreenState extends State<SellerLoginScreen> {
         );
       } catch (e) {
         if (!mounted) return;
-        Navigator.pop(context); // Dialog-ஐ மூட
+        Navigator.pop(context); // Close the dialog
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -85,7 +85,7 @@ class _LoginScreenState extends State<SellerLoginScreen> {
   }
 
   void _handleSignUp() {
-    // SignUp பக்கத்திற்குச் சென்று, தற்போதைய Login பக்கத்தை ஸ்டாக்கில் இருந்து நீக்கவும்.
+    // Navigate to SignUp page and remove the current Login page from the stack.
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const SellerSignUpPage()),

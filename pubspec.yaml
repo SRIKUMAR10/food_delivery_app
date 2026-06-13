@@ -53,6 +53,8 @@ dependencies:
   image: ^4.8.0
   flutter_image_compress: ^2.3.0
   razorpay_web: ^3.1.0
+  integration_test:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
@@ -64,6 +66,9 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  bloc_test: ^10.0.0
+  fake_cloud_firestore: ^4.1.1
+  mocktail: ^1.0.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

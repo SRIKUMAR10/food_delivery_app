@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Base URL-ஐ இங்கே வரையறுப்பதன் மூலம், ஒவ்வொரு முறையும் முழு URL கொடுக்கத் தேவையில்லை
+  // Defining the Base URL here avoids the need to provide the full URL every time
   static const String _baseUrl = 'https://api.yourdomain.com/v1';
 
   Future<dynamic> get(String endpoint) async {
