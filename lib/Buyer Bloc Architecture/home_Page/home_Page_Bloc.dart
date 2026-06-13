@@ -30,7 +30,8 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
 
   HomePageBloc({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance,
-        super(const HomePageInitial()) {
+        super(HomePageInitial(
+            kDefaultCategories.firstWhere((c) => c.isSelected, orElse: () => kDefaultCategories.first).id)) {
     on<HomePageStarted>(_onStarted);
     on<CategorySelected>(_onCategorySelected);
     on<SearchQueryChanged>(_onSearchQueryChanged);
@@ -47,7 +48,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
   /// Applies the current search query to [_allItems] and emits the correct state.
   void _emitFilteredState(Emitter<HomePageState> emit) {
     if (_allItems.isEmpty) {
-      emit(HomePageEmpty(_selectedCategoryName));
+      emit(HomePageEmpty(_selectedCategoryName, _selectedCategoryId));
       return;
     }
 
@@ -59,7 +60,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
             .toList();
 
     if (filtered.isEmpty) {
-      emit(HomePageSearchEmpty(_searchQuery));
+      emit(HomePageSearchEmpty(_searchQuery, _selectedCategoryId));
       return;
     }
 
@@ -79,7 +80,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     HomePageStarted event,
     Emitter<HomePageState> emit,
   ) async {
-    emit(const HomePageLoading());
+    emit(HomePageLoading(_selectedCategoryId));
 
     // Keep the handler alive so the stream emits states into the BLoC.
     await emit.forEach<List<FoodItem>>(
@@ -90,7 +91,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
           .map((s) => s.docs.map(FoodItem.fromFirestore).toList()),
       onData: (items) {
         _allItems = items;
-        if (_allItems.isEmpty) return HomePageEmpty(_selectedCategoryName);
+        if (_allItems.isEmpty) return HomePageEmpty(_selectedCategoryName, _selectedCategoryId);
 
         final filtered = _searchQuery.isEmpty
             ? _allItems
@@ -98,7 +99,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
                 .where((i) => i.name.toLowerCase().contains(_searchQuery))
                 .toList();
 
-        if (filtered.isEmpty) return HomePageSearchEmpty(_searchQuery);
+        if (filtered.isEmpty) return HomePageSearchEmpty(_searchQuery, _selectedCategoryId);
 
         return HomePageLoaded(
           allItems: _allItems,
@@ -107,7 +108,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
           searchQuery: _searchQuery,
         );
       },
-      onError: (e, _) => HomePageError('Failed to load products: $e'),
+      onError: (e, _) => HomePageError('Failed to load products: $e', _selectedCategoryId),
     );
   }
 
@@ -122,7 +123,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     _searchQuery = ''; // Clear search when switching categories.
     _allItems = [];
 
-    emit(const HomePageLoading());
+    emit(HomePageLoading(_selectedCategoryId));
 
     await emit.forEach<List<FoodItem>>(
       _firestore
@@ -132,7 +133,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
           .map((s) => s.docs.map(FoodItem.fromFirestore).toList()),
       onData: (items) {
         _allItems = items;
-        if (_allItems.isEmpty) return HomePageEmpty(_selectedCategoryName);
+        if (_allItems.isEmpty) return HomePageEmpty(_selectedCategoryName, _selectedCategoryId);
 
         return HomePageLoaded(
           allItems: _allItems,
@@ -141,7 +142,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
           searchQuery: '',
         );
       },
-      onError: (e, _) => HomePageError('Failed to load products: $e'),
+      onError: (e, _) => HomePageError('Failed to load products: $e', _selectedCategoryId),
     );
   }
 

@@ -3,8 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:food_delivery_app/Buyer%20Bloc%20Architecture/Cart%20Page/cart_page.dart';
-
+import '../Cart Page/cart_page.dart';
+import '../Cart Page/cart_page_Bloc.dart';
+import '../Favorites_Page/favorites_bloc.dart';
+import '../Favorites_Page/favorites_event.dart';
+import '../Favorites_Page/favorites_state.dart';
+import '../Favorites_Page/favorites_models.dart';
 import 'details_page_Bloc.dart';
 import 'details_page_Event.dart';
 import 'details_page_State.dart';
@@ -542,13 +546,25 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   Widget _buildFavouriteButton() {
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: BlocBuilder<DetailsBloc, DetailsState>(
+      child: BlocBuilder<FavoritesBloc, FavoritesState>(
         builder: (context, state) {
-          final isFav = state.isFavourite;
+          bool isFav = false;
+          if (state is FavoritesLoaded) {
+            isFav = state.favoriteIds.contains(widget.id);
+          }
+          
           return GestureDetector(
             onTap: () {
               HapticFeedback.lightImpact();
-              context.read<DetailsBloc>().add(DetailsFavouriteToggled());
+              final favItem = FavoriteItem(
+                id: widget.id,
+                name: widget.name,
+                price: widget.price,
+                description: widget.description,
+                sellerId: widget.sellerId,
+                image: widget.image,
+              );
+              context.read<FavoritesBloc>().add(FavoritesToggleRequested(favItem));
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
@@ -750,38 +766,29 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
 
               // Add to Cart button
               Expanded(
-                child: GestureDetector(
-                  onTap: () => _addToCart(state.quantity),
-                  child: Container(
-                    height: 56,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFEF2A39), Color(0xFFFF6B6B)],
+                child: SizedBox(
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: () => _addToCart(state.quantity),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryRed,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _primaryRed.withOpacity(0.40),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
+                      elevation: 4,
+                      shadowColor: _primaryRed.withOpacity(0.4),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.shopping_cart_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
+                        const Icon(Icons.shopping_cart_rounded, size: 20),
+                        const SizedBox(width: 8),
                         Text(
                           'Add to Cart',
                           style: GoogleFonts.poppins(
-                            color: Colors.white,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            fontSize: 15,
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -833,39 +840,30 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             ),
 
             // Add to Cart button
-            GestureDetector(
-              onTap: () => _addToCart(state.quantity),
-              child: Container(
-                height: 60,
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFEF2A39), Color(0xFFFF6B6B)],
+            SizedBox(
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () => _addToCart(state.quantity),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryRed,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _primaryRed.withOpacity(0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                  elevation: 4,
+                  shadowColor: _primaryRed.withOpacity(0.4),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.shopping_cart_rounded,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 12),
+                    const Icon(Icons.shopping_cart_rounded, size: 20),
+                    const SizedBox(width: 8),
                     Text(
                       'Add to Cart',
                       style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
                         fontSize: 16,
+                        fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
                       ),
                     ),

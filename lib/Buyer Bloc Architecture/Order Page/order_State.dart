@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'order_models.dart';
 
 abstract class OrderState extends Equatable {
   const OrderState();
@@ -12,7 +13,7 @@ class OrderInitial extends OrderState {}
 class OrderLoading extends OrderState {}
 
 class OrderLoaded extends OrderState {
-  final List<Map<String, dynamic>> orders;
+  final List<OrderModel> orders;
 
   const OrderLoaded(this.orders);
 

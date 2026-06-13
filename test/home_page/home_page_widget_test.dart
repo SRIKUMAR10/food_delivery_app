@@ -60,7 +60,7 @@ void main() {
     testWidgets('shows CircularProgressIndicator on HomePageLoading', (
       tester,
     ) async {
-      await tester.pumpWidget(_buildApp(const HomePageLoading()));
+      await tester.pumpWidget(_buildApp(const HomePageLoading('1')));
       await tester.pump();
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -68,7 +68,7 @@ void main() {
 
     testWidgets('shows error text on HomePageError', (tester) async {
       const errorMsg = 'Connection failed';
-      await tester.pumpWidget(_buildApp(const HomePageError(errorMsg)));
+      await tester.pumpWidget(_buildApp(const HomePageError(errorMsg, '1')));
       await tester.pumpAndSettle();
 
       expect(find.textContaining(errorMsg), findsOneWidget);
@@ -77,7 +77,7 @@ void main() {
     testWidgets('shows empty category message on HomePageEmpty', (
       tester,
     ) async {
-      await tester.pumpWidget(_buildApp(const HomePageEmpty('Dessert')));
+      await tester.pumpWidget(_buildApp(const HomePageEmpty('Dessert', '1')));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Dessert'), findsOneWidget);
@@ -87,7 +87,7 @@ void main() {
       tester,
     ) async {
       const query = 'sushi';
-      await tester.pumpWidget(_buildApp(const HomePageSearchEmpty(query)));
+      await tester.pumpWidget(_buildApp(const HomePageSearchEmpty(query, '1')));
       await tester.pumpAndSettle();
 
       expect(find.textContaining(query), findsOneWidget);
@@ -112,7 +112,7 @@ void main() {
 
   group('Category chips', () {
     testWidgets('all default category names are visible', (tester) async {
-      await tester.pumpWidget(_buildApp(const HomePageLoading()));
+      await tester.pumpWidget(_buildApp(const HomePageLoading('1')));
       await tester.pumpAndSettle();
 
       for (final cat in kDefaultCategories) {

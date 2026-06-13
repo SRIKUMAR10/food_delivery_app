@@ -10,5 +10,3 @@ abstract class DetailsEvent extends Equatable {
 class DetailsQuantityIncreased extends DetailsEvent {}
 
 class DetailsQuantityDecreased extends DetailsEvent {}
-
-class DetailsFavouriteToggled extends DetailsEvent {}

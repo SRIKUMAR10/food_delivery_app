@@ -33,6 +33,24 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
   // across tab switches (IndexedStack-like behaviour via AnimatedSwitcher).
   late final List<Widget> _pages;
 
+  /// Switches the bottom navigation bar to the Cart tab (index 2).
+  void _navigateToCart() {
+    if (!mounted) return;
+    setState(() => _selectedIndex = 2);
+  }
+
+  /// Switches the bottom navigation bar to the Wallet tab (index 1).
+  void _navigateToWallet() {
+    if (!mounted) return;
+    setState(() => _selectedIndex = 1);
+  }
+
+  /// Switches the bottom navigation bar to the Orders tab (index 3).
+  void _navigateToOrders() {
+    if (!mounted) return;
+    setState(() => _selectedIndex = 3);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,15 +61,12 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
         child: HomePage(onNavigateToCart: _navigateToCart),
       ),
       const WalletScreen_UI(),
-      const CartPageUI(),
+      CartPageUI(
+        onNavigateToOrders: _navigateToOrders,
+        onNavigateToWallet: _navigateToWallet,
+      ),
       const OrderPageUI(),
     ];
-  }
-
-  /// Switches the bottom navigation bar to the Cart tab (index 2).
-  void _navigateToCart() {
-    if (!mounted) return;
-    setState(() => _selectedIndex = 2);
   }
 
   @override

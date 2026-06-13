@@ -94,7 +94,7 @@ void main() {
     // ── Initial state ──
     test('initial state is HomePageInitial', () {
       final bloc = HomePageBloc(firestore: fakeFirestore);
-      expect(bloc.state, const HomePageInitial());
+      expect(bloc.state, const HomePageInitial('1'));
       bloc.close();
     });
 
@@ -103,7 +103,7 @@ void main() {
       'emits [Loading, Empty] when category has no products',
       build: () => HomePageBloc(firestore: fakeFirestore),
       act: (bloc) => bloc.add(const HomePageStarted()),
-      expect: () => [const HomePageLoading(), isA<HomePageEmpty>()],
+      expect: () => [const HomePageLoading('1'), isA<HomePageEmpty>()],
     );
 
     // ── HomePageStarted → products exist ──
@@ -112,7 +112,7 @@ void main() {
       setUp: () => _seedProducts(fakeFirestore, category: 'Pizza', count: 3),
       build: () => HomePageBloc(firestore: fakeFirestore),
       act: (bloc) => bloc.add(const HomePageStarted()),
-      expect: () => [const HomePageLoading(), isA<HomePageLoaded>()],
+      expect: () => [const HomePageLoading('1'), isA<HomePageLoaded>()],
       verify: (bloc) {
         final loaded = bloc.state as HomePageLoaded;
         expect(loaded.filteredItems.length, 3);
@@ -134,9 +134,9 @@ void main() {
         bloc.add(const CategorySelected('2')); // Switch to Burger
       },
       expect: () => [
-        const HomePageLoading(),
+        const HomePageLoading('1'),
         isA<HomePageLoaded>(), // Pizza loaded
-        const HomePageLoading(),
+        const HomePageLoading('2'),
         isA<HomePageLoaded>(), // Burger loaded
       ],
       verify: (bloc) {
@@ -177,7 +177,7 @@ void main() {
         bloc.add(const SearchQueryChanged('xyzzy_no_match'));
       },
       expect: () => [
-        const HomePageLoading(),
+        const HomePageLoading('1'),
         isA<HomePageLoaded>(),
         isA<HomePageSearchEmpty>(),
       ],

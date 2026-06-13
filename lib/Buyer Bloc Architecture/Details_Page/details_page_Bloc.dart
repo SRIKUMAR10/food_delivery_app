@@ -6,7 +6,6 @@ class DetailsBloc extends Bloc<DetailsEvent, DetailsState> {
   DetailsBloc() : super(const DetailsState()) {
     on<DetailsQuantityIncreased>(_onQuantityIncreased);
     on<DetailsQuantityDecreased>(_onQuantityDecreased);
-    on<DetailsFavouriteToggled>(_onFavouriteToggled);
   }
 
   void _onQuantityIncreased(
@@ -23,12 +22,5 @@ class DetailsBloc extends Bloc<DetailsEvent, DetailsState> {
     if (state.quantity > 1) {
       emit(state.copyWith(quantity: state.quantity - 1));
     }
-  }
-
-  void _onFavouriteToggled(
-    DetailsFavouriteToggled event,
-    Emitter<DetailsState> emit,
-  ) {
-    emit(state.copyWith(isFavourite: !state.isFavourite));
   }
 }

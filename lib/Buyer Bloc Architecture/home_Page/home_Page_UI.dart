@@ -6,6 +6,7 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,6 +14,11 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../Details_Page/details_page_UI.dart';
+import '../Favorites_Page/favorites_UI.dart';
+import '../Favorites_Page/favorites_bloc.dart';
+import '../Favorites_Page/favorites_event.dart';
+import '../Favorites_Page/favorites_state.dart';
+import '../Favorites_Page/favorites_models.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import 'home_Page_Bloc.dart';
 import 'home_page_models.dart';
@@ -204,6 +210,34 @@ class _TopBar extends StatelessWidget {
       onNavigateToCart: onNavigateToCart,
     );
 
+    final favoritesIcon = GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const FavoritesPageUI()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.favorite_rounded,
+          color: Color(0xFFEF2A39),
+          size: 24,
+        ),
+      ),
+    );
+
     if (isMobile) {
       // Mobile layout: logo on the left, avatar on the right.
       return Row(
@@ -216,7 +250,9 @@ class _TopBar extends StatelessWidget {
             fit: BoxFit.contain,
             semanticsLabel: 'FoodGo Logo',
           ),
-          avatarWidget,
+          Row(
+            children: [favoritesIcon, const SizedBox(width: 12), avatarWidget],
+          ),
         ],
       );
     }
@@ -239,6 +275,8 @@ class _TopBar extends StatelessWidget {
               width: maxWidth * 0.4,
               child: _SearchBar(controller: searchController),
             ),
+            const SizedBox(width: 16),
+            favoritesIcon,
             const SizedBox(width: 16),
             avatarWidget,
           ],
@@ -275,7 +313,9 @@ class _ProfileAvatar extends StatelessWidget {
                 // Redirect unauthenticated users to the login screen.
                 Navigator.push(
                   innerCtx,
-                  MaterialPageRoute(builder: (_) => const FoodGoLoginScreenUI()),
+                  MaterialPageRoute(
+                    builder: (_) => const FoodGoLoginScreenUI(),
+                  ),
                 );
               } else {
                 // Open the profile drawer for authenticated users.
@@ -386,14 +426,7 @@ class _CategoryRow extends StatelessWidget {
 
   const _CategoryRow({required this.state});
 
-  String get _selectedId {
-    if (state is HomePageLoaded)
-      return (state as HomePageLoaded).selectedCategoryId;
-    // Fall back to the default selected category while loading.
-    return kDefaultCategories
-        .firstWhere((c) => c.isSelected, orElse: () => kDefaultCategories.first)
-        .id;
-  }
+  String get _selectedId => state.selectedCategoryId;
 
   @override
   Widget build(BuildContext context) {
@@ -663,7 +696,86 @@ class _FoodCardState extends State<FoodCard> {
                           child: Center(
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: _ProductImage(item: widget.item),
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: _ProductImage(item: widget.item),
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child:
+                                        BlocBuilder<
+                                          FavoritesBloc,
+                                          FavoritesState
+                                        >(
+                                          builder: (context, state) {
+                                            bool isFav = false;
+                                            if (state is FavoritesLoaded) {
+                                              isFav = state.favoriteIds
+                                                  .contains(widget.item.id);
+                                            }
+
+                                            return GestureDetector(
+                                              onTap: () {
+                                                HapticFeedback.lightImpact();
+                                                final favItem = FavoriteItem(
+                                                  id: widget.item.id,
+                                                  name: widget.item.name,
+                                                  price: widget.item.price,
+                                                  description:
+                                                      widget.item.description,
+                                                  sellerId:
+                                                      widget.item.sellerId,
+                                                  image: widget.item.image,
+                                                );
+                                                context
+                                                    .read<FavoritesBloc>()
+                                                    .add(
+                                                      FavoritesToggleRequested(
+                                                        favItem,
+                                                      ),
+                                                    );
+                                              },
+                                              child: AnimatedContainer(
+                                                duration: const Duration(
+                                                  milliseconds: 250,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: isFav
+                                                      ? const Color(
+                                                          0xFFEF2A39,
+                                                        ).withOpacity(0.1)
+                                                      : Colors.white
+                                                            .withOpacity(0.9),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                child: AnimatedSwitcher(
+                                                  duration: const Duration(
+                                                    milliseconds: 300,
+                                                  ),
+                                                  child: Icon(
+                                                    isFav
+                                                        ? Icons.favorite_rounded
+                                                        : Icons
+                                                              .favorite_border_rounded,
+                                                    key: ValueKey(isFav),
+                                                    color: const Color(
+                                                      0xFFEF2A39,
+                                                    ),
+                                                    size: 18,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

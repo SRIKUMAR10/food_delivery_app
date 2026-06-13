@@ -8,22 +8,25 @@ part of 'home_Page_Bloc.dart';
 
 /// Base class for all Home Page states.
 sealed class HomePageState extends Equatable {
-  const HomePageState();
+  /// The currently selected category ID. This ensures the UI can always highlight the correct category chip, even while loading.
+  final String selectedCategoryId;
+
+  const HomePageState(this.selectedCategoryId);
 
   @override
-  List<Object?> get props => [];
+  List<Object?> get props => [selectedCategoryId];
 }
 
 // ─── States ────────────────────────────────────────────────────────────────────
 
 /// Initial state before any data has been loaded.
 final class HomePageInitial extends HomePageState {
-  const HomePageInitial();
+  const HomePageInitial(super.selectedCategoryId);
 }
 
 /// Shown while the Firestore stream is connecting or a new category is loading.
 final class HomePageLoading extends HomePageState {
-  const HomePageLoading();
+  const HomePageLoading(super.selectedCategoryId);
 }
 
 /// Emitted when products have been successfully fetched and (optionally) filtered.
@@ -35,18 +38,15 @@ final class HomePageLoaded extends HomePageState {
   /// Equals [allItems] when there is no active search.
   final List<FoodItem> filteredItems;
 
-  /// ID of the currently active category chip.
-  final String selectedCategoryId;
-
   /// Current search query string (empty string when search is inactive).
   final String searchQuery;
 
   const HomePageLoaded({
     required this.allItems,
     required this.filteredItems,
-    required this.selectedCategoryId,
+    required String selectedCategoryId,
     this.searchQuery = '',
-  });
+  }) : super(selectedCategoryId);
 
   /// Returns a copy with the given fields overridden.
   HomePageLoaded copyWith({
@@ -73,10 +73,10 @@ final class HomePageError extends HomePageState {
   /// Human-readable error message to display in the UI.
   final String message;
 
-  const HomePageError(this.message);
+  const HomePageError(this.message, super.selectedCategoryId);
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, selectedCategoryId];
 }
 
 /// Emitted when the selected category has no products in Firestore.
@@ -84,10 +84,10 @@ final class HomePageEmpty extends HomePageState {
   /// Name of the selected category that returned no results.
   final String categoryName;
 
-  const HomePageEmpty(this.categoryName);
+  const HomePageEmpty(this.categoryName, super.selectedCategoryId);
 
   @override
-  List<Object?> get props => [categoryName];
+  List<Object?> get props => [categoryName, selectedCategoryId];
 }
 
 /// Emitted when products exist in the category but none match the search query.
@@ -95,8 +95,9 @@ final class HomePageSearchEmpty extends HomePageState {
   /// The query string that returned no results.
   final String query;
 
-  const HomePageSearchEmpty(this.query);
+  const HomePageSearchEmpty(this.query, super.selectedCategoryId);
 
   @override
-  List<Object?> get props => [query];
+  List<Object?> get props => [query, selectedCategoryId];
 }
+

@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'order_Bloc.dart';
 import 'order_Event.dart';
 import 'order_State.dart';
+import 'order_models.dart';
+import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class OrderPageUI extends StatelessWidget {
   const OrderPageUI({super.key});
@@ -30,12 +33,12 @@ class _OrderPageContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'My Orders',
-                style: TextStyle(
-                  fontSize: 26,
+                style: GoogleFonts.poppins(
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: const Color(0xFF1C1C1C),
                 ),
               ),
               const SizedBox(height: 20),
@@ -77,7 +80,7 @@ class _OrderPageContent extends StatelessWidget {
 
   // ── Mobile Layout ─────────────────────────────────────────────────────────
 
-  Widget _buildMobileLayout(BuildContext context, List<Map<String, dynamic>> orders) {
+  Widget _buildMobileLayout(BuildContext context, List<OrderModel> orders) {
     return ListView.builder(
       itemCount: orders.length,
       physics: const BouncingScrollPhysics(),
@@ -90,7 +93,7 @@ class _OrderPageContent extends StatelessWidget {
 
   // ── Desktop / Web Layout ─────────────────────────────────────────────────
 
-  Widget _buildWideLayout(BuildContext context, List<Map<String, dynamic>> orders) {
+  Widget _buildWideLayout(BuildContext context, List<OrderModel> orders) {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 400,
@@ -109,8 +112,11 @@ class _OrderPageContent extends StatelessWidget {
 
   // ── Shared UI Components ─────────────────────────────────────────────────
 
-  Widget _buildOrderCard(BuildContext context, Map<String, dynamic> item) {
-    bool isDelivered = item['status'] == 'Delivered';
+  Widget _buildOrderCard(BuildContext context, OrderModel item) {
+    bool isDelivered = item.status == 'Delivered';
+    final imageUrl = item.primaryImage ?? 'https://firebasestorage.googleapis.com/v0/b/food-delivery-app-cd4ca.firebasestorage.app/o/product_images%2FWpN6x21MmWUjG1DS9BfLnX2M3Js2%2F2026-06-12T00%3A40%3A44.162_images%20(1).jpg?alt=media&token=de903631-0a43-438e-b01c-effe404bd982';
+    final heroTag = 'order_${item.id}';
+    final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -131,13 +137,13 @@ class _OrderPageContent extends StatelessWidget {
         children: [
           // Compact Image Preview for Orders Page
           GestureDetector(
-            onTap: () => _showImagePreview(context, item['image'], item['id']),
+            onTap: () => _showImagePreview(context, imageUrl, heroTag),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Hero(
-                tag: item['id'],
+                tag: heroTag,
                 child: Image.network(
-                  item['image'],
+                  imageUrl,
                   width: 85,
                   height: 85,
                   fit: BoxFit.cover,
@@ -165,19 +171,19 @@ class _OrderPageContent extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      item['id'],
+                      'Order #${item.id.substring(0, 8).toUpperCase()}',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    _buildStatusChip(item['status'], isDelivered),
+                    _buildStatusChip(item.status, isDelivered),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  item['name'],
+                  item.displayTitle,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -191,7 +197,7 @@ class _OrderPageContent extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '\$${item['price'].toStringAsFixed(2)}',
+                      '\$${item.totalAmount.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -199,7 +205,7 @@ class _OrderPageContent extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      item['date'],
+                      dateFormat.format(item.date),
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.black54,

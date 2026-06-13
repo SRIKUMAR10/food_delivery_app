@@ -3,6 +3,7 @@
 // Single source of truth for the CartItem model.
 // Extracted from the logic class to ensure a clean separation of concerns.
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
 class CartItem extends Equatable {
@@ -21,6 +22,30 @@ class CartItem extends Equatable {
     this.image,
     this.quantity = 1,
   });
+
+  /// Factory constructor to map a Firestore DocumentSnapshot to a CartItem.
+  factory CartItem.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return CartItem(
+      id: doc.id,
+      name: data['name'] ?? 'Unknown Item',
+      price: (data['price'] as num?)?.toDouble() ?? 0.0,
+      image: (data['image'] as String?)?.trim(),
+      sellerId: data['sellerId'] ?? '',
+      quantity: (data['quantity'] as num?)?.toInt() ?? 1,
+    );
+  }
+
+  /// Converts this CartItem into a map for Firestore.
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'price': price,
+      'image': image,
+      'sellerId': sellerId,
+      'quantity': quantity,
+    };
+  }
 
   /// Creates a copy of this CartItem but with the given fields replaced with the new values.
   CartItem copyWith({

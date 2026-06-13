@@ -14,7 +14,14 @@ import 'cart_models.dart';
 import 'cart_page_Bloc.dart';
 
 class CartPageUI extends StatefulWidget {
-  const CartPageUI({super.key});
+  final VoidCallback? onNavigateToOrders;
+  final VoidCallback? onNavigateToWallet;
+
+  const CartPageUI({
+    super.key,
+    this.onNavigateToOrders,
+    this.onNavigateToWallet,
+  });
 
   @override
   State<CartPageUI> createState() => _CartPageUIState();
@@ -68,6 +75,48 @@ class _CartPageUIState extends State<CartPageUI> {
           style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
         ),
       ),
+    );
+  }
+
+  void _showImagePreview(BuildContext context, String imageUrl, String heroTag) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black.withOpacity(0.9),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, anim1, anim2) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    maxScale: 4.0,
+                    child: Hero(
+                      tag: heroTag,
+                      child: Image.network(imageUrl, fit: BoxFit.contain),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 50,
+                  right: 25,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const CircleAvatar(
+                      backgroundColor: Colors.white24,
+                      child: Icon(Icons.close, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -384,21 +433,27 @@ class _CartPageUIState extends State<CartPageUI> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.network(
-                src,
-                width: 80,
-                height: 80,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 80,
-                  height: 80,
-                  color: Colors.grey.shade100,
-                  child: const Icon(
-                    Icons.fastfood_rounded,
-                    color: Colors.grey,
-                    size: 32,
+            GestureDetector(
+              onTap: () => _showImagePreview(context, src, 'cart_${item.id}'),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Hero(
+                  tag: 'cart_${item.id}',
+                  child: Image.network(
+                    src,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey.shade100,
+                      child: const Icon(
+                        Icons.fastfood_rounded,
+                        color: Colors.grey,
+                        size: 32,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -607,7 +662,52 @@ class _CartPageUIState extends State<CartPageUI> {
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
-              onPressed: () => _showCheckoutSnackBar(context),
+              onPressed: () {
+                _showCheckoutSnackBar(context);
+                context.read<CartBloc>().add(
+                  CartCheckoutRequested(
+                    onSuccess: () {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      if (widget.onNavigateToOrders != null) {
+                        widget.onNavigateToOrders!();
+                      }
+                    },
+                    onInsufficientBalance: () {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.error_outline_rounded, color: Colors.white),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Insufficient balance to checkout.',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: const Color(0xFFEF2A39),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+
+                      if (widget.onNavigateToWallet != null) {
+                        widget.onNavigateToWallet!();
+                      }
+                    },
+                  ),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primaryRed,
                 foregroundColor: Colors.white,

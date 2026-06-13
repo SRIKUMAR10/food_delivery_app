@@ -51,3 +51,11 @@ class CartItemQuantityUpdated extends CartEvent {
 class CartCleared extends CartEvent {
   const CartCleared();
 }
+
+/// Dispatched to trigger the checkout process (create order and clear cart).
+class CartCheckoutRequested extends CartEvent {
+  final void Function()? onSuccess;
+  final void Function()? onInsufficientBalance;
+
+  const CartCheckoutRequested({this.onSuccess, this.onInsufficientBalance});
+}
