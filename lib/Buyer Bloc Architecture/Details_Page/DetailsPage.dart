@@ -70,4 +70,38 @@ class CartController extends ChangeNotifier {
   }
 }
 
-class DetailsPage {}
+class DetailsPage extends StatefulWidget {
+  final String id;
+  final String name;
+  final double price;
+  final String description;
+  final String sellerId;
+  final String? image;
+
+  const DetailsPage({
+    super.key,
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.description,
+    required this.sellerId,
+    this.image,
+  });
+
+  @override
+  State<DetailsPage> createState() => _DetailsPageState();
+}
+
+class _DetailsPageState extends State<DetailsPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.name),
+      ),
+      body: Center(
+        child: Text('Details for ${widget.name}'),
+      ),
+    );
+  }
+}

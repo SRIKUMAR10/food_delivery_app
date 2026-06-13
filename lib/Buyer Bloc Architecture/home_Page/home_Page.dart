@@ -383,8 +383,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildProfileAvatar() {
-    final user = FirebaseAuth.instance.currentUser;
-
     return Column(
       children: [
         StreamBuilder<DocumentSnapshot>(
