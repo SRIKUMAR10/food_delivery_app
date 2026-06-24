@@ -23,6 +23,10 @@ class InAppWebView extends StatelessWidget {
     WebResourceRequest,
     WebResourceError,
   )? onReceivedError;
+  final Future<NavigationActionPolicy> Function(
+    InAppWebViewController,
+    NavigationAction,
+  )? shouldOverrideUrlLoading;
 
   const InAppWebView({
     super.key,
@@ -33,6 +37,7 @@ class InAppWebView extends StatelessWidget {
     this.onLoadStop,
     this.onProgressChanged,
     this.onReceivedError,
+    this.shouldOverrideUrlLoading,
   });
 
   @override
@@ -96,4 +101,20 @@ class WebResourceError {
   final String type;
   final String description;
   const WebResourceError({this.type = '', this.description = ''});
+}
+
+// ---------------------------------------------------------------------------
+// Stub: NavigationActionPolicy
+// ---------------------------------------------------------------------------
+enum NavigationActionPolicy {
+  CANCEL,
+  ALLOW,
+}
+
+// ---------------------------------------------------------------------------
+// Stub: NavigationAction
+// ---------------------------------------------------------------------------
+class NavigationAction {
+  final URLRequest request;
+  const NavigationAction({required this.request});
 }

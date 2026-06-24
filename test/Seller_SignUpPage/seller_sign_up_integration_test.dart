@@ -1,16 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
+import 'package:food_delivery_app/repositories/seller_repository.dart';
 
-import '../../lib/Seller Bloc Architecture/Seller_SignUpPage/Seller_SignUpPage_UI.dart';
+import 'package:mocktail/mocktail.dart';
+
+import '../../lib/Seller Bloc Architecture_Delete/Seller_SignUpPage/Seller_SignUpPage_UI.dart';
+import '../mock_firebase.dart';
+
+class MockSellerRepository extends Mock implements SellerRepository {}
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() {
+    setupFirebaseAuthMocks();
+    TestWidgetsFlutterBinding.ensureInitialized();
+  });
+
+  late MockSellerRepository mockRepository;
+
+  setUp(() {
+    mockRepository = MockSellerRepository();
+  });
 
   Widget createWidgetUnderTest() {
-    return const MaterialApp(
-      home: SellerSignUpScreenUI(),
-    );
+    return MaterialApp(home: SellerSignUpScreenUI(repository: mockRepository));
   }
 
   group('SellerSignUpScreen Integration Tests', () {
@@ -21,7 +33,7 @@ void main() {
       final nameField = find.byType(TextFormField).at(0);
       final emailField = find.byType(TextFormField).at(1);
       final passwordField = find.byType(TextFormField).at(2);
-      final signUpButton = find.text('Sign Up');
+      final signUpButton = find.byKey(const Key('signup_button'));
 
       await tester.enterText(nameField, 'John Doe');
       await tester.enterText(emailField, 'test@example.com');

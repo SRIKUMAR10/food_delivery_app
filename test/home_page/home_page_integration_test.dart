@@ -7,12 +7,21 @@
 // These tests run in the full Flutter widget tree, including animations.
 // Run with: flutter test test/home_page/home_page_integration_test.dart
 
+import 'package:bloc_test/bloc_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../../lib/Buyer Bloc Architecture/home_Page/home_Page_Bloc.dart';
-import '../../lib/Buyer Bloc Architecture/home_Page/home_Page_UI.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_event.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_state.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_Page_Bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_Page_UI.dart';
+
+// ─── Mocks ───────────────────────────────────────────────────────────────────
+
+class MockFavoritesBloc extends MockBloc<FavoritesEvent, FavoritesState>
+    implements FavoritesBloc {}
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
@@ -38,9 +47,21 @@ Future<FakeFirebaseFirestore> _setupFirestore({
 
 /// Builds the full HomePage test harness with the given fake Firestore.
 Widget _buildApp(FakeFirebaseFirestore fakeFirestore) {
+  final mockFavoritesBloc = MockFavoritesBloc();
+  whenListen(
+    mockFavoritesBloc,
+    Stream.value(const FavoritesLoaded(items: [], favoriteIds: {})),
+    initialState: const FavoritesLoaded(items: [], favoriteIds: {}),
+  );
+
   return MaterialApp(
-    home: BlocProvider(
-      create: (_) => HomePageBloc(firestore: fakeFirestore),
+    home: MultiBlocProvider(
+      providers: [
+        BlocProvider<HomePageBloc>(
+          create: (_) => HomePageBloc(firestore: fakeFirestore),
+        ),
+        BlocProvider<FavoritesBloc>.value(value: mockFavoritesBloc),
+      ],
       child: const HomePage(),
     ),
   );
@@ -49,6 +70,10 @@ Widget _buildApp(FakeFirebaseFirestore fakeFirestore) {
 // ─── Integration Tests ────────────────────────────────────────────────────────
 
 void main() {
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+  });
+
   group('Home Page integration', () {
     testWidgets(
       'shows loading indicator initially, then products for default category',
@@ -108,7 +133,9 @@ void main() {
       expect(find.text('Pizza Item 3'), findsNothing);
     });
 
-    testWidgets('clearing search restores the full product list', (tester) async {
+    testWidgets('clearing search restores the full product list', (
+      tester,
+    ) async {
       final fakeFirestore = await _setupFirestore(
         categoryProductCounts: {'Pizza': 3},
       );
@@ -128,8 +155,9 @@ void main() {
       expect(find.textContaining('Pizza Item'), findsNWidgets(3));
     });
 
-    testWidgets('shows empty-category message when category has no products',
-        (tester) async {
+    testWidgets('shows empty-category message when category has no products', (
+      tester,
+    ) async {
       // Only seed Burger — leave Pizza (default) empty.
       final fakeFirestore = await _setupFirestore(
         categoryProductCounts: {'Burger': 2},
@@ -137,8 +165,10 @@ void main() {
       await tester.pumpWidget(_buildApp(fakeFirestore));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('No products available in Pizza'),
-          findsOneWidget);
+      expect(
+        find.textContaining('No products available in Pizza'),
+        findsOneWidget,
+      );
     });
   });
 

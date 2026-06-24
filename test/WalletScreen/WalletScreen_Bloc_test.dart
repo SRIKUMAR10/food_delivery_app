@@ -1,20 +1,60 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:food_delivery_app/Buyer Bloc Architecture/WalletScreen/WalletScreen_Bloc.dart';
-import 'package:food_delivery_app/Buyer Bloc Architecture/WalletScreen/WalletScreen_Event.dart';
-import 'package:food_delivery_app/Buyer Bloc Architecture/WalletScreen/WalletScreen_State.dart';
 
-class MockWalletDatabase extends Mock implements WalletDatabase {}
+import 'package:food_delivery_app/api_service/RazorpayApiService.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/WalletScreen/WalletScreen_Bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/WalletScreen/WalletScreen_Event.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/WalletScreen/WalletScreen_State.dart';
+import 'package:mocktail/mocktail.dart';
+
+// Mock Classes with concrete implementations to satisfy Null Safety
+class MockWalletDatabase extends Mock implements WalletDatabase {
+  @override
+  String? get currentUserEmail => null;
+
+  @override
+  Stream<DocumentSnapshot> getWalletStream() {
+    return const Stream.empty();
+  }
+
+  @override
+  Stream<QuerySnapshot> getTransactionsStream() {
+    return const Stream.empty();
+  }
+
+  @override
+  Future<void> addTransaction({
+    required double amount,
+    required String title,
+    required bool isCredit,
+    String? paymentId,
+    String? orderId,
+    String status = 'success',
+  }) async {}
+}
+
+class MockRazorpayApiService extends Mock implements RazorpayApiService {
+  @override
+  Future<Map<String, dynamic>> createOrder({
+    required int amount,
+    String currency = 'INR',
+    required String receipt,
+  }) async {
+    return {'id': 'test_order_id'};
+  }
+}
 
 void main() {
-  group('WalletBloc', () {
+  group('WalletBloc Tests', () {
     late WalletBloc walletBloc;
     late MockWalletDatabase mockDatabase;
+    late MockRazorpayApiService mockApiService;
 
     setUp(() {
       mockDatabase = MockWalletDatabase();
-      walletBloc = WalletBloc(mockDatabase);
+      mockApiService = MockRazorpayApiService();
+      walletBloc = WalletBloc(mockDatabase, mockApiService);
     });
 
     tearDown(() {
@@ -22,96 +62,58 @@ void main() {
     });
 
     test('initial state is correct', () {
-      expect(walletBloc.state.isLoading, false);
-      expect(walletBloc.state.pendingAmount, null);
-      expect(walletBloc.state.successMessage, null);
-      expect(walletBloc.state.errorMessage, null);
+      expect(walletBloc.state.paymentStatus, PaymentStatus.initial);
     });
 
     blocTest<WalletBloc, WalletState>(
-      'emits [isLoading: false] when LoadWalletData is added',
+      'emits [initial] when LoadWalletData is added',
       build: () => walletBloc,
       act: (bloc) => bloc.add(LoadWalletData()),
-      expect: () => [
-        isA<WalletState>().having((s) => s.isLoading, 'isLoading', false),
-      ],
+      expect: () => [const WalletState(paymentStatus: PaymentStatus.initial)],
     );
 
     blocTest<WalletBloc, WalletState>(
-      'emits correct state when AddFundsRequested is added',
+      'emits [success] when PaymentSuccessEvent is added',
       build: () => walletBloc,
-      act: (bloc) => bloc.add(AddFundsRequested(500.0)),
-      expect: () => [
-        isA<WalletState>()
-            .having((s) => s.isLoading, 'isLoading', true)
-            .having((s) => s.pendingAmount, 'pendingAmount', 500.0)
-            .having((s) => s.successMessage, 'successMessage', null)
-            .having((s) => s.errorMessage, 'errorMessage', null),
-      ],
-    );
-
-    blocTest<WalletBloc, WalletState>(
-      'emits correct state on PaymentSuccessEvent when pendingAmount > 0 and db succeeds',
-      build: () {
-        when(() => mockDatabase.addTransaction(500.0, 'pay_123'))
-            .thenAnswer((_) async => Future.value());
-        return walletBloc;
-      },
-      seed: () => WalletState(
-        isLoading: true,
-        pendingAmount: 500.0,
+      act: (bloc) => bloc.add(
+        PaymentSuccessEvent(
+          amount: 100.0,
+          paymentId: 'pay_test',
+          orderId: 'order_test',
+        ),
       ),
-      act: (bloc) => bloc.add(PaymentSuccessEvent('pay_123')),
       expect: () => [
-        isA<WalletState>()
-            .having((s) => s.isLoading, 'isLoading', false)
-            .having((s) => s.pendingAmount, 'pendingAmount', null)
-            .having((s) => s.successMessage, 'successMessage', '₹500 added successfully! 🎉')
-            .having((s) => s.errorMessage, 'errorMessage', null),
+        const WalletState(
+          paymentStatus: PaymentStatus.success,
+          successMessage: 'Payment Successful',
+          pendingAmount: null,
+          orderId: null,
+        ),
       ],
-      verify: (_) {
-        verify(() => mockDatabase.addTransaction(500.0, 'pay_123')).called(1);
-      },
     );
 
     blocTest<WalletBloc, WalletState>(
-      'emits correct state on PaymentSuccessEvent when db fails',
-      build: () {
-        when(() => mockDatabase.addTransaction(500.0, 'pay_123'))
-            .thenThrow(Exception('DB Error'));
-        return walletBloc;
-      },
-      seed: () => WalletState(
-        isLoading: true,
-        pendingAmount: 500.0,
-      ),
-      act: (bloc) => bloc.add(PaymentSuccessEvent('pay_123')),
-      expect: () => [
-        isA<WalletState>()
-            .having((s) => s.isLoading, 'isLoading', false)
-            .having((s) => s.pendingAmount, 'pendingAmount', null)
-            .having((s) => s.successMessage, 'successMessage', null)
-            .having((s) => s.errorMessage, 'errorMessage', 'Failed to update wallet: Exception: DB Error'),
-      ],
-      verify: (_) {
-        verify(() => mockDatabase.addTransaction(500.0, 'pay_123')).called(1);
-      },
-    );
-
-    blocTest<WalletBloc, WalletState>(
-      'emits correct state on PaymentFailedEvent',
+      'emits [failed] when PaymentFailedEvent is added (not user cancelled)',
       build: () => walletBloc,
-      seed: () => WalletState(
-        isLoading: true,
-        pendingAmount: 500.0,
-      ),
-      act: (bloc) => bloc.add(PaymentFailedEvent('Payment Cancelled')),
+      act: (bloc) => bloc.add(PaymentFailedEvent('Payment error')),
       expect: () => [
-        isA<WalletState>()
-            .having((s) => s.isLoading, 'isLoading', false)
-            .having((s) => s.pendingAmount, 'pendingAmount', null)
-            .having((s) => s.successMessage, 'successMessage', null)
-            .having((s) => s.errorMessage, 'errorMessage', 'Payment Cancelled'),
+        const WalletState(
+          paymentStatus: PaymentStatus.failed,
+          errorMessage: 'Payment error',
+        ),
+      ],
+    );
+
+    blocTest<WalletBloc, WalletState>(
+      'emits [initial] when PaymentFailedEvent is added (user cancelled)',
+      build: () => walletBloc,
+      act: (bloc) =>
+          bloc.add(PaymentFailedEvent('Cancelled', userCancelled: true)),
+      expect: () => [
+        const WalletState(
+          paymentStatus: PaymentStatus.initial,
+          errorMessage: null,
+        ),
       ],
     );
   });

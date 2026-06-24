@@ -3,9 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import '../../lib/Seller Bloc Architecture/Seller_ForgotPasswordPage/Seller_ForgotPasswordPage_Bloc.dart';
-import '../../lib/Seller Bloc Architecture/Seller_ForgotPasswordPage/Seller_ForgotPasswordPage_Event.dart';
-import '../../lib/Seller Bloc Architecture/Seller_ForgotPasswordPage/Seller_ForgotPasswordPage_State.dart';
+import '../../lib/Seller Bloc Architecture_Delete/Seller_ForgotPasswordPage/Seller_ForgotPasswordPage_Bloc.dart';
+import '../../lib/Seller Bloc Architecture_Delete/Seller_ForgotPasswordPage/Seller_ForgotPasswordPage_Event.dart';
+import '../../lib/Seller Bloc Architecture_Delete/Seller_ForgotPasswordPage/Seller_ForgotPasswordPage_State.dart';
 
 class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
@@ -28,17 +28,25 @@ void main() {
     blocTest<SellerForgotPasswordBloc, SellerForgotPasswordState>(
       'emits updated email and resets status when SellerForgotPasswordEmailChanged is added',
       build: () => SellerForgotPasswordBloc(firebaseAuth: mockFirebaseAuth),
-      act: (bloc) => bloc.add(const SellerForgotPasswordEmailChanged('seller@example.com')),
+      act: (bloc) => bloc.add(
+        const SellerForgotPasswordEmailChanged('seller@example.com'),
+      ),
       expect: () => [
-        const SellerForgotPasswordState(email: 'seller@example.com', status: SellerForgotPasswordStatus.initial),
+        const SellerForgotPasswordState(
+          email: 'seller@example.com',
+          status: SellerForgotPasswordStatus.initial,
+        ),
       ],
     );
 
     blocTest<SellerForgotPasswordBloc, SellerForgotPasswordState>(
       'emits [loading, success] when SellerForgotPasswordSubmitted succeeds',
       setUp: () {
-        when(() => mockFirebaseAuth.sendPasswordResetEmail(email: 'seller@example.com'))
-            .thenAnswer((_) async {});
+        when(
+          () => mockFirebaseAuth.sendPasswordResetEmail(
+            email: 'seller@example.com',
+          ),
+        ).thenAnswer((_) async {});
       },
       build: () => SellerForgotPasswordBloc(firebaseAuth: mockFirebaseAuth),
       seed: () => const SellerForgotPasswordState(email: 'seller@example.com'),
@@ -54,15 +62,27 @@ void main() {
         ),
       ],
       verify: (_) {
-        verify(() => mockFirebaseAuth.sendPasswordResetEmail(email: 'seller@example.com')).called(1);
+        verify(
+          () => mockFirebaseAuth.sendPasswordResetEmail(
+            email: 'seller@example.com',
+          ),
+        ).called(1);
       },
     );
 
     blocTest<SellerForgotPasswordBloc, SellerForgotPasswordState>(
       'emits [loading, failure] when SellerForgotPasswordSubmitted fails',
       setUp: () {
-        when(() => mockFirebaseAuth.sendPasswordResetEmail(email: 'fail@example.com'))
-            .thenThrow(FirebaseAuthException(code: 'user-not-found', message: 'No user found.'));
+        when(
+          () => mockFirebaseAuth.sendPasswordResetEmail(
+            email: 'fail@example.com',
+          ),
+        ).thenThrow(
+          FirebaseAuthException(
+            code: 'user-not-found',
+            message: 'No user found.',
+          ),
+        );
       },
       build: () => SellerForgotPasswordBloc(firebaseAuth: mockFirebaseAuth),
       seed: () => const SellerForgotPasswordState(email: 'fail@example.com'),

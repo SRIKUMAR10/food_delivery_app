@@ -1,9 +1,8 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import '../../lib/Buyer Bloc Architecture/ForgotPasswordPage/ForgotPasswordPage_Bloc.dart';
-import '../../lib/Buyer Bloc Architecture/ForgotPasswordPage/ForgotPasswordPage_Event.dart';
-import '../../lib/Buyer Bloc Architecture/ForgotPasswordPage/ForgotPasswordPage_State.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/ForgotPasswordPage/ForgotPasswordPage_Bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/ForgotPasswordPage/ForgotPasswordPage_Event.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/ForgotPasswordPage/ForgotPasswordPage_State.dart';
 
 void main() {
   group('ForgotPasswordBloc', () {
@@ -18,9 +17,13 @@ void main() {
     blocTest<ForgotPasswordBloc, ForgotPasswordState>(
       'emits updated email and resets status when ForgotPasswordEmailChanged is added',
       build: () => ForgotPasswordBloc(),
-      act: (bloc) => bloc.add(const ForgotPasswordEmailChanged('test@example.com')),
+      act: (bloc) =>
+          bloc.add(const ForgotPasswordEmailChanged('test@example.com')),
       expect: () => [
-        const ForgotPasswordState(email: 'test@example.com', status: ForgotPasswordStatus.initial),
+        const ForgotPasswordState(
+          email: 'test@example.com',
+          status: ForgotPasswordStatus.initial,
+        ),
       ],
     );
 
@@ -29,6 +32,7 @@ void main() {
       build: () => ForgotPasswordBloc(),
       seed: () => const ForgotPasswordState(email: 'test@example.com'),
       act: (bloc) => bloc.add(const ForgotPasswordSubmitted()),
+      wait: const Duration(seconds: 2),
       expect: () => [
         const ForgotPasswordState(
           email: 'test@example.com',

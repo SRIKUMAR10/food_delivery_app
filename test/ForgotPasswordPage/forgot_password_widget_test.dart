@@ -1,17 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/ForgotPasswordPage/ForgotPasswordPage_UI.dart';
+import 'package:food_delivery_app/repositories/user_repository.dart';
 
-import '../../lib/Buyer Bloc Architecture/ForgotPasswordPage/ForgotPasswordPage_UI.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockUserRepository extends Mock implements UserRepository {}
 
 void main() {
+  late MockUserRepository mockUserRepository;
+
+  setUp(() {
+    mockUserRepository = MockUserRepository();
+  });
+
   Widget createWidgetUnderTest() {
-    return const MaterialApp(
-      home: ForgotPasswordScreenUI(),
+    return RepositoryProvider<UserRepository>.value(
+      value: mockUserRepository,
+      child: const MaterialApp(home: ForgotPasswordScreenUI()),
     );
   }
 
   group('ForgotPasswordScreenUI Widget Tests', () {
-    testWidgets('renders mobile layout and required form fields', (tester) async {
+    testWidgets('renders mobile layout and required form fields', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -35,7 +49,9 @@ void main() {
       expect(find.text('Email'), findsOneWidget);
     });
 
-    testWidgets('shows loading indicator when form is submitted', (tester) async {
+    testWidgets('shows loading indicator when form is submitted', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -43,10 +59,14 @@ void main() {
       await tester.pumpWidget(createWidgetUnderTest());
 
       // Enter valid email
-      await tester.enterText(find.byType(TextFormField).first, 'test@example.com');
+      await tester.enterText(
+        find.byType(TextFormField).first,
+        'test@example.com',
+      );
       await tester.pump();
 
       // Tap Submit
+      await tester.ensureVisible(find.text('Submit'));
       await tester.tap(find.text('Submit'));
       await tester.pump(); // Starts loading
 
@@ -54,10 +74,13 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
       await tester.pumpAndSettle(); // Finish loading and wait for snackbar
-      
+
       // Verify Snackbar is shown
       expect(find.byType(SnackBar), findsOneWidget);
-      expect(find.textContaining('Password reset link sent to'), findsOneWidget);
+      expect(
+        find.textContaining('Password reset link sent to'),
+        findsOneWidget,
+      );
     });
   });
 }

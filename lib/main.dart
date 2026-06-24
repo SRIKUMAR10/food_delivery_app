@@ -1,57 +1,76 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/onboarding_page/onboarding_page_UI.dart';
 
-import 'package:food_delivery_app/Buyer%20Bloc%20Architecture/onboarding_page/onboarding_page_UI.dart';
-import 'Repository/product_repository.dart';
-import 'Seller Bloc Architecture/Seller_Add_Products/seller_product_bloc.dart';
-import 'Buyer Bloc Architecture/Cart Page/cart_page_Bloc.dart';
-import 'Buyer Bloc Architecture/Favorites_Page/favorites_bloc.dart';
-import 'Buyer Bloc Architecture/Favorites_Page/favorites_event.dart';
+import 'features/buyer_bloc_architecture/Cart Page/cart_page_Bloc.dart';
+import 'features/buyer_bloc_architecture/Favorites_Page/favorites_bloc.dart';
+import 'features/buyer_bloc_architecture/Favorites_Page/favorites_event.dart';
+import 'features/buyer_bloc_architecture/home_Page/home_Page_Bloc.dart';
+
 import 'firebase_options.dart';
-
-import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await FirebaseAppCheck.instance.activate(
+    webProvider: ReCaptchaV3Provider(
+      '6Le3Ei8tAAAAAJbDz5qr_vLKa0iZ9wm3lNTaCi3K',
+    ),
+  );
+
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final CartBloc? cartBloc;
+  final FavoritesBloc? favoritesBloc;
+  final HomePageBloc? homePageBloc;
+
+  const MyApp({
+    super.key,
+    this.cartBloc,
+    this.favoritesBloc,
+    this.homePageBloc,
+  });
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
-      providers: [RepositoryProvider(create: (context) => ProductRepository())],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(
-            create: (context) => SellerProductBloc(
-              productRepository: context.read<ProductRepository>(),
-            ),
-          ),
-          BlocProvider(create: (context) => CartBloc()),
-          BlocProvider(
-            create: (context) => FavoritesBloc()..add(const LoadFavoritesStarted()),
-          ),
-        ],
-        child: MaterialApp(
-          theme: ThemeData(
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFE52121),
-            ),
-            textTheme: GoogleFonts.poppinsTextTheme(
-              Theme.of(context).textTheme,
-            ),
-            scaffoldBackgroundColor: const Color(0xFFFBF5F5),
-          ),
-          debugShowCheckedModeBanner: false,
-          home: const OnboardingPage(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => cartBloc ?? CartBloc()),
+        BlocProvider(
+          create: (context) =>
+              favoritesBloc ??
+              (FavoritesBloc()..add(const LoadFavoritesStarted())),
         ),
+        BlocProvider(
+          create: (context) =>
+              homePageBloc ?? (HomePageBloc()..add(const HomePageStarted())),
+        ),
+      ],
+      child: MaterialApp(
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE52121)),
+          scaffoldBackgroundColor: const Color(0xFFFBF5F5),
+          appBarTheme: const AppBarTheme(
+            centerTitle: true,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            titleTextStyle: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1C1C1C),
+            ),
+            iconTheme: IconThemeData(color: Colors.black),
+          ),
+        ),
+        debugShowCheckedModeBanner: false,
+        home: const OnboardingPage(),
       ),
     );
   }

@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
+import 'package:food_delivery_app/repositories/seller_repository.dart';
 
-import '../../lib/Seller Bloc Architecture/Seller_LoginScreen/Seller_LoginScreen_UI.dart';
+import 'package:mocktail/mocktail.dart';
+
+import '../../lib/Seller Bloc Architecture_Delete/Seller_LoginScreen/Seller_LoginScreen_UI.dart';
+
+class MockSellerRepository extends Mock implements SellerRepository {}
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+  });
+
+  late MockSellerRepository mockRepository;
+
+  setUp(() {
+    mockRepository = MockSellerRepository();
+  });
 
   Widget createWidgetUnderTest() {
-    return const MaterialApp(
-      home: SellerLoginScreenUI(),
-    );
+    return MaterialApp(home: SellerLoginScreenUI(repository: mockRepository));
   }
 
   group('SellerLoginScreen Integration Tests', () {

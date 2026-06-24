@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'food-delivery-app-cd4ca.firebasestorage.app',
     measurementId: 'G-G1VC61MGJJ',
   );
+
 }

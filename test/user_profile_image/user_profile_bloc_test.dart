@@ -5,11 +5,9 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/user_profile_image/user_profile_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mocktail/mocktail.dart';
-
-import '../../lib/Buyer Bloc Architecture/user_profile_image/user_profile_image_Bloc.dart';
-import '../../lib/Buyer Bloc Architecture/user_profile_image/user_profile_models.dart';
 
 class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
@@ -20,6 +18,10 @@ class MockFirebaseStorage extends Mock implements FirebaseStorage {}
 class MockImagePicker extends Mock implements ImagePicker {}
 
 void main() {
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+  });
+
   late MockFirebaseAuth mockAuth;
   late FakeFirebaseFirestore fakeFirestore;
   late MockFirebaseStorage mockStorage;
@@ -63,7 +65,10 @@ void main() {
       act: (bloc) => bloc.add(const LoadProfileStarted()),
       expect: () => [
         const ProfileLoading(),
-        const ProfileError('User not logged in', previousState: ProfileInitial()),
+        const ProfileError(
+          'User not logged in',
+          previousState: ProfileInitial(),
+        ),
       ],
     );
 

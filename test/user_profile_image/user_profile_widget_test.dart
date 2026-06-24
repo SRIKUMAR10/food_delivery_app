@@ -1,91 +1,154 @@
-// test/user_profile_image/user_profile_widget_test.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloc_test/bloc_test.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/user_profile_image/pages/address_management_page.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/user_profile_image/pages/personal_information_page.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/user_profile_image/user_profile_image.dart';
+import 'package:mocktail/mocktail.dart';
 
-import '../../lib/Buyer Bloc Architecture/user_profile_image/user_profile_image.dart';
+class MockUserProfileBloc extends MockBloc<UserProfileEvent, UserProfileState>
+    implements UserProfileBloc {}
 
-// Since the UserProfileBloc requires FirebaseAuth and FirebaseStorage,
-// we'll need to mock them or just use a dummy app that ignores them.
-// In Widget testing, we want to see the UI states. Let's mock the BLoC state!
-
-// To avoid the `bloc_test` version issues seen earlier, we'll create a simple
-// fake BLoC that just returns whatever state we give it.
-
-class FakeUserProfileBloc extends Bloc<UserProfileEvent, UserProfileState>
-    implements UserProfileBloc {
-  FakeUserProfileBloc(super.initialState) {
-    on<UserProfileEvent>((event, emit) {});
-  }
-}
-
-Widget _buildApp(UserProfileState initialState) {
+Widget _buildApp(UserProfileBloc bloc) {
   return MaterialApp(
-    home: Scaffold(
-      body: BlocProvider<UserProfileBloc>.value(
-        value: FakeUserProfileBloc(initialState),
-        child: const UserProfileDrawer(),
-      ),
+    home: BlocProvider<UserProfileBloc>.value(
+      value: bloc,
+      child: const UserProfileDrawer(),
     ),
   );
 }
 
 void main() {
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+  });
+
   group('UserProfileDrawer Widget Tests', () {
-    testWidgets('shows loading indicator when state is ProfileLoading', (
-      tester,
-    ) async {
-      await tester.pumpWidget(_buildApp(const ProfileLoading()));
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    late MockUserProfileBloc mockBloc;
+
+    setUp(() {
+      mockBloc = MockUserProfileBloc();
     });
 
-    testWidgets('shows form fields when state is ProfileLoaded', (
-      tester,
-    ) async {
-      final profile = UserProfile(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
-        phone: '0987654321',
-        address: '456 Avenue',
+    testWidgets('shows loading indicator for upload progress', (tester) async {
+      final profile = const UserProfile(
+        name: 'John Doe',
+        email: 'john@example.com',
+        phone: '1234567890',
+        address: '123 Main St',
       );
 
-      await tester.pumpWidget(_buildApp(ProfileLoaded(profile: profile)));
+      when(
+        () => mockBloc.state,
+      ).thenReturn(ProfileLoaded(profile: profile, uploadProgress: 0.5));
+      await tester.pumpWidget(_buildApp(mockBloc));
 
-      expect(find.text('Jane Doe'), findsWidgets);
-      expect(find.text('jane@example.com'), findsWidgets);
-      expect(find.text('0987654321'), findsWidgets);
-      expect(find.text('456 Avenue'), findsWidgets);
-      expect(find.text('Save Profile'), findsOneWidget);
-      expect(find.text('Sign Out'), findsOneWidget);
-    });
-
-    testWidgets('disables save button and shows progress indicator when saving', (
-      tester,
-    ) async {
-      final profile = UserProfile.empty();
-
-      await tester.pumpWidget(
-        _buildApp(ProfileLoaded(profile: profile, isSaving: true)),
-      );
-
-      // The button text is hidden during save, replaced by a CircularProgressIndicator
-      // However, we should check that the Elevated Button is disabled (onPressed is null).
-      final button = tester.widget<ElevatedButton>(
-        find.byType(ElevatedButton).first,
-      );
-      expect(button.onPressed, isNull);
-    });
-
-    testWidgets('shows image upload progress', (tester) async {
-      final profile = UserProfile.empty();
-
-      await tester.pumpWidget(
-        _buildApp(ProfileLoaded(profile: profile, uploadProgress: 0.5)),
-      );
-
-      expect(find.text('50%'), findsOneWidget);
+      // CircularProgressIndicator should be visible for progress > 0
       expect(find.byType(CircularProgressIndicator), findsWidgets);
     });
+
+    testWidgets('verifies all menu items are visible', (tester) async {
+      final profile = const UserProfile(
+        name: 'John Doe',
+        email: 'john@example.com',
+        phone: '1234567890',
+        address: '123 Main St',
+      );
+
+      when(() => mockBloc.state).thenReturn(ProfileLoaded(profile: profile));
+      await tester.pumpWidget(_buildApp(mockBloc));
+
+      // Scrollable view might require scrolling to find some items, but they are Text widgets
+      // We'll use drag to ensure everything is visible
+      expect(find.text('Personal Information'), findsOneWidget);
+      expect(find.text('Addresses'), findsOneWidget);
+      expect(find.text('My Orders'), findsOneWidget);
+      expect(find.text('Notifications'), findsOneWidget);
+      expect(find.text('View Transactions'), findsOneWidget);
+
+      await tester.drag(
+        find.byType(SingleChildScrollView),
+        const Offset(0, -500),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Help & Support'), findsOneWidget);
+      expect(find.text('Log Out'), findsOneWidget);
+    });
+
+    testWidgets('verifies navigation to Personal Information page', (
+      tester,
+    ) async {
+      final profile = const UserProfile(
+        name: 'John Doe',
+        email: 'john@example.com',
+        phone: '1234567890',
+        address: '123 Main St',
+      );
+
+      when(() => mockBloc.state).thenReturn(ProfileLoaded(profile: profile));
+      await tester.pumpWidget(_buildApp(mockBloc));
+
+      await tester.tap(find.text('Personal Information'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PersonalInformationPage), findsOneWidget);
+    });
+
+    testWidgets('verifies navigation to Address Management page', (
+      tester,
+    ) async {
+      final profile = const UserProfile(
+        name: 'John Doe',
+        email: 'john@example.com',
+        phone: '1234567890',
+        address: '123 Main St',
+      );
+
+      when(() => mockBloc.state).thenReturn(ProfileLoaded(profile: profile));
+      await tester.pumpWidget(_buildApp(mockBloc));
+
+      await tester.tap(find.text('Addresses'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AddressManagementPage), findsOneWidget);
+    });
+
+    testWidgets(
+      'shows logout dialog and dispatches SignOutRequested on confirm',
+      (tester) async {
+        final profile = const UserProfile(
+          name: 'John Doe',
+          email: 'john@example.com',
+          phone: '1234567890',
+          address: '123 Main St',
+        );
+
+        when(() => mockBloc.state).thenReturn(ProfileLoaded(profile: profile));
+        await tester.pumpWidget(_buildApp(mockBloc));
+
+        // Scroll down to Logout button
+        await tester.drag(
+          find.byType(SingleChildScrollView),
+          const Offset(0, -1000),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap Logout
+        await tester.tap(find.text('Log Out'));
+        await tester.pumpAndSettle();
+
+        // Verify Dialog appears
+        expect(find.text('Are you sure you want to log out?'), findsOneWidget);
+
+        // Tap Confirm
+        await tester.tap(find.text('Logout').last);
+        await tester.pumpAndSettle();
+
+        verify(() => mockBloc.add(const SignOutRequested())).called(1);
+      },
+    );
   });
 }

@@ -1,35 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:food_delivery_app/Buyer%20Bloc%20Architecture/Cart%20Page/cart_page.dart';
 
-import 'package:food_delivery_app/Buyer%20Bloc%20Architecture/Details_Page/details_page_UI.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Details_Page/details_page_UI.dart';
+import 'package:mocktail/mocktail.dart';
+import '../test_helpers.dart';
+import 'package:network_image_mock/network_image_mock.dart';
 
-// Fake CartBloc to satisfy context.read<CartBloc>()
-class FakeCartBloc extends Bloc<CartEvent, CartState> implements CartBloc {
-  FakeCartBloc() : super(const CartLoaded());
-}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+
+class MockUser extends Mock implements User {}
 
 void main() {
+  final mockAuth = MockFirebaseAuth();
+  final mockUser = MockUser();
+
+  setUp(() {
+    when(() => mockAuth.currentUser).thenReturn(mockUser);
+  });
+
   Widget createWidgetUnderTest() {
-    return MaterialApp(
-      home: BlocProvider<CartBloc>(
-        create: (_) => FakeCartBloc(),
-        child: const DetailsPageUI(
-          id: '1',
-          name: 'Burger',
-          price: 150.0,
-          description: 'Delicious chicken burger',
-          sellerId: 'seller123',
-          image: null,
+    return createTestHarness(
+      child: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DetailsPageUI(
+                      id: '1',
+                      name: 'Burger',
+                      price: 150.0,
+                      description: 'Delicious chicken burger',
+                      sellerId: 'seller123',
+                      image: null,
+                      auth: mockAuth,
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Go'),
+            ),
+          ),
         ),
       ),
     );
   }
 
+  Future<void> pumpAndNavigateToDetails(WidgetTester tester) async {
+    await mockNetworkImagesFor(() async {
+      await tester.pumpWidget(createWidgetUnderTest());
+      await tester.tap(find.text('Go'));
+      await tester.pumpAndSettle();
+    });
+  }
+
   group('DetailsPageUI Widget Tests', () {
     testWidgets('renders all initial details correctly', (tester) async {
-      await tester.pumpWidget(createWidgetUnderTest());
+      await pumpAndNavigateToDetails(tester);
 
       // Check text rendering
       expect(
@@ -44,13 +74,16 @@ void main() {
     testWidgets('increments quantity when add button is tapped', (
       tester,
     ) async {
-      await tester.pumpWidget(createWidgetUnderTest());
+      await pumpAndNavigateToDetails(tester);
 
       // Initial quantity
       expect(find.text('1'), findsWidgets);
 
       // Tap + button
-      await tester.tap(find.byIcon(Icons.add_rounded).first);
+      final addIcon = find.byIcon(Icons.add_rounded).first;
+      await tester.ensureVisible(addIcon);
+      await tester.pumpAndSettle();
+      await tester.tap(addIcon);
       await tester.pumpAndSettle();
 
       // Check quantity increased to 2
@@ -60,15 +93,21 @@ void main() {
     testWidgets('decrements quantity when remove button is tapped', (
       tester,
     ) async {
-      await tester.pumpWidget(createWidgetUnderTest());
+      await pumpAndNavigateToDetails(tester);
 
       // Tap + button to increase to 2 first
-      await tester.tap(find.byIcon(Icons.add_rounded).first);
+      final addIcon = find.byIcon(Icons.add_rounded).first;
+      await tester.ensureVisible(addIcon);
+      await tester.pumpAndSettle();
+      await tester.tap(addIcon);
       await tester.pumpAndSettle();
       expect(find.text('2'), findsWidgets);
 
       // Tap - button
-      await tester.tap(find.byIcon(Icons.remove_rounded).first);
+      final removeIcon = find.byIcon(Icons.remove_rounded).first;
+      await tester.ensureVisible(removeIcon);
+      await tester.pumpAndSettle();
+      await tester.tap(removeIcon);
       await tester.pumpAndSettle();
 
       // Check quantity decreased to 1
@@ -76,14 +115,17 @@ void main() {
     });
 
     testWidgets('toggles favourite icon when tapped', (tester) async {
-      await tester.pumpWidget(createWidgetUnderTest());
+      await pumpAndNavigateToDetails(tester);
 
       // Initially not favourite
       expect(find.byIcon(Icons.favorite_border_rounded), findsWidgets);
       expect(find.byIcon(Icons.favorite_rounded), findsNothing);
 
       // Tap favourite button
-      await tester.tap(find.byIcon(Icons.favorite_border_rounded).first);
+      final favBtn = find.byKey(const Key('details_favorite_button')).first;
+      await tester.ensureVisible(favBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(favBtn);
       await tester.pumpAndSettle();
 
       // Now it should be favourite
@@ -91,7 +133,7 @@ void main() {
     });
 
     testWidgets('shows snackbar when adding to cart', (tester) async {
-      await tester.pumpWidget(createWidgetUnderTest());
+      await pumpAndNavigateToDetails(tester);
 
       // Tap add to cart
       await tester.tap(find.text('Add to Cart').first);
@@ -100,6 +142,9 @@ void main() {
 
       // Verify snackbar is visible
       expect(find.text('Burger added to cart!'), findsOneWidget);
+
+      // Wait for snackbar timer to finish to avoid pending timer exception
+      await tester.pumpAndSettle();
     });
   });
 }

@@ -11,8 +11,10 @@ import 'package:bloc_test/bloc_test.dart';
 
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../../lib/Buyer Bloc Architecture/home_Page/home_Page_Bloc.dart';
-import '../../lib/Buyer Bloc Architecture/home_Page/home_page_models.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_Page_Bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
+
+import '../mock_firebase.dart';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -37,6 +39,11 @@ Future<void> _seedProducts(
 // ─── Model Tests ───────────────────────────────────────────────────────────────
 
 void main() {
+  setUpAll(() {
+    setupFirebaseAuthMocks();
+    TestWidgetsFlutterBinding.ensureInitialized();
+  });
+
   group('FoodItem model', () {
     test('fromFirestore maps all fields correctly', () {
       // Arrange: Create a minimal fake DocumentSnapshot-like structure.

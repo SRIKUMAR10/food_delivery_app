@@ -12,7 +12,20 @@
           "package_name": "com.example.food_delivery_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "318384112771-egvdctpn00650rgs891s8n56q2bc77pt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.food_delivery_app",
+            "certificate_hash": "e1fdfbf2f233e3b5bd38b758dc9de1579773b571"
+          }
+        },
+        {
+          "client_id": "318384112771-psfipm61tk7m64smr99j59pe28djds08.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBwTsgY7b5lSrYZVR7KX76Fkq4ijzZkBrA"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "318384112771-psfipm61tk7m64smr99j59pe28djds08.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "318384112771-9vqdu2v9pbbhe4rkh4tud9djt9c37422.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.foodDeliveryApp"
+              }
+            }
+          ]
         }
       }
     }

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -27,12 +28,16 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
 
   <title>food_delivery_app</title>
   <link rel="manifest" href="manifest.json">
 </head>
+
 <body>
+  <script>
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = "F52886E2-8A9E-4295-B292-AE501B770BEE";
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -49,14 +54,16 @@
   <script>
     window.flutter_inappwebview_plugin = window.flutter_inappwebview_plugin || {
       // Called by the plugin to register the JS channel handler.
-      registerHandlers: function() {},
+      registerHandlers: function () { },
       // No-op for any method channel calls the plugin may attempt.
-      callFlutterHandler: function() { return Promise.resolve(null); },
+      callFlutterHandler: function () { return Promise.resolve(null); },
       // Placeholder for any postMessage / event bridge the plugin wires up.
       onCallFlutterHandler: null,
     };
   </script>
 
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
+
 </html>

@@ -7,23 +7,64 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart'
     if (dart.library.html) 'stub_inappwebview.dart';
 
-/// A cross-platform WebView widget.
+// ─────────────────────────────────────────────────────────────────────────────
+//  PAYMENT WEBVIEW RESULT
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Status returned by [SafeWebViewScreen] after the user finishes (or
+/// dismisses) a Razorpay Payment Link page.
+enum PaymentWebViewStatus { success, failed, cancelled }
+
+/// Returned via `Navigator.pop<PaymentWebViewResult>(...)` when the WebView
+/// detects a Razorpay payment outcome URL.
+///
+/// If the user simply presses back without completing payment, the route
+/// returns `null` (handled by the caller as [PaymentWebViewStatus.cancelled]).
+class PaymentWebViewResult {
+  final PaymentWebViewStatus status;
+
+  /// Present only when [status] == [PaymentWebViewStatus.success].
+  final String? paymentId;
+
+  /// Present only when [status] == [PaymentWebViewStatus.failed].
+  final String? errorMessage;
+
+  const PaymentWebViewResult({
+    required this.status,
+    this.paymentId,
+    this.errorMessage,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SAFE WEB VIEW SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A cross-platform WebView widget with built-in Razorpay payment-result detection.
 ///
 /// - **Web**: Shows a loading indicator and immediately opens [url] in a new
 ///   browser tab via `url_launcher`. No `InAppWebView` is constructed.
 /// - **Mobile / Desktop**: Embeds an [InAppWebView] inside the scaffold.
 ///
+/// ### Razorpay Payment Link detection
+/// When [detectRazorpayResult] is `true` (default), the WebView inspects every
+/// URL that the page navigates to. If the URL contains Razorpay payment-link
+/// query parameters, the route pops with a [PaymentWebViewResult]:
+///   - `razorpay_payment_link_status=paid`  → [PaymentWebViewStatus.success]
+///   - `razorpay_payment_link_status=cancelled` → [PaymentWebViewStatus.cancelled]
+///
 /// Usage:
 /// ```dart
-/// Navigator.push(
+/// final result = await Navigator.push<PaymentWebViewResult>(
 ///   context,
 ///   MaterialPageRoute(
 ///     builder: (_) => SafeWebViewScreen(
-///       url: 'https://example.com',
-///       title: 'Example',
+///       url: paymentLink,
+///       title: 'Complete Payment',
 ///     ),
 ///   ),
 /// );
+/// if (result?.status == PaymentWebViewStatus.success) { ... }
 /// ```
 class SafeWebViewScreen extends StatefulWidget {
   /// The URL to load.
@@ -32,10 +73,14 @@ class SafeWebViewScreen extends StatefulWidget {
   /// Optional title displayed in the [AppBar].
   final String title;
 
+  /// When true, URL changes are inspected for Razorpay payment outcomes.
+  final bool detectRazorpayResult;
+
   const SafeWebViewScreen({
     super.key,
     required this.url,
     this.title = 'Browser',
+    this.detectRazorpayResult = true,
   });
 
   @override
@@ -50,6 +95,10 @@ class _SafeWebViewScreenState extends State<SafeWebViewScreen> {
   // ---------- mobile-only state ----------
   InAppWebViewController? _webViewController;
   double _progress = 0;
+
+  // Guard: prevent popping twice if both onLoadStart and
+  // shouldOverrideUrlLoading fire for the same redirect URL.
+  bool _resultPopped = false;
 
   // ------------------------------------------------------------------
   // Lifecycle
@@ -73,6 +122,48 @@ class _SafeWebViewScreenState extends State<SafeWebViewScreen> {
     // We also do NOT call Navigator from dispose().
     _webViewController = null;
     super.dispose();
+  }
+
+  // ------------------------------------------------------------------
+  // Razorpay payment result detection
+  // ------------------------------------------------------------------
+
+  /// Inspects [url] for Razorpay Payment Link outcome query parameters.
+  ///
+  /// Returns `true` and pops the route if a result is detected.
+  bool _detectPaymentResult(String url) {
+    if (!widget.detectRazorpayResult || _resultPopped) return false;
+
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+
+    final params = uri.queryParameters;
+    final status = params['razorpay_payment_link_status'];
+    final paymentId = params['razorpay_payment_id'];
+
+    PaymentWebViewResult? result;
+
+    if (status == 'paid') {
+      result = PaymentWebViewResult(
+        status: PaymentWebViewStatus.success,
+        paymentId: paymentId,
+      );
+    } else if (status == 'cancelled') {
+      result = const PaymentWebViewResult(
+        status: PaymentWebViewStatus.cancelled,
+      );
+    }
+
+    if (result != null) {
+      _resultPopped = true;
+      // Defer pop to avoid calling Navigator during a build/callback.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.of(context).pop(result);
+      });
+      return true;
+    }
+
+    return false;
   }
 
   // ------------------------------------------------------------------
@@ -122,10 +213,15 @@ class _SafeWebViewScreenState extends State<SafeWebViewScreen> {
   }
 
   void _onLoadStart(InAppWebViewController controller, WebUri? url) {
+    if (url != null) {
+      // Check for payment result before rendering the redirect page.
+      if (_detectPaymentResult(url.toString())) return;
+    }
     if (mounted) setState(() => _isLoading = true);
   }
 
   void _onLoadStop(InAppWebViewController controller, WebUri? url) {
+    if (url != null) _detectPaymentResult(url.toString());
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -141,6 +237,18 @@ class _SafeWebViewScreenState extends State<SafeWebViewScreen> {
     if (request.isForMainFrame ?? false) {
       _setError('Error ${error.type}: ${error.description}');
     }
+  }
+
+  Future<NavigationActionPolicy> _onShouldOverrideUrlLoading(
+    InAppWebViewController controller,
+    NavigationAction navigationAction,
+  ) async {
+    final url = navigationAction.request.url?.toString() ?? '';
+    if (_detectPaymentResult(url)) {
+      // Block the navigation — we've already handled the result.
+      return NavigationActionPolicy.CANCEL;
+    }
+    return NavigationActionPolicy.ALLOW;
   }
 
   // ------------------------------------------------------------------
@@ -211,9 +319,9 @@ class _SafeWebViewScreenState extends State<SafeWebViewScreen> {
           onLoadStop: _onLoadStop,
           onProgressChanged: _onProgressChanged,
           onReceivedError: _onReceivedError,
+          shouldOverrideUrlLoading: _onShouldOverrideUrlLoading,
         ),
-        if (_isLoading)
-          const Center(child: CircularProgressIndicator()),
+        if (_isLoading) const Center(child: CircularProgressIndicator()),
       ],
     );
   }
@@ -274,10 +382,9 @@ class _WebErrorView extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             message,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Colors.grey),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),

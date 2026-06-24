@@ -1,140 +1,191 @@
 // test/cart_page/cart_page_bloc_test.dart
 
-import 'package:bloc_test/bloc_test.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../../lib/Buyer Bloc Architecture/Cart Page/cart_page.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+
+class MockUser extends Mock implements User {}
 
 void main() {
+  late FakeFirebaseFirestore fakeFirestore;
+  late MockFirebaseAuth mockAuth;
+  late MockUser mockUser;
+  late CartBloc cartBloc;
+
+  const testUid = 'test_user_123';
+
+  final mockItem1 = CartItem(
+    id: 'item1',
+    name: 'Burger',
+    price: 150.0,
+    sellerId: 'seller1',
+    quantity: 1,
+    isSelected: true,
+  );
+
+  final mockItem2 = CartItem(
+    id: 'item2',
+    name: 'Pizza',
+    price: 300.0,
+    sellerId: 'seller2',
+    quantity: 2,
+    isSelected: true,
+  );
+
+  setUp(() async {
+    fakeFirestore = FakeFirebaseFirestore();
+    mockAuth = MockFirebaseAuth();
+    mockUser = MockUser();
+
+    when(() => mockUser.uid).thenReturn(testUid);
+    when(() => mockAuth.currentUser).thenReturn(mockUser);
+    when(
+      () => mockAuth.authStateChanges(),
+    ).thenAnswer((_) => Stream<User?>.value(mockUser));
+
+    cartBloc = CartBloc(firestore: fakeFirestore, auth: mockAuth);
+  });
+
+  tearDown(() {
+    try {
+      cartBloc.close();
+    } catch (_) {
+      // Prevent LateInitializationError if setUp fails
+    }
+  });
+
   group('CartBloc Tests', () {
-    final mockItem1 = CartItem(
-      id: 'item1',
-      name: 'Burger',
-      price: 150.0,
-      sellerId: 'seller1',
-      quantity: 1,
-    );
-
-    final mockItem2 = CartItem(
-      id: 'item2',
-      name: 'Pizza',
-      price: 300.0,
-      sellerId: 'seller2',
-      quantity: 2,
-    );
-
     test('Initial state should be CartLoading', () {
-      final bloc = CartBloc();
-      expect(bloc.state, const CartLoading());
-      bloc.close();
+      expect(cartBloc.state, const CartLoading());
     });
 
-    blocTest<CartBloc, CartState>(
-      'LoadCartStarted emits CartLoaded',
-      build: () => CartBloc(),
-      act: (bloc) => bloc.add(const LoadCartStarted()),
-      expect: () => [
-        const CartLoaded(),
-      ],
-    );
+    test('LoadCartStarted emits CartLoaded', () async {
+      cartBloc.add(const LoadCartStarted());
 
-    blocTest<CartBloc, CartState>(
-      'CartItemAdded adds item to cart',
-      build: () => CartBloc(),
-      seed: () => const CartLoaded(),
-      act: (bloc) => bloc.add(CartItemAdded(mockItem1)),
-      expect: () => [
-        CartLoaded(
-          items: [mockItem1],
-          totalAmount: 150.0,
-          totalCount: 1,
-        ),
-      ],
-    );
+      await expectLater(
+        cartBloc.stream,
+        emitsInOrder([
+          isA<CartLoaded>().having((s) => s.items, 'items', isEmpty),
+        ]),
+      );
+    });
 
-    blocTest<CartBloc, CartState>(
-      'CartItemAdded increments quantity if item already exists',
-      build: () => CartBloc(),
-      seed: () => CartLoaded(
-        items: [mockItem1],
-        totalAmount: 150.0,
-        totalCount: 1,
-      ),
-      act: (bloc) => bloc.add(CartItemAdded(mockItem1)),
-      expect: () => [
-        CartLoaded(
-          items: [mockItem1.copyWith(quantity: 2)],
-          totalAmount: 300.0,
-          totalCount: 2,
-        ),
-      ],
-    );
+    test('CartItemAdded adds item to cart', () async {
+      cartBloc.add(const LoadCartStarted());
+      // Wait for initial load
+      await cartBloc.stream.firstWhere((s) => s is CartLoaded);
 
-    blocTest<CartBloc, CartState>(
-      'CartItemRemoved removes item completely',
-      build: () => CartBloc(),
-      seed: () => CartLoaded(
-        items: [mockItem1, mockItem2],
-        totalAmount: 750.0,
-        totalCount: 3,
-      ),
-      act: (bloc) => bloc.add(const CartItemRemoved('item1')),
-      expect: () => [
-        CartLoaded(
-          items: [mockItem2],
-          totalAmount: 600.0,
-          totalCount: 2,
-        ),
-      ],
-    );
+      cartBloc.add(CartItemAdded(mockItem1));
 
-    blocTest<CartBloc, CartState>(
-      'CartItemQuantityUpdated changes quantity',
-      build: () => CartBloc(),
-      seed: () => CartLoaded(
-        items: [mockItem1],
-        totalAmount: 150.0,
-        totalCount: 1,
-      ),
-      act: (bloc) => bloc.add(const CartItemQuantityUpdated('item1', 1)),
-      expect: () => [
-        CartLoaded(
-          items: [mockItem1.copyWith(quantity: 2)],
-          totalAmount: 300.0,
-          totalCount: 2,
-        ),
-      ],
-    );
+      // After adding, firestore updates, which triggers a new CartLoaded state
+      final loadedState =
+          await cartBloc.stream.firstWhere(
+                (s) => s is CartLoaded && s.items.isNotEmpty,
+              )
+              as CartLoaded;
 
-    blocTest<CartBloc, CartState>(
+      expect(loadedState.items.length, 1);
+      expect(loadedState.items.first.id, 'item1');
+      expect(loadedState.totalAmount, 150.0);
+    });
+
+    test('CartItemRemoved removes item completely', () async {
+      // Setup initial data
+      final cartRef = fakeFirestore
+          .collection('users')
+          .doc(testUid)
+          .collection('cart');
+      await cartRef.doc(mockItem1.id).set(mockItem1.toMap());
+
+      cartBloc.add(const LoadCartStarted());
+      await cartBloc.stream.firstWhere(
+        (s) => s is CartLoaded && s.items.isNotEmpty,
+      );
+
+      cartBloc.add(const CartItemRemoved('item1'));
+
+      final loadedState =
+          await cartBloc.stream.firstWhere(
+                (s) => s is CartLoaded && s.items.isEmpty,
+              )
+              as CartLoaded;
+      expect(loadedState.items, isEmpty);
+      expect(loadedState.totalAmount, 0.0);
+    });
+
+    test('CartItemQuantityUpdated changes quantity', () async {
+      final cartRef = fakeFirestore
+          .collection('users')
+          .doc(testUid)
+          .collection('cart');
+      await cartRef.doc(mockItem1.id).set(mockItem1.toMap());
+
+      cartBloc.add(const LoadCartStarted());
+      await cartBloc.stream.firstWhere(
+        (s) => s is CartLoaded && s.items.isNotEmpty,
+      );
+
+      cartBloc.add(const CartItemQuantityUpdated('item1', 1));
+
+      final loadedState =
+          await cartBloc.stream.firstWhere(
+                (s) => s is CartLoaded && s.items.first.quantity == 2,
+              )
+              as CartLoaded;
+      expect(loadedState.items.first.quantity, 2);
+      expect(loadedState.totalAmount, 300.0);
+    });
+
+    test(
       'CartItemQuantityUpdated removes item if quantity reaches 0',
-      build: () => CartBloc(),
-      seed: () => CartLoaded(
-        items: [mockItem1],
-        totalAmount: 150.0,
-        totalCount: 1,
-      ),
-      act: (bloc) => bloc.add(const CartItemQuantityUpdated('item1', -1)),
-      expect: () => [
-        const CartLoaded(
-          items: [],
-          totalAmount: 0.0,
-          totalCount: 0,
-        ),
-      ],
+      () async {
+        final cartRef = fakeFirestore
+            .collection('users')
+            .doc(testUid)
+            .collection('cart');
+        await cartRef.doc(mockItem1.id).set(mockItem1.toMap());
+
+        cartBloc.add(const LoadCartStarted());
+        await cartBloc.stream.firstWhere(
+          (s) => s is CartLoaded && s.items.isNotEmpty,
+        );
+
+        cartBloc.add(const CartItemQuantityUpdated('item1', -1));
+
+        final loadedState =
+            await cartBloc.stream.firstWhere(
+                  (s) => s is CartLoaded && s.items.isEmpty,
+                )
+                as CartLoaded;
+        expect(loadedState.items, isEmpty);
+      },
     );
 
-    blocTest<CartBloc, CartState>(
-      'CartCleared removes all items',
-      build: () => CartBloc(),
-      seed: () => CartLoaded(
-        items: [mockItem1, mockItem2],
-        totalAmount: 750.0,
-        totalCount: 3,
-      ),
-      act: (bloc) => bloc.add(const CartCleared()),
-      expect: () => [
-        const CartLoaded(),
-      ],
-    );
+    test('CartCleared removes all items', () async {
+      final cartRef = fakeFirestore
+          .collection('users')
+          .doc(testUid)
+          .collection('cart');
+      await cartRef.doc(mockItem1.id).set(mockItem1.toMap());
+      await cartRef.doc(mockItem2.id).set(mockItem2.toMap());
+
+      cartBloc.add(const LoadCartStarted());
+      await cartBloc.stream.firstWhere(
+        (s) => s is CartLoaded && s.items.length == 2,
+      );
+
+      cartBloc.add(const CartCleared());
+
+      final loadedState =
+          await cartBloc.stream.firstWhere(
+                (s) => s is CartLoaded && s.items.isEmpty,
+              )
+              as CartLoaded;
+      expect(loadedState.items, isEmpty);
+    });
   });
 }

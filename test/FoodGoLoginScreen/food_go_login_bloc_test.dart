@@ -1,12 +1,11 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/FoodGoLoginScreen/FoodGoLoginScreen_Bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/FoodGoLoginScreen/FoodGoLoginScreen_Event.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/FoodGoLoginScreen/FoodGoLoginScreen_State.dart';
+import 'package:food_delivery_app/repositories/user_repository.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
-import '../../lib/Repository/user_repository.dart';
-import '../../lib/Buyer Bloc Architecture/FoodGoLoginScreen/FoodGoLoginScreen_Bloc.dart';
-import '../../lib/Buyer Bloc Architecture/FoodGoLoginScreen/FoodGoLoginScreen_Event.dart';
-import '../../lib/Buyer Bloc Architecture/FoodGoLoginScreen/FoodGoLoginScreen_State.dart';
 
 class MockUserRepository extends Mock implements UserRepository {}
 

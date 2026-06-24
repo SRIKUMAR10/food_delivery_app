@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-// Since we cannot easily mock Firebase globally for the UI without passing it in
-// to BlocProvider directly, integration test for Firebase flows usually requires
-// actual Firebase initialization or a dedicated Mock wrapper in main.dart.
-// Here we will do a simple render test in integration mode.
-import '../../lib/Seller Bloc Architecture/Seller_ForgotPasswordPage/Seller_ForgotPasswordPage_UI.dart';
+import '../../lib/Seller Bloc Architecture_Delete/Seller_ForgotPasswordPage/Seller_ForgotPasswordPage_UI.dart';
+
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late MockFirebaseAuth mockFirebaseAuth;
+
+  setUp(() {
+    mockFirebaseAuth = MockFirebaseAuth();
+  });
 
   Widget createWidgetUnderTest() {
-    return const MaterialApp(home: SellerForgotPasswordScreenUI());
+    return MaterialApp(
+      home: SellerForgotPasswordScreenUI(firebaseAuth: mockFirebaseAuth),
+    );
   }
 
   group('SellerForgotPasswordScreen Integration Tests', () {

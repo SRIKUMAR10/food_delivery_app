@@ -1,12 +1,12 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_delivery_app/repositories/seller_repository.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../lib/Repository/seller_repository.dart';
-import '../../lib/Seller Bloc Architecture/Seller_LoginScreen/Seller_LoginScreen_Bloc.dart';
-import '../../lib/Seller Bloc Architecture/Seller_LoginScreen/Seller_LoginScreen_Event.dart';
-import '../../lib/Seller Bloc Architecture/Seller_LoginScreen/Seller_LoginScreen_State.dart';
+import '../../lib/Seller Bloc Architecture_Delete/Seller_LoginScreen/Seller_LoginScreen_Bloc.dart';
+import '../../lib/Seller Bloc Architecture_Delete/Seller_LoginScreen/Seller_LoginScreen_Event.dart';
+import '../../lib/Seller Bloc Architecture_Delete/Seller_LoginScreen/Seller_LoginScreen_State.dart';
 
 class MockSellerRepository extends Mock implements SellerRepository {}
 

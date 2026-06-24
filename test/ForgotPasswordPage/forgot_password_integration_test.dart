@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/ForgotPasswordPage/ForgotPasswordPage_UI.dart';
+import 'package:food_delivery_app/repositories/user_repository.dart';
 
-import '../../lib/Buyer Bloc Architecture/ForgotPasswordPage/ForgotPasswordPage_UI.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockUserRepository extends Mock implements UserRepository {}
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late MockUserRepository mockUserRepository;
+
+  setUp(() {
+    mockUserRepository = MockUserRepository();
+  });
 
   Widget createWidgetUnderTest() {
-    return const MaterialApp(
-      home: ForgotPasswordScreenUI(),
+    return RepositoryProvider<UserRepository>.value(
+      value: mockUserRepository,
+      child: const MaterialApp(home: ForgotPasswordScreenUI()),
     );
   }
 
@@ -24,8 +35,9 @@ void main() {
       await tester.enterText(emailField, 'test@example.com');
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(submitButton);
       await tester.tap(submitButton);
-      
+
       // Pump frames until the mocked 2 second delay finishes and the navigation occurs
       await tester.pumpAndSettle(const Duration(seconds: 3));
 

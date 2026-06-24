@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "food-delivery-app-cd4ca",
+  "private_key_id": "07752283d804b09f68018db71ab5a763f73edf82",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDMtB0fUwqRpwhS\nfp0Q1tSZVxVL9Xbg+3jeLrPLm4aMZLWAa3IUxWDGKLsE2vZKb/HT1WZaEQWvrVbF\nJjGhxrxShMDvPAWik5xqBm1QxsFnuVeu9uAOUT5zQ08PpojkxEA9zfZKKNta6XCp\nNRN0pQ627QlyiQdTwRG88WdKiePt248FwM7ZcxyTX6xGHVLJP9zZzGFXeHRgOIyf\nqayI8ez9CDfRVEhYXZRWwHdA+pZqwwRKOdrh4CR0kR8ULOISKOTED/+NSch5GsKL\nclni/qcsuWfYiIUtamRe2Q2Sw7j9X20HU4VnRAgrYr7V4t8vCwiTOGhKyzceoBKv\nuViBAV/xAgMBAAECggEAAstAjIFnJwbHG80jmqu7+h3Qqhk/FqIIC8xKYvCL/RWQ\nzqBozbTF9d5vcwkEDI8Ll28Vtwv9bmDoyscTLViXkG7EbV992jK2k1HkIxKbaC2E\n71vqQffE6PDVvupweuLc15scjfWRzONbyMtzKQfptAB3PQt2wKNleRU4ajGInWH4\nBD/9UGOYF7Rego28De9KpdC5rr4Tq2iP6eKz+SS5Gu+kKKF2RRzk4QEcnw5gga1c\nAFHMlejd3e3MG20mU4jIa+/A+q+0o0g0vY3106gpHc71wiOjJbAGJsplZtFGZ3V3\nqCuMBlxOZuliMX0UKCqOIYh4tinMm3IkidDZRhIqCwKBgQD4RF7Hh9h/yXTcubNL\nFaNvZyr19Fb+9PXwjupZWwODpqtoFZVBWPVGoRD/0lo1jcrHTC1E2nvND5tR0+MN\nq+Y8cTYhJea1MN/4N12+HJ7PIlH2qtHW2JOVgskqMr5XLRV+ejtayA23JcTHRUqs\n941Erj+U30dpTacAvWMX8aCtFwKBgQDTFGCUTcRCRCH8EtrnBu/477u/93KeopKC\nLgx+lOedYQY1+D3W5VEfzgO260OiPiuztiDu1QkcEVg98oNs40uvamlrOmbYnbP8\nn7ihm7w0xrKMe01Ho1mk/D7E1ZiQrrKlPwxgc+b3POnr3hM3ujiQf1gO6N1OGpig\noDtTCuNQNwKBgC49HaHv7SSvsrJBa+E6IHxpLJkubt2BZiTtmTwXNWpZqmbyTiAj\nn1sOOIpM9TwwMmo4B95hCtnAZF8zJYCwWWs8cqZt1rA8cBpcxXrY/cL6U2WrnvVy\n1Nntx+WyGb1GylAKF+/qfpNz11h90VCxsn/uLC1gAH7eVZJPs5sMB671AoGAZQAI\nIo5/jXHKjTJ8ejVwmD4mKXn+53dFAXOFWQBpP34Qmbx54p0Bz2Ulk95JE5YKFUjd\nw0o+vKZ0AdhMGMs+COazILLmSVpUqFnI39OEIAC/qMbLOK8qEu78HfVStlBRfQ6J\nHpH2/3CvQcSWj4DU1heJDEFSu6+wPpPNLzQzhssCgYEAnbHcqipFp/DRBhMf6yWG\n2g9HrDWapgvXOQEccHVvwPVl3+bC9sHOIQnS8TZo+noEI7jc297td9p4qjjn65qH\nuQCq7rv1OjogTtIQy4gQyhP9sI53oNlhNWjHkHIUZ1XWr7OgMvxABCPaBu6+V9If\nk/3GEvn55qBnaOspPfHisUc=\n-----END PRIVATE KEY-----\n",
+  "client_email": "food-delivery-app-cd4ca@appspot.gserviceaccount.com",
+  "client_id": "116517127158306939500",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/food-delivery-app-cd4ca%40appspot.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

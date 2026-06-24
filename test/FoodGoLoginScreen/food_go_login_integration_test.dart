@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
+import 'package:food_delivery_app/repositories/user_repository.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../lib/Repository/user_repository.dart';
-import '../../lib/Buyer Bloc Architecture/FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 
 class MockUserRepository extends Mock implements UserRepository {}
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+  });
+
   late MockUserRepository mockUserRepository;
 
   setUp(() {
@@ -20,16 +21,17 @@ void main() {
   Widget createWidgetUnderTest() {
     return RepositoryProvider<UserRepository>.value(
       value: mockUserRepository,
-      child: const MaterialApp(
-        home: FoodGoLoginScreenUI(),
-      ),
+      child: const MaterialApp(home: FoodGoLoginScreenUI()),
     );
   }
 
   group('FoodGoLoginScreen Integration Tests', () {
-    testWidgets('failed login shows snackbar with error message', (tester) async {
-      when(() => mockUserRepository.signIn('fail@example.com', 'wrongpass'))
-          .thenThrow(Exception('Invalid credentials'));
+    testWidgets('failed login shows snackbar with error message', (
+      tester,
+    ) async {
+      when(
+        () => mockUserRepository.signIn('fail@example.com', 'wrongpass'),
+      ).thenThrow(Exception('Invalid credentials'));
 
       await tester.pumpWidget(createWidgetUnderTest());
       await tester.pumpAndSettle();
@@ -42,6 +44,7 @@ void main() {
       await tester.enterText(passwordField, 'wrongpass');
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(loginButton);
       await tester.tap(loginButton);
       await tester.pumpAndSettle();
 
