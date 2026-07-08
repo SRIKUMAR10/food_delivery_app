@@ -1,16 +1,12 @@
-import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:food_delivery_app/repositories/seller_repository.dart';
+import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
-import '../../lib/Seller Bloc Architecture_Delete/Seller_SignUpPage/Seller_SignUpPage_Bloc.dart';
-import '../../lib/Seller Bloc Architecture_Delete/Seller_SignUpPage/Seller_SignUpPage_Event.dart';
-import '../../lib/Seller Bloc Architecture_Delete/Seller_SignUpPage/Seller_SignUpPage_State.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up/seller_sign_up_bloc.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up/seller_sign_up_event.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up/seller_sign_up_state.dart';
+import 'package:food_delivery_app/repositories/seller_repository.dart';
 
 class MockSellerRepository extends Mock implements SellerRepository {}
-
-class MockUserCredential extends Mock implements UserCredential {}
 
 void main() {
   late MockSellerRepository mockSellerRepository;
@@ -21,19 +17,19 @@ void main() {
 
   group('SellerSignUpBloc', () {
     test('initial state is correct', () {
-      final bloc = SellerSignUpBloc(sellerRepository: mockSellerRepository);
+      final bloc = SellerSignUpBloc(authRepository: mockSellerRepository);
       expect(bloc.state.name, '');
       expect(bloc.state.email, '');
       expect(bloc.state.password, '');
-      expect(bloc.state.obscurePassword, true);
+      expect(bloc.state.isPasswordObscured, true);
       expect(bloc.state.status, SellerSignUpStatus.initial);
       expect(bloc.state.errorMessage, isNull);
       bloc.close();
     });
 
     blocTest<SellerSignUpBloc, SellerSignUpState>(
-      'emits updated name and resets status when SellerSignUpNameChanged is added',
-      build: () => SellerSignUpBloc(sellerRepository: mockSellerRepository),
+      'emits updated name when SellerSignUpNameChanged is added',
+      build: () => SellerSignUpBloc(authRepository: mockSellerRepository),
       act: (bloc) => bloc.add(const SellerSignUpNameChanged('John Doe')),
       expect: () => [
         const SellerSignUpState(
@@ -44,8 +40,8 @@ void main() {
     );
 
     blocTest<SellerSignUpBloc, SellerSignUpState>(
-      'emits updated email and resets status when SellerSignUpEmailChanged is added',
-      build: () => SellerSignUpBloc(sellerRepository: mockSellerRepository),
+      'emits updated email when SellerSignUpEmailChanged is added',
+      build: () => SellerSignUpBloc(authRepository: mockSellerRepository),
       act: (bloc) =>
           bloc.add(const SellerSignUpEmailChanged('seller@example.com')),
       expect: () => [
@@ -57,8 +53,8 @@ void main() {
     );
 
     blocTest<SellerSignUpBloc, SellerSignUpState>(
-      'emits updated password and resets status when SellerSignUpPasswordChanged is added',
-      build: () => SellerSignUpBloc(sellerRepository: mockSellerRepository),
+      'emits updated password when SellerSignUpPasswordChanged is added',
+      build: () => SellerSignUpBloc(authRepository: mockSellerRepository),
       act: (bloc) => bloc.add(const SellerSignUpPasswordChanged('password123')),
       expect: () => [
         const SellerSignUpState(
@@ -69,86 +65,103 @@ void main() {
     );
 
     blocTest<SellerSignUpBloc, SellerSignUpState>(
-      'toggles obscurePassword when SellerSignUpPasswordVisibilityToggled is added',
-      build: () => SellerSignUpBloc(sellerRepository: mockSellerRepository),
-      act: (bloc) => bloc.add(const SellerSignUpPasswordVisibilityToggled()),
-      expect: () => [const SellerSignUpState(obscurePassword: false)],
+      'toggles isPasswordObscured when SellerSignUpPasswordVisibilityToggled is added',
+      build: () => SellerSignUpBloc(authRepository: mockSellerRepository),
+      act: (bloc) => bloc.add(SellerSignUpPasswordVisibilityToggled()),
+      expect: () => [const SellerSignUpState(isPasswordObscured: false)],
     );
 
     blocTest<SellerSignUpBloc, SellerSignUpState>(
-      'emits [loading, success] when SellerSignUpSubmitted succeeds',
+      'emits [loading, otpSent] when SellerSignUpSubmitted succeeds',
       setUp: () {
-        when(
-          () => mockSellerRepository.signUp(
-            'seller@example.com',
-            'password123',
-            'John Doe',
-          ),
-        ).thenAnswer((_) async => MockUserCredential());
+        when(() => mockSellerRepository.initiateSignUp(
+              name: any(named: 'name'),
+              shopName: any(named: 'shopName'),
+              businessDetails: any(named: 'businessDetails'),
+              phoneNumber: any(named: 'phoneNumber'),
+              email: any(named: 'email'),
+              password: any(named: 'password'),
+            )).thenAnswer((_) async {});
       },
-      build: () => SellerSignUpBloc(sellerRepository: mockSellerRepository),
+      build: () => SellerSignUpBloc(authRepository: mockSellerRepository),
       seed: () => const SellerSignUpState(
         name: 'John Doe',
+        shopName: 'John Shop',
+        businessDetails: 'Restaurant',
+        phoneNumber: '9876543210',
         email: 'seller@example.com',
         password: 'password123',
+        confirmPassword: 'password123',
       ),
       act: (bloc) => bloc.add(const SellerSignUpSubmitted()),
       expect: () => [
         const SellerSignUpState(
           name: 'John Doe',
+          shopName: 'John Shop',
+          businessDetails: 'Restaurant',
+          phoneNumber: '9876543210',
           email: 'seller@example.com',
           password: 'password123',
+          confirmPassword: 'password123',
           status: SellerSignUpStatus.loading,
         ),
         const SellerSignUpState(
           name: 'John Doe',
+          shopName: 'John Shop',
+          businessDetails: 'Restaurant',
+          phoneNumber: '9876543210',
           email: 'seller@example.com',
           password: 'password123',
-          status: SellerSignUpStatus.success,
+          confirmPassword: 'password123',
+          status: SellerSignUpStatus.otpSent,
         ),
       ],
-      verify: (_) {
-        verify(
-          () => mockSellerRepository.signUp(
-            'seller@example.com',
-            'password123',
-            'John Doe',
-          ),
-        ).called(1);
-      },
     );
 
     blocTest<SellerSignUpBloc, SellerSignUpState>(
       'emits [loading, failure] when SellerSignUpSubmitted fails',
       setUp: () {
-        when(
-          () => mockSellerRepository.signUp(
-            'seller@example.com',
-            'weak',
-            'John Doe',
-          ),
-        ).thenThrow(Exception('Password too weak'));
+        when(() => mockSellerRepository.initiateSignUp(
+              name: any(named: 'name'),
+              shopName: any(named: 'shopName'),
+              businessDetails: any(named: 'businessDetails'),
+              phoneNumber: any(named: 'phoneNumber'),
+              email: any(named: 'email'),
+              password: any(named: 'password'),
+            )).thenThrow(Exception('Phone number already registered'));
       },
-      build: () => SellerSignUpBloc(sellerRepository: mockSellerRepository),
+      build: () => SellerSignUpBloc(authRepository: mockSellerRepository),
       seed: () => const SellerSignUpState(
         name: 'John Doe',
+        shopName: 'John Shop',
+        businessDetails: 'Restaurant',
+        phoneNumber: '9876543210',
         email: 'seller@example.com',
-        password: 'weak',
+        password: 'password123',
+        confirmPassword: 'password123',
       ),
       act: (bloc) => bloc.add(const SellerSignUpSubmitted()),
       expect: () => [
         const SellerSignUpState(
           name: 'John Doe',
+          shopName: 'John Shop',
+          businessDetails: 'Restaurant',
+          phoneNumber: '9876543210',
           email: 'seller@example.com',
-          password: 'weak',
+          password: 'password123',
+          confirmPassword: 'password123',
           status: SellerSignUpStatus.loading,
         ),
         const SellerSignUpState(
           name: 'John Doe',
+          shopName: 'John Shop',
+          businessDetails: 'Restaurant',
+          phoneNumber: '9876543210',
           email: 'seller@example.com',
-          password: 'weak',
+          password: 'password123',
+          confirmPassword: 'password123',
           status: SellerSignUpStatus.failure,
-          errorMessage: 'Exception: Password too weak',
+          errorMessage: 'Exception: Phone number already registered',
         ),
       ],
     );

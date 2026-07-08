@@ -1,0 +1,654 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'new_order_notification_bloc.dart';
+import 'new_order_notification_event.dart';
+import 'new_order_notification_state.dart';
+import 'new_order_notification_repository.dart';
+import 'new_order_notification_service.dart';
+
+class NewOrderNotificationPage extends StatelessWidget {
+  final String orderId;
+
+  const NewOrderNotificationPage({Key? key, required this.orderId}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => NewOrderNotificationBloc(
+        repository: NewOrderNotificationRepository(
+          service: NewOrderNotificationService(),
+        ),
+      )..add(LoadOrderDetails(orderId)),
+      child: NewOrderNotificationView(orderId: orderId),
+    );
+  }
+}
+
+class NewOrderNotificationView extends StatefulWidget {
+  final String orderId;
+  const NewOrderNotificationView({Key? key, required this.orderId}) : super(key: key);
+
+  @override
+  State<NewOrderNotificationView> createState() => _NewOrderNotificationViewState();
+}
+
+class _NewOrderNotificationViewState extends State<NewOrderNotificationView> with TickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+  
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  Map<String, dynamic>? _cachedOrderDetails;
+  bool _isAccepting = false;
+  bool _isRejecting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+    
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+    
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FB),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            double cardWidth = constraints.maxWidth;
+            if (constraints.maxWidth > 1024) {
+              cardWidth = 720;
+            } else if (constraints.maxWidth > 600) {
+              cardWidth = 600;
+            } else {
+              cardWidth = constraints.maxWidth;
+            }
+            
+            return Center(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  vertical: 24, 
+                  horizontal: constraints.maxWidth < 600 ? 16 : 0,
+                ),
+                child: BlocConsumer<NewOrderNotificationBloc, NewOrderNotificationState>(
+                  listener: (context, state) {
+                    if (state is NewOrderNotificationLoaded) {
+                      _cachedOrderDetails = state.orderDetails;
+                      _animationController.forward();
+                    } else if (state is OrderAcceptedState) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Order Accepted Successfully!')),
+                      );
+                      Navigator.of(context).pop();
+                    } else if (state is OrderRejectedState) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Order Rejected.')),
+                      );
+                      Navigator.of(context).pop();
+                    } else if (state is NewOrderNotificationError) {
+                      setState(() {
+                         _isAccepting = false;
+                         _isRejecting = false;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(state.message)),
+                      );
+                    }
+                  },
+                  builder: (context, state) {
+                    if (state is NewOrderNotificationLoaded) {
+                       _cachedOrderDetails = state.orderDetails;
+                    }
+
+                    if (state is NewOrderNotificationError) {
+                      return _ErrorView(
+                        message: state.message,
+                        onRetry: () {
+                          setState(() {
+                             _isAccepting = false;
+                             _isRejecting = false;
+                          });
+                          context.read<NewOrderNotificationBloc>().add(LoadOrderDetails(widget.orderId));
+                        },
+                      );
+                    }
+
+                    if (state is NewOrderNotificationInitial || 
+                       (state is NewOrderNotificationLoading && _cachedOrderDetails == null)) {
+                      return const _LoadingView();
+                    }
+
+                    if (_cachedOrderDetails != null) {
+                      return FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: ScaleTransition(
+                          scale: _scaleAnimation,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: cardWidth),
+                            child: _OrderDetailsCard(
+                              data: _cachedOrderDetails!,
+                              pulseAnimation: _pulseAnimation,
+                              isAccepting: _isAccepting,
+                              isRejecting: _isRejecting,
+                              onAccept: () {
+                                setState(() => _isAccepting = true);
+                                context.read<NewOrderNotificationBloc>().add(AcceptOrderEvent(_cachedOrderDetails!['orderId']));
+                              },
+                              onReject: () {
+                                setState(() => _isRejecting = true);
+                                context.read<NewOrderNotificationBloc>().add(RejectOrderEvent(_cachedOrderDetails!['orderId']));
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return const _EmptyView();
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationHeader extends StatelessWidget {
+  final Animation<double> pulseAnimation;
+
+  const _NotificationHeader({required this.pulseAnimation});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        AnimatedBuilder(
+          animation: pulseAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: pulseAnimation.value,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const RadialGradient(
+                    colors: [Color(0xFFFFE5E5), Color(0xFFFEE2E2)],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFE52929).withOpacity(0.2),
+                      blurRadius: 16,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.notifications_active_rounded,
+                  color: Color(0xFFE52929),
+                  size: 40,
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'NEW ORDER RECEIVED',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            color: Color(0xFF111827),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'You have received a new customer order.',
+          style: TextStyle(
+            fontSize: 16,
+            color: Color(0xFF6B7280),
+            fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE52929),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Text(
+        'NEW',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.0,
+        ),
+      ),
+    );
+  }
+}
+
+class _OrderInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isAmount;
+
+  const _OrderInfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.isAmount = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 20, color: const Color(0xFF4B5563)),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: isAmount ? 18 : 15,
+              fontWeight: FontWeight.bold,
+              color: isAmount ? const Color(0xFFE52929) : const Color(0xFF111827),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionButtons extends StatelessWidget {
+  final bool isAccepting;
+  final bool isRejecting;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _ActionButtons({
+    required this.isAccepting,
+    required this.isRejecting,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDisabled = isAccepting || isRejecting;
+
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: isDisabled
+                  ? null
+                  : const LinearGradient(
+                      colors: [Color(0xFFE52929), Color(0xFFD01B1B)],
+                    ),
+              borderRadius: BorderRadius.circular(14),
+              color: isDisabled ? const Color(0xFFE5E7EB) : null,
+            ),
+            child: ElevatedButton(
+              onPressed: isDisabled ? null : onAccept,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: isAccepting
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle_outline, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text(
+                          'Accept Order',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: OutlinedButton(
+            onPressed: isDisabled ? null : onReject,
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: isDisabled ? Colors.transparent : const Color(0xFFD1D5DB),
+                width: 1.5,
+              ),
+              backgroundColor: isDisabled ? const Color(0xFFF3F4F6) : Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: isRejecting
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF6B7280),
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.close_rounded, color: Color(0xFF374151)),
+                      SizedBox(width: 8),
+                      Text(
+                        'Reject Order',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF374151),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OrderDetailsCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final Animation<double> pulseAnimation;
+  final bool isAccepting;
+  final bool isRejecting;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _OrderDetailsCard({
+    required this.data,
+    required this.pulseAnimation,
+    required this.isAccepting,
+    required this.isRejecting,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF111827).withOpacity(0.06),
+            blurRadius: 32,
+            offset: const Offset(0, 16),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _NotificationHeader(pulseAnimation: pulseAnimation),
+          const SizedBox(height: 32),
+          const _StatusChip(),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFF3F4F6), width: 1.5),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                _OrderInfoRow(
+                  icon: Icons.tag,
+                  label: 'Order ID',
+                  value: '#${data['orderId']}',
+                ),
+                const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                _OrderInfoRow(
+                  icon: Icons.person_outline,
+                  label: 'Customer',
+                  value: data['customer'] ?? 'Unknown',
+                ),
+                const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                _OrderInfoRow(
+                  icon: Icons.shopping_bag_outlined,
+                  label: 'Items',
+                  value: '${data['itemsCount']} Items',
+                ),
+                const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                _OrderInfoRow(
+                  icon: Icons.fastfood_outlined,
+                  label: 'Order Type',
+                  value: data['orderType'] ?? 'Delivery',
+                ),
+                const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                _OrderInfoRow(
+                  icon: Icons.payments_outlined,
+                  label: 'Amount',
+                  value: '₹${(data['amount'] ?? 0).toInt()}',
+                  isAmount: true,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 40),
+          _ActionButtons(
+            isAccepting: isAccepting,
+            isRejecting: isRejecting,
+            onAccept: onAccept,
+            onReject: onReject,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingView extends StatelessWidget {
+  const _LoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: CircularProgressIndicator(
+        color: Color(0xFFE52929),
+      ),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF111827).withOpacity(0.06),
+              blurRadius: 32,
+              offset: const Offset(0, 16),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Color(0xFFE52929), size: 64),
+            const SizedBox(height: 24),
+            const Text(
+              'Something went wrong',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF111827),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                label: const Text(
+                  'Retry',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE52929),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyView extends StatelessWidget {
+  const _EmptyView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.inbox_rounded, size: 80, color: Color(0xFFD1D5DB)),
+          SizedBox(height: 24),
+          Text(
+            'No New Orders',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF374151),
+            ),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'You will be notified when a new order arrives.',
+            style: TextStyle(
+              fontSize: 15,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

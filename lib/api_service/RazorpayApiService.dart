@@ -4,8 +4,6 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 /// [RazorpayApiService] handles all direct communication with the Razorpay REST API.
 class RazorpayApiService {
-  static const String _baseUrl = "https://api.razorpay.com/v1";
-
   // Razorpay Test Key ID
   static const String apiKey = "rzp_test_Spi5WU6ETE2VVp";
 
@@ -43,7 +41,7 @@ class RazorpayApiService {
       'description': description,
       'prefill': {'email': email},
     };
-    
+
     if (orderId != null) {
       options['order_id'] = orderId;
     }
@@ -56,28 +54,20 @@ class RazorpayApiService {
     _razorpay.clear();
   }
 
-  /// Creates a new Order on Razorpay.
+  /// Creates a new Order safely via Firebase Cloud Functions.
   Future<Map<String, dynamic>> createOrder({
     required int amount,
     String currency = "INR",
     required String receipt,
   }) async {
-    if (apiSecret == null) {
-      throw Exception(
-        "API Secret is required for order creation via REST API.",
-      );
-    }
-
-    final String basicAuth =
-        'Basic ${base64Encode(utf8.encode('$apiKey:$apiSecret'))}';
+    // URL of your deployed Firebase Cloud Function
+    const String cloudFunctionUrl =
+        'https://us-central1-food-delivery-app-cd4ca.cloudfunctions.net/createRazorpayOrder';
 
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/orders'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': basicAuth,
-        },
+        Uri.parse(cloudFunctionUrl),
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "amount": amount,
           "currency": currency,

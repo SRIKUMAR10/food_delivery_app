@@ -72,4 +72,25 @@ class ProductRepository {
       throw Exception('Failed to add product: $e');
     }
   }
+
+  /// Fetches products by category as a stream.
+  Stream<QuerySnapshot> getProductsByCategory(String categoryName) {
+    return _firestore
+        .collection('products')
+        .where('category', isEqualTo: categoryName)
+        .snapshots();
+  }
+
+  /// Searches products using a backend query (e.g., via Algolia or simple prefix matching).
+  /// This replaces in-memory filtering for better scalability.
+  Stream<QuerySnapshot> searchProducts(String query, String categoryName) {
+    // Note: For a true enterprise app, this should call Algolia or Typesense.
+    // As a fallback for Firestore, we use prefix matching.
+    return _firestore
+        .collection('products')
+        .where('category', isEqualTo: categoryName)
+        .where('name', isGreaterThanOrEqualTo: query)
+        .where('name', isLessThanOrEqualTo: query + '\uf8ff')
+        .snapshots();
+  }
 }

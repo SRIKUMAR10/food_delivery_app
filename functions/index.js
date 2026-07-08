@@ -128,3 +128,42 @@ exports.createRazorpayOrder = functions.https.onRequest(async (req, res) => {
     res.status(500).send({ message: "Internal Server Error: " + error.message });
   }
 });
+
+// Cloud Function to securely check if an email or phone exists in the sellers collection
+// This prevents Data Enumeration (Scraping) since it runs on the backend.
+exports.checkAuthExists = functions.https.onCall(async (data, context) => {
+  const email = data.email;
+  const phone = data.phoneNumber;
+
+  if (!email && !phone) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Either email or phoneNumber must be provided."
+    );
+  }
+
+  try {
+    const sellersRef = admin.firestore().collection("sellers");
+    let querySnapshot;
+
+    if (email) {
+      querySnapshot = await sellersRef.where("email", "==", email).limit(1).get();
+    } else if (phone) {
+      querySnapshot = await sellersRef.where("phoneNumber", "==", phone).limit(1).get();
+    }
+
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      return { 
+        exists: true, 
+        provider: doc.data().authProvider || null 
+      };
+    }
+
+    return { exists: false, provider: null };
+  } catch (error) {
+    console.error("Error checking auth existence:", error);
+    throw new functions.https.HttpsError("internal", "Failed to check auth existence.");
+  }
+});
+

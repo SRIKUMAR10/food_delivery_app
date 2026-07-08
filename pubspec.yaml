@@ -42,6 +42,10 @@ dependencies:
   firebase_app_check: ^0.4.4+2
   cloud_firestore: ^6.5.0
   firebase_auth: ^6.5.2
+  cloud_functions: any
+  firebase_crashlytics: any
+  firebase_performance: any
+  logger: any
   http: ^1.6.0
   curved_navigation_bar: ^1.0.6
 
@@ -61,11 +65,11 @@ dependencies:
 
   integration_test:
     sdk: flutter
-  razorpay_web: ^3.1.0
   razorpay_flutter: ^1.3.6
   flutter_dotenv: ^6.0.1
   cached_network_image: ^3.3.1
   google_fonts: ^8.1.0
+  get_it: ^9.2.1
 
 dev_dependencies:
   flutter_test:
@@ -102,6 +106,9 @@ flutter:
    - assets/images/Sign up.png
    - assets/images/google.png
    - assets/images/apple_logo.png
+   - assets/images/Seller_login.png
+   - assets/images/seller onboard page.png
+   - assets/images/seller onboard page_2.png
    - assets/images/Seller_login.png
 
   

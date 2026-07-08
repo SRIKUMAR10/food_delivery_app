@@ -28,7 +28,7 @@ class SellerCollection {
 
   Future<void> updateSeller(String uid, Map<String, dynamic> data) async {
     try {
-      await FirebaseFirestore.instance.collection('sellers').doc(uid).update(data);
+      await FirebaseFirestore.instance.collection('sellers').doc(uid).set(data, SetOptions(merge: true));
     } catch (e) {
       throw Exception('Failed to update seller in Firestore: $e');
     }

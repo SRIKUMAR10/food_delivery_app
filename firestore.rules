@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 1. Users Collection
+    // Users can only read and write their own profile document
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+      
+      // Subcollections inside user (e.g., wallet transactions, favorites)
+      match /{subcollection}/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // 2. Products Collection
+    // Anyone can read products. Only authenticated users (Sellers) can create/update.
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.sellerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+    }
+
+    // 3. Orders Collection
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.buyerId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+    }
+
+    // 4. Sellers Collection
+    // Data enumeration is prevented using Firebase Cloud Functions for checking duplicates.
+    // Only authenticated users can read/write their own seller doc
+    match /sellers/{sellerId} {
+      allow read, write: if isOwner(sellerId);
+    }
+
+    // 5. Pending Sellers Collection
+    // Used during sign-up before authentication is complete
+    match /pending_sellers/{phoneNumber} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -259,35 +259,30 @@ class _TopBar extends StatelessWidget {
       );
     }
 
-    // Web / tablet layout: logo on the left, search bar + avatar on the right.
+    // Web / tablet layout: logo on the left, search bar takes remaining space, then icons.
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         SvgPicture.asset(
           'assets/images/FoodGo.svg',
           height: 70,
-          width: 200,
+          width: 160, // Slightly reduced to ensure it fits nicely on tablets
           fit: BoxFit.contain,
           semanticsLabel: 'FoodGo Logo',
         ),
-        Row(
-          children: [
-            // Inline search bar occupies 40% of the available width on web.
-            SizedBox(
-              width: maxWidth * 0.4,
-              child: _SearchBar(controller: searchController),
-            ),
-            const SizedBox(width: 16),
-            favoritesIcon,
-            Container(
-              height: 40,
-              width: 1,
-              color: Colors.grey.shade300,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-            ),
-            avatarWidget,
-          ],
+        const SizedBox(width: 24),
+        // Search bar takes up the remaining available space gracefully.
+        Expanded(
+          child: _SearchBar(controller: searchController),
         ),
+        const SizedBox(width: 16),
+        favoritesIcon,
+        Container(
+          height: 40,
+          width: 1,
+          color: Colors.grey.shade300,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+        ),
+        avatarWidget,
       ],
     );
   }

@@ -103,15 +103,12 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
       try {
         String? orderId;
         
-        // Only attempt to create an order if the API secret is provided.
-        // For purely client-side testing without a backend/secret, Razorpay can work in test mode without an order_id.
-        if (razorpayApiService.apiSecret != null) {
-          final orderResponse = await razorpayApiService.createOrder(
-            amount: (event.amount * 100).toInt(),
-            receipt: 'receipt_${DateTime.now().millisecondsSinceEpoch}',
-          );
-          orderId = orderResponse['id'];
-        }
+        // Create order via the secure Cloud Function
+        final orderResponse = await razorpayApiService.createOrder(
+          amount: (event.amount * 100).toInt(),
+          receipt: 'receipt_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        orderId = orderResponse['id'];
 
         emit(
           state.copyWith(

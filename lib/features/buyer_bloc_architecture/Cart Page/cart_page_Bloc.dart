@@ -6,6 +6,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -233,59 +234,30 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         totalAmount += (item.price * item.quantity);
       }
 
-      // Check user's wallet before proceeding
-      final userRef = _firestore.collection('users').doc(uid);
-      final userDoc = await userRef.get();
-      double currentWallet =
-          (userDoc.data()?['wallet'] as num?)?.toDouble() ?? 0.0;
+      // Process checkout via Firebase Cloud Functions for Transaction Integrity
+      final HttpsCallable checkoutCallable = FirebaseFunctions.instance.httpsCallable('checkoutOrder');
+      
+      try {
+        final result = await checkoutCallable.call({
+          'selectedItemIds': selectedItems.map((item) => item.id).toList(),
+          'totalAmount': totalAmount,
+        });
 
-      if (currentWallet < totalAmount) {
-        if (event.onInsufficientBalance != null) {
+        if (result.data['status'] == 'success') {
+          if (event.onSuccess != null) {
+            event.onSuccess!();
+          }
+        } else {
+          // If the cloud function indicates failure (e.g. insufficient funds)
+          if (event.onInsufficientBalance != null && result.data['reason'] == 'insufficient_funds') {
+            event.onInsufficientBalance!();
+          }
+        }
+      } on FirebaseFunctionsException catch (e) {
+        if (e.code == 'failed-precondition' && event.onInsufficientBalance != null) {
           event.onInsufficientBalance!();
         }
-        return;
       }
-
-      // Create a new order in Firestore
-      final orderRef = _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('orders')
-          .doc();
-
-      final orderData = {
-        'status': 'Pending',
-        'totalAmount': totalAmount,
-        'date': FieldValue.serverTimestamp(),
-        'items': selectedItems.map((item) => item.toMap()).toList(),
-      };
-
-      final batch = _firestore.batch();
-      batch.set(orderRef, orderData);
-
-      // Deduct from user's wallet
-      batch.set(userRef, {
-        'wallet': FieldValue.increment(-totalAmount),
-      }, SetOptions(merge: true));
-
-      // Record the debit transaction for the wallet history
-      final transactionRef = userRef.collection('transactions').doc();
-      batch.set(transactionRef, {
-        'amount': totalAmount,
-        'title': 'Order Payment',
-        'isCredit': false,
-        'status': 'success',
-        'orderId': orderRef.id,
-        'createdAt': FieldValue.serverTimestamp(),
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      // Delete cart items
-      for (var item in selectedItems) {
-        batch.delete(cartRef.doc(item.id));
-      }
-
-      await batch.commit();
 
       if (event.onSuccess != null) {
         event.onSuccess!();

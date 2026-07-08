@@ -10,6 +10,7 @@ import 'user_profile_models.dart';
 // Child Pages
 import 'pages/personal_information_page.dart';
 import 'pages/address_management_page.dart';
+import 'pages/payment_methods_page.dart';
 
 import 'pages/notification_settings_page.dart';
 import 'pages/app_settings_page.dart';
@@ -321,6 +322,19 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
                     value: bloc,
                     child: const AddressManagementPage(),
                   ),
+                ),
+              );
+            },
+          ),
+          _buildMenuDivider(),
+          _buildMenuItem(
+            icon: Icons.credit_card_outlined,
+            title: 'Payment Methods',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PaymentMethodsPage(),
                 ),
               );
             },
