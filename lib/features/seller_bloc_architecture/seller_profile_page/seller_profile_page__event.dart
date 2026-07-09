@@ -19,3 +19,40 @@ class NotificationSettingsChanged extends SellerProfilePageEvent {
   @override
   List<Object?> get props => [isEnabled];
 }
+
+class SubmitVerificationForm extends SellerProfilePageEvent {
+  final String storeName;
+  final String address;
+  final String email;
+  final String phone;
+  final String gstNumber;
+  final String taxConfiguration;
+  final String fssaiLicense;
+  final String bankAccountNumber;
+  final String ifscCode;
+
+  const SubmitVerificationForm({
+    required this.storeName,
+    required this.address,
+    required this.email,
+    required this.phone,
+    required this.gstNumber,
+    required this.taxConfiguration,
+    required this.fssaiLicense,
+    required this.bankAccountNumber,
+    required this.ifscCode,
+  });
+
+  @override
+  List<Object?> get props => [
+        storeName,
+        address,
+        email,
+        phone,
+        gstNumber,
+        taxConfiguration,
+        fssaiLicense,
+        bankAccountNumber,
+        ifscCode,
+      ];
+}

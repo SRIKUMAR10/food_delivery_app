@@ -61,9 +61,10 @@ class ReviewsListScreen extends StatelessWidget {
                         HapticFeedback.lightImpact();
                         bool isLoggedIn = false;
                         try {
-                          isLoggedIn = FirebaseAuth.instance.currentUser != null;
+                          isLoggedIn =
+                              FirebaseAuth.instance.currentUser != null;
                         } catch (_) {}
-                        
+
                         if (!isLoggedIn) {
                           // Note: Creating a dummy food item here just for navigation requirements.
                           final foodItem = FoodItem(
@@ -78,12 +79,14 @@ class ReviewsListScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => FoodGoLoginScreenUI(foodItemToAccess: foodItem),
+                              builder: (_) => FoodGoLoginScreenUI(
+                                foodItemToAccess: foodItem,
+                              ),
                             ),
                           );
                           return;
                         }
-                        
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -94,8 +97,15 @@ class ReviewsListScreen extends StatelessWidget {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.rate_review, size: 16, color: Color(0xFFEF2A39)),
-                      label: const Text('Write', style: TextStyle(color: Color(0xFFEF2A39))),
+                      icon: const Icon(
+                        Icons.rate_review,
+                        size: 16,
+                        color: Color(0xFFEF2A39),
+                      ),
+                      label: const Text(
+                        'Write',
+                        style: TextStyle(color: Color(0xFFEF2A39)),
+                      ),
                     ),
                   ],
                 ),
@@ -112,38 +122,62 @@ class ReviewsListScreen extends StatelessWidget {
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator(color: Color(0xFFEF2A39)));
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFEF2A39),
+                        ),
+                      );
                     }
                     if (snapshot.hasError) {
-                      return const Center(child: Text('Error loading reviews.'));
+                      return const Center(
+                        child: Text('Error loading reviews.'),
+                      );
                     }
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Center(child: Text('No reviews yet. Be the first!'));
+                      return const Center(
+                        child: Text('No reviews yet. Be the first!'),
+                      );
                     }
 
                     final reviews = snapshot.data!.docs;
 
                     return ListView.separated(
-                      controller: scrollController, // Controls the DraggableScrollableSheet
+                      controller:
+                          scrollController, // Controls the DraggableScrollableSheet
                       padding: const EdgeInsets.all(20),
                       itemCount: reviews.length,
-                      separatorBuilder: (context, index) => Divider(color: Colors.grey.shade300, height: 24),
+                      separatorBuilder: (context, index) =>
+                          Divider(color: Colors.grey.shade300, height: 24),
                       itemBuilder: (context, index) {
-                        final data = reviews[index].data() as Map<String, dynamic>;
-                        final String fallbackName = data['reviewerName'] ?? 'Anonymous';
-                        final double rating = (data['rating'] as num?)?.toDouble() ?? 0.0;
+                        final data =
+                            reviews[index].data() as Map<String, dynamic>;
+                        final String fallbackName =
+                            data['reviewerName'] ?? 'Anonymous';
+                        final double rating =
+                            (data['rating'] as num?)?.toDouble() ?? 0.0;
                         final String text = data['reviewText'] ?? '';
                         final String reviewerId = reviews[index].id;
 
                         // Listen to individual user profile for real-time name updates
                         return StreamBuilder<DocumentSnapshot>(
-                          stream: FirebaseFirestore.instance.collection('users').doc(reviewerId).snapshots(),
+                          stream: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(reviewerId)
+                              .snapshots(),
                           builder: (context, userSnapshot) {
                             String displayName = fallbackName;
 
-                            if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                              final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
-                              if (userData != null && userData['name'] != null && userData['name'].toString().trim().isNotEmpty) {
+                            if (userSnapshot.hasData &&
+                                userSnapshot.data!.exists) {
+                              final userData =
+                                  userSnapshot.data!.data()
+                                      as Map<String, dynamic>?;
+                              if (userData != null &&
+                                  userData['name'] != null &&
+                                  userData['name']
+                                      .toString()
+                                      .trim()
+                                      .isNotEmpty) {
                                 displayName = userData['name'];
                               }
                             }
@@ -152,7 +186,8 @@ class ReviewsListScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       displayName,
@@ -163,18 +198,30 @@ class ReviewsListScreen extends StatelessWidget {
                                       ),
                                     ),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFFB800).withOpacity(0.15),
+                                        color: const Color(
+                                          0xFFFFB800,
+                                        ).withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Row(
                                         children: [
-                                          const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 14),
+                                          const Icon(
+                                            Icons.star_rounded,
+                                            color: Color(0xFFFFB800),
+                                            size: 14,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
                                             rating.toStringAsFixed(1),
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -185,7 +232,11 @@ class ReviewsListScreen extends StatelessWidget {
                                   const SizedBox(height: 6),
                                   Text(
                                     text,
-                                    style: TextStyle(color: Colors.grey.shade700, height: 1.4, fontSize: 13),
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      height: 1.4,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
                               ],

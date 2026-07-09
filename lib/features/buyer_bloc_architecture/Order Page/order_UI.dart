@@ -263,13 +263,13 @@ class _OrderPageContentState extends State<_OrderPageContent> {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: const Color(0xFFEF2A39).withOpacity(0.08),
+              color: const Color(0xFFEF2A39).withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.receipt_long_outlined,
               size: 56,
-              color: const Color(0xFFEF2A39).withOpacity(0.55),
+              color: const Color(0xFFEF2A39).withValues(alpha: 0.55),
             ),
           ),
           const SizedBox(height: 24),
@@ -301,18 +301,18 @@ class _OrderPageContentState extends State<_OrderPageContent> {
 
     if (order.status.toLowerCase() == 'delivered') {
       statusTextColor = const Color(0xFF4CAF50);
-      statusBgColor = const Color(0xFF4CAF50).withOpacity(0.05);
-      statusBorderColor = const Color(0xFF4CAF50).withOpacity(0.2);
+      statusBgColor = const Color(0xFF4CAF50).withValues(alpha: 0.05);
+      statusBorderColor = const Color(0xFF4CAF50).withValues(alpha: 0.2);
       statusText = 'Delivered';
     } else if (order.status.toLowerCase() == 'cancelled') {
       statusTextColor = const Color(0xFFE52121);
-      statusBgColor = const Color(0xFFE52121).withOpacity(0.05);
-      statusBorderColor = const Color(0xFFE52121).withOpacity(0.2);
+      statusBgColor = const Color(0xFFE52121).withValues(alpha: 0.05);
+      statusBorderColor = const Color(0xFFE52121).withValues(alpha: 0.2);
       statusText = 'Cancelled';
     } else {
       statusTextColor = const Color(0xFFE52121);
-      statusBgColor = const Color(0xFFE52121).withOpacity(0.05);
-      statusBorderColor = const Color(0xFFE52121).withOpacity(0.2);
+      statusBgColor = const Color(0xFFE52121).withValues(alpha: 0.05);
+      statusBorderColor = const Color(0xFFE52121).withValues(alpha: 0.2);
       statusText = 'Track Order';
     }
 
@@ -373,7 +373,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
               : Border.all(color: Colors.transparent, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -395,14 +395,22 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isSelected ? const Color(0xFFE52121) : Colors.grey.shade300,
+                              color: isSelected
+                                  ? const Color(0xFFE52121)
+                                  : Colors.grey.shade300,
                               width: 1.5,
                             ),
-                            color: isSelected ? const Color(0xFFE52121) : Colors.transparent,
+                            color: isSelected
+                                ? const Color(0xFFE52121)
+                                : Colors.transparent,
                           ),
                           child: isSelected
                               ? const Center(
-                                  child: Icon(Icons.circle, size: 8, color: Colors.white),
+                                  child: Icon(
+                                    Icons.circle,
+                                    size: 8,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : null,
                         ),
@@ -568,7 +576,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.9),
+      barrierColor: Colors.black.withValues(alpha: 0.9),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) {
         return Scaffold(

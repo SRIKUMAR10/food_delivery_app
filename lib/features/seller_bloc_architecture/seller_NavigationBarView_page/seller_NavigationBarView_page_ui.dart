@@ -36,7 +36,10 @@ class _SellerNavigationBarViewContent extends StatelessWidget {
       const SellerProfilePageUI(key: ValueKey('profile')),
     ];
 
-    return BlocBuilder<SellerNavigationBarViewPageBloc, SellerNavigationBarViewPageState>(
+    return BlocBuilder<
+      SellerNavigationBarViewPageBloc,
+      SellerNavigationBarViewPageState
+    >(
       builder: (context, state) {
         int currentIndex = 0;
         if (state is SellerNavigationBarViewPageInitial) {
@@ -55,10 +58,16 @@ class _SellerNavigationBarViewContent extends StatelessWidget {
                 return FadeTransition(
                   opacity: animation,
                   child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0.02, 0),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(0.02, 0),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOut,
+                          ),
+                        ),
                     child: child,
                   ),
                 );
@@ -77,10 +86,16 @@ class _SellerNavigationBarViewContent extends StatelessWidget {
                         _DesktopSideMenu(
                           currentIndex: currentIndex,
                           onTap: (index) {
-                            context.read<SellerNavigationBarViewPageBloc>().add(TabChangedEvent(index));
+                            context.read<SellerNavigationBarViewPageBloc>().add(
+                              TabChangedEvent(index),
+                            );
                           },
                         ),
-                        const VerticalDivider(thickness: 1, width: 1, color: Color(0xFFE5E7EB)),
+                        const VerticalDivider(
+                          thickness: 1,
+                          width: 1,
+                          color: Color(0xFFE5E7EB),
+                        ),
                         Expanded(child: pageContent),
                       ],
                     ),
@@ -96,7 +111,9 @@ class _SellerNavigationBarViewContent extends StatelessWidget {
               bottomNavigationBar: _MobileFloatingNavigationBar(
                 currentIndex: currentIndex,
                 onTap: (index) {
-                  context.read<SellerNavigationBarViewPageBloc>().add(TabChangedEvent(index));
+                  context.read<SellerNavigationBarViewPageBloc>().add(
+                    TabChangedEvent(index),
+                  );
                 },
               ),
             );
@@ -125,7 +142,7 @@ class _MobileFloatingNavigationBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 25,
               offset: const Offset(0, 10),
             ),
@@ -136,15 +153,23 @@ class _MobileFloatingNavigationBar extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               child: NavigationBarTheme(
                 data: NavigationBarThemeData(
                   indicatorColor: const Color(0x22E52929),
                   labelTextStyle: WidgetStateProperty.resolveWith((states) {
                     if (states.contains(WidgetState.selected)) {
-                      return const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFE52929));
+                      return const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFE52929),
+                      );
                     }
-                    return const TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: Color(0xFF6B7280));
+                    return const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.normal,
+                      color: Color(0xFF6B7280),
+                    );
                   }),
                 ),
                 child: NavigationBar(
@@ -156,7 +181,10 @@ class _MobileFloatingNavigationBar extends StatelessWidget {
                   destinations: [
                     const NavigationDestination(
                       icon: Icon(Icons.dashboard_outlined),
-                      selectedIcon: Icon(Icons.dashboard_rounded, color: Color(0xFFE52929)),
+                      selectedIcon: Icon(
+                        Icons.dashboard_rounded,
+                        color: Color(0xFFE52929),
+                      ),
                       label: 'Dashboard',
                     ),
                     NavigationDestination(
@@ -168,7 +196,10 @@ class _MobileFloatingNavigationBar extends StatelessWidget {
                       selectedIcon: Badge(
                         label: const Text('3'),
                         backgroundColor: Colors.red,
-                        child: const Icon(Icons.shopping_bag_rounded, color: Color(0xFFE52929)),
+                        child: const Icon(
+                          Icons.shopping_bag_rounded,
+                          color: Color(0xFFE52929),
+                        ),
                       ),
                       label: 'Orders',
                     ),
@@ -181,13 +212,19 @@ class _MobileFloatingNavigationBar extends StatelessWidget {
                       selectedIcon: Badge(
                         label: const Text('2'),
                         backgroundColor: Colors.orange,
-                        child: const Icon(Icons.inventory_rounded, color: Color(0xFFE52929)),
+                        child: const Icon(
+                          Icons.inventory_rounded,
+                          color: Color(0xFFE52929),
+                        ),
                       ),
                       label: 'Products',
                     ),
                     const NavigationDestination(
                       icon: Icon(Icons.grid_view_outlined),
-                      selectedIcon: Icon(Icons.grid_view_rounded, color: Color(0xFFE52929)),
+                      selectedIcon: Icon(
+                        Icons.grid_view_rounded,
+                        color: Color(0xFFE52929),
+                      ),
                       label: 'More',
                     ),
                   ],
@@ -205,10 +242,7 @@ class _DesktopSideMenu extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
 
-  const _DesktopSideMenu({
-    required this.currentIndex,
-    required this.onTap,
-  });
+  const _DesktopSideMenu({required this.currentIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +262,11 @@ class _DesktopSideMenu extends StatelessWidget {
                   color: const Color(0xFFE52929),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.storefront, color: Colors.white, size: 28),
+                child: const Icon(
+                  Icons.storefront,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -237,7 +275,11 @@ class _DesktopSideMenu extends StatelessWidget {
                   children: [
                     Text(
                       'Picarhub',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827),
+                      ),
                     ),
                     Text(
                       'Seller Portal',
@@ -249,7 +291,7 @@ class _DesktopSideMenu extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 32),
-          
+
           _HoverableMenuItem(
             title: 'Dashboard',
             icon: Icons.dashboard_rounded,
@@ -281,11 +323,11 @@ class _DesktopSideMenu extends StatelessWidget {
             isSelected: currentIndex == 3,
             onTap: () => onTap(3),
           ),
-          
+
           const Spacer(),
           const Divider(color: Color(0xFFE5E7EB)),
           const SizedBox(height: 16),
-          
+
           _HoverableMenuItem(
             title: 'Settings',
             icon: Icons.settings_rounded,
@@ -344,7 +386,8 @@ class _HoverableMenuItem extends StatefulWidget {
   State<_HoverableMenuItem> createState() => _HoverableMenuItemState();
 }
 
-class _HoverableMenuItemState extends State<_HoverableMenuItem> with SingleTickerProviderStateMixin {
+class _HoverableMenuItemState extends State<_HoverableMenuItem>
+    with SingleTickerProviderStateMixin {
   bool _isHovered = false;
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -356,9 +399,10 @@ class _HoverableMenuItemState extends State<_HoverableMenuItem> with SingleTicke
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -370,14 +414,18 @@ class _HoverableMenuItemState extends State<_HoverableMenuItem> with SingleTicke
   @override
   Widget build(BuildContext context) {
     final isSelected = widget.isSelected;
-    final defaultIconColor = isSelected ? const Color(0xFFE52929) : const Color(0xFF6B7280);
-    final defaultTextColor = isSelected ? const Color(0xFFE52929) : const Color(0xFF4B5563);
-    
+    final defaultIconColor = isSelected
+        ? const Color(0xFFE52929)
+        : const Color(0xFF6B7280);
+    final defaultTextColor = isSelected
+        ? const Color(0xFFE52929)
+        : const Color(0xFF4B5563);
+
     final finalIconColor = widget.iconColor ?? defaultIconColor;
     final finalTextColor = widget.textColor ?? defaultTextColor;
 
-    final bgColor = isSelected 
-        ? const Color(0x22E52929) 
+    final bgColor = isSelected
+        ? const Color(0x22E52929)
         : (_isHovered ? const Color(0xFFF3F4F6) : Colors.transparent);
 
     return MouseRegion(
@@ -394,13 +442,13 @@ class _HoverableMenuItemState extends State<_HoverableMenuItem> with SingleTicke
         child: AnimatedBuilder(
           animation: _scaleAnimation,
           builder: (context, child) {
-            final double hoverScale = (!_controller.isAnimating && _isHovered && !isSelected) ? 1.02 : 1.0;
+            final double hoverScale =
+                (!_controller.isAnimating && _isHovered && !isSelected)
+                ? 1.02
+                : 1.0;
             final double finalScale = _scaleAnimation.value * hoverScale;
-            
-            return Transform.scale(
-              scale: finalScale,
-              child: child,
-            );
+
+            return Transform.scale(scale: finalScale, child: child);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -418,21 +466,30 @@ class _HoverableMenuItemState extends State<_HoverableMenuItem> with SingleTicke
                     widget.title,
                     style: TextStyle(
                       fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.w500,
                       color: finalTextColor,
                     ),
                   ),
                 ),
                 if (widget.badgeCount != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: widget.badgeColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '${widget.badgeCount}',
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
               ],

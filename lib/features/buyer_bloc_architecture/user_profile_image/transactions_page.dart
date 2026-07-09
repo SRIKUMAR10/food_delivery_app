@@ -103,13 +103,13 @@ class TransactionsPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: _primaryRed.withOpacity(0.06),
+              color: _primaryRed.withValues(alpha: 0.06),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.receipt_long_outlined,
               size: 60,
-              color: _primaryRed.withOpacity(0.4),
+              color: _primaryRed.withValues(alpha: 0.4),
             ),
           ),
           const SizedBox(height: 20),
@@ -125,11 +125,7 @@ class TransactionsPage extends StatelessWidget {
           Text(
             'Transactions will appear here\nonce you top-up your wallet',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.black38,
-              height: 1.6,
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.black38, height: 1.6),
           ),
         ],
       ),
@@ -173,7 +169,7 @@ class TransactionsPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -186,7 +182,7 @@ class TransactionsPage extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(
@@ -212,10 +208,7 @@ class TransactionsPage extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       dateStr,
-                      style: TextStyle(
-                        color: Colors.black38,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.black38, fontSize: 12),
                     ),
                   ],
                 ),
@@ -240,8 +233,8 @@ class TransactionsPage extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: isSuccess
-                          ? Colors.green.withOpacity(0.1)
-                          : Colors.orange.withOpacity(0.1),
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.orange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -310,8 +303,8 @@ class TransactionsPage extends StatelessWidget {
               height: 70,
               decoration: BoxDecoration(
                 color: isSuccess
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.orange.withOpacity(0.1),
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.orange.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -444,4 +437,3 @@ class TransactionsPage extends StatelessWidget {
     return '${date.day} ${months[date.month - 1]} ${date.year}, $hour:$min $ampm';
   }
 }
-

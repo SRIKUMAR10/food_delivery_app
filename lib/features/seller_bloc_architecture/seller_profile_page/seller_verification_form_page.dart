@@ -8,12 +8,14 @@ class SellerVerificationFormPage extends StatefulWidget {
   const SellerVerificationFormPage({Key? key}) : super(key: key);
 
   @override
-  State<SellerVerificationFormPage> createState() => _SellerVerificationFormPageState();
+  State<SellerVerificationFormPage> createState() =>
+      _SellerVerificationFormPageState();
 }
 
-class _SellerVerificationFormPageState extends State<SellerVerificationFormPage> {
+class _SellerVerificationFormPageState
+    extends State<SellerVerificationFormPage> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final _storeNameController = TextEditingController();
   final _addressController = TextEditingController();
   final _gstController = TextEditingController();
@@ -38,11 +40,13 @@ class _SellerVerificationFormPageState extends State<SellerVerificationFormPage>
       _ifscController.text = state.ifscCode ?? '';
       _emailController.text = state.email;
       _phoneController.text = state.phone;
-      _selectedTax = (state.taxConfiguration != null && state.taxConfiguration!.isNotEmpty) 
-          ? state.taxConfiguration 
+      _selectedTax =
+          (state.taxConfiguration != null && state.taxConfiguration!.isNotEmpty)
+          ? state.taxConfiguration
           : null;
     }
   }
+
   void dispose() {
     _storeNameController.dispose();
     _addressController.dispose();
@@ -70,9 +74,11 @@ class _SellerVerificationFormPageState extends State<SellerVerificationFormPage>
           ifscCode: _ifscController.text,
         ),
       );
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verification form submitted successfully!')),
+        const SnackBar(
+          content: Text('Verification form submitted successfully!'),
+        ),
       );
       Navigator.pop(context); // Go back to Profile
     }
@@ -83,7 +89,10 @@ class _SellerVerificationFormPageState extends State<SellerVerificationFormPage>
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Verify Account', style: TextStyle(color: Colors.black)),
+        title: const Text(
+          'Verify Account',
+          style: TextStyle(color: Colors.black),
+        ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 1,
@@ -104,39 +113,73 @@ class _SellerVerificationFormPageState extends State<SellerVerificationFormPage>
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _buildTextField('Store / Restaurant Name', _storeNameController)),
+                        Expanded(
+                          child: _buildTextField(
+                            'Store / Restaurant Name',
+                            _storeNameController,
+                          ),
+                        ),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildTextField('FSSAI License', _fssaiController)),
+                        Expanded(
+                          child: _buildTextField(
+                            'FSSAI License',
+                            _fssaiController,
+                          ),
+                        ),
                       ],
                     )
                   else ...[
-                    _buildTextField('Store / Restaurant Name', _storeNameController),
+                    _buildTextField(
+                      'Store / Restaurant Name',
+                      _storeNameController,
+                    ),
                     const SizedBox(height: 12),
                     _buildTextField('FSSAI License', _fssaiController),
                   ],
                   const SizedBox(height: 12),
-                  _buildTextField('Full Address', _addressController, maxLines: 3),
+                  _buildTextField(
+                    'Full Address',
+                    _addressController,
+                    maxLines: 3,
+                  ),
                   const SizedBox(height: 12),
                   if (isDesktop)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _buildTextField('Email Address', _emailController)),
+                        Expanded(
+                          child: _buildTextField(
+                            'Email Address',
+                            _emailController,
+                          ),
+                        ),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildTextField('Phone Number', _phoneController, isNumber: true)),
+                        Expanded(
+                          child: _buildTextField(
+                            'Phone Number',
+                            _phoneController,
+                            isNumber: true,
+                          ),
+                        ),
                       ],
                     )
                   else ...[
                     _buildTextField('Email Address', _emailController),
                     const SizedBox(height: 12),
-                    _buildTextField('Phone Number', _phoneController, isNumber: true),
+                    _buildTextField(
+                      'Phone Number',
+                      _phoneController,
+                      isNumber: true,
+                    ),
                   ],
                   const SizedBox(height: 12),
                   if (isDesktop)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _buildTextField('GST Number', _gstController)),
+                        Expanded(
+                          child: _buildTextField('GST Number', _gstController),
+                        ),
                         const SizedBox(width: 16),
                         Expanded(child: _buildTaxDropdown()),
                       ],
@@ -146,7 +189,7 @@ class _SellerVerificationFormPageState extends State<SellerVerificationFormPage>
                     const SizedBox(height: 12),
                     _buildTaxDropdown(),
                   ],
-                  
+
                   const SizedBox(height: 32),
                   _buildSectionTitle('Bank Details'),
                   const SizedBox(height: 12),
@@ -154,17 +197,29 @@ class _SellerVerificationFormPageState extends State<SellerVerificationFormPage>
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _buildTextField('Bank Account Number', _bankAccountController, isNumber: true)),
+                        Expanded(
+                          child: _buildTextField(
+                            'Bank Account Number',
+                            _bankAccountController,
+                            isNumber: true,
+                          ),
+                        ),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildTextField('IFSC Code', _ifscController)),
+                        Expanded(
+                          child: _buildTextField('IFSC Code', _ifscController),
+                        ),
                       ],
                     )
                   else ...[
-                    _buildTextField('Bank Account Number', _bankAccountController, isNumber: true),
+                    _buildTextField(
+                      'Bank Account Number',
+                      _bankAccountController,
+                      isNumber: true,
+                    ),
                     const SizedBox(height: 12),
                     _buildTextField('IFSC Code', _ifscController),
                   ],
-                  
+
                   const SizedBox(height: 32),
                   SizedBox(
                     width: isDesktop ? 300 : double.infinity,
@@ -174,14 +229,22 @@ class _SellerVerificationFormPageState extends State<SellerVerificationFormPage>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFE50914),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      child: const Text('Submit for Verification', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Submit for Verification',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               );
-            }
+            },
           ),
         ),
       ),
@@ -191,11 +254,20 @@ class _SellerVerificationFormPageState extends State<SellerVerificationFormPage>
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+      style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Color(0xFF1E293B),
+      ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, bool isNumber = false}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    int maxLines = 1,
+    bool isNumber = false,
+  }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
@@ -224,7 +296,7 @@ class _SellerVerificationFormPageState extends State<SellerVerificationFormPage>
 
   Widget _buildTaxDropdown() {
     return DropdownButtonFormField<String>(
-      value: _selectedTax,
+      initialValue: _selectedTax,
       decoration: InputDecoration(
         labelText: 'Tax Configurations',
         filled: true,

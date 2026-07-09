@@ -170,7 +170,8 @@ class _ProductListViewState extends State<ProductListView>
                 height: 350,
                 color: Colors.grey.shade200,
                 child: const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFE50914))),
+                  child: CircularProgressIndicator(color: Color(0xFFE50914)),
+                ),
               ),
               errorWidget: (context, url, error) => Container(
                 height: 350,
@@ -219,11 +220,7 @@ class _ProductListViewState extends State<ProductListView>
           const SizedBox(height: 12),
           const Text(
             'A delicious offering crafted with the finest ingredients to satisfy your cravings. Enjoy the perfect blend of flavors and textures in every bite. This is a great addition to your menu that customers will love.',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.black54,
-              height: 1.5,
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.black54, height: 1.5),
           ),
         ],
       ),
@@ -239,14 +236,14 @@ class _ProductListViewState extends State<ProductListView>
     switch (status) {
       case ProductStatus.inStock:
         textColor = const Color(0xFF4CAF50);
-        bgColor = const Color(0xFF4CAF50).withOpacity(0.05);
-        borderColor = const Color(0xFF4CAF50).withOpacity(0.2);
+        bgColor = const Color(0xFF4CAF50).withValues(alpha: 0.05);
+        borderColor = const Color(0xFF4CAF50).withValues(alpha: 0.2);
         text = 'In Stock';
         break;
       case ProductStatus.lowStock:
         textColor = const Color(0xFFE50914);
-        bgColor = const Color(0xFFE50914).withOpacity(0.05);
-        borderColor = const Color(0xFFE50914).withOpacity(0.2);
+        bgColor = const Color(0xFFE50914).withValues(alpha: 0.05);
+        borderColor = const Color(0xFFE50914).withValues(alpha: 0.2);
         text = 'Low Stock';
         break;
       case ProductStatus.outOfStock:
@@ -375,8 +372,9 @@ class _ProductListViewState extends State<ProductListView>
               context.read<ProductListBloc>().add(LoadProductsEvent());
             },
             child: ListView.separated(
-              padding:
-                  EdgeInsets.symmetric(horizontal: isDesktop ? 32.0 : 20.0),
+              padding: EdgeInsets.symmetric(
+                horizontal: isDesktop ? 32.0 : 20.0,
+              ),
               itemCount: state.products.length,
               physics: const BouncingScrollPhysics(),
               separatorBuilder: (context, index) => const SizedBox(height: 16),
@@ -394,32 +392,36 @@ class _ProductListViewState extends State<ProductListView>
                         context,
                         PageRouteBuilder(
                           transitionDuration: const Duration(milliseconds: 400),
-                          pageBuilder: (context, animation,
-                                  secondaryAnimation) =>
-                              Scaffold(
-                            appBar: AppBar(
-                              title: const Text('Product Details',
-                                  style: TextStyle(color: Colors.black87)),
-                              backgroundColor: Colors.white,
-                              elevation: 0,
-                              iconTheme:
-                                  const IconThemeData(color: Colors.black87),
-                            ),
-                            backgroundColor: Colors.white,
-                            body: SafeArea(
-                                child: _buildProductDetailView(product)),
-                          ),
-                          transitionsBuilder: (context, animation,
-                              secondaryAnimation, child) {
-                            var tween = Tween(
-                                    begin: const Offset(1.0, 0.0),
-                                    end: Offset.zero)
-                                .chain(CurveTween(curve: Curves.easeInOut));
-                            return SlideTransition(
-                              position: animation.drive(tween),
-                              child: child,
-                            );
-                          },
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  Scaffold(
+                                    appBar: AppBar(
+                                      title: const Text(
+                                        'Product Details',
+                                        style: TextStyle(color: Colors.black87),
+                                      ),
+                                      backgroundColor: Colors.white,
+                                      elevation: 0,
+                                      iconTheme: const IconThemeData(
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    backgroundColor: Colors.white,
+                                    body: SafeArea(
+                                      child: _buildProductDetailView(product),
+                                    ),
+                                  ),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                                var tween = Tween(
+                                  begin: const Offset(1.0, 0.0),
+                                  end: Offset.zero,
+                                ).chain(CurveTween(curve: Curves.easeInOut));
+                                return SlideTransition(
+                                  position: animation.drive(tween),
+                                  child: child,
+                                );
+                              },
                         ),
                       );
                     }
@@ -535,7 +537,7 @@ class _ProductCard extends StatelessWidget {
               : Border.all(color: Colors.transparent, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               spreadRadius: 1,
               blurRadius: 10,
               offset: const Offset(0, 2),
@@ -726,4 +728,3 @@ class _ShimmerBoxState extends State<_ShimmerBox>
     );
   }
 }
-

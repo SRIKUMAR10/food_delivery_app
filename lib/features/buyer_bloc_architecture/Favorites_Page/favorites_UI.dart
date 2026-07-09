@@ -26,10 +26,7 @@ class _FavoritesPageContent extends StatelessWidget {
       appBar: AppBar(
         title: const Text('My Favorites'),
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 20,
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -55,10 +52,7 @@ class _FavoritesPageContent extends StatelessWidget {
                     const SizedBox(height: 16),
                     Text(
                       'No favorites yet!',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   ],
                 ),
@@ -103,7 +97,7 @@ class _FavoritesPageContent extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -115,13 +109,15 @@ class _FavoritesPageContent extends StatelessWidget {
                               borderRadius: const BorderRadius.horizontal(
                                 left: Radius.circular(20),
                               ),
-                              child: item.image != null && item.image!.isNotEmpty
+                              child:
+                                  item.image != null && item.image!.isNotEmpty
                                   ? Image.network(
                                       item.image!,
                                       width: 100,
                                       height: 100,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const SizedBox(),
+                                      errorBuilder: (_, __, ___) =>
+                                          const SizedBox(),
                                     )
                                   : Container(
                                       width: 100,
@@ -182,4 +178,3 @@ class _FavoritesPageContent extends StatelessWidget {
     );
   }
 }
-

@@ -49,9 +49,7 @@ class _CartPageUIState extends State<CartPageUI> {
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         backgroundColor: const Color(0xFF1C1C1C),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         content: Text(
           'Proceeding to checkout...',
           style: TextStyle(color: Colors.white),
@@ -77,12 +75,16 @@ class _CartPageUIState extends State<CartPageUI> {
     );
   }
 
-  void _showImagePreview(BuildContext context, String imageUrl, String heroTag) {
+  void _showImagePreview(
+    BuildContext context,
+    String imageUrl,
+    String heroTag,
+  ) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.9),
+      barrierColor: Colors.black.withValues(alpha: 0.9),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) {
         return Scaffold(
@@ -96,7 +98,11 @@ class _CartPageUIState extends State<CartPageUI> {
                     maxScale: 4.0,
                     child: Hero(
                       tag: heroTag,
-                      child: Image.network(imageUrl, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox()),
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const SizedBox(),
+                      ),
                     ),
                   ),
                 ),
@@ -136,42 +142,42 @@ class _CartPageUIState extends State<CartPageUI> {
       child: Scaffold(
         backgroundColor: const Color(0xFFF6F6F6),
         body: SafeArea(
-        child: BlocBuilder<CartBloc, CartState>(
-          builder: (context, state) {
-            if (state is CartLoading) {
-              return const Center(
-                child: CircularProgressIndicator(color: _primaryRed),
+          child: BlocBuilder<CartBloc, CartState>(
+            builder: (context, state) {
+              if (state is CartLoading) {
+                return const Center(
+                  child: CircularProgressIndicator(color: _primaryRed),
+                );
+              }
+
+              if (state is CartError) {
+                return Center(
+                  child: Text(
+                    state.message,
+                    style: TextStyle(color: Colors.red),
+                  ),
+                );
+              }
+
+              final loadedState = state as CartLoaded;
+              final items = loadedState.items;
+              final total = loadedState.totalAmount;
+              final count = loadedState.totalCount;
+
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  // If the screen is wide enough (e.g., Web or Tablet landscape), use side-by-side layout.
+                  if (constraints.maxWidth > 800) {
+                    return _buildWebLayout(context, items, total, count);
+                  }
+                  // Otherwise, use standard stacked phone layout.
+                  return _buildPhoneLayout(context, items, total, count);
+                },
               );
-            }
-
-            if (state is CartError) {
-              return Center(
-                child: Text(
-                  state.message,
-                  style: TextStyle(color: Colors.red),
-                ),
-              );
-            }
-
-            final loadedState = state as CartLoaded;
-            final items = loadedState.items;
-            final total = loadedState.totalAmount;
-            final count = loadedState.totalCount;
-
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                // If the screen is wide enough (e.g., Web or Tablet landscape), use side-by-side layout.
-                if (constraints.maxWidth > 800) {
-                  return _buildWebLayout(context, items, total, count);
-                }
-                // Otherwise, use standard stacked phone layout.
-                return _buildPhoneLayout(context, items, total, count);
-              },
-            );
-          },
+            },
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -229,10 +235,10 @@ class _CartPageUIState extends State<CartPageUI> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(-4, 0),
-                )
+                ),
               ],
             ),
             child: Column(
@@ -342,13 +348,13 @@ class _CartPageUIState extends State<CartPageUI> {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: const Color(0xFFEF2A39).withOpacity(0.08),
+              color: const Color(0xFFEF2A39).withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.shopping_cart_outlined,
               size: 56,
-              color: const Color(0xFFEF2A39).withOpacity(0.55),
+              color: const Color(0xFFEF2A39).withValues(alpha: 0.55),
             ),
           ),
           const SizedBox(height: 24),
@@ -363,10 +369,7 @@ class _CartPageUIState extends State<CartPageUI> {
           const SizedBox(height: 8),
           Text(
             'Browse items and add them to your cart.',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade700,
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
           ),
         ],
       ),
@@ -380,12 +383,17 @@ class _CartPageUIState extends State<CartPageUI> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
       itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => _buildCartCard(context, items[index], isDesktop: isDesktop),
+      itemBuilder: (context, index) =>
+          _buildCartCard(context, items[index], isDesktop: isDesktop),
     );
   }
 
   /// Individual cart item card with swipe-to-dismiss and stepper.
-  Widget _buildCartCard(BuildContext context, CartItem item, {bool isDesktop = false}) {
+  Widget _buildCartCard(
+    BuildContext context,
+    CartItem item, {
+    bool isDesktop = false,
+  }) {
     final subtotal = item.price * item.quantity;
     const fallbackImage =
         'https://firebasestorage.googleapis.com/v0/b/food-delivery-app-cd4ca.firebasestorage.app/o/product_images%2FWpN6x21MmWUjG1DS9BfLnX2M3Js2%2F2026-06-12T00%3A40%3A44.162_images%20(1).jpg?alt=media&token=de903631-0a43-438e-b01c-effe404bd982';
@@ -435,7 +443,7 @@ class _CartPageUIState extends State<CartPageUI> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -466,7 +474,11 @@ class _CartPageUIState extends State<CartPageUI> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: item.isSelected
-                    ? Icon(Icons.check_rounded, size: isDesktop ? 14 : 16, color: Colors.white)
+                    ? Icon(
+                        Icons.check_rounded,
+                        size: isDesktop ? 14 : 16,
+                        color: Colors.white,
+                      )
                     : null,
               ),
             ),
@@ -593,14 +605,16 @@ class _CartPageUIState extends State<CartPageUI> {
                 context.read<CartBloc>().add(CartItemRemoved(item.id));
                 _showRemovedSnackBar(context, item.name);
               } else {
-                context.read<CartBloc>().add(CartItemQuantityUpdated(item.id, -1));
+                context.read<CartBloc>().add(
+                  CartItemQuantityUpdated(item.id, -1),
+                );
               }
             },
             child: Container(
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: _primaryRed.withOpacity(0.12),
+                color: _primaryRed.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -640,7 +654,7 @@ class _CartPageUIState extends State<CartPageUI> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: _primaryRed.withOpacity(0.12),
+                color: _primaryRed.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -664,7 +678,7 @@ class _CartPageUIState extends State<CartPageUI> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withValues(alpha: 0.07),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -723,7 +737,10 @@ class _CartPageUIState extends State<CartPageUI> {
                         SnackBar(
                           content: Row(
                             children: [
-                              const Icon(Icons.error_outline_rounded, color: Colors.white),
+                              const Icon(
+                                Icons.error_outline_rounded,
+                                color: Colors.white,
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
@@ -760,7 +777,7 @@ class _CartPageUIState extends State<CartPageUI> {
                   borderRadius: BorderRadius.circular(18),
                 ),
                 elevation: 4,
-                shadowColor: _primaryRed.withOpacity(0.4),
+                shadowColor: _primaryRed.withValues(alpha: 0.4),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -784,4 +801,3 @@ class _CartPageUIState extends State<CartPageUI> {
     );
   }
 }
-

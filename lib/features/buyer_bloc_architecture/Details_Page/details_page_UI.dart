@@ -259,11 +259,11 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                   onTap: () => Navigator.pop(context),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha: 0.95),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.12),
+                          color: Colors.black.withValues(alpha: 0.12),
                           blurRadius: 8,
                         ),
                       ],
@@ -351,7 +351,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 30,
               offset: const Offset(0, 10),
             ),
@@ -374,11 +374,11 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.95),
+                          color: Colors.white.withValues(alpha: 0.95),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
+                              color: Colors.black.withValues(alpha: 0.12),
                               blurRadius: 8,
                             ),
                           ],
@@ -657,12 +657,12 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
               duration: const Duration(milliseconds: 250),
               decoration: BoxDecoration(
                 color: isFav
-                    ? _primaryRed.withOpacity(0.1)
-                    : Colors.white.withOpacity(0.95),
+                    ? _primaryRed.withValues(alpha: 0.1)
+                    : Colors.white.withValues(alpha: 0.95),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
+                    color: Colors.black.withValues(alpha: 0.12),
                     blurRadius: 8,
                   ),
                 ],
@@ -731,7 +731,10 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
-                colors: [Colors.black.withOpacity(0.25), Colors.transparent],
+                colors: [
+                  Colors.black.withValues(alpha: 0.25),
+                  Colors.transparent,
+                ],
               ),
             ),
           ),
@@ -755,7 +758,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFFB800).withOpacity(0.35),
+              color: const Color(0xFFFFB800).withValues(alpha: 0.35),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -874,7 +877,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
           boxShadow: enabled
               ? [
                   BoxShadow(
-                    color: _primaryRed.withOpacity(0.35),
+                    color: _primaryRed.withValues(alpha: 0.35),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -898,7 +901,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 blurRadius: 20,
                 offset: const Offset(0, -4),
               ),
@@ -945,7 +948,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                         borderRadius: BorderRadius.circular(18),
                       ),
                       elevation: 4,
-                      shadowColor: _primaryRed.withOpacity(0.4),
+                      shadowColor: _primaryRed.withValues(alpha: 0.4),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1017,7 +1020,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                     borderRadius: BorderRadius.circular(18),
                   ),
                   elevation: 4,
-                  shadowColor: _primaryRed.withOpacity(0.4),
+                  shadowColor: _primaryRed.withValues(alpha: 0.4),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,

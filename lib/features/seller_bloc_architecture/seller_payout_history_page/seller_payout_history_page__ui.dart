@@ -31,7 +31,8 @@ class SellerPayoutHistoryView extends StatefulWidget {
   const SellerPayoutHistoryView({super.key});
 
   @override
-  State<SellerPayoutHistoryView> createState() => _SellerPayoutHistoryViewState();
+  State<SellerPayoutHistoryView> createState() =>
+      _SellerPayoutHistoryViewState();
 }
 
 class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
@@ -52,7 +53,9 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
 
   void _onScroll() {
     if (_isBottom) {
-      context.read<SellerPayoutHistoryBloc>().add(const LoadMorePayoutHistory());
+      context.read<SellerPayoutHistoryBloc>().add(
+        const LoadMorePayoutHistory(),
+      );
     }
   }
 
@@ -68,7 +71,9 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 900;
     final isTablet = size.width > 600 && size.width <= 900;
-    final horizontalPadding = isDesktop ? size.width * 0.25 : (isTablet ? size.width * 0.15 : 20.0);
+    final horizontalPadding = isDesktop
+        ? size.width * 0.25
+        : (isTablet ? size.width * 0.15 : 20.0);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -77,7 +82,11 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF0F172A),
+            size: 20,
+          ),
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text(
@@ -94,7 +103,9 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
         child: RefreshIndicator(
           color: const Color(0xFFE11D48),
           onRefresh: () async {
-            context.read<SellerPayoutHistoryBloc>().add(const RefreshPayoutHistory());
+            context.read<SellerPayoutHistoryBloc>().add(
+              const RefreshPayoutHistory(),
+            );
           },
           child: BlocBuilder<SellerPayoutHistoryBloc, SellerPayoutHistoryState>(
             builder: (context, state) {
@@ -136,7 +147,10 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
     return ListView.builder(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: 16.0,
+      ),
       itemCount: state.payouts.length + (state.isPaginatedLoading ? 1 : 0),
       itemBuilder: (context, index) {
         if (index < state.payouts.length) {
@@ -159,7 +173,10 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
   Widget _buildSkeletonLoader(double horizontalPadding) {
     return ListView.builder(
       key: const ValueKey('loading_skeleton'),
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: 16.0,
+      ),
       itemCount: 6,
       itemBuilder: (context, index) => Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -202,7 +219,11 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, String message, double horizontalPadding) {
+  Widget _buildErrorState(
+    BuildContext context,
+    String message,
+    double horizontalPadding,
+  ) {
     return Center(
       key: const ValueKey('error_state'),
       child: Padding(
@@ -228,10 +249,14 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => context.read<SellerPayoutHistoryBloc>().add(const LoadPayoutHistory()),
+              onPressed: () => context.read<SellerPayoutHistoryBloc>().add(
+                const LoadPayoutHistory(),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE11D48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: const Text('Retry'),
             ),
@@ -246,16 +271,14 @@ class _PayoutHistoryItem extends StatefulWidget {
   final PayoutItem payout;
   final int index;
 
-  const _PayoutHistoryItem({
-    required this.payout,
-    required this.index,
-  });
+  const _PayoutHistoryItem({required this.payout, required this.index});
 
   @override
   State<_PayoutHistoryItem> createState() => _PayoutHistoryItemState();
 }
 
-class _PayoutHistoryItemState extends State<_PayoutHistoryItem> with SingleTickerProviderStateMixin {
+class _PayoutHistoryItemState extends State<_PayoutHistoryItem>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -271,9 +294,13 @@ class _PayoutHistoryItemState extends State<_PayoutHistoryItem> with SingleTicke
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    _slideAnimation = Tween<Offset>(begin: const Offset(0.0, 0.15), end: Offset.zero).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0.0, 0.15), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _delayTimer = Timer(Duration(milliseconds: 80 * widget.index), () {
       if (mounted) {
@@ -311,7 +338,7 @@ class _PayoutHistoryItemState extends State<_PayoutHistoryItem> with SingleTicke
             border: Border.all(color: const Color(0xFFF1F5F9)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.01),
+                color: Colors.black.withValues(alpha: 0.01),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),

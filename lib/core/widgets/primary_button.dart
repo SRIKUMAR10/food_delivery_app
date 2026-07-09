@@ -67,7 +67,7 @@ class _PrimaryButtonState extends State<PrimaryButton>
                   Set<WidgetState> states,
                 ) {
                   if (states.contains(WidgetState.disabled)) {
-                    return const Color(0xFF006C5B).withOpacity(0.6);
+                    return const Color(0xFF006C5B).withValues(alpha: 0.6);
                   }
                   if (states.contains(WidgetState.hovered) || _isHovered) {
                     return const Color(0xFF005A4B);
@@ -96,7 +96,7 @@ class _PrimaryButtonState extends State<PrimaryButton>
                   Set<WidgetState> states,
                 ) {
                   if (states.contains(WidgetState.pressed)) {
-                    return Colors.black.withOpacity(0.1);
+                    return Colors.black.withValues(alpha: 0.1);
                   }
                   return null;
                 }),

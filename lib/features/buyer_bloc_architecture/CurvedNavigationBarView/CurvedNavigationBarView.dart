@@ -152,7 +152,9 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
                   unselectedLabelTextStyle: const TextStyle(
                     color: Colors.black54,
                   ),
-                  indicatorColor: const Color(0xFFE52121).withOpacity(0.1),
+                  indicatorColor: const Color(
+                    0xFFE52121,
+                  ).withValues(alpha: 0.1),
                   minWidth: 90,
                   groupAlignment: 0.0, // Center vertically
                   destinations: const [

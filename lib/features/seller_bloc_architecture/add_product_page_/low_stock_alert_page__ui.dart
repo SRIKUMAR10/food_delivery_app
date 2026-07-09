@@ -61,19 +61,22 @@ class _LowStockAlertViewState extends State<LowStockAlertView>
           ),
           body: Center(
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: isDesktop ? 600 : double.infinity),
+              constraints: BoxConstraints(
+                maxWidth: isDesktop ? 600 : double.infinity,
+              ),
               child: BlocConsumer<LowStockAlertBloc, LowStockAlertState>(
                 listener: (context, state) {
                   if (state is LowStockAlertLoaded) {
                     _animationController.forward();
                   } else if (state is LowStockAlertError) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(state.message)),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(state.message)));
                   }
                 },
                 builder: (context, state) {
-                  if (state is LowStockAlertLoading || state is LowStockAlertInitial) {
+                  if (state is LowStockAlertLoading ||
+                      state is LowStockAlertInitial) {
                     return _buildSkeletonLoader();
                   } else if (state is LowStockAlertLoaded) {
                     return _buildContent(context, state);
@@ -85,14 +88,15 @@ class _LowStockAlertViewState extends State<LowStockAlertView>
               ),
             ),
           ),
-          bottomNavigationBar: BlocBuilder<LowStockAlertBloc, LowStockAlertState>(
-            builder: (context, state) {
-              if (state is LowStockAlertLoaded) {
-                return _buildBottomButton(isDesktop);
-              }
-              return const SizedBox.shrink();
-            },
-          ),
+          bottomNavigationBar:
+              BlocBuilder<LowStockAlertBloc, LowStockAlertState>(
+                builder: (context, state) {
+                  if (state is LowStockAlertLoaded) {
+                    return _buildBottomButton(isDesktop);
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
         );
       },
     );
@@ -145,19 +149,20 @@ class _LowStockAlertViewState extends State<LowStockAlertView>
               ),
               itemBuilder: (context, index) {
                 return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.5),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: _animationController,
-                      curve: Interval(
-                        (index / state.items.length) * 0.5,
-                        1.0,
-                        curve: Curves.easeOutCubic,
+                  position:
+                      Tween<Offset>(
+                        begin: const Offset(0, 0.5),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: _animationController,
+                          curve: Interval(
+                            (index / state.items.length) * 0.5,
+                            1.0,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
                   child: FadeTransition(
                     opacity: _animationController,
                     child: _buildListItem(state.items[index]),
@@ -217,7 +222,7 @@ class _LowStockAlertViewState extends State<LowStockAlertView>
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Color(item.colorHex).withOpacity(0.15),
+            color: Color(item.colorHex).withValues(alpha: 0.15),
             shape: BoxShape.circle,
           ),
           child: Center(
@@ -275,14 +280,16 @@ class _LowStockAlertViewState extends State<LowStockAlertView>
     return SafeArea(
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: isDesktop ? (MediaQuery.of(context).size.width - 600) / 2 + 24 : 24.0,
+          horizontal: isDesktop
+              ? (MediaQuery.of(context).size.width - 600) / 2 + 24
+              : 24.0,
           vertical: 16.0,
         ),
         decoration: BoxDecoration(
           color: const Color(0xFFF9FAFB),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -305,10 +312,7 @@ class _LowStockAlertViewState extends State<LowStockAlertView>
             ),
             child: const Text(
               'View Inventory',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -416,7 +420,7 @@ class _LowStockAlertViewState extends State<LowStockAlertView>
               context.read<LowStockAlertBloc>().add(LoadLowStockData());
             },
             child: const Text('Retry'),
-          )
+          ),
         ],
       ),
     );

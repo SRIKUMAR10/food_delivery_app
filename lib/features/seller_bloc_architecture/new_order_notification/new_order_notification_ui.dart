@@ -9,7 +9,8 @@ import 'new_order_notification_service.dart';
 class NewOrderNotificationPage extends StatelessWidget {
   final String orderId;
 
-  const NewOrderNotificationPage({Key? key, required this.orderId}) : super(key: key);
+  const NewOrderNotificationPage({Key? key, required this.orderId})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -26,17 +27,20 @@ class NewOrderNotificationPage extends StatelessWidget {
 
 class NewOrderNotificationView extends StatefulWidget {
   final String orderId;
-  const NewOrderNotificationView({Key? key, required this.orderId}) : super(key: key);
+  const NewOrderNotificationView({Key? key, required this.orderId})
+    : super(key: key);
 
   @override
-  State<NewOrderNotificationView> createState() => _NewOrderNotificationViewState();
+  State<NewOrderNotificationView> createState() =>
+      _NewOrderNotificationViewState();
 }
 
-class _NewOrderNotificationViewState extends State<NewOrderNotificationView> with TickerProviderStateMixin {
+class _NewOrderNotificationViewState extends State<NewOrderNotificationView>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
-  
+
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -57,12 +61,12 @@ class _NewOrderNotificationViewState extends State<NewOrderNotificationView> wit
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
-    
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
-    
+
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
@@ -90,90 +94,113 @@ class _NewOrderNotificationViewState extends State<NewOrderNotificationView> wit
             } else {
               cardWidth = constraints.maxWidth;
             }
-            
+
             return Center(
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(
-                  vertical: 24, 
+                  vertical: 24,
                   horizontal: constraints.maxWidth < 600 ? 16 : 0,
                 ),
-                child: BlocConsumer<NewOrderNotificationBloc, NewOrderNotificationState>(
-                  listener: (context, state) {
-                    if (state is NewOrderNotificationLoaded) {
-                      _cachedOrderDetails = state.orderDetails;
-                      _animationController.forward();
-                    } else if (state is OrderAcceptedState) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Order Accepted Successfully!')),
-                      );
-                      Navigator.of(context).pop();
-                    } else if (state is OrderRejectedState) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Order Rejected.')),
-                      );
-                      Navigator.of(context).pop();
-                    } else if (state is NewOrderNotificationError) {
-                      setState(() {
-                         _isAccepting = false;
-                         _isRejecting = false;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(state.message)),
-                      );
-                    }
-                  },
-                  builder: (context, state) {
-                    if (state is NewOrderNotificationLoaded) {
-                       _cachedOrderDetails = state.orderDetails;
-                    }
-
-                    if (state is NewOrderNotificationError) {
-                      return _ErrorView(
-                        message: state.message,
-                        onRetry: () {
-                          setState(() {
-                             _isAccepting = false;
-                             _isRejecting = false;
-                          });
-                          context.read<NewOrderNotificationBloc>().add(LoadOrderDetails(widget.orderId));
-                        },
-                      );
-                    }
-
-                    if (state is NewOrderNotificationInitial || 
-                       (state is NewOrderNotificationLoading && _cachedOrderDetails == null)) {
-                      return const _LoadingView();
-                    }
-
-                    if (_cachedOrderDetails != null) {
-                      return FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: ScaleTransition(
-                          scale: _scaleAnimation,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: cardWidth),
-                            child: _OrderDetailsCard(
-                              data: _cachedOrderDetails!,
-                              pulseAnimation: _pulseAnimation,
-                              isAccepting: _isAccepting,
-                              isRejecting: _isRejecting,
-                              onAccept: () {
-                                setState(() => _isAccepting = true);
-                                context.read<NewOrderNotificationBloc>().add(AcceptOrderEvent(_cachedOrderDetails!['orderId']));
-                              },
-                              onReject: () {
-                                setState(() => _isRejecting = true);
-                                context.read<NewOrderNotificationBloc>().add(RejectOrderEvent(_cachedOrderDetails!['orderId']));
-                              },
+                child:
+                    BlocConsumer<
+                      NewOrderNotificationBloc,
+                      NewOrderNotificationState
+                    >(
+                      listener: (context, state) {
+                        if (state is NewOrderNotificationLoaded) {
+                          _cachedOrderDetails = state.orderDetails;
+                          _animationController.forward();
+                        } else if (state is OrderAcceptedState) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Order Accepted Successfully!'),
                             ),
-                          ),
-                        ),
-                      );
-                    }
+                          );
+                          Navigator.of(context).pop();
+                        } else if (state is OrderRejectedState) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Order Rejected.')),
+                          );
+                          Navigator.of(context).pop();
+                        } else if (state is NewOrderNotificationError) {
+                          setState(() {
+                            _isAccepting = false;
+                            _isRejecting = false;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(state.message)),
+                          );
+                        }
+                      },
+                      builder: (context, state) {
+                        if (state is NewOrderNotificationLoaded) {
+                          _cachedOrderDetails = state.orderDetails;
+                        }
 
-                    return const _EmptyView();
-                  },
-                ),
+                        if (state is NewOrderNotificationError) {
+                          return _ErrorView(
+                            message: state.message,
+                            onRetry: () {
+                              setState(() {
+                                _isAccepting = false;
+                                _isRejecting = false;
+                              });
+                              context.read<NewOrderNotificationBloc>().add(
+                                LoadOrderDetails(widget.orderId),
+                              );
+                            },
+                          );
+                        }
+
+                        if (state is NewOrderNotificationInitial ||
+                            (state is NewOrderNotificationLoading &&
+                                _cachedOrderDetails == null)) {
+                          return const _LoadingView();
+                        }
+
+                        if (_cachedOrderDetails != null) {
+                          return FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: ScaleTransition(
+                              scale: _scaleAnimation,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: cardWidth,
+                                ),
+                                child: _OrderDetailsCard(
+                                  data: _cachedOrderDetails!,
+                                  pulseAnimation: _pulseAnimation,
+                                  isAccepting: _isAccepting,
+                                  isRejecting: _isRejecting,
+                                  onAccept: () {
+                                    setState(() => _isAccepting = true);
+                                    context
+                                        .read<NewOrderNotificationBloc>()
+                                        .add(
+                                          AcceptOrderEvent(
+                                            _cachedOrderDetails!['orderId'],
+                                          ),
+                                        );
+                                  },
+                                  onReject: () {
+                                    setState(() => _isRejecting = true);
+                                    context
+                                        .read<NewOrderNotificationBloc>()
+                                        .add(
+                                          RejectOrderEvent(
+                                            _cachedOrderDetails!['orderId'],
+                                          ),
+                                        );
+                                  },
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return const _EmptyView();
+                      },
+                    ),
               ),
             );
           },
@@ -206,7 +233,7 @@ class _NotificationHeader extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFE52929).withOpacity(0.2),
+                      color: const Color(0xFFE52929).withValues(alpha: 0.2),
                       blurRadius: 16,
                       spreadRadius: 4,
                     ),
@@ -313,7 +340,9 @@ class _OrderInfoRow extends StatelessWidget {
             style: TextStyle(
               fontSize: isAmount ? 18 : 15,
               fontWeight: FontWeight.bold,
-              color: isAmount ? const Color(0xFFE52929) : const Color(0xFF111827),
+              color: isAmount
+                  ? const Color(0xFFE52929)
+                  : const Color(0xFF111827),
             ),
           ),
         ],
@@ -398,10 +427,14 @@ class _ActionButtons extends StatelessWidget {
             onPressed: isDisabled ? null : onReject,
             style: OutlinedButton.styleFrom(
               side: BorderSide(
-                color: isDisabled ? Colors.transparent : const Color(0xFFD1D5DB),
+                color: isDisabled
+                    ? Colors.transparent
+                    : const Color(0xFFD1D5DB),
                 width: 1.5,
               ),
-              backgroundColor: isDisabled ? const Color(0xFFF3F4F6) : Colors.transparent,
+              backgroundColor: isDisabled
+                  ? const Color(0xFFF3F4F6)
+                  : Colors.transparent,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -464,7 +497,7 @@ class _OrderDetailsCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF111827).withOpacity(0.06),
+            color: const Color(0xFF111827).withValues(alpha: 0.06),
             blurRadius: 32,
             offset: const Offset(0, 16),
           ),
@@ -538,9 +571,7 @@ class _LoadingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: CircularProgressIndicator(
-        color: Color(0xFFE52929),
-      ),
+      child: CircularProgressIndicator(color: Color(0xFFE52929)),
     );
   }
 }
@@ -562,7 +593,7 @@ class _ErrorView extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF111827).withOpacity(0.06),
+              color: const Color(0xFF111827).withValues(alpha: 0.06),
               blurRadius: 32,
               offset: const Offset(0, 16),
             ),
@@ -571,7 +602,11 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded, color: Color(0xFFE52929), size: 64),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFE52929),
+              size: 64,
+            ),
             const SizedBox(height: 24),
             const Text(
               'Something went wrong',
@@ -585,10 +620,7 @@ class _ErrorView extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF6B7280),
-              ),
+              style: const TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -642,10 +674,7 @@ class _EmptyView extends StatelessWidget {
           SizedBox(height: 12),
           Text(
             'You will be notified when a new order arrives.',
-            style: TextStyle(
-              fontSize: 15,
-              color: Color(0xFF6B7280),
-            ),
+            style: TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
           ),
         ],
       ),

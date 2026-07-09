@@ -29,33 +29,48 @@ class AssignDeliveryPage extends StatelessWidget {
                   children: [
                     _buildHeader(context),
                     Expanded(
-                      child: BlocConsumer<AssignDeliveryBloc, AssignDeliveryState>(
-                        listener: (context, state) {
-                          if (state is AssignDeliveryError) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-                            );
-                          } else if (state is AssignDeliverySuccess) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Delivery Assigned Successfully!'), backgroundColor: Colors.green),
-                            );
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => OutForDeliveryPageUI(orderId: orderId),
-                              ),
-                            );
-                          }
-                        },
-                        builder: (context, state) {
-                          if (state is AssignDeliveryLoading || state is AssignDeliveryInitial) {
-                            return const Center(child: CircularProgressIndicator(color: Color(0xFFE52929)));
-                          } else if (state is AssignDeliveryLoaded) {
-                            return _buildBody(context, state);
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
+                      child:
+                          BlocConsumer<AssignDeliveryBloc, AssignDeliveryState>(
+                            listener: (context, state) {
+                              if (state is AssignDeliveryError) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(state.message),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              } else if (state is AssignDeliverySuccess) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Delivery Assigned Successfully!',
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        OutForDeliveryPageUI(orderId: orderId),
+                                  ),
+                                );
+                              }
+                            },
+                            builder: (context, state) {
+                              if (state is AssignDeliveryLoading ||
+                                  state is AssignDeliveryInitial) {
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFFE52929),
+                                  ),
+                                );
+                              } else if (state is AssignDeliveryLoaded) {
+                                return _buildBody(context, state);
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
                     ),
                   ],
                 ),
@@ -77,7 +92,11 @@ class AssignDeliveryPage extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.arrow_back_ios_new, size: 20, color: Color(0xFF1E293B)),
+                child: const Icon(
+                  Icons.arrow_back_ios_new,
+                  size: 20,
+                  color: Color(0xFF1E293B),
+                ),
               ),
               const SizedBox(width: 16),
               Text(
@@ -129,7 +148,10 @@ class AssignDeliveryPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                ...state.riders.map((rider) => _buildRiderCard(context, rider, state.selectedRiderId)),
+                ...state.riders.map(
+                  (rider) =>
+                      _buildRiderCard(context, rider, state.selectedRiderId),
+                ),
                 const SizedBox(height: 24),
                 const Text(
                   'Delivery Instructions',
@@ -141,7 +163,9 @@ class AssignDeliveryPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  onChanged: (value) => context.read<AssignDeliveryBloc>().add(UpdateInstructionsEvent(instructions: value)),
+                  onChanged: (value) => context.read<AssignDeliveryBloc>().add(
+                    UpdateInstructionsEvent(instructions: value),
+                  ),
                   maxLines: 4,
                   decoration: InputDecoration(
                     hintText: 'Please call before arriving',
@@ -172,11 +196,17 @@ class AssignDeliveryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildRiderCard(BuildContext context, RiderModel rider, String? selectedRiderId) {
+  Widget _buildRiderCard(
+    BuildContext context,
+    RiderModel rider,
+    String? selectedRiderId,
+  ) {
     final isSelected = rider.id == selectedRiderId;
 
     return GestureDetector(
-      onTap: () => context.read<AssignDeliveryBloc>().add(SelectRiderEvent(riderId: rider.id)),
+      onTap: () => context.read<AssignDeliveryBloc>().add(
+        SelectRiderEvent(riderId: rider.id),
+      ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 12),
@@ -185,12 +215,14 @@ class AssignDeliveryPage extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? const Color(0xFFE52929) : const Color(0xFFF1F5F9),
+            color: isSelected
+                ? const Color(0xFFE52929)
+                : const Color(0xFFF1F5F9),
             width: isSelected ? 2 : 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -219,7 +251,11 @@ class AssignDeliveryPage extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.star, size: 16, color: Color(0xFFF59E0B)),
+                      const Icon(
+                        Icons.star,
+                        size: 16,
+                        color: Color(0xFFF59E0B),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         rider.rating.toString(),
@@ -248,7 +284,9 @@ class AssignDeliveryPage extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? const Color(0xFFE52929) : const Color(0xFFCBD5E1),
+                  color: isSelected
+                      ? const Color(0xFFE52929)
+                      : const Color(0xFFCBD5E1),
                   width: isSelected ? 6 : 2,
                 ),
               ),
@@ -266,7 +304,7 @@ class AssignDeliveryPage extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -275,12 +313,16 @@ class AssignDeliveryPage extends StatelessWidget {
       child: InkWell(
         onTap: state.isSubmitting
             ? null
-            : () => context.read<AssignDeliveryBloc>().add(const SubmitAssignDeliveryEvent()),
+            : () => context.read<AssignDeliveryBloc>().add(
+                const SubmitAssignDeliveryEvent(),
+              ),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFFE52929).withOpacity(state.isSubmitting ? 0.7 : 1.0),
+            color: const Color(
+              0xFFE52929,
+            ).withValues(alpha: state.isSubmitting ? 0.7 : 1.0),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
@@ -288,7 +330,10 @@ class AssignDeliveryPage extends StatelessWidget {
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
                   )
                 : const Text(
                     'Assign Rider',

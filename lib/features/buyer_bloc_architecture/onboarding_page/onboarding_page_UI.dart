@@ -178,8 +178,8 @@ class OnboardingPageView extends StatelessWidget {
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: [
-                            const Color(0xFF7A4A28).withOpacity(0.08),
-                            const Color(0xFF7A4A28).withOpacity(0.0),
+                            const Color(0xFF7A4A28).withValues(alpha: 0.08),
+                            const Color(0xFF7A4A28).withValues(alpha: 0.0),
                           ],
                         ),
                       ),
@@ -210,7 +210,7 @@ class OnboardingPageView extends StatelessWidget {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF7A4A28).withOpacity(0.1),
+                          color: const Color(0xFF7A4A28).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text(
@@ -301,7 +301,7 @@ class _HoverButtonState extends State<HoverButton> {
             boxShadow: [
               if (_isHovered)
                 BoxShadow(
-                  color: const Color(0xFF7A4A28).withOpacity(0.3),
+                  color: const Color(0xFF7A4A28).withValues(alpha: 0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),

@@ -143,7 +143,7 @@ class _AddProductViewState extends State<AddProductView> {
             border: const Border(top: BorderSide(color: _borderColor)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, -5),
               ),
@@ -318,7 +318,7 @@ class _AddProductViewState extends State<AddProductView> {
       borderRadius: BorderRadius.circular(24),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.02),
+          color: Colors.black.withValues(alpha: 0.02),
           blurRadius: 20,
           offset: const Offset(0, 8),
         ),
@@ -346,7 +346,7 @@ class _AddProductViewState extends State<AddProductView> {
           width: double.infinity,
           height: 200,
           decoration: BoxDecoration(
-            color: _surfaceColor.withOpacity(0.5),
+            color: _surfaceColor.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
@@ -447,11 +447,11 @@ class _AddProductViewState extends State<AddProductView> {
           child: Icon(icon, color: _textSecondary, size: 22),
         ),
         labelStyle: const TextStyle(color: _textSecondary, fontSize: 15),
-        hintStyle: TextStyle(color: _textSecondary.withOpacity(0.5)),
+        hintStyle: TextStyle(color: _textSecondary.withValues(alpha: 0.5)),
         helperStyle: const TextStyle(color: _textSecondary, fontSize: 12),
         floatingLabelBehavior: FloatingLabelBehavior.auto,
         filled: true,
-        fillColor: _bgColor.withOpacity(0.5),
+        fillColor: _bgColor.withValues(alpha: 0.5),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 18,
@@ -497,7 +497,7 @@ class _AddProductViewState extends State<AddProductView> {
           size: 22,
         ),
         filled: true,
-        fillColor: _bgColor.withOpacity(0.5),
+        fillColor: _bgColor.withValues(alpha: 0.5),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 18,
@@ -588,7 +588,7 @@ class _AddProductViewState extends State<AddProductView> {
         ),
         boxShadow: [
           BoxShadow(
-            color: _primaryColor.withOpacity(0.3),
+            color: _primaryColor.withValues(alpha: 0.3),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),

@@ -86,8 +86,10 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
         if (state is ProfileError) {
           _showSnack(context, state.message, isError: true);
         } else if (state is SignOutSuccess) {
-          Navigator.of(context, rootNavigator: true)
-              .pushNamedAndRemoveUntil('/', (route) => false);
+          Navigator.of(
+            context,
+            rootNavigator: true,
+          ).pushNamedAndRemoveUntil('/', (route) => false);
         }
       },
       builder: (context, state) {
@@ -160,7 +162,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -200,7 +202,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -333,9 +335,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const PaymentMethodsPage(),
-                ),
+                MaterialPageRoute(builder: (_) => const PaymentMethodsPage()),
               );
             },
           ),
@@ -350,9 +350,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => OrderPageUI(
-                  orderRepository: OrderRepository(),
-                ),
+                builder: (_) => OrderPageUI(orderRepository: OrderRepository()),
               ),
             ),
           ),
@@ -377,9 +375,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
             title: 'View Transactions',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const TransactionsPage(),
-              ),
+              MaterialPageRoute(builder: (_) => const TransactionsPage()),
             ),
           ),
         ]),
@@ -392,9 +388,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
             title: 'Settings',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const AppSettingsPage(),
-              ),
+              MaterialPageRoute(builder: (_) => const AppSettingsPage()),
             ),
           ),
           _buildMenuDivider(),
@@ -403,9 +397,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
             title: 'Help & Support',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const HelpSupportPage(),
-              ),
+              MaterialPageRoute(builder: (_) => const HelpSupportPage()),
             ),
           ),
         ]),
@@ -423,20 +415,14 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
           backgroundColor: Colors.white,
           foregroundColor: const Color(0xFFEF2A39),
           elevation: 0,
-          side: const BorderSide(
-            color: Color(0xFFEF2A39),
-            width: 1.5,
-          ),
+          side: const BorderSide(color: Color(0xFFEF2A39), width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
         ),
         child: const Text(
           'Log Out',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -463,7 +449,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -477,7 +463,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
     return Divider(
       height: 1,
       thickness: 1,
-      color: Colors.grey.withOpacity(0.1),
+      color: Colors.grey.withValues(alpha: 0.1),
       indent: 56,
       endIndent: 16,
     );
@@ -500,7 +486,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFEF2A39).withOpacity(0.1),
+                color: const Color(0xFFEF2A39).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, size: 20, color: const Color(0xFFEF2A39)),

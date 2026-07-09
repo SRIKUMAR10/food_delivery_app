@@ -182,7 +182,7 @@ class _WalletViewState extends State<WalletView> {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.10),
+                color: Colors.red.withValues(alpha: 0.10),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -353,7 +353,7 @@ class _WalletViewState extends State<WalletView> {
 
   Widget _buildLoadingOverlay() {
     return Container(
-      color: Colors.black.withOpacity(0.45),
+      color: Colors.black.withValues(alpha: 0.45),
       child: Center(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 32),
@@ -362,7 +362,7 @@ class _WalletViewState extends State<WalletView> {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -517,7 +517,7 @@ class _WalletViewState extends State<WalletView> {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 15,
                   offset: const Offset(0, 5),
                 ),
@@ -560,7 +560,7 @@ class _WalletViewState extends State<WalletView> {
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFE52121).withOpacity(0.4),
+                  color: const Color(0xFFE52121).withValues(alpha: 0.4),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -573,7 +573,7 @@ class _WalletViewState extends State<WalletView> {
                   top: -20,
                   child: CircleAvatar(
                     radius: 60,
-                    backgroundColor: Colors.white.withOpacity(0.1),
+                    backgroundColor: Colors.white.withValues(alpha: 0.1),
                   ),
                 ),
                 Positioned(
@@ -581,7 +581,7 @@ class _WalletViewState extends State<WalletView> {
                   bottom: -15,
                   child: CircleAvatar(
                     radius: 35,
-                    backgroundColor: Colors.white.withOpacity(0.07),
+                    backgroundColor: Colors.white.withValues(alpha: 0.07),
                   ),
                 ),
                 Column(
@@ -681,20 +681,20 @@ class _WalletViewState extends State<WalletView> {
                   border: Border.all(
                     color: isSelected
                         ? primaryColor
-                        : Colors.grey.withOpacity(0.2),
+                        : Colors.grey.withValues(alpha: 0.2),
                     width: isSelected ? 2 : 1,
                   ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: primaryColor.withOpacity(0.3),
+                            color: primaryColor.withValues(alpha: 0.3),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
                         ]
                       : [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Colors.black.withValues(alpha: 0.04),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -947,7 +947,7 @@ class _WalletViewState extends State<WalletView> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFE52121).withOpacity(0.08),
+                color: const Color(0xFFE52121).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -1023,10 +1023,10 @@ class _WalletViewState extends State<WalletView> {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.08),
+                        color: Colors.green.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.green.withOpacity(0.2),
+                          color: Colors.green.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Row(
@@ -1062,9 +1062,11 @@ class _WalletViewState extends State<WalletView> {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.08),
+                        color: Colors.red.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.withOpacity(0.2)),
+                        border: Border.all(
+                          color: Colors.red.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1166,7 +1168,7 @@ class _WalletViewState extends State<WalletView> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1179,8 +1181,8 @@ class _WalletViewState extends State<WalletView> {
               height: 46,
               decoration: BoxDecoration(
                 color: isCredit
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.red.withOpacity(0.1),
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -1233,8 +1235,8 @@ class _WalletViewState extends State<WalletView> {
                   ),
                   decoration: BoxDecoration(
                     color: isSuccess
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.orange.withOpacity(0.1),
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -1312,8 +1314,8 @@ class _WalletViewState extends State<WalletView> {
               height: 64,
               decoration: BoxDecoration(
                 color: isCredit
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.red.withOpacity(0.1),
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.red.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(

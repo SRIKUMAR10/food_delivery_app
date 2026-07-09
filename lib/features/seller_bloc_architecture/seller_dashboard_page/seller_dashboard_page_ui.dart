@@ -168,7 +168,9 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFE52929).withOpacity(0.3),
+                            color: const Color(
+                              0xFFE52929,
+                            ).withValues(alpha: 0.3),
                             blurRadius: 10,
                             offset: const Offset(0, 5),
                           ),
@@ -222,7 +224,7 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                             top: 20,
                             child: Icon(
                               Icons.trending_up,
-                              color: Colors.white.withOpacity(0.5),
+                              color: Colors.white.withValues(alpha: 0.5),
                               size: 60,
                             ),
                           ),
@@ -245,7 +247,13 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                   bgColor: const Color(0xFFFFFBEB),
                                   subtitle: 'Awaiting processing',
                                   onTap: () {
-                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerCustomerPage()));
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const SellerCustomerPage(),
+                                      ),
+                                    );
                                   },
                                 ),
                               ),
@@ -264,7 +272,11 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => BlocProvider(
-                                          create: (context) => SellerAnalyticsBloc(repository: SellerAnalyticsRepository()),
+                                          create: (context) =>
+                                              SellerAnalyticsBloc(
+                                                repository:
+                                                    SellerAnalyticsRepository(),
+                                              ),
                                           child: const SellerAnalyticsPageUI(),
                                         ),
                                       ),
@@ -308,7 +320,12 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => BlocProvider(
-                                          create: (context) => OverallRatingBloc(repository: OverallRatingRepositoryImpl(MockOverallRatingService())),
+                                          create: (context) => OverallRatingBloc(
+                                            repository:
+                                                OverallRatingRepositoryImpl(
+                                                  MockOverallRatingService(),
+                                                ),
+                                          ),
                                           child: const OverallRatingPage(),
                                         ),
                                       ),
@@ -333,7 +350,13 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                     bgColor: const Color(0xFFFFFBEB),
                                     subtitle: 'Awaiting',
                                     onTap: () {
-                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerCustomerPage()));
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const SellerCustomerPage(),
+                                        ),
+                                      );
                                     },
                                   ),
                                   _buildStatCard(
@@ -349,8 +372,13 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                         context,
                                         MaterialPageRoute(
                                           builder: (_) => BlocProvider(
-                                            create: (context) => SellerAnalyticsBloc(repository: SellerAnalyticsRepository()),
-                                            child: const SellerAnalyticsPageUI(),
+                                            create: (context) =>
+                                                SellerAnalyticsBloc(
+                                                  repository:
+                                                      SellerAnalyticsRepository(),
+                                                ),
+                                            child:
+                                                const SellerAnalyticsPageUI(),
                                           ),
                                         ),
                                       );
@@ -387,7 +415,12 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                         context,
                                         MaterialPageRoute(
                                           builder: (_) => BlocProvider(
-                                            create: (context) => OverallRatingBloc(repository: OverallRatingRepositoryImpl(MockOverallRatingService())),
+                                            create: (context) => OverallRatingBloc(
+                                              repository:
+                                                  OverallRatingRepositoryImpl(
+                                                    MockOverallRatingService(),
+                                                  ),
+                                            ),
                                             child: const OverallRatingPage(),
                                           ),
                                         ),
@@ -544,7 +577,7 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: iconColor.withOpacity(0.1),
+                    color: iconColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: iconColor, size: 20),
@@ -608,7 +641,7 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
         border: Border.all(color: const Color(0xFFF3F4F6)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

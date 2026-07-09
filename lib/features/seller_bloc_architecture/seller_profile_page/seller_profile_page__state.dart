@@ -17,6 +17,12 @@ class ProfileLoaded extends SellerProfilePageState {
   final String phone;
   final String profileImageUrl;
   final bool notificationsEnabled;
+  final String? address;
+  final String? gstNumber;
+  final String? fssaiLicense;
+  final String? bankAccountNumber;
+  final String? ifscCode;
+  final String? taxConfiguration;
 
   const ProfileLoaded({
     required this.storeName,
@@ -24,6 +30,12 @@ class ProfileLoaded extends SellerProfilePageState {
     required this.phone,
     required this.profileImageUrl,
     required this.notificationsEnabled,
+    this.address,
+    this.gstNumber,
+    this.fssaiLicense,
+    this.bankAccountNumber,
+    this.ifscCode,
+    this.taxConfiguration,
   });
 
   @override
@@ -33,6 +45,12 @@ class ProfileLoaded extends SellerProfilePageState {
         phone,
         profileImageUrl,
         notificationsEnabled,
+        address,
+        gstNumber,
+        fssaiLicense,
+        bankAccountNumber,
+        ifscCode,
+        taxConfiguration,
       ];
 }
 

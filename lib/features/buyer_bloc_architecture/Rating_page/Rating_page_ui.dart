@@ -9,11 +9,7 @@ class RatingPageUI extends StatelessWidget {
   final String foodId;
   final String foodName;
 
-  const RatingPageUI({
-    super.key,
-    required this.foodId,
-    required this.foodName,
-  });
+  const RatingPageUI({super.key, required this.foodId, required this.foodName});
 
   @override
   Widget build(BuildContext context) {
@@ -28,13 +24,18 @@ class RatingPageView extends StatefulWidget {
   final String foodId;
   final String foodName;
 
-  const RatingPageView({super.key, required this.foodId, required this.foodName});
+  const RatingPageView({
+    super.key,
+    required this.foodId,
+    required this.foodName,
+  });
 
   @override
   State<RatingPageView> createState() => _RatingPageViewState();
 }
 
-class _RatingPageViewState extends State<RatingPageView> with SingleTickerProviderStateMixin {
+class _RatingPageViewState extends State<RatingPageView>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _reviewController = TextEditingController();
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -50,7 +51,9 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
 
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeIn);
     _slideAnim = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic));
+        .animate(
+          CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+        );
   }
 
   @override
@@ -79,7 +82,7 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
         foodId: widget.foodId,
         rating: rating,
         reviewText: _reviewController.text.trim(),
-      )
+      ),
     );
   }
 
@@ -88,9 +91,17 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
     if (rating >= starValue) {
       return const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 48);
     } else if (rating >= starValue - 0.5) {
-      return const Icon(Icons.star_half_rounded, color: Color(0xFFFFB800), size: 48);
+      return const Icon(
+        Icons.star_half_rounded,
+        color: Color(0xFFFFB800),
+        size: 48,
+      );
     } else {
-      return const Icon(Icons.star_border_rounded, color: Color(0xFFFFB800), size: 48);
+      return const Icon(
+        Icons.star_border_rounded,
+        color: Color(0xFFFFB800),
+        size: 48,
+      );
     }
   }
 
@@ -104,7 +115,10 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.black87,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -123,10 +137,15 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
             final emoji = _getRatingEmoji(state.rating);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Thank you! Your rating ${state.rating.toStringAsFixed(1)} has been submitted. $emoji', style: const TextStyle(fontSize: 15)),
+                content: Text(
+                  'Thank you! Your rating ${state.rating.toStringAsFixed(1)} has been submitted. $emoji',
+                  style: const TextStyle(fontSize: 15),
+                ),
                 backgroundColor: Colors.green.shade600,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
             Future.delayed(const Duration(seconds: 1), () {
@@ -152,14 +171,17 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                   position: _slideAnim,
                   child: Container(
                     constraints: const BoxConstraints(maxWidth: 600),
-                    margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -173,7 +195,9 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                           width: 120,
                           height: 120,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFB800).withOpacity(0.1),
+                            color: const Color(
+                              0xFFFFB800,
+                            ).withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -185,7 +209,8 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                         const SizedBox(height: 24),
                         Text(
                           'How was your food?',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: const Color(0xFF1C1C1C),
                               ),
@@ -194,11 +219,14 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                         const SizedBox(height: 8),
                         Text(
                           'Please rate ${widget.foodName}',
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 15,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 32),
-                        
+
                         // Star Rating Row
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -207,12 +235,19 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                               onTap: () {
                                 HapticFeedback.selectionClick();
                                 // Allows tapping the star directly to jump to an integer value
-                                context.read<RatingPageBloc>().add(RatingChanged((index + 1).toDouble()));
+                                context.read<RatingPageBloc>().add(
+                                  RatingChanged((index + 1).toDouble()),
+                                );
                               },
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: _buildFractionalStar(state.rating, index),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: _buildFractionalStar(
+                                  state.rating,
+                                  index,
+                                ),
                               ),
                             );
                           }),
@@ -222,9 +257,13 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                         SliderTheme(
                           data: SliderThemeData(
                             activeTrackColor: const Color(0xFFFFB800),
-                            inactiveTrackColor: const Color(0xFFFFB800).withOpacity(0.2),
+                            inactiveTrackColor: const Color(
+                              0xFFFFB800,
+                            ).withValues(alpha: 0.2),
                             thumbColor: const Color(0xFFFFB800),
-                            overlayColor: const Color(0xFFFFB800).withOpacity(0.1),
+                            overlayColor: const Color(
+                              0xFFFFB800,
+                            ).withValues(alpha: 0.1),
                             trackHeight: 6.0,
                           ),
                           child: Slider(
@@ -235,7 +274,9 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                             label: state.rating.toStringAsFixed(1),
                             onChanged: (value) {
                               HapticFeedback.selectionClick();
-                              context.read<RatingPageBloc>().add(RatingChanged(value));
+                              context.read<RatingPageBloc>().add(
+                                RatingChanged(value),
+                              );
                             },
                           ),
                         ),
@@ -248,7 +289,7 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                           ),
                         ),
                         const SizedBox(height: 32),
-                        
+
                         // Review Input
                         TextField(
                           controller: _reviewController,
@@ -264,19 +305,22 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: Color(0xFFEF2A39), width: 1.5),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFEF2A39),
+                                width: 1.5,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 32),
-                        
+
                         // Submit Button
                         SizedBox(
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
-                            onPressed: state is RatingLoading 
-                                ? null 
+                            onPressed: state is RatingLoading
+                                ? null
                                 : () => _submitRating(context, state.rating),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFEF2A39),
@@ -285,7 +329,9 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               elevation: 4,
-                              shadowColor: const Color(0xFFEF2A39).withOpacity(0.4),
+                              shadowColor: const Color(
+                                0xFFEF2A39,
+                              ).withValues(alpha: 0.4),
                             ),
                             child: state is RatingLoading
                                 ? const SizedBox(
@@ -293,7 +339,9 @@ class _RatingPageViewState extends State<RatingPageView> with SingleTickerProvid
                                     width: 24,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
                                     ),
                                   )
                                 : const Text(

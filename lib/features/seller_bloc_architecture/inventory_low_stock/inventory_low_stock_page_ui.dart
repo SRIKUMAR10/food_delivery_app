@@ -96,10 +96,10 @@ class _InventoryLowStockViewState extends State<_InventoryLowStockView> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: const Color(0xFFF8FAFC).withOpacity(0.95),
+      backgroundColor: const Color(0xFFF8FAFC).withValues(alpha: 0.95),
       elevation: 0,
       scrolledUnderElevation: 4,
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       centerTitle: false,
       leading: _isSearchActive
           ? IconButton(
@@ -946,7 +946,7 @@ class _InventoryLowStockViewState extends State<_InventoryLowStockView> {
     return NavigationBar(
       backgroundColor: Colors.white,
       elevation: 10,
-      shadowColor: Colors.black.withOpacity(0.05),
+      shadowColor: Colors.black.withValues(alpha: 0.05),
       indicatorColor: const Color(0xFFEEF2FF),
       selectedIndex: 2,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -1060,7 +1060,7 @@ class _PremiumSummaryCardState extends State<_PremiumSummaryCard>
               border: Border.all(color: Colors.white, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: widget.iconColor.withOpacity(0.1),
+                  color: widget.iconColor.withValues(alpha: 0.1),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
                 ),
@@ -1075,7 +1075,7 @@ class _PremiumSummaryCardState extends State<_PremiumSummaryCard>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -1112,7 +1112,7 @@ class _PremiumSummaryCardState extends State<_PremiumSummaryCard>
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: widget.progress,
-                    backgroundColor: Colors.white.withOpacity(0.5),
+                    backgroundColor: Colors.white.withValues(alpha: 0.5),
                     valueColor: AlwaysStoppedAnimation<Color>(widget.iconColor),
                     minHeight: 4,
                   ),
@@ -1191,7 +1191,7 @@ class _PremiumInventoryItemCardState extends State<_PremiumInventoryItemCard>
             border: Border.all(color: const Color(0xFFF1F5F9)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF64748B).withOpacity(0.04),
+                color: const Color(0xFF64748B).withValues(alpha: 0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -1228,11 +1228,11 @@ class _PremiumInventoryItemCardState extends State<_PremiumInventoryItemCard>
                           shape: BoxShape.circle,
                           color: _getIconBackgroundColor(
                             widget.item.name,
-                          ).withOpacity(0.1),
+                          ).withValues(alpha: 0.1),
                           border: Border.all(
                             color: _getIconBackgroundColor(
                               widget.item.name,
-                            ).withOpacity(0.2),
+                            ).withValues(alpha: 0.2),
                             width: 1.5,
                           ),
                         ),

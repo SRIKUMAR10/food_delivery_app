@@ -12,7 +12,7 @@ class CarouselCubit extends Cubit<int> {
 // Carousel Widget
 class ProductImageCarousel extends StatefulWidget {
   final List<String> imageUrls;
-  
+
   const ProductImageCarousel({super.key, required this.imageUrls});
 
   @override
@@ -70,10 +70,16 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                     imageUrl: widget.imageUrls[index],
                     fit: BoxFit.contain,
                     placeholder: (context, url) => const Center(
-                      child: CircularProgressIndicator(color: Color(0xFFE50914)),
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFE50914),
+                      ),
                     ),
                     errorWidget: (context, url, error) => const Center(
-                      child: Icon(Icons.broken_image, color: Colors.grey, size: 48),
+                      child: Icon(
+                        Icons.broken_image,
+                        color: Colors.grey,
+                        size: 48,
+                      ),
                     ),
                   ),
                 );
@@ -131,28 +137,39 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                               placeholder: (context, url) => Container(
                                 color: Colors.grey.shade100,
                                 child: const Center(
-                                  child: CircularProgressIndicator(color: Color(0xFFE50914)),
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFFE50914),
+                                  ),
                                 ),
                               ),
                               errorWidget: (context, url, error) => Container(
                                 color: Colors.grey.shade100,
-                                child: const Icon(Icons.broken_image, color: Colors.grey, size: 48),
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey,
+                                  size: 48,
+                                ),
                               ),
                             ),
                           );
                         },
                       ),
-                      
+
                       // Fullscreen button (UI Only for now)
                       Positioned(
                         top: 16,
                         right: 16,
                         child: CircleAvatar(
-                          backgroundColor: Colors.black.withOpacity(0.5),
+                          backgroundColor: Colors.black.withValues(alpha: 0.5),
                           child: IconButton(
-                            icon: const Icon(Icons.fullscreen, color: Colors.white),
+                            icon: const Icon(
+                              Icons.fullscreen,
+                              color: Colors.white,
+                            ),
                             onPressed: () {
-                              final currentIndex = context.read<CarouselCubit>().state;
+                              final currentIndex = context
+                                  .read<CarouselCubit>()
+                                  .state;
                               _showFullScreenImage(context, currentIndex);
                             },
                           ),
@@ -163,7 +180,7 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Navigation Controls & Thumbnails
               BlocBuilder<CarouselCubit, int>(
                 builder: (context, currentIndex) {
@@ -194,24 +211,35 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: isSelected ? const Color(0xFFE50914) : Colors.transparent,
+                                      color: isSelected
+                                          ? const Color(0xFFE50914)
+                                          : Colors.transparent,
                                       width: 2,
                                     ),
-                                    boxShadow: isSelected ? [
-                                      BoxShadow(
-                                        color: const Color(0xFFE50914).withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      )
-                                    ] : null,
+                                    boxShadow: isSelected
+                                        ? [
+                                            BoxShadow(
+                                              color: const Color(
+                                                0xFFE50914,
+                                              ).withValues(alpha: 0.3),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ]
+                                        : null,
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
                                     child: CachedNetworkImage(
                                       imageUrl: widget.imageUrls[index],
                                       fit: BoxFit.cover,
-                                      placeholder: (context, url) => Container(color: Colors.grey.shade200),
-                                      errorWidget: (context, url, error) => Container(color: Colors.grey.shade200),
+                                      placeholder: (context, url) => Container(
+                                        color: Colors.grey.shade200,
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Container(
+                                            color: Colors.grey.shade200,
+                                          ),
                                     ),
                                   ),
                                 ),
@@ -219,7 +247,7 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                             },
                           ),
                         ),
-                      
+
                       const SizedBox(height: 16),
                       // Text Navigation (Image 1 / 3 and Prev/Next)
                       if (widget.imageUrls.isNotEmpty)
@@ -232,19 +260,28 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                                 onPressed: currentIndex > 0
                                     ? () {
                                         _pageController.previousPage(
-                                          duration: const Duration(milliseconds: 400),
+                                          duration: const Duration(
+                                            milliseconds: 400,
+                                          ),
                                           curve: Curves.easeInOut,
                                         );
                                       }
                                     : null,
-                                icon: const Icon(Icons.arrow_back_ios, size: 14),
+                                icon: const Icon(
+                                  Icons.arrow_back_ios,
+                                  size: 14,
+                                ),
                                 label: const Text('Previous'),
                                 style: TextButton.styleFrom(
-                                  foregroundColor: currentIndex > 0 ? Colors.black87 : Colors.grey,
+                                  foregroundColor: currentIndex > 0
+                                      ? Colors.black87
+                                      : Colors.grey,
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                                 child: Text(
                                   'Image ${currentIndex + 1} / ${widget.imageUrls.length}',
                                   style: const TextStyle(
@@ -255,16 +292,22 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                                 ),
                               ),
                               TextButton(
-                                onPressed: currentIndex < widget.imageUrls.length - 1
+                                onPressed:
+                                    currentIndex < widget.imageUrls.length - 1
                                     ? () {
                                         _pageController.nextPage(
-                                          duration: const Duration(milliseconds: 400),
+                                          duration: const Duration(
+                                            milliseconds: 400,
+                                          ),
                                           curve: Curves.easeInOut,
                                         );
                                       }
                                     : null,
                                 style: TextButton.styleFrom(
-                                  foregroundColor: currentIndex < widget.imageUrls.length - 1 ? Colors.black87 : Colors.grey,
+                                  foregroundColor:
+                                      currentIndex < widget.imageUrls.length - 1
+                                      ? Colors.black87
+                                      : Colors.grey,
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -284,7 +327,7 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
               ),
             ],
           );
-        }
+        },
       ),
     );
   }

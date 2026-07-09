@@ -206,7 +206,7 @@ class _TopBar extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -271,9 +271,7 @@ class _TopBar extends StatelessWidget {
         ),
         const SizedBox(width: 24),
         // Search bar takes up the remaining available space gracefully.
-        Expanded(
-          child: _SearchBar(controller: searchController),
-        ),
+        Expanded(child: _SearchBar(controller: searchController)),
         const SizedBox(width: 16),
         favoritesIcon,
         Container(
@@ -819,9 +817,10 @@ class _FoodCardState extends State<FoodCard> {
                                                   color: isFav
                                                       ? const Color(
                                                           0xFFEF2A39,
-                                                        ).withOpacity(0.1)
-                                                      : Colors.white
-                                                            .withOpacity(0.9),
+                                                        ).withValues(alpha: 0.1)
+                                                      : Colors.white.withValues(
+                                                          alpha: 0.9,
+                                                        ),
                                                   shape: BoxShape.circle,
                                                 ),
                                                 padding: const EdgeInsets.all(

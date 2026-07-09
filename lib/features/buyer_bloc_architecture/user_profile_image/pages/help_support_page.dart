@@ -25,14 +25,17 @@ class HelpSupportPage extends StatelessWidget {
                 ),
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 24,
+                  ),
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
+                          color: Colors.black.withValues(alpha: 0.02),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -100,11 +103,7 @@ class HelpSupportPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         child: Row(
           children: [
-            Icon(
-              icon,
-              size: 22,
-              color: const Color(0xFF1C1C1C),
-            ),
+            Icon(icon, size: 22, color: const Color(0xFF1C1C1C)),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -128,10 +127,6 @@ class HelpSupportPage extends StatelessWidget {
   }
 
   Widget _buildDivider() {
-    return const Divider(
-      height: 1,
-      thickness: 1,
-      color: Color(0xFFF3F3F3),
-    );
+    return const Divider(height: 1, thickness: 1, color: Color(0xFFF3F3F3));
   }
 }

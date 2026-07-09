@@ -181,12 +181,12 @@ class _PrimaryButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: _AppColors.primary,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: _AppColors.primary.withOpacity(0.6),
+          disabledBackgroundColor: _AppColors.primary.withValues(alpha: 0.6),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           elevation: 2,
-          shadowColor: _AppColors.primary.withOpacity(0.4),
+          shadowColor: _AppColors.primary.withValues(alpha: 0.4),
         ),
         child: isLoading
             ? const SizedBox(
@@ -308,7 +308,7 @@ class _ScreenIllustration extends StatelessWidget {
           color: _AppColors.primarySurface,
           boxShadow: [
             BoxShadow(
-              color: _AppColors.primary.withOpacity(0.12),
+              color: _AppColors.primary.withValues(alpha: 0.12),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -1152,7 +1152,7 @@ class _LoginSuccessScreenState extends State<_LoginSuccessScreen>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: _AppColors.primary.withOpacity(0.35),
+                        color: _AppColors.primary.withValues(alpha: 0.35),
                         blurRadius: 30,
                         offset: const Offset(0, 10),
                       ),
@@ -1377,7 +1377,7 @@ class _ForgotPasswordSuccessScreenState
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: _AppColors.primary.withOpacity(0.35),
+                        color: _AppColors.primary.withValues(alpha: 0.35),
                         blurRadius: 30,
                         offset: const Offset(0, 10),
                       ),

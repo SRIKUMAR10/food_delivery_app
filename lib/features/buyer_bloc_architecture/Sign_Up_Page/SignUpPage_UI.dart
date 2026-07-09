@@ -197,7 +197,7 @@ class _SignUpPageContentState extends State<_SignUpPageContent> {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 30,
               offset: const Offset(0, 10),
             ),
@@ -345,7 +345,7 @@ class _SignUpPageContentState extends State<_SignUpPageContent> {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFE52121).withOpacity(0.25),
+                      color: const Color(0xFFE52121).withValues(alpha: 0.25),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -415,7 +415,7 @@ class _SignUpPageContentState extends State<_SignUpPageContent> {
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),

@@ -177,7 +177,7 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
+                                color: Colors.black.withValues(alpha: 0.02),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -192,14 +192,14 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
                                 height: 1,
                                 indent: 24,
                                 endIndent: 24,
-                                color: Colors.grey.withOpacity(0.1),
+                                color: Colors.grey.withValues(alpha: 0.1),
                               ),
                               _buildAddressItem('Work', _workAddress),
                               Divider(
                                 height: 1,
                                 indent: 24,
                                 endIndent: 24,
-                                color: Colors.grey.withOpacity(0.1),
+                                color: Colors.grey.withValues(alpha: 0.1),
                               ),
                               _buildAddressItem('Other', _otherAddress),
                             ],
@@ -314,7 +314,7 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Colors.grey.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Icon(

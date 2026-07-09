@@ -34,7 +34,7 @@ final Logger appLogger = Logger(
 );
 
 /// Toggle this flag to switch between the Buyer and Seller App flows.
-const bool isBuyerApp = true;
+const bool isBuyerApp = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

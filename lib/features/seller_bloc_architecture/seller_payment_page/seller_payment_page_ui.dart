@@ -63,16 +63,21 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
                   horizontal: horizontalPadding,
                   vertical: 16.0,
                 ),
-                child: BlocBuilder<SellerPaymentPageBloc, SellerPaymentPageState>(
-                  builder: (context, state) {
-                    return AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 400),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      child: _buildStateContent(context, state, isTablet || isDesktop),
-                    );
-                  },
-                ),
+                child:
+                    BlocBuilder<SellerPaymentPageBloc, SellerPaymentPageState>(
+                      builder: (context, state) {
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 400),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          child: _buildStateContent(
+                            context,
+                            state,
+                            isTablet || isDesktop,
+                          ),
+                        );
+                      },
+                    ),
               );
             },
           ),
@@ -81,7 +86,11 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
     );
   }
 
-  Widget _buildStateContent(BuildContext context, SellerPaymentPageState state, bool isWideScreen) {
+  Widget _buildStateContent(
+    BuildContext context,
+    SellerPaymentPageState state,
+    bool isWideScreen,
+  ) {
     if (state is SellerPaymentPageLoading) {
       return _buildSkeletonLoader();
     } else if (state is SellerPaymentPageError) {
@@ -177,7 +186,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
         border: Border.all(color: const Color(0xFFF1F5F9)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF64748B).withOpacity(0.02),
+            color: const Color(0xFF64748B).withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -224,7 +233,11 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Column(
             children: [
-              Icon(Icons.receipt_long_rounded, size: 64, color: Colors.grey[300]),
+              Icon(
+                Icons.receipt_long_rounded,
+                size: 64,
+                color: Colors.grey[300],
+              ),
               const SizedBox(height: 16),
               Text(
                 'No recent transactions',
@@ -246,7 +259,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
         border: Border.all(color: const Color(0xFFF1F5F9)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF64748B).withOpacity(0.02),
+            color: const Color(0xFF64748B).withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -256,7 +269,8 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: transactions.length,
-        separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+        separatorBuilder: (context, index) =>
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
         itemBuilder: (context, index) {
           final tx = transactions[index];
           return _TransactionItem(transaction: tx, index: index);
@@ -348,7 +362,11 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
         padding: const EdgeInsets.symmetric(vertical: 60),
         child: Column(
           children: [
-            const Icon(Icons.error_outline_rounded, size: 64, color: Color(0xFFEF4444)),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 64,
+              color: Color(0xFFEF4444),
+            ),
             const SizedBox(height: 16),
             Text(
               'Failed to load data',
@@ -361,15 +379,20 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
             const SizedBox(height: 8),
             Text(
               message,
-              style: GoogleFonts.plusJakartaSans(color: const Color(0xFF64748B)),
+              style: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFF64748B),
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => context.read<SellerPaymentPageBloc>().add(LoadPaymentData()),
+              onPressed: () =>
+                  context.read<SellerPaymentPageBloc>().add(LoadPaymentData()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1E293B),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Try Again'),
             ),
@@ -390,7 +413,8 @@ class _TransactionItem extends StatefulWidget {
   State<_TransactionItem> createState() => _TransactionItemState();
 }
 
-class _TransactionItemState extends State<_TransactionItem> with SingleTickerProviderStateMixin {
+class _TransactionItemState extends State<_TransactionItem>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -402,8 +426,14 @@ class _TransactionItemState extends State<_TransactionItem> with SingleTickerPro
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     Future.delayed(Duration(milliseconds: 100 * widget.index), () {
       if (mounted) _controller.forward();
@@ -418,9 +448,12 @@ class _TransactionItemState extends State<_TransactionItem> with SingleTickerPro
 
   @override
   Widget build(BuildContext context) {
-    final amountColor = widget.transaction.isRefund ? const Color(0xFFEF4444) : const Color(0xFF10B981);
+    final amountColor = widget.transaction.isRefund
+        ? const Color(0xFFEF4444)
+        : const Color(0xFF10B981);
     final amountPrefix = widget.transaction.isRefund ? '-' : '+';
-    final amountFormatted = '₹${widget.transaction.amount.toStringAsFixed(0)}'; // The image shows +₹780, not 780.00
+    final amountFormatted =
+        '₹${widget.transaction.amount.toStringAsFixed(0)}'; // The image shows +₹780, not 780.00
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -470,7 +503,9 @@ class _TransactionItemState extends State<_TransactionItem> with SingleTickerPro
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: widget.transaction.isRefund ? const Color(0xFF64748B) : const Color(0xFF10B981),
+                      color: widget.transaction.isRefund
+                          ? const Color(0xFF64748B)
+                          : const Color(0xFF10B981),
                     ),
                   ),
                 ],

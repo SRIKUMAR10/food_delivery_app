@@ -67,7 +67,9 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
             } else if (state.status == ForgotPasswordStatus.failure) {
               // Show an error snackbar
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.errorMessage ?? 'An error occurred')),
+                SnackBar(
+                  content: Text(state.errorMessage ?? 'An error occurred'),
+                ),
               );
             }
           },
@@ -126,10 +128,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
                   height: 60,
                   errorBuilder: (context, error, stackTrace) => Text(
                     "FoodGo",
-                    style: TextStyle(
-                      fontSize: 46,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 46, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -163,7 +162,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 30,
               offset: const Offset(0, 10),
             ),
@@ -197,7 +196,11 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
               child: Center(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(60),
-                  child: _buildForgotPasswordCard(context, state, isDesktop: true),
+                  child: _buildForgotPasswordCard(
+                    context,
+                    state,
+                    isDesktop: true,
+                  ),
                 ),
               ),
             ),
@@ -208,7 +211,11 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
   }
 
   // --- Shared Forgot Password Card ---
-  Widget _buildForgotPasswordCard(BuildContext context, ForgotPasswordState state, {bool isDesktop = false}) {
+  Widget _buildForgotPasswordCard(
+    BuildContext context,
+    ForgotPasswordState state, {
+    bool isDesktop = false,
+  }) {
     final bloc = context.read<ForgotPasswordBloc>();
 
     final cardContent = Form(
@@ -256,7 +263,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
             ),
           ),
           const SizedBox(height: 8),
-          
+
           // Email Text Field
           _buildTextField(
             initialValue: state.email,
@@ -279,11 +286,13 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
           // Submit Button
           Center(
             child: MouseRegion(
-              cursor: state.status == ForgotPasswordStatus.loading 
-                  ? SystemMouseCursors.wait 
+              cursor: state.status == ForgotPasswordStatus.loading
+                  ? SystemMouseCursors.wait
                   : SystemMouseCursors.click,
               child: GestureDetector(
-                onTap: state.status == ForgotPasswordStatus.loading ? null : _handleResetPassword,
+                onTap: state.status == ForgotPasswordStatus.loading
+                    ? null
+                    : _handleResetPassword,
                 child: Container(
                   width: double.infinity,
                   height: 52,
@@ -292,7 +301,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFE52121).withOpacity(0.25),
+                        color: const Color(0xFFE52121).withValues(alpha: 0.25),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -369,7 +378,7 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -414,4 +423,3 @@ class _ForgotPasswordViewState extends State<_ForgotPasswordView> {
     );
   }
 }
-

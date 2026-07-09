@@ -202,7 +202,7 @@ class _TrackOrderView extends StatelessWidget {
                       border: Border.all(color: const Color(0xFFF0F0F0)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
+                          color: Colors.black.withValues(alpha: 0.02),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -320,8 +320,8 @@ class _TrackOrderView extends StatelessWidget {
                     color:
                         step.status == TrackingStatus.completed ||
                             step.status == TrackingStatus.current
-                        ? const Color(0xFF4CAF50).withOpacity(0.2)
-                        : Colors.grey.withOpacity(0.2),
+                        ? const Color(0xFF4CAF50).withValues(alpha: 0.2)
+                        : Colors.grey.withValues(alpha: 0.2),
                   ),
                 ),
             ],
@@ -555,7 +555,7 @@ class _TrackOrderView extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(icon, color: color, size: 20),
@@ -676,7 +676,7 @@ class _TrackOrderView extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.9),
+      barrierColor: Colors.black.withValues(alpha: 0.9),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) {
         return Scaffold(

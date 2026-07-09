@@ -26,11 +26,14 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
 
   void _updateStock() {
     context.read<InventoryLowStockPageBloc>().add(
-          UpdateStockQuantity(id: widget.item.id, newQuantity: _quantity),
-        );
+      UpdateStockQuantity(id: widget.item.id, newQuantity: _quantity),
+    );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Stock updated successfully', style: GoogleFonts.plusJakartaSans()),
+        content: Text(
+          'Stock updated successfully',
+          style: GoogleFonts.plusJakartaSans(),
+        ),
         backgroundColor: const Color(0xFF22C55E),
         behavior: SnackBarBehavior.floating,
       ),
@@ -46,7 +49,11 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1E293B), size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF1E293B),
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -71,9 +78,9 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF4F46E5).withOpacity(0.1),
+                    color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
                     border: Border.all(
-                      color: const Color(0xFF4F46E5).withOpacity(0.2),
+                      color: const Color(0xFF4F46E5).withValues(alpha: 0.2),
                       width: 2,
                     ),
                   ),
@@ -115,7 +122,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF64748B).withOpacity(0.05),
+                      color: const Color(0xFF64748B).withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -200,7 +207,10 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     );
   }
 
-  Widget _buildQuantityButton({required IconData icon, required VoidCallback onPressed}) {
+  Widget _buildQuantityButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
     return Material(
       color: const Color(0xFFF1F5F9),
       shape: const CircleBorder(),

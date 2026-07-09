@@ -17,9 +17,7 @@ class SellerCustomerPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => SellerCustomerBloc(
-        repository: SellerCustomerRepository(
-          service: SellerCustomerService(),
-        ),
+        repository: SellerCustomerRepository(service: SellerCustomerService()),
       )..add(const LoadCustomerData()),
       child: const SellerCustomerView(),
     );
@@ -67,7 +65,9 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 900;
     final isTablet = size.width > 600 && size.width <= 900;
-    final horizontalPadding = isDesktop ? size.width * 0.25 : (isTablet ? size.width * 0.15 : 20.0);
+    final horizontalPadding = isDesktop
+        ? size.width * 0.25
+        : (isTablet ? size.width * 0.15 : 20.0);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -193,11 +193,7 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
       );
     } else {
       return Column(
-        children: [
-          totalCard,
-          const SizedBox(height: 12),
-          repeatCard,
-        ],
+        children: [totalCard, const SizedBox(height: 12), repeatCard],
       );
     }
   }
@@ -239,9 +235,7 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20.0),
             child: Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFE11D48),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFFE11D48)),
             ),
           ),
       ],
@@ -324,17 +318,19 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
           const SizedBox(height: 8),
           Text(
             message,
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.grey[600],
-            ),
+            style: GoogleFonts.plusJakartaSans(color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () => context.read<SellerCustomerBloc>().add(const LoadCustomerData()),
+            onPressed: () => context.read<SellerCustomerBloc>().add(
+              const LoadCustomerData(),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFE11D48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             child: const Text('Retry'),
           ),
@@ -364,7 +360,7 @@ class _StatsCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.015),
+            color: Colors.black.withValues(alpha: 0.015),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -400,16 +396,14 @@ class _CustomerListItem extends StatefulWidget {
   final CustomerItem customer;
   final int index;
 
-  const _CustomerListItem({
-    required this.customer,
-    required this.index,
-  });
+  const _CustomerListItem({required this.customer, required this.index});
 
   @override
   State<_CustomerListItem> createState() => _CustomerListItemState();
 }
 
-class _CustomerListItemState extends State<_CustomerListItem> with SingleTickerProviderStateMixin {
+class _CustomerListItemState extends State<_CustomerListItem>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -425,9 +419,13 @@ class _CustomerListItemState extends State<_CustomerListItem> with SingleTickerP
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    _slideAnimation = Tween<Offset>(begin: const Offset(0.0, 0.1), end: Offset.zero).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0.0, 0.1), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _delayTimer = Timer(Duration(milliseconds: 60 * widget.index), () {
       if (mounted) {
@@ -459,7 +457,7 @@ class _CustomerListItemState extends State<_CustomerListItem> with SingleTickerP
               border: Border.all(color: const Color(0xFFF1F5F9)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.01),
+                  color: Colors.black.withValues(alpha: 0.01),
                   blurRadius: 6,
                   offset: const Offset(0, 3),
                 ),

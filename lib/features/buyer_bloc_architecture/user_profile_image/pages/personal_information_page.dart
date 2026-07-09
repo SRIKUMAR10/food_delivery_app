@@ -8,7 +8,8 @@ class PersonalInformationPage extends StatefulWidget {
   const PersonalInformationPage({super.key});
 
   @override
-  State<PersonalInformationPage> createState() => _PersonalInformationPageState();
+  State<PersonalInformationPage> createState() =>
+      _PersonalInformationPageState();
 }
 
 class _PersonalInformationPageState extends State<PersonalInformationPage> {
@@ -16,14 +17,12 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
 
-
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
     _emailController = TextEditingController();
     _phoneController = TextEditingController();
-
 
     // Trigger fetch if needed, though profile should already be loaded.
     context.read<UserProfileBloc>().add(const LoadProfileStarted());
@@ -48,10 +47,13 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     if (_phoneController.text != profile.phone) {
       _phoneController.text = profile.phone;
     }
-
   }
 
-  void _showSnack(BuildContext context, String message, {bool isError = false}) {
+  void _showSnack(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+  }) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -112,9 +114,24 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                 padding: const EdgeInsets.all(24),
                 physics: const BouncingScrollPhysics(),
                 children: [
-                  _buildModernField("Full Name", _nameController, Icons.person_outline, key: const ValueKey('fullNameField')),
-                  _buildModernField("Email Address", _emailController, Icons.mail_outline, key: const ValueKey('emailField')),
-                  _buildModernField("Phone Number", _phoneController, Icons.phone_android_outlined, key: const ValueKey('phoneField')),
+                  _buildModernField(
+                    "Full Name",
+                    _nameController,
+                    Icons.person_outline,
+                    key: const ValueKey('fullNameField'),
+                  ),
+                  _buildModernField(
+                    "Email Address",
+                    _emailController,
+                    Icons.mail_outline,
+                    key: const ValueKey('emailField'),
+                  ),
+                  _buildModernField(
+                    "Phone Number",
+                    _phoneController,
+                    Icons.phone_android_outlined,
+                    key: const ValueKey('phoneField'),
+                  ),
 
                   const SizedBox(height: 32),
                   SizedBox(
@@ -132,7 +149,9 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                                 address: profile?.address ?? '',
                                 imageUrl: profile?.imageUrl,
                               );
-                              context.read<UserProfileBloc>().add(ProfileSaved(profileToSave));
+                              context.read<UserProfileBloc>().add(
+                                ProfileSaved(profileToSave),
+                              );
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFEF2A39),
@@ -199,14 +218,17 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
             prefixIcon: Icon(icon, size: 20, color: const Color(0xFFEF2A39)),
             filled: true,
             fillColor: enabled ? Colors.white : Colors.grey[100],
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.withOpacity(0.1)),
+              borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
             ),
           ),
         ),

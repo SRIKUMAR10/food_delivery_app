@@ -19,9 +19,7 @@ class SellerWalletPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => SellerWalletBloc(
-        repository: SellerWalletRepository(
-          service: SellerWalletService(),
-        ),
+        repository: SellerWalletRepository(service: SellerWalletService()),
       )..add(const LoadWalletData()),
       child: const SellerWalletView(),
     );
@@ -91,7 +89,9 @@ class _SellerWalletViewState extends State<SellerWalletView> {
           value: BlocProvider.of<SellerWalletBloc>(context),
           child: AlertDialog(
             backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             title: Text(
               'Withdraw Funds',
               style: GoogleFonts.plusJakartaSans(
@@ -106,10 +106,14 @@ class _SellerWalletViewState extends State<SellerWalletView> {
                 children: [
                   TextFormField(
                     controller: textController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Enter amount to withdraw',
-                      hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey),
+                      hintStyle: GoogleFonts.plusJakartaSans(
+                        color: Colors.grey,
+                      ),
                       prefixText: '₹ ',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -150,12 +154,16 @@ class _SellerWalletViewState extends State<SellerWalletView> {
                 onPressed: () {
                   if (formKey.currentState!.validate()) {
                     final amount = double.parse(textController.text);
-                    context.read<SellerWalletBloc>().add(InitiateWithdrawal(amount));
+                    context.read<SellerWalletBloc>().add(
+                      InitiateWithdrawal(amount),
+                    );
                     Navigator.pop(dialogContext);
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE11D48), // Styled primary red
+                  backgroundColor: const Color(
+                    0xFFE11D48,
+                  ), // Styled primary red
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -180,7 +188,9 @@ class _SellerWalletViewState extends State<SellerWalletView> {
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 900;
     final isTablet = size.width > 600 && size.width <= 900;
-    final horizontalPadding = isDesktop ? size.width * 0.2 : (isTablet ? size.width * 0.1 : 20.0);
+    final horizontalPadding = isDesktop
+        ? size.width * 0.2
+        : (isTablet ? size.width * 0.1 : 20.0);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -277,7 +287,12 @@ class _SellerWalletViewState extends State<SellerWalletView> {
         // Payout History Header
         InkWell(
           onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerPayoutHistoryPage()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SellerPayoutHistoryPage(),
+              ),
+            );
           },
           child: Text(
             'Payout History',
@@ -310,7 +325,9 @@ class _SellerWalletViewState extends State<SellerWalletView> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               decoration: BoxDecoration(
-                color: const Color(0xFFF4F6FB), // Light bluish background matching mockup
+                color: const Color(
+                  0xFFF4F6FB,
+                ), // Light bluish background matching mockup
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
@@ -352,11 +369,14 @@ class _SellerWalletViewState extends State<SellerWalletView> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               gradient: const LinearGradient(
-                colors: [Color(0xFFE11D48), Color(0xFFBE123C)], // Darker crimson red gradient
+                colors: [
+                  Color(0xFFE11D48),
+                  Color(0xFFBE123C),
+                ], // Darker crimson red gradient
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFE11D48).withOpacity(0.2),
+                  color: const Color(0xFFE11D48).withValues(alpha: 0.2),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
@@ -365,7 +385,12 @@ class _SellerWalletViewState extends State<SellerWalletView> {
             child: ElevatedButton(
               onPressed: state.isWithdrawing
                   ? null
-                  : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRequestPayoutPage())),
+                  : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SellerRequestPayoutPage(),
+                      ),
+                    ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
@@ -429,7 +454,10 @@ class _SellerWalletViewState extends State<SellerWalletView> {
     );
   }
 
-  Widget _buildPayoutHistoryList(BuildContext context, SellerWalletLoaded state) {
+  Widget _buildPayoutHistoryList(
+    BuildContext context,
+    SellerWalletLoaded state,
+  ) {
     if (state.payouts.isEmpty) {
       return Container(
         width: double.infinity,
@@ -462,10 +490,8 @@ class _SellerWalletViewState extends State<SellerWalletView> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: state.payouts.length,
-            separatorBuilder: (context, index) => const Divider(
-              height: 1,
-              color: Color(0xFFF1F5F9),
-            ),
+            separatorBuilder: (context, index) =>
+                const Divider(height: 1, color: Color(0xFFF1F5F9)),
             itemBuilder: (context, index) {
               final payout = state.payouts[index];
               return _PayoutListItem(payout: payout, index: index);
@@ -559,17 +585,18 @@ class _SellerWalletViewState extends State<SellerWalletView> {
           const SizedBox(height: 8),
           Text(
             message,
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.grey[600],
-            ),
+            style: GoogleFonts.plusJakartaSans(color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () => context.read<SellerWalletBloc>().add(const LoadWalletData()),
+            onPressed: () =>
+                context.read<SellerWalletBloc>().add(const LoadWalletData()),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFE11D48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             child: const Text('Retry'),
           ),
@@ -583,16 +610,14 @@ class _PayoutListItem extends StatefulWidget {
   final PayoutItem payout;
   final int index;
 
-  const _PayoutListItem({
-    required this.payout,
-    required this.index,
-  });
+  const _PayoutListItem({required this.payout, required this.index});
 
   @override
   State<_PayoutListItem> createState() => _PayoutListItemState();
 }
 
-class _PayoutListItemState extends State<_PayoutListItem> with SingleTickerProviderStateMixin {
+class _PayoutListItemState extends State<_PayoutListItem>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -608,9 +633,13 @@ class _PayoutListItemState extends State<_PayoutListItem> with SingleTickerProvi
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    _slideAnimation = Tween<Offset>(begin: const Offset(0.0, 0.15), end: Offset.zero).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0.0, 0.15), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _delayTimer = Timer(Duration(milliseconds: 80 * widget.index), () {
       if (mounted) {
@@ -678,7 +707,9 @@ class _PayoutListItemState extends State<_PayoutListItem> with SingleTickerProvi
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF10B981), // Emerald green for Paid status
+                      color: const Color(
+                        0xFF10B981,
+                      ), // Emerald green for Paid status
                     ),
                   ),
                   const SizedBox(height: 6),
