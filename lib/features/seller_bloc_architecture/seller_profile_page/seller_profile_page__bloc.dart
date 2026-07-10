@@ -102,6 +102,24 @@ class SellerProfilePageBloc
   ) async {
     if (state is ProfileLoaded) {
       final currentState = state as ProfileLoaded;
+      
+      // Optimistic UI update: Show the selected image immediately
+      emit(ProfileLoaded(
+        storeName: currentState.storeName,
+        email: currentState.email,
+        phone: currentState.phone,
+        profileImageUrl: currentState.profileImageUrl,
+        notificationsEnabled: currentState.notificationsEnabled,
+        address: currentState.address,
+        gstNumber: currentState.gstNumber,
+        fssaiLicense: currentState.fssaiLicense,
+        bankAccountNumber: currentState.bankAccountNumber,
+        ifscCode: currentState.ifscCode,
+        taxConfiguration: currentState.taxConfiguration,
+        isImageUploading: true,
+        localImageBytes: event.imageBytes,
+      ));
+
       try {
         final String uid = FirebaseAuth.instance.currentUser?.uid ?? 'unknown_user';
         final String fileName = 'profile_images/$uid/${event.fileName}';
@@ -131,9 +149,26 @@ class SellerProfilePageBloc
           bankAccountNumber: currentState.bankAccountNumber,
           ifscCode: currentState.ifscCode,
           taxConfiguration: currentState.taxConfiguration,
+          isImageUploading: false,
+          localImageBytes: null, // Clear local image, rely on network url now
         ));
       } catch (e) {
-        // You could emit an error state here, but for now we'll just ignore or log it
+        // On error, revert optimistic update
+        emit(ProfileLoaded(
+          storeName: currentState.storeName,
+          email: currentState.email,
+          phone: currentState.phone,
+          profileImageUrl: currentState.profileImageUrl, // old url
+          notificationsEnabled: currentState.notificationsEnabled,
+          address: currentState.address,
+          gstNumber: currentState.gstNumber,
+          fssaiLicense: currentState.fssaiLicense,
+          bankAccountNumber: currentState.bankAccountNumber,
+          ifscCode: currentState.ifscCode,
+          taxConfiguration: currentState.taxConfiguration,
+          isImageUploading: false,
+          localImageBytes: null,
+        ));
         print('Error uploading image: $e');
       }
     }

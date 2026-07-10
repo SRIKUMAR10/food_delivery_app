@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 
 abstract class SellerProfilePageState extends Equatable {
@@ -23,6 +24,8 @@ class ProfileLoaded extends SellerProfilePageState {
   final String? bankAccountNumber;
   final String? ifscCode;
   final String? taxConfiguration;
+  final bool isImageUploading;
+  final Uint8List? localImageBytes;
 
   const ProfileLoaded({
     required this.storeName,
@@ -36,6 +39,8 @@ class ProfileLoaded extends SellerProfilePageState {
     this.bankAccountNumber,
     this.ifscCode,
     this.taxConfiguration,
+    this.isImageUploading = false,
+    this.localImageBytes,
   });
 
   @override
@@ -51,6 +56,8 @@ class ProfileLoaded extends SellerProfilePageState {
         bankAccountNumber,
         ifscCode,
         taxConfiguration,
+        isImageUploading,
+        localImageBytes,
       ];
 }
 

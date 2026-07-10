@@ -100,10 +100,19 @@ class ProfileContent extends StatelessWidget {
                               shape: BoxShape.circle,
                               color: Colors.blue.shade100,
                               image: DecorationImage(
-                                image: NetworkImage(state.profileImageUrl),
+                                image: state.localImageBytes != null
+                                    ? MemoryImage(state.localImageBytes!) as ImageProvider
+                                    : NetworkImage(state.profileImageUrl),
                                 fit: BoxFit.cover,
                               ),
                             ),
+                            child: state.isImageUploading
+                                ? const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : null,
                           ),
                           Positioned(
                             bottom: 0,
