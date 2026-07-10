@@ -18,6 +18,9 @@ class SellerStoreDetailsLoaded extends SellerStoreDetailsPageState {
   final String openingHours;
   final String deliveryTime;
   final String deliveryArea;
+  final String? gstNumber;
+  final String? fssaiNumber;
+  final String? panNumber;
 
   const SellerStoreDetailsLoaded({
     required this.restaurantName,
@@ -26,6 +29,9 @@ class SellerStoreDetailsLoaded extends SellerStoreDetailsPageState {
     required this.openingHours,
     required this.deliveryTime,
     required this.deliveryArea,
+    this.gstNumber,
+    this.fssaiNumber,
+    this.panNumber,
   });
 
   @override
@@ -36,6 +42,9 @@ class SellerStoreDetailsLoaded extends SellerStoreDetailsPageState {
     openingHours,
     deliveryTime,
     deliveryArea,
+    if (gstNumber != null) gstNumber!,
+    if (fssaiNumber != null) fssaiNumber!,
+    if (panNumber != null) panNumber!,
   ];
 }
 

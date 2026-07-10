@@ -111,7 +111,8 @@ class SellerLoginPageBloc
     try {
       if (state.isPhoneLogin) {
         // Phone login → send OTP flow
-        await authRepository.requestPhoneLoginOtp(state.emailOrPhone);
+        final formattedPhone = _formatPhoneNumber(state.emailOrPhone);
+        await authRepository.requestPhoneLoginOtp(formattedPhone);
         _startOtpCountdown();
         emit(state.copyWith(
           status: SellerLoginStatus.otpSent,
@@ -155,7 +156,8 @@ class SellerLoginPageBloc
       emit(state.copyWith(
           status: SellerLoginStatus.loading, clearEmailPhoneError: true));
       try {
-        await authRepository.requestPhoneLoginOtp(input);
+        final formattedPhone = _formatPhoneNumber(input);
+        await authRepository.requestPhoneLoginOtp(formattedPhone);
         _startOtpCountdown();
         emit(state.copyWith(
           status: SellerLoginStatus.otpSent,
@@ -231,8 +233,9 @@ class SellerLoginPageBloc
     }
     emit(state.copyWith(status: SellerLoginStatus.loading, clearError: true));
     try {
+      final formattedPhone = _formatPhoneNumber(state.emailOrPhone);
       final success = await authRepository.verifyPhoneLoginOtp(
-          state.otpCode, state.emailOrPhone);
+          state.otpCode, formattedPhone);
       if (success) {
         _cancelOtpTimer();
         emit(state.copyWith(
@@ -257,7 +260,8 @@ class SellerLoginPageBloc
       Emitter<SellerLoginPageState> emit) async {
     emit(state.copyWith(status: SellerLoginStatus.loading));
     try {
-      await authRepository.requestPhoneLoginOtp(state.emailOrPhone);
+      final formattedPhone = _formatPhoneNumber(state.emailOrPhone);
+      await authRepository.requestPhoneLoginOtp(formattedPhone);
       _cancelOtpTimer();
       _startOtpCountdown();
       emit(state.copyWith(
@@ -474,6 +478,23 @@ class SellerLoginPageBloc
   bool _looksLikePhone(String input) {
     final trimmed = input.trim().replaceAll(' ', '');
     return RegExp(r'^\+?[0-9]{7,15}$').hasMatch(trimmed);
+  }
+
+  /// Formats the phone number to always include the country code (+91 by default)
+  String _formatPhoneNumber(String input) {
+    String formatted = input.trim().replaceAll(' ', '');
+    if (_looksLikePhone(formatted)) {
+      if (!formatted.startsWith('+')) {
+        if (formatted.length == 10) {
+          return '+91$formatted';
+        } else if (formatted.length == 12 && formatted.startsWith('91')) {
+          return '+$formatted';
+        } else {
+          return '+91$formatted';
+        }
+      }
+    }
+    return formatted;
   }
 
   bool _validEmail(String email) {

@@ -15,6 +15,7 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/hom
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
 
 import '../mock_firebase.dart';
+import 'package:food_delivery_app/repositories/product_repository.dart';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -100,7 +101,7 @@ void main() {
 
     // ── Initial state ──
     test('initial state is HomePageInitial', () {
-      final bloc = HomePageBloc(firestore: fakeFirestore);
+      final bloc = HomePageBloc(productRepository: ProductRepository(firestore: fakeFirestore));
       expect(bloc.state, const HomePageInitial('1'));
       bloc.close();
     });
@@ -108,7 +109,7 @@ void main() {
     // ── HomePageStarted → empty category ──
     blocTest<HomePageBloc, HomePageState>(
       'emits [Loading, Empty] when category has no products',
-      build: () => HomePageBloc(firestore: fakeFirestore),
+      build: () => HomePageBloc(productRepository: ProductRepository(firestore: fakeFirestore)),
       act: (bloc) => bloc.add(const HomePageStarted()),
       expect: () => [const HomePageLoading('1'), isA<HomePageEmpty>()],
     );
@@ -117,7 +118,7 @@ void main() {
     blocTest<HomePageBloc, HomePageState>(
       'emits [Loading, Loaded] when products exist in default category',
       setUp: () => _seedProducts(fakeFirestore, category: 'Pizza', count: 3),
-      build: () => HomePageBloc(firestore: fakeFirestore),
+      build: () => HomePageBloc(productRepository: ProductRepository(firestore: fakeFirestore)),
       act: (bloc) => bloc.add(const HomePageStarted()),
       expect: () => [const HomePageLoading('1'), isA<HomePageLoaded>()],
       verify: (bloc) {
@@ -134,7 +135,7 @@ void main() {
         await _seedProducts(fakeFirestore, category: 'Pizza', count: 2);
         await _seedProducts(fakeFirestore, category: 'Burger', count: 4);
       },
-      build: () => HomePageBloc(firestore: fakeFirestore),
+      build: () => HomePageBloc(productRepository: ProductRepository(firestore: fakeFirestore)),
       act: (bloc) async {
         bloc.add(const HomePageStarted());
         await Future.delayed(const Duration(milliseconds: 100));
@@ -157,7 +158,7 @@ void main() {
     blocTest<HomePageBloc, HomePageState>(
       'filters items in memory on SearchQueryChanged',
       setUp: () => _seedProducts(fakeFirestore, category: 'Pizza', count: 3),
-      build: () => HomePageBloc(firestore: fakeFirestore),
+      build: () => HomePageBloc(productRepository: ProductRepository(firestore: fakeFirestore)),
       act: (bloc) async {
         bloc.add(const HomePageStarted());
         await Future.delayed(const Duration(milliseconds: 100));
@@ -177,7 +178,7 @@ void main() {
     blocTest<HomePageBloc, HomePageState>(
       'emits HomePageSearchEmpty when search matches nothing',
       setUp: () => _seedProducts(fakeFirestore, category: 'Pizza', count: 2),
-      build: () => HomePageBloc(firestore: fakeFirestore),
+      build: () => HomePageBloc(productRepository: ProductRepository(firestore: fakeFirestore)),
       act: (bloc) async {
         bloc.add(const HomePageStarted());
         await Future.delayed(const Duration(milliseconds: 100));
@@ -198,7 +199,7 @@ void main() {
     blocTest<HomePageBloc, HomePageState>(
       'restores full list on SearchCleared',
       setUp: () => _seedProducts(fakeFirestore, category: 'Pizza', count: 3),
-      build: () => HomePageBloc(firestore: fakeFirestore),
+      build: () => HomePageBloc(productRepository: ProductRepository(firestore: fakeFirestore)),
       act: (bloc) async {
         bloc.add(const HomePageStarted());
         await Future.delayed(const Duration(milliseconds: 100));
@@ -219,7 +220,7 @@ void main() {
     blocTest<HomePageBloc, HomePageState>(
       'does not reload when the same category is selected again',
       setUp: () => _seedProducts(fakeFirestore, category: 'Pizza', count: 2),
-      build: () => HomePageBloc(firestore: fakeFirestore),
+      build: () => HomePageBloc(productRepository: ProductRepository(firestore: fakeFirestore)),
       act: (bloc) async {
         bloc.add(const HomePageStarted());
         await Future.delayed(const Duration(milliseconds: 100));

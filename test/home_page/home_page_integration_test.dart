@@ -17,6 +17,7 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Pag
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_state.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_Page_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_Page_UI.dart';
+import 'package:food_delivery_app/repositories/product_repository.dart';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ Widget _buildApp(FakeFirebaseFirestore fakeFirestore) {
     home: MultiBlocProvider(
       providers: [
         BlocProvider<HomePageBloc>(
-          create: (_) => HomePageBloc(firestore: fakeFirestore),
+          create: (_) => HomePageBloc(productRepository: ProductRepository(firestore: fakeFirestore)),
         ),
         BlocProvider<FavoritesBloc>.value(value: mockFavoritesBloc),
       ],

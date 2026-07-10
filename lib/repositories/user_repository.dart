@@ -1,12 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:food_delivery_app/app_data_collection/buyer%20collection/user_collection.dart';
-import 'package:food_delivery_app/repositories/auth_linking_service.dart';
+
 
 class UserRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final UserCollection _userCollection = UserCollection();
-  final AuthLinkingService _authLinkingService = AuthLinkingService();
+
 
   // Centralized Auth operations
   Future<UserCredential> signUp(

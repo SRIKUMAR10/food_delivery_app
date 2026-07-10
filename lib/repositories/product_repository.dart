@@ -7,8 +7,12 @@ import 'package:flutter/foundation.dart'
     show kIsWeb; // Import kIsWeb
 
 class ProductRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
+
+  ProductRepository({FirebaseFirestore? firestore, FirebaseStorage? storage})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance;
 
   Future<void> addProduct({
     required String name,

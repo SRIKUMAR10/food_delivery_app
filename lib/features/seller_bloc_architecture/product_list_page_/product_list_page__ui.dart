@@ -32,7 +32,6 @@ class ProductListView extends StatefulWidget {
 
 class _ProductListViewState extends State<ProductListView>
     with SingleTickerProviderStateMixin {
-  int _currentIndex = 2; // "Products" selected by default based on image
   Product? _selectedProduct;
 
   @override
@@ -622,7 +621,7 @@ class _ProductCard extends StatelessWidget {
                                   ToggleProductStatusEvent(product.id, val),
                                 );
                               },
-                              activeColor: Colors.white,
+                              activeThumbColor: Colors.white,
                               activeTrackColor: const Color(0xFF10B981),
                             ),
                           ),

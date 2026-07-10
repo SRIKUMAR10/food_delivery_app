@@ -3,7 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../../../../lib/features/Seller Bloc Architecture/overall_rating_page/overall_rating_page__bloc.dart';
+import '../../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
 
 // Assuming an implementation of the service that uses http
 class OverallRatingServiceImpl implements OverallRatingService {

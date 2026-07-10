@@ -108,6 +108,30 @@ class _StoreDetailsContent extends StatelessWidget {
                 title: 'Delivery Area',
                 subtitle: state.deliveryArea,
               ),
+              if (state.gstNumber != null) ...[
+                const Divider(height: 32),
+                _buildInfoRow(
+                  icon: Icons.account_balance_outlined,
+                  title: 'GST Number',
+                  subtitle: state.gstNumber!,
+                ),
+              ],
+              if (state.fssaiNumber != null) ...[
+                const Divider(height: 32),
+                _buildInfoRow(
+                  icon: Icons.restaurant_menu_outlined,
+                  title: 'FSSAI License Number',
+                  subtitle: state.fssaiNumber!,
+                ),
+              ],
+              if (state.panNumber != null) ...[
+                const Divider(height: 32),
+                _buildInfoRow(
+                  icon: Icons.credit_card_outlined,
+                  title: 'PAN Number',
+                  subtitle: state.panNumber!,
+                ),
+              ],
             ],
           ),
         ),

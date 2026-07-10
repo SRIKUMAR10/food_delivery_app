@@ -11,6 +11,7 @@ import '../seller_setting_page/seller_setting_page__ui.dart';
 import '../seller_setting_page/seller_setting_page__bloc.dart';
 import '../seller_setting_page/seller_setting_page__event.dart';
 import '../seller_wallet_page/seller_wallet_page__ui.dart';
+import 'package:image_picker/image_picker.dart';
 
 class SellerProfilePageUI extends StatelessWidget {
   const SellerProfilePageUI({Key? key}) : super(key: key);
@@ -90,18 +91,50 @@ class ProfileContent extends StatelessWidget {
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.blue.shade100,
-                          image: const DecorationImage(
-                            // In real app use CachedNetworkImageProvider
-                            image: NetworkImage('https://via.placeholder.com/150'),
-                            fit: BoxFit.cover,
+                      Stack(
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.blue.shade100,
+                              image: DecorationImage(
+                                image: NetworkImage(state.profileImageUrl),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
-                        ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: InkWell(
+                              onTap: () async {
+                                final ImagePicker picker = ImagePicker();
+                                final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                                if (image != null) {
+                                  final bytes = await image.readAsBytes();
+                                  final fileName = '${DateTime.now().millisecondsSinceEpoch}_${image.name}';
+                                  if (context.mounted) {
+                                    context.read<SellerProfilePageBloc>().add(UpdateProfileImage(bytes, fileName));
+                                  }
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -130,6 +163,22 @@ class ProfileContent extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 14,
                                 color: Color(0xFF6B7280),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade100,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Role: Restaurant Owner',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade800,
+                                ),
                               ),
                             ),
                           ],

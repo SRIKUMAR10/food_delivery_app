@@ -1,4 +1,3 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ProductData {
   final String name;
@@ -26,8 +25,6 @@ class SellerAnalyticsRepository {
   Future<SellerAnalyticsData> fetchAnalyticsData(String timeRange) async {
     // In a real app, you would make an API call here.
     // Example using dotenv:
-    final baseUrl = dotenv.env['BASE_URL'] ?? 'https://api.example.com';
-    final apiKey = dotenv.env['API_KEY'] ?? 'mock_key';
     
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));

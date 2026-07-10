@@ -424,12 +424,6 @@ class _InventoryLowStockViewState extends State<_InventoryLowStockView> {
                                   'Low Stock',
                                   'Out of Stock',
                                 ].map((status) {
-                                  final isSelected =
-                                      currentState.activeStatus == status ||
-                                      (status == 'In Stock' &&
-                                          currentState.activeStatus ==
-                                              'In Stock'); // Just basic matching
-                                  final actualStatus = status;
                                   return Padding(
                                     padding: const EdgeInsets.only(right: 8),
                                     child: ChoiceChip(
@@ -441,7 +435,7 @@ class _InventoryLowStockViewState extends State<_InventoryLowStockView> {
                                             .read<InventoryLowStockPageBloc>()
                                             .add(
                                               UpdateFilters(
-                                                status: actualStatus,
+                                                status: status,
                                               ),
                                             );
                                       },

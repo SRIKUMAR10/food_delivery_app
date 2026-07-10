@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 
 abstract class SellerProfilePageEvent extends Equatable {
@@ -55,4 +56,14 @@ class SubmitVerificationForm extends SellerProfilePageEvent {
         bankAccountNumber,
         ifscCode,
       ];
+}
+
+class UpdateProfileImage extends SellerProfilePageEvent {
+  final Uint8List imageBytes;
+  final String fileName;
+
+  const UpdateProfileImage(this.imageBytes, this.fileName);
+
+  @override
+  List<Object?> get props => [imageBytes, fileName];
 }

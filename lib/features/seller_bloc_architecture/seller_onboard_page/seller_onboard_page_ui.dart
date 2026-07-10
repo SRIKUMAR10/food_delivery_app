@@ -64,7 +64,6 @@ class _SellerOnboardViewState extends State<SellerOnboardView>
   @override
   Widget build(BuildContext context) {
     // Responsive layout configuration
-    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: Colors.white,

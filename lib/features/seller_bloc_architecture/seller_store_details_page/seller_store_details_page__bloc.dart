@@ -27,6 +27,9 @@ class SellerStoreDetailsBloc
           openingHours: '10:00 AM - 11:00 PM',
           deliveryTime: '30 - 45 min',
           deliveryArea: '5.0 km',
+          gstNumber: '22AAAAA0000A1Z5',
+          fssaiNumber: '10012011000001',
+          panNumber: 'ABCDE1234F',
         ),
       );
     } catch (e) {

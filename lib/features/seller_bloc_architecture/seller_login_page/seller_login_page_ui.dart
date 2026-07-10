@@ -53,7 +53,7 @@ class _SellerLoginPageView extends StatelessWidget {
       listener: (context, state) {
         if (state.step == SellerLoginStep.loginSuccess &&
             state.status == SellerLoginStatus.success) {
-          // Will navigate to dashboard when button is tapped
+          Navigator.pushReplacementNamed(context, '/sellerDashboard');
         }
         if (state.status == SellerLoginStatus.failure &&
             state.errorMessage != null) {

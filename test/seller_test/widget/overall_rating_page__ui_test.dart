@@ -4,10 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../../../lib/features/Seller Bloc Architecture/overall_rating_page/overall_rating_page__bloc.dart';
-import '../../../../lib/features/Seller Bloc Architecture/overall_rating_page/overall_rating_page__event.dart';
-import '../../../../lib/features/Seller Bloc Architecture/overall_rating_page/overall_rating_page__state.dart';
-import '../../../../lib/features/Seller Bloc Architecture/overall_rating_page/overall_rating_page__ui.dart';
+import '../../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
+import '../../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__event.dart';
+import '../../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__state.dart';
+import '../../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__ui.dart';
 
 class MockOverallRatingBloc extends Mock implements OverallRatingBloc {}
 

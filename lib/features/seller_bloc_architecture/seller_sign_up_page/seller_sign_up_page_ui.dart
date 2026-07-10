@@ -15,11 +15,9 @@ class _AppColors {
   static const primarySurface = Color(0xFFE8F5E9);
   static const background = Color(0xFFFFFFFF);
   static const textDark = Color(0xFF1B1B1B);
-  static const textMid = Color(0xFF555555);
   static const textLight = Color(0xFF888888);
   static const inputBorder = Color(0xFFDDDDDD);
   static const error = Color(0xFFD32F2F);
-  static const divider = Color(0xFFEEEEEE);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

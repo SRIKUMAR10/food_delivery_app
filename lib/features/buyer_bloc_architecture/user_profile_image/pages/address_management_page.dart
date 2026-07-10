@@ -342,6 +342,7 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
               ),
             ),
             const SizedBox(width: 16),
+            // ignore: deprecated_member_use
             Radio<String>(
               value: title,
               groupValue: _selectedAddressType,

@@ -13,7 +13,7 @@ class SellerRepository {
   SellerRepository._internal();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   final SellerCollection _sellerCollection = SellerCollection();
 
   // Holds the Web phone-auth confirmation result between sendOtp / verifyOtp calls

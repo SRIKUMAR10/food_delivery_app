@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import '../../../../lib/features/Seller Bloc Architecture/overall_rating_page/overall_rating_page__bloc.dart';
-import '../../../../lib/features/Seller Bloc Architecture/overall_rating_page/overall_rating_page__state.dart';
+import '../../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
+import '../../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__state.dart';
 
 class MockOverallRatingService extends Mock implements OverallRatingService {}
 

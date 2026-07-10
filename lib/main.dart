@@ -41,11 +41,11 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await FirebaseAppCheck.instance.activate(
-    webProvider: ReCaptchaV3Provider(
+    providerWeb: ReCaptchaV3Provider(
       '6Le3Ei8tAAAAAJbDz5qr_vLKa0iZ9wm3lNTaCi3K',
     ),
-    androidProvider: AndroidProvider.playIntegrity,
-    appleProvider: AppleProvider.appAttest,
+    providerAndroid: AndroidPlayIntegrityProvider(),
+    providerApple: AppleAppAttestProvider(),
   );
 
   // Pass all uncaught "fatal" errors from the framework to Crashlytics
