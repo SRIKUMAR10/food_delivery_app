@@ -8,9 +8,6 @@ import 'package:equatable/equatable.dart';
 
 /// Each value maps to one visible screen in the sign-up wizard.
 enum SellerSignUpStep {
-  /// Screen 1 – Welcome screen with "Create Account" CTA.
-  welcome,
-
   /// Screen 2 – Personal details: name, shop name, business details.
   personalDetails,
 
@@ -89,7 +86,7 @@ class SellerSignUpPageState extends Equatable {
   final String? otpError;
 
   const SellerSignUpPageState({
-    this.step = SellerSignUpStep.welcome,
+    this.step = SellerSignUpStep.personalDetails,
     this.status = SellerSignUpStatus.initial,
     this.errorMessage,
     // Screen 2

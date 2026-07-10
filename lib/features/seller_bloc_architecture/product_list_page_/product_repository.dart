@@ -3,6 +3,7 @@ import 'product_model.dart';
 abstract class ProductRepository {
   Future<List<Product>> getProducts();
   Future<void> deleteProduct(String id);
+  Future<void> toggleProductStatus(String id, bool isActive);
 }
 
 class ProductRepositoryImpl implements ProductRepository {
@@ -15,6 +16,7 @@ class ProductRepositoryImpl implements ProductRepository {
       imageUrl: 'https://via.placeholder.com/150',
       status: ProductStatus.inStock,
       isActive: true,
+      foodType: 'veg',
     ),
     const Product(
       id: '2',
@@ -23,6 +25,7 @@ class ProductRepositoryImpl implements ProductRepository {
       imageUrl: 'https://via.placeholder.com/150',
       status: ProductStatus.inStock,
       isActive: true,
+      foodType: 'non-veg',
     ),
     const Product(
       id: '3',
@@ -31,6 +34,7 @@ class ProductRepositoryImpl implements ProductRepository {
       imageUrl: 'https://via.placeholder.com/150',
       status: ProductStatus.lowStock,
       isActive: true,
+      foodType: 'veg',
     ),
     const Product(
       id: '4',
@@ -39,6 +43,7 @@ class ProductRepositoryImpl implements ProductRepository {
       imageUrl: 'https://via.placeholder.com/150',
       status: ProductStatus.inStock,
       isActive: false, // Inactive example
+      foodType: 'veg',
     ),
   ];
 
@@ -53,5 +58,15 @@ class ProductRepositoryImpl implements ProductRepository {
   Future<void> deleteProduct(String id) async {
     await Future.delayed(const Duration(milliseconds: 500));
     _mockProducts.removeWhere((product) => product.id == id);
+  }
+
+  @override
+  Future<void> toggleProductStatus(String id, bool isActive) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    final index = _mockProducts.indexWhere((product) => product.id == id);
+    if (index != -1) {
+      final product = _mockProducts[index];
+      _mockProducts[index] = product.copyWith(isActive: isActive);
+    }
   }
 }

@@ -11,14 +11,27 @@ import '../seller_profile_page/seller_profile_page__ui.dart';
 import '../seller_setting_page/seller_setting_page__ui.dart';
 import '../seller_setting_page/seller_setting_page__bloc.dart';
 import '../seller_setting_page/seller_setting_page__event.dart';
+import '../../../repositories/seller_repository.dart';
+import '../seller_login_page/seller_login_page_ui.dart';
+import '../product_list_page_/product_list_page__bloc.dart';
+import '../product_list_page_/product_list_page__event.dart';
+import '../product_list_page_/product_list_page__state.dart';
+import '../product_list_page_/product_repository.dart';
 
 class SellerNavigationBarViewPageUI extends StatelessWidget {
   const SellerNavigationBarViewPageUI({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => SellerNavigationBarViewPageBloc(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => SellerNavigationBarViewPageBloc()),
+        BlocProvider(
+          create: (context) =>
+              ProductListBloc(repository: ProductRepositoryImpl())
+                ..add(LoadProductsEvent()),
+        ),
+      ],
       child: const _SellerNavigationBarViewContent(),
     );
   }
@@ -203,21 +216,41 @@ class _MobileFloatingNavigationBar extends StatelessWidget {
                       ),
                       label: 'Orders',
                     ),
-                    NavigationDestination(
-                      icon: Badge(
-                        label: const Text('2'),
-                        backgroundColor: Colors.orange,
-                        child: const Icon(Icons.inventory_2_outlined),
-                      ),
-                      selectedIcon: Badge(
-                        label: const Text('2'),
-                        backgroundColor: Colors.orange,
-                        child: const Icon(
+                    BlocBuilder<ProductListBloc, ProductListPageState>(
+                      builder: (context, state) {
+                        String? badgeText;
+                        if (state is ProductListLoaded && state.allCount > 0) {
+                          badgeText = state.allCount > 99
+                              ? '99+'
+                              : state.allCount.toString();
+                        }
+
+                        Widget iconBase = const Icon(
+                          Icons.inventory_2_outlined,
+                        );
+                        Widget selectedIconBase = const Icon(
                           Icons.inventory_rounded,
                           color: Color(0xFFE52929),
-                        ),
-                      ),
-                      label: 'Products',
+                        );
+
+                        return NavigationDestination(
+                          icon: badgeText != null
+                              ? Badge(
+                                  label: Text(badgeText),
+                                  backgroundColor: Colors.orange,
+                                  child: iconBase,
+                                )
+                              : iconBase,
+                          selectedIcon: badgeText != null
+                              ? Badge(
+                                  label: Text(badgeText),
+                                  backgroundColor: Colors.orange,
+                                  child: selectedIconBase,
+                                )
+                              : selectedIconBase,
+                          label: 'Products',
+                        );
+                      },
                     ),
                     const NavigationDestination(
                       icon: Icon(Icons.grid_view_outlined),
@@ -303,18 +336,28 @@ class _DesktopSideMenu extends StatelessWidget {
             title: 'Orders',
             icon: Icons.shopping_bag_rounded,
             isSelected: currentIndex == 1,
-            badgeCount: 3,
+            badgeText: '3',
             badgeColor: Colors.red,
             onTap: () => onTap(1),
           ),
           const SizedBox(height: 8),
-          _HoverableMenuItem(
-            title: 'Products',
-            icon: Icons.inventory_rounded,
-            isSelected: currentIndex == 2,
-            badgeCount: 2,
-            badgeColor: Colors.orange,
-            onTap: () => onTap(2),
+          BlocBuilder<ProductListBloc, ProductListPageState>(
+            builder: (context, state) {
+              String? badgeText;
+              if (state is ProductListLoaded && state.allCount > 0) {
+                badgeText = state.allCount > 99
+                    ? '99+'
+                    : state.allCount.toString();
+              }
+              return _HoverableMenuItem(
+                title: 'Products',
+                icon: Icons.inventory_rounded,
+                isSelected: currentIndex == 2,
+                badgeText: badgeText,
+                badgeColor: Colors.orange,
+                onTap: () => onTap(2),
+              );
+            },
           ),
           const SizedBox(height: 8),
           _HoverableMenuItem(
@@ -353,7 +396,16 @@ class _DesktopSideMenu extends StatelessWidget {
             isSelected: false,
             iconColor: const Color(0xFFEF4444),
             textColor: const Color(0xFFEF4444),
-            onTap: () {},
+            onTap: () async {
+              await SellerRepository().signOut();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SellerLoginPageUI()),
+                  (route) => false,
+                );
+              }
+            },
           ),
         ],
       ),
@@ -366,7 +418,7 @@ class _HoverableMenuItem extends StatefulWidget {
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
-  final int? badgeCount;
+  final String? badgeText;
   final Color? badgeColor;
   final Color? iconColor;
   final Color? textColor;
@@ -376,7 +428,7 @@ class _HoverableMenuItem extends StatefulWidget {
     required this.icon,
     required this.isSelected,
     required this.onTap,
-    this.badgeCount,
+    this.badgeText,
     this.badgeColor,
     this.iconColor,
     this.textColor,
@@ -473,22 +525,36 @@ class _HoverableMenuItemState extends State<_HoverableMenuItem>
                     ),
                   ),
                 ),
-                if (widget.badgeCount != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: widget.badgeColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${widget.badgeCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                if (widget.badgeText != null)
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          return ScaleTransition(
+                            scale: animation,
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          );
+                        },
+                    child: Container(
+                      key: ValueKey<String>(widget.badgeText!),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: widget.badgeColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        widget.badgeText!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),

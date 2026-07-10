@@ -537,10 +537,10 @@ class _ProductCard extends StatelessWidget {
               : Border.all(color: Colors.transparent, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              spreadRadius: 1,
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: 0.05),
+              spreadRadius: 2,
+              blurRadius: 15,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
@@ -554,21 +554,21 @@ class _ProductCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 child: CachedNetworkImage(
                   imageUrl: product.imageUrl,
-                  width: 80,
-                  height: 80,
+                  width: 90,
+                  height: 90,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey.shade200,
+                    width: 90,
+                    height: 90,
+                    color: Colors.grey.shade100,
                     child: const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE50914)),
                     ),
                   ),
                   errorWidget: (context, url, error) => Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey.shade200,
+                    width: 90,
+                    height: 90,
+                    color: Colors.grey.shade100,
                     child: const Icon(Icons.fastfood, color: Colors.grey),
                   ),
                 ),
@@ -579,39 +579,57 @@ class _ProductCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      product.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF111827),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        _buildVegBadge(product.foodType),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '₹${product.price.toInt()}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
+                    const SizedBox(height: 6),
+                    _buildStatusBadge(product.status),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          '₹${product.price.toInt()}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          height: 24,
+                          child: Transform.scale(
+                            scale: 0.8,
+                            child: Switch(
+                              value: product.isActive,
+                              onChanged: (val) {
+                                context.read<ProductListBloc>().add(
+                                  ToggleProductStatusEvent(product.id, val),
+                                );
+                              },
+                              activeColor: Colors.white,
+                              activeTrackColor: const Color(0xFF10B981),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    _buildStatusText(product.status),
                   ],
-                ),
-              ),
-              // Options Button
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.more_horiz, color: Colors.black54),
-                  onPressed: () {
-                    // Show product options
-                  },
                 ),
               ),
             ],
@@ -621,32 +639,84 @@ class _ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusText(ProductStatus status) {
-    Color textColor;
+  Widget _buildStatusBadge(ProductStatus status) {
+    Color color;
     String text;
 
     switch (status) {
       case ProductStatus.inStock:
-        textColor = const Color(0xFF4CAF50);
+        color = const Color(0xFF10B981);
         text = 'In Stock';
         break;
       case ProductStatus.lowStock:
-        textColor = const Color(0xFFE50914);
+        color = const Color(0xFFF59E0B);
         text = 'Low Stock';
         break;
       case ProductStatus.outOfStock:
-        textColor = Colors.grey.shade600;
+        color = const Color(0xFFEF4444);
         text = 'Out of Stock';
         break;
     }
 
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.bold,
-        color: textColor,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVegBadge(String foodType) {
+    if (foodType.isEmpty) return const SizedBox.shrink();
+    bool isVeg = foodType.toLowerCase() == 'veg' || foodType.toLowerCase() == 'vegetarian';
+    Color color = isVeg ? Colors.green : Colors.red;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ]
       ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isVeg ? Icons.circle : Icons.change_history,
+            size: 10,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isVeg ? 'VEG' : 'NON-VEG',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              color: color,
+              letterSpacing: 0.5,
+            ),
+          )
+        ],
+      )
     );
   }
 }

@@ -26,7 +26,7 @@ class SellerSignUpPageBloc
     : _repo = authRepository ?? SellerRepository(),
       super(const SellerSignUpPageState()) {
     // ── Screen 1 ──────────────────────────────────────────────────────────────
-    on<SellerSignUpGetStartedPressed>(_onGetStarted);
+    // Welcome screen removed
     on<SellerSignUpLoginNavigated>(_onLoginNavigated);
 
     // ── Screen 2 ──────────────────────────────────────────────────────────────
@@ -120,12 +120,6 @@ class SellerSignUpPageBloc
   // Screen 1 – Welcome
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _onGetStarted(
-    SellerSignUpGetStartedPressed event,
-    Emitter<SellerSignUpPageState> emit,
-  ) {
-    emit(state.copyWith(step: SellerSignUpStep.personalDetails));
-  }
 
   void _onLoginNavigated(
     SellerSignUpLoginNavigated event,
@@ -547,8 +541,6 @@ class SellerSignUpPageBloc
     Emitter<SellerSignUpPageState> emit,
   ) {
     switch (state.step) {
-      case SellerSignUpStep.personalDetails:
-        emit(state.copyWith(step: SellerSignUpStep.welcome));
       case SellerSignUpStep.contactPassword:
         emit(state.copyWith(step: SellerSignUpStep.personalDetails));
       case SellerSignUpStep.otpVerification:

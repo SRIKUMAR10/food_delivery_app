@@ -26,3 +26,13 @@ class DeleteProductEvent extends ProductListPageEvent {
   @override
   List<Object?> get props => [productId];
 }
+
+class ToggleProductStatusEvent extends ProductListPageEvent {
+  final String productId;
+  final bool isActive;
+
+  const ToggleProductStatusEvent(this.productId, this.isActive);
+
+  @override
+  List<Object?> get props => [productId, isActive];
+}

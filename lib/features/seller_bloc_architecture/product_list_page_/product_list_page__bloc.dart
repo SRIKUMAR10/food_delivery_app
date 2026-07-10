@@ -14,6 +14,7 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
     on<LoadProductsEvent>(_onLoadProducts);
     on<FilterProductsEvent>(_onFilterProducts);
     on<DeleteProductEvent>(_onDeleteProduct);
+    on<ToggleProductStatusEvent>(_onToggleProductStatus);
   }
 
   Future<void> _onLoadProducts(LoadProductsEvent event, Emitter<ProductListPageState> emit) async {
@@ -41,6 +42,23 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
       emit(ProductListLoading());
       try {
         await repository.deleteProduct(event.productId);
+        _allProducts = await repository.getProducts();
+        _emitFilteredState(emit, currentFilter);
+      } catch (e) {
+        emit(ProductListError(e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onToggleProductStatus(ToggleProductStatusEvent event, Emitter<ProductListPageState> emit) async {
+    if (state is ProductListLoaded) {
+      final currentState = state as ProductListLoaded;
+      final currentFilter = currentState.activeFilter;
+
+      // Optimistic update could be done here, but let's re-fetch for simplicity/accuracy
+      emit(ProductListLoading());
+      try {
+        await repository.toggleProductStatus(event.productId, event.isActive);
         _allProducts = await repository.getProducts();
         _emitFilteredState(emit, currentFilter);
       } catch (e) {

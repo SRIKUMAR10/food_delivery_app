@@ -9,6 +9,7 @@ class Product extends Equatable {
   final String imageUrl;
   final ProductStatus status;
   final bool isActive;
+  final String foodType;
 
   const Product({
     required this.id,
@@ -17,6 +18,7 @@ class Product extends Equatable {
     required this.imageUrl,
     required this.status,
     required this.isActive,
+    this.foodType = '',
   });
 
   Product copyWith({
@@ -26,6 +28,7 @@ class Product extends Equatable {
     String? imageUrl,
     ProductStatus? status,
     bool? isActive,
+    String? foodType,
   }) {
     return Product(
       id: id ?? this.id,
@@ -34,9 +37,10 @@ class Product extends Equatable {
       imageUrl: imageUrl ?? this.imageUrl,
       status: status ?? this.status,
       isActive: isActive ?? this.isActive,
+      foodType: foodType ?? this.foodType,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, price, imageUrl, status, isActive];
+  List<Object?> get props => [id, name, price, imageUrl, status, isActive, foodType];
 }
