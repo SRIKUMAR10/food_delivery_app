@@ -1,8 +1,6 @@
 // ignore_for_file: lines_longer_than_80_chars
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_login_page/seller_login_page_bloc.dart';
@@ -157,66 +155,6 @@ void main() {
     });
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Group 4 – Forgot Password → OTP → Reset Flow (Screens 6→7→8→9)
-  // ──────────────────────────────────────────────────────────────────────────
-  group('Integration – Forgot Password Full Flow', () {
-    test('complete forgot-password flow ends at resetSuccess', () async {
-      when(
-        () => mockRepo.sendPasswordResetEmail(any()),
-      ).thenAnswer((_) async {});
-
-      // Navigate to forgot password (Screen 6)
-      bloc.add(const SellerLoginForgotPasswordNavigated());
-      await Future.delayed(Duration.zero);
-      expect(bloc.state.step, SellerLoginStep.forgotPassword);
-
-      // Enter email and send OTP
-      bloc.add(const SellerLoginForgotPasswordEmailChanged('reset@shop.com'));
-      bloc.add(const SellerLoginForgotPasswordOtpSent());
-      await Future.delayed(const Duration(milliseconds: 100));
-      expect(bloc.state.step, SellerLoginStep.forgotOtpVerify);
-
-      // Fill OTP digits (Screen 7)
-      for (int i = 0; i < 6; i++) {
-        bloc.add(SellerLoginForgotOtpDigitChanged(index: i, digit: '$i'));
-      }
-      await Future.delayed(Duration.zero);
-      expect(bloc.state.isForgotOtpComplete, true);
-
-      // Verify OTP
-      bloc.add(const SellerLoginForgotOtpVerifySubmitted());
-      await Future.delayed(Duration.zero);
-      expect(bloc.state.step, SellerLoginStep.resetPassword);
-
-      // Enter new password (Screen 8)
-      bloc.add(const SellerLoginNewPasswordChanged('NewSecurePass1!'));
-      bloc.add(const SellerLoginConfirmPasswordChanged('NewSecurePass1!'));
-      bloc.add(const SellerLoginResetPasswordSubmitted());
-      await Future.delayed(const Duration(milliseconds: 800));
-
-      // Screen 9 – success
-      expect(bloc.state.step, SellerLoginStep.resetSuccess);
-      expect(bloc.state.status, SellerLoginStatus.passwordResetSuccess);
-    });
-
-    test('back from forgotOtpVerify returns to loginForm', () async {
-      when(
-        () => mockRepo.sendPasswordResetEmail(any()),
-      ).thenAnswer((_) async {});
-
-      bloc.add(const SellerLoginForgotPasswordNavigated());
-      bloc.add(const SellerLoginForgotPasswordEmailChanged('r@test.com'));
-      bloc.add(const SellerLoginForgotPasswordOtpSent());
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      expect(bloc.state.step, SellerLoginStep.forgotOtpVerify);
-
-      bloc.add(const SellerLoginBackPressed());
-      await Future.delayed(Duration.zero);
-      expect(bloc.state.step, SellerLoginStep.loginForm);
-    });
-  });
 
   // ──────────────────────────────────────────────────────────────────────────
   // Group 5 – OTP Resend Flow

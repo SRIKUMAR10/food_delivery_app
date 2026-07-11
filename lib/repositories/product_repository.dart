@@ -14,13 +14,7 @@ class ProductRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance,
         _storage = storage ?? FirebaseStorage.instance;
 
-  Future<void> addProduct({
-    required String name,
-    required double price,
-    required String description,
-    required String category,
-    XFile? imageFile,
-  }) async {
+  Future<void> addProduct(Map<String, dynamic> productDetails, List<XFile> images) async {
     try {
       // Identify the UID of the currently logged-in Seller
       final User? currentUser = FirebaseAuth.instance.currentUser;
@@ -31,47 +25,36 @@ class ProductRepository {
       }
       final String sellerId = currentUser.uid;
 
-      String? imageUrl;
-      if (imageFile != null) {
-        // Upload image to Firebase Storage
-        // By separating folders by sellerId, we assign these images to that specific seller
-        final safeFileName = imageFile.name.replaceAll(
-          RegExp(r'[^A-Za-z0-9._-]'),
-          '_',
-        );
-        final metadata = SettableMetadata(
-          contentType: imageFile.mimeType ?? 'image/jpeg',
-        );
+      List<String> imageUrls = [];
+      int counter = 0;
+      for (var imageFile in images) {
+        final safeFileName = imageFile.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+        final metadata = SettableMetadata(contentType: imageFile.mimeType ?? 'image/jpeg');
         final ref = _storage
             .ref()
             .child('product_images')
             .child(sellerId)
-            .child('${DateTime.now().millisecondsSinceEpoch}_$safeFileName');
+            .child('${DateTime.now().millisecondsSinceEpoch}_${counter++}_$safeFileName');
 
         if (kIsWeb) {
-          // Use readAsBytes() for Web to upload bytes
           final bytes = await imageFile.readAsBytes();
           if (bytes.isNotEmpty) {
             await ref.putData(bytes, metadata);
-            imageUrl = await ref.getDownloadURL();
+            imageUrls.add(await ref.getDownloadURL());
           }
         } else {
-          // Upload file path for Native
           await ref.putFile(File(imageFile.path), metadata);
-          imageUrl = await ref.getDownloadURL();
+          imageUrls.add(await ref.getDownloadURL());
         }
       }
 
       // Add product details to Firestore
-      await _firestore.collection('products').add({
-        'name': name,
-        'price': price,
-        'description': description,
-        'category': category,
-        'imageUrl': imageUrl,
-        'sellerId': sellerId, // Add seller reference in Firestore
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      final payload = Map<String, dynamic>.from(productDetails);
+      payload['imageUrls'] = imageUrls;
+      payload['sellerId'] = sellerId;
+      payload['createdAt'] = FieldValue.serverTimestamp();
+
+      await _firestore.collection('products').add(payload);
     } catch (e) {
       throw Exception('Failed to add product: $e');
     }

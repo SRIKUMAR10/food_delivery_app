@@ -1,72 +1,56 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'product_model.dart';
 
 abstract class ProductRepository {
   Future<List<Product>> getProducts();
+  Stream<List<Product>> getProductsStream();
   Future<void> deleteProduct(String id);
   Future<void> toggleProductStatus(String id, bool isActive);
 }
 
 class ProductRepositoryImpl implements ProductRepository {
-  // Mock data representing database or API
-  final List<Product> _mockProducts = [
-    const Product(
-      id: '1',
-      name: 'Red Pizza',
-      price: 400,
-      imageUrl: 'https://via.placeholder.com/150',
-      status: ProductStatus.inStock,
-      isActive: true,
-      foodType: 'veg',
-    ),
-    const Product(
-      id: '2',
-      name: 'Chicken Pizza',
-      price: 300,
-      imageUrl: 'https://via.placeholder.com/150',
-      status: ProductStatus.inStock,
-      isActive: true,
-      foodType: 'non-veg',
-    ),
-    const Product(
-      id: '3',
-      name: 'Italian Continental',
-      price: 600,
-      imageUrl: 'https://via.placeholder.com/150',
-      status: ProductStatus.lowStock,
-      isActive: true,
-      foodType: 'veg',
-    ),
-    const Product(
-      id: '4',
-      name: 'Garlic Bread',
-      price: 150,
-      imageUrl: 'https://via.placeholder.com/150',
-      status: ProductStatus.inStock,
-      isActive: false, // Inactive example
-      foodType: 'veg',
-    ),
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  String get _sellerId => _auth.currentUser?.uid ?? '';
 
   @override
   Future<List<Product>> getProducts() async {
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-    return List.from(_mockProducts);
+    if (_sellerId.isEmpty) return [];
+    
+    final snapshot = await _firestore
+        .collection('products')
+        .where('sellerId', isEqualTo: _sellerId)
+        .get();
+        
+    return snapshot.docs
+        .map((doc) => Product.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  @override
+  Stream<List<Product>> getProductsStream() {
+    if (_sellerId.isEmpty) return Stream.value([]);
+
+    return _firestore
+        .collection('products')
+        .where('sellerId', isEqualTo: _sellerId)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Product.fromMap(doc.id, doc.data()))
+          .toList();
+    });
   }
 
   @override
   Future<void> deleteProduct(String id) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    _mockProducts.removeWhere((product) => product.id == id);
+    await _firestore.collection('products').doc(id).delete();
   }
 
   @override
   Future<void> toggleProductStatus(String id, bool isActive) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    final index = _mockProducts.indexWhere((product) => product.id == id);
-    if (index != -1) {
-      final product = _mockProducts[index];
-      _mockProducts[index] = product.copyWith(isActive: isActive);
-    }
+    await _firestore.collection('products').doc(id).update({'isActive': isActive});
   }
 }

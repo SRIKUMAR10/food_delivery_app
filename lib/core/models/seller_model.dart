@@ -24,6 +24,11 @@ class SellerModel {
   final double packagingCharges;
   final String? bankAccountNumber;
   final String? bankName;
+  final String? ifscCode;
+  final String? accountHolderName;
+  final String? bankBranch;
+  final bool notificationsEnabled;
+  final String? taxConfiguration;
 
   SellerModel({
     required this.id,
@@ -49,6 +54,11 @@ class SellerModel {
     this.packagingCharges = 25.0,
     this.bankAccountNumber,
     this.bankName,
+    this.ifscCode,
+    this.accountHolderName,
+    this.bankBranch,
+    this.notificationsEnabled = true,
+    this.taxConfiguration,
   });
 
   factory SellerModel.fromFirestore(DocumentSnapshot snapshot) {
@@ -80,6 +90,11 @@ class SellerModel {
       packagingCharges: (data?['packagingCharges'] as num?)?.toDouble() ?? 25.0,
       bankAccountNumber: data?['bankAccountNumber'],
       bankName: data?['bankName'],
+      ifscCode: data?['ifscCode'],
+      accountHolderName: data?['accountHolderName'],
+      bankBranch: data?['bankBranch'],
+      notificationsEnabled: data?['notificationsEnabled'] ?? true,
+      taxConfiguration: data?['taxConfiguration'],
     );
   }
 
@@ -107,6 +122,11 @@ class SellerModel {
       'packagingCharges': packagingCharges,
       'bankAccountNumber': bankAccountNumber,
       'bankName': bankName,
+      'ifscCode': ifscCode,
+      'accountHolderName': accountHolderName,
+      'bankBranch': bankBranch,
+      'notificationsEnabled': notificationsEnabled,
+      'taxConfiguration': taxConfiguration,
     };
   }
 }

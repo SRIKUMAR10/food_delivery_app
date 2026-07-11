@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'seller_analytics_page__bloc.dart';
 import 'seller_analytics_page__event.dart';
 import 'seller_analytics_page__state.dart';
+import 'seller_analytics_repository.dart';
 
 class SellerAnalyticsPageUI extends StatelessWidget {
   const SellerAnalyticsPageUI({super.key});
@@ -12,7 +14,44 @@ class SellerAnalyticsPageUI extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC), // Premium light background
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF8FAFC).withValues(alpha: 0.95),
+        elevation: 0,
+        scrolledUnderElevation: 4,
+        shadowColor: Colors.black.withValues(alpha: 0.1),
+        centerTitle: false,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF1E293B),
+            size: 20,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Today\'s Orders',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1E293B),
+              ),
+            ),
+            Text(
+              'Analytics & Revenue',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: BlocBuilder<SellerAnalyticsBloc, SellerAnalyticsState>(
           builder: (context, state) {
@@ -38,7 +77,7 @@ class SellerAnalyticsPageUI extends StatelessWidget {
 }
 
 class _AnalyticsContent extends StatelessWidget {
-  final dynamic data; // Replace with proper type if imported properly
+  final SellerAnalyticsData data;
   final String selectedTimeRange;
 
   const _AnalyticsContent({
@@ -59,17 +98,10 @@ class _AnalyticsContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
+                  // Header (Time Range Dropdown)
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Text(
-                        'Analytics',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1E1E2C),
-                            ),
-                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
@@ -169,46 +201,125 @@ class _AnalyticsContent extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 24),
-                          // Custom Bar Chart
-                          SizedBox(
-                            height: 120,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: List.generate(data.weeklyChartData.length, (index) {
-                                final labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                                final height = data.weeklyChartData[index] as double;
-                                return Column(
-                                  mainAxisAlignment: MainAxisAlignment.end,
+                          // Advanced Custom Bar Chart
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                              final double chartHeight = 180;
+                              final maxValue = data.weeklyChartData
+                                  .fold<double>(0.0, (double prev, double e) => e > prev ? e : prev);
+                              final yAxisLabels = ['100%', '75%', '50%', '25%', '0%'];
+
+                              return SizedBox(
+                                height: chartHeight + 30, // 180 for chart + 30 for labels below
+                                child: Row(
                                   children: [
-                                    TweenAnimationBuilder<double>(
-                                      tween: Tween<double>(begin: 0, end: height),
-                                      duration: const Duration(milliseconds: 800),
-                                      curve: Curves.easeOutBack,
-                                      builder: (context, value, child) {
-                                        return Container(
-                                          width: 20,
-                                          height: value,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF5D35DB),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                        );
-                                      },
+                                    // Y-Axis
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 30), // Align with chart body
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: List.generate(yAxisLabels.length, (index) {
+                                          return Text(
+                                            yAxisLabels[index],
+                                            style: const TextStyle(
+                                              color: Color(0xFF9CA3AF),
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          );
+                                        }),
+                                      ),
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      labels[index],
-                                      style: const TextStyle(
-                                        color: Color(0xFF6B7280),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
+                                    const SizedBox(width: 12),
+                                    // Chart Area
+                                    Expanded(
+                                      child: Stack(
+                                        children: [
+                                          // Background Grid Lines
+                                          Padding(
+                                            padding: const EdgeInsets.only(bottom: 30),
+                                            child: Column(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: List.generate(yAxisLabels.length, (index) {
+                                                return Container(
+                                                  height: 1,
+                                                  color: const Color(0xFFE5E7EB).withValues(alpha: 0.8),
+                                                );
+                                              }),
+                                            ),
+                                          ),
+                                          // Bars and X-Axis
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            children: List.generate(data.weeklyChartData.length, (index) {
+                                              final double rawValue = data.weeklyChartData[index];
+                                              final normalizedHeight = maxValue > 0
+                                                  ? (rawValue / maxValue) * chartHeight
+                                                  : 0.0;
+                                              
+                                              return Column(
+                                                mainAxisAlignment: MainAxisAlignment.end,
+                                                children: [
+                                                  TweenAnimationBuilder<double>(
+                                                    tween: Tween<double>(begin: 0, end: normalizedHeight),
+                                                    duration: const Duration(milliseconds: 1200),
+                                                    curve: Curves.easeOutCubic,
+                                                    builder: (context, value, child) {
+                                                      return Tooltip(
+                                                        message: '₹${rawValue.toInt()}',
+                                                        preferBelow: false,
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFF1E293B),
+                                                          borderRadius: BorderRadius.circular(6),
+                                                        ),
+                                                        child: Container(
+                                                          width: constraints.maxWidth > 400 ? 28 : 20,
+                                                          height: value,
+                                                          decoration: BoxDecoration(
+                                                            gradient: const LinearGradient(
+                                                              colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)],
+                                                              begin: Alignment.topCenter,
+                                                              end: Alignment.bottomCenter,
+                                                            ),
+                                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                                            boxShadow: [
+                                                              BoxShadow(
+                                                                color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                                                                blurRadius: 6,
+                                                                offset: const Offset(0, 3),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                  SizedBox(
+                                                    height: 20,
+                                                    child: Text(
+                                                      labels[index],
+                                                      style: const TextStyle(
+                                                        color: Color(0xFF6B7280),
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            }),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
-                                );
-                              }),
-                            ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

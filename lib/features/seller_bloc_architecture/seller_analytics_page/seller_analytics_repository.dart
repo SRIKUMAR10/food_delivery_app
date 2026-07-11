@@ -33,7 +33,7 @@ class SellerAnalyticsRepository {
     return SellerAnalyticsData(
       totalRevenue: 45600.0,
       percentageChange: 12.5,
-      weeklyChartData: [70, 95, 80, 115, 75, 140, 80, 95], // Mon-Sun dummy heights representing the chart in the image
+      weeklyChartData: [70.0, 95.0, 80.0, 115.0, 75.0, 140.0, 80.0], // Mon-Sun dummy heights representing the chart in the image
       topProducts: [
         ProductData(
           name: 'Red Pizza',

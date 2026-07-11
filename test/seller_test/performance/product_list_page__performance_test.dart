@@ -28,7 +28,7 @@ void main() {
         id: index.toString(),
         name: 'Pizza $index',
         price: 10.0 + index,
-        imageUrl: '',
+        imageUrls: const [''],
         status: index % 2 == 0 ? ProductStatus.inStock : ProductStatus.lowStock,
         isActive: true,
       ),
@@ -41,6 +41,12 @@ void main() {
         allCount: 100,
         activeCount: 100,
         inactiveCount: 0,
+        averageRating: 0.0,
+        lowStockCount: 0,
+        nonVegCount: 0,
+        searchQuery: '',
+        totalRevenue: 0.0,
+        vegCount: 0,
       ),
     );
 

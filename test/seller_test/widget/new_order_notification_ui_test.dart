@@ -24,7 +24,7 @@ void main() {
       return MaterialApp(
         home: BlocProvider<NewOrderNotificationBloc>.value(
           value: mockBloc,
-          child: const Scaffold(body: NewOrderNotificationView()),
+          child: const Scaffold(body: NewOrderNotificationView(orderId: 'test_order_id')),
         ),
       );
     }

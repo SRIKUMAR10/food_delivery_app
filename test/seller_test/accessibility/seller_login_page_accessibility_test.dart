@@ -141,7 +141,8 @@ void main() {
       final semantics = tester.getSemantics(
         find.byKey(const Key('loginButton')),
       );
-      expect(semantics.hasFlag(SemanticsFlag.isButton), isTrue);
+      expect(semantics// ignore: deprecated_member_use
+      .hasFlag(SemanticsFlag.isButton), isTrue);
     });
 
     testWidgets('forgot password button has semantic label', (tester) async {
@@ -217,7 +218,8 @@ void main() {
       await tester.pump();
 
       final semantics = tester.getSemantics(find.byKey(const Key('errorText')));
-      expect(semantics.hasFlag(SemanticsFlag.isLiveRegion), isTrue);
+      expect(semantics// ignore: deprecated_member_use
+      .hasFlag(SemanticsFlag.isLiveRegion), isTrue);
     });
 
     testWidgets('loading indicator announces to screen reader', (tester) async {

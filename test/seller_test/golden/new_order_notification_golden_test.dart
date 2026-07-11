@@ -34,7 +34,7 @@ void main() {
       ..addScenario(
         widget: BlocProvider<NewOrderNotificationBloc>.value(
           value: mockBloc,
-          child: const NewOrderNotificationView(),
+          child: const NewOrderNotificationView(orderId: '1025'),
         ),
         name: 'loaded_state',
       );

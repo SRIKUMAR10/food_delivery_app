@@ -1,11 +1,12 @@
 import 'package:equatable/equatable.dart';
+import 'package:image_picker/image_picker.dart';
 
 enum AddProductStatus { initial, loading, success, error }
 
 class AddProductPageState extends Equatable {
   final AddProductStatus status;
   final int currentStep;
-  final List<String> images;
+  final List<XFile> images;
   final String? category;
   final String? foodType;
   final String? spicyLevel;
@@ -53,7 +54,7 @@ class AddProductPageState extends Equatable {
   AddProductPageState copyWith({
     AddProductStatus? status,
     int? currentStep,
-    List<String>? images,
+    List<XFile>? images,
     String? category,
     String? foodType,
     String? spicyLevel,

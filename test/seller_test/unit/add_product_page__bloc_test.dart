@@ -3,8 +3,10 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/add_product_page_/add_product_page__bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/add_product_page_/add_product_page__event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/add_product_page_/add_product_page__state.dart';
+import 'package:image_picker/image_picker.dart';
 
 void main() {
+  final testImage = XFile('path/to/image1.png');
   group('AddProductPageBloc', () {
     late AddProductPageBloc bloc;
 
@@ -25,9 +27,9 @@ void main() {
     blocTest<AddProductPageBloc, AddProductPageState>(
       'emits new image when AddImageEvent is added',
       build: () => bloc,
-      act: (bloc) => bloc.add(const AddImageEvent('path/to/image1.png')),
+      act: (bloc) => bloc.add(AddImageEvent(testImage)),
       expect: () => [
-        const AddProductPageState(images: ['path/to/image1.png']),
+        AddProductPageState(images: [testImage]),
       ],
     );
 

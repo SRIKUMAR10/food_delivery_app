@@ -28,7 +28,7 @@ void main() {
             id: '1',
             name: 'Accessible Pizza',
             price: 10,
-            imageUrl: '',
+            imageUrls: const [''],
             status: ProductStatus.inStock,
             isActive: true,
           ),
@@ -37,6 +37,12 @@ void main() {
         allCount: 1,
         activeCount: 1,
         inactiveCount: 0,
+        averageRating: 0.0,
+        lowStockCount: 0,
+        nonVegCount: 0,
+        searchQuery: '',
+        totalRevenue: 0.0,
+        vegCount: 0,
       ),
     );
 

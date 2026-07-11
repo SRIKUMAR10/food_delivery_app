@@ -42,3 +42,32 @@ class InwardCurvedHeaderClipper extends CustomClipper<Path> {
     return oldClipper.curveHeight != curveHeight;
   }
 }
+
+class HeaderClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    var path = Path();
+    
+    // Start from top-left and go down the left side
+    path.lineTo(0, size.height * 0.55);
+
+    // Create the smooth S-curve wave to the bottom-right corner
+    path.cubicTo(
+      size.width * 0.35, // Control point 1 X
+      size.height * 0.85, // Control point 1 Y
+      size.width * 0.65, // Control point 2 X
+      size.height * 0.50, // Control point 2 Y
+      size.width,         // End point X
+      size.height * 0.95, // End point Y
+    );
+
+    // Complete the path along the right side back to the top
+    path.lineTo(size.width, 0);
+    path.close();
+    
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}

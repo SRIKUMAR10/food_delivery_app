@@ -6,8 +6,7 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/seller_walle
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_wallet_page/seller_wallet_page__state.dart';
 import 'package:food_delivery_app/repositories/seller_wallet_repository.dart';
 
-class MockSellerWalletRepository extends Mock
-    implements SellerWalletRepository {}
+class MockSellerWalletRepository extends Mock implements SellerWalletRepository {}
 
 void main() {
   group('SellerWalletBloc Tests', () {
@@ -40,15 +39,9 @@ void main() {
     blocTest<SellerWalletBloc, SellerWalletState>(
       'emits [Loading, Loaded] when LoadWalletData succeeds',
       build: () {
-        when(
-          () => repository.getWalletBalance(),
-        ).thenAnswer((_) async => 12680.00);
-        when(
-          () => repository.getPayoutHistory(
-            offset: any(named: 'offset'),
-            limit: any(named: 'limit'),
-          ),
-        ).thenAnswer((_) async => mockPayouts);
+        when(() => repository.getWalletBalance()).thenAnswer((_) async => 12680.00);
+        when(() => repository.getPayoutHistory(offset: any(named: 'offset'), limit: any(named: 'limit')))
+            .thenAnswer((_) async => mockPayouts);
         return bloc;
       },
       act: (bloc) => bloc.add(const LoadWalletData()),
@@ -57,7 +50,7 @@ void main() {
         SellerWalletLoaded(
           balance: 12680.00,
           payouts: mockPayouts,
-          hasReachedMax: true, // Only 1 payout, size is 10
+          hasReachedMax: true,
         ),
       ],
     );
@@ -65,15 +58,45 @@ void main() {
     blocTest<SellerWalletBloc, SellerWalletState>(
       'emits [Loading, Error] when LoadWalletData fails',
       build: () {
-        when(
-          () => repository.getWalletBalance(),
-        ).thenThrow(Exception('API error'));
+        when(() => repository.getWalletBalance()).thenThrow(Exception('API error'));
         return bloc;
       },
       act: (bloc) => bloc.add(const LoadWalletData()),
       expect: () => [
         const SellerWalletLoading(),
         const SellerWalletError('Exception: API error'),
+      ],
+    );
+
+    blocTest<SellerWalletBloc, SellerWalletState>(
+      'emits [Loaded] with fresh data when RefreshWalletData succeeds',
+      seed: () => SellerWalletLoaded(balance: 10.0, payouts: [], hasReachedMax: true),
+      build: () {
+        when(() => repository.getWalletBalance()).thenAnswer((_) async => 5000.00);
+        when(() => repository.getPayoutHistory(offset: any(named: 'offset'), limit: any(named: 'limit')))
+            .thenAnswer((_) async => mockPayouts);
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const RefreshWalletData()),
+      expect: () => [
+        SellerWalletLoaded(
+          balance: 5000.00,
+          payouts: mockPayouts,
+          hasReachedMax: true,
+        ),
+      ],
+    );
+
+    blocTest<SellerWalletBloc, SellerWalletState>(
+      'emits [Error] when RefreshWalletData fails',
+      seed: () => SellerWalletLoaded(balance: 10.0, payouts: [], hasReachedMax: true),
+      build: () {
+        when(() => repository.getWalletBalance()).thenThrow(Exception('Refresh error'));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const RefreshWalletData()),
+      expect: () => [
+        const SellerWalletError('Exception: Refresh error'),
       ],
     );
 
@@ -85,22 +108,16 @@ void main() {
         hasReachedMax: false,
       ),
       build: () {
-        when(
-          () => repository.getPayoutHistory(
-            offset: any(named: 'offset'),
-            limit: any(named: 'limit'),
-          ),
-        ).thenAnswer(
-          (_) async => [
-            PayoutItem(
-              id: 'payout_2',
-              title: 'Payout #0002',
-              amount: 500.0,
-              status: 'Paid',
-              date: DateTime(2024, 5, 1),
-            ),
-          ],
-        );
+        when(() => repository.getPayoutHistory(offset: any(named: 'offset'), limit: any(named: 'limit')))
+            .thenAnswer((_) async => [
+                  PayoutItem(
+                    id: 'payout_2',
+                    title: 'Payout #0002',
+                    amount: 500.0,
+                    status: 'Paid',
+                    date: DateTime(2024, 5, 1),
+                  ),
+                ]);
         return bloc;
       },
       act: (bloc) => bloc.add(const LoadMorePayoutHistory()),
@@ -129,32 +146,86 @@ void main() {
       ],
     );
 
-    blocTest<SellerWalletBloc, SellerWalletState>(
-      'emits Loaded with updated balance when InitiateWithdrawal is successful',
-      seed: () => SellerWalletLoaded(balance: 5000.0, payouts: mockPayouts),
-      build: () {
-        when(
-          () => repository.withdrawFunds(any()),
-        ).thenAnswer((_) async => true);
-        return bloc;
-      },
-      act: (bloc) => bloc.add(const InitiateWithdrawal(2000.0)),
-      expect: () => [
-        SellerWalletLoaded(
-          balance: 5000.0,
-          payouts: mockPayouts,
-          isWithdrawing: true,
-        ),
-        predicate<SellerWalletState>((state) {
-          if (state is SellerWalletLoaded) {
-            return state.balance == 3000.0 &&
-                state.withdrawalSuccess == true &&
-                state.payouts.length == 2 &&
-                state.payouts[0].amount == 2000.0;
-          }
-          return false;
-        }),
-      ],
-    );
+    group('InitiateWithdrawal edge cases', () {
+      blocTest<SellerWalletBloc, SellerWalletState>(
+        'fails when amount <= 0',
+        seed: () => SellerWalletLoaded(balance: 5000.0, payouts: mockPayouts),
+        build: () => bloc,
+        act: (bloc) => bloc.add(const InitiateWithdrawal(0)),
+        expect: () => [
+          SellerWalletLoaded(
+            balance: 5000.0,
+            payouts: mockPayouts,
+            withdrawalError: 'Invalid amount',
+            withdrawalSuccess: false,
+          ),
+        ],
+      );
+
+      blocTest<SellerWalletBloc, SellerWalletState>(
+        'fails when amount > balance',
+        seed: () => SellerWalletLoaded(balance: 1000.0, payouts: mockPayouts),
+        build: () => bloc,
+        act: (bloc) => bloc.add(const InitiateWithdrawal(2000)),
+        expect: () => [
+          SellerWalletLoaded(
+            balance: 1000.0,
+            payouts: mockPayouts,
+            withdrawalError: 'Insufficient funds',
+            withdrawalSuccess: false,
+          ),
+        ],
+      );
+
+      blocTest<SellerWalletBloc, SellerWalletState>(
+        'fails when repository returns false',
+        seed: () => SellerWalletLoaded(balance: 5000.0, payouts: mockPayouts),
+        build: () {
+          when(() => repository.withdrawFunds(any())).thenAnswer((_) async => false);
+          return bloc;
+        },
+        act: (bloc) => bloc.add(const InitiateWithdrawal(1000)),
+        expect: () => [
+          SellerWalletLoaded(
+            balance: 5000.0,
+            payouts: mockPayouts,
+            isWithdrawing: true,
+          ),
+          SellerWalletLoaded(
+            balance: 5000.0,
+            payouts: mockPayouts,
+            isWithdrawing: false,
+            withdrawalError: 'Withdrawal failed',
+            withdrawalSuccess: false,
+          ),
+        ],
+      );
+
+      blocTest<SellerWalletBloc, SellerWalletState>(
+        'succeeds and updates balance and payouts locally',
+        seed: () => SellerWalletLoaded(balance: 5000.0, payouts: mockPayouts),
+        build: () {
+          when(() => repository.withdrawFunds(any())).thenAnswer((_) async => true);
+          return bloc;
+        },
+        act: (bloc) => bloc.add(const InitiateWithdrawal(2000.0)),
+        expect: () => [
+          SellerWalletLoaded(
+            balance: 5000.0,
+            payouts: mockPayouts,
+            isWithdrawing: true,
+          ),
+          predicate<SellerWalletState>((state) {
+            if (state is SellerWalletLoaded) {
+              return state.balance == 3000.0 &&
+                  state.withdrawalSuccess == true &&
+                  state.payouts.length == 2 &&
+                  state.payouts[0].amount == 2000.0;
+            }
+            return false;
+          }),
+        ],
+      );
+    });
   });
 }

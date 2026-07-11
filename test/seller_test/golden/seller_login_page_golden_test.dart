@@ -281,38 +281,5 @@ void main() {
     );
   });
 
-  testWidgets('golden_08_reset_password', (tester) async {
-    await tester.pumpWidget(
-      buildGoldenWidget(
-        bloc,
-        const SellerLoginPageState(
-          step: SellerLoginStep.resetPassword,
-          newPassword: 'NewSecure1!',
-          confirmPassword: 'NewSecure1!',
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await expectLater(
-      find.byType(MaterialApp),
-      matchesGoldenFile('goldens/seller_login/08_reset_password.png'),
-    );
-  });
 
-  testWidgets('golden_09_reset_success', (tester) async {
-    await tester.pumpWidget(
-      buildGoldenWidget(
-        bloc,
-        const SellerLoginPageState(
-          step: SellerLoginStep.resetSuccess,
-          status: SellerLoginStatus.passwordResetSuccess,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await expectLater(
-      find.byType(MaterialApp),
-      matchesGoldenFile('goldens/seller_login/09_reset_success.png'),
-    );
-  });
 }

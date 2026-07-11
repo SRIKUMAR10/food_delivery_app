@@ -4,9 +4,9 @@ import 'package:mocktail/mocktail.dart';
 
 // Since we are not in a full project structure, we use relative imports
 // In a real project you might use package:your_app/...
-import '../../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
-import '../../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__event.dart';
-import '../../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__state.dart';
+import '../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
+import '../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__event.dart';
+import '../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__state.dart';
 
 class MockOverallRatingRepository extends Mock implements OverallRatingRepository {}
 

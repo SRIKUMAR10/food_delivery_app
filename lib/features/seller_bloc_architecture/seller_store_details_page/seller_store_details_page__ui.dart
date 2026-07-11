@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'seller_store_details_page__bloc.dart';
@@ -122,10 +122,10 @@ class StoreDetailsContent extends StatelessWidget {
                           iconColor: const Color(0xFFF59E0B),
                           iconBgColor: const Color(0xFFFFFBEB),
                           title: 'Opening Hours',
-                          subtitle: state.openingHours,
+                          subtitle: _formatOpeningHours(state.openingHours),
                           isEditable: true,
                           onEdit: () {
-                            _showEditDialog(context, 'Opening Hours', state.openingHours, (val) {
+                            _showOpeningHoursDialog(context, state.openingHours, (val) {
                               context.read<SellerStoreDetailsBloc>().add(UpdateFieldEvent('openingHours', val));
                             });
                           },
@@ -246,10 +246,6 @@ class StoreDetailsContent extends StatelessWidget {
                       );
                     },
                   ),
-                  const SizedBox(height: 32),
-                  
-                  // Edit Button
-                  _AnimatedEditButton(),
                   const SizedBox(height: 64),
                 ],
               ),
@@ -257,6 +253,157 @@ class StoreDetailsContent extends StatelessWidget {
           );
         }
         return const SizedBox.shrink();
+      },
+    );
+  }
+
+  String _formatOpeningHours(String raw) {
+    try {
+      final Map<String, dynamic> data = jsonDecode(raw);
+      List<String> parts = [];
+      data.forEach((day, times) {
+        parts.add('${day.substring(0, 3)}: ${times['open']} - ${times['close']}');
+      });
+      return parts.join('\n');
+    } catch (e) {
+      return raw;
+    }
+  }
+
+  TimeOfDay _parseTime(String timeStr) {
+    try {
+      final parts = timeStr.trim().split(' ');
+      final hm = parts[0].split(':');
+      int h = int.parse(hm[0]);
+      int m = int.parse(hm[1]);
+      if (parts.length > 1) {
+        if (parts[1].toUpperCase() == 'PM' && h != 12) h += 12;
+        if (parts[1].toUpperCase() == 'AM' && h == 12) h = 0;
+      }
+      return TimeOfDay(hour: h, minute: m);
+    } catch (e) {
+      return TimeOfDay.now();
+    }
+  }
+
+  void _showOpeningHoursDialog(BuildContext context, String initialValue, Function(String) onSave) {
+    final List<String> days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    Map<String, Map<String, String>> schedule = {};
+    
+    try {
+      final Map<String, dynamic> data = jsonDecode(initialValue);
+      for (var day in days) {
+        schedule[day] = {
+          'open': data[day]?['open'] ?? '10:00 AM',
+          'close': data[day]?['close'] ?? '11:00 PM',
+        };
+      }
+    } catch (e) {
+      String open = '10:00 AM';
+      String close = '11:00 PM';
+      if (initialValue.contains(' - ')) {
+        final parts = initialValue.split(' - ');
+        open = parts[0].trim();
+        if (parts.length > 1) close = parts[1].trim();
+      }
+      for (var day in days) {
+        schedule[day] = {'open': open, 'close': close};
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Edit Opening Hours', style: TextStyle(fontWeight: FontWeight.bold)),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: days.length,
+                  itemBuilder: (context, index) {
+                    final day = days[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 80, child: Text(day, style: const TextStyle(fontWeight: FontWeight.w600))),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () async {
+                                final TimeOfDay? picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: _parseTime(schedule[day]!['open']!),
+                                );
+                                if (picked != null) {
+                                  setState(() => schedule[day]!['open'] = picked.format(context));
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(schedule[day]!['open']!, textAlign: TextAlign.center),
+                              ),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Text('-'),
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () async {
+                                final TimeOfDay? picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: _parseTime(schedule[day]!['close']!),
+                                );
+                                if (picked != null) {
+                                  setState(() => schedule[day]!['close'] = picked.format(context));
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(schedule[day]!['close']!, textAlign: TextAlign.center),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE52929),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () {
+                    onSave(jsonEncode(schedule));
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
       },
     );
   }
@@ -707,102 +854,6 @@ class _HoverableDropdownCardState extends State<_HoverableDropdownCard> with Sin
   }
 }
 
-class _AnimatedEditButton extends StatefulWidget {
-  @override
-  State<_AnimatedEditButton> createState() => _AnimatedEditButtonState();
-}
-
-class _AnimatedEditButtonState extends State<_AnimatedEditButton> with SingleTickerProviderStateMixin {
-  bool _isHovered = false;
-  bool _isPressed = false;
-  late AnimationController _entryController;
-  late Animation<double> _opacity;
-  late Animation<Offset> _slide;
-
-  @override
-  void initState() {
-    super.initState();
-    _entryController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _opacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _entryController, curve: Curves.easeOut),
-    );
-    _slide = Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero).animate(
-      CurvedAnimation(parent: _entryController, curve: Curves.easeOutCubic),
-    );
-    
-    Future.delayed(const Duration(milliseconds: 1000), () {
-      if (mounted) _entryController.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _entryController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: SlideTransition(
-        position: _slide,
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
-          child: GestureDetector(
-            onTapDown: (_) => setState(() => _isPressed = true),
-            onTapUp: (_) => setState(() => _isPressed = false),
-            onTapCancel: () => setState(() => _isPressed = false),
-            onTap: () {
-              context.read<SellerStoreDetailsBloc>().add(const EditStoreDetailsEvent());
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              transform: Matrix4.identity()..scale(_isPressed ? 0.98 : (_isHovered ? 1.02 : 1.0)),
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE52929), Color(0xFFDC2626)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFE52929).withValues(alpha: _isHovered ? 0.4 : 0.2),
-                    blurRadius: _isHovered ? 16 : 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.edit_note_outlined, color: Colors.white, size: 24),
-                  SizedBox(width: 8),
-                  Text(
-                    'Edit Store Details',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _StoreDetailsSkeleton extends StatelessWidget {
   const _StoreDetailsSkeleton();

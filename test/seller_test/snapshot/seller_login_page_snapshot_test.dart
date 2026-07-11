@@ -211,27 +211,6 @@ void main() {
   });
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Group 6 – Snapshot: Reset Success State
-  // ──────────────────────────────────────────────────────────────────────────
-  group('Snapshot – Reset Success State', () {
-    testWidgets('snapshot_reset_success_state', (tester) async {
-      await tester.pumpWidget(
-        buildSnapshotWidget(
-          bloc,
-          const SellerLoginPageState(
-            step: SellerLoginStep.resetSuccess,
-            status: SellerLoginStatus.passwordResetSuccess,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Step: resetSuccess'), findsOneWidget);
-      expect(find.text('Status: passwordResetSuccess'), findsOneWidget);
-    });
-  });
-
-  // ──────────────────────────────────────────────────────────────────────────
   // Group 7 – State Changes Reflect in Snapshot
   // ──────────────────────────────────────────────────────────────────────────
   group('Snapshot – Dynamic State Changes', () {

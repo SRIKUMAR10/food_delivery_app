@@ -9,7 +9,7 @@ void main() {
     setUp(() async {
       repository = SellerAnalyticsRepository();
       // Load mock env for testing if needed
-      dotenv.testLoad(fileInput: 'BASE_URL=test\nAPI_KEY=test');
+      dotenv.env.addAll({'BASE_URL': 'test', 'API_KEY': 'test'});
     });
 
     test('fetchAnalyticsData returns SellerAnalyticsData', () async {

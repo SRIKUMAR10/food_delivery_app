@@ -4,12 +4,15 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/seller_profi
 void main() {
   group('Security and Sensitive Data Test', () {
     test('Ensure sensitive data like passwords are not logged in State', () {
-      const state = ProfileLoaded(
+      final state = ProfileLoaded(
         storeName: 'Test Store',
         email: 'test@test.com',
         phone: '1234567890',
         profileImageUrl: 'url',
         notificationsEnabled: true,
+        createdAt: DateTime(2023, 1, 1),
+        isVerified: true,
+        role: 'seller',
       );
 
       final stateString = state.toString();

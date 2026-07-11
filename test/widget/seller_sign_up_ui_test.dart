@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_ui.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up/seller_sign_up_ui.dart';
+
 import 'package:food_delivery_app/repositories/seller_repository.dart';
 
 class MockSellerRepository extends Mock implements SellerRepository {}

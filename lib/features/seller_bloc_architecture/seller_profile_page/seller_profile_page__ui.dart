@@ -643,16 +643,16 @@ class ResponsiveBannerContent extends StatelessWidget {
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(
+            children: [
+              const Icon(
                 Icons.check_circle_outline,
                 color: Color(0xFF10B981),
                 size: 16,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
-                'Role: Restaurant Owner',
-                style: TextStyle(
+                'Role: ${state.role == 'seller' ? 'Restaurant Owner' : state.role}',
+                style: const TextStyle(
                   color: Color(0xFF10B981),
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -694,16 +694,16 @@ class ResponsiveBannerContent extends StatelessWidget {
                 icon: Icons.calendar_today_outlined,
                 iconColor: const Color(0xFFEF4444),
                 title: 'Member Since',
-                value: 'Jan 15, 2024',
+                value: '${_getMonth(state.createdAt.month)} ${state.createdAt.day}, ${state.createdAt.year}',
               ),
               const SizedBox(height: 24),
               _buildInfoChip(
                 icon: Icons.shield_outlined,
                 iconColor: const Color(0xFFEF4444),
                 title: 'Account Status',
-                value: 'Verified',
-                valueColor: const Color(0xFF10B981),
-                valueBgColor: const Color(0xFFECFDF5),
+                value: state.isVerified ? 'Verified' : 'Pending',
+                valueColor: state.isVerified ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                valueBgColor: state.isVerified ? const Color(0xFFECFDF5) : const Color(0xFFFEF3C7),
               ),
             ],
           ),
@@ -767,6 +767,11 @@ class ResponsiveBannerContent extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _getMonth(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return month >= 1 && month <= 12 ? months[month - 1] : '';
   }
 }
 

@@ -31,7 +31,7 @@ void main() {
 
   group('SellerSignUpPageBloc - Initial State', () {
     test('initial state is correct', () {
-      expect(bloc.state.step, SellerSignUpStep.welcome);
+      expect(bloc.state.step, SellerSignUpStep.personalDetails);
       expect(bloc.state.status, SellerSignUpStatus.initial);
       expect(bloc.state.name, '');
       expect(bloc.state.isPasswordObscured, true);

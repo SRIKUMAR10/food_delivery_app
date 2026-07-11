@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:image_picker/image_picker.dart';
 
 abstract class AddProductPageEvent extends Equatable {
   const AddProductPageEvent();
@@ -8,11 +9,11 @@ abstract class AddProductPageEvent extends Equatable {
 }
 
 class AddImageEvent extends AddProductPageEvent {
-  final String imagePath;
-  const AddImageEvent(this.imagePath);
+  final XFile imageFile;
+  const AddImageEvent(this.imageFile);
 
   @override
-  List<Object?> get props => [imagePath];
+  List<Object?> get props => [imageFile];
 }
 
 class RemoveImageEvent extends AddProductPageEvent {

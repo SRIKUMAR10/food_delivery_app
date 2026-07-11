@@ -38,9 +38,12 @@ class SellerRepository {
   /// Returns true if [phoneNumber] already belongs to a seller document.
   Future<bool> checkPhoneExists(String phoneNumber) async {
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('checkAuthExists');
-      final result = await callable.call({'phoneNumber': phoneNumber});
-      return result.data['exists'] == true;
+      final snapshot = await FirebaseFirestore.instance
+          .collection('sellers')
+          .where('phoneNumber', isEqualTo: phoneNumber)
+          .limit(1)
+          .get();
+      return snapshot.docs.isNotEmpty;
     } catch (_) {
       return false;
     }
@@ -49,9 +52,12 @@ class SellerRepository {
   /// Returns true if [email] already belongs to a seller document.
   Future<bool> checkEmailExists(String email) async {
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('checkAuthExists');
-      final result = await callable.call({'email': email});
-      return result.data['exists'] == true;
+      final snapshot = await FirebaseFirestore.instance
+          .collection('sellers')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+      return snapshot.docs.isNotEmpty;
     } catch (_) {
       return false;
     }
@@ -60,10 +66,14 @@ class SellerRepository {
   /// Returns the `authProvider` field for a given email, or null if not found.
   Future<String?> getAuthProviderForEmail(String email) async {
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('checkAuthExists');
-      final result = await callable.call({'email': email});
-      if (result.data['exists'] == true) {
-        return result.data['provider'] as String?;
+      final snapshot = await FirebaseFirestore.instance
+          .collection('sellers')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+      if (snapshot.docs.isNotEmpty) {
+        final data = snapshot.docs.first.data();
+         return data['authProvider'] as String?;
       }
       return null;
     } catch (_) {
@@ -257,8 +267,8 @@ class SellerRepository {
       final user = userCredential.user;
       if (user == null) return false;
 
-      // Update last login
-      await updateSeller(user.uid, {
+      // Update last login (fire and forget to speed up UI)
+      updateSeller(user.uid, {
         'lastLoginAt': FieldValue.serverTimestamp(),
       });
 

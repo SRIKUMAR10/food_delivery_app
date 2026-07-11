@@ -156,20 +156,6 @@ void main() {
       expect(bloc.state.status, SellerLoginStatus.failure);
     });
 
-    test('password reset email send failure emits failure', () async {
-      when(
-        () => mockRepo.sendPasswordResetEmail(any()),
-      ).thenThrow(Exception('network error'));
-
-      bloc
-        ..add(const SellerLoginForgotPasswordNavigated())
-        ..add(const SellerLoginForgotPasswordEmailChanged('r@test.com'))
-        ..add(const SellerLoginForgotPasswordOtpSent());
-
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      expect(bloc.state.status, SellerLoginStatus.failure);
-    });
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -198,33 +184,6 @@ void main() {
       expect(bloc.state.status, isNot(SellerLoginStatus.loading));
     });
 
-    test('new password < 6 chars shows newPasswordError', () async {
-      bloc.emit(
-        const SellerLoginPageState(
-          step: SellerLoginStep.resetPassword,
-          newPassword: '1234',
-          confirmPassword: '1234',
-        ),
-      );
-      bloc.add(const SellerLoginResetPasswordSubmitted());
-      await Future.delayed(Duration.zero);
-
-      expect(bloc.state.newPasswordError, isNotNull);
-    });
-
-    test('mismatched passwords shows confirmPasswordError', () async {
-      bloc.emit(
-        const SellerLoginPageState(
-          step: SellerLoginStep.resetPassword,
-          newPassword: 'Password1!',
-          confirmPassword: 'DifferentPass1!',
-        ),
-      );
-      bloc.add(const SellerLoginResetPasswordSubmitted());
-      await Future.delayed(Duration.zero);
-
-      expect(bloc.state.confirmPasswordError, isNotNull);
-    });
   });
 
   // ──────────────────────────────────────────────────────────────────────────

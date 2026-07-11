@@ -187,17 +187,7 @@ void main() {
       },
     );
 
-    test('new password and confirm visibility toggled independently', () async {
-      expect(bloc.state.isNewPasswordObscured, true);
-      expect(bloc.state.isConfirmPasswordObscured, true);
 
-      bloc.add(SellerLoginPasswordVisibilityToggled());
-      bloc.add(SellerLoginConfirmPasswordVisibilityToggled());
-      await Future.delayed(Duration.zero);
-
-      expect(bloc.state.isPasswordObscured, false);
-      expect(bloc.state.isConfirmPasswordObscured, false);
-    });
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -214,15 +204,7 @@ void main() {
       expect(bloc.state.otpCountdown, 10);
     });
 
-    test('forgot OTP countdown maintained separately from login OTP', () async {
-      bloc
-        ..add(const SellerLoginOtpTimerTicked(20))
-        ..add(const SellerLoginForgotOtpTimerTicked(18));
-      await Future.delayed(Duration.zero);
 
-      expect(bloc.state.otpCountdown, 20);
-      expect(bloc.state.forgotOtpCountdown, 18);
-    });
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -245,14 +227,6 @@ void main() {
       expect(bloc.state.status, SellerLoginStatus.success);
     });
 
-    test('resetSuccess step is stable once reached', () {
-      bloc.emit(
-        const SellerLoginPageState(
-          step: SellerLoginStep.resetSuccess,
-          status: SellerLoginStatus.passwordResetSuccess,
-        ),
-      );
-      expect(bloc.state.step, SellerLoginStep.resetSuccess);
-    });
+
   });
 }

@@ -70,24 +70,43 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
         : (isTablet ? size.width * 0.15 : 20.0);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: const Color(0xFFF8FAFC), // Premium light background
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFAFA),
+        backgroundColor: const Color(0xFFF8FAFC).withValues(alpha: 0.95),
         elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Semantics(
-          header: true,
-          label: 'Customers Dashboard Header',
-          child: Text(
-            'Customers',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF0F172A),
-            ),
-          ),
-        ),
+        scrolledUnderElevation: 4,
+        shadowColor: Colors.black.withValues(alpha: 0.1),
         centerTitle: false,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF1E293B),
+            size: 20,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Pending Orders',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1E293B),
+              ),
+            ),
+            Text(
+              'Customer & Order Management',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
       ),
       body: SafeArea(
         child: RefreshIndicator(

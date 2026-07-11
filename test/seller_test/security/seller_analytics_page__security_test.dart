@@ -6,7 +6,7 @@ void main() {
     test(
       'Verify API_KEY and BASE_URL are loaded from env, not hardcoded',
       () async {
-        dotenv.testLoad(fileInput: 'BASE_URL=secure_url\nAPI_KEY=secure_key');
+        dotenv.env.addAll({'BASE_URL': 'secure_url', 'API_KEY': 'secure_key'});
         expect(dotenv.env['BASE_URL'], 'secure_url');
         expect(dotenv.env['API_KEY'], 'secure_key');
       },

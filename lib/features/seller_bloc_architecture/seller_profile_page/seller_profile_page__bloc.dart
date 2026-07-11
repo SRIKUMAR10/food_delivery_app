@@ -32,20 +32,31 @@ class SellerProfilePageBloc
             email: seller.email.isNotEmpty ? seller.email : 'seller@picarhub.com',
             phone: seller.phoneNumber ?? '+91 98765 43210',
             profileImageUrl: seller.profileImageUrl ?? 'https://via.placeholder.com/150',
-            notificationsEnabled: true,
-            address: '123 Main Street',
-            gstNumber: '22AAAAA0000A1Z5',
-            fssaiLicense: '10012011000000',
-            bankAccountNumber: '000000000000',
-            ifscCode: 'SBIN0000000',
-            taxConfiguration: '5%',
+            notificationsEnabled: seller.notificationsEnabled,
+            address: seller.businessDetails ?? '123 Main Street',
+            gstNumber: seller.gstNumber,
+            fssaiLicense: seller.fssaiNumber,
+            bankAccountNumber: seller.bankAccountNumber,
+            ifscCode: seller.ifscCode,
+            taxConfiguration: seller.taxConfiguration,
+            role: seller.role.isNotEmpty ? seller.role : 'seller',
+            createdAt: seller.createdAt,
+            isVerified: seller.isVerified,
+            bankName: seller.bankName,
+            accountHolderName: seller.accountHolderName,
+            bankBranch: seller.bankBranch,
+            panNumber: seller.panNumber,
+            openingHours: seller.openingHours,
+            deliveryTime: seller.deliveryTime,
+            deliveryArea: seller.deliveryArea,
+            businessDetails: seller.businessDetails,
           ));
           return;
         }
       }
       
       // Fallback if no user is logged in or seller not found
-      emit(const ProfileLoaded(
+      emit(ProfileLoaded(
         storeName: 'Picarhub Restaurant',
         email: 'seller@picarhub.com',
         phone: '+91 98765 43210',
@@ -57,6 +68,9 @@ class SellerProfilePageBloc
         bankAccountNumber: '000000000000',
         ifscCode: 'SBIN0000000',
         taxConfiguration: '5%',
+        role: 'Restaurant Owner',
+        createdAt: DateTime.now(),
+        isVerified: true,
       ));
     } catch (e) {
       emit(ProfileError(e.toString()));
@@ -89,6 +103,17 @@ class SellerProfilePageBloc
         bankAccountNumber: currentState.bankAccountNumber,
         ifscCode: currentState.ifscCode,
         taxConfiguration: currentState.taxConfiguration,
+        role: currentState.role,
+        createdAt: currentState.createdAt,
+        isVerified: currentState.isVerified,
+        bankName: currentState.bankName,
+        accountHolderName: currentState.accountHolderName,
+        bankBranch: currentState.bankBranch,
+        panNumber: currentState.panNumber,
+        openingHours: currentState.openingHours,
+        deliveryTime: currentState.deliveryTime,
+        deliveryArea: currentState.deliveryArea,
+        businessDetails: currentState.businessDetails,
       ));
     }
   }
@@ -99,6 +124,26 @@ class SellerProfilePageBloc
   ) async {
     if (state is ProfileLoaded) {
       final currentState = state as ProfileLoaded;
+      
+      final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (uid.isNotEmpty) {
+        try {
+          await SellerCollection().updateSeller(uid, {
+            'shopName': event.storeName,
+            'email': event.email,
+            'phoneNumber': event.phone,
+            'businessDetails': event.address,
+            'gstNumber': event.gstNumber,
+            'fssaiNumber': event.fssaiLicense,
+            'bankAccountNumber': event.bankAccountNumber,
+            'ifscCode': event.ifscCode,
+            'taxConfiguration': event.taxConfiguration,
+          });
+        } catch (e) {
+          print('Error updating verification form: $e');
+        }
+      }
+
       emit(ProfileLoaded(
         storeName: event.storeName,
         email: event.email,
@@ -111,6 +156,17 @@ class SellerProfilePageBloc
         bankAccountNumber: event.bankAccountNumber,
         ifscCode: event.ifscCode,
         taxConfiguration: event.taxConfiguration,
+        role: currentState.role,
+        createdAt: currentState.createdAt,
+        isVerified: currentState.isVerified,
+        bankName: currentState.bankName,
+        accountHolderName: currentState.accountHolderName,
+        bankBranch: currentState.bankBranch,
+        panNumber: currentState.panNumber,
+        openingHours: currentState.openingHours,
+        deliveryTime: currentState.deliveryTime,
+        deliveryArea: currentState.deliveryArea,
+        businessDetails: currentState.businessDetails,
       ));
     }
   }
@@ -135,6 +191,17 @@ class SellerProfilePageBloc
         bankAccountNumber: currentState.bankAccountNumber,
         ifscCode: currentState.ifscCode,
         taxConfiguration: currentState.taxConfiguration,
+        role: currentState.role,
+        createdAt: currentState.createdAt,
+        isVerified: currentState.isVerified,
+        bankName: currentState.bankName,
+        accountHolderName: currentState.accountHolderName,
+        bankBranch: currentState.bankBranch,
+        panNumber: currentState.panNumber,
+        openingHours: currentState.openingHours,
+        deliveryTime: currentState.deliveryTime,
+        deliveryArea: currentState.deliveryArea,
+        businessDetails: currentState.businessDetails,
         isImageUploading: true,
         localImageBytes: event.imageBytes,
       ));
@@ -168,6 +235,17 @@ class SellerProfilePageBloc
           bankAccountNumber: currentState.bankAccountNumber,
           ifscCode: currentState.ifscCode,
           taxConfiguration: currentState.taxConfiguration,
+          role: currentState.role,
+          createdAt: currentState.createdAt,
+          isVerified: currentState.isVerified,
+          bankName: currentState.bankName,
+          accountHolderName: currentState.accountHolderName,
+          bankBranch: currentState.bankBranch,
+          panNumber: currentState.panNumber,
+          openingHours: currentState.openingHours,
+          deliveryTime: currentState.deliveryTime,
+          deliveryArea: currentState.deliveryArea,
+          businessDetails: currentState.businessDetails,
           isImageUploading: false,
           localImageBytes: null, // Clear local image, rely on network url now
         ));
@@ -185,6 +263,17 @@ class SellerProfilePageBloc
           bankAccountNumber: currentState.bankAccountNumber,
           ifscCode: currentState.ifscCode,
           taxConfiguration: currentState.taxConfiguration,
+          role: currentState.role,
+          createdAt: currentState.createdAt,
+          isVerified: currentState.isVerified,
+          bankName: currentState.bankName,
+          accountHolderName: currentState.accountHolderName,
+          bankBranch: currentState.bankBranch,
+          panNumber: currentState.panNumber,
+          openingHours: currentState.openingHours,
+          deliveryTime: currentState.deliveryTime,
+          deliveryArea: currentState.deliveryArea,
+          businessDetails: currentState.businessDetails,
           isImageUploading: false,
           localImageBytes: null,
         ));

@@ -433,11 +433,7 @@ class _InventoryLowStockViewState extends State<_InventoryLowStockView> {
                                       onSelected: (selected) {
                                         ctx
                                             .read<InventoryLowStockPageBloc>()
-                                            .add(
-                                              UpdateFilters(
-                                                status: status,
-                                              ),
-                                            );
+                                            .add(UpdateFilters(status: status));
                                       },
                                       labelStyle: GoogleFonts.plusJakartaSans(
                                         color:

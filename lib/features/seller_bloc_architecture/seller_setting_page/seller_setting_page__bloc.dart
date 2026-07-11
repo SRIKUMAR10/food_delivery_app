@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'seller_setting_page__event.dart';
 import 'seller_setting_page__state.dart';
 
@@ -77,15 +79,50 @@ class SellerSettingBloc extends Bloc<SellerSettingEvent, SellerSettingState> {
 }
 
 class SellerSettingRepositoryImpl implements SellerSettingRepository {
-  SellerSettingState _state = const SellerSettingState();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   Future<SellerSettingState> loadSettings() async {
-    return _state;
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId == null) {
+      return const SellerSettingState();
+    }
+
+    final docRef = _firestore.collection('seller_notification_settings').doc(sellerId);
+    final snapshot = await docRef.get();
+
+    if (snapshot.exists) {
+      final data = snapshot.data()!;
+      return SellerSettingState(
+        pushNotifications: data['pushNotifications'] ?? true,
+        newOrderSound: data['newOrderSound'] ?? true,
+        promoAndOffers: data['promoAndOffers'] ?? false,
+        lowStockAlerts: data['lowStockAlerts'] ?? true,
+        orderUpdates: data['orderUpdates'] ?? true,
+        appTheme: data['appTheme'] ?? 'Light',
+        language: data['language'] ?? 'English',
+      );
+    }
+
+    return const SellerSettingState();
   }
 
   @override
   Future<void> saveSettings(SellerSettingState state) async {
-    _state = state;
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId != null) {
+      final docRef = _firestore.collection('seller_notification_settings').doc(sellerId);
+      await docRef.set({
+        'pushNotifications': state.pushNotifications,
+        'newOrderSound': state.newOrderSound,
+        'promoAndOffers': state.promoAndOffers,
+        'lowStockAlerts': state.lowStockAlerts,
+        'orderUpdates': state.orderUpdates,
+        'appTheme': state.appTheme,
+        'language': state.language,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
   }
 }

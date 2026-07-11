@@ -1,8 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../repositories/product_repository.dart';
 import 'add_product_page__event.dart';
 import 'add_product_page__state.dart';
 
 class AddProductPageBloc extends Bloc<AddProductPageEvent, AddProductPageState> {
+  final ProductRepository _productRepository = ProductRepository();
+
   AddProductPageBloc() : super(const AddProductPageState()) {
     on<AddImageEvent>(_onAddImage);
     on<RemoveImageEvent>(_onRemoveImage);
@@ -15,43 +19,53 @@ class AddProductPageBloc extends Bloc<AddProductPageEvent, AddProductPageState> 
     on<FieldChangedEvent>(_onFieldChanged);
   }
 
+  int _calculateStep(AddProductPageState s) {
+    if (s.images.isEmpty) return 0;
+    if (s.name.isEmpty || s.category == null) return 1;
+    if (s.price <= 0) return 2;
+    return 3;
+  }
+
   void _onAddImage(AddImageEvent event, Emitter<AddProductPageState> emit) {
     if (state.images.length < 5) {
-      final updatedImages = List<String>.from(state.images)..add(event.imagePath);
-      emit(state.copyWith(images: updatedImages));
+      final updatedImages = List<XFile>.from(state.images)..add(event.imageFile);
+      final newState = state.copyWith(images: updatedImages);
+      emit(newState.copyWith(currentStep: _calculateStep(newState)));
     }
   }
 
   void _onRemoveImage(RemoveImageEvent event, Emitter<AddProductPageState> emit) {
     if (event.index >= 0 && event.index < state.images.length) {
-      final updatedImages = List<String>.from(state.images)..removeAt(event.index);
-      emit(state.copyWith(images: updatedImages));
+      final updatedImages = List<XFile>.from(state.images)..removeAt(event.index);
+      final newState = state.copyWith(images: updatedImages);
+      emit(newState.copyWith(currentStep: _calculateStep(newState)));
     }
   }
 
   void _onCategoryChanged(CategoryChangedEvent event, Emitter<AddProductPageState> emit) {
-    emit(state.copyWith(category: event.category));
+    final newState = state.copyWith(category: event.category);
+    emit(newState.copyWith(currentStep: _calculateStep(newState)));
   }
 
   void _onFoodTypeChanged(FoodTypeChangedEvent event, Emitter<AddProductPageState> emit) {
-    emit(state.copyWith(foodType: event.foodType));
+    final newState = state.copyWith(foodType: event.foodType);
+    emit(newState.copyWith(currentStep: _calculateStep(newState)));
   }
 
   void _onSpicyLevelChanged(SpicyLevelChangedEvent event, Emitter<AddProductPageState> emit) {
-    emit(state.copyWith(spicyLevel: event.spicyLevel));
+    final newState = state.copyWith(spicyLevel: event.spicyLevel);
+    emit(newState.copyWith(currentStep: _calculateStep(newState)));
   }
 
   void _onStatusChanged(StatusChangedEvent event, Emitter<AddProductPageState> emit) {
-    emit(state.copyWith(isActive: event.isActive));
+    final newState = state.copyWith(isActive: event.isActive);
+    emit(newState.copyWith(currentStep: _calculateStep(newState)));
   }
 
   Future<void> _onSubmitProduct(SubmitProductEvent event, Emitter<AddProductPageState> emit) async {
     emit(state.copyWith(status: AddProductStatus.loading));
     
     try {
-      // Simulate API call for adding product
-      await Future.delayed(const Duration(seconds: 2));
-      
       // Basic validation
       if (event.name.isEmpty || event.price <= 0 || state.category == null || state.images.isEmpty) {
          emit(state.copyWith(
@@ -60,6 +74,27 @@ class AddProductPageBloc extends Bloc<AddProductPageEvent, AddProductPageState> 
          ));
          return;
       }
+
+      final productDetails = {
+        'name': event.name,
+        'price': event.price,
+        'discountPrice': event.discountPrice,
+        'description': event.description,
+        'prepTime': event.prepTime,
+        'portionSize': event.portionSize,
+        'addons': event.addons,
+        'category': state.category,
+        'foodType': state.foodType,
+        'spicyLevel': state.spicyLevel,
+        'isActive': state.isActive,
+        'isFeatured': state.isFeatured,
+        'isBestSeller': state.isBestSeller,
+        'hasUnlimitedStock': state.hasUnlimitedStock,
+        'availableStock': state.availableStock,
+        'minimumAlert': state.minimumAlert,
+      };
+
+      await _productRepository.addProduct(productDetails, state.images);
 
       emit(state.copyWith(status: AddProductStatus.success));
     } catch (e) {
@@ -106,7 +141,8 @@ class AddProductPageBloc extends Bloc<AddProductPageEvent, AddProductPageState> 
         emit(state.copyWith(hasUnlimitedStock: event.value as bool));
         break;
     }
-    // Simulate auto-save timestamp update
-    emit(state.copyWith(lastSavedAt: DateTime.now()));
+    // Simulate auto-save timestamp update and recalculate step
+    final newState = state.copyWith(lastSavedAt: DateTime.now());
+    emit(newState.copyWith(currentStep: _calculateStep(newState)));
   }
 }

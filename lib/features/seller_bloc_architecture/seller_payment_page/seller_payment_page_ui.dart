@@ -12,7 +12,7 @@ class SellerPaymentPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => SellerPaymentPageBloc()..add(LoadPaymentData()),
+      create: (context) => SellerPaymentPageBloc(repository: SellerPaymentRepository())..add(LoadPaymentData()),
       child: const _SellerPaymentView(),
     );
   }

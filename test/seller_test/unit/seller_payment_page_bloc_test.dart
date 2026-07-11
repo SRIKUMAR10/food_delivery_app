@@ -4,12 +4,18 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/seller_payme
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_payment_page/seller_payment_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_payment_page/seller_payment_page_state.dart';
 
+import 'package:mocktail/mocktail.dart';
+
+class MockSellerPaymentRepository extends Mock implements SellerPaymentRepository {}
+
 void main() {
   group('SellerPaymentPageBloc', () {
     late SellerPaymentPageBloc paymentBloc;
+    late MockSellerPaymentRepository mockRepository;
 
     setUp(() {
-      paymentBloc = SellerPaymentPageBloc();
+      mockRepository = MockSellerPaymentRepository();
+      paymentBloc = SellerPaymentPageBloc(repository: mockRepository);
     });
 
     tearDown(() {

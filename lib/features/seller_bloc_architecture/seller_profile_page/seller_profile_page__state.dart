@@ -26,6 +26,19 @@ class ProfileLoaded extends SellerProfilePageState {
   final String? taxConfiguration;
   final bool isImageUploading;
   final Uint8List? localImageBytes;
+  
+  // Newly added fields to support dynamic profile
+  final String role;
+  final DateTime createdAt;
+  final bool isVerified;
+  final String? bankName;
+  final String? accountHolderName;
+  final String? bankBranch;
+  final String? panNumber;
+  final String? openingHours;
+  final String? deliveryTime;
+  final String? deliveryArea;
+  final String? businessDetails;
 
   const ProfileLoaded({
     required this.storeName,
@@ -33,6 +46,9 @@ class ProfileLoaded extends SellerProfilePageState {
     required this.phone,
     required this.profileImageUrl,
     required this.notificationsEnabled,
+    required this.role,
+    required this.createdAt,
+    required this.isVerified,
     this.address,
     this.gstNumber,
     this.fssaiLicense,
@@ -41,6 +57,14 @@ class ProfileLoaded extends SellerProfilePageState {
     this.taxConfiguration,
     this.isImageUploading = false,
     this.localImageBytes,
+    this.bankName,
+    this.accountHolderName,
+    this.bankBranch,
+    this.panNumber,
+    this.openingHours,
+    this.deliveryTime,
+    this.deliveryArea,
+    this.businessDetails,
   });
 
   @override
@@ -58,6 +82,17 @@ class ProfileLoaded extends SellerProfilePageState {
         taxConfiguration,
         isImageUploading,
         localImageBytes,
+        role,
+        createdAt,
+        isVerified,
+        bankName,
+        accountHolderName,
+        bankBranch,
+        panNumber,
+        openingHours,
+        deliveryTime,
+        deliveryArea,
+        businessDetails,
       ];
 }
 

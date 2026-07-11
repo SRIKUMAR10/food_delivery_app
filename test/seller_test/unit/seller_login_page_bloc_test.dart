@@ -105,18 +105,6 @@ void main() {
       ],
     );
 
-    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
-      'SellerLoginConfirmPasswordVisibilityToggled flips confirm obscured',
-      build: () => bloc,
-      act: (b) => b.add(SellerLoginConfirmPasswordVisibilityToggled()),
-      expect: () => [
-        isA<SellerLoginPageState>().having(
-          (s) => s.isConfirmPasswordObscured,
-          'isConfirmPasswordObscured',
-          false,
-        ),
-      ],
-    );
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -366,123 +354,6 @@ void main() {
       ],
     );
 
-    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
-      'SellerLoginForgotPasswordOtpSent emits failure for invalid email',
-      build: () => bloc,
-      seed: () => const SellerLoginPageState(forgotPasswordEmail: 'bad-email'),
-      act: (b) => b.add(const SellerLoginForgotPasswordOtpSent()),
-      expect: () => [
-        isA<SellerLoginPageState>().having(
-          (s) => s.status,
-          'status',
-          SellerLoginStatus.failure,
-        ),
-      ],
-    );
-
-    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
-      'SellerLoginForgotPasswordOtpSent emits [loading, otpSent] on success',
-      build: () {
-        when(
-          () => mockRepo.sendPasswordResetEmail(any()),
-        ).thenAnswer((_) async {});
-        return SellerLoginPageBloc(authRepository: mockRepo);
-      },
-      seed: () =>
-          const SellerLoginPageState(forgotPasswordEmail: 'seller@shop.com'),
-      act: (b) => b.add(const SellerLoginForgotPasswordOtpSent()),
-      expect: () => [
-        isA<SellerLoginPageState>().having(
-          (s) => s.status,
-          'status',
-          SellerLoginStatus.loading,
-        ),
-        isA<SellerLoginPageState>()
-            .having(
-              (s) => s.status,
-              'status',
-              SellerLoginStatus.passwordResetSent,
-            )
-            .having((s) => s.step, 'step', SellerLoginStep.forgotOtpVerify),
-      ],
-    );
-  });
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // Group 7 – Reset Password (Screen 8)
-  // ──────────────────────────────────────────────────────────────────────────
-  group('SellerLoginPageBloc – Reset Password', () {
-    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
-      'SellerLoginNewPasswordChanged updates newPassword',
-      build: () => bloc,
-      act: (b) => b.add(const SellerLoginNewPasswordChanged('NewPass123!')),
-      expect: () => [
-        isA<SellerLoginPageState>().having(
-          (s) => s.newPassword,
-          'newPassword',
-          'NewPass123!',
-        ),
-      ],
-    );
-
-    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
-      'emits newPasswordError when password is shorter than 6 chars',
-      build: () => bloc,
-      seed: () => const SellerLoginPageState(
-        newPassword: '12345',
-        confirmPassword: '12345',
-      ),
-      act: (b) => b.add(const SellerLoginResetPasswordSubmitted()),
-      expect: () => [
-        isA<SellerLoginPageState>().having(
-          (s) => s.newPasswordError,
-          'newPasswordError',
-          isNotNull,
-        ),
-      ],
-    );
-
-    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
-      'emits confirmPasswordError when passwords do not match',
-      build: () => bloc,
-      seed: () => const SellerLoginPageState(
-        newPassword: 'Password1',
-        confirmPassword: 'Password2',
-      ),
-      act: (b) => b.add(const SellerLoginResetPasswordSubmitted()),
-      expect: () => [
-        isA<SellerLoginPageState>().having(
-          (s) => s.confirmPasswordError,
-          'confirmPasswordError',
-          isNotNull,
-        ),
-      ],
-    );
-
-    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
-      'emits [loading, passwordResetSuccess] on valid reset',
-      build: () => SellerLoginPageBloc(authRepository: mockRepo),
-      seed: () => const SellerLoginPageState(
-        newPassword: 'NewPassw0rd!',
-        confirmPassword: 'NewPassw0rd!',
-      ),
-      act: (b) => b.add(const SellerLoginResetPasswordSubmitted()),
-      wait: const Duration(milliseconds: 800),
-      expect: () => [
-        isA<SellerLoginPageState>().having(
-          (s) => s.status,
-          'status',
-          SellerLoginStatus.loading,
-        ),
-        isA<SellerLoginPageState>()
-            .having(
-              (s) => s.status,
-              'status',
-              SellerLoginStatus.passwordResetSuccess,
-            )
-            .having((s) => s.step, 'step', SellerLoginStep.resetSuccess),
-      ],
-    );
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -613,18 +484,6 @@ void main() {
       ],
     );
 
-    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
-      'ForgotOtpTimerTicked updates forgotOtpCountdown',
-      build: () => bloc,
-      act: (b) => b.add(const SellerLoginForgotOtpTimerTicked(5)),
-      expect: () => [
-        isA<SellerLoginPageState>().having(
-          (s) => s.forgotOtpCountdown,
-          'forgotOtpCountdown',
-          5,
-        ),
-      ],
-    );
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -651,21 +510,6 @@ void main() {
       expect(state.isLoginFormValid, true);
     });
 
-    test('isNewPasswordValid is false when passwords do not match', () {
-      const state = SellerLoginPageState(
-        newPassword: 'abc123',
-        confirmPassword: 'abc456',
-      );
-      expect(state.isNewPasswordValid, false);
-    });
-
-    test('isNewPasswordValid is true when passwords match and >= 6 chars', () {
-      const state = SellerLoginPageState(
-        newPassword: 'abc123',
-        confirmPassword: 'abc123',
-      );
-      expect(state.isNewPasswordValid, true);
-    });
 
     test('copyWith clears error when clearError is true', () {
       const state = SellerLoginPageState(

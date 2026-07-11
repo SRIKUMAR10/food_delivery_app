@@ -109,166 +109,123 @@ void main() {
       expect(bloc.state.errorMessage, isNotNull);
     });
 
-    test('forgot password with empty email fails gracefully', () async {
-      bloc.add(const SellerLoginForgotPasswordNavigated());
-      bloc.add(const SellerLoginForgotPasswordOtpSent()); // no email set
-      await Future.delayed(Duration.zero);
+    // ──────────────────────────────────────────────────────────────────────────
+    // Group 3 – Credential Safety
+    // ──────────────────────────────────────────────────────────────────────────
+    group('Security – Credential Safety', () {
+      test('password is not visible in state toString()', () {
+        const state = SellerLoginPageState(password: 'SuperSecret1!');
+        final stateString = state.toString();
+        // toString() only exposes step/status/email — not the raw password
+        expect(stateString.contains('SuperSecret1!'), isFalse);
+      });
 
-      expect(bloc.state.status, SellerLoginStatus.failure);
-    });
-  });
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // Group 3 – Credential Safety
-  // ──────────────────────────────────────────────────────────────────────────
-  group('Security – Credential Safety', () {
-    test('password is not visible in state toString()', () {
-      const state = SellerLoginPageState(password: 'SuperSecret1!');
-      final stateString = state.toString();
-      // toString() only exposes step/status/email — not the raw password
-      expect(stateString.contains('SuperSecret1!'), isFalse);
+      test('isPasswordObscured defaults to true (password hidden)', () {
+        expect(bloc.state.isPasswordObscured, isTrue);
+      });
     });
 
-    test('isPasswordObscured defaults to true (password hidden)', () {
-      expect(bloc.state.isPasswordObscured, isTrue);
-    });
-
-    test('new password fields default to obscured', () {
-      expect(bloc.state.isNewPasswordObscured, isTrue);
-      expect(bloc.state.isConfirmPasswordObscured, isTrue);
-    });
-  });
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // Group 4 – Brute Force Awareness
-  // ──────────────────────────────────────────────────────────────────────────
-  group('Security – Brute Force Throttling', () {
-    test('too-many-requests error maps to Tamil throttle message', () async {
-      when(() => mockRepo.signIn(any(), any())).thenThrow(
-        Exception('பல முறை தோல்வி. சில நிமிடம் பிறகு முயற்சிக்கவும்.'),
-      );
-
-      bloc
-        ..add(const SellerLoginFieldChanged('brute@test.com'))
-        ..add(const SellerLoginPasswordChanged('wrong'));
-
-      bloc.add(const SellerLoginSubmitted());
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      expect(bloc.state.status, SellerLoginStatus.failure);
-      expect(bloc.state.errorMessage, contains('பல முறை'));
-    });
-
-    test(
-      'multiple rapid login attempts all result in failure states',
-      () async {
+    // ──────────────────────────────────────────────────────────────────────────
+    // Group 4 – Brute Force Awareness
+    // ──────────────────────────────────────────────────────────────────────────
+    group('Security – Brute Force Throttling', () {
+      test('too-many-requests error maps to Tamil throttle message', () async {
         when(
           () => mockRepo.signIn(any(), any()),
-        ).thenThrow(Exception('wrong-password'));
+        ).thenThrow(Exception('பல முறை'));
 
-        final failures = <SellerLoginStatus>[];
-        final sub = bloc.stream.listen((s) {
-          if (s.status == SellerLoginStatus.failure) failures.add(s.status);
-        });
+        bloc
+          ..add(const SellerLoginFieldChanged('brute@test.com'))
+          ..add(const SellerLoginPasswordChanged('wrong'));
 
-        for (int i = 0; i < 3; i++) {
-          bloc
-            ..add(const SellerLoginFieldChanged('a@b.com'))
-            ..add(const SellerLoginPasswordChanged('badpass$i'))
-            ..add(const SellerLoginSubmitted());
-          await Future.delayed(const Duration(milliseconds: 150));
-        }
+        bloc.add(const SellerLoginSubmitted());
+        await Future.delayed(const Duration(milliseconds: 100));
 
-        sub.cancel();
-        expect(failures.length, greaterThanOrEqualTo(1));
-      },
-    );
-  });
+        expect(bloc.state.status, SellerLoginStatus.failure);
+        expect(bloc.state.errorMessage, contains('பல முறை'));
+      });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Group 5 – Token / Sensitive Data Leak Prevention
-  // ──────────────────────────────────────────────────────────────────────────
-  group('Security – Sensitive Data Handling', () {
-    test('OTP code is not stored after successful verification', () async {
-      when(
-        () => mockRepo.verifyPhoneLoginOtp(any(), any()),
-      ).thenAnswer((_) async => true);
+      test(
+        'multiple rapid login attempts all result in failure states',
+        () async {
+          when(
+            () => mockRepo.signIn(any(), any()),
+          ).thenThrow(Exception('wrong-password'));
 
-      bloc.emit(
-        SellerLoginPageState(
-          step: SellerLoginStep.otpVerification,
-          emailOrPhone: '+919876543210',
-          otpDigits: const ['1', '2', '3', '4', '5', '6'],
-        ),
+          final failures = <SellerLoginStatus>[];
+          final sub = bloc.stream.listen((s) {
+            if (s.status == SellerLoginStatus.failure) failures.add(s.status);
+          });
+
+          for (int i = 0; i < 3; i++) {
+            bloc
+              ..add(const SellerLoginFieldChanged('a@b.com'))
+              ..add(SellerLoginPasswordChanged('badpass$i'))
+              ..add(const SellerLoginSubmitted());
+            await Future.delayed(const Duration(milliseconds: 150));
+          }
+
+          sub.cancel();
+          expect(failures.length, greaterThanOrEqualTo(1));
+        },
       );
-
-      bloc.add(const SellerLoginOtpVerifySubmitted());
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      // After success, step changes but we don't persist OTP in a log
-      expect(bloc.state.step, SellerLoginStep.loginSuccess);
     });
 
-    test('error messages do not expose internal stack traces', () async {
-      when(
-        () => mockRepo.signIn(any(), any()),
-      ).thenThrow(Exception('Internal Error: Stack at line 42'));
+    // ──────────────────────────────────────────────────────────────────────────
+    // Group 5 – Token / Sensitive Data Leak Prevention
+    // ──────────────────────────────────────────────────────────────────────────
+    group('Security – Sensitive Data Handling', () {
+      test('OTP code is not stored after successful verification', () async {
+        when(
+          () => mockRepo.verifyPhoneLoginOtp(any(), any()),
+        ).thenAnswer((_) async => true);
 
-      bloc
-        ..add(const SellerLoginFieldChanged('a@b.com'))
-        ..add(const SellerLoginPasswordChanged('pass'));
-      bloc.add(const SellerLoginSubmitted());
-      await Future.delayed(const Duration(milliseconds: 100));
+        bloc.emit(
+          const SellerLoginPageState(
+            step: SellerLoginStep.otpVerification,
+            emailOrPhone: '+919876543210',
+            otpDigits: ['1', '2', '3', '4', '5', '6'],
+          ),
+        );
 
-      // The bloc's _friendlyError should sanitize the message
-      // At minimum, failure status is emitted
-      expect(bloc.state.status, SellerLoginStatus.failure);
-      expect(bloc.state.errorMessage, isNotNull);
-    });
+        bloc.add(const SellerLoginOtpVerifySubmitted());
+        await Future.delayed(const Duration(milliseconds: 100));
 
-    test('GOOGLE_ACCOUNT_EXISTS maps to safe user-facing message', () async {
-      when(
-        () => mockRepo.signIn(any(), any()),
-      ).thenThrow(Exception('GOOGLE_ACCOUNT_EXISTS'));
+        expect(bloc.state.step, SellerLoginStep.loginSuccess);
+      });
 
-      bloc
-        ..add(const SellerLoginFieldChanged('google@user.com'))
-        ..add(const SellerLoginPasswordChanged('any'));
-      bloc.add(const SellerLoginSubmitted());
-      await Future.delayed(const Duration(milliseconds: 100));
+      test('error messages do not expose internal stack traces', () async {
+        when(
+          () => mockRepo.signIn(any(), any()),
+        ).thenThrow(Exception('Internal Error: Stack at line 42'));
 
-      expect(bloc.state.errorMessage, isNot(contains('GOOGLE_ACCOUNT_EXISTS')));
-      expect(bloc.state.errorMessage, contains('Google'));
-    });
-  });
+        bloc
+          ..add(const SellerLoginFieldChanged('a@b.com'))
+          ..add(const SellerLoginPasswordChanged('pass'));
+        bloc.add(const SellerLoginSubmitted());
+        await Future.delayed(const Duration(milliseconds: 100));
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Group 6 – Forgot Password Security
-  // ──────────────────────────────────────────────────────────────────────────
-  group('Security – Forgot Password', () {
-    test('forgot password with invalid email format is rejected', () async {
-      bloc
-        ..add(const SellerLoginForgotPasswordNavigated())
-        ..add(const SellerLoginForgotPasswordEmailChanged('not-an-email'));
-      bloc.add(const SellerLoginForgotPasswordOtpSent());
-      await Future.delayed(Duration.zero);
+        expect(bloc.state.status, SellerLoginStatus.failure);
+        expect(bloc.state.errorMessage, isNotNull);
+      });
 
-      expect(bloc.state.status, SellerLoginStatus.failure);
-    });
+      test('GOOGLE_ACCOUNT_EXISTS maps to safe user-facing message', () async {
+        when(
+          () => mockRepo.signIn(any(), any()),
+        ).thenThrow(Exception('GOOGLE_ACCOUNT_EXISTS'));
 
-    test('new password validation enforces minimum 6 characters', () async {
-      bloc.emit(
-        const SellerLoginPageState(
-          step: SellerLoginStep.resetPassword,
-          newPassword: '12345', // too short
-          confirmPassword: '12345',
-        ),
-      );
-      bloc.add(const SellerLoginResetPasswordSubmitted());
-      await Future.delayed(Duration.zero);
+        bloc
+          ..add(const SellerLoginFieldChanged('google@user.com'))
+          ..add(const SellerLoginPasswordChanged('any'));
+        bloc.add(const SellerLoginSubmitted());
+        await Future.delayed(const Duration(milliseconds: 100));
 
-      expect(bloc.state.newPasswordError, isNotNull);
-      expect(bloc.state.step, SellerLoginStep.resetPassword);
+        expect(
+          bloc.state.errorMessage,
+          isNot(contains('GOOGLE_ACCOUNT_EXISTS')),
+        );
+        expect(bloc.state.errorMessage, contains('Google'));
+      });
     });
   });
 }

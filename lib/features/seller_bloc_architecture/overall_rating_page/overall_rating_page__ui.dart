@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'overall_rating_page__bloc.dart';
 import 'overall_rating_page__event.dart';
 import 'overall_rating_page__state.dart';
@@ -12,12 +13,43 @@ class OverallRatingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC), // Premium light background
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Reviews', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8FAFC).withValues(alpha: 0.95),
         elevation: 0,
+        scrolledUnderElevation: 4,
+        shadowColor: Colors.black.withValues(alpha: 0.1),
         centerTitle: false,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF1E293B),
+            size: 20,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Rating & Reviews',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1E293B),
+              ),
+            ),
+            Text(
+              'Customer Feedback',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
       ),
       body: BlocBuilder<OverallRatingBloc, OverallRatingState>(
         builder: (context, state) {
@@ -35,7 +67,12 @@ class OverallRatingPage extends StatelessWidget {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 800),
                   child: ListView(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + kToolbarHeight + 24.0,
+                      left: 16.0,
+                      right: 16.0,
+                      bottom: 32.0,
+                    ),
                     children: [
                       _OverallRatingCard(
                         overallRating: state.overallRating,
@@ -214,7 +251,12 @@ class _LoadingSkeleton extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 800),
         child: ListView.builder(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + kToolbarHeight + 24.0,
+            left: 16.0,
+            right: 16.0,
+            bottom: 32.0,
+          ),
           itemCount: 4,
           itemBuilder: (context, index) {
             return Container(

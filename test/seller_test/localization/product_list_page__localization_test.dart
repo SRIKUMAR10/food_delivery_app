@@ -27,6 +27,12 @@ void main() {
         allCount: 0,
         activeCount: 0,
         inactiveCount: 0,
+        averageRating: 0.0,
+        lowStockCount: 0,
+        nonVegCount: 0,
+        searchQuery: '',
+        totalRevenue: 0.0,
+        vegCount: 0,
       ),
     );
 
