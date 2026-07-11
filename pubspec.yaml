@@ -109,7 +109,9 @@ flutter:
    - assets/images/Seller_login.png
    - assets/images/seller onboard page.png
    - assets/images/seller onboard page_2.png
-   - assets/images/Seller_login.png
+  
+   - assets/images/seller_curved_ImgID1.svg
+   - .env
 
   
   

@@ -19,6 +19,9 @@ void main() {
     expect(find.text('Opening Hours'), findsOneWidget);
     expect(find.text('Delivery Time'), findsOneWidget);
     expect(find.text('Delivery Area'), findsOneWidget);
+    expect(find.text('Commission Percentage'), findsOneWidget);
+    expect(find.text('Minimum Order Value'), findsOneWidget);
+    expect(find.byType(Switch), findsOneWidget);
     expect(find.text('Edit Store Details'), findsOneWidget);
   });
 }

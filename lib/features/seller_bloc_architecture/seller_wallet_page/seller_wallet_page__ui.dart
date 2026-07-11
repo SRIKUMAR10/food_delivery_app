@@ -11,6 +11,7 @@ import 'seller_wallet_page__event.dart';
 import 'seller_wallet_page__state.dart';
 import '../seller_request_payout_page/seller_request_payout_page__ui.dart';
 import '../seller_payout_history_page/seller_payout_history_page__ui.dart';
+import '../seller_payment_page/seller_payment_page_ui.dart';
 
 class SellerWalletPage extends StatelessWidget {
   const SellerWalletPage({super.key});
@@ -77,29 +78,8 @@ class _SellerWalletViewState extends State<SellerWalletView> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 900;
-    final isTablet = size.width > 600 && size.width <= 900;
-    final horizontalPadding = isDesktop
-        ? size.width * 0.2
-        : (isTablet ? size.width * 0.1 : 20.0);
-
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFAFA),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Wallet',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF0F172A),
-          ),
-        ),
-        centerTitle: false,
-      ),
       body: SafeArea(
         child: BlocListener<SellerWalletBloc, SellerWalletState>(
           listener: (context, state) {
@@ -122,26 +102,31 @@ class _SellerWalletViewState extends State<SellerWalletView> {
             }
           },
           child: RefreshIndicator(
-            color: const Color(0xFFE11D48),
+            color: const Color(0xFFE52929),
             onRefresh: () async {
               context.read<SellerWalletBloc>().add(const RefreshWalletData());
             },
             child: LayoutBuilder(
               builder: (context, constraints) {
-                return SingleChildScrollView(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: horizontalPadding,
-                    vertical: 16.0,
-                  ),
-                  child: BlocBuilder<SellerWalletBloc, SellerWalletState>(
-                    builder: (context, state) {
-                      return AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: _buildStateContent(context, state),
-                      );
-                    },
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 800),
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20.0,
+                        vertical: 16.0,
+                      ),
+                      child: BlocBuilder<SellerWalletBloc, SellerWalletState>(
+                        builder: (context, state) {
+                          return AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: _buildStateContent(context, state),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 );
               },
@@ -168,6 +153,40 @@ class _SellerWalletViewState extends State<SellerWalletView> {
       key: const ValueKey('loaded_wallet_content'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Wallet',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Manage your balance and withdrawals',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context),
+              color: const Color(0xFF111827),
+            ),
+          ],
+        ),
+        const SizedBox(height: 32),
         // Available Balance Card
         _buildBalanceCard(context, state),
         const SizedBox(height: 20),
@@ -254,90 +273,64 @@ class _SellerWalletViewState extends State<SellerWalletView> {
   Widget _buildActionButtons(BuildContext context, SellerWalletLoaded state) {
     return Row(
       children: [
-        // Withdruw Button
+        // Withdraw Button
         Expanded(
-          child: Container(
+          child: _HoverableButton(
             height: 52,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFFE11D48),
-                  Color(0xFFBE123C),
-                ], // Darker crimson red gradient
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFE11D48).withValues(alpha: 0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+            gradient: const LinearGradient(
+              colors: [Color(0xFFE52929), Color(0xFFDC2626)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: ElevatedButton(
-              onPressed: state.isWithdrawing
-                  ? null
-                  : () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const SellerRequestPayoutPage(),
-                      ),
+            shadowColor: const Color(0xFFE52929).withValues(alpha: 0.2),
+            onPressed: state.isWithdrawing
+                ? null
+                : () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SellerRequestPayoutPage(),
                     ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: state.isWithdrawing
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      'Withdruw', // Kept exact typo to match image visual mockup
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                  ),
+            child: state.isWithdrawing
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
-            ),
+                  )
+                : Text(
+                    'Withdraw', 
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(width: 16),
         // Transactions Button
         Expanded(
-          child: Container(
+          child: _HoverableButton(
             height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: ElevatedButton(
-              onPressed: () {
-                // Future enhancement: Navigate to transaction details screen
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+            borderColor: const Color(0xFFE2E8F0),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SellerPaymentPage(),
                 ),
-              ),
-              child: Text(
-                'Transactions',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF0F172A),
-                ),
+              );
+            },
+            child: Text(
+              'Transactions',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF0F172A),
               ),
             ),
           ),
@@ -392,7 +385,7 @@ class _SellerWalletViewState extends State<SellerWalletView> {
           if (state.isPaginatedLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16.0),
-              child: CircularProgressIndicator(color: Color(0xFFE11D48)),
+              child: CircularProgressIndicator(color: Color(0xFFE52929)),
             ),
         ],
       ),
@@ -485,7 +478,7 @@ class _SellerWalletViewState extends State<SellerWalletView> {
             onPressed: () =>
                 context.read<SellerWalletBloc>().add(const LoadWalletData()),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE11D48),
+              backgroundColor: const Color(0xFFE52929),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -514,6 +507,7 @@ class _PayoutListItemState extends State<_PayoutListItem>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   Timer? _delayTimer;
+  bool _isHovered = false;
 
   @override
   void initState() {
@@ -562,61 +556,132 @@ class _PayoutListItemState extends State<_PayoutListItem>
       opacity: _fadeAnimation,
       child: SlideTransition(
         position: _slideAnimation,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Left Column (Payout code + Amount)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.payout.title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF0F172A),
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            transform: Matrix4.identity()..scale(_isHovered ? 1.01 : 1.0),
+            decoration: BoxDecoration(
+              color: _isHovered ? const Color(0xFFF8FAFC) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Left Column (Payout code + Amount)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.payout.title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF0F172A),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    currencyFormatter.format(widget.payout.amount),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF64748B),
+                    const SizedBox(height: 6),
+                    Text(
+                      currencyFormatter.format(widget.payout.amount),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF64748B),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              // Right Column (Status + Date)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    widget.payout.status,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(
-                        0xFF10B981,
-                      ), // Emerald green for Paid status
+                  ],
+                ),
+                // Right Column (Status + Date)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      widget.payout.status,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF10B981), // Emerald green for Paid status
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    dateFormatter.format(widget.payout.date),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF94A3B8),
+                    const SizedBox(height: 6),
+                    Text(
+                      dateFormatter.format(widget.payout.date),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF94A3B8),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverableButton extends StatefulWidget {
+  final double height;
+  final Gradient? gradient;
+  final Color? color;
+  final Color? borderColor;
+  final Color? shadowColor;
+  final VoidCallback? onPressed;
+  final Widget child;
+
+  const _HoverableButton({
+    required this.height,
+    this.gradient,
+    this.color,
+    this.borderColor,
+    this.shadowColor,
+    this.onPressed,
+    required this.child,
+  });
+
+  @override
+  State<_HoverableButton> createState() => _HoverableButtonState();
+}
+
+class _HoverableButtonState extends State<_HoverableButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: widget.onPressed != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: widget.height,
+        transform: Matrix4.identity()..scale(_isHovered && widget.onPressed != null ? 1.02 : 1.0),
+        decoration: BoxDecoration(
+          color: widget.color,
+          gradient: widget.gradient,
+          borderRadius: BorderRadius.circular(12),
+          border: widget.borderColor != null ? Border.all(color: widget.borderColor!) : null,
+          boxShadow: widget.shadowColor != null && _isHovered
+              ? [BoxShadow(color: widget.shadowColor!, blurRadius: 12, offset: const Offset(0, 6))]
+              : widget.shadowColor != null
+                  ? [BoxShadow(color: widget.shadowColor!, blurRadius: 8, offset: const Offset(0, 4))]
+                  : null,
+        ),
+        child: ElevatedButton(
+          onPressed: widget.onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: widget.child,
         ),
       ),
     );

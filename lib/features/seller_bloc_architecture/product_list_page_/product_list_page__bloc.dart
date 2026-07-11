@@ -74,14 +74,23 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
       filteredList = _allProducts.where((p) => p.isActive).toList();
     } else if (filterType == 'Inactive') {
       filteredList = _allProducts.where((p) => !p.isActive).toList();
+    } else if (filterType == 'Low Stock') {
+      filteredList = _allProducts.where((p) => p.status == ProductStatus.lowStock).toList();
+    } else if (filterType == 'Veg') {
+      filteredList = _allProducts.where((p) => p.foodType.toLowerCase() == 'veg' || p.foodType.toLowerCase() == 'vegetarian').toList();
+    } else if (filterType == 'Non-Veg') {
+      filteredList = _allProducts.where((p) => p.foodType.toLowerCase() == 'non-veg' || p.foodType.toLowerCase() == 'non-vegetarian').toList();
     } else {
       filteredList = List.from(_allProducts);
-      filterType = 'All'; // Default fallback
+      filterType = 'All Products';
     }
 
     final allCount = _allProducts.length;
     final activeCount = _allProducts.where((p) => p.isActive).length;
     final inactiveCount = _allProducts.where((p) => !p.isActive).length;
+    final lowStockCount = _allProducts.where((p) => p.status == ProductStatus.lowStock).length;
+    final vegCount = _allProducts.where((p) => p.foodType.toLowerCase() == 'veg' || p.foodType.toLowerCase() == 'vegetarian').length;
+    final nonVegCount = _allProducts.where((p) => p.foodType.toLowerCase() == 'non-veg' || p.foodType.toLowerCase() == 'non-vegetarian').length;
 
     emit(ProductListLoaded(
       products: filteredList,
@@ -89,6 +98,9 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
       allCount: allCount,
       activeCount: activeCount,
       inactiveCount: inactiveCount,
+      lowStockCount: lowStockCount,
+      vegCount: vegCount,
+      nonVegCount: nonVegCount,
     ));
   }
 }

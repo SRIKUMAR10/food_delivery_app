@@ -31,24 +31,9 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 900;
     final isTablet = size.width > 600 && size.width <= 900;
-    final horizontalPadding = isDesktop ? size.width * 0.15 : 20.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFAFA),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Payments',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF1E293B),
-          ),
-        ),
-        centerTitle: false,
-      ),
       body: SafeArea(
         child: RefreshIndicator(
           color: const Color(0xFF4F46E5),
@@ -57,12 +42,15 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
           },
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: 16.0,
-                ),
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0,
+                      vertical: 16.0,
+                    ),
                 child:
                     BlocBuilder<SellerPaymentPageBloc, SellerPaymentPageState>(
                       builder: (context, state) {
@@ -78,6 +66,8 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
                         );
                       },
                     ),
+                  ),
+                ),
               );
             },
           ),
@@ -106,14 +96,52 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
       key: const ValueKey('loaded_state'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Bank Details',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Manage your bank account and payout details',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context),
+              color: const Color(0xFF111827),
+            ),
+          ],
+        ),
+        const SizedBox(height: 32),
         _buildWalletBalance(data.walletBalance),
         const SizedBox(height: 24),
         _buildSectionTitle("Today's Summary"),
         const SizedBox(height: 12),
         _buildSummaryCard(data.revenue, data.refunds),
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
+        _buildSectionTitle('Bank Account Information'),
+        const SizedBox(height: 16),
+        _buildBankDetails(data.bankDetails),
+        const SizedBox(height: 32),
         _buildSectionTitle('Recent Transactions'),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _buildTransactionsList(data.transactions),
       ],
     );
@@ -273,7 +301,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
             const Divider(height: 1, color: Color(0xFFF1F5F9)),
         itemBuilder: (context, index) {
           final tx = transactions[index];
-          return _TransactionItem(transaction: tx, index: index);
+          return _HoverableTransactionItem(transaction: tx, index: index);
         },
       ),
     );
@@ -401,23 +429,117 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
       ),
     );
   }
+
+  Widget _buildBankDetails(BankAccountDetails bankDetails) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildBankDetailRow('Account Holder', bankDetails.accountHolderName),
+                  const Divider(height: 32, color: Color(0xFFF1F5F9)),
+                  _buildBankDetailRow('Bank Name', bankDetails.bankName),
+                  const Divider(height: 32, color: Color(0xFFF1F5F9)),
+                  _buildBankDetailRow('Account Number', bankDetails.accountNumber),
+                  const Divider(height: 32, color: Color(0xFFF1F5F9)),
+                  _buildBankDetailRow('Account Type', bankDetails.accountType),
+                  const Divider(height: 32, color: Color(0xFFF1F5F9)),
+                  _buildBankDetailRow('IFSC Code', bankDetails.ifscCode),
+                  const Divider(height: 32, color: Color(0xFFF1F5F9)),
+                  _buildBankDetailRow('Branch', bankDetails.branchName),
+                  if (bankDetails.upiId.isNotEmpty) ...[
+                    const Divider(height: 32, color: Color(0xFFF1F5F9)),
+                    _buildBankDetailRow('UPI ID', bankDetails.upiId),
+                  ],
+                  if (bankDetails.swiftCode.isNotEmpty) ...[
+                    const Divider(height: 32, color: Color(0xFFF1F5F9)),
+                    _buildBankDetailRow('SWIFT Code', bankDetails.swiftCode),
+                  ],
+                  if (bankDetails.panNumber.isNotEmpty) ...[
+                    const Divider(height: 32, color: Color(0xFFF1F5F9)),
+                    _buildBankDetailRow('PAN Number', bankDetails.panNumber),
+                  ],
+                  if (bankDetails.verificationStatus.isNotEmpty) ...[
+                    const Divider(height: 32, color: Color(0xFFF1F5F9)),
+                    _buildBankDetailRow('Verification Status', bankDetails.verificationStatus,
+                        valueColor: bankDetails.verificationStatus == 'Verified' ? const Color(0xFF10B981) : const Color(0xFFF59E0B)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBankDetailRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF64748B),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: valueColor ?? const Color(0xFF1E293B),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
-class _TransactionItem extends StatefulWidget {
+class _HoverableTransactionItem extends StatefulWidget {
   final Transaction transaction;
   final int index;
 
-  const _TransactionItem({required this.transaction, required this.index});
+  const _HoverableTransactionItem({required this.transaction, required this.index});
 
   @override
-  State<_TransactionItem> createState() => _TransactionItemState();
+  State<_HoverableTransactionItem> createState() => _HoverableTransactionItemState();
 }
 
-class _TransactionItemState extends State<_TransactionItem>
+class _HoverableTransactionItemState extends State<_HoverableTransactionItem>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  bool _isHovered = false;
 
   @override
   void initState() {
@@ -459,58 +581,67 @@ class _TransactionItemState extends State<_TransactionItem>
       opacity: _fadeAnimation,
       child: SlideTransition(
         position: _slideAnimation,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.transaction.orderId,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1E293B),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: _isHovered ? const Color(0xFFF8FAFC) : Colors.transparent,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.transaction.orderId,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1E293B),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    widget.transaction.date,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF94A3B8),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.transaction.date,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF94A3B8),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '$amountPrefix$amountFormatted',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: amountColor,
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '$amountPrefix$amountFormatted',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: amountColor,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    widget.transaction.status,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: widget.transaction.isRefund
-                          ? const Color(0xFF64748B)
-                          : const Color(0xFF10B981),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.transaction.status,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: widget.transaction.isRefund
+                            ? const Color(0xFF64748B)
+                            : const Color(0xFF10B981),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

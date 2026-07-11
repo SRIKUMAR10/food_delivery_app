@@ -46,6 +46,18 @@ class SellerPaymentPageBloc
             date: 'Yesterday, 04:15 PM',
           ),
         ],
+        bankDetails: const BankAccountDetails(
+          accountHolderName: 'FoodGo Restaurant Ltd',
+          accountNumber: 'XXXX XXXX XXXX 4589',
+          bankName: 'HDFC Bank',
+          branchName: 'T Nagar, Chennai',
+          ifscCode: 'HDFC0001234',
+          accountType: 'Current Account',
+          upiId: 'foodgo.restaurant@okhdfc',
+          swiftCode: 'HDFCINBBAXX',
+          panNumber: 'ABCDE1234F',
+          verificationStatus: 'Verified',
+        ),
       );
 
       emit(SellerPaymentPageLoaded(mockData));

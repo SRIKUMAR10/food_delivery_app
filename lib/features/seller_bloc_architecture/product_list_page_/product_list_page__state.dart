@@ -18,6 +18,9 @@ class ProductListLoaded extends ProductListPageState {
   final int allCount;
   final int activeCount;
   final int inactiveCount;
+  final int lowStockCount;
+  final int vegCount;
+  final int nonVegCount;
 
   const ProductListLoaded({
     required this.products,
@@ -25,6 +28,9 @@ class ProductListLoaded extends ProductListPageState {
     required this.allCount,
     required this.activeCount,
     required this.inactiveCount,
+    required this.lowStockCount,
+    required this.vegCount,
+    required this.nonVegCount,
   });
 
   ProductListLoaded copyWith({
@@ -33,6 +39,9 @@ class ProductListLoaded extends ProductListPageState {
     int? allCount,
     int? activeCount,
     int? inactiveCount,
+    int? lowStockCount,
+    int? vegCount,
+    int? nonVegCount,
   }) {
     return ProductListLoaded(
       products: products ?? this.products,
@@ -40,11 +49,14 @@ class ProductListLoaded extends ProductListPageState {
       allCount: allCount ?? this.allCount,
       activeCount: activeCount ?? this.activeCount,
       inactiveCount: inactiveCount ?? this.inactiveCount,
+      lowStockCount: lowStockCount ?? this.lowStockCount,
+      vegCount: vegCount ?? this.vegCount,
+      nonVegCount: nonVegCount ?? this.nonVegCount,
     );
   }
 
   @override
-  List<Object?> get props => [products, activeFilter, allCount, activeCount, inactiveCount];
+  List<Object?> get props => [products, activeFilter, allCount, activeCount, inactiveCount, lowStockCount, vegCount, nonVegCount];
 }
 
 class ProductListError extends ProductListPageState {

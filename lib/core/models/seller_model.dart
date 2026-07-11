@@ -11,6 +11,19 @@ class SellerModel {
   final String authProvider;
   final bool isVerified;
   final DateTime createdAt;
+  final String? profileImageUrl;
+  final String? openingHours;
+  final String? deliveryTime;
+  final String? deliveryArea;
+  final String? gstNumber;
+  final String? fssaiNumber;
+  final String? panNumber;
+  final bool isOnline;
+  final double gstPercentage;
+  final double minimumOrderValue;
+  final double packagingCharges;
+  final String? bankAccountNumber;
+  final String? bankName;
 
   SellerModel({
     required this.id,
@@ -23,6 +36,19 @@ class SellerModel {
     this.authProvider = 'password',
     this.isVerified = false,
     required this.createdAt,
+    this.profileImageUrl,
+    this.openingHours,
+    this.deliveryTime,
+    this.deliveryArea,
+    this.gstNumber,
+    this.fssaiNumber,
+    this.panNumber,
+    this.isOnline = false,
+    this.gstPercentage = 18.0,
+    this.minimumOrderValue = 150.0,
+    this.packagingCharges = 25.0,
+    this.bankAccountNumber,
+    this.bankName,
   });
 
   factory SellerModel.fromFirestore(DocumentSnapshot snapshot) {
@@ -41,6 +67,19 @@ class SellerModel {
       createdAt: data?['createdAt'] != null
           ? (data!['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
+      profileImageUrl: data?['profileImageUrl'],
+      openingHours: data?['openingHours'],
+      deliveryTime: data?['deliveryTime'],
+      deliveryArea: data?['deliveryArea'],
+      gstNumber: data?['gstNumber'],
+      fssaiNumber: data?['fssaiNumber'],
+      panNumber: data?['panNumber'],
+      isOnline: data?['isOnline'] ?? false,
+      gstPercentage: (data?['gstPercentage'] as num?)?.toDouble() ?? 18.0,
+      minimumOrderValue: (data?['minimumOrderValue'] as num?)?.toDouble() ?? 150.0,
+      packagingCharges: (data?['packagingCharges'] as num?)?.toDouble() ?? 25.0,
+      bankAccountNumber: data?['bankAccountNumber'],
+      bankName: data?['bankName'],
     );
   }
 
@@ -55,6 +94,19 @@ class SellerModel {
       'authProvider': authProvider,
       'isVerified': isVerified,
       'createdAt': Timestamp.fromDate(createdAt),
+      'profileImageUrl': profileImageUrl,
+      'openingHours': openingHours,
+      'deliveryTime': deliveryTime,
+      'deliveryArea': deliveryArea,
+      'gstNumber': gstNumber,
+      'fssaiNumber': fssaiNumber,
+      'panNumber': panNumber,
+      'isOnline': isOnline,
+      'gstPercentage': gstPercentage,
+      'minimumOrderValue': minimumOrderValue,
+      'packagingCharges': packagingCharges,
+      'bankAccountNumber': bankAccountNumber,
+      'bankName': bankName,
     };
   }
 }

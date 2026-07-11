@@ -197,24 +197,53 @@ class OrdersListView extends StatelessWidget {
                                 child: _EmptyState(),
                               );
                             }
+                            final screenWidth = MediaQuery.of(
+                              context,
+                            ).size.width;
+                            final isDesktop = screenWidth >= 1024;
+                            final crossAxisCount = isDesktop ? 2 : 1;
+
                             return SliverPadding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 24,
                                 vertical: 8,
                               ),
-                              sliver: SliverList(
-                                delegate: SliverChildBuilderDelegate((
-                                  context,
-                                  index,
-                                ) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    child: _OrderListCard(
-                                      order: state.filteredOrders[index],
+                              sliver: isDesktop
+                                  ? SliverGrid(
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: crossAxisCount,
+                                            mainAxisExtent: 210,
+                                            mainAxisSpacing: 16,
+                                            crossAxisSpacing: 16,
+                                          ),
+                                      delegate: SliverChildBuilderDelegate(
+                                        (context, index) {
+                                          return _OrderListCard(
+                                            order: state.filteredOrders[index],
+                                            index: index,
+                                          );
+                                        },
+                                        childCount: state.filteredOrders.length,
+                                      ),
+                                    )
+                                  : SliverList(
+                                      delegate: SliverChildBuilderDelegate(
+                                        (context, index) {
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 16,
+                                            ),
+                                            child: _OrderListCard(
+                                              order:
+                                                  state.filteredOrders[index],
+                                              index: index,
+                                            ),
+                                          );
+                                        },
+                                        childCount: state.filteredOrders.length,
+                                      ),
                                     ),
-                                  );
-                                }, childCount: state.filteredOrders.length),
-                              ),
                             );
                           }
                           return const SliverToBoxAdapter(
@@ -364,166 +393,213 @@ class _SegmentButton extends StatelessWidget {
   }
 }
 
-class _OrderListCard extends StatelessWidget {
+class _OrderListCard extends StatefulWidget {
   final OrderModel order;
-  const _OrderListCard({required this.order});
+  final int index;
+  const _OrderListCard({required this.order, required this.index});
+
+  @override
+  State<_OrderListCard> createState() => _OrderListCardState();
+}
+
+class _OrderListCardState extends State<_OrderListCard> {
+  bool _startAnimation = false;
+  bool _isHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration(milliseconds: 50 + (widget.index * 50)), () {
+      if (mounted) {
+        setState(() {
+          _startAnimation = true;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => OrderDetailsScreen(order: order),
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 500),
+      opacity: _startAnimation ? 1.0 : 0.0,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOutCubic,
+        offset: _startAnimation ? Offset.zero : const Offset(0, 0.1),
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _isHovered
+                    ? const Color(0xFFE52929).withValues(alpha: 0.3)
+                    : const Color(0xFFF1F5F9),
+                width: 1.5,
               ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Text(
-                            '#${order.id}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF334155),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Icon(
-                          Icons.delivery_dining_rounded,
-                          size: 20,
-                          color: Color(0xFF64748B),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Delivery',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      '₹${order.amount.toInt()}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(
+                    0xFF0F172A,
+                  ).withValues(alpha: _isHovered ? 0.08 : 0.03),
+                  blurRadius: _isHovered ? 30 : 20,
+                  offset: Offset(0, _isHovered ? 12 : 8),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: const Color(0xFFEFF6FF),
-                      child: Text(
-                        order.customerName.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: Color(0xFF3B82F6),
-                        ),
-                      ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OrderDetailsScreen(order: widget.order),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            order.customerName,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E293B),
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: Text(
+                                  '#${widget.order.id}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF334155),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Icon(
+                                Icons.delivery_dining_rounded,
+                                size: 20,
+                                color: Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'Delivery',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            '2 Items • 2.1 km away',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF64748B),
-                              fontWeight: FontWeight.w500,
+                          Text(
+                            '₹${widget.order.amount.toInt()}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                              letterSpacing: -0.5,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Divider(height: 1, color: Color(0xFFF1F5F9)),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _StatusBadge(status: order.status),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.schedule_rounded,
-                          size: 16,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          order.timeAgo,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: const Color(0xFFEFF6FF),
+                            child: Text(
+                              widget.order.customerName
+                                  .substring(0, 1)
+                                  .toUpperCase(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                color: Color(0xFF3B82F6),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.order.customerName,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  '2 Items • 2.1 km away',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _StatusBadge(status: widget.order.status),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.schedule_rounded,
+                                size: 16,
+                                color: Color(0xFF94A3B8),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                widget.order.timeAgo,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1227,9 +1303,9 @@ class _SkeletonLoaderState extends State<_SkeletonLoader>
                 Color(0xFFE2E8F0),
               ],
               stops: [
-                _controller.value - 0.2,
-                _controller.value,
-                _controller.value + 0.2,
+                (_controller.value - 0.3).clamp(0.0, 1.0),
+                _controller.value.clamp(0.0, 1.0),
+                (_controller.value + 0.3).clamp(0.0, 1.0),
               ],
             ),
           ),

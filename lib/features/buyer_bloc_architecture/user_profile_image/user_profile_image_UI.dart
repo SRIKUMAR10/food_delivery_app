@@ -192,38 +192,121 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
     );
   }
 
+  void _showImagePreview(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.of(ctx).pop(),
+              child: Container(
+                color: Colors.transparent,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+            Hero(
+              tag: 'profile_image_preview',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.network(
+                  imageUrl,
+                  width: 300,
+                  height: 300,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      width: 300,
+                      height: 300,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade900,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(color: Color(0xFFEF2A39)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Positioned(
+              top: 48,
+              right: 16,
+              child: GestureDetector(
+                onTap: () => Navigator.of(ctx).pop(),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildProfileHeader(UserProfile? profile, double uploadProgress) {
     return Column(
       children: [
         Stack(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
+            GestureDetector(
+              onTap: () {
+                if (profile?.imageUrl != null && uploadProgress == 0) {
+                  _showImagePreview(context, profile!.imageUrl!);
+                }
+              },
+              child: Hero(
+                tag: 'profile_image_preview',
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: CircleAvatar(
-                radius: 60,
-                backgroundColor: Colors.white,
-                backgroundImage: profile?.imageUrl != null
-                    ? NetworkImage(profile!.imageUrl!)
-                    : null,
-                onBackgroundImageError: profile?.imageUrl != null
-                    ? (_, __) {}
-                    : null,
-                child: profile?.imageUrl == null
-                    ? const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Color(0xFFADB5BD),
-                      )
-                    : null,
+                  child: CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.white,
+                    backgroundImage: profile?.imageUrl != null
+                        ? NetworkImage(profile!.imageUrl!)
+                        : null,
+                    onBackgroundImageError: profile?.imageUrl != null
+                        ? (_, __) {}
+                        : null,
+                    child: profile?.imageUrl == null
+                        ? const Icon(
+                            Icons.person,
+                            size: 60,
+                            color: Color(0xFFADB5BD),
+                          )
+                        : null,
+                  ),
+                ),
               ),
             ),
             if (uploadProgress > 0)

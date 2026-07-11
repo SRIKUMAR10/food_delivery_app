@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -22,10 +21,30 @@ class SellerProfilePageBloc
   ) async {
     emit(ProfileLoading());
     try {
-      // Simulate network request
-      await Future.delayed(const Duration(seconds: 1));
+      final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       
-      // Load data (Ideally from a repository)
+      if (uid.isNotEmpty) {
+        final seller = await SellerCollection().getSeller(uid);
+        
+        if (seller != null) {
+          emit(ProfileLoaded(
+            storeName: seller.shopName ?? (seller.name.isNotEmpty ? seller.name : 'Picarhub Restaurant'),
+            email: seller.email.isNotEmpty ? seller.email : 'seller@picarhub.com',
+            phone: seller.phoneNumber ?? '+91 98765 43210',
+            profileImageUrl: seller.profileImageUrl ?? 'https://via.placeholder.com/150',
+            notificationsEnabled: true,
+            address: '123 Main Street',
+            gstNumber: '22AAAAA0000A1Z5',
+            fssaiLicense: '10012011000000',
+            bankAccountNumber: '000000000000',
+            ifscCode: 'SBIN0000000',
+            taxConfiguration: '5%',
+          ));
+          return;
+        }
+      }
+      
+      // Fallback if no user is logged in or seller not found
       emit(const ProfileLoaded(
         storeName: 'Picarhub Restaurant',
         email: 'seller@picarhub.com',

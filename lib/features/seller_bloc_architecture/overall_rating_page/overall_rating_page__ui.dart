@@ -31,37 +31,42 @@ class OverallRatingPage extends StatelessWidget {
               onRefresh: () async {
                 context.read<OverallRatingBloc>().add(RefreshOverallRatingEvent());
               },
-              child: ListView(
-                padding: const EdgeInsets.all(16.0),
-                children: [
-                  _OverallRatingCard(
-                    overallRating: state.overallRating,
-                    totalReviews: state.totalReviews,
-                  ),
-                  const SizedBox(height: 16),
-                  ...state.reviews.map((review) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: _ReviewCard(review: review),
-                      )),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: ListView(
+                    padding: const EdgeInsets.all(16.0),
+                    children: [
+                      _OverallRatingCard(
+                        overallRating: state.overallRating,
+                        totalReviews: state.totalReviews,
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'View All Reviews',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                      const SizedBox(height: 16),
+                      ...state.reviews.map((review) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: _ReviewCard(review: review),
+                          )),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'View All Reviews',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
                   ),
-                  const SizedBox(height: 32),
-                ],
+                ),
               ),
             );
           } else if (state is OverallRatingError) {
@@ -205,19 +210,24 @@ class _LoadingSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: 4,
-      itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          height: index == 0 ? 180 : 120,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(16),
-          ),
-        );
-      },
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16.0),
+          itemCount: 4,
+          itemBuilder: (context, index) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              height: index == 0 ? 180 : 120,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }

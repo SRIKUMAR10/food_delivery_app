@@ -21,6 +21,12 @@ class SellerStoreDetailsLoaded extends SellerStoreDetailsPageState {
   final String? gstNumber;
   final String? fssaiNumber;
   final String? panNumber;
+  final bool isOnline;
+  final double gstPercentage;
+  final double minimumOrderValue;
+  final double packagingCharges;
+  final String? bankAccountNumber;
+  final String? bankName;
 
   const SellerStoreDetailsLoaded({
     required this.restaurantName,
@@ -32,6 +38,12 @@ class SellerStoreDetailsLoaded extends SellerStoreDetailsPageState {
     this.gstNumber,
     this.fssaiNumber,
     this.panNumber,
+    required this.isOnline,
+    required this.gstPercentage,
+    required this.minimumOrderValue,
+    required this.packagingCharges,
+    this.bankAccountNumber,
+    this.bankName,
   });
 
   @override
@@ -45,6 +57,12 @@ class SellerStoreDetailsLoaded extends SellerStoreDetailsPageState {
     if (gstNumber != null) gstNumber!,
     if (fssaiNumber != null) fssaiNumber!,
     if (panNumber != null) panNumber!,
+    isOnline,
+    gstPercentage,
+    minimumOrderValue,
+    packagingCharges,
+    if (bankAccountNumber != null) bankAccountNumber!,
+    if (bankName != null) bankName!,
   ];
 }
 
