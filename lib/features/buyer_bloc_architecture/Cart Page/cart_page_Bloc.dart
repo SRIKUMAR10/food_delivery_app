@@ -6,10 +6,10 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import 'cart_models.dart';
 
@@ -209,7 +209,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     }
   }
 
-  /// Processes the checkout: creates an order in Firestore and clears the cart.
+  /// Processes the checkout: calls Cloud Function to create an order securely.
   Future<void> _onCartCheckoutRequested(
     CartCheckoutRequested event,
     Emitter<CartState> emit,
@@ -229,41 +229,31 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
       if (selectedItems.isEmpty) return; // Nothing selected to checkout
 
-      double totalAmount = 0.0;
-      for (final item in selectedItems) {
-        totalAmount += (item.price * item.quantity);
-      }
-
-      // Process checkout via Firebase Cloud Functions for Transaction Integrity
-      final HttpsCallable checkoutCallable = FirebaseFunctions.instance.httpsCallable('checkoutOrder');
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      final customerName = userDoc.data()?['name'] as String? ?? 'Unknown Customer';
       
-      try {
-        final result = await checkoutCallable.call({
-          'selectedItemIds': selectedItems.map((item) => item.id).toList(),
-          'totalAmount': totalAmount,
-        });
+      // Prepare selected cart items payload
+      final selectedCartItemsPayload = selectedItems.map((item) => {
+        'id': item.id,
+        'quantity': item.quantity,
+        'sellerId': item.sellerId,
+      }).toList();
 
-        if (result.data['status'] == 'success') {
-          if (event.onSuccess != null) {
-            event.onSuccess!();
-          }
-        } else {
-          // If the cloud function indicates failure (e.g. insufficient funds)
-          if (event.onInsufficientBalance != null && result.data['reason'] == 'insufficient_funds') {
-            event.onInsufficientBalance!();
-          }
-        }
-      } on FirebaseFunctionsException catch (e) {
-        if (e.code == 'failed-precondition' && event.onInsufficientBalance != null) {
-          event.onInsufficientBalance!();
-        }
-      }
+      // Call secure checkout Cloud Function
+      final httpsCallable = FirebaseFunctions.instance.httpsCallable('createSecureOrder');
+      await httpsCallable.call({
+        'selectedCartItems': selectedCartItemsPayload,
+        'customerName': customerName,
+        'deliveryAddress': 'Default Address',
+        'paymentMethod': 'Wallet',
+      });
 
       if (event.onSuccess != null) {
         event.onSuccess!();
       }
     } catch (e) {
-      // Handle error
+      // Handle error (e.g., out of stock, network error)
+      print("Checkout Error: $e");
     }
   }
 }

@@ -1,113 +1,90 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SellerProfileService {
-  final http.Client client;
-  final String? baseUrl;
-  final String? apiKey;
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
 
-  SellerProfileService({http.Client? client, this.baseUrl, this.apiKey})
-      : this.client = client ?? http.Client();
-
-  String get _baseUrl => baseUrl ?? dotenv.env['BASE_URL'] ?? 'https://api.example.com';
-  String get _apiKey => apiKey ?? dotenv.env['API_KEY'] ?? '';
+  SellerProfileService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
 
   Future<Map<String, dynamic>> fetchProfile() async {
-    final url = Uri.parse('$_baseUrl/seller/profile');
-    try {
-      final response = await client.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-          'API-Key': _apiKey,
-        },
-      ).timeout(const Duration(seconds: 5));
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId == null) {
+      throw Exception('401 Unauthorized: User not logged in');
+    }
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
-      } else if (response.statusCode == 401) {
-        throw Exception('401 Unauthorized: Invalid or expired token');
-      } else if (response.statusCode == 403) {
-        throw Exception('403 Forbidden: Seller access revoked');
+    try {
+      final docSnapshot = await _firestore.collection('sellers').doc(sellerId).get();
+
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data()!;
+        data['id'] = docSnapshot.id;
+        
+        // Convert Timestamp to ISO strings for UI consistency
+        if (data['memberSince'] is Timestamp) {
+          data['memberSince'] = (data['memberSince'] as Timestamp).toDate().toIso8601String();
+        }
+        return data;
       } else {
-        throw Exception('Server error: ${response.statusCode}');
+        // Create a default profile if it doesn't exist
+        final defaultProfile = {
+          'id': sellerId,
+          'name': _auth.currentUser?.displayName ?? 'Picarhub Kitchen',
+          'email': _auth.currentUser?.email ?? 'picarhub@foodgo.com',
+          'phone': _auth.currentUser?.phoneNumber ?? '+91 98765 43210',
+          'storeName': 'Picarhub Kitchen',
+          'storeDescription': 'Authentic home-cooked meals with fresh ingredients, delivered hot.',
+          'avatarUrl': _auth.currentUser?.photoURL ?? 'https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=200',
+          'rating': 0.0,
+          'totalOrders': 0,
+          'memberSince': DateTime.now().toIso8601String(),
+          'isVerified': false,
+          'address': '',
+          'bankAccountLinked': false,
+        };
+        await _firestore.collection('sellers').doc(sellerId).set(defaultProfile);
+        return defaultProfile;
       }
     } catch (e) {
-      if (e.toString().contains('401 Unauthorized') ||
-          e.toString().contains('403 Forbidden')) {
-        rethrow;
+      if (e.toString().contains('permission-denied')) {
+        throw Exception('403 Forbidden: Seller access revoked');
       }
-      // Mock fallback matching the UI design
-      return {
-        'id': 'seller_001',
-        'name': 'Picarhub Kitchen',
-        'email': 'picarhub@foodgo.com',
-        'phone': '+91 98765 43210',
-        'storeName': 'Picarhub Kitchen',
-        'storeDescription': 'Authentic home-cooked meals with fresh ingredients, delivered hot.',
-        'avatarUrl': 'https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=200',
-        'rating': 4.8,
-        'totalOrders': 1245,
-        'memberSince': '2022-03-15',
-        'isVerified': true,
-        'address': '12, Velachery Main Road, Chennai - 600042',
-        'bankAccountLinked': true,
-      };
+      rethrow;
     }
   }
 
   Future<bool> updateProfile(Map<String, dynamic> updates) async {
-    final url = Uri.parse('$_baseUrl/seller/profile');
-    try {
-      final response = await client.patch(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-          'API-Key': _apiKey,
-        },
-        body: jsonEncode(updates),
-      ).timeout(const Duration(seconds: 5));
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId == null) {
+      throw Exception('401 Unauthorized: User not logged in');
+    }
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['success'] ?? false;
-      } else if (response.statusCode == 401) {
-        throw Exception('401 Unauthorized: Invalid or expired token');
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
-      }
-    } catch (e) {
-      if (e.toString().contains('401 Unauthorized')) rethrow;
-      // Simulated local success for demo mode
+    try {
+      await _firestore.collection('sellers').doc(sellerId).update(updates);
       return true;
+    } catch (e) {
+      if (e.toString().contains('permission-denied')) {
+        throw Exception('403 Forbidden: Seller access revoked');
+      }
+      return false;
     }
   }
 
   Future<bool> deleteAccount() async {
-    final url = Uri.parse('$_baseUrl/seller/account');
-    try {
-      final response = await client.delete(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-          'API-Key': _apiKey,
-        },
-      ).timeout(const Duration(seconds: 5));
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('401 Unauthorized: User not logged in');
+    }
 
-      if (response.statusCode == 200) {
-        return true;
-      } else if (response.statusCode == 401) {
-        throw Exception('401 Unauthorized: Invalid or expired token');
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
-      }
+    try {
+      // Typically in Firebase, you'd want a Cloud Function to clean up data before deleting user
+      await _firestore.collection('sellers').doc(user.uid).delete();
+      await user.delete();
+      return true;
     } catch (e) {
-      if (e.toString().contains('401 Unauthorized')) rethrow;
-      throw Exception('Account deletion failed');
+      throw Exception('Account deletion failed: ${e.toString()}');
     }
   }
 }

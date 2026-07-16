@@ -5,39 +5,17 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/assign_deliv
 // Note: Requires mockito or mocktail for MockAssignDeliveryRepository
 // Using a simple fake implementation for the test structure requirement
 
-class FakeAssignDeliveryRepository extends AssignDeliveryRepository {
-  FakeAssignDeliveryRepository() : super(service: throw UnimplementedError());
+import 'package:mocktail/mocktail.dart';
 
-  @override
-  Future<List<RiderModel>> getAvailableRiders(String orderId) async {
-    return [
-      const RiderModel(
-        id: '1',
-        name: 'Test',
-        rating: 4.0,
-        distance: '1km',
-        imageUrl: '',
-      ),
-    ];
-  }
-
-  @override
-  Future<bool> assignRider(
-    String orderId,
-    String riderId,
-    String instructions,
-  ) async {
-    return true;
-  }
-}
+class MockAssignDeliveryRepository extends Mock implements AssignDeliveryRepository {}
 
 void main() {
   group('AssignDeliveryBloc', () {
     late AssignDeliveryBloc bloc;
-    late FakeAssignDeliveryRepository repository;
+    late MockAssignDeliveryRepository repository;
 
     setUp(() {
-      repository = FakeAssignDeliveryRepository();
+      repository = MockAssignDeliveryRepository();
       bloc = AssignDeliveryBloc(repository: repository, orderId: '1025');
     });
 

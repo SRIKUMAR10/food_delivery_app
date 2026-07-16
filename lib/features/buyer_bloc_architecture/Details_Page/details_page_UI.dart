@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../Cart Page/cart_page.dart';
@@ -7,8 +8,6 @@ import '../Favorites_Page/favorites_bloc.dart';
 import '../Favorites_Page/favorites_event.dart';
 import '../Favorites_Page/favorites_state.dart';
 import '../Favorites_Page/favorites_models.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import '../home_Page/home_page_models.dart';
 import '../Rating_page/reviews_list_screen.dart';
@@ -26,6 +25,7 @@ class DetailsPageUI extends StatelessWidget {
   final String sellerId;
   final String? image;
   final FirebaseAuth? auth;
+  final FoodItem? foodItem;
 
   const DetailsPageUI({
     super.key,
@@ -36,10 +36,30 @@ class DetailsPageUI extends StatelessWidget {
     required this.sellerId,
     this.image,
     this.auth,
+    this.foodItem,
+    this.detailsBloc,
   });
+
+  final DetailsBloc? detailsBloc;
 
   @override
   Widget build(BuildContext context) {
+    if (detailsBloc != null) {
+      return BlocProvider<DetailsBloc>.value(
+        value: detailsBloc!,
+        child: _DetailsPageContent(
+          id: id,
+          name: name,
+          price: price,
+          description: description,
+          sellerId: sellerId,
+          image: image,
+          auth: auth,
+          foodItem: foodItem,
+        ),
+      );
+    }
+
     return BlocProvider(
       create: (_) => DetailsBloc()..add(LoadDetailsRating(foodId: id)),
       child: _DetailsPageContent(
@@ -50,6 +70,7 @@ class DetailsPageUI extends StatelessWidget {
         sellerId: sellerId,
         image: image,
         auth: auth,
+        foodItem: foodItem,
       ),
     );
   }
@@ -63,6 +84,7 @@ class _DetailsPageContent extends StatefulWidget {
   final String sellerId;
   final String? image;
   final FirebaseAuth? auth;
+  final FoodItem? foodItem;
 
   const _DetailsPageContent({
     required this.id,
@@ -72,6 +94,7 @@ class _DetailsPageContent extends StatefulWidget {
     required this.sellerId,
     this.image,
     this.auth,
+    this.foodItem,
   });
 
   @override
@@ -84,6 +107,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   late final Animation<double> _fadeAnim;
   late final AnimationController _slideCtrl;
   late final Animation<Offset> _slideAnim;
+  
+  final Set<String> _selectedAddons = {};
 
   static const _primaryRed = Color(0xFFEF2A39);
   static const _bgColor = Color(0xFFF8F8F8);
@@ -120,17 +145,30 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     super.dispose();
   }
 
+  double get _effectivePrice {
+    if (widget.foodItem != null &&
+        widget.foodItem!.discountPrice > 0 &&
+        widget.foodItem!.discountPrice < widget.price) {
+      return widget.foodItem!.discountPrice;
+    }
+    return widget.price;
+  }
+
+  bool get _isActive => widget.foodItem?.isActive ?? true;
+
   void _addToCart(int quantity) {
+    if (!_isActive) return;
     HapticFeedback.mediumImpact();
     context.read<CartBloc>().add(
       CartItemAdded(
         CartItem(
           id: widget.id,
           name: widget.name,
-          price: widget.price,
+          price: _effectivePrice,
           sellerId: widget.sellerId,
           image: widget.image,
           quantity: quantity,
+          selectedAddons: _selectedAddons.toList(),
         ),
       ),
     );
@@ -343,7 +381,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   Widget _buildWideLayout() {
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 750),
+        constraints: const BoxConstraints(maxWidth: 1100),
         margin: const EdgeInsets.all(32),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -357,90 +395,85 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             ),
           ],
         ),
-        child: Row(
-          children: [
-            // Left side: Image and Back Button
-            Expanded(
-              flex: 1,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildHeroImage(),
-                  Positioned(
-                    top: 20,
-                    left: 20,
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.95),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              blurRadius: 8,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Colors.black87,
-                          size: 20,
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left side: Image and Back Button
+              Expanded(
+                flex: 1,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _buildHeroImage(),
+                    Positioned(
+                      top: 20,
+                      left: 20,
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: Colors.black87,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    top: 20,
-                    right: 20,
-                    child: _buildFavouriteButton(),
-                  ),
-                ],
+                    Positioned(
+                      top: 20,
+                      right: 20,
+                      child: _buildFavouriteButton(),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            // Right side: Details
-            Expanded(
-              flex: 1,
-              child: FadeTransition(
-                opacity: _fadeAnim,
-                child: SlideTransition(
-                  position: _slideAnim,
-                  child: Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildTitleAndRating(),
-                        const SizedBox(height: 12),
-                        _buildSellerAndTimingInfo(),
-                        const SizedBox(height: 24),
-                        const Divider(height: 1, color: Color(0xFFF0F0F0)),
-                        const SizedBox(height: 24),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildDescription(),
-                                const SizedBox(height: 28),
-                                _buildRatingsAndReviewsButton(),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        _buildPriceAndQuantityRow(),
-                        const SizedBox(height: 32),
-                        _buildDesktopStickyBottom(),
-                      ],
+              // Right side: Details
+              Expanded(
+                flex: 1,
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: SlideTransition(
+                    position: _slideAnim,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildTitleAndRating(),
+                          const SizedBox(height: 12),
+                          _buildSellerAndTimingInfo(),
+                          const SizedBox(height: 24),
+                          const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                          const SizedBox(height: 24),
+                          _buildDescription(),
+                          const SizedBox(height: 28),
+                          _buildRatingsAndReviewsButton(),
+                          const SizedBox(height: 24),
+                          _buildPriceAndQuantityRow(),
+                          const SizedBox(height: 32),
+                          _buildDesktopStickyBottom(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -452,24 +485,68 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.foodItem != null && widget.foodItem!.foodType.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 4, right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: (widget.foodItem!.foodType.toLowerCase() == 'veg' || widget.foodItem!.foodType.toLowerCase() == 'vegetarian') ? Colors.green : Colors.red, 
+                width: 1.2
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                ),
+              ]
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  (widget.foodItem!.foodType.toLowerCase() == 'veg' || widget.foodItem!.foodType.toLowerCase() == 'vegetarian') ? Icons.circle : Icons.change_history,
+                  size: 8,
+                  color: (widget.foodItem!.foodType.toLowerCase() == 'veg' || widget.foodItem!.foodType.toLowerCase() == 'vegetarian') ? Colors.green : Colors.red,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  (widget.foodItem!.foodType.toLowerCase() == 'veg' || widget.foodItem!.foodType.toLowerCase() == 'vegetarian') ? 'VEG' : 'NON-VEG',
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    color: (widget.foodItem!.foodType.toLowerCase() == 'veg' || widget.foodItem!.foodType.toLowerCase() == 'vegetarian') ? Colors.green : Colors.red,
+                    letterSpacing: 0.5,
+                  ),
+                )
+              ],
+            )
+          ),
         Expanded(
           child: Text(
             widget.name,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF1C1C1C),
+              color: Color(0xFF1C1C1C),
               height: 1.2,
             ),
           ),
         ),
         const SizedBox(width: 12),
-        _buildRatingBadge(),
+        Flexible(
+          flex: 0,
+          child: _buildRatingBadge(),
+        ),
       ],
     );
   }
 
   Widget _buildSellerAndTimingInfo() {
+    final prepTime = widget.foodItem?.prepTime.isNotEmpty == true ? widget.foodItem!.prepTime : '25–35 min';
     return Row(
       children: [
         const Icon(Icons.store_rounded, size: 14, color: Colors.grey),
@@ -479,11 +556,23 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
           style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
         ),
         const SizedBox(width: 16),
-        const Icon(Icons.access_time_rounded, size: 14, color: Colors.grey),
-        const SizedBox(width: 4),
-        Text(
-          '25–35 min',
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.timer_outlined, size: 12, color: Colors.blue),
+              const SizedBox(width: 4),
+              Text(
+                prepTime,
+                style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -493,6 +582,21 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.foodItem != null && (widget.foodItem!.calories.isNotEmpty || widget.foodItem!.spicyLevel.isNotEmpty || widget.foodItem!.portionSize.isNotEmpty)) ...[
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              if (widget.foodItem!.calories.isNotEmpty)
+                _buildInfoChip(Icons.local_fire_department_outlined, '${widget.foodItem!.calories} Cal'),
+              if (widget.foodItem!.spicyLevel.isNotEmpty)
+                _buildInfoChip(Icons.whatshot_rounded, widget.foodItem!.spicyLevel, color: Colors.deepOrange),
+              if (widget.foodItem!.portionSize.isNotEmpty)
+                _buildInfoChip(Icons.restaurant_menu_rounded, widget.foodItem!.portionSize),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
         Text(
           'Description',
           style: TextStyle(
@@ -512,7 +616,75 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             height: 1.65,
           ),
         ),
+        if (widget.foodItem != null && widget.foodItem!.addons.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Add-ons Available',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF1C1C1C),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: widget.foodItem!.addons.map((addon) {
+              final isSelected = _selectedAddons.contains(addon);
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedAddons.remove(addon);
+                    } else {
+                      _selectedAddons.add(addon);
+                    }
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected ? _primaryRed : Colors.white,
+                    border: Border.all(color: isSelected ? _primaryRed : Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    addon,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isSelected ? Colors.white : Colors.grey.shade700,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String label, {Color color = Colors.grey}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey.shade700),
+          ),
+        ],
+      ),
     );
   }
 
@@ -531,7 +703,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             ),
             const SizedBox(height: 2),
             Text(
-              _currFmt.format(widget.price),
+              _currFmt.format(_effectivePrice),
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
@@ -616,8 +788,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
               HapticFeedback.lightImpact();
               bool isLoggedIn = false;
               try {
-                isLoggedIn =
-                    (widget.auth ?? FirebaseAuth.instance).currentUser != null;
+                isLoggedIn = widget.auth?.currentUser != null;
               } catch (_) {}
 
               if (!isLoggedIn) {
@@ -764,22 +935,9 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             ),
           ],
         ),
-        child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('products')
-              .doc(widget.id)
-              .collection('reviews')
-              .snapshots(),
-          builder: (context, snapshot) {
-            double averageRating = 0.0;
-            if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-              double total = 0;
-              for (var doc in snapshot.data!.docs) {
-                final data = doc.data() as Map<String, dynamic>;
-                total += (data['rating'] as num?)?.toDouble() ?? 0.0;
-              }
-              averageRating = total / snapshot.data!.docs.length;
-            }
+        child: BlocBuilder<DetailsBloc, DetailsState>(
+          builder: (context, state) {
+            double averageRating = state.averageRating;
 
             return Row(
               mainAxisSize: MainAxisSize.min,
@@ -806,9 +964,9 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                     );
                   }
                 }),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Text(
-                  averageRating > 0 ? averageRating.toStringAsFixed(1) : 'New',
+                  averageRating.toStringAsFixed(1),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -892,7 +1050,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   Widget _buildStickyBottom() {
     return BlocBuilder<DetailsBloc, DetailsState>(
       builder: (context, state) {
-        final totalPrice = widget.price * state.quantity;
+        final totalPrice = _effectivePrice * state.quantity;
 
         return Container(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
@@ -940,23 +1098,26 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                 child: SizedBox(
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () => _addToCart(state.quantity),
+                    onPressed: _isActive ? () => _addToCart(state.quantity) : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryRed,
+                      backgroundColor: _isActive ? _primaryRed : Colors.grey.shade400,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      elevation: 4,
+                      elevation: _isActive ? 4 : 0,
                       shadowColor: _primaryRed.withValues(alpha: 0.4),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.shopping_cart_rounded, size: 20),
+                        Icon(
+                          _isActive ? Icons.shopping_cart_rounded : Icons.remove_shopping_cart_rounded, 
+                          size: 20
+                        ),
                         const SizedBox(width: 8),
                         Text(
-                          'Add to Cart',
+                          _isActive ? 'Add to Cart' : 'Out of Stock',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -978,7 +1139,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   Widget _buildDesktopStickyBottom() {
     return BlocBuilder<DetailsBloc, DetailsState>(
       builder: (context, state) {
-        final totalPrice = widget.price * state.quantity;
+        final totalPrice = _effectivePrice * state.quantity;
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1011,24 +1172,27 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             SizedBox(
               height: 56,
               child: ElevatedButton(
-                onPressed: () => _addToCart(state.quantity),
+                onPressed: _isActive ? () => _addToCart(state.quantity) : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryRed,
+                  backgroundColor: _isActive ? _primaryRed : Colors.grey.shade400,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  elevation: 4,
+                  elevation: _isActive ? 4 : 0,
                   shadowColor: _primaryRed.withValues(alpha: 0.4),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.shopping_cart_rounded, size: 20),
+                    Icon(
+                      _isActive ? Icons.shopping_cart_rounded : Icons.remove_shopping_cart_rounded, 
+                      size: 20
+                    ),
                     const SizedBox(width: 8),
                     Text(
-                      'Add to Cart',
+                      _isActive ? 'Add to Cart' : 'Out of Stock',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

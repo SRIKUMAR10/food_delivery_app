@@ -237,11 +237,13 @@ class _TopBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Display SVG logo with original colours (no colour filter applied).
-          SvgPicture.asset(
-            'assets/images/FoodGo.svg',
-            height: 50,
-            fit: BoxFit.contain,
-            semanticsLabel: 'FoodGo Logo',
+          Flexible(
+            child: SvgPicture.asset(
+              'assets/images/FoodGo.svg',
+              height: 50,
+              fit: BoxFit.contain,
+              semanticsLabel: 'FoodGo Logo',
+            ),
           ),
           Row(
             children: [
@@ -467,10 +469,10 @@ class _CategoryRow extends StatelessWidget {
       child: ListView.separated(
         physics: const BouncingScrollPhysics(),
         scrollDirection: Axis.horizontal,
-        itemCount: kDefaultCategories.length,
+        itemCount: state.categories.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
-          final cat = kDefaultCategories[index];
+          final cat = state.categories[index];
           final isSelected = cat.id == _selectedId;
 
           return GestureDetector(
@@ -692,6 +694,7 @@ class _FoodCardState extends State<FoodCard> {
                     description: widget.item.description,
                     sellerId: widget.item.sellerId,
                     image: widget.item.image,
+                    foodItem: widget.item,
                   ),
                 ),
               );
@@ -750,6 +753,49 @@ class _FoodCardState extends State<FoodCard> {
                                   Positioned.fill(
                                     child: _ProductImage(item: widget.item),
                                   ),
+                                  if (widget.item.isBestSeller)
+                                    Positioned(
+                                      top: 8,
+                                      left: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Text(
+                                          'Best Seller',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  if (!widget.item.isActive || widget.item.status.contains('outOfStock'))
+                                    Positioned.fill(
+                                      child: Container(
+                                        color: Colors.white.withValues(alpha: 0.6),
+                                        child: Center(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withValues(alpha: 0.7),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Text(
+                                              'Out of Stock',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   Positioned(
                                     top: 8,
                                     right: 8,
@@ -854,24 +900,106 @@ class _FoodCardState extends State<FoodCard> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Product name.
-                        Text(
-                          widget.item.name,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1C1C1C),
-                          ),
+                        // Product name and Veg/Non-Veg
+                        Row(
+                          children: [
+                            if (widget.item.foodType.isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: (widget.item.foodType.toLowerCase() == 'veg' || widget.item.foodType.toLowerCase() == 'vegetarian') ? Colors.green : Colors.red, 
+                                    width: 1.2
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.05),
+                                      blurRadius: 2,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ]
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      (widget.item.foodType.toLowerCase() == 'veg' || widget.item.foodType.toLowerCase() == 'vegetarian') ? Icons.circle : Icons.change_history,
+                                      size: 8,
+                                      color: (widget.item.foodType.toLowerCase() == 'veg' || widget.item.foodType.toLowerCase() == 'vegetarian') ? Colors.green : Colors.red,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      (widget.item.foodType.toLowerCase() == 'veg' || widget.item.foodType.toLowerCase() == 'vegetarian') ? 'VEG' : 'NON-VEG',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w900,
+                                        color: (widget.item.foodType.toLowerCase() == 'veg' || widget.item.foodType.toLowerCase() == 'vegetarian') ? Colors.green : Colors.red,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    )
+                                  ],
+                                )
+                              ),
+                            Expanded(
+                              child: Text(
+                                widget.item.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1C1C1C),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
+                        
+                        // Rating and Review Count
+                        if (widget.item.rating > 0) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${widget.item.rating} (${widget.item.reviewCount})',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (widget.item.prepTime.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.timer_outlined, size: 12, color: Colors.blue),
+                                const SizedBox(width: 4),
+                                Text(widget.item.prepTime, style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ],
 
-                        // Formatted price with Indian Rupee symbol.
+                        const SizedBox(height: 4),
+
+                        // Formatted price with Indian Rupee symbol and Discount
                         Text(
-                          _currencyFormatter.format(widget.item.price),
-                          style: TextStyle(
+                          _currencyFormatter.format(widget.item.discountPrice > 0 ? widget.item.discountPrice : widget.item.price),
+                          style: const TextStyle(
                             fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF928E8E),
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF111827),
                           ),
                         ),
                       ],

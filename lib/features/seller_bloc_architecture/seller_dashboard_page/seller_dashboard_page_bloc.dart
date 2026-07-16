@@ -1,10 +1,14 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'seller_dashboard_page_event.dart';
 import 'seller_dashboard_page_state.dart';
+import 'seller_dashboard_repository.dart';
 
 class SellerDashboardPageBloc
     extends Bloc<SellerDashboardPageEvent, SellerDashboardPageState> {
-  SellerDashboardPageBloc() : super(SellerDashboardInitial()) {
+  final SellerDashboardRepository repository;
+
+  SellerDashboardPageBloc({required this.repository})
+      : super(SellerDashboardInitial()) {
     on<LoadDashboardData>(_onLoadDashboardData);
     on<RefreshDashboardData>(_onRefreshDashboardData);
   }
@@ -15,36 +19,12 @@ class SellerDashboardPageBloc
   ) async {
     emit(SellerDashboardLoading());
     try {
-      // Simulating API call for dashboard data
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Mock Data based on UI
-      final mockData = DashboardData(
-        totalRevenue: 45600.0,
-        revenueChangePercentage: 12.5,
-        pendingOrdersCount: 26,
-        todaysOrdersCount: 128,
-        lowStockCount: 8,
-        rating: 4.8,
-        todaysOrders: [
-          DashboardOrder(
-            id: '#11024',
-            customerName: 'John Doe',
-            status: 'New',
-            price: 660.0,
-            timeAgo: '10 min ago',
-          ),
-          DashboardOrder(
-            id: '#11023',
-            customerName: 'Jane Smith',
-            status: 'Preparing',
-            price: 450.0,
-            timeAgo: '30 min ago',
-          ),
-        ],
+      await emit.forEach<DashboardData>(
+        repository.getDashboardDataStream(),
+        onData: (data) => SellerDashboardLoaded(data: data),
+        onError: (error, stackTrace) =>
+            const SellerDashboardError(message: 'Failed to load dashboard data.'),
       );
-
-      emit(SellerDashboardLoaded(data: mockData));
     } catch (e) {
       emit(const SellerDashboardError(message: 'Failed to load dashboard data.'));
     }
@@ -54,37 +34,12 @@ class SellerDashboardPageBloc
     RefreshDashboardData event,
     Emitter<SellerDashboardPageState> emit,
   ) async {
-    // Similar to load, but we might not want to show full loading state
-    // if we are using RefreshIndicator.
+    // With stream based approach, manual refresh might just fetch the current state 
+    // or re-trigger the stream. The stream already keeps it fresh. 
+    // But for UI feedback (like Pull to Refresh), we can manually get one snapshot.
     try {
-      await Future.delayed(const Duration(seconds: 1));
-      
-      final mockData = DashboardData(
-        totalRevenue: 45600.0,
-        revenueChangePercentage: 12.5,
-        pendingOrdersCount: 26,
-        todaysOrdersCount: 128,
-        lowStockCount: 8,
-        rating: 4.8,
-        todaysOrders: [
-          DashboardOrder(
-            id: '#11024',
-            customerName: 'John Doe',
-            status: 'New',
-            price: 660.0,
-            timeAgo: '10 min ago',
-          ),
-          DashboardOrder(
-            id: '#11023',
-            customerName: 'Jane Smith',
-            status: 'Preparing',
-            price: 450.0,
-            timeAgo: '30 min ago',
-          ),
-        ],
-      );
-
-      emit(SellerDashboardLoaded(data: mockData));
+      final data = await repository.getDashboardData();
+      emit(SellerDashboardLoaded(data: data));
     } catch (e) {
       emit(const SellerDashboardError(message: 'Failed to refresh dashboard.'));
     }

@@ -1,12 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_dashboard_page/seller_dashboard_page_bloc.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/seller_dashboard_page/seller_dashboard_repository.dart';
+
+class MockSellerDashboardRepository extends Mock implements SellerDashboardRepository {}
 
 void main() {
   group('Error Handling Tests', () {
     late SellerDashboardPageBloc bloc;
+    late MockSellerDashboardRepository mockRepository;
 
     setUp(() {
-      bloc = SellerDashboardPageBloc();
+      mockRepository = MockSellerDashboardRepository();
+      bloc = SellerDashboardPageBloc(repository: mockRepository);
       // Normally we'd inject a mocked repository that throws an exception here.
     });
 

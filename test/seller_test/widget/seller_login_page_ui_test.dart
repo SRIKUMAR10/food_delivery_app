@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import '../../mock_firebase.dart';
 // ignore_for_file: lines_longer_than_80_chars
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -97,6 +99,11 @@ class _SellerLoginTestShell extends StatelessWidget {
 }
 
 void main() {
+  setUpAll(() async {
+    setupFirebaseAuthMocks();
+    await Firebase.initializeApp();
+  });
+
   late MockSellerRepository mockRepo;
   late SellerLoginPageBloc bloc;
 

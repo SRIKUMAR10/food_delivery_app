@@ -39,6 +39,7 @@ class MockFirebaseCore extends FirebasePlatform
             apiKey: '123',
             projectId: '123',
             messagingSenderId: '123',
+            storageBucket: '123',
           ),
     );
   }
@@ -52,6 +53,7 @@ class MockFirebaseCore extends FirebasePlatform
         apiKey: '123',
         projectId: '123',
         messagingSenderId: '123',
+        storageBucket: '123',
       ),
     );
   }

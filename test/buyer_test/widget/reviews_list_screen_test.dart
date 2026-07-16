@@ -1,14 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Widget buildTestableWidget(Widget child) {
-    return MaterialApp(
-      home: Scaffold(
-        body: child,
-      ),
-    );
-  }
+
 
   group('ReviewsListScreen Widget Tests', () {
     testWidgets('renders initial UI elements', (WidgetTester tester) async {

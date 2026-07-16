@@ -14,6 +14,12 @@ import '../seller_wallet_page/seller_wallet_page__ui.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../repositories/seller_repository.dart';
 import '../seller_login_page/seller_login_page_ui.dart';
+import '../promotions_coupons_page_/promotions_coupons_page_ui.dart';
+import '../business_hours_page_/business_hours_page_ui.dart';
+import '../disputes_refunds_page_/disputes_refunds_page_ui.dart';
+import '../chat_support_page_/chat_support_page_ui.dart';
+import '../menu_category_management_page_/menu_category_management_page_ui.dart';
+import '../overall_rating_page/overall_rating_page__ui.dart' as food_delivery_app_rating;
 
 class SellerProfilePageUI extends StatelessWidget {
   const SellerProfilePageUI({Key? key}) : super(key: key);
@@ -164,6 +170,61 @@ class ProfileContent extends StatelessWidget {
                           },
                         },
                         {
+                          'icon': Icons.restaurant_menu_outlined,
+                          'iconColor': const Color(0xFFF43F5E),
+                          'iconBgColor': const Color(0xFFFFF1F2),
+                          'title': 'Menu Categories',
+                          'subtitle': 'Select and reorder your menu categories',
+                          'onTap': () {
+                            final sellerId = SellerRepository().currentUser?.uid ?? 'test_seller';
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => MenuCategoryManagementPage(sellerId: sellerId)));
+                          },
+                        },
+                        {
+                          'icon': Icons.local_offer_outlined,
+                          'iconColor': const Color(0xFF14B8A6),
+                          'iconBgColor': const Color(0xFFF0FDFA),
+                          'title': 'Promotions & Coupons',
+                          'subtitle': 'Create and manage special offers',
+                          'onTap': () {
+                            final sellerId = SellerRepository().currentUser?.uid ?? 'test_seller';
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => PromotionsCouponsPage(sellerId: sellerId)));
+                          },
+                        },
+                        {
+                          'icon': Icons.access_time_outlined,
+                          'iconColor': const Color(0xFFF59E0B),
+                          'iconBgColor': const Color(0xFFFFFBEB),
+                          'title': 'Business Hours',
+                          'subtitle': 'Set your store opening and closing times',
+                          'onTap': () {
+                            final sellerId = SellerRepository().currentUser?.uid ?? 'test_seller';
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => BusinessHoursPage(sellerId: sellerId)));
+                          },
+                        },
+                        {
+                          'icon': Icons.gavel_outlined,
+                          'iconColor': const Color(0xFF8B5CF6),
+                          'iconBgColor': const Color(0xFFF5F3FF),
+                          'title': 'Disputes & Refunds',
+                          'subtitle': 'Manage customer disputes and refund requests',
+                          'onTap': () {
+                            final sellerId = SellerRepository().currentUser?.uid ?? 'test_seller';
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => DisputesRefundsPage(sellerId: sellerId)));
+                          },
+                        },
+                        {
+                          'icon': Icons.chat_bubble_outline,
+                          'iconColor': const Color(0xFF06B6D4),
+                          'iconBgColor': const Color(0xFFECFEFF),
+                          'title': 'Support Chat',
+                          'subtitle': 'Contact admin support or customers',
+                          'onTap': () {
+                            final sellerId = SellerRepository().currentUser?.uid ?? 'test_seller';
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => ChatSupportPage(sellerId: sellerId)));
+                          },
+                        },
+                        {
                           'icon': Icons.lock_outline,
                           'iconColor': const Color(0xFFF59E0B),
                           'iconBgColor': const Color(0xFFFFFBEB),
@@ -191,6 +252,16 @@ class ProfileContent extends StatelessWidget {
                                 ),
                               ),
                             );
+                          },
+                        },
+                        {
+                          'icon': Icons.star_border_outlined,
+                          'iconColor': const Color(0xFFEAB308),
+                          'iconBgColor': const Color(0xFFFEF9C3),
+                          'title': 'Ratings & Reviews',
+                          'subtitle': 'View customer feedback and ratings',
+                          'onTap': () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const food_delivery_app_rating.OverallRatingPage()));
                           },
                         },
                         {
@@ -744,6 +815,7 @@ class ResponsiveBannerContent extends StatelessWidget {
             Text(
               title,
               style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+
             ),
             const SizedBox(height: 4),
             Container(

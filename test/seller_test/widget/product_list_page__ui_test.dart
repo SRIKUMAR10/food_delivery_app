@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import '../../mock_firebase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +15,11 @@ class MockProductListBloc extends Mock implements ProductListBloc {}
 class MockProductRepository extends Mock implements ProductRepository {}
 
 void main() {
+  setUpAll(() async {
+    setupFirebaseAuthMocks();
+    await Firebase.initializeApp();
+  });
+
   late MockProductListBloc mockBloc;
   setUp(() {
     mockBloc = MockProductListBloc();
@@ -71,7 +78,7 @@ void main() {
     );
 
     await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Pizza'), findsOneWidget);
     expect(find.text('₹10'), findsOneWidget);

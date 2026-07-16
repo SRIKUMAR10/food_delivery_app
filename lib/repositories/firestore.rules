@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Products can be read by anyone.
+    // Products can only be created by authenticated users.
+    // Products can only be updated or deleted by the seller who owns them.
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      
+      // Ensure the user updating the product is the seller who created it.
+      allow update: if request.auth != null && request.auth.uid == resource.data.sellerId;
+      
+      // Ensure the user deleting the product is the seller who created it.
+      // We use `get()` to check the existing document's data before deletion.
+      allow delete: if request.auth != null && request.auth.uid == get(/databases/$(database)/documents/products/$(productId)).data.sellerId;
+    }
+  }
+}

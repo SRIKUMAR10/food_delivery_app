@@ -1,18 +1,50 @@
 import 'dart:async';
-import 'orders_list_page_state.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../core/models/order_model.dart';
+import '../../../../core/models/order_status.dart';
 
 class OrdersListService {
-  Future<List<OrderModel>> fetchOrders() async {
-    // Simulate network latency
-    await Future.delayed(const Duration(milliseconds: 800));
+  final FirebaseFirestore _firestore;
+
+  OrdersListService({FirebaseFirestore? firestore}) 
+      : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  Stream<List<OrderModel>> getOrdersStream(String sellerId) {
+    return _firestore
+        .collection('orders')
+        .where('sellerId', isEqualTo: sellerId)
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => OrderModel.fromMap(doc.data(), doc.id)).toList();
+    });
+  }
+
+  Future<void> updateOrderStatus(String orderId, OrderStatus newStatus) async {
+    const int maxRetries = 3;
+    int retryCount = 0;
     
-    // Using dummy data matching the UI image perfectly
-    return const [
-      OrderModel(id: '1025', customerName: 'Mike Ross', status: 'New', amount: 780, timeAgo: '2 min ago'),
-      OrderModel(id: '1024', customerName: 'John Doe', status: 'New', amount: 660, timeAgo: '10 min ago'),
-      OrderModel(id: '1023', customerName: 'Jane Smith', status: 'Preparing', amount: 450, timeAgo: '30 min ago'),
-      OrderModel(id: '1022', customerName: 'Sarah Wilson', status: 'Preparing', amount: 350, timeAgo: '45 min ago'),
-      OrderModel(id: '1021', customerName: 'David Lee', status: 'Completed', amount: 1000, timeAgo: '1 hr ago'),
-    ];
+    while (retryCount < maxRetries) {
+      try {
+        await _firestore
+            .collection('orders')
+            .doc(orderId)
+            .update({'status': newStatus.value})
+            .timeout(const Duration(seconds: 10)); // Timeout for offline detection
+        return; // Success
+      } on TimeoutException {
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          throw Exception('Network timeout. Please check your internet connection and try again.');
+        }
+        await Future.delayed(Duration(seconds: retryCount * 2)); // Exponential backoff
+      } catch (e) {
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          throw Exception('Failed to update order status. Please try again.');
+        }
+        await Future.delayed(Duration(seconds: retryCount * 2)); // Exponential backoff
+      }
+    }
   }
 }

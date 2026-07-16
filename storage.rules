@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    match /product_images/{sellerId}/{imageId} {
+      // Only the authenticated seller can upload images to their own folder.
+      // Image must be less than 5MB and must be an image type.
+      allow write: if isAuthenticated() && 
+                      request.auth.uid == sellerId &&
+                      isImage() && 
+                      isUnder5MB();
+                      
+      // Anyone can read product images
+      allow read: if true;
+    }
+
+    match /profile_images/{userId}/{imageId} {
+      allow write: if isAuthenticated() && 
+                      request.auth.uid == userId &&
+                      isImage() && 
+                      isUnder5MB();
+      allow read: if true;
+    }
+  }
+}

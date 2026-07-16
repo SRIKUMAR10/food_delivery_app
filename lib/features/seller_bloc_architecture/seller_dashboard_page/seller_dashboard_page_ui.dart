@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'seller_dashboard_page_bloc.dart';
 import 'seller_dashboard_page_event.dart';
 import 'seller_dashboard_page_state.dart';
+import 'seller_dashboard_repository.dart';
 
 import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
 import '../new_order_notification/new_order_notification_ui.dart';
 import '../seller_analytics_page/seller_analytics_page__ui.dart';
-import '../overall_rating_page/overall_rating_page__ui.dart';
 import '../seller_customer_page/seller_customer_page__ui.dart';
 import '../inventory_low_stock/inventory_low_stock_page_ui.dart';
 import '../seller_analytics_page/seller_analytics_page__bloc.dart';
 import '../seller_analytics_page/seller_analytics_repository.dart';
-import '../overall_rating_page/overall_rating_page__bloc.dart';
+import '../product_list_page_/product_list_page__ui.dart';
+import '../../../../core/services/notification_service.dart';
 
 class SellerDashboardPageUI extends StatefulWidget {
   const SellerDashboardPageUI({Key? key}) : super(key: key);
@@ -30,6 +32,7 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
   @override
   void initState() {
     super.initState();
+    NotificationService().initialize();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -56,7 +59,9 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => SellerDashboardPageBloc()..add(LoadDashboardData()),
+      create: (context) => SellerDashboardPageBloc(
+        repository: context.read<SellerDashboardRepository>(),
+      )..add(LoadDashboardData()),
       child: Scaffold(
         backgroundColor: const Color(0xFFF8F9FA),
         body: _ResponsiveContainer(
@@ -65,7 +70,11 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                 BlocConsumer<SellerDashboardPageBloc, SellerDashboardPageState>(
                   listener: (context, state) {
                     if (state is SellerDashboardLoaded) {
-                      _animationController.forward();
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          _animationController.forward();
+                        }
+                      });
                     } else if (state is SellerDashboardError) {
                       ScaffoldMessenger.of(
                         context,
@@ -141,7 +150,7 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                   children: [
                     // Header
                     SellerAppBarPageUI(
-                      title: 'Good Morning, Picarhub 👋',
+                      title: 'Good Morning, ${data.storeName} 👋',
                       onNotificationTap: () {
                         Navigator.push(
                           context,
@@ -154,79 +163,78 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                     ),
                     const SizedBox(height: 24),
 
-                    // Total Revenue Card
+                    // Quick Stats: Active Products
                     Container(
                       width: double.infinity,
-                      clipBehavior: Clip.hardEdge,
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFE52929), Color(0xFFD61F1F)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFF3F4F6)),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(
-                              0xFFE52929,
-                            ).withValues(alpha: 0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: Stack(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Row(
                             children: [
-                              const Text(
-                                'Total Revenue',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
                                 ),
+                                child: const Icon(Icons.inventory, color: Color(0xFF10B981), size: 24),
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                '₹${data.totalRevenue.toInt()}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
+                              const SizedBox(width: 16),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(
-                                    Icons.arrow_upward,
-                                    color: Colors.white,
-                                    size: 14,
+                                  const Text(
+                                    'Active Products',
+                                    style: TextStyle(
+                                      color: Color(0xFF6B7280),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(height: 4),
                                   Text(
-                                    '+ ${data.revenueChangePercentage}% vs yesterday',
+                                    '${data.activeProductsCount}',
                                     style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
+                                      color: Color(0xFF111827),
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
                             ],
                           ),
-                          // Mocking the trend line graph
-                          Positioned(
-                            right: 0,
-                            top: 20,
-                            child: Icon(
-                              Icons.trending_up,
-                              color: Colors.white.withValues(alpha: 0.5),
-                              size: 60,
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ProductListPage(),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF3F4F6),
+                              foregroundColor: const Color(0xFF374151),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
+                            child: const Text('Manage'),
                           ),
                         ],
                       ),
@@ -288,6 +296,19 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                               Expanded(
                                 child: _buildStatCard(
                                   width: double.infinity,
+                                  title: 'Revenue Today',
+                                  value: NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(data.revenueToday),
+                                  icon: Icons.account_balance_wallet_outlined,
+                                  iconColor: const Color(0xFF10B981),
+                                  bgColor: const Color(0xFFECFDF5),
+                                  subtitle: 'Earned today',
+                                  onTap: () {},
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildStatCard(
+                                  width: double.infinity,
                                   title: 'Low Stock',
                                   value: data.lowStockCount.toString(),
                                   icon: Icons.inventory_2_outlined,
@@ -300,34 +321,6 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                       MaterialPageRoute(
                                         builder: (context) =>
                                             InventoryLowStockPage(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildStatCard(
-                                  width: double.infinity,
-                                  title: 'Rating',
-                                  value: '${data.rating}',
-                                  icon: Icons.star_border,
-                                  iconColor: const Color(0xFF8B5CF6),
-                                  bgColor: const Color(0xFFF5F3FF),
-                                  subtitle: 'From customers',
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => BlocProvider(
-                                          create: (context) => OverallRatingBloc(
-                                            repository:
-                                                OverallRatingRepositoryImpl(
-                                                  MockOverallRatingService(),
-                                                ),
-                                          ),
-                                          child: const OverallRatingPage(),
-                                        ),
                                       ),
                                     );
                                   },
@@ -386,6 +379,16 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                   ),
                                   _buildStatCard(
                                     width: constraints.maxWidth / 2 - 8,
+                                    title: 'Revenue Today',
+                                    value: NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(data.revenueToday),
+                                    icon: Icons.account_balance_wallet_outlined,
+                                    iconColor: const Color(0xFF10B981),
+                                    bgColor: const Color(0xFFECFDF5),
+                                    subtitle: 'Earned today',
+                                    onTap: () {},
+                                  ),
+                                  _buildStatCard(
+                                    width: constraints.maxWidth / 2 - 8,
                                     title: 'Low Stock',
                                     value: data.lowStockCount.toString(),
                                     icon: Icons.inventory_2_outlined,
@@ -398,31 +401,6 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                         MaterialPageRoute(
                                           builder: (context) =>
                                               InventoryLowStockPage(),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  _buildStatCard(
-                                    width: constraints.maxWidth / 2 - 8,
-                                    title: 'Rating',
-                                    value: '${data.rating}',
-                                    icon: Icons.star_border,
-                                    iconColor: const Color(0xFF8B5CF6),
-                                    bgColor: const Color(0xFFF5F3FF),
-                                    subtitle: 'Customers',
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => BlocProvider(
-                                            create: (context) => OverallRatingBloc(
-                                              repository:
-                                                  OverallRatingRepositoryImpl(
-                                                    MockOverallRatingService(),
-                                                  ),
-                                            ),
-                                            child: const OverallRatingPage(),
-                                          ),
                                         ),
                                       );
                                     },
@@ -728,24 +706,25 @@ class _HoverableStatCardState extends State<_HoverableStatCard> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+        child: SizedBox(
           width: widget.width,
-          transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: widget.bgColor,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      color: widget.iconColor.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    )
-                  ]
-                : [],
-          ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: widget.bgColor,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: _isHovered
+                  ? [
+                      BoxShadow(
+                        color: widget.iconColor.withValues(alpha: 0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      )
+                    ]
+                  : [],
+            ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -794,6 +773,7 @@ class _HoverableStatCardState extends State<_HoverableStatCard> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

@@ -1,18 +1,22 @@
 import 'package:equatable/equatable.dart';
-import 'inventory_low_stock_page_state.dart'; // Import to use InventoryItem
+import '../../../../core/models/inventory_item_model.dart';
 
-abstract class InventoryLowStockPageEvent extends Equatable {
-  const InventoryLowStockPageEvent();
+abstract class InventoryEvent extends Equatable {
+  const InventoryEvent();
 
   @override
   List<Object?> get props => [];
 }
 
-class LoadInventoryData extends InventoryLowStockPageEvent {}
+class LoadInventoryStream extends InventoryEvent {
+  final String sellerId;
+  const LoadInventoryStream({required this.sellerId});
 
-class RefreshInventoryData extends InventoryLowStockPageEvent {}
+  @override
+  List<Object?> get props => [sellerId];
+}
 
-class SearchInventory extends InventoryLowStockPageEvent {
+class SearchInventory extends InventoryEvent {
   final String query;
   const SearchInventory(this.query);
 
@@ -20,30 +24,54 @@ class SearchInventory extends InventoryLowStockPageEvent {
   List<Object?> get props => [query];
 }
 
-class UpdateFilters extends InventoryLowStockPageEvent {
-  final String? status;
-  final List<String>? categories;
-  final String? sortOption;
-
-  const UpdateFilters({this.status, this.categories, this.sortOption});
+class FilterInventory extends InventoryEvent {
+  final String status;
+  const FilterInventory(this.status);
 
   @override
-  List<Object?> get props => [status, categories, sortOption];
+  List<Object?> get props => [status];
 }
 
-class UpdateStockQuantity extends InventoryLowStockPageEvent {
-  final String id;
-  final double newQuantity;
+class UpdateStockEvent extends InventoryEvent {
+  final String productId;
+  final double quantityChange;
+  final String reason;
+  final String? note;
+
+  const UpdateStockEvent({
+    required this.productId,
+    required this.quantityChange,
+    required this.reason,
+    this.note,
+  });
+
+  @override
+  List<Object?> get props => [productId, quantityChange, reason, note];
+}
+
+class BulkUpdateStockEvent extends InventoryEvent {
+  final List<String> productIds;
+  final double quantityChange;
+  final String reason;
+  final String? note;
+
+  const BulkUpdateStockEvent({
+    required this.productIds,
+    required this.quantityChange,
+    required this.reason,
+    this.note,
+  });
+
+  @override
+  List<Object?> get props => [productIds, quantityChange, reason, note];
+}
+
+class ClearInventoryMessage extends InventoryEvent {}
+
+class AddProductEvent extends InventoryEvent {
+  final InventoryItemModel item;
   
-  const UpdateStockQuantity({required this.id, required this.newQuantity});
-
-  @override
-  List<Object?> get props => [id, newQuantity];
-}
-
-class AddNewProduct extends InventoryLowStockPageEvent {
-  final InventoryItem item;
-  const AddNewProduct(this.item);
+  const AddProductEvent(this.item);
 
   @override
   List<Object?> get props => [item];

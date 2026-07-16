@@ -36,6 +36,9 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
     on<ApplyAdvancedFiltersEvent>(_onApplyAdvancedFilters);
     on<DeleteProductEvent>(_onDeleteProduct);
     on<ToggleProductStatusEvent>(_onToggleProductStatus);
+    on<DuplicateProductEvent>(_onDuplicateProduct);
+    on<ArchiveProductEvent>(_onArchiveProduct);
+    on<UnarchiveProductEvent>(_onUnarchiveProduct);
   }
 
   Future<void> _onLoadProducts(LoadProductsEvent event, Emitter<ProductListPageState> emit) async {
@@ -109,23 +112,54 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
     }
   }
 
+  Future<void> _onDuplicateProduct(DuplicateProductEvent event, Emitter<ProductListPageState> emit) async {
+    try {
+      await repository.duplicateProduct(event.productId);
+    } catch (e) {
+      emit(ProductListError(e.toString()));
+    }
+  }
+
+  Future<void> _onArchiveProduct(ArchiveProductEvent event, Emitter<ProductListPageState> emit) async {
+    try {
+      await repository.archiveProduct(event.productId);
+    } catch (e) {
+      emit(ProductListError(e.toString()));
+    }
+  }
+
+  Future<void> _onUnarchiveProduct(UnarchiveProductEvent event, Emitter<ProductListPageState> emit) async {
+    try {
+      await repository.unarchiveProduct(event.productId);
+    } catch (e) {
+      emit(ProductListError(e.toString()));
+    }
+  }
+
   void _emitFilteredState(Emitter<ProductListPageState> emit, String filterType) {
+    List<Product> baseProducts = [];
+    if (filterType == 'Archived') {
+      baseProducts = _allProducts.where((p) => p.isArchived).toList();
+    } else {
+      baseProducts = _allProducts.where((p) => !p.isArchived).toList();
+    }
+
     List<Product> filteredList;
     
     // Step 1: Quick filter
     if (filterType == 'Active') {
-      filteredList = _allProducts.where((p) => p.isActive).toList();
+      filteredList = baseProducts.where((p) => p.isActive).toList();
     } else if (filterType == 'Inactive') {
-      filteredList = _allProducts.where((p) => !p.isActive).toList();
+      filteredList = baseProducts.where((p) => !p.isActive).toList();
     } else if (filterType == 'Low Stock') {
-      filteredList = _allProducts.where((p) => p.status == ProductStatus.lowStock).toList();
+      filteredList = baseProducts.where((p) => p.status == ProductStatus.lowStock).toList();
     } else if (filterType == 'Veg') {
-      filteredList = _allProducts.where((p) => p.foodType.toLowerCase() == 'veg' || p.foodType.toLowerCase() == 'vegetarian').toList();
+      filteredList = baseProducts.where((p) => p.foodType.toLowerCase() == 'veg' || p.foodType.toLowerCase() == 'vegetarian').toList();
     } else if (filterType == 'Non-Veg') {
-      filteredList = _allProducts.where((p) => p.foodType.toLowerCase() == 'non-veg' || p.foodType.toLowerCase() == 'non-vegetarian').toList();
+      filteredList = baseProducts.where((p) => p.foodType.toLowerCase() == 'non-veg' || p.foodType.toLowerCase() == 'non-vegetarian').toList();
     } else {
-      filteredList = List.from(_allProducts);
-      filterType = 'All Products';
+      filteredList = List.from(baseProducts);
+      if (filterType != 'Archived') filterType = 'All Products';
     }
 
     // Step 2: Search filter
@@ -158,19 +192,21 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
     }
     // 'Recently Added' keeps original order from Firebase
 
-    // Counts are always based on _allProducts (unfiltered)
-    final allCount = _allProducts.length;
-    final activeCount = _allProducts.where((p) => p.isActive).length;
-    final inactiveCount = _allProducts.where((p) => !p.isActive).length;
-    final lowStockCount = _allProducts.where((p) => p.status == ProductStatus.lowStock).length;
-    final vegCount = _allProducts.where((p) => p.foodType.toLowerCase() == 'veg' || p.foodType.toLowerCase() == 'vegetarian').length;
-    final nonVegCount = _allProducts.where((p) => p.foodType.toLowerCase() == 'non-veg' || p.foodType.toLowerCase() == 'non-vegetarian').length;
+    // Counts are always based on activeBase (non-archived) except for archivedCount
+    final activeBase = _allProducts.where((p) => !p.isArchived).toList();
+    final allCount = activeBase.length;
+    final activeCount = activeBase.where((p) => p.isActive).length;
+    final inactiveCount = activeBase.where((p) => !p.isActive).length;
+    final lowStockCount = activeBase.where((p) => p.status == ProductStatus.lowStock).length;
+    final vegCount = activeBase.where((p) => p.foodType.toLowerCase() == 'veg' || p.foodType.toLowerCase() == 'vegetarian').length;
+    final nonVegCount = activeBase.where((p) => p.foodType.toLowerCase() == 'non-veg' || p.foodType.toLowerCase() == 'non-vegetarian').length;
+    final archivedCount = _allProducts.where((p) => p.isArchived).length;
 
     double totalRevenue = 0.0;
     double totalRating = 0.0;
     int ratedProductsCount = 0;
     
-    for (var p in _allProducts) {
+    for (var p in activeBase) {
       totalRevenue += p.price * p.salesCount;
       if (p.rating > 0) {
         totalRating += p.rating;
@@ -190,6 +226,7 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
       lowStockCount: lowStockCount,
       vegCount: vegCount,
       nonVegCount: nonVegCount,
+      archivedCount: archivedCount,
       averageRating: averageRating,
       totalRevenue: totalRevenue,
       sortBy: _sortBy,

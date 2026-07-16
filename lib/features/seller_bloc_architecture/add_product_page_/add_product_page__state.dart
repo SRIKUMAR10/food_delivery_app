@@ -1,105 +1,91 @@
 import 'package:equatable/equatable.dart';
 import 'package:image_picker/image_picker.dart';
+import '../product_list_page_/product_model.dart';
 
 enum AddProductStatus { initial, loading, success, error }
 
 class AddProductPageState extends Equatable {
   final AddProductStatus status;
-  final int currentStep;
   final List<XFile> images;
   final String? category;
+  final bool isActive;
+  final String? errorMessage;
+  final int currentStep;
+  final DateTime? lastSavedAt;
   final String? foodType;
   final String? spicyLevel;
-  
-  // Toggles
-  final bool isActive;
+  final bool hasUnlimitedStock;
   final bool isFeatured;
   final bool isBestSeller;
-  final bool hasUnlimitedStock;
-
-  // Real-time fields for live preview and auto-save
-  final String name;
-  final double price;
-  final double originalPrice;
-  final double discountPercent;
-  final String description;
-  final int availableStock;
-  final int minimumAlert;
-  
-  final DateTime? lastSavedAt;
-  final String? errorMessage;
+  final Product? initialProduct;
+  final List<String> existingImages;
 
   const AddProductPageState({
     this.status = AddProductStatus.initial,
-    this.currentStep = 0,
     this.images = const [],
     this.category,
+    this.isActive = true,
+    this.errorMessage,
+    this.currentStep = 0,
+    this.lastSavedAt,
     this.foodType,
     this.spicyLevel,
-    this.isActive = true,
+    this.hasUnlimitedStock = false,
     this.isFeatured = false,
     this.isBestSeller = false,
-    this.hasUnlimitedStock = false,
-    this.name = '',
-    this.price = 0.0,
-    this.originalPrice = 0.0,
-    this.discountPercent = 0.0,
-    this.description = '',
-    this.availableStock = 0,
-    this.minimumAlert = 10,
-    this.lastSavedAt,
-    this.errorMessage,
+    this.initialProduct,
+    this.existingImages = const [],
   });
 
   AddProductPageState copyWith({
     AddProductStatus? status,
-    int? currentStep,
     List<XFile>? images,
     String? category,
+    bool? isActive,
+    String? errorMessage,
+    int? currentStep,
+    DateTime? lastSavedAt,
     String? foodType,
     String? spicyLevel,
-    bool? isActive,
+    bool? hasUnlimitedStock,
     bool? isFeatured,
     bool? isBestSeller,
-    bool? hasUnlimitedStock,
-    String? name,
-    double? price,
-    double? originalPrice,
-    double? discountPercent,
-    String? description,
-    int? availableStock,
-    int? minimumAlert,
-    DateTime? lastSavedAt,
-    String? errorMessage,
+    Product? initialProduct,
+    List<String>? existingImages,
   }) {
     return AddProductPageState(
       status: status ?? this.status,
-      currentStep: currentStep ?? this.currentStep,
       images: images ?? this.images,
       category: category ?? this.category,
+      isActive: isActive ?? this.isActive,
+      errorMessage: errorMessage ?? this.errorMessage,
+      currentStep: currentStep ?? this.currentStep,
+      lastSavedAt: lastSavedAt ?? this.lastSavedAt,
       foodType: foodType ?? this.foodType,
       spicyLevel: spicyLevel ?? this.spicyLevel,
-      isActive: isActive ?? this.isActive,
+      hasUnlimitedStock: hasUnlimitedStock ?? this.hasUnlimitedStock,
       isFeatured: isFeatured ?? this.isFeatured,
       isBestSeller: isBestSeller ?? this.isBestSeller,
-      hasUnlimitedStock: hasUnlimitedStock ?? this.hasUnlimitedStock,
-      name: name ?? this.name,
-      price: price ?? this.price,
-      originalPrice: originalPrice ?? this.originalPrice,
-      discountPercent: discountPercent ?? this.discountPercent,
-      description: description ?? this.description,
-      availableStock: availableStock ?? this.availableStock,
-      minimumAlert: minimumAlert ?? this.minimumAlert,
-      lastSavedAt: lastSavedAt ?? this.lastSavedAt,
-      errorMessage: errorMessage ?? this.errorMessage,
+      initialProduct: initialProduct ?? this.initialProduct,
+      existingImages: existingImages ?? this.existingImages,
     );
   }
 
   @override
   List<Object?> get props => [
-        status, currentStep, images, category, foodType, spicyLevel,
-        isActive, isFeatured, isBestSeller, hasUnlimitedStock,
-        name, price, originalPrice, discountPercent, description,
-        availableStock, minimumAlert, lastSavedAt, errorMessage,
+        status,
+        images,
+        category,
+        isActive,
+        errorMessage,
+        currentStep,
+        lastSavedAt,
+        foodType,
+        spicyLevel,
+        hasUnlimitedStock,
+        isFeatured,
+        isBestSeller,
+        initialProduct,
+        existingImages,
       ];
 }

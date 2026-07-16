@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import '../../mock_firebase.dart';
 // ignore_for_file: lines_longer_than_80_chars
 
 import 'package:flutter/material.dart';
@@ -11,6 +13,11 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_
 class MockSellerSignUpPageBloc extends Mock implements SellerSignUpPageBloc {}
 
 void main() {
+  setUpAll(() async {
+    setupFirebaseAuthMocks();
+    await Firebase.initializeApp();
+  });
+
   late MockSellerSignUpPageBloc mockBloc;
 
   setUp(() {

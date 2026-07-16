@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/models/inventory_item_model.dart';
 import 'inventory_low_stock_page_bloc.dart';
 import 'inventory_low_stock_page_event.dart';
-import 'inventory_low_stock_page_state.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});
@@ -21,30 +21,23 @@ class _AddProductPageState extends State<AddProductPage> {
   String _category = 'General';
 
   void _saveProduct() {
+    if (!mounted) return;
+    
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      final newItem = InventoryItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+      final newItem = InventoryItemModel(
+        id: '', // Will be set by Firestore or backend
         name: _name,
         quantity: _quantity,
         unit: _unit,
-        isLowStock: _quantity <= 2, // Basic mock logic
         category: _category,
       );
-
-      context.read<InventoryLowStockPageBloc>().add(AddNewProduct(newItem));
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Product added successfully',
-            style: GoogleFonts.plusJakartaSans(),
-          ),
-          backgroundColor: const Color(0xFF22C55E),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      
+      context.read<InventoryBloc>().add(AddProductEvent(newItem));
+      
+      // Remove focus before popping to prevent any focus-node related lifecycle assertions
+      FocusScope.of(context).unfocus();
       Navigator.pop(context);
     }
   }

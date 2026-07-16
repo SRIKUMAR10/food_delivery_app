@@ -12,6 +12,8 @@ import 'features/buyer_bloc_architecture/onboarding_page/onboarding_page_UI.dart
 import 'features/seller_bloc_architecture/seller_onboard_page/seller_onboard_page_ui.dart';
 import 'features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_ui.dart';
 import 'features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
+import 'features/seller_bloc_architecture/seller_dashboard_page/seller_dashboard_repository.dart';
+import 'features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_repository.dart';
 
 import 'firebase_options.dart';
 
@@ -35,8 +37,7 @@ final Logger appLogger = Logger(
 );
 
 /// Toggle this flag to switch between the Buyer and Seller App flows.
-const bool isBuyerApp = false;
-
+const bool isBuyerApp = true;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -89,47 +90,59 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
+    return MultiRepositoryProvider(
       providers: [
-        BlocProvider(create: (context) => cartBloc ?? CartBloc()),
-        BlocProvider(
-          create: (context) =>
-              favoritesBloc ??
-              (FavoritesBloc()..add(const LoadFavoritesStarted())),
+        RepositoryProvider<SellerDashboardRepository>(
+          create: (context) => FirebaseSellerDashboardRepository(),
         ),
-        BlocProvider(
-          create: (context) =>
-              homePageBloc ?? (HomePageBloc()..add(const HomePageStarted())),
+        RepositoryProvider<InventoryRepository>(
+          create: (context) => InventoryRepository(),
         ),
       ],
-      child: MaterialApp(
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE52121)),
-          scaffoldBackgroundColor: const Color(0xFFFBF5F5),
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            titleTextStyle: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1C1C1C),
-            ),
-            iconTheme: IconThemeData(color: Colors.black),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => cartBloc ?? CartBloc()),
+          BlocProvider(
+            create: (context) =>
+                favoritesBloc ??
+                (FavoritesBloc()..add(const LoadFavoritesStarted())),
           ),
+          BlocProvider(
+            create: (context) =>
+                homePageBloc ?? (HomePageBloc()..add(const HomePageStarted())),
+          ),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFFE52121),
+            ),
+            scaffoldBackgroundColor: const Color(0xFFFBF5F5),
+            appBarTheme: const AppBarTheme(
+              centerTitle: true,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              titleTextStyle: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1C1C1C),
+              ),
+              iconTheme: IconThemeData(color: Colors.black),
+            ),
+          ),
+          debugShowCheckedModeBanner: false,
+          initialRoute: isBuyerApp ? '/onboard' : '/selleronboard',
+          routes: {
+            '/onboard': (context) => const OnboardingPage(),
+            '/sellerlogin': (context) => const SellerLoginPageUI(),
+            '/selleronboard': (context) => const SellerOnboardPageUI(),
+            '/sellerSignUp': (context) => const SellerSignUpPageUI(),
+            //'/sellerForgotPassword': (context) => const SellerForgotPasswordPageUI(),
+            '/sellerDashboard': (context) =>
+                const SellerNavigationBarViewPageUI(),
+          },
         ),
-        debugShowCheckedModeBanner: false,
-        initialRoute: isBuyerApp ? '/onboard' : '/selleronboard',
-        routes: {
-          '/onboard': (context) => const OnboardingPage(),
-          '/sellerlogin': (context) => const SellerLoginPageUI(),
-          '/selleronboard': (context) => const SellerOnboardPageUI(),
-          '/sellerSignUp': (context) => const SellerSignUpPageUI(),
-          //'/sellerForgotPassword': (context) => const SellerForgotPasswordPageUI(),
-          '/sellerDashboard': (context) =>
-              const SellerNavigationBarViewPageUI(),
-        },
       ),
     );
   }

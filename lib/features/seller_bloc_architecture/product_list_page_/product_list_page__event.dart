@@ -64,3 +64,30 @@ class ToggleProductStatusEvent extends ProductListPageEvent {
   @override
   List<Object?> get props => [productId, isActive];
 }
+
+class DuplicateProductEvent extends ProductListPageEvent {
+  final String productId;
+
+  const DuplicateProductEvent(this.productId);
+
+  @override
+  List<Object?> get props => [productId];
+}
+
+class ArchiveProductEvent extends ProductListPageEvent {
+  final String productId;
+
+  const ArchiveProductEvent(this.productId);
+
+  @override
+  List<Object?> get props => [productId];
+}
+
+class UnarchiveProductEvent extends ProductListPageEvent {
+  final String productId;
+
+  const UnarchiveProductEvent(this.productId);
+
+  @override
+  List<Object?> get props => [productId];
+}

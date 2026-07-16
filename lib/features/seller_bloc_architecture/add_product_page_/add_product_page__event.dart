@@ -8,17 +8,33 @@ abstract class AddProductPageEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class AddImageEvent extends AddProductPageEvent {
-  final XFile imageFile;
-  const AddImageEvent(this.imageFile);
+class LoadProductEvent extends AddProductPageEvent {
+  final String productId;
+  const LoadProductEvent(this.productId);
 
   @override
-  List<Object?> get props => [imageFile];
+  List<Object?> get props => [productId];
+}
+
+class AddImageEvent extends AddProductPageEvent {
+  final XFile image;
+  const AddImageEvent(this.image);
+
+  @override
+  List<Object?> get props => [image];
 }
 
 class RemoveImageEvent extends AddProductPageEvent {
   final int index;
   const RemoveImageEvent(this.index);
+
+  @override
+  List<Object?> get props => [index];
+}
+
+class RemoveExistingImageEvent extends AddProductPageEvent {
+  final int index;
+  const RemoveExistingImageEvent(this.index);
 
   @override
   List<Object?> get props => [index];
@@ -30,6 +46,14 @@ class CategoryChangedEvent extends AddProductPageEvent {
 
   @override
   List<Object?> get props => [category];
+}
+
+class StatusChangedEvent extends AddProductPageEvent {
+  final bool isActive;
+  const StatusChangedEvent(this.isActive);
+
+  @override
+  List<Object?> get props => [isActive];
 }
 
 class FoodTypeChangedEvent extends AddProductPageEvent {
@@ -48,50 +72,40 @@ class SpicyLevelChangedEvent extends AddProductPageEvent {
   List<Object?> get props => [spicyLevel];
 }
 
-class StatusChangedEvent extends AddProductPageEvent {
-  final bool isActive;
-  const StatusChangedEvent(this.isActive);
+class FieldChangedEvent extends AddProductPageEvent {
+  final String field;
+  final dynamic value;
+  const FieldChangedEvent(this.field, this.value);
 
   @override
-  List<Object?> get props => [isActive];
+  List<Object?> get props => [field, value];
 }
 
 class SubmitProductEvent extends AddProductPageEvent {
   final String name;
   final double price;
-  final double discountPrice;
+  final double? discountPrice;
   final String description;
-  final String prepTime;
-  final String portionSize;
-  final String addons;
+  final String? prepTime;
+  final String? portionSize;
+  final String? addons;
+  final String? calories;
+  final int? availableStock;
+  final int? minimumAlert;
 
   const SubmitProductEvent({
     required this.name,
     required this.price,
-    this.discountPrice = 0.0,
+    this.discountPrice,
     required this.description,
-    this.prepTime = '',
-    this.portionSize = '',
-    this.addons = '',
+    this.prepTime,
+    this.portionSize,
+    this.addons,
+    this.calories,
+    this.availableStock,
+    this.minimumAlert,
   });
 
   @override
-  List<Object?> get props => [name, price, discountPrice, description, prepTime, portionSize, addons];
-}
-
-class StepChangedEvent extends AddProductPageEvent {
-  final int stepIndex;
-  const StepChangedEvent(this.stepIndex);
-
-  @override
-  List<Object?> get props => [stepIndex];
-}
-
-class FieldChangedEvent extends AddProductPageEvent {
-  final String fieldName;
-  final dynamic value;
-  const FieldChangedEvent(this.fieldName, this.value);
-
-  @override
-  List<Object?> get props => [fieldName, value];
+  List<Object?> get props => [name, price, discountPrice, description, prepTime, portionSize, addons, calories, availableStock, minimumAlert];
 }

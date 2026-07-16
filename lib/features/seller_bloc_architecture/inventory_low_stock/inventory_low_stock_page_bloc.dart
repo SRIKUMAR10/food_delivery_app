@@ -1,215 +1,266 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/models/inventory_item_model.dart';
 import 'inventory_low_stock_page_event.dart';
 import 'inventory_low_stock_page_state.dart';
+import 'inventory_low_stock_repository.dart';
 
-class InventoryLowStockPageBloc extends Bloc<InventoryLowStockPageEvent, InventoryLowStockPageState> {
-  // Store the master list of all items for search/filtering
-  List<InventoryItem> _allItems = [];
-  String _currentQuery = '';
-  String _currentStatus = 'All';
-  List<String> _currentCategories = [];
-  String _currentSort = 'Default';
+class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
+  final InventoryRepository repository;
+  StreamSubscription? _inventorySubscription;
 
-  InventoryLowStockPageBloc() : super(InventoryInitial()) {
-    on<LoadInventoryData>(_onLoadInventoryData);
-    on<RefreshInventoryData>(_onRefreshInventoryData);
+  InventoryBloc({required this.repository}) : super(InventoryInitial()) {
+    on<LoadInventoryStream>(_onLoadInventoryStream);
     on<SearchInventory>(_onSearchInventory);
-    on<UpdateFilters>(_onUpdateFilters);
-    on<UpdateStockQuantity>(_onUpdateStockQuantity);
-    on<AddNewProduct>(_onAddNewProduct);
+    on<FilterInventory>(_onFilterInventory);
+    on<UpdateStockEvent>(_onUpdateStockEvent);
+    on<BulkUpdateStockEvent>(_onBulkUpdateStockEvent);
+    on<AddProductEvent>(_onAddProductEvent);
+    on<ClearInventoryMessage>(_onClearMessage);
+    on<_InventoryDataReceived>(_onDataReceived);
   }
 
-  Future<void> _onLoadInventoryData(
-    LoadInventoryData event,
-    Emitter<InventoryLowStockPageState> emit,
-  ) async {
+  void _onLoadInventoryStream(LoadInventoryStream event, Emitter<InventoryState> emit) {
     emit(InventoryLoading());
-    try {
-      // Simulate API call delay
-      await Future.delayed(const Duration(seconds: 1));
+    _inventorySubscription?.cancel();
+    _inventorySubscription = repository.getInventoryStream(event.sellerId).listen(
+      (items) {
+        // If already loaded, we want to maintain filters/search.
+        // But since we can't emit from a listen easily without adding another event,
+        // we'll just handle it by emitting a new Loaded state.
+        final currentState = state;
+        String activeFilter = 'All';
+        String searchQuery = '';
+        Set<String> updatingIds = {};
+        
+        if (currentState is InventoryLoaded) {
+          activeFilter = currentState.activeFilter;
+          searchQuery = currentState.searchQuery;
+          updatingIds = currentState.updatingItemIds;
+        }
 
-      // Mock Data 
-      _allItems = [
-        const InventoryItem(
-          id: '1',
-          name: 'Cheese',
-          quantity: 2.5,
-          unit: 'kg',
-          isLowStock: false,
-          imagePath: 'assets/images/cheese.png',
-          category: 'Dairy',
-          sku: 'SKU-1001',
-        ),
-        const InventoryItem(
-          id: '2',
-          name: 'Tomato',
-          quantity: 1.2,
-          unit: 'kg',
-          isLowStock: true,
-          imagePath: 'assets/images/tomato.png',
-          category: 'Vegetables',
-          sku: 'SKU-1002',
-        ),
-        const InventoryItem(
-          id: '3',
-          name: 'Chicken',
-          quantity: 0.8,
-          unit: 'kg',
-          isLowStock: true,
-          imagePath: 'assets/images/chicken.png',
-          category: 'Meat',
-          sku: 'SKU-1003',
-        ),
-        const InventoryItem(
-          id: '4',
-          name: 'Dough',
-          quantity: 5.0,
-          unit: 'kg',
-          isLowStock: false,
-          imagePath: 'assets/images/dough.png',
-          category: 'General',
-          sku: 'SKU-1004',
-        ),
-        const InventoryItem(
-          id: '5',
-          name: 'Milk',
-          quantity: 0.0,
-          unit: 'L',
-          isLowStock: true,
-          imagePath: 'assets/images/milk.png',
-          category: 'Dairy',
-          sku: 'SKU-1005',
-        ),
-      ];
+        final summary = _calculateSummary(items);
+        final filteredItems = _applyFilters(items, activeFilter, searchQuery);
 
-      _emitFilteredState(emit);
-    } catch (e) {
-      emit(const InventoryError('Failed to load inventory data'));
-    }
-  }
-
-  Future<void> _onRefreshInventoryData(
-    RefreshInventoryData event,
-    Emitter<InventoryLowStockPageState> emit,
-  ) async {
-    // Reset filters and reload
-    _currentQuery = '';
-    _currentStatus = 'All';
-    _currentCategories = [];
-    _currentSort = 'Default';
-    add(LoadInventoryData());
-  }
-
-  void _onSearchInventory(
-    SearchInventory event,
-    Emitter<InventoryLowStockPageState> emit,
-  ) {
-    _currentQuery = event.query.toLowerCase();
-    _emitFilteredState(emit);
-  }
-
-  void _onUpdateFilters(
-    UpdateFilters event,
-    Emitter<InventoryLowStockPageState> emit,
-  ) {
-    if (event.status != null) _currentStatus = event.status!;
-    if (event.categories != null) _currentCategories = event.categories!;
-    if (event.sortOption != null) _currentSort = event.sortOption!;
-    _emitFilteredState(emit);
-  }
-
-  void _onUpdateStockQuantity(
-    UpdateStockQuantity event,
-    Emitter<InventoryLowStockPageState> emit,
-  ) {
-    final itemIndex = _allItems.indexWhere((item) => item.id == event.id);
-    if (itemIndex != -1) {
-      final item = _allItems[itemIndex];
-      // Basic rule for mock: if quantity <= 2, it's low stock
-      final isLowStock = event.newQuantity > 0 && event.newQuantity <= 2;
-      
-      final updatedItem = InventoryItem(
-        id: item.id,
-        name: item.name,
-        quantity: event.newQuantity,
-        unit: item.unit,
-        isLowStock: isLowStock,
-        imagePath: item.imagePath,
-        category: item.category,
-        sku: item.sku,
-      );
-
-      _allItems[itemIndex] = updatedItem;
-      _emitFilteredState(emit);
-    }
-  }
-
-  void _onAddNewProduct(
-    AddNewProduct event,
-    Emitter<InventoryLowStockPageState> emit,
-  ) {
-    _allItems.insert(0, event.item); // Add to top of list
-    _emitFilteredState(emit);
-  }
-
-  void _emitFilteredState(Emitter<InventoryLowStockPageState> emit) {
-    // Apply search filter (Name, Category, SKU)
-    var filteredList = _allItems.where((item) {
-      final query = _currentQuery.toLowerCase();
-      return item.name.toLowerCase().contains(query) ||
-             item.category.toLowerCase().contains(query) ||
-             item.sku.toLowerCase().contains(query);
-    }).toList();
-
-    // Apply category filter
-    if (_currentCategories.isNotEmpty) {
-      filteredList = filteredList.where((item) => _currentCategories.contains(item.category)).toList();
-    }
-
-    // Apply status filter
-    if (_currentStatus == 'Low Stock') {
-      filteredList = filteredList.where((item) => item.isLowStock && item.quantity > 0).toList();
-    } else if (_currentStatus == 'Out of Stock') {
-      filteredList = filteredList.where((item) => item.quantity == 0).toList();
-    }
-
-    // Apply sorting
-    switch (_currentSort) {
-      case 'A-Z':
-        filteredList.sort((a, b) => a.name.compareTo(b.name));
-        break;
-      case 'Z-A':
-        filteredList.sort((a, b) => b.name.compareTo(a.name));
-        break;
-      case 'Quantity (Low to High)':
-        filteredList.sort((a, b) => a.quantity.compareTo(b.quantity));
-        break;
-      case 'Quantity (High to Low)':
-        filteredList.sort((a, b) => b.quantity.compareTo(a.quantity));
-        break;
-      default:
-        break; // Default order
-    }
-
-    // Calculate Summary dynamically based on ALL items (or filtered items depending on UX needs. Usually summary reflects all items).
-    // I will reflect all items in the summary.
-    final totalItems = _allItems.length;
-    final lowStockCount = _allItems.where((i) => i.isLowStock && i.quantity > 0).length;
-    final outOfStockCount = _allItems.where((i) => i.quantity == 0).length;
-
-    final summary = InventorySummary(
-      totalItems: totalItems,
-      lowStock: lowStockCount,
-      outOfStock: outOfStockCount,
+        // We use add() to push this safely, wait, we are inside a bloc.
+        // It's better to add an internal event for data received.
+        // I will just emit it if the listener is synchronous, but wait, emit is only valid inside the event handler.
+        // So I should dispatch an internal event.
+        add(_InventoryDataReceived(
+          sellerId: event.sellerId,
+          items: items,
+          summary: summary,
+          filteredItems: filteredItems,
+          activeFilter: activeFilter,
+          searchQuery: searchQuery,
+          updatingIds: updatingIds,
+        ));
+      },
+      onError: (error) {
+        // Since we can't emit directly, ideally we'd add an error event.
+      }
     );
+  }
 
+  // Internal event handler
+  void _onDataReceived(_InventoryDataReceived event, Emitter<InventoryState> emit) {
     emit(InventoryLoaded(
-      summary: summary,
-      items: filteredList,
-      activeStatus: _currentStatus,
-      activeCategories: _currentCategories,
-      activeSort: _currentSort,
-      searchQuery: _currentQuery,
+      sellerId: event.sellerId,
+      allItems: event.items,
+      filteredItems: event.filteredItems,
+      summary: event.summary,
+      activeFilter: event.activeFilter,
+      searchQuery: event.searchQuery,
+      updatingItemIds: event.updatingIds,
     ));
   }
+
+  void _onSearchInventory(SearchInventory event, Emitter<InventoryState> emit) {
+    if (state is InventoryLoaded) {
+      final currentState = state as InventoryLoaded;
+      final filtered = _applyFilters(currentState.allItems, currentState.activeFilter, event.query);
+      emit(currentState.copyWith(searchQuery: event.query, filteredItems: filtered));
+    }
+  }
+
+  void _onFilterInventory(FilterInventory event, Emitter<InventoryState> emit) {
+    if (state is InventoryLoaded) {
+      final currentState = state as InventoryLoaded;
+      final filtered = _applyFilters(currentState.allItems, event.status, currentState.searchQuery);
+      emit(currentState.copyWith(activeFilter: event.status, filteredItems: filtered));
+    }
+  }
+
+  Future<void> _onUpdateStockEvent(UpdateStockEvent event, Emitter<InventoryState> emit) async {
+    if (state is InventoryLoaded) {
+      final currentState = state as InventoryLoaded;
+      
+      final updatedIds = Set<String>.from(currentState.updatingItemIds)..add(event.productId);
+      emit(currentState.copyWith(updatingItemIds: updatedIds));
+
+      try {
+        await repository.updateStock(
+          sellerId: currentState.sellerId,
+          productId: event.productId,
+          quantityChange: event.quantityChange,
+          reason: event.reason,
+          note: event.note,
+        );
+
+        final newIds = Set<String>.from(currentState.updatingItemIds)..remove(event.productId);
+        emit(currentState.copyWith(
+          updatingItemIds: newIds,
+          successMessage: () => 'Stock updated successfully.',
+        ));
+      } catch (e) {
+        final newIds = Set<String>.from(currentState.updatingItemIds)..remove(event.productId);
+        emit(currentState.copyWith(
+          updatingItemIds: newIds,
+          errorMessage: () => e.toString().replaceAll('Exception: ', ''),
+        ));
+      }
+    }
+  }
+
+  Future<void> _onBulkUpdateStockEvent(BulkUpdateStockEvent event, Emitter<InventoryState> emit) async {
+    if (state is InventoryLoaded) {
+      final currentState = state as InventoryLoaded;
+      
+      final updatedIds = Set<String>.from(currentState.updatingItemIds)..addAll(event.productIds);
+      emit(currentState.copyWith(updatingItemIds: updatedIds));
+
+      try {
+        await repository.bulkUpdateStock(
+          sellerId: currentState.sellerId,
+          productIds: event.productIds,
+          quantityChange: event.quantityChange,
+          reason: event.reason,
+          note: event.note,
+        );
+
+        final newIds = Set<String>.from(currentState.updatingItemIds)..removeAll(event.productIds);
+        emit(currentState.copyWith(
+          updatingItemIds: newIds,
+          successMessage: () => '${event.productIds.length} products updated successfully.',
+        ));
+      } catch (e) {
+        final newIds = Set<String>.from(currentState.updatingItemIds)..removeAll(event.productIds);
+        emit(currentState.copyWith(
+          updatingItemIds: newIds,
+          errorMessage: () => e.toString().replaceAll('Exception: ', ''),
+        ));
+      }
+    }
+  }
+
+  void _onClearMessage(ClearInventoryMessage event, Emitter<InventoryState> emit) {
+    if (state is InventoryLoaded) {
+      emit((state as InventoryLoaded).copyWith(
+        successMessage: () => null,
+        errorMessage: () => null,
+      ));
+    }
+  }
+
+  Future<void> _onAddProductEvent(AddProductEvent event, Emitter<InventoryState> emit) async {
+    if (state is InventoryLoaded) {
+      final currentState = state as InventoryLoaded;
+      try {
+        await repository.addProduct(
+          sellerId: currentState.sellerId,
+          item: event.item,
+        );
+        emit(currentState.copyWith(successMessage: () => 'Product added successfully'));
+      } catch (e) {
+        emit(currentState.copyWith(errorMessage: () => 'Failed to add product: ${e.toString()}'));
+      }
+    }
+  }
+
+  InventorySummary _calculateSummary(List<InventoryItemModel> items) {
+    int normal = 0;
+    int low = 0;
+    int outOfStock = 0;
+    int expSoon = 0;
+    int expired = 0;
+
+    for (var item in items) {
+      if (item.isOutOfStock) {
+        outOfStock++;
+      } else if (item.isLowStock) {
+        low++;
+      } else {
+        normal++;
+      }
+
+      if (item.isExpired) {
+        expired++;
+      } else if (item.isExpiringSoon) {
+        expSoon++;
+      }
+    }
+
+    return InventorySummary(
+      totalItems: items.length,
+      normalStock: normal,
+      lowStock: low,
+      outOfStock: outOfStock,
+      expiringSoon: expSoon,
+      expired: expired,
+    );
+  }
+
+  List<InventoryItemModel> _applyFilters(List<InventoryItemModel> items, String filter, String query) {
+    return items.where((item) {
+      bool matchesSearch = item.name.toLowerCase().contains(query.toLowerCase());
+      bool matchesFilter = true;
+
+      switch (filter) {
+        case 'Normal':
+          matchesFilter = !item.isOutOfStock && !item.isLowStock;
+          break;
+        case 'Low Stock':
+          matchesFilter = item.isLowStock;
+          break;
+        case 'Out of Stock':
+          matchesFilter = item.isOutOfStock;
+          break;
+        case 'Expiring Soon':
+          matchesFilter = item.isExpiringSoon || item.isExpired; // Let's include expired in this filter too for ease
+          break;
+      }
+
+      return matchesSearch && matchesFilter;
+    }).toList();
+  }
+
+  @override
+  Future<void> close() {
+    _inventorySubscription?.cancel();
+    return super.close();
+  }
+}
+
+// Internal event for stream listener mapping
+class _InventoryDataReceived extends InventoryEvent {
+  final String sellerId;
+  final List<InventoryItemModel> items;
+  final InventorySummary summary;
+  final List<InventoryItemModel> filteredItems;
+  final String activeFilter;
+  final String searchQuery;
+  final Set<String> updatingIds;
+
+  const _InventoryDataReceived({
+    required this.sellerId,
+    required this.items,
+    required this.summary,
+    required this.filteredItems,
+    required this.activeFilter,
+    required this.searchQuery,
+    required this.updatingIds,
+  });
+
+  @override
+  List<Object?> get props => [sellerId, items, summary, filteredItems, activeFilter, searchQuery, updatingIds];
 }

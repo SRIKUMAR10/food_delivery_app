@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import '../../mock_firebase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,6 +27,11 @@ class FakeAssignDeliveryRepository extends AssignDeliveryRepository {
 }
 
 void main() {
+  setUpAll(() async {
+    setupFirebaseAuthMocks();
+    await Firebase.initializeApp();
+  });
+
   testWidgets('AssignDeliveryPage displays correctly in loading state', (
     WidgetTester tester,
   ) async {

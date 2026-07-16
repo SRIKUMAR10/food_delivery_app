@@ -1,6 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class AssignDeliveryService {
-  // In a real app, this would use http or dio to fetch data from the base URL
-  // using the API_KEY and KEY_SECRET from .env
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<List<Map<String, dynamic>>> fetchAvailableRiders(String orderId) async {
     // Mocking a network delay
@@ -33,8 +34,16 @@ class AssignDeliveryService {
   }
 
   Future<bool> assignDelivery(String orderId, String riderId, String instructions) async {
-    // Mocking an API call to assign the delivery
-    await Future.delayed(const Duration(seconds: 1));
-    return true;
+    try {
+      await _firestore.collection('orders').doc(orderId).update({
+        'status': 'Out for Delivery',
+        'assignedRiderId': riderId,
+        'deliveryInstructions': instructions,
+      });
+      return true;
+    } catch (e) {
+      print('Error assigning delivery: $e');
+      return false;
+    }
   }
 }

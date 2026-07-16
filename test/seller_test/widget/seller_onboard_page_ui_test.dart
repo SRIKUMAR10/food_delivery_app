@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import '../../mock_firebase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
@@ -14,6 +16,11 @@ class MockSellerOnboardPageBloc
     implements SellerOnboardPageBloc {}
 
 void main() {
+  setUpAll(() async {
+    setupFirebaseAuthMocks();
+    await Firebase.initializeApp();
+  });
+
   late MockSellerOnboardPageBloc mockBloc;
 
   setUp(() {

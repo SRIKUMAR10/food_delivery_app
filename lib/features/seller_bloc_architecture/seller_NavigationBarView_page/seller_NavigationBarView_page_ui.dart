@@ -11,6 +11,7 @@ import '../orders_list/orders_list_page_event.dart';
 import '../orders_list/orders_list_page_state.dart';
 import '../orders_list/orders_list_page_repository.dart';
 import '../orders_list/orders_list_page_service.dart';
+import '../../../../core/models/order_status.dart';
 import '../product_list_page_/product_list_page__ui.dart';
 import '../seller_profile_page/seller_profile_page__ui.dart';
 import '../seller_setting_page/seller_setting_page__ui.dart';
@@ -38,9 +39,12 @@ class SellerNavigationBarViewPageUI extends StatelessWidget {
                 ..add(LoadProductsEvent()),
         ),
         BlocProvider(
-          create: (context) => OrdersListBloc(
-            repository: OrdersListRepository(service: OrdersListService()),
-          )..add(LoadOrders()),
+          create: (context) {
+            final sellerId = SellerRepository().currentUser?.uid ?? '';
+            return OrdersListBloc(
+              repository: OrdersListRepository(service: OrdersListService()),
+            )..add(LoadOrdersStream(sellerId));
+          },
         ),
       ],
       child: const _SellerNavigationBarViewContent(),
@@ -76,27 +80,9 @@ class _SellerNavigationBarViewContent extends StatelessWidget {
           builder: (context, constraints) {
             final isDesktop = constraints.maxWidth >= 1024;
 
-            final Widget pageContent = AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position:
-                        Tween<Offset>(
-                          begin: const Offset(0.02, 0),
-                          end: Offset.zero,
-                        ).animate(
-                          CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeOut,
-                          ),
-                        ),
-                    child: child,
-                  ),
-                );
-              },
-              child: pages[currentIndex],
+            final Widget pageContent = IndexedStack(
+              index: currentIndex,
+              children: pages,
             );
 
             if (isDesktop) {
@@ -183,10 +169,11 @@ class _MobileFloatingNavigationBar extends StatelessWidget {
           BlocBuilder<OrdersListBloc, OrdersListState>(
             builder: (context, state) {
               String? badgeText;
-              if (state is OrdersListLoaded && state.allOrders.isNotEmpty) {
-                badgeText = state.allOrders.length > 99
-                    ? '99+'
-                    : state.allOrders.length.toString();
+              if (state is OrdersListLoaded) {
+                int newCount = state.allOrders.where((o) => o.status == OrderStatus.newOrder).length;
+                if (newCount > 0) {
+                  badgeText = newCount > 99 ? '99+' : newCount.toString();
+                }
               }
               return _buildNavItem(
                 1,
@@ -405,11 +392,11 @@ class _DesktopSideMenuState extends State<_DesktopSideMenu> {
                           BlocBuilder<OrdersListBloc, OrdersListState>(
                             builder: (context, state) {
                               String? badgeText;
-                              if (state is OrdersListLoaded &&
-                                  state.allOrders.isNotEmpty) {
-                                badgeText = state.allOrders.length > 99
-                                    ? '99+'
-                                    : state.allOrders.length.toString();
+                              if (state is OrdersListLoaded) {
+                                int newCount = state.allOrders.where((o) => o.status == OrderStatus.newOrder).length;
+                                if (newCount > 0) {
+                                  badgeText = newCount > 99 ? '99+' : newCount.toString();
+                                }
                               }
                               return _HoverableMenuItem(
                                 title: 'Orders',

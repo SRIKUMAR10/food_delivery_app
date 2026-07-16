@@ -43,3 +43,9 @@ final class SearchQueryChanged extends HomePageEvent {
 final class SearchCleared extends HomePageEvent {
   const SearchCleared();
 }
+
+/// Dispatched when the CategoryRepository yields new categories from Firestore.
+final class CategoriesUpdated extends HomePageEvent {
+  final List<FoodCategory> categories;
+  const CategoriesUpdated(this.categories);
+}

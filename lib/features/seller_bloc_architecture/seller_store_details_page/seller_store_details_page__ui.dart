@@ -11,7 +11,8 @@ class SellerStoreDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => SellerStoreDetailsBloc()..add(LoadStoreDetailsEvent()),
+      create: (context) =>
+          SellerStoreDetailsBloc()..add(LoadStoreDetailsEvent()),
       child: const Scaffold(
         backgroundColor: Color(0xFFF8FAFC), // Light grayish-blue background
         body: SafeArea(child: ResponsiveStoreDetailsLayout()),
@@ -49,14 +50,18 @@ class StoreDetailsContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<SellerStoreDetailsBloc, SellerStoreDetailsPageState>(
       builder: (context, state) {
-        if (state is SellerStoreDetailsLoading || state is SellerStoreDetailsInitial) {
+        if (state is SellerStoreDetailsLoading ||
+            state is SellerStoreDetailsInitial) {
           return const _StoreDetailsSkeleton();
         } else if (state is SellerStoreDetailsError) {
           return Center(child: Text('Error: ${state.message}'));
         } else if (state is SellerStoreDetailsLoaded) {
           return SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 24.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -104,8 +109,10 @@ class StoreDetailsContent extends StatelessWidget {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final bool isDesktop = constraints.maxWidth > 600;
-                      final double itemWidth = isDesktop ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth;
-                      
+                      final double itemWidth = isDesktop
+                          ? (constraints.maxWidth - 24) / 2
+                          : constraints.maxWidth;
+
                       final List<Widget> items = [
                         _HoverableInfoCard(
                           index: 0,
@@ -116,20 +123,7 @@ class StoreDetailsContent extends StatelessWidget {
                           subtitle: '${state.address}\n${state.phone}',
                           isEditable: false,
                         ),
-                        _HoverableInfoCard(
-                          index: 1,
-                          icon: Icons.access_time_outlined,
-                          iconColor: const Color(0xFFF59E0B),
-                          iconBgColor: const Color(0xFFFFFBEB),
-                          title: 'Opening Hours',
-                          subtitle: _formatOpeningHours(state.openingHours),
-                          isEditable: true,
-                          onEdit: () {
-                            _showOpeningHoursDialog(context, state.openingHours, (val) {
-                              context.read<SellerStoreDetailsBloc>().add(UpdateFieldEvent('openingHours', val));
-                            });
-                          },
-                        ),
+
                         _HoverableInfoCard(
                           index: 2,
                           icon: Icons.timer_outlined,
@@ -139,9 +133,16 @@ class StoreDetailsContent extends StatelessWidget {
                           subtitle: state.deliveryTime,
                           isEditable: true,
                           onEdit: () {
-                            _showEditDialog(context, 'Delivery Time', state.deliveryTime, (val) {
-                              context.read<SellerStoreDetailsBloc>().add(UpdateFieldEvent('deliveryTime', val));
-                            });
+                            _showEditDialog(
+                              context,
+                              'Delivery Time',
+                              state.deliveryTime,
+                              (val) {
+                                context.read<SellerStoreDetailsBloc>().add(
+                                  UpdateFieldEvent('deliveryTime', val),
+                                );
+                              },
+                            );
                           },
                         ),
                         _HoverableInfoCard(
@@ -189,15 +190,27 @@ class StoreDetailsContent extends StatelessWidget {
                           iconColor: const Color(0xFFEF4444),
                           iconBgColor: const Color(0xFFFEF2F2),
                           title: 'Minimum Order Value',
-                          subtitle: '₹${state.minimumOrderValue.toStringAsFixed(2)}',
+                          subtitle:
+                              '₹${state.minimumOrderValue.toStringAsFixed(2)}',
                           isEditable: true,
                           onEdit: () {
-                            _showEditDialog(context, 'Minimum Order Value', state.minimumOrderValue.toStringAsFixed(0), (val) {
-                              final double? parsed = double.tryParse(val);
-                              if (parsed != null) {
-                                context.read<SellerStoreDetailsBloc>().add(UpdateFieldEvent('minimumOrderValue', parsed));
-                              }
-                            }, isNumeric: true);
+                            _showEditDialog(
+                              context,
+                              'Minimum Order Value',
+                              state.minimumOrderValue.toStringAsFixed(0),
+                              (val) {
+                                final double? parsed = double.tryParse(val);
+                                if (parsed != null) {
+                                  context.read<SellerStoreDetailsBloc>().add(
+                                    UpdateFieldEvent(
+                                      'minimumOrderValue',
+                                      parsed,
+                                    ),
+                                  );
+                                }
+                              },
+                              isNumeric: true,
+                            );
                           },
                         ),
                         _HoverableInfoCard(
@@ -206,15 +219,27 @@ class StoreDetailsContent extends StatelessWidget {
                           iconColor: const Color(0xFFF97316),
                           iconBgColor: const Color(0xFFFFF7ED),
                           title: 'Packaging Charges',
-                          subtitle: '₹${state.packagingCharges.toStringAsFixed(2)}',
+                          subtitle:
+                              '₹${state.packagingCharges.toStringAsFixed(2)}',
                           isEditable: true,
                           onEdit: () {
-                            _showEditDialog(context, 'Packaging Charges', state.packagingCharges.toStringAsFixed(0), (val) {
-                              final double? parsed = double.tryParse(val);
-                              if (parsed != null) {
-                                context.read<SellerStoreDetailsBloc>().add(UpdateFieldEvent('packagingCharges', parsed));
-                              }
-                            }, isNumeric: true);
+                            _showEditDialog(
+                              context,
+                              'Packaging Charges',
+                              state.packagingCharges.toStringAsFixed(0),
+                              (val) {
+                                final double? parsed = double.tryParse(val);
+                                if (parsed != null) {
+                                  context.read<SellerStoreDetailsBloc>().add(
+                                    UpdateFieldEvent(
+                                      'packagingCharges',
+                                      parsed,
+                                    ),
+                                  );
+                                }
+                              },
+                              isNumeric: true,
+                            );
                           },
                         ),
                       ];
@@ -222,27 +247,49 @@ class StoreDetailsContent extends StatelessWidget {
                       return Wrap(
                         spacing: 24,
                         runSpacing: 24,
-                        children: items.map((widget) => SizedBox(width: itemWidth, child: widget)).toList()
-                          ..add(
-                             SizedBox(
-                                width: itemWidth,
-                                child: _HoverableDropdownCard(
-                                  index: 9,
-                                  icon: Icons.percent,
-                                  iconColor: const Color(0xFF6366F1),
-                                  iconBgColor: const Color(0xFFEEF2FF),
-                                  title: 'GST Percentage',
-                                  subtitle: 'Applicable GST rate',
-                                  value: [0.0, 5.0, 12.0, 18.0, 28.0].contains(state.gstPercentage) ? state.gstPercentage : 18.0,
-                                  items: [0.0, 5.0, 12.0, 18.0, 28.0],
-                                  onChanged: (newValue) {
-                                    if (newValue != null) {
-                                      context.read<SellerStoreDetailsBloc>().add(UpdateFieldEvent('gstPercentage', newValue));
-                                    }
-                                  },
+                        children:
+                            items
+                                .map(
+                                  (widget) =>
+                                      SizedBox(width: itemWidth, child: widget),
+                                )
+                                .toList()
+                              ..add(
+                                SizedBox(
+                                  width: itemWidth,
+                                  child: _HoverableDropdownCard(
+                                    index: 9,
+                                    icon: Icons.percent,
+                                    iconColor: const Color(0xFF6366F1),
+                                    iconBgColor: const Color(0xFFEEF2FF),
+                                    title: 'GST Percentage',
+                                    subtitle: 'Applicable GST rate',
+                                    value:
+                                        [
+                                          0.0,
+                                          5.0,
+                                          12.0,
+                                          18.0,
+                                          28.0,
+                                        ].contains(state.gstPercentage)
+                                        ? state.gstPercentage
+                                        : 18.0,
+                                    items: [0.0, 5.0, 12.0, 18.0, 28.0],
+                                    onChanged: (newValue) {
+                                      if (newValue != null) {
+                                        context
+                                            .read<SellerStoreDetailsBloc>()
+                                            .add(
+                                              UpdateFieldEvent(
+                                                'gstPercentage',
+                                                newValue,
+                                              ),
+                                            );
+                                      }
+                                    },
+                                  ),
                                 ),
-                             )
-                          ),
+                              ),
                       );
                     },
                   ),
@@ -262,7 +309,9 @@ class StoreDetailsContent extends StatelessWidget {
       final Map<String, dynamic> data = jsonDecode(raw);
       List<String> parts = [];
       data.forEach((day, times) {
-        parts.add('${day.substring(0, 3)}: ${times['open']} - ${times['close']}');
+        parts.add(
+          '${day.substring(0, 3)}: ${times['open']} - ${times['close']}',
+        );
       });
       return parts.join('\n');
     } catch (e) {
@@ -286,10 +335,21 @@ class StoreDetailsContent extends StatelessWidget {
     }
   }
 
-  void _showOpeningHoursDialog(BuildContext context, String initialValue, Function(String) onSave) {
-    final List<String> days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  void _showOpeningHoursDialog(
+    BuildContext context,
+    String initialValue,
+    Function(String) onSave,
+  ) {
+    final List<String> days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
     Map<String, Map<String, String>> schedule = {};
-    
+
     try {
       final Map<String, dynamic> data = jsonDecode(initialValue);
       for (var day in days) {
@@ -317,8 +377,13 @@ class StoreDetailsContent extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('Edit Opening Hours', style: TextStyle(fontWeight: FontWeight.bold)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Edit Opening Hours',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: ListView.builder(
@@ -330,25 +395,43 @@ class StoreDetailsContent extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Row(
                         children: [
-                          SizedBox(width: 80, child: Text(day, style: const TextStyle(fontWeight: FontWeight.w600))),
+                          SizedBox(
+                            width: 80,
+                            child: Text(
+                              day,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                           Expanded(
                             child: InkWell(
                               onTap: () async {
                                 final TimeOfDay? picked = await showTimePicker(
                                   context: context,
-                                  initialTime: _parseTime(schedule[day]!['open']!),
+                                  initialTime: _parseTime(
+                                    schedule[day]!['open']!,
+                                  ),
                                 );
                                 if (picked != null) {
-                                  setState(() => schedule[day]!['open'] = picked.format(context));
+                                  setState(
+                                    () => schedule[day]!['open'] = picked
+                                        .format(context),
+                                  );
                                 }
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text(schedule[day]!['open']!, textAlign: TextAlign.center),
+                                child: Text(
+                                  schedule[day]!['open']!,
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
                             ),
                           ),
@@ -361,19 +444,29 @@ class StoreDetailsContent extends StatelessWidget {
                               onTap: () async {
                                 final TimeOfDay? picked = await showTimePicker(
                                   context: context,
-                                  initialTime: _parseTime(schedule[day]!['close']!),
+                                  initialTime: _parseTime(
+                                    schedule[day]!['close']!,
+                                  ),
                                 );
                                 if (picked != null) {
-                                  setState(() => schedule[day]!['close'] = picked.format(context));
+                                  setState(
+                                    () => schedule[day]!['close'] = picked
+                                        .format(context),
+                                  );
                                 }
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text(schedule[day]!['close']!, textAlign: TextAlign.center),
+                                child: Text(
+                                  schedule[day]!['close']!,
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
                             ),
                           ),
@@ -386,13 +479,18 @@ class StoreDetailsContent extends StatelessWidget {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFE52929),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                   onPressed: () {
                     onSave(jsonEncode(schedule));
@@ -408,23 +506,41 @@ class StoreDetailsContent extends StatelessWidget {
     );
   }
 
-  void _showEditDialog(BuildContext context, String title, String initialValue, Function(String) onSave, {bool isNumeric = false}) {
-    final TextEditingController controller = TextEditingController(text: initialValue);
+  void _showEditDialog(
+    BuildContext context,
+    String title,
+    String initialValue,
+    Function(String) onSave, {
+    bool isNumeric = false,
+  }) {
+    final TextEditingController controller = TextEditingController(
+      text: initialValue,
+    );
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Edit $title', style: const TextStyle(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Edit $title',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: TextField(
             controller: controller,
             keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
             decoration: InputDecoration(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               labelText: title,
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFE52929), width: 2),
+                borderSide: const BorderSide(
+                  color: Color(0xFFE52929),
+                  width: 2,
+                ),
               ),
             ),
           ),
@@ -437,7 +553,9 @@ class StoreDetailsContent extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE52929),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: () {
                 onSave(controller.text);
@@ -460,7 +578,8 @@ class _AnimatedStatusBanner extends StatefulWidget {
   State<_AnimatedStatusBanner> createState() => _AnimatedStatusBannerState();
 }
 
-class _AnimatedStatusBannerState extends State<_AnimatedStatusBanner> with SingleTickerProviderStateMixin {
+class _AnimatedStatusBannerState extends State<_AnimatedStatusBanner>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacity;
   late Animation<Offset> _slide;
@@ -468,9 +587,18 @@ class _AnimatedStatusBannerState extends State<_AnimatedStatusBanner> with Singl
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _opacity = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-    _slide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _opacity = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _controller.forward();
   }
 
@@ -491,10 +619,17 @@ class _AnimatedStatusBannerState extends State<_AnimatedStatusBanner> with Singl
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: widget.state.isOnline ? const Color(0xFFD1FAE5) : const Color(0xFFF1F5F9), width: 2),
+            border: Border.all(
+              color: widget.state.isOnline
+                  ? const Color(0xFFD1FAE5)
+                  : const Color(0xFFF1F5F9),
+              width: 2,
+            ),
             boxShadow: [
               BoxShadow(
-                color: widget.state.isOnline ? const Color(0xFF10B981).withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.03),
+                color: widget.state.isOnline
+                    ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.03),
                 blurRadius: 24,
                 spreadRadius: 0,
                 offset: const Offset(0, 8),
@@ -509,12 +644,16 @@ class _AnimatedStatusBannerState extends State<_AnimatedStatusBanner> with Singl
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: widget.state.isOnline ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                      color: widget.state.isOnline
+                          ? const Color(0xFFECFDF5)
+                          : const Color(0xFFF1F5F9),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.power_settings_new,
-                      color: widget.state.isOnline ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                      color: widget.state.isOnline
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF94A3B8),
                       size: 28,
                     ),
                   ),
@@ -523,16 +662,22 @@ class _AnimatedStatusBannerState extends State<_AnimatedStatusBanner> with Singl
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.state.isOnline ? 'Store is Online' : 'Store is Offline',
+                        widget.state.isOnline
+                            ? 'Store is Online'
+                            : 'Store is Offline',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 20,
-                          color: widget.state.isOnline ? const Color(0xFF065F46) : const Color(0xFF475569),
+                          color: widget.state.isOnline
+                              ? const Color(0xFF065F46)
+                              : const Color(0xFF475569),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        widget.state.isOnline ? 'Customers can place orders' : 'Store is currently not accepting orders',
+                        widget.state.isOnline
+                            ? 'Customers can place orders'
+                            : 'Store is currently not accepting orders',
                         style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF64748B),
@@ -545,7 +690,9 @@ class _AnimatedStatusBannerState extends State<_AnimatedStatusBanner> with Singl
               Switch(
                 value: widget.state.isOnline,
                 onChanged: (value) {
-                  context.read<SellerStoreDetailsBloc>().add(ToggleStoreStatusEvent(value));
+                  context.read<SellerStoreDetailsBloc>().add(
+                    ToggleStoreStatusEvent(value),
+                  );
                 },
                 activeThumbColor: Colors.white,
                 activeTrackColor: const Color(0xFF10B981),
@@ -569,6 +716,7 @@ class _HoverableInfoCard extends StatefulWidget {
   final String subtitle;
   final bool isEditable;
   final VoidCallback? onEdit;
+  final VoidCallback? onTap;
 
   const _HoverableInfoCard({
     required this.index,
@@ -579,13 +727,14 @@ class _HoverableInfoCard extends StatefulWidget {
     required this.subtitle,
     required this.isEditable,
     this.onEdit,
-  });
+  }) : onTap = null;
 
   @override
   State<_HoverableInfoCard> createState() => _HoverableInfoCardState();
 }
 
-class _HoverableInfoCardState extends State<_HoverableInfoCard> with SingleTickerProviderStateMixin {
+class _HoverableInfoCardState extends State<_HoverableInfoCard>
+    with SingleTickerProviderStateMixin {
   bool _isHovered = false;
   late AnimationController _entryController;
   late Animation<double> _opacity;
@@ -598,13 +747,15 @@ class _HoverableInfoCardState extends State<_HoverableInfoCard> with SingleTicke
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _opacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _entryController, curve: Curves.easeOut),
-    );
-    _slide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
-      CurvedAnimation(parent: _entryController, curve: Curves.easeOutCubic),
-    );
-    
+    _opacity = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _entryController, curve: Curves.easeOut));
+    _slide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _entryController, curve: Curves.easeOutCubic),
+        );
+
     Future.delayed(Duration(milliseconds: 100 * widget.index), () {
       if (mounted) _entryController.forward();
     });
@@ -627,65 +778,85 @@ class _HoverableInfoCardState extends State<_HoverableInfoCard> with SingleTicke
           onExit: (_) => setState(() => _isHovered = false),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            transform: Matrix4.identity()..scale(_isHovered && widget.isEditable ? 1.02 : 1.0),
+            transform: Matrix4.identity()
+              ..scale(_isHovered && widget.isEditable ? 1.02 : 1.0),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: const Color(0xFFF1F5F9)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.03),
+                  color: Colors.black.withValues(
+                    alpha: _isHovered ? 0.08 : 0.03,
+                  ),
                   blurRadius: _isHovered ? 24 : 12,
                   spreadRadius: _isHovered ? 2 : 0,
                   offset: Offset(0, _isHovered ? 8 : 4),
                 ),
               ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: widget.iconBgColor,
-                      shape: BoxShape.circle,
+            child: InkWell(
+              onTap: widget.onTap,
+              borderRadius: BorderRadius.circular(24),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: widget.iconBgColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        widget.icon,
+                        color: widget.iconColor,
+                        size: 28,
+                      ),
                     ),
-                    child: Icon(widget.icon, color: widget.iconColor, size: 28),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF111827),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF111827),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          widget.subtitle,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF6B7280),
-                            height: 1.4,
+                          const SizedBox(height: 6),
+                          Text(
+                            widget.subtitle,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF6B7280),
+                              height: 1.4,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  if (widget.isEditable)
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      color: _isHovered ? const Color(0xFFE52929) : const Color(0xFF9CA3AF),
-                      onPressed: widget.onEdit,
-                    ),
-                ],
+                    if (widget.isEditable)
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        color: _isHovered
+                            ? const Color(0xFFE52929)
+                            : const Color(0xFF9CA3AF),
+                        onPressed: widget.onEdit,
+                      ),
+                    if (!widget.isEditable && widget.onTap != null)
+                      Icon(
+                        Icons.chevron_right,
+                        color: _isHovered
+                            ? const Color(0xFF111827)
+                            : const Color(0xFF9CA3AF),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -722,7 +893,8 @@ class _HoverableDropdownCard extends StatefulWidget {
   State<_HoverableDropdownCard> createState() => _HoverableDropdownCardState();
 }
 
-class _HoverableDropdownCardState extends State<_HoverableDropdownCard> with SingleTickerProviderStateMixin {
+class _HoverableDropdownCardState extends State<_HoverableDropdownCard>
+    with SingleTickerProviderStateMixin {
   bool _isHovered = false;
   late AnimationController _entryController;
   late Animation<double> _opacity;
@@ -735,13 +907,15 @@ class _HoverableDropdownCardState extends State<_HoverableDropdownCard> with Sin
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _opacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _entryController, curve: Curves.easeOut),
-    );
-    _slide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
-      CurvedAnimation(parent: _entryController, curve: Curves.easeOutCubic),
-    );
-    
+    _opacity = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _entryController, curve: Curves.easeOut));
+    _slide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _entryController, curve: Curves.easeOutCubic),
+        );
+
     Future.delayed(Duration(milliseconds: 100 * widget.index), () {
       if (mounted) _entryController.forward();
     });
@@ -771,7 +945,9 @@ class _HoverableDropdownCardState extends State<_HoverableDropdownCard> with Sin
               border: Border.all(color: const Color(0xFFF1F5F9)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.03),
+                  color: Colors.black.withValues(
+                    alpha: _isHovered ? 0.08 : 0.03,
+                  ),
                   blurRadius: _isHovered ? 24 : 12,
                   spreadRadius: _isHovered ? 2 : 0,
                   offset: Offset(0, _isHovered ? 8 : 4),
@@ -828,7 +1004,10 @@ class _HoverableDropdownCardState extends State<_HoverableDropdownCard> with Sin
                       child: DropdownButton<double>(
                         value: widget.value,
                         isDense: true,
-                        icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
+                        icon: const Icon(
+                          Icons.arrow_drop_down,
+                          color: Color(0xFF64748B),
+                        ),
                         style: const TextStyle(
                           color: Color(0xFF0F172A),
                           fontSize: 14,
@@ -853,7 +1032,6 @@ class _HoverableDropdownCardState extends State<_HoverableDropdownCard> with Sin
     );
   }
 }
-
 
 class _StoreDetailsSkeleton extends StatelessWidget {
   const _StoreDetailsSkeleton();

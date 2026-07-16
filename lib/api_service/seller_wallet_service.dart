@@ -1,60 +1,62 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SellerWalletService {
-  final http.Client client;
-  final String? baseUrl;
-  final String? apiKey;
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
 
-  SellerWalletService({http.Client? client, this.baseUrl, this.apiKey})
-      : this.client = client ?? http.Client();
-
-  String get _baseUrl => baseUrl ?? dotenv.env['BASE_URL'] ?? 'https://api.example.com';
-  String get _apiKey => apiKey ?? dotenv.env['API_KEY'] ?? '';
+  SellerWalletService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
 
   Future<double> fetchWalletBalance() async {
-    // Under low-connectivity, simulate fallback/caching or use dotenv configuration
-    final url = Uri.parse('$_baseUrl/seller/wallet/balance');
-    try {
-      final response = await client.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 5));
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId == null) {
+      throw Exception('User not logged in');
+    }
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return (data['balance'] as num).toDouble();
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
+    try {
+      final docSnapshot = await _firestore.collection('sellers').doc(sellerId).get();
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data()!;
+        return (data['walletBalance'] as num?)?.toDouble() ?? 0.0;
       }
+      return 0.0;
     } catch (e) {
-      // Return a simulated mock value representing the screenshot balance in case of failure or offline mode.
-      // This is helpful for testing/demoing since base_url is an example.
+      // Offline/Dev fallback
       return 12680.00;
     }
   }
 
   Future<List<Map<String, dynamic>>> fetchPayoutHistory({required int offset, required int limit}) async {
-    final url = Uri.parse('$_baseUrl/seller/wallet/payouts?offset=$offset&limit=$limit');
-    try {
-      final response = await client.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 5));
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId == null) {
+      throw Exception('User not logged in');
+    }
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.cast<Map<String, dynamic>>();
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
+    try {
+      final snapshot = await _firestore
+          .collection('payouts')
+          .where('sellerId', isEqualTo: sellerId)
+          .orderBy('date', descending: true)
+          .get();
+
+      final allPayouts = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'title': data['title'] ?? 'Payout',
+          'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+          'status': data['status'] ?? 'Unknown',
+          'date': (data['date'] as Timestamp?)?.toDate().toIso8601String() ?? DateTime.now().toIso8601String(),
+        };
+      }).toList();
+
+      if (offset >= allPayouts.length) {
+        return [];
       }
+      final end = (offset + limit) > allPayouts.length ? allPayouts.length : (offset + limit);
+      return allPayouts.sublist(offset, end);
     } catch (e) {
       // Mock historical data from the user screenshot
       final allMockPayouts = [
@@ -81,7 +83,6 @@ class SellerWalletService {
         },
       ];
 
-      // Perform local pagination
       if (offset >= allMockPayouts.length) {
         return [];
       }
@@ -91,29 +92,56 @@ class SellerWalletService {
   }
 
   Future<bool> requestWithdrawal(double amount) async {
-    final url = Uri.parse('$_baseUrl/seller/wallet/withdraw');
-    try {
-      final response = await client.post(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'amount': amount}),
-      ).timeout(const Duration(seconds: 5));
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId == null) {
+      throw Exception('User not logged in');
+    }
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['success'] ?? false;
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
-      }
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final sellerRef = _firestore.collection('sellers').doc(sellerId);
+        final sellerDoc = await transaction.get(sellerRef);
+        
+        if (!sellerDoc.exists) {
+          throw Exception('Seller profile not found');
+        }
+        
+        final currentBalance = (sellerDoc.data()!['walletBalance'] as num?)?.toDouble() ?? 0.0;
+        
+        if (currentBalance < amount) {
+          throw Exception('Insufficient funds');
+        }
+        
+        // Deduct balance
+        transaction.update(sellerRef, {
+          'walletBalance': currentBalance - amount
+        });
+        
+        // Create payout request
+        final requestRef = _firestore.collection('payout_requests').doc();
+        transaction.set(requestRef, {
+          'sellerId': sellerId,
+          'amount': amount,
+          'status': 'Pending',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        
+        // Create payout history entry
+        final payoutRef = _firestore.collection('payouts').doc();
+        transaction.set(payoutRef, {
+          'sellerId': sellerId,
+          'title': 'Withdrawal Request',
+          'amount': amount,
+          'status': 'Pending',
+          'date': FieldValue.serverTimestamp(),
+        });
+      });
+      return true;
     } catch (e) {
-      // Fallback local success if local demo runs
-      if (amount <= 12680.00) {
-        return true;
+      if (e.toString().contains('Insufficient funds')) {
+        rethrow;
       }
-      throw Exception('Insufficient funds');
+      return false;
     }
   }
 }

@@ -14,6 +14,7 @@ class CartItem extends Equatable {
   final String sellerId;
   final int quantity;
   final bool isSelected;
+  final List<String> selectedAddons;
 
   const CartItem({
     required this.id,
@@ -23,6 +24,7 @@ class CartItem extends Equatable {
     this.image,
     this.quantity = 1,
     this.isSelected = true,
+    this.selectedAddons = const [],
   });
 
   /// Factory constructor to map a Firestore DocumentSnapshot to a CartItem.
@@ -36,6 +38,7 @@ class CartItem extends Equatable {
       sellerId: data['sellerId'] ?? '',
       quantity: (data['quantity'] as num?)?.toInt() ?? 1,
       isSelected: data['isSelected'] ?? true,
+      selectedAddons: data['selectedAddons'] != null ? List<String>.from(data['selectedAddons']) : [],
     );
   }
 
@@ -48,6 +51,7 @@ class CartItem extends Equatable {
       'sellerId': sellerId,
       'quantity': quantity,
       'isSelected': isSelected,
+      'selectedAddons': selectedAddons,
     };
   }
 
@@ -60,6 +64,7 @@ class CartItem extends Equatable {
     String? sellerId,
     int? quantity,
     bool? isSelected,
+    List<String>? selectedAddons,
   }) {
     return CartItem(
       id: id ?? this.id,
@@ -69,9 +74,10 @@ class CartItem extends Equatable {
       sellerId: sellerId ?? this.sellerId,
       quantity: quantity ?? this.quantity,
       isSelected: isSelected ?? this.isSelected,
+      selectedAddons: selectedAddons ?? this.selectedAddons,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, price, image, sellerId, quantity, isSelected];
+  List<Object?> get props => [id, name, price, image, sellerId, quantity, isSelected, selectedAddons];
 }

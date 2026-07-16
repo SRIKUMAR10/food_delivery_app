@@ -21,33 +21,36 @@ class DashboardOrder extends Equatable {
 }
 
 class DashboardData extends Equatable {
-  final double totalRevenue;
+  final double revenueToday;
   final double revenueChangePercentage;
   final int pendingOrdersCount;
   final int todaysOrdersCount;
   final int lowStockCount;
-  final double rating;
+  final int activeProductsCount;
   final List<DashboardOrder> todaysOrders;
+  final String storeName;
 
   const DashboardData({
-    required this.totalRevenue,
+    required this.revenueToday,
     required this.revenueChangePercentage,
     required this.pendingOrdersCount,
     required this.todaysOrdersCount,
     required this.lowStockCount,
-    required this.rating,
+    required this.activeProductsCount,
     required this.todaysOrders,
+    required this.storeName,
   });
 
   @override
   List<Object?> get props => [
-        totalRevenue,
+        revenueToday,
         revenueChangePercentage,
         pendingOrdersCount,
         todaysOrdersCount,
         lowStockCount,
-        rating,
+        activeProductsCount,
         todaysOrders,
+        storeName,
       ];
 }
 

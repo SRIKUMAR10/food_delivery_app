@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import '../../../../core/models/order_status.dart';
+import '../../../../core/models/order_model.dart';
 import 'orders_list_page_bloc.dart';
 import 'orders_list_page_event.dart';
 import 'orders_list_page_state.dart';
@@ -10,7 +14,6 @@ import '../assign_delivery_page_/assign_delivery_page__bloc.dart';
 import '../assign_delivery_page_/assign_delivery_page__repository.dart';
 import '../assign_delivery_page_/assign_delivery_page__service.dart';
 import '../assign_delivery_page_/assign_delivery_page__event.dart';
-import '../out_for_delivery_page_/out_for_delivery_page__ui.dart';
 
 class OrdersListPage extends StatelessWidget {
   const OrdersListPage({Key? key}) : super(key: key);
@@ -20,7 +23,7 @@ class OrdersListPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => OrdersListBloc(
         repository: OrdersListRepository(service: OrdersListService()),
-      )..add(LoadOrders()),
+      )..add(LoadOrdersStream(FirebaseAuth.instance.currentUser?.uid ?? '')),
       child: const OrdersListView(),
     );
   }
@@ -33,8 +36,32 @@ class OrdersListView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: LayoutBuilder(
+      body: BlocListener<OrdersListBloc, OrdersListState>(
+        listener: (context, state) {
+          if (state is OrdersListLoaded) {
+            if (state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage!),
+                  backgroundColor: const Color(0xFFE52929),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              context.read<OrdersListBloc>().add(ClearMessages());
+            } else if (state.successMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.successMessage!),
+                  backgroundColor: const Color(0xFF22C55E),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              context.read<OrdersListBloc>().add(ClearMessages());
+            }
+          }
+        },
+        child: SafeArea(
+          child: LayoutBuilder(
           builder: (context, constraints) {
             double containerWidth = constraints.maxWidth;
             if (constraints.maxWidth > 1024) {
@@ -49,7 +76,7 @@ class OrdersListView extends StatelessWidget {
                 child: RefreshIndicator(
                   color: const Color(0xFFE52929),
                   onRefresh: () async {
-                    context.read<OrdersListBloc>().add(LoadOrders());
+                    context.read<OrdersListBloc>().add(LoadOrdersStream(FirebaseAuth.instance.currentUser?.uid ?? ''));
                     await Future.delayed(const Duration(seconds: 1));
                   },
                   child: CustomScrollView(
@@ -93,19 +120,40 @@ class OrdersListView extends StatelessWidget {
                           const SizedBox(width: 12),
                         ],
                       ),
-                      const SliverToBoxAdapter(
+                      SliverToBoxAdapter(
                         child: Padding(
-                          padding: EdgeInsets.only(
+                          padding: const EdgeInsets.only(
                             left: 24,
                             right: 24,
                             bottom: 20,
                           ),
-                          child: Text(
-                            'Track and manage customer orders',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Color(0xFF64748B),
-                              fontWeight: FontWeight.w500,
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: TextField(
+                              onChanged: (value) {
+                                context.read<OrdersListBloc>().add(SearchOrders(value));
+                              },
+                              decoration: const InputDecoration(
+                                hintText: 'Search by Order ID or Name...',
+                                hintStyle: TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 14,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.search_rounded,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -172,7 +220,7 @@ class OrdersListView extends StatelessWidget {
                                     ElevatedButton(
                                       onPressed: () => context
                                           .read<OrdersListBloc>()
-                                          .add(LoadOrders()),
+                                          .add(LoadOrdersStream(FirebaseAuth.instance.currentUser?.uid ?? '')),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: const Color(
                                           0xFFE52929,
@@ -259,6 +307,7 @@ class OrdersListView extends StatelessWidget {
             );
           },
         ),
+      ),
       ),
     );
   }
@@ -427,181 +476,200 @@ class _OrderListCardState extends State<_OrderListCard> {
         duration: const Duration(milliseconds: 500),
         curve: Curves.easeOutCubic,
         offset: _startAnimation ? Offset.zero : const Offset(0, 0.1),
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _isHovered
-                    ? const Color(0xFFE52929).withValues(alpha: 0.3)
-                    : const Color(0xFFF1F5F9),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(
-                    0xFF0F172A,
-                  ).withValues(alpha: _isHovered ? 0.08 : 0.03),
-                  blurRadius: _isHovered ? 30 : 20,
-                  offset: Offset(0, _isHovered ? 12 : 8),
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => OrderDetailsScreen(order: widget.order),
+        child: BlocBuilder<OrdersListBloc, OrdersListState>(
+          builder: (context, state) {
+            final isUpdating = state is OrdersListLoaded && 
+                               state.updatingOrderIds.contains(widget.order.id);
+            return MouseRegion(
+              onEnter: (_) => setState(() => _isHovered = true),
+              onExit: (_) => setState(() => _isHovered = false),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _isHovered
+                        ? const Color(0xFFE52929).withValues(alpha: 0.3)
+                        : const Color(0xFFF1F5F9),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(
+                        0xFF0F172A,
+                      ).withValues(alpha: _isHovered ? 0.08 : 0.03),
+                      blurRadius: _isHovered ? 30 : 20,
+                      offset: Offset(0, _isHovered ? 12 : 8),
                     ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: isUpdating ? null : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider.value(
+                            value: context.read<OrdersListBloc>(),
+                            child: OrderDetailsScreen(order: widget.order),
+                          ),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: const Color(0xFFE2E8F0),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '#${widget.order.id}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF334155),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Icon(
+                                    Icons.delivery_dining_rounded,
+                                    size: 20,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Text(
+                                    'Delivery',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (isUpdating)
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFE52929),
+                                  ),
+                                )
+                              else
+                                Text(
+                                  NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(widget.order.amount),
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF0F172A),
+                                    letterSpacing: -0.5,
                                   ),
                                 ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: const Color(0xFFEFF6FF),
                                 child: Text(
-                                  '#${widget.order.id}',
+                                  widget.order.customerName
+                                      .substring(0, 1)
+                                      .toUpperCase(),
                                   style: const TextStyle(
-                                    fontSize: 14,
                                     fontWeight: FontWeight.w800,
-                                    color: Color(0xFF334155),
+                                    fontSize: 16,
+                                    color: Color(0xFF3B82F6),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              const Icon(
-                                Icons.delivery_dining_rounded,
-                                size: 20,
-                                color: Color(0xFF64748B),
-                              ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                'Delivery',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF64748B),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      widget.order.customerName,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF1E293B),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${widget.order.items?.length ?? 0} Items • ${widget.order.paymentMethod ?? "Cash"}',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF64748B),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                          Text(
-                            '₹${widget.order.amount.toInt()}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
-                              letterSpacing: -0.5,
-                            ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: const Color(0xFFEFF6FF),
-                            child: Text(
-                              widget.order.customerName
-                                  .substring(0, 1)
-                                  .toUpperCase(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                                color: Color(0xFF3B82F6),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.order.customerName,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1E293B),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                const Text(
-                                  '2 Items • 2.1 km away',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF64748B),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Divider(height: 1, color: Color(0xFFF1F5F9)),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _StatusBadge(status: widget.order.status),
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Icon(
-                                Icons.schedule_rounded,
-                                size: 16,
-                                color: Color(0xFF94A3B8),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                widget.order.timeAgo,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF64748B),
-                                ),
+                              _StatusBadge(status: widget.order.status.value),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.schedule_rounded,
+                                    size: 16,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    widget.order.timeAgo,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -617,325 +685,346 @@ class OrderDetailsScreen extends StatefulWidget {
 }
 
 class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
-  // Mock data to match the design
-  final String _mockPhone = '+91 98765 43210';
-  final String _mockAddress = '221B Baker Street, London\n2.1 km away';
-  final List<Map<String, dynamic>> _mockItems = [
-    {'qty': 1, 'name': 'Red Pizza', 'price': 400},
-    {'qty': 1, 'name': 'Chicken Pizza', 'price': 300},
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final order = widget.order;
-    final isNew = order.status == 'New';
-    final isPreparing = order.status == 'Preparing';
-    final isReady =
-        order.status == 'Completed'; // 'Completed' maps to 'Ready for pickup'
-    final isOutForDelivery = order.status == 'Out for delivery';
+    return BlocListener<OrdersListBloc, OrdersListState>(
+      listener: (context, state) {
+        if (state is OrdersListError) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+        }
+      },
+      child: BlocBuilder<OrdersListBloc, OrdersListState>(
+        builder: (context, state) {
+          // Find the most up to date order object from state
+          OrderModel order = widget.order;
+          bool isUpdating = false;
+          if (state is OrdersListLoaded) {
+            order = state.allOrders.firstWhere((o) => o.id == widget.order.id, orElse: () => widget.order);
+            isUpdating = state.updatingOrderIds.contains(widget.order.id);
+          }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: Container(
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          final isNew = order.status == OrderStatus.newOrder;
+          final isPreparing = order.status == OrderStatus.preparing;
+          final isReady = order.status == OrderStatus.ready || order.status == OrderStatus.delivered; // 'Completed' mapped to 'Ready for pickup' / Delivered
+          final isOutForDelivery = order.status == OrderStatus.outForDelivery;
+
+          return Scaffold(
+            backgroundColor: const Color(0xFFF8FAFC),
+            body: SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: Container(
+                    color: Colors.white,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: const Icon(
-                                Icons.arrow_back_ios_new,
-                                size: 20,
-                                color: Color(0xFF1E293B),
+                        // Header
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => Navigator.pop(context),
+                                    child: const Icon(
+                                      Icons.arrow_back_ios_new,
+                                      size: 20,
+                                      color: Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Order #${order.id}',
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF111827),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Order #${order.id}',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                          ],
+                              _StatusBadge(status: order.status.value),
+                            ],
+                          ),
                         ),
-                        _StatusBadge(status: order.status),
-                      ],
-                    ),
-                  ),
 
-                  // Scrollable Content
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Customer Info
-                          const _SectionTitle(title: 'Customer Info'),
-                          _InfoContainer(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        // Scrollable Content
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      order.customerName,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1E293B),
+                                // Customer Info
+                                const _SectionTitle(title: 'Customer Info'),
+                                _InfoContainer(
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            order.customerName,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF1E293B),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            order.customerPhone ?? 'No Phone Provided',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _mockPhone,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: Color(0xFF64748B),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFEFF6FF),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.phone,
+                                          color: Color(0xFF3B82F6),
+                                          size: 20,
+                                        ),
                                       ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Delivery Address
+                                const _SectionTitle(title: 'Delivery Address'),
+                                _InfoContainer(
+                                  child: Text(
+                                    order.deliveryAddress ?? 'No Address Provided',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      color: Color(0xFF475569),
+                                      height: 1.5,
                                     ),
-                                  ],
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFEFF6FF),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.phone,
-                                    color: Color(0xFF3B82F6),
-                                    size: 20,
                                   ),
                                 ),
+                                const SizedBox(height: 20),
+
+                                // Items
+                                const _SectionTitle(title: 'Items'),
+                                _InfoContainer(
+                                  child: Column(
+                                    children: [
+                                      if (order.items != null)
+                                        ...order.items!
+                                            .map(
+                                              (item) => Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 12,
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Text(
+                                                      '${item.quantity}x',
+                                                      style: const TextStyle(
+                                                        fontSize: 15,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: Color(0xFF334155),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 16),
+                                                    Expanded(
+                                                      child: Text(
+                                                        item.name,
+                                                        style: const TextStyle(
+                                                          fontSize: 15,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Color(0xFF1E293B),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(item.price),
+                                                      style: const TextStyle(
+                                                        fontSize: 15,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Color(0xFF1E293B),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 8),
+                                        child: Divider(color: Color(0xFFE2E8F0)),
+                                      ),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text(
+                                            'Total Amount',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                          Text(
+                                            NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(order.amount),
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF111827),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+
+                                // Timeline
+                                _OrderTimeline(currentStatus: order.status.value),
+                                const SizedBox(height: 24),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 20),
+                        ),
 
-                          // Delivery Address
-                          const _SectionTitle(title: 'Delivery Address'),
-                          _InfoContainer(
-                            child: Text(
-                              _mockAddress,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Color(0xFF475569),
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Items
-                          const _SectionTitle(title: 'Items'),
-                          _InfoContainer(
-                            child: Column(
-                              children: [
-                                ..._mockItems
-                                    .map(
-                                      (item) => Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 12,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              '${item['qty']}x',
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w600,
-                                                color: Color(0xFF334155),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: Text(
-                                                item['name'],
-                                                style: const TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF1E293B),
-                                                ),
-                                              ),
-                                            ),
-                                            Text(
-                                              '₹${item['price']}',
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF1E293B),
-                                              ),
-                                            ),
+                        // Action Buttons
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            children: [
+                              if (isNew) ...[
+                                Expanded(
+                                  child: _ActionButton(
+                                    label: 'Reject',
+                                    isPrimary: false,
+                                    isLoading: isUpdating,
+                                    onTap: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text('Reject Order'),
+                                          content: const Text('Are you sure you want to reject this order? This action cannot be undone.'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Reject', style: TextStyle(color: Colors.red))),
                                           ],
                                         ),
-                                      ),
-                                    )
-                                    .toList(),
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 8),
-                                  child: Divider(color: Color(0xFFE2E8F0)),
+                                      );
+                                      if (confirm == true && context.mounted) {
+                                        context.read<OrdersListBloc>().add(UpdateOrderStatusEvent(order.id, OrderStatus.rejected));
+                                      }
+                                    },
+                                  ),
                                 ),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      'Total Amount',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF64748B),
-                                      ),
-                                    ),
-                                    Text(
-                                      '₹${order.amount.toInt()}',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF111827),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                const Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Order Type',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF64748B),
-                                      ),
-                                    ),
-                                    Text(
-                                      'Delivery',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF111827),
-                                      ),
-                                    ),
-                                  ],
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _ActionButton(
+                                    label: 'Accept Order',
+                                    isPrimary: true,
+                                    isLoading: isUpdating,
+                                    onTap: () {
+                                      context.read<OrdersListBloc>().add(UpdateOrderStatusEvent(order.id, OrderStatus.preparing));
+                                    },
+                                  ),
                                 ),
                               ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Timeline
-                          _OrderTimeline(currentStatus: order.status),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Action Buttons
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        if (isNew) ...[
-                          Expanded(
-                            child: _ActionButton(
-                              label: 'Reject',
-                              isPrimary: false,
-                              onTap: () {},
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _ActionButton(
-                              label: 'Accept Order',
-                              isPrimary: true,
-                              onTap: () {},
-                            ),
-                          ),
-                        ],
-                        if (isPreparing) ...[
-                          Expanded(
-                            child: _ActionButton(
-                              label: 'Mark as Ready',
-                              isPrimary: true,
-                              onTap: () {},
-                            ),
-                          ),
-                        ],
-                        if (isReady) ...[
-                          Expanded(
-                            child: _ActionButton(
-                              label: 'Assign Delivery',
-                              isPrimary: true,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => BlocProvider(
-                                      create: (context) =>
-                                          AssignDeliveryBloc(
-                                            repository:
-                                                AssignDeliveryRepository(
-                                                  service:
-                                                      AssignDeliveryService(),
-                                                ),
-                                            orderId: order.id,
-                                          )..add(
-                                            LoadRidersEvent(orderId: order.id),
+                              if (isPreparing) ...[
+                                Expanded(
+                                  child: _ActionButton(
+                                    label: 'Mark as Ready',
+                                    isPrimary: true,
+                                    isLoading: isUpdating,
+                                    onTap: () {
+                                      context.read<OrdersListBloc>().add(UpdateOrderStatusEvent(order.id, OrderStatus.ready));
+                                    },
+                                  ),
+                                ),
+                              ],
+                              if (isReady && order.status != OrderStatus.delivered) ...[
+                                Expanded(
+                                  child: _ActionButton(
+                                    label: 'Assign Delivery',
+                                    isPrimary: true,
+                                    isLoading: isUpdating,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => BlocProvider.value(
+                                            value: context.read<OrdersListBloc>(),
+                                            child: BlocProvider(
+                                              create: (context) =>
+                                                  AssignDeliveryBloc(
+                                                    repository:
+                                                        AssignDeliveryRepository(
+                                                          service:
+                                                              AssignDeliveryService(),
+                                                        ),
+                                                    orderId: order.id,
+                                                  )..add(
+                                                    LoadRidersEvent(orderId: order.id),
+                                                  ),
+                                              child: AssignDeliveryPage(
+                                                orderId: order.id,
+                                              ),
+                                            ),
                                           ),
-                                      child: AssignDeliveryPage(
-                                        orderId: order.id,
-                                      ),
-                                    ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                        if (isOutForDelivery) ...[
-                          Expanded(
-                            child: _ActionButton(
-                              label: 'Out for Delivery',
-                              isPrimary: true,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        OutForDeliveryPageUI(orderId: order.id),
+                                ),
+                              ],
+                              if (isOutForDelivery) ...[
+                                Expanded(
+                                  child: _ActionButton(
+                                    label: 'Mark Delivered',
+                                    isPrimary: true,
+                                    isLoading: isUpdating,
+                                    onTap: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text('Mark as Delivered'),
+                                          content: const Text('Are you sure the order has been delivered?'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true && context.mounted) {
+                                        context.read<OrdersListBloc>().add(UpdateOrderStatusEvent(order.id, OrderStatus.delivered));
+                                      }
+                                    },
                                   ),
-                                );
-                              },
-                            ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -1094,36 +1183,36 @@ class _OrderTimeline extends StatelessWidget {
 class _ActionButton extends StatelessWidget {
   final String label;
   final bool isPrimary;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool isLoading;
 
   const _ActionButton({
     required this.label,
     required this.isPrimary,
-    required this.onTap,
+    this.onTap,
+    this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
+    return ElevatedButton(
+      onPressed: isLoading ? null : onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isPrimary ? const Color(0xFFE52929) : Colors.white,
+        foregroundColor: isPrimary ? Colors.white : const Color(0xFF64748B),
+        elevation: 0,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: isPrimary ? const Color(0xFFE52929) : Colors.transparent,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          border: isPrimary
-              ? null
-              : Border.all(color: const Color(0xFFE52929), width: 1.5),
         ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isPrimary ? Colors.white : const Color(0xFFE52929),
-            ),
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isPrimary ? Colors.white : const Color(0xFFE52929),
           ),
         ),
       ),
@@ -1236,7 +1325,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
-            onPressed: () => context.read<OrdersListBloc>().add(LoadOrders()),
+            onPressed: () => context.read<OrdersListBloc>().add(LoadOrdersStream(FirebaseAuth.instance.currentUser?.uid ?? '')),
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Refresh'),
             style: ElevatedButton.styleFrom(

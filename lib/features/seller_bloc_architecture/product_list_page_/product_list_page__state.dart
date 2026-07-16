@@ -14,7 +14,7 @@ class ProductListLoading extends ProductListPageState {}
 
 class ProductListLoaded extends ProductListPageState {
   final List<Product> products;
-  final String activeFilter; // 'All Products', 'Active', 'Inactive', 'Low Stock', 'Veg', 'Non-Veg'
+  final String activeFilter; // 'All Products', 'Active', 'Inactive', 'Low Stock', 'Veg', 'Non-Veg', 'Archived'
   final String searchQuery;
   final int allCount;
   final int activeCount;
@@ -22,6 +22,7 @@ class ProductListLoaded extends ProductListPageState {
   final int lowStockCount;
   final int vegCount;
   final int nonVegCount;
+  final int archivedCount;
   final double averageRating;
   final double totalRevenue;
   // Advanced filter fields
@@ -41,6 +42,7 @@ class ProductListLoaded extends ProductListPageState {
     required this.lowStockCount,
     required this.vegCount,
     required this.nonVegCount,
+    required this.archivedCount,
     required this.averageRating,
     required this.totalRevenue,
     this.sortBy = 'Recently Added',
@@ -60,6 +62,7 @@ class ProductListLoaded extends ProductListPageState {
     int? lowStockCount,
     int? vegCount,
     int? nonVegCount,
+    int? archivedCount,
     double? averageRating,
     double? totalRevenue,
     String? sortBy,
@@ -78,6 +81,7 @@ class ProductListLoaded extends ProductListPageState {
       lowStockCount: lowStockCount ?? this.lowStockCount,
       vegCount: vegCount ?? this.vegCount,
       nonVegCount: nonVegCount ?? this.nonVegCount,
+      archivedCount: archivedCount ?? this.archivedCount,
       averageRating: averageRating ?? this.averageRating,
       totalRevenue: totalRevenue ?? this.totalRevenue,
       sortBy: sortBy ?? this.sortBy,
@@ -99,6 +103,7 @@ class ProductListLoaded extends ProductListPageState {
         lowStockCount,
         vegCount,
         nonVegCount,
+        archivedCount,
         averageRating,
         totalRevenue,
         sortBy,

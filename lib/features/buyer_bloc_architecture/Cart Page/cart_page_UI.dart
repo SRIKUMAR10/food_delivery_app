@@ -140,7 +140,6 @@ class _CartPageUIState extends State<CartPageUI> {
         );
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF6F6F6),
         body: SafeArea(
           child: BlocBuilder<CartBloc, CartState>(
             builder: (context, state) {
@@ -263,21 +262,40 @@ class _CartPageUIState extends State<CartPageUI> {
                       final item = items[index];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                '${item.quantity}x ${item.name}',
-                                style: TextStyle(fontSize: 14),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${item.quantity}x ${item.name}',
+                                    style: TextStyle(fontSize: 14),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  _currFmt.format(item.price * item.quantity),
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                            if (item.selectedAddons.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2.0, left: 16.0),
+                                child: Text(
+                                  '+ ${item.selectedAddons.join(", ")}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                            Text(
-                              _currFmt.format(item.price * item.quantity),
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
                           ],
                         ),
                       );
@@ -297,7 +315,7 @@ class _CartPageUIState extends State<CartPageUI> {
   /// Header showing the title and item count pill.
   Widget _buildHeader(int count) {
     return Container(
-      color: Colors.white,
+      color: Colors.transparent,
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
       child: Row(
         children: [
@@ -540,6 +558,20 @@ class _CartPageUIState extends State<CartPageUI> {
                         color: Colors.grey.shade500,
                       ),
                     ),
+                    if (item.selectedAddons.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          '+ ${item.selectedAddons.join(", ")}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -73,28 +73,6 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFAFA),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Color(0xFF0F172A),
-            size: 20,
-          ),
-          onPressed: () => Navigator.maybePop(context),
-        ),
-        title: Text(
-          'Request Payout',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF0F172A),
-          ),
-        ),
-        centerTitle: false,
-      ),
       body: SafeArea(
         child: BlocConsumer<SellerRequestPayoutBloc, SellerRequestPayoutState>(
           listener: (context, state) {
@@ -163,14 +141,49 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Custom Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Request Payout',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 40,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF111827),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Withdraw funds to your account',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                color: const Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.maybePop(context),
+                        color: const Color(0xFF111827),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
                   // Available Balance Banner
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFF1F5F9)),
+                      color: const Color(0xFFF4F6FB), // Light bluish background matching wallet mockup
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,16 +191,16 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
                         Text(
                           'Available Balance',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF64748B),
+                            color: const Color(0xFF475569),
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Text(
                           _formatCurrency(state.balance, context),
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 30,
+                            fontSize: 34,
                             fontWeight: FontWeight.w800,
                             color: const Color(0xFF0F172A),
                           ),
@@ -407,7 +420,7 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE11D48),
+                  backgroundColor: const Color(0xFFE52929),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -450,12 +463,29 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(height: 40, width: 200, color: Colors.grey[200]),
+                    const SizedBox(height: 8),
+                    Container(height: 16, width: 150, color: Colors.grey[200]),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_back, color: Colors.grey),
+            ],
+          ),
+          const SizedBox(height: 32),
           Container(
-            height: 100,
+            height: 120,
             width: double.infinity,
             decoration: BoxDecoration(
               color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
             ),
           ),
           const SizedBox(height: 24),

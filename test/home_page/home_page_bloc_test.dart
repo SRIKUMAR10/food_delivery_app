@@ -233,6 +233,34 @@ void main() {
     );
   });
 
+  group('HomePageBloc with real-time updates', () {
+    late FakeFirebaseFirestore fakeFirestore;
+    late ProductRepository productRepository;
+
+    setUp(() {
+      fakeFirestore = FakeFirebaseFirestore();
+      productRepository = ProductRepository(firestore: fakeFirestore);
+    });
+
+    test('removes product from state when it is deleted from firestore', () async {
+      // 1. Seed a product
+      await _seedProducts(fakeFirestore, category: 'Pizza', count: 1);
+      final bloc = HomePageBloc(productRepository: productRepository);
+      
+      // 2. Start listening
+      bloc.add(const HomePageStarted());
+      await expectLater(bloc.stream, emits(isA<HomePageLoaded>().having((s) => s.filteredItems.length, 'item count', 1)));
+
+      // 3. Delete the product from firestore
+      final productDoc = (await fakeFirestore.collection('products').get()).docs.first;
+      await productRepository.deleteProduct(productDoc.id);
+
+      // 4. Verify the state updates to be empty
+      await expectLater(bloc.stream, emits(isA<HomePageEmpty>()));
+      bloc.close();
+    });
+  });
+
   // ─── Performance Tests ──────────────────────────────────────────────────────
 
   group('HomePageBloc performance', () {

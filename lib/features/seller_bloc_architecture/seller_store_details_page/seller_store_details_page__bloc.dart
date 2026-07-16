@@ -32,12 +32,12 @@ class SellerStoreDetailsBloc
 
       emit(
         SellerStoreDetailsLoaded(
-          restaurantName: seller.shopName ?? seller.name,
-          address: seller.businessDetails ?? 'Address not set',
-          phone: seller.phoneNumber ?? 'Phone not set',
-          openingHours: seller.openingHours ?? '10:00 AM - 11:00 PM',
-          deliveryTime: seller.deliveryTime ?? '30 - 45 min',
-          deliveryArea: seller.deliveryArea ?? '5.0 km',
+          restaurantName: seller.shopName.isNotEmpty ? seller.shopName : seller.name,
+          address: seller.businessDetails.isNotEmpty ? seller.businessDetails : 'Address not set',
+          phone: seller.phoneNumber.isNotEmpty ? seller.phoneNumber : 'Phone not set',
+          openingHours: seller.openingHours.isNotEmpty ? seller.openingHours : '10:00 AM - 11:00 PM',
+          deliveryTime: seller.deliveryTime.isNotEmpty ? seller.deliveryTime : '30 - 45 min',
+          deliveryArea: seller.deliveryArea.isNotEmpty ? seller.deliveryArea : '5.0 km',
           gstNumber: seller.gstNumber,
           fssaiNumber: seller.fssaiNumber,
           panNumber: seller.panNumber,
@@ -70,7 +70,7 @@ class SellerStoreDetailsBloc
       try {
         final user = _repository.currentUser;
         if (user != null) {
-          await _repository.updateSeller(user.uid, {'isOnline': event.isOnline});
+          await _repository.updateSellerData(user.uid, {'isOnline': event.isOnline});
         }
         
         emit(
@@ -107,7 +107,7 @@ class SellerStoreDetailsBloc
       try {
         final user = _repository.currentUser;
         if (user != null) {
-          await _repository.updateSeller(user.uid, {event.field: event.value});
+          await _repository.updateSellerData(user.uid, {event.field: event.value});
         }
         
         // Optimistically update the UI

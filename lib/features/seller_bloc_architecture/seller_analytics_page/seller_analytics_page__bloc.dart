@@ -16,8 +16,12 @@ class SellerAnalyticsBloc extends Bloc<SellerAnalyticsEvent, SellerAnalyticsStat
   ) async {
     emit(AnalyticsLoading());
     try {
-      final data = await repository.fetchAnalyticsData(event.timeRange);
-      emit(AnalyticsLoaded(data: data, selectedTimeRange: event.timeRange));
+      final data = await repository.fetchAnalyticsData(event.sellerId, event.timeRange);
+      if (data.isEmpty) {
+        emit(AnalyticsEmpty(selectedTimeRange: event.timeRange));
+      } else {
+        emit(AnalyticsLoaded(data: data, selectedTimeRange: event.timeRange));
+      }
     } catch (e) {
       emit(AnalyticsError(message: e.toString()));
     }

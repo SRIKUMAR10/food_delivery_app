@@ -17,10 +17,9 @@ class OrderRepository {
     }
 
     return _firestore
-        .collection('users')
-        .doc(uid)
         .collection('orders')
-        .orderBy('date', descending: true)
+        .where('customerId', isEqualTo: uid)
+        .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) => OrderModel.fromFirestore(doc)).toList();

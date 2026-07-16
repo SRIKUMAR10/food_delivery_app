@@ -1,0 +1,9 @@
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('Food Go Login Screen error_handling Tests', () {
+    test('Placeholder for error_handling testing', () {
+      expect(true, isTrue);
+    });
+  });
+}

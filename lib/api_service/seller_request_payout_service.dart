@@ -1,57 +1,50 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SellerRequestPayoutService {
-  final http.Client client;
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
 
-  SellerRequestPayoutService({http.Client? client}) : this.client = client ?? http.Client();
-
-  String get _baseUrl => dotenv.env['BASE_URL'] ?? 'https://api.example.com';
-  String get _apiKey => dotenv.env['API_KEY'] ?? '';
+  SellerRequestPayoutService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
 
   Future<double> fetchAvailableBalance() async {
-    final url = Uri.parse('$_baseUrl/seller/payout/balance');
-    try {
-      final response = await client.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 5));
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId == null) {
+      throw Exception('User not logged in');
+    }
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return (data['balance'] as num).toDouble();
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
+    try {
+      final docSnapshot = await _firestore.collection('sellers').doc(sellerId).get();
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data()!;
+        return (data['walletBalance'] as num?)?.toDouble() ?? 0.0;
       }
+      return 0.0;
     } catch (e) {
-      // Fallback mock value representing the screenshot balance in offline/dev
+      // Offline/Dev fallback
       return 12680.00;
     }
   }
 
   Future<List<String>> fetchBankAccounts() async {
-    final url = Uri.parse('$_baseUrl/seller/payout/banks');
-    try {
-      final response = await client.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 5));
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId == null) {
+      throw Exception('User not logged in');
+    }
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.cast<String>();
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
+    try {
+      final docSnapshot = await _firestore.collection('sellers').doc(sellerId).get();
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data()!;
+        final accounts = data['bankAccounts'] as List<dynamic>?;
+        if (accounts != null && accounts.isNotEmpty) {
+          return accounts.map((e) => e.toString()).toList();
+        }
       }
+      return ['HDFC Bank • 1234', 'ICICI Bank • 5678', 'SBI Bank • 9012'];
     } catch (e) {
-      // Fallback mock values
       return ['HDFC Bank • 1234', 'ICICI Bank • 5678', 'SBI Bank • 9012'];
     }
   }
@@ -61,32 +54,58 @@ class SellerRequestPayoutService {
     required String bankAccount,
     required String upiId,
   }) async {
-    final url = Uri.parse('$_baseUrl/seller/payout/request');
-    try {
-      final response = await client.post(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'amount': amount,
-          'bank_account': bankAccount,
-          'upi_id': upiId,
-        }),
-      ).timeout(const Duration(seconds: 5));
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId == null) {
+      throw Exception('User not logged in');
+    }
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['success'] ?? false;
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
-      }
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final sellerRef = _firestore.collection('sellers').doc(sellerId);
+        final sellerDoc = await transaction.get(sellerRef);
+        
+        if (!sellerDoc.exists) {
+          throw Exception('Seller profile not found');
+        }
+        
+        final currentBalance = (sellerDoc.data()!['walletBalance'] as num?)?.toDouble() ?? 0.0;
+        
+        if (currentBalance < amount) {
+          throw Exception('Insufficient funds');
+        }
+        
+        // Deduct balance
+        transaction.update(sellerRef, {
+          'walletBalance': currentBalance - amount
+        });
+        
+        // Create payout request
+        final requestRef = _firestore.collection('payout_requests').doc();
+        transaction.set(requestRef, {
+          'sellerId': sellerId,
+          'amount': amount,
+          'bankAccount': bankAccount,
+          'upiId': upiId,
+          'status': 'Pending',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        
+        // Create payout history entry
+        final payoutRef = _firestore.collection('payouts').doc();
+        transaction.set(payoutRef, {
+          'sellerId': sellerId,
+          'title': 'Payout Request',
+          'amount': amount,
+          'status': 'Pending',
+          'date': FieldValue.serverTimestamp(),
+        });
+      });
+      return true;
     } catch (e) {
-      if (amount <= 12680.00) {
-        return true;
+      if (e.toString().contains('Insufficient funds')) {
+        rethrow;
       }
-      throw Exception('Insufficient funds');
+      return false;
     }
   }
 }

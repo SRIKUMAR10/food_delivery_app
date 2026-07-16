@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/models/inventory_item_model.dart';
 import 'inventory_low_stock_page_bloc.dart';
 import 'inventory_low_stock_page_event.dart';
-import 'inventory_low_stock_page_state.dart';
 
 class ProductDetailsPage extends StatefulWidget {
-  final InventoryItem item;
+  final InventoryItemModel item;
 
   const ProductDetailsPage({super.key, required this.item});
 
@@ -17,6 +17,20 @@ class ProductDetailsPage extends StatefulWidget {
 
 class _ProductDetailsPageState extends State<ProductDetailsPage> {
   late double _quantity;
+  String _selectedReason = 'Manual Adjustment';
+  final TextEditingController _noteController = TextEditingController();
+
+  final List<String> _reasons = [
+    'Supplier Restock',
+    'Customer Order',
+    'Wastage',
+    'Damaged',
+    'Expired',
+    'Manual Adjustment',
+    'Stock Audit Correction',
+    'Initial Stock',
+    'Other'
+  ];
 
   @override
   void initState() {
@@ -24,18 +38,25 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     _quantity = widget.item.quantity;
   }
 
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
   void _updateStock() {
-    context.read<InventoryLowStockPageBloc>().add(
-      UpdateStockQuantity(id: widget.item.id, newQuantity: _quantity),
-    );
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Stock updated successfully',
-          style: GoogleFonts.plusJakartaSans(),
-        ),
-        backgroundColor: const Color(0xFF22C55E),
-        behavior: SnackBarBehavior.floating,
+    final diff = _quantity - widget.item.quantity;
+    if (diff == 0) {
+      Navigator.pop(context);
+      return;
+    }
+
+    context.read<InventoryBloc>().add(
+      UpdateStockEvent(
+        productId: widget.item.id,
+        quantityChange: diff,
+        reason: _selectedReason,
+        note: _selectedReason == 'Other' ? _noteController.text : null,
       ),
     );
     Navigator.pop(context);
@@ -49,15 +70,11 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Color(0xFF1E293B),
-            size: 20,
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1E293B), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Product Details',
+          'Manage Inventory',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -71,50 +88,62 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Hero(
-                tag: 'product_icon_${widget.item.name}',
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-                    border: Border.all(
-                      color: const Color(0xFF4F46E5).withValues(alpha: 0.2),
-                      width: 2,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      widget.item.name.substring(0, 1).toUpperCase(),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF4F46E5),
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                      ),
+                      child: Center(
+                        child: Text(
+                          widget.item.name.substring(0, 1).toUpperCase(),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF4F46E5),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.item.name,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1E293B),
+                            ),
+                          ),
+                          Text(
+                            'SKU: ${widget.item.sku}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                widget.item.name,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1E293B),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Category: ${widget.item.category}',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 48),
+
+              // Stock Management
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -132,9 +161,9 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Manage Stock Quantity',
+                      'Update Stock Quantity',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF1E293B),
                       ),
@@ -147,18 +176,15 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                           icon: Icons.remove,
                           onPressed: () {
                             if (_quantity > 0) {
-                              setState(() {
-                                _quantity -= 1;
-                                if (_quantity < 0) _quantity = 0;
-                              });
+                              setState(() => _quantity -= 1);
                             }
                           },
                         ),
                         const SizedBox(width: 32),
                         Text(
-                          '${_quantity.toStringAsFixed(1)} ${widget.item.unit}',
+                          '${_quantity.toInt()}',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 24,
+                            fontSize: 32,
                             fontWeight: FontWeight.bold,
                             color: const Color(0xFF1E293B),
                           ),
@@ -167,13 +193,89 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                         _buildQuantityButton(
                           icon: Icons.add,
                           onPressed: () {
-                            setState(() {
-                              _quantity += 1;
-                            });
+                            setState(() => _quantity += 1);
                           },
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'Difference: ${(_quantity - widget.item.quantity).toInt()}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: (_quantity - widget.item.quantity) >= 0 
+                              ? const Color(0xFF22C55E) 
+                              : const Color(0xFFEF4444),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Reason Dropdown
+                    Text(
+                      'Reason for update',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedReason,
+                          items: _reasons.map((String reason) {
+                            return DropdownMenuItem<String>(
+                              value: reason,
+                              child: Text(
+                                reason,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _selectedReason = value);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    
+                    if (_selectedReason == 'Other') ...[
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _noteController,
+                        decoration: InputDecoration(
+                          hintText: 'Enter specific reason...',
+                          hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
@@ -188,7 +290,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                           elevation: 0,
                         ),
                         child: Text(
-                          'Save Changes',
+                          'Save Stock Update',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -207,10 +309,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     );
   }
 
-  Widget _buildQuantityButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
+  Widget _buildQuantityButton({required IconData icon, required VoidCallback onPressed}) {
     return Material(
       color: const Color(0xFFF1F5F9),
       shape: const CircleBorder(),

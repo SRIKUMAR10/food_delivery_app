@@ -13,9 +13,6 @@ class SellerOnboardPageBloc extends Bloc<SellerOnboardPageEvent, SellerOnboardPa
   ) async {
     emit(SellerOnboardLoading());
     try {
-      // Simulate network request or initialization
-      await Future.delayed(const Duration(seconds: 2));
-      
       // Navigate to the next screen or show success
       emit(SellerOnboardSuccess());
     } catch (e) {

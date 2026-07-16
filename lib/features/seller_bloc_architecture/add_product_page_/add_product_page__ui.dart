@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lottie/lottie.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'add_product_page__bloc.dart';
 import 'add_product_page__event.dart';
 import 'add_product_page__state.dart';
+import '../product_list_page_/product_repository.dart';
 
 // --- Theme Constants (Material 3) ---
 const Color _bgColor = Color(0xFFF7F8FA);
@@ -22,12 +24,19 @@ const Color _textSecondary = Color(0xFF6B7280); // Mid gray
 const Color _borderColor = Color(0xFFE5E7EB); // Light border
 
 class AddProductPage extends StatelessWidget {
-  const AddProductPage({super.key});
+  final String? productId;
+  const AddProductPage({super.key, this.productId});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => AddProductPageBloc(),
+      create: (context) {
+        final bloc = AddProductPageBloc(repository: ProductRepositoryImpl());
+        if (productId != null) {
+          bloc.add(LoadProductEvent(productId!));
+        }
+        return bloc;
+      },
       child: const AddProductView(),
     );
   }
@@ -47,6 +56,7 @@ class _AddProductViewState extends State<AddProductView> {
   final _discountController = TextEditingController();
   final _descController = TextEditingController();
   final _prepTimeController = TextEditingController();
+  final _caloriesController = TextEditingController();
   final _portionSizeController = TextEditingController();
   final _addonsController = TextEditingController();
   final _stockController = TextEditingController(text: '0');
@@ -56,6 +66,7 @@ class _AddProductViewState extends State<AddProductView> {
   bool _showLivePreview = true;
   bool _isUpdating = false;
   Timer? _updateTimer;
+  bool _isInitialized = false;
 
   final List<Map<String, dynamic>> _categories = [
     {'id': 'Pizza', 'icon': '🍕', 'label': 'Pizza'},
@@ -113,7 +124,6 @@ class _AddProductViewState extends State<AddProductView> {
   }
 
   void _updateField(String field, dynamic value) {
-    context.read<AddProductPageBloc>().add(FieldChangedEvent(field, value));
     setState(() => _isUpdating = true);
     _updateTimer?.cancel();
     _updateTimer = Timer(const Duration(milliseconds: 800), () {
@@ -129,6 +139,7 @@ class _AddProductViewState extends State<AddProductView> {
     _discountController.dispose();
     _descController.dispose();
     _prepTimeController.dispose();
+    _caloriesController.dispose();
     _portionSizeController.dispose();
     _addonsController.dispose();
     _stockController.dispose();
@@ -146,6 +157,35 @@ class _AddProductViewState extends State<AddProductView> {
       body: SafeArea(
         child: BlocConsumer<AddProductPageBloc, AddProductPageState>(
           listener: (context, state) {
+            if (state.initialProduct != null && !_isInitialized) {
+              final p = state.initialProduct!;
+              _nameController.text = p.name;
+              _priceController.text = p.price.toString();
+
+              double pct = 0.0;
+              if (p.discountPrice > 0 && p.price > 0) {
+                // If discountPrice holds finalPrice (with 18% GST)
+                pct = 100 * (1 - (p.discountPrice / (p.price * 1.18)));
+                if (pct < 0) pct = 0;
+              }
+              _discountController.text = pct > 0 ? pct.toStringAsFixed(0) : '';
+
+              _descController.text = p.description;
+              _prepTimeController.text = p.prepTime;
+              _caloriesController.text = p.calories;
+              _portionSizeController.text = p.portionSize;
+              _addonsController.text = p.addons.join(', ');
+              _stockController.text = p.availableStock.toString();
+              _alertController.text = p.minimumAlert.toString();
+              _isInitialized = true;
+
+              // Trigger live preview updates
+              _updateField('name', p.name);
+              _updateField('price', p.price);
+              _updateField('discountPercent', pct);
+              _updateField('description', p.description);
+            }
+
             if (state.status == AddProductStatus.success) {
               showDialog(
                 context: context,
@@ -277,7 +317,9 @@ class _AddProductViewState extends State<AddProductView> {
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final double titleFontSize = screenWidth > 1024 ? 26 : (screenWidth > 600 ? 24 : 22);
+    final double titleFontSize = screenWidth > 1024
+        ? 26
+        : (screenWidth > 600 ? 24 : 22);
 
     return AppBar(
       backgroundColor: _surfaceColor,
@@ -580,9 +622,18 @@ class _AddProductViewState extends State<AddProductView> {
                     Expanded(
                       child: _buildTextField(
                         controller: _prepTimeController,
-                        label: 'Preparation Time',
+                        label: 'Prep Time',
                         hint: 'e.g. 15 mins',
                         icon: Icons.timer_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _caloriesController,
+                        label: 'Calories',
+                        hint: 'e.g. 350 kcal',
+                        icon: Icons.local_fire_department_outlined,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -769,7 +820,7 @@ class _AddProductViewState extends State<AddProductView> {
               ),
             ),
           ),
-          if (state.images.isNotEmpty) ...[
+          if (state.images.isNotEmpty || state.existingImages.isNotEmpty) ...[
             const SizedBox(height: 32),
             const Text(
               'Uploaded',
@@ -788,10 +839,16 @@ class _AddProductViewState extends State<AddProductView> {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount:
-                        state.images.length + (state.images.length < 5 ? 1 : 0),
+                        state.existingImages.length +
+                        state.images.length +
+                        ((state.images.length + state.existingImages.length) < 5
+                            ? 1
+                            : 0),
                     separatorBuilder: (_, __) => const SizedBox(width: 16),
                     itemBuilder: (context, index) {
-                      if (index == state.images.length) {
+                      final totalImages =
+                          state.existingImages.length + state.images.length;
+                      if (index == totalImages) {
                         return GestureDetector(
                           onTap: () async {
                             final ImagePicker picker = ImagePicker();
@@ -808,6 +865,7 @@ class _AddProductViewState extends State<AddProductView> {
                           },
                           child: Container(
                             width: 110,
+                            height: 110,
                             decoration: BoxDecoration(
                               border: Border.all(
                                 color: _borderColor,
@@ -826,7 +884,14 @@ class _AddProductViewState extends State<AddProductView> {
                           ),
                         );
                       }
+
+                      final isExistingImage =
+                          index < state.existingImages.length;
+                      final imageIndex = isExistingImage
+                          ? index
+                          : index - state.existingImages.length;
                       final isMain = index == 0;
+
                       return Stack(
                         clipBehavior: Clip.none,
                         children: [
@@ -844,34 +909,38 @@ class _AddProductViewState extends State<AddProductView> {
                                         InteractiveViewer(
                                           minScale: 1.0,
                                           maxScale: 4.0,
-                                          child: kIsWeb
-                                              ? Image.network(
-                                                  state.images[index].path,
+                                          child: isExistingImage
+                                              ? CachedNetworkImage(
+                                                  imageUrl: state
+                                                      .existingImages[imageIndex],
+                                                  fit: BoxFit.contain,
                                                 )
-                                              : Image.file(
-                                                  File(
-                                                    state.images[index].path,
-                                                  ),
-                                                ),
+                                              : (kIsWeb
+                                                    ? Image.network(
+                                                        state
+                                                            .images[imageIndex]
+                                                            .path,
+                                                      )
+                                                    : Image.file(
+                                                        File(
+                                                          state
+                                                              .images[imageIndex]
+                                                              .path,
+                                                        ),
+                                                      )),
                                         ),
                                         Positioned(
-                                          top: 10,
-                                          right: 10,
-                                          child: GestureDetector(
-                                            onTap: () =>
-                                                Navigator.pop(dialogContext),
-                                            child: Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: const BoxDecoration(
-                                                color: Colors.black54,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Icon(
-                                                Icons.close,
-                                                color: Colors.white,
-                                                size: 20,
-                                              ),
+                                          top: 0,
+                                          right: 0,
+                                          child: IconButton(
+                                            icon: const Icon(
+                                              Icons.close,
+                                              color: Colors.white,
+                                              size: 30,
                                             ),
+                                            onPressed: () {
+                                              Navigator.pop(dialogContext);
+                                            },
                                           ),
                                         ),
                                       ],
@@ -882,47 +951,55 @@ class _AddProductViewState extends State<AddProductView> {
                             },
                             child: Container(
                               width: 110,
+                              height: 110,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                border: isMain
-                                    ? Border.all(color: _primaryColor, width: 2)
-                                    : Border.all(color: _borderColor),
-                                image: DecorationImage(
-                                  image: kIsWeb
-                                      ? NetworkImage(state.images[index].path)
-                                      : FileImage(
-                                              File(state.images[index].path),
-                                            )
-                                            as ImageProvider,
-                                  fit: BoxFit.cover,
+                                border: Border.all(
+                                  color: isMain ? _primaryColor : _borderColor,
+                                  width: isMain ? 2 : 1,
                                 ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: isExistingImage
+                                    ? CachedNetworkImage(
+                                        imageUrl:
+                                            state.existingImages[imageIndex],
+                                        fit: BoxFit.cover,
+                                      )
+                                    : (kIsWeb
+                                          ? Image.network(
+                                              state.images[imageIndex].path,
+                                              fit: BoxFit.cover,
+                                            )
+                                          : Image.file(
+                                              File(
+                                                state.images[imageIndex].path,
+                                              ),
+                                              fit: BoxFit.cover,
+                                            )),
                               ),
                             ),
                           ),
                           if (isMain)
                             Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
+                              top: -8,
+                              left: -8,
                               child: Container(
-                                decoration: const BoxDecoration(
-                                  color: _primaryColor,
-                                  borderRadius: BorderRadius.only(
-                                    bottomLeft: Radius.circular(16),
-                                    bottomRight: Radius.circular(16),
-                                  ),
-                                ),
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 6,
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
-                                child: const Center(
-                                  child: Text(
-                                    'Main Image ⭐',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                decoration: BoxDecoration(
+                                  color: _primaryColor,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'Main',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
@@ -932,25 +1009,31 @@ class _AddProductViewState extends State<AddProductView> {
                             right: -8,
                             child: GestureDetector(
                               onTap: () {
-                                context.read<AddProductPageBloc>().add(
-                                  RemoveImageEvent(index),
-                                );
+                                if (isExistingImage) {
+                                  context.read<AddProductPageBloc>().add(
+                                    RemoveExistingImageEvent(imageIndex),
+                                  );
+                                } else {
+                                  context.read<AddProductPageBloc>().add(
+                                    RemoveImageEvent(imageIndex),
+                                  );
+                                }
                               },
                               child: Container(
-                                padding: const EdgeInsets.all(6),
+                                padding: const EdgeInsets.all(4),
                                 decoration: const BoxDecoration(
                                   color: Colors.white,
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black26,
+                                      color: Colors.black12,
                                       blurRadius: 4,
                                     ),
                                   ],
                                 ),
                                 child: const Icon(
                                   Icons.close,
-                                  size: 14,
+                                  size: 16,
                                   color: _primaryColor,
                                 ),
                               ),
@@ -1287,6 +1370,11 @@ class _AddProductViewState extends State<AddProductView> {
                   icon: Icons.inventory_2_outlined,
                   keyboardType: TextInputType.number,
                   enabled: !state.hasUnlimitedStock,
+                  onTap: () {
+                    if (_stockController.text == '0') {
+                      _stockController.clear();
+                    }
+                  },
                 ),
               ),
               const SizedBox(width: 16),
@@ -1298,6 +1386,11 @@ class _AddProductViewState extends State<AddProductView> {
                   icon: Icons.notification_important_outlined,
                   keyboardType: TextInputType.number,
                   enabled: !state.hasUnlimitedStock,
+                  onTap: () {
+                    if (_alertController.text == '10' || _alertController.text == '0') {
+                      _alertController.clear();
+                    }
+                  },
                 ),
               ),
             ],
@@ -1485,7 +1578,7 @@ class _AddProductViewState extends State<AddProductView> {
   }
 
   Widget _buildReviewChecklist(AddProductPageState state) {
-    bool hasImages = state.images.isNotEmpty;
+    bool hasImages = state.images.isNotEmpty || state.existingImages.isNotEmpty;
     bool hasName = _nameController.text.isNotEmpty;
     bool hasPrice =
         double.tryParse(_priceController.text) != null &&
@@ -1550,9 +1643,11 @@ class _AddProductViewState extends State<AddProductView> {
     String? helperText,
     int? maxLength,
     bool enabled = true,
+    VoidCallback? onTap,
   }) {
     return TextFormField(
       controller: controller,
+      onTap: onTap,
       maxLines: maxLines,
       maxLength: maxLength,
       keyboardType: keyboardType,
@@ -2163,10 +2258,7 @@ class _AddProductViewState extends State<AddProductView> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    flex: 6,
-                    child: _buildPreviewImage(state),
-                  ),
+                  Expanded(flex: 6, child: _buildPreviewImage(state)),
                   Expanded(
                     flex: 4,
                     child: Padding(
@@ -2332,16 +2424,23 @@ class _AddProductViewState extends State<AddProductView> {
             onPressed: state.status == AddProductStatus.loading
                 ? null
                 : () {
+                    final basePrice = double.tryParse(_priceController.text) ?? 0.0;
+                    final discountPct = double.tryParse(_discountController.text) ?? 0.0;
+                    final discounted = basePrice - (basePrice * (discountPct / 100));
+                    final finalPrice = discounted + (discounted * 0.18); // Always calculate with GST
+
                     context.read<AddProductPageBloc>().add(
                       SubmitProductEvent(
                         name: _nameController.text,
-                        price: double.tryParse(_priceController.text) ?? 0.0,
-                        discountPrice:
-                            double.tryParse(_discountController.text) ?? 0.0,
+                        price: basePrice,
+                        discountPrice: finalPrice,
                         description: _descController.text,
                         prepTime: _prepTimeController.text,
+                        calories: _caloriesController.text,
                         portionSize: _portionSizeController.text,
                         addons: _addonsController.text,
+                        availableStock: int.tryParse(_stockController.text),
+                        minimumAlert: int.tryParse(_alertController.text),
                       ),
                     );
                   },
@@ -2421,18 +2520,23 @@ class _AddProductViewState extends State<AddProductView> {
                   onPressed: state.status == AddProductStatus.loading
                       ? null
                       : () {
+                          final basePrice = double.tryParse(_priceController.text) ?? 0.0;
+                          final discountPct = double.tryParse(_discountController.text) ?? 0.0;
+                          final discounted = basePrice - (basePrice * (discountPct / 100));
+                          final finalPrice = discounted + (discounted * 0.18); // Always calculate with GST
+
                           context.read<AddProductPageBloc>().add(
                             SubmitProductEvent(
                               name: _nameController.text,
-                              price:
-                                  double.tryParse(_priceController.text) ?? 0.0,
-                              discountPrice:
-                                  double.tryParse(_discountController.text) ??
-                                  0.0,
+                              price: basePrice,
+                              discountPrice: finalPrice,
                               description: _descController.text,
                               prepTime: _prepTimeController.text,
+                              calories: _caloriesController.text,
                               portionSize: _portionSizeController.text,
                               addons: _addonsController.text,
+                              availableStock: int.tryParse(_stockController.text),
+                              minimumAlert: int.tryParse(_alertController.text),
                             ),
                           );
                         },
@@ -2535,11 +2639,10 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 1500),
-        )..repeat();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
   }
 
   @override

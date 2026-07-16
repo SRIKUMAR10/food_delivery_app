@@ -11,11 +11,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/CurvedNavigationBarView/Buyer_chat_support_ui.dart';
 
 import '../Order%20Page/order_UI.dart';
 import '../Order Page/order_repository.dart';
 import '../WalletScreen/WalletScreen_UI.dart';
 import '../Cart%20Page/cart_page_UI.dart';
+
 import '../home_Page/home_Page_UI.dart';
 
 class CurvedNavigationBarView extends StatefulWidget {
@@ -36,6 +38,7 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
   // Keys for nested navigators to allow independent navigation within each tab
   // while keeping the bottom navigation bar visible.
   final List<GlobalKey<NavigatorState>> _navigatorKeys = [
+    GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
@@ -83,6 +86,8 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
           3,
           OrderPageUI(orderRepository: OrderRepository()),
         );
+      case 4:
+        return _buildTabNavigator(4, const BuyerChatSupportPage());
       default:
         return _buildTabNavigator(
           0,
@@ -178,6 +183,11 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
                       icon: Icon(Icons.receipt_long_outlined),
                       label: Text('Orders'),
                     ),
+                    NavigationRailDestination(
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      icon: Icon(Icons.support_agent_outlined),
+                      label: Text('Support'),
+                    ),
                   ],
                 ),
               ],
@@ -197,6 +207,7 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
               _buildNavItem(Icons.account_balance_wallet_outlined, 'Wallet', 1),
               _buildNavItem(Icons.shopping_cart_outlined, 'Cart', 2),
               _buildNavItem(Icons.receipt_long_outlined, 'Orders', 3),
+              _buildNavItem(Icons.support_agent_outlined, 'Support', 4),
             ],
             color: Colors.white,
             buttonBackgroundColor: const Color(0xFFE52121),
@@ -213,18 +224,25 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
   /// Builds a nav bar item — icon only when selected, icon + label otherwise.
   Widget _buildNavItem(IconData icon, String label, int index) {
     final bool isSelected = _selectedIndex == index;
-    return isSelected
-        ? Icon(icon, size: 30, color: Colors.white)
-        : Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 26, color: Colors.black54),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 10, color: Colors.black54),
-              ),
-            ],
-          );
+    final color = isSelected ? Colors.white : Colors.black54;
+
+    // The selected item now also shows a label, but with a white color.
+    // The buttonBackgroundColor from CurvedNavigationBar provides the red background.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: isSelected ? 30 : 26, color: color),
+        if (!isSelected) const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isSelected ? 12 : 10,
+            color: color,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
   }
 }

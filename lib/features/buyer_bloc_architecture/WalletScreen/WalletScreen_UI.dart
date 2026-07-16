@@ -317,7 +317,6 @@ class _WalletViewState extends State<WalletView> {
           );
         },
         child: Scaffold(
-          backgroundColor: const Color(0xFFFBFBFB),
           body: SafeArea(
             child: RefreshIndicator(
               onRefresh: () async => _loadInitialData(),

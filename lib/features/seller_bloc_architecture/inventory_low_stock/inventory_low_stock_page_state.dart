@@ -1,82 +1,103 @@
 import 'package:equatable/equatable.dart';
-
-class InventoryItem extends Equatable {
-  final String id;
-  final String name;
-  final double quantity;
-  final String unit;
-  final bool isLowStock;
-  final String? imagePath;
-  final String category;
-  final String sku;
-
-  const InventoryItem({
-    required this.id,
-    required this.name,
-    required this.quantity,
-    required this.unit,
-    required this.isLowStock,
-    this.imagePath,
-    this.category = 'General',
-    this.sku = 'SKU-000',
-  });
-
-  @override
-  List<Object?> get props => [id, name, quantity, unit, isLowStock, imagePath, category, sku];
-}
+import '../../../../core/models/inventory_item_model.dart';
 
 class InventorySummary extends Equatable {
   final int totalItems;
+  final int normalStock;
   final int lowStock;
   final int outOfStock;
+  final int expiringSoon;
+  final int expired;
 
   const InventorySummary({
-    required this.totalItems,
-    required this.lowStock,
-    required this.outOfStock,
+    this.totalItems = 0,
+    this.normalStock = 0,
+    this.lowStock = 0,
+    this.outOfStock = 0,
+    this.expiringSoon = 0,
+    this.expired = 0,
   });
 
   @override
-  List<Object?> get props => [totalItems, lowStock, outOfStock];
+  List<Object?> get props => [
+        totalItems,
+        normalStock,
+        lowStock,
+        outOfStock,
+        expiringSoon,
+        expired,
+      ];
 }
 
-abstract class InventoryLowStockPageState extends Equatable {
-  const InventoryLowStockPageState();
+abstract class InventoryState extends Equatable {
+  const InventoryState();
   
   @override
   List<Object?> get props => [];
 }
 
-class InventoryInitial extends InventoryLowStockPageState {}
+class InventoryInitial extends InventoryState {}
 
-class InventoryLoading extends InventoryLowStockPageState {}
+class InventoryLoading extends InventoryState {}
 
-class InventoryLoaded extends InventoryLowStockPageState {
+class InventoryLoaded extends InventoryState {
+  final String sellerId;
+  final List<InventoryItemModel> allItems;
+  final List<InventoryItemModel> filteredItems;
   final InventorySummary summary;
-  final List<InventoryItem> items;
-  final String activeStatus;
-  final List<String> activeCategories;
-  final String activeSort;
+  
+  final String activeFilter; // 'All', 'Normal', 'Low Stock', 'Out of Stock', 'Expiring Soon'
   final String searchQuery;
 
+  final Set<String> updatingItemIds;
+  final String? successMessage;
+  final String? errorMessage;
+
   const InventoryLoaded({
+    required this.sellerId,
+    required this.allItems,
+    required this.filteredItems,
     required this.summary,
-    required this.items,
-    this.activeStatus = 'All',
-    this.activeCategories = const [],
-    this.activeSort = 'Default',
+    this.activeFilter = 'All',
     this.searchQuery = '',
+    this.updatingItemIds = const {},
+    this.successMessage,
+    this.errorMessage,
   });
 
+  InventoryLoaded copyWith({
+    List<InventoryItemModel>? allItems,
+    List<InventoryItemModel>? filteredItems,
+    InventorySummary? summary,
+    String? activeFilter,
+    String? searchQuery,
+    Set<String>? updatingItemIds,
+    String? Function()? successMessage,
+    String? Function()? errorMessage,
+  }) {
+    return InventoryLoaded(
+      sellerId: sellerId,
+      allItems: allItems ?? this.allItems,
+      filteredItems: filteredItems ?? this.filteredItems,
+      summary: summary ?? this.summary,
+      activeFilter: activeFilter ?? this.activeFilter,
+      searchQuery: searchQuery ?? this.searchQuery,
+      updatingItemIds: updatingItemIds ?? this.updatingItemIds,
+      successMessage: successMessage != null ? successMessage() : this.successMessage,
+      errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
+    );
+  }
+
   @override
-  List<Object?> get props => [summary, items, activeStatus, activeCategories, activeSort, searchQuery];
-}
-
-class InventoryError extends InventoryLowStockPageState {
-  final String message;
-
-  const InventoryError(this.message);
-
-  @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [
+        sellerId,
+        allItems,
+        filteredItems,
+        summary,
+        activeFilter,
+        searchQuery,
+        updatingItemIds,
+        successMessage,
+        errorMessage,
+      ];
 }

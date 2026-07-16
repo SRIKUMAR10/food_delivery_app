@@ -8,10 +8,11 @@ abstract class SellerAnalyticsEvent extends Equatable {
 }
 
 class LoadSellerAnalytics extends SellerAnalyticsEvent {
+  final String sellerId;
   final String timeRange;
 
-  const LoadSellerAnalytics({this.timeRange = 'This Week'});
+  const LoadSellerAnalytics({required this.sellerId, this.timeRange = 'Weekly'});
 
   @override
-  List<Object?> get props => [timeRange];
+  List<Object?> get props => [sellerId, timeRange];
 }

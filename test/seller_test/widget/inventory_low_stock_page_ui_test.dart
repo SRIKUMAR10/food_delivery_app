@@ -1,8 +1,15 @@
+import 'package:firebase_core/firebase_core.dart';
+import '../../mock_firebase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_page_ui.dart';
 
 void main() {
+  setUpAll(() async {
+    setupFirebaseAuthMocks();
+    await Firebase.initializeApp();
+  });
+
   testWidgets('InventoryLowStockPage UI Test', (WidgetTester tester) async {
     await tester.pumpWidget(const MaterialApp(home: InventoryLowStockPage()));
 

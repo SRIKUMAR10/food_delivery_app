@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// [RazorpayApiService] handles all direct communication with the Razorpay REST API.
 class RazorpayApiService {
-  // Razorpay Test Key ID
-  static const String apiKey = "rzp_test_Spi5WU6ETE2VVp";
+  // Razorpay Key loaded from .env
+  static String get apiKey => dotenv.env['RAZORPAY_API_KEY'] ?? "MISSING_API_KEY";
 
   // Do NOT keep apiSecret inside Flutter app.
   // Keep apiSecret only in backend / Firebase Cloud Functions.

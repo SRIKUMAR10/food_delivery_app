@@ -14,8 +14,6 @@ void main() {
 
     test('should fetch inventory data successfully', () async {
       // Arrange
-      when(() => repository.hashCode).thenReturn(1); // Mock setup placeholder
-
       // Act & Assert
       expect(repository, isNotNull);
     });

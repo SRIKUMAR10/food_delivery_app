@@ -1,8 +1,15 @@
+import 'package:firebase_core/firebase_core.dart';
+import '../../mock_firebase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_store_details_page/seller_store_details_page__ui.dart';
 
 void main() {
+  setUpAll(() async {
+    setupFirebaseAuthMocks();
+    await Firebase.initializeApp();
+  });
+
   testWidgets('SellerStoreDetailsPage renders skeleton first then details', (
     WidgetTester tester,
   ) async {

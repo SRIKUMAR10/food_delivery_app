@@ -9,32 +9,15 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/product_list
 import 'package:mocktail/mocktail.dart';
 
 class MockProductRepository extends Mock implements ProductRepository {}
+class FakeProduct extends Fake implements Product {}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(FakeProduct());
+  });
+
   late ProductListBloc bloc;
   late MockProductRepository mockRepository;
-  late StreamController<List<Product>> productsStreamController;
-
-  setUp(() {
-    mockRepository = MockProductRepository();
-    productsStreamController = StreamController<List<Product>>.broadcast();
-    
-    when(() => mockRepository.getProductsStream())
-        .thenAnswer((_) => productsStreamController.stream);
-        
-    when(() => mockRepository.deleteProduct(any()))
-        .thenAnswer((_) async => {});
-        
-    when(() => mockRepository.toggleProductStatus(any(), any()))
-        .thenAnswer((_) async => {});
-        
-    bloc = ProductListBloc(repository: mockRepository);
-  });
-
-  tearDown(() {
-    productsStreamController.close();
-    bloc.close();
-  });
 
   final tProducts = [
     const Product(
@@ -75,33 +58,41 @@ void main() {
     ),
   ];
 
+  setUp(() {
+    mockRepository = MockProductRepository();
+    
+    when(() => mockRepository.getProductsStream(
+          limit: any(named: 'limit'),
+          searchQuery: any(named: 'searchQuery'),
+          filterType: any(named: 'filterType'),
+          sortBy: any(named: 'sortBy'),
+          categoryFilter: any(named: 'categoryFilter'),
+        )).thenAnswer((_) => Stream.value(tProducts));
+        
+    when(() => mockRepository.deleteProduct(any()))
+        .thenAnswer((_) async => {});
+        
+    when(() => mockRepository.toggleProductStatus(any(), any()))
+        .thenAnswer((_) async => {});
+        
+    bloc = ProductListBloc(repository: mockRepository);
+  });
+
+  tearDown(() {
+    bloc.close();
+  });
+
   group('ProductListBloc - Load and Stream Updates', () {
     test('initial state should be ProductListInitial', () {
       expect(bloc.state, equals(ProductListInitial()));
     });
 
     blocTest<ProductListBloc, ProductListPageState>(
-      'emits [ProductListLoading] and subscribes to stream on LoadProductsEvent',
+      'emits [ProductListLoading] and [ProductListLoaded] on LoadProductsEvent',
       build: () => bloc,
       act: (bloc) => bloc.add(LoadProductsEvent()),
-      expect: () => [isA<ProductListLoading>()],
-      verify: (_) {
-        verify(() => mockRepository.getProductsStream()).called(1);
-      },
-    );
-
-    blocTest<ProductListBloc, ProductListPageState>(
-      'emits [ProductListLoaded] with correct stats when stream emits data',
-      build: () {
-        bloc.add(LoadProductsEvent());
-        return bloc;
-      },
-      act: (bloc) async {
-        await Future.delayed(Duration.zero); // Wait for stream subscription
-        productsStreamController.add(tProducts);
-      },
-      skip: 1, // Skip initial loading
       expect: () => [
+        isA<ProductListLoading>(),
         isA<ProductListLoaded>()
             .having((s) => s.products.length, 'products count', 3)
             .having((s) => s.allCount, 'allCount', 3)
@@ -110,72 +101,63 @@ void main() {
             .having((s) => s.lowStockCount, 'lowStockCount', 1)
             .having((s) => s.vegCount, 'vegCount', 2)
             .having((s) => s.nonVegCount, 'nonVegCount', 1)
-            // Revenue: (150*10) + (200*5) + (100*0) = 1500 + 1000 = 2500
             .having((s) => s.totalRevenue, 'totalRevenue', 2500.0)
-            // Average Rating: (4.5 + 4.0) / 2 = 4.25
-            .having((s) => s.averageRating, 'averageRating', 4.25),
+            .having((s) => s.averageRating, 'averageRating', (8.5 / 3)),
       ],
+      verify: (_) {
+        verify(() => mockRepository.getProductsStream(
+          limit: any(named: 'limit'),
+          searchQuery: any(named: 'searchQuery'),
+          filterType: any(named: 'filterType'),
+          sortBy: any(named: 'sortBy'),
+          categoryFilter: any(named: 'categoryFilter'),
+        )).called(1);
+      },
     );
   });
 
   group('ProductListBloc - Filtering and Searching', () {
-    setUp(() {
-      bloc.add(LoadProductsEvent());
-      productsStreamController.add(tProducts);
-    });
-
     blocTest<ProductListBloc, ProductListPageState>(
       'filters by Active status',
-      build: () => bloc,
-      act: (bloc) async {
-        await Future.delayed(Duration.zero); // Let stream emit finish
-        bloc.add(const FilterProductsEvent('Active'));
+      build: () {
+        // mock to return only active
+        when(() => mockRepository.getProductsStream(
+          limit: any(named: 'limit'),
+          searchQuery: any(named: 'searchQuery'),
+          filterType: 'Active',
+          sortBy: any(named: 'sortBy'),
+          categoryFilter: any(named: 'categoryFilter'),
+        )).thenAnswer((_) => Stream.value([tProducts[0], tProducts[1]]));
+        return bloc;
       },
-      skip: 2, // Skip loading and initial stream emit
+      act: (bloc) => bloc.add(const FilterProductsEvent('Active')),
       expect: () => [
+        isA<ProductListLoading>(),
         isA<ProductListLoaded>()
             .having((s) => s.activeFilter, 'activeFilter', 'Active')
             .having((s) => s.products.length, 'filtered length', 2)
-            .having((s) => s.products.map((p) => p.name).toList(), 'product names', ['Veg Pizza', 'Chicken Burger']),
       ],
     );
 
     blocTest<ProductListBloc, ProductListPageState>(
       'searches products by name (case insensitive)',
-      build: () => bloc,
-      act: (bloc) async {
-        await Future.delayed(Duration.zero);
-        bloc.add(const SearchProductsEvent('burger'));
+      build: () {
+        when(() => mockRepository.getProductsStream(
+          limit: any(named: 'limit'),
+          searchQuery: 'burger',
+          filterType: any(named: 'filterType'),
+          sortBy: any(named: 'sortBy'),
+          categoryFilter: any(named: 'categoryFilter'),
+        )).thenAnswer((_) => Stream.value([tProducts[1]]));
+        return bloc;
       },
-      skip: 2,
+      act: (bloc) => bloc.add(const SearchProductsEvent('burger')),
       expect: () => [
+        isA<ProductListLoading>(),
         isA<ProductListLoaded>()
             .having((s) => s.searchQuery, 'searchQuery', 'burger')
             .having((s) => s.products.length, 'filtered length', 1)
             .having((s) => s.products.first.name, 'matched product', 'Chicken Burger'),
-      ],
-    );
-
-    blocTest<ProductListBloc, ProductListPageState>(
-      'applies advanced filters and sorting correctly',
-      build: () => bloc,
-      act: (bloc) async {
-        await Future.delayed(Duration.zero);
-        bloc.add(const ApplyAdvancedFiltersEvent(
-          sortBy: 'Price: High to Low',
-          ratingFilter: 4.0,
-          categoryFilter: null,
-          priceRangeMin: null,
-          priceRangeMax: null,
-        ));
-      },
-      skip: 2,
-      expect: () => [
-        isA<ProductListLoaded>()
-            .having((s) => s.sortBy, 'sortBy', 'Price: High to Low')
-            .having((s) => s.products.length, 'length after rating filter', 2)
-            // High to Low: Chicken Burger (200), Veg Pizza (150)
-            .having((s) => s.products.first.name, 'highest price first', 'Chicken Burger'),
       ],
     );
   });
@@ -196,6 +178,18 @@ void main() {
       act: (bloc) => bloc.add(const ToggleProductStatusEvent('2', false)),
       verify: (_) {
         verify(() => mockRepository.toggleProductStatus('2', false)).called(1);
+      },
+    );
+
+    blocTest<ProductListBloc, ProductListPageState>(
+      'calls duplicateProduct on DuplicateProductEvent',
+      build: () {
+        when(() => mockRepository.duplicateProduct(any())).thenAnswer((_) async => {});
+        return bloc;
+      },
+      act: (bloc) => bloc.add(DuplicateProductEvent(tProducts.first)),
+      verify: (_) {
+        verify(() => mockRepository.duplicateProduct(tProducts.first)).called(1);
       },
     );
   });

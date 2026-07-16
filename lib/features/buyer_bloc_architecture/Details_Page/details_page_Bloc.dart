@@ -1,14 +1,15 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
 import 'details_page_Event.dart';
 import 'details_page_State.dart';
+import 'details_repository.dart';
 
 class DetailsBloc extends Bloc<DetailsEvent, DetailsState> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final DetailsRepository _repository;
 
-  DetailsBloc() : super(const DetailsState()) {
+  DetailsBloc({DetailsRepository? repository})
+      : _repository = repository ?? DetailsRepository(),
+        super(const DetailsState()) {
     on<DetailsQuantityIncreased>(_onQuantityIncreased);
     on<DetailsQuantityDecreased>(_onQuantityDecreased);
     on<SubmitRating>(_onSubmitRating);
@@ -19,25 +20,24 @@ class DetailsBloc extends Bloc<DetailsEvent, DetailsState> {
     LoadDetailsRating event,
     Emitter<DetailsState> emit,
   ) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    final avgStream = _repository.getAverageProductRatingStream(event.foodId);
+    final userId = _repository.currentUserId;
 
-    final ratingStream = _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('ratings')
-        .doc(event.foodId)
-        .snapshots();
+    if (userId == null) {
+      await emit.forEach<double>(
+        avgStream,
+        onData: (avg) => state.copyWith(averageRating: avg),
+        onError: (_, __) => state,
+      );
+      return;
+    }
 
-    await emit.forEach<DocumentSnapshot>(
-      ratingStream,
-      onData: (snapshot) {
-        if (snapshot.exists) {
-          final data = snapshot.data() as Map<String, dynamic>;
-          final rating = (data['rating'] as num?)?.toDouble() ?? 4.5;
-          return state.copyWith(currentRating: rating);
-        }
-        return state;
+    final userStream = _repository.getUserRatingStream(userId, event.foodId);
+
+    await emit.forEach<List<double>>(
+      Rx.combineLatest2(userStream, avgStream, (u, a) => [u, a]),
+      onData: (data) {
+        return state.copyWith(currentRating: data[0], averageRating: data[1]);
       },
       onError: (_, __) => state,
     );
@@ -66,8 +66,8 @@ class DetailsBloc extends Bloc<DetailsEvent, DetailsState> {
     emit(state.copyWith(ratingStatus: RatingStatus.submitting));
 
     try {
-      final user = _auth.currentUser;
-      if (user == null) {
+      final userId = _repository.currentUserId;
+      if (userId == null) {
         emit(
           state.copyWith(
             ratingStatus: RatingStatus.failure,
@@ -77,24 +77,7 @@ class DetailsBloc extends Bloc<DetailsEvent, DetailsState> {
         return;
       }
 
-      final uid = user.uid;
-      // Define the target document path.
-      final cartDocRef = _firestore
-          .collection('orders')
-          .doc(uid)
-          .collection('transactions')
-          .doc(event.foodId)
-          .collection('cart')
-          .doc(uid);
-
-      // Save the rating first (at the top of the map object)
-      await cartDocRef.set(
-        {
-          'rating': event.rating,
-          'timestamp': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      await _repository.submitRating(userId, event.foodId, event.rating);
 
       emit(state.copyWith(
         ratingStatus: RatingStatus.success,

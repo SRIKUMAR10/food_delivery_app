@@ -50,8 +50,8 @@ class OrderModel extends Equatable {
     return OrderModel(
       id: doc.id,
       status: data['status'] ?? 'Pending',
-      totalAmount: (data['totalAmount'] as num?)?.toDouble() ?? 0.0,
-      date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      totalAmount: (data['amount'] as num?)?.toDouble() ?? (data['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      date: (data['timestamp'] as Timestamp?)?.toDate() ?? (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       items: items,
     );
   }

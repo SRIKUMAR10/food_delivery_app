@@ -1,0 +1,10 @@
+Expected: Text contrast should follow WCAG guidelines
+Expected: one widget whose rasterized image matches golden image "goldens/cart_page_loaded.png"
+Expected: one widget whose rasterized image matches golden image "goldens/details_page_loaded.png"
+Expected: one widget whose rasterized image matches golden image "goldens/details_page_error.png"
+Expected: one widget whose rasterized image matches golden image "goldens/order_page_loaded.png"
+Expected: at least one matching candidate
+Expected: exactly one matching candidate
+Expected: at least one matching candidate
+Expected: exactly one matching candidate
+00:25 +189 -23: Some tests failed.

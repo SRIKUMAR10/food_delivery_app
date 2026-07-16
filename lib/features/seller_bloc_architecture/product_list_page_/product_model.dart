@@ -6,6 +6,7 @@ class Product extends Equatable {
   final String id;
   final String name;
   final double price;
+  final double discountPrice;
   final List<String> imageUrls;
   final ProductStatus status;
   final bool isActive;
@@ -18,12 +19,21 @@ class Product extends Equatable {
   final String description;
   final String prepTime;
   final String calories;
+  final String portionSize;
+  final List<String> addons;
+  final bool isFeatured;
+  final bool isBestSeller;
+  final bool hasUnlimitedStock;
+  final int availableStock;
+  final int minimumAlert;
+  final String sellerId;
+  final bool isArchived;
 
   const Product({
     required this.id,
     required this.name,
-
     required this.price,
+    this.discountPrice = 0.0,
     this.imageUrls = const [],
     required this.status,
     required this.isActive,
@@ -36,12 +46,22 @@ class Product extends Equatable {
     this.description = '',
     this.prepTime = '',
     this.calories = '',
+    this.portionSize = '',
+    this.addons = const [],
+    this.isFeatured = false,
+    this.isBestSeller = false,
+    this.hasUnlimitedStock = false,
+    this.availableStock = 0,
+    this.minimumAlert = 10,
+    this.sellerId = '',
+    this.isArchived = false,
   });
 
   Product copyWith({
     String? id,
     String? name,
     double? price,
+    double? discountPrice,
     List<String>? imageUrls,
     ProductStatus? status,
     bool? isActive,
@@ -54,11 +74,20 @@ class Product extends Equatable {
     String? description,
     String? prepTime,
     String? calories,
+    String? portionSize,
+    List<String>? addons,
+    bool? isFeatured,
+    bool? isBestSeller,
+    bool? hasUnlimitedStock,
+    int? availableStock,
+    int? minimumAlert,
+    bool? isArchived,
   }) {
     return Product(
       id: id ?? this.id,
       name: name ?? this.name,
       price: price ?? this.price,
+      discountPrice: discountPrice ?? this.discountPrice,
       imageUrls: imageUrls ?? this.imageUrls,
       status: status ?? this.status,
       isActive: isActive ?? this.isActive,
@@ -71,15 +100,54 @@ class Product extends Equatable {
       description: description ?? this.description,
       prepTime: prepTime ?? this.prepTime,
       calories: calories ?? this.calories,
+      portionSize: portionSize ?? this.portionSize,
+      addons: addons ?? this.addons,
+      isFeatured: isFeatured ?? this.isFeatured,
+      isBestSeller: isBestSeller ?? this.isBestSeller,
+      hasUnlimitedStock: hasUnlimitedStock ?? this.hasUnlimitedStock,
+      availableStock: availableStock ?? this.availableStock,
+      minimumAlert: minimumAlert ?? this.minimumAlert,
+      sellerId: sellerId ?? this.sellerId,
+      isArchived: isArchived ?? this.isArchived,
     );
   }
 
   @override
   List<Object?> get props => [
-        id, name, price, imageUrls, status, isActive, foodType,
+        id, name, price, discountPrice, imageUrls, status, isActive, foodType,
         category, spicyLevel, rating, reviewCount, salesCount,
-        description, prepTime, calories,
+        description, prepTime, calories, portionSize, addons,
+        isFeatured, isBestSeller, hasUnlimitedStock, availableStock,
+        minimumAlert, sellerId, isArchived,
       ];
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'price': price,
+      'discountPrice': discountPrice,
+      'imageUrls': imageUrls,
+      'isActive': isActive,
+      'foodType': foodType,
+      'category': category,
+      'spicyLevel': spicyLevel,
+      'rating': rating,
+      'reviewCount': reviewCount,
+      'salesCount': salesCount,
+      'description': description,
+      'prepTime': prepTime,
+      'calories': calories,
+      'portionSize': portionSize,
+      'addons': addons,
+      'isFeatured': isFeatured,
+      'isBestSeller': isBestSeller,
+      'hasUnlimitedStock': hasUnlimitedStock,
+      'availableStock': availableStock,
+      'minimumAlert': minimumAlert,
+      'sellerId': sellerId,
+      'isArchived': isArchived,
+    };
+  }
 
   factory Product.fromMap(String id, Map<String, dynamic> map) {
     List<String> parsedImageUrls = [];
@@ -93,7 +161,7 @@ class Product extends Equatable {
     if (map['availableStock'] != null) {
       int stock = map['availableStock'];
       int alert = map['minimumAlert'] ?? 10;
-      if (stock == 0) {
+      if (stock <= 0) {
         parsedStatus = ProductStatus.outOfStock;
       } else if (stock <= alert) {
         parsedStatus = ProductStatus.lowStock;
@@ -104,6 +172,7 @@ class Product extends Equatable {
       id: id,
       name: map['name'] ?? '',
       price: (map['price'] ?? 0.0).toDouble(),
+      discountPrice: (map['discountPrice'] ?? 0.0).toDouble(),
       imageUrls: parsedImageUrls,
       status: parsedStatus,
       isActive: map['isActive'] ?? true,
@@ -116,6 +185,15 @@ class Product extends Equatable {
       description: map['description'] ?? '',
       prepTime: map['prepTime'] ?? '',
       calories: map['calories'] ?? '',
+      portionSize: map['portionSize'] ?? '',
+      addons: map['addons'] != null ? List<String>.from(map['addons']) : [],
+      isFeatured: map['isFeatured'] ?? false,
+      isBestSeller: map['isBestSeller'] ?? false,
+      hasUnlimitedStock: map['hasUnlimitedStock'] ?? false,
+      availableStock: map['availableStock'] ?? 0,
+      minimumAlert: map['minimumAlert'] ?? 10,
+      sellerId: map['sellerId'] ?? '',
+      isArchived: map['isArchived'] ?? false,
     );
   }
 }

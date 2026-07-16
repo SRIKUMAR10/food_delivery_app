@@ -1,9 +1,10 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
 
-import '../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
+class FakeUri extends Fake implements Uri {}
 
 // Assuming an implementation of the service that uses http
 class OverallRatingServiceImpl implements OverallRatingService {
@@ -25,6 +26,10 @@ class OverallRatingServiceImpl implements OverallRatingService {
 class MockHttpClient extends Mock implements http.Client {}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(FakeUri());
+  });
+
   late OverallRatingServiceImpl service;
   late MockHttpClient mockHttpClient;
 

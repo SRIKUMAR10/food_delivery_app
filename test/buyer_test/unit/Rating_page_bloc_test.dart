@@ -6,6 +6,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+// TODO: Remove this ignore_for_file and migrate to fake_cloud_firestore or proper mocktail mocking strategy in the future.
+// ignore_for_file: subtype_of_sealed_class
 class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
 class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 class MockUser extends Mock implements User {}

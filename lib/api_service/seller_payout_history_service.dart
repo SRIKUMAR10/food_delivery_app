@@ -1,35 +1,44 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SellerPayoutHistoryService {
-  final http.Client client;
-  final String? baseUrl;
-  final String? apiKey;
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
 
-  SellerPayoutHistoryService({http.Client? client, this.baseUrl, this.apiKey})
-      : this.client = client ?? http.Client();
-
-  String get _baseUrl => baseUrl ?? dotenv.env['BASE_URL'] ?? 'https://api.example.com';
-  String get _apiKey => apiKey ?? dotenv.env['API_KEY'] ?? '';
+  SellerPayoutHistoryService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
 
   Future<List<Map<String, dynamic>>> fetchPayoutHistory({required int offset, required int limit}) async {
-    final url = Uri.parse('$_baseUrl/seller/wallet/payouts?offset=$offset&limit=$limit');
-    try {
-      final response = await client.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 5));
+    final sellerId = _auth.currentUser?.uid;
+    if (sellerId == null) {
+      throw Exception('User not logged in');
+    }
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.cast<Map<String, dynamic>>();
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
+    try {
+      final snapshot = await _firestore
+          .collection('payouts')
+          .where('sellerId', isEqualTo: sellerId)
+          .orderBy('date', descending: true)
+          .get();
+
+      // Client-side pagination due to simple implementation
+      final allPayouts = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'title': data['title'] ?? 'Payout',
+          'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+          'status': data['status'] ?? 'Unknown',
+          'date': (data['date'] as Timestamp?)?.toDate().toIso8601String() ?? DateTime.now().toIso8601String(),
+        };
+      }).toList();
+
+      if (offset >= allPayouts.length) {
+        return [];
       }
+      final end = (offset + limit) > allPayouts.length ? allPayouts.length : (offset + limit);
+      return allPayouts.sublist(offset, end);
     } catch (e) {
       // Mock historical data matching visual standards from wallet page
       final allMockPayouts = [

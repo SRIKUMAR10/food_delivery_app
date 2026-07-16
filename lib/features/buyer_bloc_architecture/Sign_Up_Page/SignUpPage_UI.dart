@@ -373,8 +373,9 @@ class _SignUpPageContentState extends State<_SignUpPageContent> {
 
         // Link for login
         Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
                 "Already have an account? ",

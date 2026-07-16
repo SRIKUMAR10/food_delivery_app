@@ -51,6 +51,9 @@ class FoodItem {
   /// Price stored as double (converted from Firestore num type).
   final double price;
 
+  /// Discounted price (if any).
+  final double discountPrice;
+
   /// Short product description shown on the Details Page.
   final String description;
 
@@ -63,14 +66,39 @@ class FoodItem {
   /// Seller UID linking this product to its seller account.
   final String sellerId;
 
+  // New fields aligned with Seller's Product model
+  final String foodType;
+  final bool isBestSeller;
+  final double rating;
+  final int reviewCount;
+  final String spicyLevel;
+  final String prepTime;
+  final String portionSize;
+  final String calories;
+  final List<String> addons;
+  final bool isActive;
+  final String status;
+
   const FoodItem({
     required this.id,
     required this.name,
     required this.price,
+    this.discountPrice = 0.0,
     required this.description,
     required this.category,
     this.image,
     required this.sellerId,
+    this.foodType = '',
+    this.isBestSeller = false,
+    this.rating = 0.0,
+    this.reviewCount = 0,
+    this.spicyLevel = '',
+    this.prepTime = '',
+    this.portionSize = '',
+    this.calories = '',
+    this.addons = const [],
+    this.isActive = true,
+    this.status = 'inStock',
   });
 
   /// Factory constructor: maps a Firestore DocumentSnapshot to a FoodItem.
@@ -85,11 +113,28 @@ class FoodItem {
       name: data['name'] ?? 'Unknown Product',
       // Convert Firestore num to Dart double safely.
       price: (data['price'] as num?)?.toDouble() ?? 0.0,
+      discountPrice: (data['discountPrice'] as num?)?.toDouble() ?? 0.0,
       description: data['description'] ?? 'No description available.',
       category: data['category'] ?? 'Uncategorized',
-      // Trim whitespace from the image URL stored in Firestore as 'imageUrl'.
-      image: (data['imageUrl'] as String?)?.trim(),
+      // Support both legacy 'imageUrl' and new 'imageUrls' (from Seller)
+      image:
+          (data['imageUrls'] is List && (data['imageUrls'] as List).isNotEmpty)
+          ? (data['imageUrls'][0].toString()).trim()
+          : (data['imageUrl'] != null
+                ? data['imageUrl'].toString().trim()
+                : null),
       sellerId: data['sellerId'] ?? 'Unknown Seller',
+      foodType: data['foodType'] ?? '',
+      isBestSeller: data['isBestSeller'] ?? false,
+      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
+      reviewCount: data['reviewCount'] ?? 0,
+      spicyLevel: data['spicyLevel'] ?? '',
+      prepTime: data['prepTime'] ?? '',
+      portionSize: data['portionSize'] ?? '',
+      calories: data['calories'] ?? '',
+      addons: data['addons'] != null ? List<String>.from(data['addons']) : [],
+      isActive: data['isActive'] ?? true,
+      status: data['status'] ?? 'inStock',
     );
   }
 
@@ -106,9 +151,18 @@ class FoodItem {
 /// Predefined list of food categories displayed on the home page.
 /// The first category (Pizza) is selected by default.
 const List<FoodCategory> kDefaultCategories = [
-  FoodCategory(id: '1', name: 'Pizza',   emoji: '🍕', isSelected: true, size: 35),
-  FoodCategory(id: '2', name: 'Burger',  emoji: '🍔', size: 35),
-  FoodCategory(id: '3', name: 'Pasta',   emoji: '🍝', size: 35),
-  FoodCategory(id: '4', name: 'Drinks',  emoji: '🥤', size: 35),
-  FoodCategory(id: '5', name: 'Dessert', emoji: '🍰', size: 35),
+  FoodCategory(
+    id: 'CAT-FF-001',
+    name: 'Burgers',
+    emoji: '🍔',
+    isSelected: true,
+    size: 35,
+  ),
+  FoodCategory(id: 'CAT-FF-002', name: 'Pizza', emoji: '🍕', size: 35),
+  FoodCategory(id: 'CAT-FF-003', name: 'Chicken', emoji: '🍗', size: 35),
+  FoodCategory(id: 'CAT-FF-004', name: 'Wraps', emoji: '🌯', size: 35),
+  FoodCategory(id: 'CAT-FF-005', name: 'Fries & Sides', emoji: '🍟', size: 35),
+  FoodCategory(id: 'CAT-FF-006', name: 'Beverages', emoji: '🥤', size: 35),
+  FoodCategory(id: 'CAT-FF-007', name: 'Desserts', emoji: '🍰', size: 35),
+  FoodCategory(id: 'CAT-FF-008', name: 'Combo Meals', emoji: '🍱', size: 35),
 ];
