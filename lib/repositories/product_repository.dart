@@ -7,7 +7,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb; // Import kIsWeb
 import '../features/seller_bloc_architecture/product_list_page_/product_model.dart';
-import 'package:path_provider/path_provider.dart';
 
 class ProductRepository {
   final FirebaseFirestore _firestore;

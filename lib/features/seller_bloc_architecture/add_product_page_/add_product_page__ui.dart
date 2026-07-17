@@ -10,6 +10,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'add_product_page__bloc.dart';
 import 'add_product_page__event.dart';
 import 'add_product_page__state.dart';
+import '../product_list_page_/product_model.dart';
+import '../product_list_page_/product_preview_page.dart';
 import '../product_list_page_/product_repository.dart';
 
 // --- Theme Constants (Material 3) ---
@@ -69,11 +71,14 @@ class _AddProductViewState extends State<AddProductView> {
   bool _isInitialized = false;
 
   final List<Map<String, dynamic>> _categories = [
+    {'id': 'Burgers', 'icon': '🍔', 'label': 'Burgers'},
     {'id': 'Pizza', 'icon': '🍕', 'label': 'Pizza'},
-    {'id': 'Burger', 'icon': '🍔', 'label': 'Burger'},
+    {'id': 'Chicken', 'icon': '🍗', 'label': 'Chicken'},
+    {'id': 'Wraps', 'icon': '🌯', 'label': 'Wraps'},
+    {'id': 'Fries & Sides', 'icon': '🍟', 'label': 'Fries & Sides'},
     {'id': 'Beverages', 'icon': '🥤', 'label': 'Beverages'},
-    {'id': 'Dessert', 'icon': '🍰', 'label': 'Dessert'},
-    {'id': 'Main Course', 'icon': '🍛', 'label': 'Main Course'},
+    {'id': 'Desserts', 'icon': '🍰', 'label': 'Desserts'},
+    {'id': 'Combo Meals', 'icon': '🍱', 'label': 'Combo Meals'},
   ];
 
   final List<Map<String, dynamic>> _foodTypes = [
@@ -302,9 +307,11 @@ class _AddProductViewState extends State<AddProductView> {
               children: [
                 _buildProgressStepper(state.currentStep),
                 Expanded(
-                  child: isDesktop
-                      ? _buildDesktopLayout(context, state)
-                      : _buildMobileLayout(context, state),
+                  child: ClipRect(
+                    child: isDesktop
+                        ? _buildDesktopLayout(context, state)
+                        : _buildMobileLayout(context, state),
+                  ),
                 ),
               ],
             );
@@ -395,8 +402,7 @@ class _AddProductViewState extends State<AddProductView> {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
+                  Container(
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
@@ -456,8 +462,7 @@ class _AddProductViewState extends State<AddProductView> {
                 ],
               ),
               if (index < steps.length - 1)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
+                Container(
                   width: 50,
                   height: 3,
                   margin: const EdgeInsets.only(
@@ -509,16 +514,16 @@ class _AddProductViewState extends State<AddProductView> {
                     if (!_isPreviewDesktop)
                       Wrap(
                         alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.start,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         spacing: 24,
                         runSpacing: 24,
                         children: [
                           FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: _buildPreviewAnimation(context, state),
+                            child: _buildPreviewWidget(state),
                           ),
                           SizedBox(
-                            width: 300,
+                            width: 320,
                             child: _buildActionCard(context, state),
                           ),
                         ],
@@ -528,7 +533,7 @@ class _AddProductViewState extends State<AddProductView> {
                         children: [
                           FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: _buildPreviewAnimation(context, state),
+                            child: _buildPreviewWidget(state),
                           ),
                           const SizedBox(height: 24),
                           _buildActionCard(context, state),
@@ -1046,12 +1051,18 @@ class _AddProductViewState extends State<AddProductView> {
                 ),
                 const SizedBox(height: 16),
                 const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline, size: 14, color: _textSecondary),
+                    Padding(
+                      padding: EdgeInsets.only(top: 2.0),
+                      child: Icon(Icons.info_outline, size: 14, color: _textSecondary),
+                    ),
                     SizedBox(width: 8),
-                    Text(
-                      'Drag to reorder. The first image will be used as the main thumbnail.',
-                      style: TextStyle(fontSize: 13, color: _textSecondary),
+                    Expanded(
+                      child: Text(
+                        'Drag to reorder. The first image will be used as the main thumbnail.',
+                        style: TextStyle(fontSize: 13, color: _textSecondary),
+                      ),
                     ),
                   ],
                 ),
@@ -1079,72 +1090,68 @@ class _AddProductViewState extends State<AddProductView> {
           ),
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          height: 100,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
-            itemBuilder: (context, index) {
-              final cat = _categories[index];
-              final isSelected = state.category == cat['id'];
-              return GestureDetector(
-                onTap: () => context.read<AddProductPageBloc>().add(
-                  CategoryChangedEvent(cat['id']),
-                ),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutBack,
-                  width: 100,
-                  transform: isSelected
-                      ? (Matrix4.identity()..scale(1.05))
-                      : Matrix4.identity(),
-                  decoration: BoxDecoration(
-                    gradient: isSelected
-                        ? const LinearGradient(
-                            colors: [_primaryColor, _accentColor],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    color: isSelected ? null : _surfaceColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected ? Colors.transparent : _borderColor,
-                      width: 1,
-                    ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: _primaryColor.withValues(alpha: 0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
-                            ),
-                          ]
-                        : null,
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: _categories.map((cat) {
+            final isSelected = state.category == cat['id'];
+            return GestureDetector(
+              onTap: () => context.read<AddProductPageBloc>().add(
+                CategoryChangedEvent(cat['id']),
+              ),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutBack,
+                width: 100,
+                height: 100,
+                transform: isSelected
+                    ? (Matrix4.identity()..scale(1.05))
+                    : Matrix4.identity(),
+                decoration: BoxDecoration(
+                  gradient: isSelected
+                      ? const LinearGradient(
+                          colors: [_primaryColor, _accentColor],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: isSelected ? null : _surfaceColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected ? Colors.transparent : _borderColor,
+                    width: 1,
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(cat['icon'], style: const TextStyle(fontSize: 28)),
-                      const SizedBox(height: 8),
-                      Text(
-                        cat['label'],
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                          color: isSelected ? Colors.white : _textPrimary,
-                        ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: _primaryColor.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(cat['icon'], style: const TextStyle(fontSize: 28)),
+                    const SizedBox(height: 8),
+                    Text(
+                      cat['label'],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        color: isSelected ? Colors.white : _textPrimary,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          }).toList(),
         ),
       ],
     );
@@ -1168,6 +1175,7 @@ class _AddProductViewState extends State<AddProductView> {
         const SizedBox(height: 12),
         Wrap(
           spacing: 12,
+          runSpacing: 12,
           children: _foodTypes.map((type) {
             final isSelected = state.foodType == type['id'];
             return ChoiceChip(
@@ -1408,9 +1416,11 @@ class _AddProductViewState extends State<AddProductView> {
                     );
                 },
               ),
-              const Text(
-                'Unlimited Stock (Always Available)',
-                style: TextStyle(fontWeight: FontWeight.w500),
+              Expanded(
+                child: const Text(
+                  'Unlimited Stock (Always Available)',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
               ),
             ],
           ),
@@ -1733,14 +1743,14 @@ class _AddProductViewState extends State<AddProductView> {
                 ),
               ),
             ),
-            const SizedBox(width: 4),
-            const Text(
+            Text(
               'Live App Preview',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: _textPrimary,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(width: 12),
             AnimatedSwitcher(
@@ -1890,508 +1900,43 @@ class _AddProductViewState extends State<AddProductView> {
     );
   }
 
-  Widget _buildPreviewAnimation(
-    BuildContext context,
-    AddProductPageState state,
-  ) {
+  Widget _buildPreviewWidget(AddProductPageState state) {
+    // Construct a temporary Product object from form controllers and BLoC state
+    // This object is used to power the live preview.
     final price = double.tryParse(_priceController.text) ?? 0.0;
     final discount = double.tryParse(_discountController.text) ?? 0.0;
-    final finalPrice = price - (price * (discount / 100));
+    final discountedPrice = price - (price * (discount / 100));
+    final finalPrice = discountedPrice + (discountedPrice * 0.18);
 
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: _isPreviewDesktop ? 1 : 0),
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeInOutBack,
-      builder: (context, double val, child) {
-        bool isDesktop = val >= 0.5;
-        double angle = isDesktop ? (val - 1) * 3.14159 : val * 3.14159;
-        return Transform(
-          transform: Matrix4.identity()
-            ..setEntry(3, 2, 0.001) // perspective
-            ..rotateY(angle),
-          alignment: Alignment.center,
-          child: isDesktop
-              ? _buildDesktopPreviewCard(
-                  context,
-                  state,
-                  finalPrice,
-                  price,
-                  discount,
-                )
-              : _buildMobilePreviewCard(
-                  context,
-                  state,
-                  finalPrice,
-                  price,
-                  discount,
-                ),
-        );
-      },
+    final previewProduct = Product(
+      id: state.initialProduct?.id ?? 'preview-id',
+      name: _nameController.text,
+      price: price,
+      discountPrice: finalPrice,
+      description: _descController.text,
+      imageUrls: [
+        ...state.existingImages,
+        ...state.images.map((e) => e.path).toList()
+      ],
+      category: state.category ?? '',
+      foodType: state.foodType ?? '',
+      spicyLevel: state.spicyLevel ?? '',
+      isBestSeller: state.isBestSeller,
+      isFeatured: state.isFeatured,
+      isActive: state.isActive,
+      status: ProductStatus.inStock, // Preview assumes in stock
+      // Mock data for fields not in the form
+      rating: 4.5,
+      reviewCount: 120,
+      prepTime: _prepTimeController.text.isNotEmpty ? _prepTimeController.text : '15-20 min',
     );
-  }
 
-  Widget _buildPreviewImage(AddProductPageState state) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 500),
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            ),
-            child: child,
-          ),
-        );
-      },
-      child: state.images.isNotEmpty
-          ? SizedBox(
-              key: const ValueKey('image'),
-              width: double.infinity,
-              height: double.infinity,
-              child: kIsWeb
-                  ? Image.network(state.images.first.path, fit: BoxFit.cover)
-                  : Image.file(
-                      File(state.images.first.path),
-                      fit: BoxFit.cover,
-                    ),
-            )
-          : ShimmerLoading(
-              key: const ValueKey('shimmer'),
-              child: Container(
-                width: double.infinity,
-                height: double.infinity,
-                color: Colors.white,
-              ),
-            ),
-    );
-  }
-
-  Widget _buildMobilePreviewCard(
-    BuildContext context,
-    AddProductPageState state,
-    double finalPrice,
-    double price,
-    double discount,
-  ) {
-    return Container(
-      width: 320,
-      height: 660,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F2937),
-        borderRadius: BorderRadius.circular(44),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 30,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(34),
-        ),
-        clipBehavior: Clip.hardEdge,
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 44,
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        '9:41',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Row(
-                        children: const [
-                          Icon(Icons.signal_cellular_4_bar, size: 14),
-                          SizedBox(width: 6),
-                          Icon(Icons.wifi, size: 14),
-                          SizedBox(width: 6),
-                          Icon(Icons.battery_full, size: 14),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Icon(Icons.arrow_back_ios, size: 20),
-                      Icon(Icons.favorite_border, size: 24),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  height: 220,
-                  width: double.infinity,
-                  child: _buildPreviewImage(state),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (state.isBestSeller)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            margin: const EdgeInsets.only(bottom: 8),
-                            decoration: BoxDecoration(
-                              color: _warningColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'Bestseller',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: Text(
-                            _nameController.text.isNotEmpty
-                                ? _nameController.text
-                                : 'Product Name',
-                            key: ValueKey(_nameController.text),
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: Row(
-                            key: ValueKey(finalPrice),
-                            children: [
-                              Text(
-                                '₹${finalPrice.toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: _primaryColor,
-                                ),
-                              ),
-                              if (discount > 0) ...[
-                                const SizedBox(width: 8),
-                                Text(
-                                  '₹${price.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: _textSecondary,
-                                    decoration: TextDecoration.lineThrough,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Expanded(
-                          child: Text(
-                            _descController.text.isNotEmpty
-                                ? _descController.text
-                                : 'Product description will appear here...',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: _textSecondary,
-                              height: 1.5,
-                            ),
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: _primaryColor,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Add to Cart',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(
-                        height: 48,
-                        width: 48,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: _borderColor),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.favorite_border,
-                          color: _textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Positioned(
-              top: 10,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  width: 100,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDesktopPreviewCard(
-    BuildContext context,
-    AddProductPageState state,
-    double finalPrice,
-    double price,
-    double discount,
-  ) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Container(
-        width: 720,
-        height: 400,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _borderColor, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 30,
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        clipBehavior: Clip.hardEdge,
-        child: Column(
-          children: [
-            Container(
-              height: 32,
-              width: double.infinity,
-              color: const Color(0xFFF3F4F6),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF5F56),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFFBD2E),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF27C93F),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(flex: 6, child: _buildPreviewImage(state)),
-                  Expanded(
-                    flex: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (state.isBestSeller)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: _warningColor,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                'Bestseller',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: FittedBox(
-                              key: ValueKey(_nameController.text),
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                _nameController.text.isNotEmpty
-                                    ? _nameController.text
-                                    : 'Product Name',
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: Row(
-                              key: ValueKey(finalPrice),
-                              children: [
-                                Text(
-                                  '₹${finalPrice.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: _primaryColor,
-                                  ),
-                                ),
-                                if (discount > 0) ...[
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    '₹${price.toStringAsFixed(0)}',
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      color: _textSecondary,
-                                      decoration: TextDecoration.lineThrough,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            _descController.text.isNotEmpty
-                                ? _descController.text
-                                : 'Product description will appear here...',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: _textSecondary,
-                              height: 1.6,
-                            ),
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 32),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: _primaryColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      'Add to Cart',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Container(
-                                height: 48,
-                                width: 48,
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: _borderColor),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.favorite_border,
-                                  color: _textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ProductPreviewWidget(
+      product: previewProduct,
+      initialIsDesktop: _isPreviewDesktop,
+      // Pass local images for preview
+      localImages: state.images.map((e) => File(e.path)).toList(),
+      showHeader: false, // Prevent duplicated preview header
     );
   }
 

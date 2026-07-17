@@ -226,22 +226,21 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
     final bool isSelected = _selectedIndex == index;
     final color = isSelected ? Colors.white : Colors.black54;
 
-    // The selected item now also shows a label, but with a white color.
-    // The buttonBackgroundColor from CurvedNavigationBar provides the red background.
     return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(icon, size: isSelected ? 30 : 26, color: color),
         if (!isSelected) const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: isSelected ? 12 : 10,
-            color: color,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        if (!isSelected)
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.normal,
+            ),
           ),
-        ),
       ],
     );
   }

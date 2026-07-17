@@ -26,9 +26,6 @@ class SellerStoreDetailsBloc
       }
 
       final seller = await _repository.fetchSeller(user.uid);
-      if (seller == null) {
-        throw Exception('Seller data not found');
-      }
 
       emit(
         SellerStoreDetailsLoaded(

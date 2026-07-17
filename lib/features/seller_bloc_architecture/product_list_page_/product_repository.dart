@@ -98,6 +98,7 @@ class ProductRepositoryImpl implements ProductRepository {
       final data = doc.data()!;
       data['name'] = '${data['name']} (Copy)';
       data['isArchived'] = false; // duplicated product is active by default
+      data['createdAt'] = FieldValue.serverTimestamp();
       await _firestore.collection('products').add(data);
     }
   }
@@ -127,6 +128,7 @@ class ProductRepositoryImpl implements ProductRepository {
     final productData = product.toMap();
     productData['sellerId'] = _sellerId;
     productData['imageUrls'] = imageUrls;
+    productData['createdAt'] = FieldValue.serverTimestamp();
     
     await docRef.set(productData);
   }
@@ -141,6 +143,7 @@ class ProductRepositoryImpl implements ProductRepository {
     final productData = product.toMap();
     productData['sellerId'] = _sellerId;
     productData['imageUrls'] = allImageUrls;
+    productData['updatedAt'] = FieldValue.serverTimestamp();
     
     await _firestore.collection('products').doc(product.id).update(productData);
   }

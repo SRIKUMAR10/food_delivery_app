@@ -68,6 +68,7 @@ void main() {
         allCount: 1,
         activeCount: 1,
         inactiveCount: 0,
+        archivedCount: 0,
         averageRating: 0.0,
         lowStockCount: 0,
         nonVegCount: 0,
@@ -81,7 +82,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Pizza'), findsOneWidget);
-    expect(find.text('₹10'), findsOneWidget);
+    expect(find.text('₹10.00'), findsOneWidget);
     expect(find.text('In Stock'), findsOneWidget);
   });
 }

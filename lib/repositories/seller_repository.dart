@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/seller_model.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_sign_in/google_sign_in.dart';
 
 class SellerRepository {
   final FirebaseFirestore _firestore;
@@ -49,8 +51,29 @@ class SellerRepository {
   }
 
   Future<UserCredential> signInWithGoogle() async {
-    // Placeholder implementation for Google Sign-In
-    throw UnimplementedError('Google Sign-In is not fully implemented');
+    try {
+      if (kIsWeb) {
+        GoogleAuthProvider authProvider = GoogleAuthProvider();
+        return await _auth.signInWithPopup(authProvider);
+      } else {
+        final GoogleSignIn googleSignIn = GoogleSignIn();
+        final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+        
+        if (googleUser == null) {
+          throw Exception('Google Sign-In aborted by user');
+        }
+        
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        
+        return await _auth.signInWithCredential(credential);
+      }
+    } catch (e) {
+      throw Exception('Google Sign-In failed: $e');
+    }
   }
 
   Future<UserCredential> signInWithApple() async {

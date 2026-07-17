@@ -146,6 +146,7 @@ class Product extends Equatable {
       'minimumAlert': minimumAlert,
       'sellerId': sellerId,
       'isArchived': isArchived,
+      'status': status.name,
     };
   }
 
