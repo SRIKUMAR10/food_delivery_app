@@ -303,14 +303,15 @@ class _AddProductViewState extends State<AddProductView> {
             }
           },
           builder: (context, state) {
+            if (isDesktop) {
+              return _buildDesktopLayout(context, state);
+            }
             return Column(
               children: [
                 _buildProgressStepper(state.currentStep),
                 Expanded(
                   child: ClipRect(
-                    child: isDesktop
-                        ? _buildDesktopLayout(context, state)
-                        : _buildMobileLayout(context, state),
+                    child: _buildMobileLayout(context, state),
                   ),
                 ),
               ],
@@ -490,8 +491,14 @@ class _AddProductViewState extends State<AddProductView> {
         Expanded(
           flex: 65,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(40),
-            child: _buildFormSections(context, state),
+            padding: const EdgeInsets.only(left: 40, right: 40, bottom: 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProgressStepper(state.currentStep),
+                _buildFormSections(context, state),
+              ],
+            ),
           ),
         ),
         // Right Column: Preview & Status (35%)
