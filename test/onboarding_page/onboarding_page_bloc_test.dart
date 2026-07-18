@@ -3,13 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/onboarding_page/onboarding_page_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/onboarding_page/onboarding_page_Event.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/onboarding_page/onboarding_page_State.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('OnboardingPageBloc Tests', () {
     late OnboardingPageBloc onboardingPageBloc;
+    late MockAuthService mockAuthService;
 
     setUp(() {
-      onboardingPageBloc = OnboardingPageBloc();
+      mockAuthService = MockAuthService();
+      when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream.value(null));
+      onboardingPageBloc = OnboardingPageBloc(authService: mockAuthService);
     });
 
     tearDown(() {

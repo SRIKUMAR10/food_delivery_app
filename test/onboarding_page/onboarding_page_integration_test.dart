@@ -16,7 +16,7 @@ void main() {
     mockHomePageBloc = MockHomePageBloc();
     when(
       () => mockHomePageBloc.state,
-    ).thenReturn(const HomePageLoading('default_category'));
+    ).thenReturn(const HomePageLoading('default_category', []));
     when(() => mockHomePageBloc.stream).thenAnswer((_) => const Stream.empty());
     when(() => mockHomePageBloc.close()).thenAnswer((_) async => {});
   });

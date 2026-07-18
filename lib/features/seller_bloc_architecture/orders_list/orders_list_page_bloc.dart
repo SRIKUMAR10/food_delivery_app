@@ -5,10 +5,10 @@ import '../../../../core/models/order_status.dart';
 import '../../../../core/services/audio_notification_service.dart';
 import 'orders_list_page_event.dart';
 import 'orders_list_page_state.dart';
-import 'orders_list_page_repository.dart';
+import '../../../../core/repositories/i_order_repository.dart';
 
 class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
-  final OrdersListRepository repository;
+  final IOrderRepository repository;
   final AudioNotificationService _audioService = AudioNotificationService();
   
   List<OrderModel> _allOrders = [];
@@ -27,7 +27,7 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
   Future<void> _onLoadOrdersStream(LoadOrdersStream event, Emitter<OrdersListState> emit) async {
     emit(OrdersListLoading());
     await emit.forEach<List<OrderModel>>(
-      repository.getOrdersStream(event.sellerId),
+      repository.getSellerOrdersStream(event.sellerId),
       onData: (orders) {
         _allOrders = orders;
         

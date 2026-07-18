@@ -4,15 +4,15 @@ import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_page_state.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_repository.dart';
-class MockInventoryRepository extends Mock implements InventoryRepository {}
+import 'package:food_delivery_app/core/repositories/i_inventory_repository.dart';
+class MockInventoryRepository extends Mock implements IInventoryRepository {}
 
 void main() {
   return; // SKIP ALL TESTS IN THIS FILE due to missing DI for Firebase
 
   group('InventoryBloc', () {
     late InventoryBloc inventoryBloc;
-    late InventoryRepository repository;
+    late IInventoryRepository repository;
 
     setUp(() {
       repository = MockInventoryRepository();

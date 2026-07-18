@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'order_models.dart';
+import '../../../../core/models/order_model.dart';
 
 class OrderRepository {
   final FirebaseFirestore _firestore;
@@ -22,7 +22,7 @@ class OrderRepository {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => OrderModel.fromFirestore(doc)).toList();
+      return snapshot.docs.map((doc) => OrderModel.fromMap(doc.data(), doc.id)).toList();
     });
   }
 }

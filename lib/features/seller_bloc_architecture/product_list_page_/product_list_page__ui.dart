@@ -9,9 +9,10 @@ import '../add_product_page_/add_product_page__ui.dart' as food_app;
 import 'product_list_page__bloc.dart';
 import 'product_list_page__event.dart';
 import 'product_list_page__state.dart';
-import 'product_model.dart';
+import '../../../../core/models/product_model.dart';
 import 'product_preview_page.dart';
-import 'product_repository.dart';
+import '../../../../core/repositories/i_product_repository.dart';
+import '../../../../core/services/i_auth_service.dart';
 
 class ProductListPage extends StatelessWidget {
   const ProductListPage({super.key});
@@ -20,8 +21,10 @@ class ProductListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) =>
-          ProductListBloc(repository: ProductRepositoryImpl())
-            ..add(LoadProductsEvent()),
+          ProductListBloc(
+            repository: context.read<IProductRepository>(),
+            authService: context.read<IAuthService>(),
+          )..add(LoadProductsEvent()),
       child: const ProductListView(),
     );
   }
@@ -511,7 +514,7 @@ class _ProductListViewState extends State<ProductListView>
                               ),
                             ),
                           ),
-                        if (product.calories.isNotEmpty)
+                        if (product.calories > 0)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -531,7 +534,7 @@ class _ProductListViewState extends State<ProductListView>
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  product.calories,
+                                  product.calories.toString(),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -541,7 +544,7 @@ class _ProductListViewState extends State<ProductListView>
                               ],
                             ),
                           ),
-                        if (product.prepTime.isNotEmpty)
+                        if (product.prepTime > 0)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -561,7 +564,7 @@ class _ProductListViewState extends State<ProductListView>
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  product.prepTime,
+                                  product.prepTime.toString(),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -798,7 +801,7 @@ class _ProductListViewState extends State<ProductListView>
                     Expanded(
                       child: _buildInfoRow(
                         'Calories',
-                        product.calories.isNotEmpty ? product.calories : 'N/A',
+                        product.calories > 0 ? '${product.calories} kcal' : 'N/A',
                       ),
                     ),
                   ],
@@ -1590,7 +1593,7 @@ class _ProductListViewState extends State<ProductListView>
                     state: state,
                     allProducts: parentContext
                         .read<ProductListBloc>()
-                        .repository,
+                        .allProducts,
                     isDesktop: false,
                     onApply:
                         (
@@ -1676,7 +1679,7 @@ class _ProductListViewState extends State<ProductListView>
                     state: state,
                     allProducts: parentContext
                         .read<ProductListBloc>()
-                        .repository,
+                        .allProducts,
                     isDesktop: true,
                     onApply:
                         (
@@ -1975,7 +1978,7 @@ class _ProductListViewState extends State<ProductListView>
 
 class _FilterSheetContent extends StatefulWidget {
   final ProductListLoaded state;
-  final ProductRepository allProducts;
+  final List<Product> allProducts;
   final bool isDesktop;
   final Function(
     String sortBy,

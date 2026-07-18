@@ -6,9 +6,9 @@ import 'package:food_delivery_app/core/models/order_model.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_state.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
 
-class MockOrdersListRepository extends Mock implements OrdersListRepository {}
+class MockOrdersListRepository extends Mock implements IOrderRepository {}
 
 void main() {
   return; // SKIP ALL TESTS IN THIS FILE due to missing DI for Firebase
@@ -51,7 +51,7 @@ void main() {
     blocTest<OrdersListBloc, OrdersListState>(
       'emits [OrdersListLoading, OrdersListLoaded] when LoadOrdersStream is added',
       build: () {
-        when(() => mockRepository.getOrdersStream('s1'))
+        when(() => mockRepository.getSellerOrdersStream(any()))
             .thenAnswer((_) => Stream.value(testOrders));
         return bloc;
       },
@@ -63,7 +63,7 @@ void main() {
     );
 
     test('UpdateOrderStatusEvent calls repository successfully', () async {
-      when(() => mockRepository.getOrdersStream('s1'))
+      when(() => mockRepository.getSellerOrdersStream(any()))
           .thenAnswer((_) => Stream.value(testOrders));
       when(() => mockRepository.updateOrderStatus('1', OrderStatus.preparing))
           .thenAnswer((_) async {});

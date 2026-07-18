@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+
 import 'onboarding_page_Bloc.dart';
 import 'onboarding_page_Event.dart';
 import 'onboarding_page_State.dart';
@@ -17,7 +19,7 @@ class OnboardingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => OnboardingPageBloc(),
+      create: (context) => OnboardingPageBloc(authService: context.read<IAuthService>()),
       child: OnboardingPageView(onNavigateToCart: onNavigateToCart),
     );
   }

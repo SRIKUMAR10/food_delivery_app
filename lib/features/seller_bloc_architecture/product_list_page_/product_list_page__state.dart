@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'product_model.dart';
+import '../../../../core/models/product_model.dart';
 
 abstract class ProductListPageState extends Equatable {
   const ProductListPageState();

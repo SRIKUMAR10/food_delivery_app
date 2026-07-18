@@ -1,41 +1,39 @@
 import 'package:bloc_test/bloc_test.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_Event.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_State.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_repository.dart';
+import 'package:food_delivery_app/core/models/order_model.dart';
+import 'package:food_delivery_app/core/models/order_item_model.dart';
+import 'package:food_delivery_app/core/models/order_status.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockFirebaseAuth extends Mock implements FirebaseAuth {}
-
 class MockUser extends Mock implements User {}
+class MockAuthService extends Mock implements IAuthService {}
+class MockOrderRepository extends Mock implements IOrderRepository {}
 
 void main() {
   group('OrderBloc Tests', () {
-    late FakeFirebaseFirestore fakeFirestore;
-    late MockFirebaseAuth mockAuth;
-    late MockUser mockUser;
+    late MockAuthService mockAuthService;
+    late MockOrderRepository mockOrderRepository;
     late OrderBloc orderBloc;
 
     const testUid = 'test_user_id';
 
-    setUp(() {
-      fakeFirestore = FakeFirebaseFirestore();
-      mockAuth = MockFirebaseAuth();
-      mockUser = MockUser();
+      mockAuthService = MockAuthService();
+      mockOrderRepository = MockOrderRepository();
 
-      when(() => mockUser.uid).thenReturn(testUid);
-      when(() => mockAuth.currentUser).thenReturn(mockUser);
-      when(
-        () => mockAuth.authStateChanges(),
-      ).thenAnswer((_) => Stream<User?>.value(null));
+      when(() => mockAuthService.currentUserId).thenReturn(testUid);
+      when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value(testUid));
 
       orderBloc = OrderBloc(
-        repository: OrderRepository(firestore: fakeFirestore, auth: mockAuth),
+        repository: mockOrderRepository,
+        authService: mockAuthService,
       );
-    });
 
     tearDown(() {
       orderBloc.close();
@@ -48,9 +46,11 @@ void main() {
     blocTest<OrderBloc, OrderState>(
       'emits OrderLoaded with empty list when user is not logged in',
       build: () {
-        when(() => mockAuth.currentUser).thenReturn(null);
+        when(() => mockAuthService.currentUserId).thenReturn(null);
+        when(() => mockOrderRepository.getBuyerOrdersStream(any())).thenAnswer((_) => Stream.value([]));
         return OrderBloc(
-          repository: OrderRepository(firestore: fakeFirestore, auth: mockAuth),
+          repository: mockOrderRepository,
+          authService: mockAuthService,
         );
       },
       act: (bloc) => bloc.add(LoadOrdersRequested()),
@@ -63,26 +63,29 @@ void main() {
     test(
       'LoadOrdersRequested emits OrderLoading and then OrderLoaded with data',
       () async {
-        // Setup mock data in fake firestore
-        final orderRef = fakeFirestore
-            .collection('users')
-            .doc(testUid)
-            .collection('orders')
-            .doc('order1');
-        await orderRef.set({
-          'status': 'Pending',
-          'totalAmount': 500.0,
-          'date': DateTime.now(),
-          'items': [
-            {
-              'id': 'item1',
-              'name': 'Pizza',
-              'price': 500.0,
-              'quantity': 1,
-              'sellerId': 'seller1',
-            },
-          ],
-        });
+        // Setup mock data
+        when(() => mockAuthService.currentUserId).thenReturn(testUid);
+        when(() => mockOrderRepository.getBuyerOrdersStream(testUid)).thenAnswer((_) => Stream.value([
+          OrderModel(
+            id: 'order1',
+            customerId: testUid,
+            customerName: 'Customer',
+            sellerId: 'seller1',
+            status: OrderStatus.newOrder,
+            amount: 500.0,
+            timestamp: DateTime.now(),
+            items: [
+              OrderItemModel(
+                productId: 'item1',
+                name: 'Pizza',
+                price: 500.0,
+                quantity: 1,
+              ),
+            ],
+            deliveryAddress: 'Address',
+            paymentMethod: 'Cash',
+          ),
+        ]));
 
         orderBloc.add(LoadOrdersRequested());
 

@@ -3,10 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/models/inventory_item_model.dart';
 import 'inventory_low_stock_page_event.dart';
 import 'inventory_low_stock_page_state.dart';
-import 'inventory_low_stock_repository.dart';
+import '../../../../core/repositories/i_inventory_repository.dart';
 
 class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
-  final InventoryRepository repository;
+  final IInventoryRepository repository;
   StreamSubscription? _inventorySubscription;
 
   InventoryBloc({required this.repository}) : super(InventoryInitial()) {

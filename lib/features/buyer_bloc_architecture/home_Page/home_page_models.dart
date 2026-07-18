@@ -3,8 +3,6 @@
 // Pure data models for the Home Page feature.
 // No business logic, no UI dependencies — only data definitions.
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 
 // Default fallback image URL used when a product has no image stored.
 const String kDefaultFoodImageUrl =
@@ -100,43 +98,6 @@ class FoodItem {
     this.isActive = true,
     this.status = 'inStock',
   });
-
-  /// Factory constructor: maps a Firestore DocumentSnapshot to a FoodItem.
-  factory FoodItem.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-
-    // Log the raw Firestore payload for debugging purposes.
-    debugPrint('DEBUG 1 (Firestore Data): $data');
-
-    return FoodItem(
-      id: doc.id,
-      name: data['name'] ?? 'Unknown Product',
-      // Convert Firestore num to Dart double safely.
-      price: (data['price'] as num?)?.toDouble() ?? 0.0,
-      discountPrice: (data['discountPrice'] as num?)?.toDouble() ?? 0.0,
-      description: data['description'] ?? 'No description available.',
-      category: data['category'] ?? 'Uncategorized',
-      // Support both legacy 'imageUrl' and new 'imageUrls' (from Seller)
-      image:
-          (data['imageUrls'] is List && (data['imageUrls'] as List).isNotEmpty)
-          ? (data['imageUrls'][0].toString()).trim()
-          : (data['imageUrl'] != null
-                ? data['imageUrl'].toString().trim()
-                : null),
-      sellerId: data['sellerId'] ?? 'Unknown Seller',
-      foodType: data['foodType'] ?? '',
-      isBestSeller: data['isBestSeller'] ?? false,
-      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
-      reviewCount: data['reviewCount'] ?? 0,
-      spicyLevel: data['spicyLevel'] ?? '',
-      prepTime: data['prepTime'] ?? '',
-      portionSize: data['portionSize'] ?? '',
-      calories: data['calories'] ?? '',
-      addons: data['addons'] != null ? List<String>.from(data['addons']) : [],
-      isActive: data['isActive'] ?? true,
-      status: data['status'] ?? 'inStock',
-    );
-  }
 
   @override
   bool operator ==(Object other) =>

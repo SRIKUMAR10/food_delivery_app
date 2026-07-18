@@ -7,11 +7,12 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb; // Import kIsWeb
 import 'package:food_delivery_app/core/models/product_model.dart';
+import '../core/repositories/i_product_repository.dart';
 
-class ProductRepository {
+class FirebaseProductRepository implements IProductRepository {
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
-  ProductRepository({FirebaseFirestore? firestore, FirebaseStorage? storage})
+  FirebaseProductRepository({FirebaseFirestore? firestore, FirebaseStorage? storage})
     : _firestore = firestore ?? FirebaseFirestore.instance,
       _storage = storage ?? FirebaseStorage.instance;
 
@@ -59,11 +60,12 @@ class ProductRepository {
     }
   }
 
-  Future<void> updateProduct(Product product, List<XFile> newImages, String sellerId) async {
+  @override
+  Future<void> updateProduct(Product product, List<XFile> newImages, String sellerId, {List<String>? existingImages}) async {
     try {
       if (sellerId.isEmpty) throw Exception('Seller not logged in');
 
-      List<String> imageUrls = List<String>.from(product.imageUrls);
+      List<String> imageUrls = existingImages != null ? List<String>.from(existingImages) : List<String>.from(product.imageUrls);
 
       // Upload any newly added local images
       int counter = 0;
@@ -282,5 +284,46 @@ class ProductRepository {
     } catch (e) {
       throw Exception('Failed to export products to CSV: $e');
     }
+  }
+
+  @override
+  Future<List<Product>> getProducts(String sellerId) async {
+    if (sellerId.isEmpty) return [];
+
+    final snapshot = await _firestore
+        .collection('products')
+        .where('sellerId', isEqualTo: sellerId)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => Product.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  @override
+  Future<Product?> getProduct(String id, String sellerId) async {
+    if (sellerId.isEmpty) return null;
+
+    final doc = await _firestore.collection('products').doc(id).get();
+    if (doc.exists && doc.data() != null) {
+      if (doc.data()!['sellerId'] == sellerId) {
+        return Product.fromMap(doc.id, doc.data()!);
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<void> archiveProduct(String id, String sellerId) async {
+    await _firestore.collection('products').doc(id).update({
+      'isArchived': true,
+    });
+  }
+
+  @override
+  Future<void> unarchiveProduct(String id, String sellerId) async {
+    await _firestore.collection('products').doc(id).update({
+      'isArchived': false,
+    });
   }
 }

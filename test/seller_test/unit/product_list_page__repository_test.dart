@@ -2,7 +2,7 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_repository.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_model.dart';
+import 'package:food_delivery_app/core/models/product_model.dart';
 
 
 class FakeProduct extends Fake implements Product {}
@@ -27,7 +27,7 @@ void main() {
 
     test('getProducts returns a list of products', () async {
       when(() => repository.getProducts()).thenAnswer((_) async => [
-        const Product(id: '1', name: 'Test', price: 100, status: ProductStatus.inStock, isActive: true)
+        Product(id: '1', name: 'Test', price: 100, status: ProductStatus.inStock, isActive: true, createdAt: DateTime.now(), updatedAt: DateTime.now())
       ]);
       final products = await repository.getProducts();
       expect(products, isA<List<Product>>());
@@ -36,7 +36,7 @@ void main() {
 
     test('deleteProduct removes a product by id', () async {
       when(() => repository.getProducts()).thenAnswer((_) async => [
-        const Product(id: '1', name: 'Test', price: 100, status: ProductStatus.inStock, isActive: true)
+        Product(id: '1', name: 'Test', price: 100, status: ProductStatus.inStock, isActive: true, createdAt: DateTime.now(), updatedAt: DateTime.now())
       ]);
       when(() => repository.deleteProduct(any())).thenAnswer((_) async => {});
 
@@ -51,7 +51,7 @@ void main() {
 
     test('toggleProductStatus updates the active status of a product', () async {
       when(() => repository.getProducts()).thenAnswer((_) async => [
-        const Product(id: '1', name: 'Test', price: 100, status: ProductStatus.inStock, isActive: true)
+        Product(id: '1', name: 'Test', price: 100, status: ProductStatus.inStock, isActive: true, createdAt: DateTime.now(), updatedAt: DateTime.now())
       ]);
       when(() => repository.toggleProductStatus(any(), any())).thenAnswer((_) async => {});
 
@@ -67,16 +67,18 @@ void main() {
 
     test('duplicateProduct adds a new product with (Copy) appended to name', () async {
       when(() => repository.duplicateProduct(any())).thenAnswer((_) async => {});
-      final product = const Product(
+      final product = Product(
         id: '123',
         name: 'Test Product',
         price: 100,
         status: ProductStatus.inStock,
         isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
       
-      await repository.duplicateProduct(product);
-      verify(() => repository.duplicateProduct(product)).called(1);
+      await repository.duplicateProduct(product.id);
+      verify(() => repository.duplicateProduct(product.id)).called(1);
     });
   });
 }

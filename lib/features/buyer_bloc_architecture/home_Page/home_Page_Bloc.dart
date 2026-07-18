@@ -7,16 +7,17 @@
 import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../repositories/product_repository.dart';
+import '../../../core/repositories/i_product_repository.dart';
 import '../../../repositories/category_repository.dart';
 import 'home_page_models.dart';
+import 'food_item_mapper.dart';
 
 // Pull in event and state definitions via Dart's part mechanism.
 part 'home_Page_Event.dart';
 part 'home_Page_State.dart';
 
 class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
-  final ProductRepository _productRepository;
+  final IProductRepository _productRepository;
   final CategoryRepository _categoryRepository;
 
   List<FoodItem> _allItems = [];
@@ -28,10 +29,10 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
   StreamSubscription<List<FoodCategory>>? _categorySubscription;
 
   HomePageBloc({
-    ProductRepository? productRepository,
-    CategoryRepository? categoryRepository,
-  }) : _productRepository = productRepository ?? ProductRepository(),
-       _categoryRepository = categoryRepository ?? CategoryRepository(),
+    required IProductRepository productRepository,
+    required CategoryRepository categoryRepository,
+  }) : _productRepository = productRepository,
+       _categoryRepository = categoryRepository,
        super(const HomePageInitial('', [])) {
     on<HomePageStarted>(_onStarted);
     on<CategorySelected>(_onCategorySelected);
@@ -152,7 +153,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     await emit.forEach<List<FoodItem>>(
       _productRepository
           .getProductsByCategory(_selectedCategoryName)
-          .map((s) => s.docs.map(FoodItem.fromFirestore).toList()),
+          .map((products) => products.map(FoodItemMapper.toViewModel).toList()),
       onData: (items) {
         _allItems = items;
         if (_allItems.isEmpty)
@@ -194,7 +195,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     await emit.forEach<List<FoodItem>>(
       _productRepository
           .searchProducts(_searchQuery, _selectedCategoryName)
-          .map((s) => s.docs.map(FoodItem.fromFirestore).toList()),
+          .map((products) => products.map(FoodItemMapper.toViewModel).toList()),
       onData: (items) {
         if (items.isEmpty)
           return HomePageSearchEmpty(

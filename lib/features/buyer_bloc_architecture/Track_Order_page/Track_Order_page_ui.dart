@@ -10,12 +10,12 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../Order Page/order_models.dart';
+import '../Order Page/order_view_model.dart';
 import '../user_profile_image/user_profile_image_Bloc.dart';
 
 class TrackOrderPageUI extends StatelessWidget {
   final String orderId;
-  final OrderModel? order;
+  final OrderViewModel? order;
   final bool
   isEmbedded; // If true, hide Scaffold app bar and use simple background
 
@@ -54,7 +54,7 @@ class TrackOrderPageUI extends StatelessWidget {
 }
 
 class _TrackOrderView extends StatelessWidget {
-  final OrderModel? order;
+  final OrderViewModel? order;
   final bool isEmbedded;
 
   const _TrackOrderView({this.order, this.isEmbedded = false});

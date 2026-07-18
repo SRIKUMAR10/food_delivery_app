@@ -1,18 +1,20 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'onboarding_page_Event.dart';
 import 'onboarding_page_State.dart';
 /// BLoC to handle the business logic for the onboarding page.
 class OnboardingPageBloc extends Bloc<OnboardingPageEvent, OnboardingPageState> {
-  StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<String?>? _authSubscription;
 
-  OnboardingPageBloc() : super(OnboardingAuthWaiting()) {
+  final IAuthService _authService;
+
+  OnboardingPageBloc({required IAuthService authService}) : _authService = authService, super(OnboardingAuthWaiting()) {
     on<OnboardingGetStartedPressed>(_onGetStartedPressed);
     on<OnboardingAuthStatusChanged>(_onAuthStatusChanged);
 
-    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
-      add(OnboardingAuthStatusChanged(user: user));
+    _authSubscription = _authService.authStateChanges.listen((userId) {
+      add(OnboardingAuthStatusChanged(userId: userId));
     });
   }
 
@@ -36,7 +38,7 @@ class OnboardingPageBloc extends Bloc<OnboardingPageEvent, OnboardingPageState> 
     OnboardingAuthStatusChanged event,
     Emitter<OnboardingPageState> emit,
   ) {
-    if (event.user != null) {
+    if (event.userId != null) {
       emit(OnboardingAuthenticated());
     } else {
       emit(OnboardingUnauthenticated());

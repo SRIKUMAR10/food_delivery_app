@@ -4,11 +4,13 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_list_page__bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_list_page__event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_list_page__state.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_model.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_repository.dart';
+import 'package:food_delivery_app/core/models/product_model.dart';
+import 'package:food_delivery_app/core/repositories/i_product_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockProductRepository extends Mock implements ProductRepository {}
+class MockProductRepository extends Mock implements IProductRepository {}
+class MockAuthService extends Mock implements IAuthService {}
 class FakeProduct extends Fake implements Product {}
 
 void main() {
@@ -18,9 +20,10 @@ void main() {
 
   late ProductListBloc bloc;
   late MockProductRepository mockRepository;
+  late MockAuthService mockAuthService;
 
   final tProducts = [
-    const Product(
+    Product(
       id: '1',
       name: 'Veg Pizza',
       price: 150,
@@ -31,8 +34,10 @@ void main() {
       category: 'Pizza',
       rating: 4.5,
       salesCount: 10,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     ),
-    const Product(
+    Product(
       id: '2',
       name: 'Chicken Burger',
       price: 200,
@@ -43,8 +48,10 @@ void main() {
       category: 'Burger',
       rating: 4.0,
       salesCount: 5,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     ),
-    const Product(
+    Product(
       id: '3',
       name: 'Inactive Pasta',
       price: 100,
@@ -55,19 +62,20 @@ void main() {
       category: 'Pasta',
       rating: 0.0, // Unrated
       salesCount: 0,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     ),
   ];
 
   setUp(() {
     mockRepository = MockProductRepository();
+    mockAuthService = MockAuthService();
     
-    when(() => mockRepository.getProductsStream(
-          limit: any(named: 'limit'),
-          searchQuery: any(named: 'searchQuery'),
-          filterType: any(named: 'filterType'),
-          sortBy: any(named: 'sortBy'),
-          categoryFilter: any(named: 'categoryFilter'),
-        )).thenAnswer((_) => Stream.value(tProducts));
+    when(() => mockAuthService.currentUserId).thenReturn('seller1');
+    when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream.value('seller1'));
+
+    when(() => mockRepository.getProductsStream('seller1'))
+        .thenAnswer((_) => Stream.value(tProducts));
         
     when(() => mockRepository.deleteProduct(any()))
         .thenAnswer((_) async => {});
@@ -75,7 +83,7 @@ void main() {
     when(() => mockRepository.toggleProductStatus(any(), any()))
         .thenAnswer((_) async => {});
         
-    bloc = ProductListBloc(repository: mockRepository);
+    bloc = ProductListBloc(repository: mockRepository, authService: mockAuthService);
   });
 
   tearDown(() {
@@ -105,13 +113,7 @@ void main() {
             .having((s) => s.averageRating, 'averageRating', (8.5 / 3)),
       ],
       verify: (_) {
-        verify(() => mockRepository.getProductsStream(
-          limit: any(named: 'limit'),
-          searchQuery: any(named: 'searchQuery'),
-          filterType: any(named: 'filterType'),
-          sortBy: any(named: 'sortBy'),
-          categoryFilter: any(named: 'categoryFilter'),
-        )).called(1);
+        verify(() => mockRepository.getProductsStream()).called(1);
       },
     );
   });
@@ -121,13 +123,8 @@ void main() {
       'filters by Active status',
       build: () {
         // mock to return only active
-        when(() => mockRepository.getProductsStream(
-          limit: any(named: 'limit'),
-          searchQuery: any(named: 'searchQuery'),
-          filterType: 'Active',
-          sortBy: any(named: 'sortBy'),
-          categoryFilter: any(named: 'categoryFilter'),
-        )).thenAnswer((_) => Stream.value([tProducts[0], tProducts[1]]));
+        when(() => mockRepository.getProductsStream())
+            .thenAnswer((_) => Stream.value([tProducts[0], tProducts[1]]));
         return bloc;
       },
       act: (bloc) => bloc.add(const FilterProductsEvent('Active')),
@@ -142,13 +139,8 @@ void main() {
     blocTest<ProductListBloc, ProductListPageState>(
       'searches products by name (case insensitive)',
       build: () {
-        when(() => mockRepository.getProductsStream(
-          limit: any(named: 'limit'),
-          searchQuery: 'burger',
-          filterType: any(named: 'filterType'),
-          sortBy: any(named: 'sortBy'),
-          categoryFilter: any(named: 'categoryFilter'),
-        )).thenAnswer((_) => Stream.value([tProducts[1]]));
+        when(() => mockRepository.getProductsStream())
+            .thenAnswer((_) => Stream.value([tProducts[1]]));
         return bloc;
       },
       act: (bloc) => bloc.add(const SearchProductsEvent('burger')),
@@ -187,9 +179,9 @@ void main() {
         when(() => mockRepository.duplicateProduct(any())).thenAnswer((_) async => {});
         return bloc;
       },
-      act: (bloc) => bloc.add(DuplicateProductEvent(tProducts.first)),
+      act: (bloc) => bloc.add(DuplicateProductEvent(tProducts.first.id)),
       verify: (_) {
-        verify(() => mockRepository.duplicateProduct(tProducts.first)).called(1);
+        verify(() => mockRepository.duplicateProduct(tProducts.first.id)).called(1);
       },
     );
   });

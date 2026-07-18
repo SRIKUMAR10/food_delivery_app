@@ -13,7 +13,18 @@ import 'features/seller_bloc_architecture/seller_onboard_page/seller_onboard_pag
 import 'features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_ui.dart';
 import 'features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
 import 'features/seller_bloc_architecture/seller_dashboard_page/seller_dashboard_repository.dart';
-import 'features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_repository.dart';
+
+import 'core/services/i_auth_service.dart';
+import 'core/services/auth_service.dart';
+import 'core/repositories/i_product_repository.dart';
+import 'core/repositories/i_cart_repository.dart';
+import 'core/repositories/i_order_repository.dart';
+import 'core/repositories/i_inventory_repository.dart';
+import 'repositories/firebase_product_repository.dart';
+import 'repositories/firebase_cart_repository.dart';
+import 'repositories/firebase_order_repository.dart';
+import 'repositories/firebase_inventory_repository.dart';
+import 'repositories/category_repository.dart';
 
 import 'firebase_options.dart';
 
@@ -87,21 +98,40 @@ class MyApp extends StatelessWidget {
     this.homePageBloc,
   });
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
+        RepositoryProvider<IAuthService>(
+          create: (context) => FirebaseAuthService(),
+        ),
+        RepositoryProvider<IProductRepository>(
+          create: (context) => FirebaseProductRepository(),
+        ),
+        RepositoryProvider<ICartRepository>(
+          create: (context) => FirebaseCartRepository(),
+        ),
+        RepositoryProvider<IOrderRepository>(
+          create: (context) => FirebaseOrderRepository(),
+        ),
+        RepositoryProvider<IInventoryRepository>(
+          create: (context) => FirebaseInventoryRepository(),
+        ),
+        RepositoryProvider<CategoryRepository>(
+          create: (context) => CategoryRepository(),
+        ),
         RepositoryProvider<SellerDashboardRepository>(
           create: (context) => FirebaseSellerDashboardRepository(),
-        ),
-        RepositoryProvider<InventoryRepository>(
-          create: (context) => InventoryRepository(),
         ),
       ],
       child: MultiBlocProvider(
         providers: [
-          BlocProvider(create: (context) => cartBloc ?? CartBloc()),
+          BlocProvider(
+            create: (context) => cartBloc ?? CartBloc(
+              cartRepository: context.read<ICartRepository>(),
+              authService: context.read<IAuthService>(),
+            ),
+          ),
           BlocProvider(
             create: (context) =>
                 favoritesBloc ??
@@ -109,7 +139,10 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider(
             create: (context) =>
-                homePageBloc ?? (HomePageBloc()..add(const HomePageStarted())),
+                homePageBloc ?? (HomePageBloc(
+                  productRepository: context.read<IProductRepository>(),
+                  categoryRepository: context.read<CategoryRepository>(),
+                )..add(const HomePageStarted())),
           ),
         ],
         child: MaterialApp(

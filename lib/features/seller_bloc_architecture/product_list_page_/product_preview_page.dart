@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'product_model.dart';
+import '../../../../core/models/product_model.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 const Color _primaryColor = Color(0xFFEF2A39);
@@ -865,7 +865,7 @@ class _ProductPreviewWidgetState extends State<ProductPreviewWidget> {
             color: Colors.blue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: widget.product.prepTime.isNotEmpty
+          child: widget.product.prepTime > 0
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -876,7 +876,7 @@ class _ProductPreviewWidgetState extends State<ProductPreviewWidget> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      widget.product.prepTime,
+                      '${widget.product.prepTime} min',
                       style: TextStyle(
                         fontSize: 10,
                         color: Colors.blue,

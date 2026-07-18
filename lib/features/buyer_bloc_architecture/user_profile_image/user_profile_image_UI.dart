@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../Order Page/order_UI.dart';
-import '../Order Page/order_repository.dart';
 import 'transactions_page.dart';
 import 'user_profile_image_Bloc.dart';
 import 'user_profile_models.dart';
@@ -433,7 +433,9 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => OrderPageUI(orderRepository: OrderRepository()),
+                builder: (_) => OrderPageUI(
+                  orderRepository: context.read<IOrderRepository>(),
+                ),
               ),
             ),
           ),

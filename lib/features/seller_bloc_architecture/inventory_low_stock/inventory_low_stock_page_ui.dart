@@ -6,7 +6,7 @@ import '../../../../core/models/inventory_item_model.dart';
 import 'inventory_low_stock_page_bloc.dart';
 import 'inventory_low_stock_page_event.dart';
 import 'inventory_low_stock_page_state.dart';
-import 'inventory_low_stock_repository.dart';
+import '../../../../core/repositories/i_inventory_repository.dart';
 import 'product_details_page_ui.dart';
 
 class InventoryLowStockPage extends StatelessWidget {
@@ -16,7 +16,7 @@ class InventoryLowStockPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => InventoryBloc(
-        repository: context.read<InventoryRepository>(),
+        repository: context.read<IInventoryRepository>(),
       )..add(LoadInventoryStream(sellerId: FirebaseAuth.instance.currentUser?.uid ?? 'test_seller_id')),
       child: const _InventoryLowStockView(),
     );

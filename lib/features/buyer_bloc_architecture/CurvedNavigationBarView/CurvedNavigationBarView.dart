@@ -10,11 +10,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/CurvedNavigationBarView/Buyer_chat_support_ui.dart';
 
 import '../Order%20Page/order_UI.dart';
-import '../Order Page/order_repository.dart';
 import '../WalletScreen/WalletScreen_UI.dart';
 import '../Cart%20Page/cart_page_UI.dart';
 
@@ -84,7 +86,9 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
       case 3:
         return _buildTabNavigator(
           3,
-          OrderPageUI(orderRepository: OrderRepository()),
+          OrderPageUI(
+            orderRepository: context.read<IOrderRepository>(),
+          ),
         );
       case 4:
         return _buildTabNavigator(4, const BuyerChatSupportPage());

@@ -9,8 +9,7 @@ import '../orders_list/orders_list_page_ui.dart';
 import '../orders_list/orders_list_page_bloc.dart';
 import '../orders_list/orders_list_page_event.dart';
 import '../orders_list/orders_list_page_state.dart';
-import '../orders_list/orders_list_page_repository.dart';
-import '../orders_list/orders_list_page_service.dart';
+import '../../../../core/repositories/i_order_repository.dart';
 import '../../../../core/models/order_status.dart';
 import '../product_list_page_/product_list_page__ui.dart';
 import '../seller_profile_page/seller_profile_page__ui.dart';
@@ -22,7 +21,8 @@ import '../seller_login_page/seller_login_page_ui.dart';
 import '../product_list_page_/product_list_page__bloc.dart';
 import '../product_list_page_/product_list_page__event.dart';
 import '../product_list_page_/product_list_page__state.dart';
-import '../product_list_page_/product_repository.dart';
+import '../../../../core/repositories/i_product_repository.dart';
+import '../../../../core/services/i_auth_service.dart';
 import '../../../widgets/curved_header_clipper.dart';
 
 class SellerNavigationBarViewPageUI extends StatelessWidget {
@@ -35,14 +35,17 @@ class SellerNavigationBarViewPageUI extends StatelessWidget {
         BlocProvider(create: (context) => SellerNavigationBarViewPageBloc()),
         BlocProvider(
           create: (context) =>
-              ProductListBloc(repository: ProductRepositoryImpl())
-                ..add(LoadProductsEvent()),
+              ProductListBloc(
+                repository: context.read<IProductRepository>(),
+                authService: context.read<IAuthService>(),
+              )..add(LoadProductsEvent()),
         ),
         BlocProvider(
           create: (context) {
-            final sellerId = SellerRepository().currentUser?.uid ?? '';
+            final authService = context.read<IAuthService>();
+            final sellerId = authService.currentUserId ?? '';
             return OrdersListBloc(
-              repository: OrdersListRepository(service: OrdersListService()),
+              repository: context.read<IOrderRepository>(),
             )..add(LoadOrdersStream(sellerId));
           },
         ),

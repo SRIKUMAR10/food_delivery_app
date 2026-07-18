@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'order_models.dart';
+import 'order_view_model.dart';
 
 abstract class OrderState extends Equatable {
   const OrderState();
@@ -13,7 +13,7 @@ class OrderInitial extends OrderState {}
 class OrderLoading extends OrderState {}
 
 class OrderLoaded extends OrderState {
-  final List<OrderModel> orders;
+  final List<OrderViewModel> orders;
 
   const OrderLoaded(this.orders);
 

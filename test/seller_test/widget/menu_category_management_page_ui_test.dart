@@ -25,7 +25,7 @@ void main() {
         MaterialApp(
           home: BlocProvider<MenuCategoryManagementBloc>.value(
             value: mockBloc,
-            child: const ChatSupportView(sellerId: 'test'), // Using the wrongly named view for now to test rendering
+            child: const MenuCategoryManagementView(sellerId: 'test'), 
           ),
         ),
       );

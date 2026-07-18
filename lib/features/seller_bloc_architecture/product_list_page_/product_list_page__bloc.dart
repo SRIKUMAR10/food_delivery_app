@@ -2,8 +2,9 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'product_list_page__event.dart';
 import 'product_list_page__state.dart';
-import 'product_model.dart';
-import 'product_repository.dart';
+import '../../../../core/models/product_model.dart';
+import '../../../../core/repositories/i_product_repository.dart';
+import '../../../../core/services/i_auth_service.dart';
 
 // Internal event for stream updates
 class _ProductsUpdated extends ProductListPageEvent {
@@ -15,7 +16,8 @@ class _ProductsUpdated extends ProductListPageEvent {
 }
 
 class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
-  final ProductRepository repository;
+  final IProductRepository repository;
+  final IAuthService authService;
   
   // Store the full list in memory for quick filtering
   List<Product> _allProducts = [];
@@ -28,7 +30,7 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
   double? _priceRangeMax;
   StreamSubscription<List<Product>>? _subscription;
 
-  ProductListBloc({required this.repository}) : super(ProductListInitial()) {
+  ProductListBloc({required this.repository, required this.authService}) : super(ProductListInitial()) {
     on<LoadProductsEvent>(_onLoadProducts);
     on<_ProductsUpdated>(_onProductsUpdated);
     on<FilterProductsEvent>(_onFilterProducts);
@@ -41,11 +43,18 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
     on<UnarchiveProductEvent>(_onUnarchiveProduct);
   }
 
+  String get _sellerId => authService.currentUserId ?? '';
+  List<Product> get allProducts => _allProducts;
+
   Future<void> _onLoadProducts(LoadProductsEvent event, Emitter<ProductListPageState> emit) async {
     emit(ProductListLoading());
     try {
+      if (_sellerId.isEmpty) {
+        emit(ProductListError('User not logged in'));
+        return;
+      }
       await _subscription?.cancel();
-      _subscription = repository.getProductsStream().listen((products) {
+      _subscription = repository.getProductsStream(_sellerId).listen((products) {
         add(_ProductsUpdated(products));
       });
     } catch (e) {
@@ -96,8 +105,9 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
 
   Future<void> _onDeleteProduct(DeleteProductEvent event, Emitter<ProductListPageState> emit) async {
     try {
-      await repository.deleteProduct(event.productId);
-      // Stream will automatically trigger _ProductsUpdated
+      if (_sellerId.isNotEmpty) {
+        await repository.deleteProduct(event.productId, _sellerId);
+      }
     } catch (e) {
       emit(ProductListError(e.toString()));
     }
@@ -105,8 +115,9 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
 
   Future<void> _onToggleProductStatus(ToggleProductStatusEvent event, Emitter<ProductListPageState> emit) async {
     try {
-      await repository.toggleProductStatus(event.productId, event.isActive);
-      // Stream will automatically trigger _ProductsUpdated
+      if (_sellerId.isNotEmpty) {
+        await repository.toggleProductStatus(event.productId, event.isActive, _sellerId);
+      }
     } catch (e) {
       emit(ProductListError(e.toString()));
     }
@@ -114,7 +125,12 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
 
   Future<void> _onDuplicateProduct(DuplicateProductEvent event, Emitter<ProductListPageState> emit) async {
     try {
-      await repository.duplicateProduct(event.productId);
+      if (_sellerId.isNotEmpty) {
+        final product = await repository.getProduct(event.productId, _sellerId);
+        if (product != null) {
+          await repository.duplicateProduct(product, _sellerId);
+        }
+      }
     } catch (e) {
       emit(ProductListError(e.toString()));
     }
@@ -122,7 +138,9 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
 
   Future<void> _onArchiveProduct(ArchiveProductEvent event, Emitter<ProductListPageState> emit) async {
     try {
-      await repository.archiveProduct(event.productId);
+      if (_sellerId.isNotEmpty) {
+        await repository.archiveProduct(event.productId, _sellerId);
+      }
     } catch (e) {
       emit(ProductListError(e.toString()));
     }
@@ -130,7 +148,9 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
 
   Future<void> _onUnarchiveProduct(UnarchiveProductEvent event, Emitter<ProductListPageState> emit) async {
     try {
-      await repository.unarchiveProduct(event.productId);
+      if (_sellerId.isNotEmpty) {
+        await repository.unarchiveProduct(event.productId, _sellerId);
+      }
     } catch (e) {
       emit(ProductListError(e.toString()));
     }
@@ -189,8 +209,10 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
       filteredList.sort((a, b) => b.price.compareTo(a.price));
     } else if (_sortBy == 'Best Selling') {
       filteredList.sort((a, b) => b.salesCount.compareTo(a.salesCount));
+    } else {
+      // Default to Recently Added
+      filteredList.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     }
-    // 'Recently Added' keeps original order from Firebase
 
     // Counts are always based on activeBase (non-archived) except for archivedCount
     final activeBase = _allProducts.where((p) => !p.isArchived).toList();

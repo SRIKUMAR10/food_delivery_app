@@ -523,6 +523,9 @@ class SellerLoginPageBloc
     if (raw.contains('network')) {
       return 'இணைய இணைப்பு சரிபார்க்கவும்.';
     }
+    if (raw.contains('invalid-recaptcha-token')) {
+      return 'reCAPTCHA சரிபார்ப்பு தோல்வி. பக்கத்தை புதுப்பித்து மீண்டும் முயற்சிக்கவும்.';
+    }
     // Strip "Exception:" prefix
     return raw.replaceAll(RegExp(r'^Exception:\s*'), '');
   }

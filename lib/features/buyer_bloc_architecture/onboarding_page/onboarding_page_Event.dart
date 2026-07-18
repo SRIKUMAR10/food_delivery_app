@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 
 abstract class OnboardingPageEvent {}
 
@@ -11,8 +10,9 @@ class OnboardingGetStartedPressed extends OnboardingPageEvent {
 }
 
 /// Event triggered when the Firebase auth status changes.
+/// Event triggered when the Firebase auth status changes.
 class OnboardingAuthStatusChanged extends OnboardingPageEvent {
-  final User? user;
+  final String? userId;
 
-  OnboardingAuthStatusChanged({this.user});
+  OnboardingAuthStatusChanged({this.userId});
 }

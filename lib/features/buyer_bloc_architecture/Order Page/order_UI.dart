@@ -3,18 +3,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'order_Bloc.dart';
 import 'order_Event.dart';
 import 'order_State.dart';
-import 'order_models.dart';
-import 'order_repository.dart';
+import 'order_view_model.dart';
+import '../../../core/repositories/i_order_repository.dart';
+import '../../../core/services/i_auth_service.dart';
 import '../Cart Page/cart_models.dart';
 import 'package:intl/intl.dart';
 import '../Track_Order_page/Track_Order_page_ui.dart';
 
 class OrderPageUI extends StatelessWidget {
-  final OrderRepository? orderRepository;
+  final IOrderRepository? orderRepository;
   final OrderBloc? orderBloc;
+  final IAuthService? authService;
 
-  const OrderPageUI({super.key, this.orderRepository, this.orderBloc})
-    : assert(orderRepository != null || orderBloc != null);
+  const OrderPageUI({super.key, this.orderRepository, this.orderBloc, this.authService});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +28,10 @@ class OrderPageUI extends StatelessWidget {
 
     return BlocProvider(
       create: (_) =>
-          OrderBloc(repository: orderRepository!)..add(LoadOrdersRequested()),
+          OrderBloc(
+            repository: orderRepository ?? context.read<IOrderRepository>(),
+            authService: authService ?? context.read<IAuthService>(),
+          )..add(LoadOrdersRequested()),
       child: const _OrderPageContent(),
     );
   }
@@ -42,7 +46,7 @@ class _OrderPageContent extends StatefulWidget {
 
 class _OrderPageContentState extends State<_OrderPageContent> {
   String _selectedTab = 'All';
-  OrderModel? _selectedOrder; // For Desktop Master-Detail view
+  OrderViewModel? _selectedOrder; // For Desktop Master-Detail view
 
   final List<String> _tabs = ['All', 'Ongoing', 'Completed', 'Cancelled'];
 
@@ -206,7 +210,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
         } else if (state is OrderError) {
           return Center(child: Text('Error: ${state.message}'));
         } else if (state is OrderLoaded) {
-          List<OrderModel> orders = state.orders;
+          List<OrderViewModel> orders = state.orders;
 
           // Filter orders based on tab
           if (_selectedTab == 'Ongoing') {
@@ -288,7 +292,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
 
   Widget _buildOrderCard(
     BuildContext context,
-    OrderModel order, {
+    OrderViewModel order, {
     required bool isDesktop,
   }) {
     final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');

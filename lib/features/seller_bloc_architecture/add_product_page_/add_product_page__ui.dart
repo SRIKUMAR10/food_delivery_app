@@ -10,9 +10,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'add_product_page__bloc.dart';
 import 'add_product_page__event.dart';
 import 'add_product_page__state.dart';
-import '../product_list_page_/product_model.dart';
 import '../product_list_page_/product_preview_page.dart';
-import '../product_list_page_/product_repository.dart';
+import '../../../../core/models/product_model.dart';
+import '../../../../core/repositories/i_product_repository.dart';
+import '../../../../core/services/i_auth_service.dart';
 
 // --- Theme Constants (Material 3) ---
 const Color _bgColor = Color(0xFFF7F8FA);
@@ -33,7 +34,10 @@ class AddProductPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) {
-        final bloc = AddProductPageBloc(repository: ProductRepositoryImpl());
+        final bloc = AddProductPageBloc(
+          repository: context.read<IProductRepository>(),
+          authService: context.read<IAuthService>(),
+        );
         if (productId != null) {
           bloc.add(LoadProductEvent(productId!));
         }
@@ -176,8 +180,8 @@ class _AddProductViewState extends State<AddProductView> {
               _discountController.text = pct > 0 ? pct.toStringAsFixed(0) : '';
 
               _descController.text = p.description;
-              _prepTimeController.text = p.prepTime;
-              _caloriesController.text = p.calories;
+              _prepTimeController.text = p.prepTime.toString();
+              _caloriesController.text = p.calories.toString();
               _portionSizeController.text = p.portionSize;
               _addonsController.text = p.addons.join(', ');
               _stockController.text = p.availableStock.toString();
@@ -1935,7 +1939,10 @@ class _AddProductViewState extends State<AddProductView> {
       // Mock data for fields not in the form
       rating: 4.5,
       reviewCount: 120,
-      prepTime: _prepTimeController.text.isNotEmpty ? _prepTimeController.text : '15-20 min',
+      prepTime: int.tryParse(_prepTimeController.text) ?? 15,
+      calories: int.tryParse(_caloriesController.text) ?? 0,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     return ProductPreviewWidget(

@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_models.dart'
-    show OrderModel;
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_view_model.dart'
+    show OrderViewModel;
 
 // --- Blueprint Classes ---
 // In a fully abstracted architecture, you would have an OrderRepository
 abstract class OrderRepository {
-  Future<List<OrderModel>> fetchOrders(String userId);
+  Future<List<OrderViewModel>> fetchOrders(String userId);
 }
 
 class MockOrderRepository extends Mock implements OrderRepository {}
@@ -19,10 +19,10 @@ void main() {
       mockRepository = MockOrderRepository();
     });
 
-    test('fetchOrders returns a list of OrderModels on success', () async {
+    test('fetchOrders returns a list of OrderViewModels on success', () async {
       // Arrange
       final mockOrders = [
-        OrderModel(
+        OrderViewModel(
           id: 'ord_123',
           status: 'Delivered',
           totalAmount: 250.0,

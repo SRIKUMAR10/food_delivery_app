@@ -1,13 +1,19 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'order_Event.dart';
 import 'order_State.dart';
-import 'order_repository.dart';
+import '../../../core/repositories/i_order_repository.dart';
+import '../../../core/services/i_auth_service.dart';
+import 'order_mapper.dart';
 
 class OrderBloc extends Bloc<OrderEvent, OrderState> {
-  final OrderRepository _repository;
+  final IOrderRepository _repository;
+  final IAuthService _authService;
 
-  OrderBloc({required OrderRepository repository}) 
-      : _repository = repository,
+  OrderBloc({
+    required IOrderRepository repository,
+    required IAuthService authService,
+  })  : _repository = repository,
+        _authService = authService,
         super(OrderInitial()) {
     on<LoadOrdersRequested>(_onLoadOrdersRequested);
   }
@@ -16,12 +22,19 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     LoadOrdersRequested event,
     Emitter<OrderState> emit,
   ) async {
+    final buyerId = _authService.currentUserId;
+    if (buyerId == null) {
+      emit(OrderError('User not logged in'));
+      return;
+    }
+
     emit(OrderLoading());
 
     await emit.forEach<List<dynamic>>(
-      _repository.getOrdersStream(),
+      _repository.getBuyerOrdersStream(buyerId),
       onData: (orders) {
-        return OrderLoaded(orders.cast());
+        final viewModels = orders.map((order) => OrderMapper.toViewModel(order)).toList();
+        return OrderLoaded(viewModels);
       },
       onError: (error, stackTrace) => OrderError(error.toString()),
     );

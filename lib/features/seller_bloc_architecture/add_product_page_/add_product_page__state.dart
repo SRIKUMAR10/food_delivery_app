@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:image_picker/image_picker.dart';
-import '../product_list_page_/product_model.dart';
+import '../../../../core/models/product_model.dart';
 
 enum AddProductStatus { initial, loading, success, error }
 

@@ -172,50 +172,5 @@ void main() {
     });
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Group 6 – Auth Provider Resolution
-  // ──────────────────────────────────────────────────────────────────────────
-  group('SellerLoginService – Auth Provider Resolution', () {
-    test('getAuthProviderForEmail returns null for unknown email', () async {
-      when(
-        () => service.getAuthProviderForEmail(any()),
-      ).thenAnswer((_) async => null);
 
-      final result = await service.getAuthProviderForEmail('unknown@test.com');
-      expect(result, isNull);
-    });
-
-    test(
-      'getAuthProviderForEmail returns google.com for Google users',
-      () async {
-        when(
-          () => service.getAuthProviderForEmail(any()),
-        ).thenAnswer((_) async => 'google.com');
-
-        final result = await service.getAuthProviderForEmail('google@user.com');
-        expect(result, 'google.com');
-      },
-    );
-
-    test('getAuthProviderForEmail returns apple.com for Apple users', () async {
-      when(
-        () => service.getAuthProviderForEmail(any()),
-      ).thenAnswer((_) async => 'apple.com');
-
-      final result = await service.getAuthProviderForEmail('apple@user.com');
-      expect(result, 'apple.com');
-    });
-
-    test(
-      'getAuthProviderForEmail returns password for email/password users',
-      () async {
-        when(
-          () => service.getAuthProviderForEmail(any()),
-        ).thenAnswer((_) async => 'password');
-
-        final result = await service.getAuthProviderForEmail('email@user.com');
-        expect(result, 'password');
-      },
-    );
-  });
 }

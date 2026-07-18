@@ -210,7 +210,7 @@ class _PrimaryButton extends StatelessWidget {
 }
 
 /// Rounded text field matching the UI.
-class _LoginTextField extends StatelessWidget {
+class _LoginTextField extends StatefulWidget {
   final String hintText;
   final IconData prefixIcon;
   final Widget? suffixWidget;
@@ -219,6 +219,7 @@ class _LoginTextField extends StatelessWidget {
   final TextInputType keyboardType;
   final String? errorText;
   final TextInputAction textInputAction;
+  final String? initialValue;
 
   const _LoginTextField({
     required this.hintText,
@@ -229,7 +230,36 @@ class _LoginTextField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.errorText,
     this.textInputAction = TextInputAction.next,
+    this.initialValue,
   });
+
+  @override
+  State<_LoginTextField> createState() => _LoginTextFieldState();
+}
+
+class _LoginTextFieldState extends State<_LoginTextField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(covariant _LoginTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialValue != oldWidget.initialValue &&
+        widget.initialValue != _controller.text) {
+      _controller.text = widget.initialValue ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,19 +267,20 @@ class _LoginTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
-          obscureText: obscureText,
-          onChanged: onChanged,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
+          controller: _controller,
+          obscureText: widget.obscureText,
+          onChanged: widget.onChanged,
+          keyboardType: widget.keyboardType,
+          textInputAction: widget.textInputAction,
           style: GoogleFonts.inter(fontSize: 14, color: _AppColors.textDark),
           decoration: InputDecoration(
-            hintText: hintText,
+            hintText: widget.hintText,
             hintStyle: GoogleFonts.inter(
               fontSize: 14,
               color: _AppColors.textLight,
             ),
-            prefixIcon: Icon(prefixIcon, color: _AppColors.textLight, size: 20),
-            suffixIcon: suffixWidget,
+            prefixIcon: Icon(widget.prefixIcon, color: _AppColors.textLight, size: 20),
+            suffixIcon: widget.suffixWidget,
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(
@@ -281,7 +312,7 @@ class _LoginTextField extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: _AppColors.error, width: 1.5),
             ),
-            errorText: errorText,
+            errorText: widget.errorText,
           ),
         ),
       ],
@@ -435,6 +466,7 @@ class _LoginFormScreenState extends State<_LoginFormScreen>
 
                       // Email / Phone field
                       _LoginTextField(
+                        initialValue: state.emailOrPhone,
                         hintText: 'Email / Phone',
                         prefixIcon: Icons.email_outlined,
                         onChanged: (v) => context
@@ -448,6 +480,7 @@ class _LoginFormScreenState extends State<_LoginFormScreen>
 
                       // Password field
                       _LoginTextField(
+                        initialValue: state.password,
                         hintText: 'Password',
                         prefixIcon: Icons.lock_outline_rounded,
                         obscureText: state.isPasswordObscured,
@@ -691,6 +724,7 @@ class _EnterEmailPhoneScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
                   _LoginTextField(
+                    initialValue: state.emailOrPhone,
                     hintText: 'john@gmail.com',
                     prefixIcon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
@@ -785,6 +819,7 @@ class _EnterPasswordScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
                   _LoginTextField(
+                    initialValue: state.password,
                     hintText: 'Password',
                     prefixIcon: Icons.lock_outline_rounded,
                     obscureText: state.isPasswordObscured,
@@ -1286,6 +1321,7 @@ class _ForgotPasswordScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
                   _LoginTextField(
+                    initialValue: state.forgotPasswordEmail,
                     hintText: 'john@gmail.com',
                     prefixIcon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,

@@ -36,7 +36,7 @@ class FakeFavoritesBloc extends Bloc<FavoritesEvent, FavoritesState>
 
 class FakeHomePageBloc extends Bloc<HomePageEvent, HomePageState>
     implements HomePageBloc {
-  FakeHomePageBloc() : super(const HomePageInitial('default_id'));
+  FakeHomePageBloc() : super(const HomePageInitial('default_id', []));
 }
 
 void main() {

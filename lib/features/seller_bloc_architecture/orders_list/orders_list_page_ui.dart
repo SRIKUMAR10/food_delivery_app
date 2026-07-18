@@ -7,8 +7,7 @@ import '../../../../core/models/order_model.dart';
 import 'orders_list_page_bloc.dart';
 import 'orders_list_page_event.dart';
 import 'orders_list_page_state.dart';
-import 'orders_list_page_repository.dart';
-import 'orders_list_page_service.dart';
+import '../../../../core/repositories/i_order_repository.dart';
 import '../assign_delivery_page_/assign_delivery_page__ui.dart';
 import '../assign_delivery_page_/assign_delivery_page__bloc.dart';
 import '../assign_delivery_page_/assign_delivery_page__repository.dart';
@@ -22,7 +21,7 @@ class OrdersListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => OrdersListBloc(
-        repository: OrdersListRepository(service: OrdersListService()),
+        repository: context.read<IOrderRepository>(),
       )..add(LoadOrdersStream(FirebaseAuth.instance.currentUser?.uid ?? '')),
       child: const OrdersListView(),
     );

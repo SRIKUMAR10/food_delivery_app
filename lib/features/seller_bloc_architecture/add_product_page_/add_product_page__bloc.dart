@@ -2,14 +2,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'add_product_page__event.dart';
 import 'add_product_page__state.dart';
-import '../product_list_page_/product_repository.dart';
-import '../product_list_page_/product_model.dart';
+import '../../../../core/repositories/i_product_repository.dart';
+import '../../../../core/models/product_model.dart';
+import '../../../../core/services/i_auth_service.dart';
 
 class AddProductPageBloc
     extends Bloc<AddProductPageEvent, AddProductPageState> {
-  final ProductRepository repository;
+  final IProductRepository repository;
+  final IAuthService authService;
 
-  AddProductPageBloc({required this.repository}) : super(const AddProductPageState()) {
+  AddProductPageBloc({required this.repository, required this.authService}) : super(const AddProductPageState()) {
     on<LoadProductEvent>(_onLoadProduct);
     on<AddImageEvent>(_onAddImage);
     on<RemoveImageEvent>(_onRemoveImage);
@@ -25,7 +27,7 @@ class AddProductPageBloc
   void _onLoadProduct(LoadProductEvent event, Emitter<AddProductPageState> emit) async {
     emit(state.copyWith(status: AddProductStatus.loading));
     try {
-      final product = await repository.getProduct(event.productId);
+      final product = await repository.getProduct(event.productId, authService.currentUserId ?? '');
       if (product != null) {
         emit(state.copyWith(
           status: AddProductStatus.initial,
@@ -150,8 +152,8 @@ class AddProductPageBloc
         price: event.price,
         discountPrice: event.discountPrice ?? 0.0,
         description: event.description,
-        prepTime: event.prepTime ?? '',
-        calories: event.calories ?? initial?.calories ?? '',
+        prepTime: int.tryParse(event.prepTime ?? '') ?? initial?.prepTime ?? 0,
+        calories: int.tryParse(event.calories ?? '') ?? initial?.calories ?? 0,
         portionSize: event.portionSize ?? '',
         addons: event.addons?.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList() ?? [],
         category: state.category ?? '',
@@ -166,15 +168,17 @@ class AddProductPageBloc
         reviewCount: initial?.reviewCount ?? 0,
         salesCount: initial?.salesCount ?? 0,
         availableStock: event.availableStock ?? initial?.availableStock ?? 0,
+        createdAt: initial?.createdAt ?? DateTime.now(),
+        updatedAt: DateTime.now(),
         minimumAlert: event.minimumAlert ?? initial?.minimumAlert ?? 10,
         sellerId: initial?.sellerId ?? '',
         isArchived: initial?.isArchived ?? false,
       );
 
       if (initial != null) {
-        await repository.updateProduct(productToSave, state.images, state.existingImages);
+        await repository.updateProduct(productToSave, state.images, authService.currentUserId ?? '', existingImages: state.existingImages);
       } else {
-        await repository.addProduct(productToSave, state.images);
+        await repository.addProduct(productToSave, state.images, authService.currentUserId ?? '');
       }
 
       emit(state.copyWith(status: AddProductStatus.success));

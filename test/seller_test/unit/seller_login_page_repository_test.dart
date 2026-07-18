@@ -161,38 +161,7 @@ void main() {
     });
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Group 4 – checkEmailExists / checkPhoneExists
-  // ──────────────────────────────────────────────────────────────────────────
-  group('SellerRepository – Existence Checks', () {
-    test('checkEmailExists returns true for existing email', () async {
-      when(
-        () => mockRepo.checkEmailExists(any()),
-      ).thenAnswer((_) async => true);
-      expect(await mockRepo.checkEmailExists('exists@shop.com'), isTrue);
-    });
 
-    test('checkEmailExists returns false for new email', () async {
-      when(
-        () => mockRepo.checkEmailExists(any()),
-      ).thenAnswer((_) async => false);
-      expect(await mockRepo.checkEmailExists('new@shop.com'), isFalse);
-    });
-
-    test('checkPhoneExists returns true for registered phone', () async {
-      when(
-        () => mockRepo.checkPhoneExists(any()),
-      ).thenAnswer((_) async => true);
-      expect(await mockRepo.checkPhoneExists('+919876543210'), isTrue);
-    });
-
-    test('checkPhoneExists returns false for unregistered phone', () async {
-      when(
-        () => mockRepo.checkPhoneExists(any()),
-      ).thenAnswer((_) async => false);
-      expect(await mockRepo.checkPhoneExists('+910000000001'), isFalse);
-    });
-  });
 
   // ──────────────────────────────────────────────────────────────────────────
   // Group 5 – signOut

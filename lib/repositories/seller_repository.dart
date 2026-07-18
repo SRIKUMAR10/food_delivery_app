@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/seller_model.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'dart:async';
 
 class SellerRepository {
   final FirebaseFirestore _firestore;
@@ -81,13 +83,70 @@ class SellerRepository {
     throw UnimplementedError('Apple Sign-In is not fully implemented');
   }
 
+  String? _verificationId;
+  ConfirmationResult? _confirmationResult;
+  RecaptchaVerifier? _recaptchaVerifier;
+
   Future<void> requestPhoneLoginOtp(String phoneNumber) async {
-    // Placeholder for requesting OTP via Firebase Auth
+    if (kIsWeb) {
+      try {
+        _recaptchaVerifier?.clear();
+        _recaptchaVerifier = RecaptchaVerifier(
+          auth: FirebaseAuthPlatform.instance,
+        );
+        _confirmationResult = await _auth.signInWithPhoneNumber(
+          phoneNumber,
+          _recaptchaVerifier!,
+        ).timeout(const Duration(seconds: 30), onTimeout: () {
+          throw Exception('OTP Request Timed Out.');
+        });
+      } catch (e) {
+        throw Exception('Failed to send OTP: $e');
+      }
+    } else {
+      Completer<void> completer = Completer<void>();
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Auto-resolution (Android only)
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          if (!completer.isCompleted) {
+            completer.completeError(e);
+          }
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          _verificationId = verificationId;
+          if (!completer.isCompleted) {
+            completer.complete();
+          }
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+      return completer.future;
+    }
   }
 
   Future<bool> verifyPhoneLoginOtp(String otpCode, String phoneNumber) async {
-    // Placeholder for verifying OTP
-    return true;
+    try {
+      if (kIsWeb) {
+        if (_confirmationResult == null) return false;
+        await _confirmationResult!.confirm(otpCode);
+        return true;
+      } else {
+        if (_verificationId == null) return false;
+        PhoneAuthCredential credential = PhoneAuthProvider.credential(
+          verificationId: _verificationId!,
+          smsCode: otpCode,
+        );
+        await _auth.signInWithCredential(credential);
+        return true;
+      }
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<void> initiateSignUp({
