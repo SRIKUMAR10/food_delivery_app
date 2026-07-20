@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 import '../core/models/conversation_model.dart';
 import '../core/models/chat_message_model.dart';
@@ -72,6 +74,11 @@ class FirebaseChatRepository implements IChatRepository {
     required String text,
     required String senderId,
     required String senderRole,
+    String? messageType,
+    String? mediaUrl,
+    String? fileName,
+    int? fileSize,
+    int? duration,
   }) async {
     final messageId = _uuid.v4();
     final timestamp = DateTime.now();
@@ -91,7 +98,11 @@ class FirebaseChatRepository implements IChatRepository {
       'senderRole': senderRole,
       'timestamp': Timestamp.fromDate(timestamp),
       'isRead': false,
-      'messageType': 'text',
+      'messageType': messageType ?? 'text',
+      if (mediaUrl != null) 'mediaUrl': mediaUrl,
+      if (fileName != null) 'fileName': fileName,
+      if (fileSize != null) 'fileSize': fileSize,
+      if (duration != null) 'duration': duration,
     });
 
     final conversationRef = _firestore
@@ -216,18 +227,45 @@ class FirebaseChatRepository implements IChatRepository {
   Future<ConversationModel?> getConversationByOrderId(String orderId, {String? userId, bool isSeller = false}) async {
     if (orderId.isEmpty) return null;
 
-    var query = _firestore.collection('conversations').where('orderId', isEqualTo: orderId);
-    
-    if (userId != null) {
-      query = query.where(isSeller ? 'sellerId' : 'buyerId', isEqualTo: userId);
+    final query = _firestore
+        .collection('conversations')
+        .where('orderId', isEqualTo: orderId);
+        
+    final queryWithUser = userId != null
+        ? query.where(isSeller ? 'sellerId' : 'buyerId', isEqualTo: userId)
+        : query;
+
+    final snapshot = await queryWithUser.limit(1).get();
+
+    if (snapshot.docs.isNotEmpty) {
+      return ConversationModel.fromMap(
+        snapshot.docs.first.data(),
+        snapshot.docs.first.id,
+      );
+    }
+    return null;
+  }
+
+  @override
+  Future<String> uploadChatAttachment(
+    dynamic file,
+    String conversationId,
+    String fileName,
+  ) async {
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('chat_attachments')
+        .child(conversationId)
+        .child('${_uuid.v4()}_$fileName');
+
+    if (file is File) {
+      await storageRef.putFile(file);
+    } else {
+      // Assuming file is Uint8List for web
+      await storageRef.putData(file);
     }
 
-    final snapshot = await query.limit(1).get();
-
-    if (snapshot.docs.isEmpty) return null;
-
-    final doc = snapshot.docs.first;
-    return ConversationModel.fromMap(doc.data(), doc.id);
+    return await storageRef.getDownloadURL();
   }
 
   @override

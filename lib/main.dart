@@ -37,6 +37,9 @@ import 'package:logger/logger.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/app_bloc_observer.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'core/services/zego_service.dart';
+
 // Global logger instance for enterprise observability
 final Logger appLogger = Logger(
   printer: PrettyPrinter(
@@ -83,6 +86,17 @@ void main() async {
     FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
     appLogger.i('Firebase Performance Monitoring initialized');
   }
+
+  // Listen to auth state to initialize/deinitialize ZegoCloud
+  FirebaseAuth.instance.authStateChanges().listen((user) {
+    if (user != null) {
+      ZegoService.init(user.uid, user.displayName ?? "User");
+      appLogger.i('ZegoCloud initialized for user: ${user.uid}');
+    } else {
+      ZegoService.deinit();
+      appLogger.i('ZegoCloud deinitialized');
+    }
+  });
 
   appLogger.i('Application starting up...');
   runApp(const MyApp());

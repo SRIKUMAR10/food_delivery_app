@@ -12,7 +12,17 @@ abstract interface class IChatRepository {
     required String text,
     required String senderId,
     required String senderRole,
+    String? messageType,
+    String? mediaUrl,
+    String? fileName,
+    int? fileSize,
+    int? duration,
   });
+  Future<String> uploadChatAttachment(
+    dynamic file, // Can be File or byte array depending on platform
+    String conversationId,
+    String fileName,
+  );
   Future<String> createConversation({
     required String buyerId,
     required String buyerName,

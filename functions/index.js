@@ -431,3 +431,56 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', error.message);
   }
 });
+
+// ZEGOCLOUD Token Generator
+exports.generateZegoToken = functions.https.onRequest((req, res) => {
+  corsHandler(req, res, async () => {
+    if (req.method !== "POST") {
+      return res.status(405).send({ message: "Method Not Allowed" });
+    }
+
+    try {
+      // 1. Verify Firebase Authentication ID Token
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).send({ message: "Unauthorized: Missing Authorization header" });
+      }
+
+      const idToken = authHeader.split("Bearer ")[1];
+      let decodedToken;
+      try {
+        decodedToken = await admin.auth().verifyIdToken(idToken);
+      } catch (error) {
+        console.error("Auth Error:", error);
+        return res.status(401).send({ message: "Unauthorized: Invalid token" });
+      }
+
+      // 2. Parse request body
+      const { userId, roomId } = req.body;
+      if (!userId || !roomId) {
+        return res.status(400).send({ message: "Bad Request: Missing userId or roomId" });
+      }
+
+      if (userId !== decodedToken.uid) {
+        return res.status(403).send({ message: "Forbidden: userId mismatch" });
+      }
+
+      // 3. ZEGOCLOUD Credentials from Firebase Config or Env
+      const appId = parseInt(functions.config().zegocloud ? functions.config().zegocloud.app_id : (process.env.ZEGO_APP_ID || "0"));
+      const serverSecret = functions.config().zegocloud ? functions.config().zegocloud.server_secret : (process.env.ZEGO_SERVER_SECRET || "dummy_secret");
+      
+      if (appId === 0 || serverSecret === "dummy_secret") {
+         return res.status(500).send({ message: "Server misconfiguration: ZEGOCLOUD credentials missing" });
+      }
+
+      // 4. Return the secrets securely to the authenticated client for them to initialize the call.
+      res.status(200).send({ 
+        appId: appId,
+        appSign: serverSecret
+      });
+    } catch (error) {
+      console.error("Error generating Zego token:", error);
+      res.status(500).send({ message: "Internal Server Error: " + error.message });
+    }
+  });
+});

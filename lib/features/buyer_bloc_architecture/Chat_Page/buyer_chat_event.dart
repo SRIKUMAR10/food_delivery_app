@@ -37,3 +37,33 @@ class FilterBuyerConversations extends BuyerChatEvent {
   final String query;
   FilterBuyerConversations(this.query);
 }
+
+class SendBuyerMediaMessage extends BuyerChatEvent {
+  final String conversationId;
+  final dynamic file; // File or byte array
+  final String messageType; // 'image', 'audio', 'document'
+  final String fileName;
+  final int? duration;
+
+  SendBuyerMediaMessage({
+    required this.conversationId,
+    required this.file,
+    required this.messageType,
+    required this.fileName,
+    this.duration,
+  });
+}
+
+class ToggleEmojiPicker extends BuyerChatEvent {
+  final bool show;
+  ToggleEmojiPicker(this.show);
+}
+
+class StartAudioRecording extends BuyerChatEvent {}
+
+class StopAudioRecording extends BuyerChatEvent {
+  final String conversationId;
+  StopAudioRecording(this.conversationId);
+}
+
+class CancelAudioRecording extends BuyerChatEvent {}

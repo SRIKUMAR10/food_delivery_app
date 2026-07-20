@@ -50,6 +50,11 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     on<SendBuyerMessage>(_onSendMessage);
     on<StartBuyerConversation>(_onStartConversation);
     on<FilterBuyerConversations>(_onFilterConversations);
+    on<SendBuyerMediaMessage>(_onSendMediaMessage);
+    on<ToggleEmojiPicker>(_onToggleEmojiPicker);
+    on<StartAudioRecording>(_onStartAudioRecording);
+    on<StopAudioRecording>(_onStopAudioRecording);
+    on<CancelAudioRecording>(_onCancelAudioRecording);
     on<_ConversationsUpdated>(_onConversationsUpdated);
     on<_MessagesUpdated>(_onMessagesUpdated);
     on<_ConversationsError>(_onConversationsError);
@@ -263,6 +268,69 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
         errorMessage: 'Failed to send message. Please try again.',
       ));
     }
+  }
+
+  Future<void> _onSendMediaMessage(
+      SendBuyerMediaMessage event, Emitter<BuyerChatState> emit) async {
+    final current = state;
+    if (current is! BuyerChatLoaded) return;
+    final userId = authService.currentUserId;
+    if (userId == null) return;
+
+    emit(current.copyWith(isSendingMessage: true, clearError: true));
+
+    try {
+      final mediaUrl = await repository.uploadChatAttachment(
+        event.file,
+        event.conversationId,
+        event.fileName,
+      );
+
+      await repository.sendMessage(
+        conversationId: event.conversationId,
+        text: '', // Empty text for media
+        senderId: userId,
+        senderRole: 'buyer',
+        messageType: event.messageType,
+        mediaUrl: mediaUrl,
+        fileName: event.fileName,
+        duration: event.duration,
+      );
+      emit(current.copyWith(isSendingMessage: false));
+    } catch (e) {
+      emit(current.copyWith(
+        isSendingMessage: false,
+        errorMessage: 'Failed to send media. Please try again.',
+      ));
+    }
+  }
+
+  void _onToggleEmojiPicker(
+      ToggleEmojiPicker event, Emitter<BuyerChatState> emit) {
+    final current = state;
+    if (current is! BuyerChatLoaded) return;
+    emit(current.copyWith(showEmojiPicker: event.show));
+  }
+
+  void _onStartAudioRecording(
+      StartAudioRecording event, Emitter<BuyerChatState> emit) {
+    final current = state;
+    if (current is! BuyerChatLoaded) return;
+    emit(current.copyWith(isRecording: true, recordingDuration: Duration.zero));
+  }
+
+  void _onStopAudioRecording(
+      StopAudioRecording event, Emitter<BuyerChatState> emit) {
+    final current = state;
+    if (current is! BuyerChatLoaded) return;
+    emit(current.copyWith(isRecording: false));
+  }
+
+  void _onCancelAudioRecording(
+      CancelAudioRecording event, Emitter<BuyerChatState> emit) {
+    final current = state;
+    if (current is! BuyerChatLoaded) return;
+    emit(current.copyWith(isRecording: false, recordingDuration: Duration.zero));
   }
 
   Future<void> _onStartConversation(

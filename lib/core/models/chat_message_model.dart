@@ -9,7 +9,11 @@ class ChatMessageModel extends Equatable {
   final String senderRole;
   final DateTime timestamp;
   final bool isRead;
-  final String messageType;
+  final String messageType; // text, image, audio, document
+  final String? mediaUrl;
+  final String? fileName;
+  final int? fileSize;
+  final int? duration; // for audio
 
   const ChatMessageModel({
     required this.id,
@@ -20,6 +24,10 @@ class ChatMessageModel extends Equatable {
     required this.timestamp,
     this.isRead = false,
     this.messageType = 'text',
+    this.mediaUrl,
+    this.fileName,
+    this.fileSize,
+    this.duration,
   });
 
   factory ChatMessageModel.fromMap(
@@ -36,6 +44,10 @@ class ChatMessageModel extends Equatable {
       timestamp: (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isRead: map['isRead'] as bool? ?? false,
       messageType: map['messageType'] as String? ?? 'text',
+      mediaUrl: map['mediaUrl'] as String?,
+      fileName: map['fileName'] as String?,
+      fileSize: map['fileSize'] as int?,
+      duration: map['duration'] as int?,
     );
   }
 
@@ -48,6 +60,10 @@ class ChatMessageModel extends Equatable {
       'timestamp': Timestamp.fromDate(timestamp),
       'isRead': isRead,
       'messageType': messageType,
+      'mediaUrl': mediaUrl,
+      'fileName': fileName,
+      'fileSize': fileSize,
+      'duration': duration,
     };
   }
 
@@ -60,6 +76,10 @@ class ChatMessageModel extends Equatable {
     DateTime? timestamp,
     bool? isRead,
     String? messageType,
+    String? mediaUrl,
+    String? fileName,
+    int? fileSize,
+    int? duration,
   }) {
     return ChatMessageModel(
       id: id ?? this.id,
@@ -70,6 +90,10 @@ class ChatMessageModel extends Equatable {
       timestamp: timestamp ?? this.timestamp,
       isRead: isRead ?? this.isRead,
       messageType: messageType ?? this.messageType,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+      fileName: fileName ?? this.fileName,
+      fileSize: fileSize ?? this.fileSize,
+      duration: duration ?? this.duration,
     );
   }
 
@@ -83,5 +107,9 @@ class ChatMessageModel extends Equatable {
     timestamp,
     isRead,
     messageType,
+    mediaUrl,
+    fileName,
+    fileSize,
+    duration,
   ];
 }

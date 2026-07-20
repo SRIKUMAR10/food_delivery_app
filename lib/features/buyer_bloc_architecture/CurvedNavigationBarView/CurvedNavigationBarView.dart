@@ -176,61 +176,99 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
 
     if (isDesktop) {
       return Scaffold(
-        backgroundColor: const Color(0xFFFBF5F5),
+        backgroundColor: const Color(0xFFF8F9FB),
         body: Row(
           children: [
             Expanded(child: bodyContent),
-            NavigationRail(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (index) =>
-                  setState(() => _selectedIndex = index),
-              labelType: NavigationRailLabelType.all,
-              backgroundColor: Colors.white,
-              selectedIconTheme: const IconThemeData(
-                color: Color(0xFFE52121),
+            Container(
+              width: 100,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(-2, 0),
+                  ),
+                ],
               ),
-              unselectedIconTheme: const IconThemeData(
-                color: Colors.black54,
+              child: NavigationRail(
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: (index) =>
+                    setState(() => _selectedIndex = index),
+                labelType: NavigationRailLabelType.all,
+                backgroundColor: Colors.white,
+                selectedIconTheme: const IconThemeData(
+                  color: Color(0xFFE52121),
+                ),
+                unselectedIconTheme: const IconThemeData(
+                  color: Color(0xFF94A3B8),
+                ),
+                selectedLabelTextStyle: const TextStyle(
+                  color: Color(0xFFE52121),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+                unselectedLabelTextStyle: const TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 11,
+                ),
+                indicatorColor: const Color(0xFFE52121).withValues(alpha: 0.1),
+                indicatorShape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                minWidth: 80,
+                groupAlignment: 0.0,
+                leading: Padding(
+                  padding: const EdgeInsets.only(top: 16, bottom: 8),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE52121).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.restaurant_rounded,
+                      color: Color(0xFFE52121),
+                      size: 24,
+                    ),
+                  ),
+                ),
+                destinations: const [
+                  NavigationRailDestination(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home_rounded),
+                    label: Text('Home'),
+                  ),
+                  NavigationRailDestination(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    icon: Icon(Icons.account_balance_wallet_outlined),
+                    selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+                    label: Text('Wallet'),
+                  ),
+                  NavigationRailDestination(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    icon: Icon(Icons.shopping_cart_outlined),
+                    selectedIcon: Icon(Icons.shopping_cart_rounded),
+                    label: Text('Cart'),
+                  ),
+                  NavigationRailDestination(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    icon: Icon(Icons.receipt_long_outlined),
+                    selectedIcon: Icon(Icons.receipt_long_rounded),
+                    label: Text('Orders'),
+                  ),
+                  NavigationRailDestination(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    icon: Icon(Icons.support_agent_outlined),
+                    selectedIcon: Icon(Icons.support_agent_rounded),
+                    label: Text('Support'),
+                  ),
+                ],
               ),
-              selectedLabelTextStyle: const TextStyle(
-                color: Color(0xFFE52121),
-                fontWeight: FontWeight.bold,
-              ),
-              unselectedLabelTextStyle: const TextStyle(
-                color: Colors.black54,
-              ),
-              indicatorColor: const Color(
-                0xFFE52121,
-              ).withValues(alpha: 0.1),
-              minWidth: 90,
-              groupAlignment: 0.0,
-              destinations: const [
-                NavigationRailDestination(
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  icon: Icon(Icons.home_outlined),
-                  label: Text('Home'),
-                ),
-                NavigationRailDestination(
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  icon: Icon(Icons.account_balance_wallet_outlined),
-                  label: Text('Wallet'),
-                ),
-                NavigationRailDestination(
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  icon: Icon(Icons.shopping_cart_outlined),
-                  label: Text('Cart'),
-                ),
-                NavigationRailDestination(
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  icon: Icon(Icons.receipt_long_outlined),
-                  label: Text('Orders'),
-                ),
-                NavigationRailDestination(
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  icon: Icon(Icons.support_agent_outlined),
-                  label: Text('Support'),
-                ),
-              ],
             ),
           ],
         ),

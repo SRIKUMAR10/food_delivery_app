@@ -15,6 +15,9 @@ class BuyerChatLoaded extends BuyerChatState {
   final bool isSendingMessage;
   final String? errorMessage;
   final String searchQuery;
+  final bool showEmojiPicker;
+  final bool isRecording;
+  final Duration recordingDuration;
 
   BuyerChatLoaded({
     required this.currentUserId,
@@ -24,6 +27,9 @@ class BuyerChatLoaded extends BuyerChatState {
     this.isSendingMessage = false,
     this.errorMessage,
     this.searchQuery = '',
+    this.showEmojiPicker = false,
+    this.isRecording = false,
+    this.recordingDuration = Duration.zero,
   });
 
   ConversationModel? get selectedConversation {
@@ -57,6 +63,9 @@ class BuyerChatLoaded extends BuyerChatState {
     String? errorMessage,
     bool clearError = false,
     String? searchQuery,
+    bool? showEmojiPicker,
+    bool? isRecording,
+    Duration? recordingDuration,
   }) {
     return BuyerChatLoaded(
       currentUserId: currentUserId ?? this.currentUserId,
@@ -68,6 +77,9 @@ class BuyerChatLoaded extends BuyerChatState {
       isSendingMessage: isSendingMessage ?? this.isSendingMessage,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       searchQuery: searchQuery ?? this.searchQuery,
+      showEmojiPicker: showEmojiPicker ?? this.showEmojiPicker,
+      isRecording: isRecording ?? this.isRecording,
+      recordingDuration: recordingDuration ?? this.recordingDuration,
     );
   }
 }
