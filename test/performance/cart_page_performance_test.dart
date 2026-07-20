@@ -1,54 +1,43 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:food_delivery_app/core/repositories/i_cart_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_models.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
-
-class MockUser extends Mock implements User {
-  @override
-  final String uid;
-  MockUser(this.uid);
-}
+class MockCartRepository extends Mock implements ICartRepository {}
+class MockAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('Cart Page Performance Test', () {
     testWidgets('Measures scrolling performance on Cart Page', (
       WidgetTester tester,
     ) async {
-      final fakeFirestore = FakeFirebaseFirestore();
-      final mockAuth = MockFirebaseAuth();
-      final mockUser = MockUser('test_uid');
+      final mockCartRepository = MockCartRepository();
+      final mockAuthService = MockAuthService();
 
-      for (int i = 0; i < 20; i++) {
-        await fakeFirestore
-            .collection('users')
-            .doc('test_uid')
-            .collection('cart')
-            .doc('item$i')
-            .set({
-              'id': 'item$i',
-              'name': 'Food Item $i',
-              'price': 10.0 + i,
-              'quantity': 1,
-              'sellerId': 'seller$i',
-              'isSelected': true,
-            });
-      }
+      when(() => mockAuthService.currentUserId).thenReturn('test_uid');
+      when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value('test_uid'));
 
-      when(() => mockAuth.currentUser).thenReturn(mockUser);
-      when(
-        () => mockAuth.authStateChanges(),
-      ).thenAnswer((_) => Stream.value(mockUser));
+      final items = List.generate(20, (i) => CartItem(
+        id: 'item$i',
+        name: 'Food Item $i',
+        price: 10.0 + i,
+        quantity: 1,
+        sellerId: 'seller$i',
+        isSelected: true,
+      ));
+
+      when(() => mockCartRepository.getCartItemsStream('test_uid'))
+          .thenAnswer((_) => Stream.value(items));
 
       await tester.pumpWidget(
         MaterialApp(
           home: BlocProvider(
             create: (_) =>
-                CartBloc(firestore: fakeFirestore, auth: mockAuth)
+                CartBloc(cartRepository: mockCartRepository, authService: mockAuthService)
                   ..add(const LoadCartStarted()),
             child: const CartPageUI(),
           ),

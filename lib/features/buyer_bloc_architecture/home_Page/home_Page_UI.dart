@@ -690,10 +690,10 @@ class _FoodCardState extends State<FoodCard> {
                   builder: (_) => DetailsPageUI(
                     id: widget.item.id,
                     name: widget.item.name,
-                    price: widget.item.price,
+                    price: widget.item.discountPrice > 0 ? widget.item.discountPrice : widget.item.price,
                     description: widget.item.description,
                     sellerId: widget.item.sellerId,
-                    image: widget.item.image,
+                    imageUrls: widget.item.imageUrls.isNotEmpty ? widget.item.imageUrls : null,
                     foodItem: widget.item,
                   ),
                 ),
@@ -840,7 +840,7 @@ class _FoodCardState extends State<FoodCard> {
                                                 final favItem = FavoriteItem(
                                                   id: widget.item.id,
                                                   name: widget.item.name,
-                                                  price: widget.item.price,
+                                                  price: widget.item.discountPrice > 0 ? widget.item.discountPrice : widget.item.price,
                                                   description:
                                                       widget.item.description,
                                                   sellerId:

@@ -25,6 +25,8 @@ import 'repositories/firebase_cart_repository.dart';
 import 'repositories/firebase_order_repository.dart';
 import 'repositories/firebase_inventory_repository.dart';
 import 'repositories/category_repository.dart';
+import 'repositories/firebase_chat_repository.dart';
+import 'core/repositories/i_chat_repository.dart';
 
 import 'firebase_options.dart';
 
@@ -48,7 +50,7 @@ final Logger appLogger = Logger(
 );
 
 /// Toggle this flag to switch between the Buyer and Seller App flows.
-const bool isBuyerApp = false;
+const bool isBuyerApp = true;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -123,23 +125,30 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<SellerDashboardRepository>(
           create: (context) => FirebaseSellerDashboardRepository(),
         ),
+        RepositoryProvider<IChatRepository>(
+          create: (context) => FirebaseChatRepository(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
-            create: (context) => cartBloc ?? CartBloc(
-              cartRepository: context.read<ICartRepository>(),
-              authService: context.read<IAuthService>(),
-            ),
+            create: (context) =>
+                cartBloc ??
+                CartBloc(
+                  cartRepository: context.read<ICartRepository>(),
+                  authService: context.read<IAuthService>(),
+                ),
           ),
           BlocProvider(
             create: (context) =>
                 favoritesBloc ??
-                (FavoritesBloc()..add(const LoadFavoritesStarted())),
+                (FavoritesBloc(authService: context.read<IAuthService>())
+                  ..add(const LoadFavoritesStarted())),
           ),
           BlocProvider(
             create: (context) =>
-                homePageBloc ?? (HomePageBloc(
+                homePageBloc ??
+                (HomePageBloc(
                   productRepository: context.read<IProductRepository>(),
                   categoryRepository: context.read<CategoryRepository>(),
                 )..add(const HomePageStarted())),

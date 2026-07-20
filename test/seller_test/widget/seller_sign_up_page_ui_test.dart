@@ -39,7 +39,7 @@ void main() {
   group('SellerSignUpPageUI - Widget Tests', () {
     testWidgets('renders Welcome screen by default', (tester) async {
       await tester.pumpWidget(buildTestWidget());
-      expect(find.text('Seller ஆக பதிவு செய்யுங்கள்!'), findsOneWidget);
+      expect(find.text('Register as a Seller!'), findsOneWidget);
       expect(find.byKey(const Key('getStartedButton')), findsOneWidget);
     });
 
@@ -86,7 +86,7 @@ void main() {
         ),
       );
       await tester.pumpWidget(buildTestWidget());
-      expect(find.textContaining('வரவேற்கிறோம், John!'), findsOneWidget);
+      expect(find.textContaining('Welcome, John!'), findsOneWidget);
       expect(find.byKey(const Key('goToDashboardButton')), findsOneWidget);
     });
   });

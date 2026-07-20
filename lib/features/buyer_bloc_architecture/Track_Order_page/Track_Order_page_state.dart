@@ -16,16 +16,18 @@ class TrackOrderLoaded extends TrackOrderState {
   final String estimatedDelivery;
   final List<TrackingStep> trackingSteps;
   final DeliveryPartner deliveryPartner;
+  final SellerInfo? sellerInfo;
 
   const TrackOrderLoaded({
     required this.orderId,
     required this.estimatedDelivery,
     required this.trackingSteps,
     required this.deliveryPartner,
+    this.sellerInfo,
   });
 
   @override
-  List<Object?> get props => [orderId, estimatedDelivery, trackingSteps, deliveryPartner];
+  List<Object?> get props => [orderId, estimatedDelivery, trackingSteps, deliveryPartner, sellerInfo];
 }
 
 class TrackOrderError extends TrackOrderState {
@@ -81,4 +83,23 @@ class DeliveryPartner extends Equatable {
 
   @override
   List<Object?> get props => [name, role, imageUrl, phone];
+}
+
+class SellerInfo extends Equatable {
+  final String id;
+  final String name;
+  final String address;
+  final String imageUrl;
+  final String phone;
+
+  const SellerInfo({
+    required this.id,
+    required this.name,
+    required this.address,
+    required this.imageUrl,
+    required this.phone,
+  });
+
+  @override
+  List<Object?> get props => [id, name, address, imageUrl, phone];
 }

@@ -23,7 +23,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify that the error message is displayed
-      expect(find.byKey(const Key('error_text')), findsOneWidget);
+      expect(find.textContaining('Error:'), findsOneWidget);
       expect(find.textContaining('Failed to fetch details'), findsOneWidget);
     });
   });

@@ -17,7 +17,7 @@ void main() {
     });
 
     test('fetchDetails throws exception when id is error', () async {
-      expect(() => service.fetchDetails('error'), throwsA(isA<Exception>()));
+      expect(service.fetchDetails('error'), throwsA(isA<Exception>()));
     });
   });
 }

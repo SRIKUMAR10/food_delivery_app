@@ -3,50 +3,43 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_Event.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_State.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_repository.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockIOrderRepository extends Mock implements IOrderRepository {}
 
-class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
-
-class MockUser extends Mock implements User {}
+class MockIAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('Order Error Handling Tests', () {
-    late MockFirebaseAuth mockAuth;
-    late MockFirebaseFirestore mockFirestore;
-    late MockUser mockUser;
+    late MockIOrderRepository mockRepository;
+    late MockIAuthService mockAuthService;
 
     setUp(() {
-      mockAuth = MockFirebaseAuth();
-      mockFirestore = MockFirebaseFirestore();
-      mockUser = MockUser();
+      mockRepository = MockIOrderRepository();
+      mockAuthService = MockIAuthService();
 
-      when(() => mockUser.uid).thenReturn('user123');
-      when(() => mockAuth.currentUser).thenReturn(mockUser);
+      when(() => mockAuthService.currentUserId).thenReturn('user123');
     });
 
     blocTest<OrderBloc, OrderState>(
-      'Emits OrderError when Firebase throws an exception',
+      'Emits OrderError when repository throws an exception',
       build: () {
-        when(() => mockFirestore.collection('users')).thenThrow(
-          FirebaseException(plugin: 'firestore', code: 'permission-denied'),
+        when(() => mockRepository.getBuyerOrdersStream(any())).thenAnswer(
+          (_) => Stream.error(
+            FirebaseException(plugin: 'firestore', code: 'permission-denied'),
+          ),
         );
         return OrderBloc(
-          repository: OrderRepository(firestore: mockFirestore, auth: mockAuth),
+          repository: mockRepository,
+          authService: mockAuthService,
         );
       },
       act: (bloc) => bloc.add(LoadOrdersRequested()),
       expect: () => [isA<OrderLoading>(), isA<OrderError>()],
-      errors: () => [
-        isA<
-          FirebaseException
-        >(), // Assuming Bloc doesn't swallow it completely if unhandled in stream, or check state msg.
-      ],
     );
   });
 }

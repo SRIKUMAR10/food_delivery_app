@@ -101,7 +101,7 @@ class SellerLoginPageBloc
     if (state.emailOrPhone.isEmpty || state.password.isEmpty) {
       emit(state.copyWith(
         status: SellerLoginStatus.failure,
-        errorMessage: 'Email மற்றும் Password உள்ளிடவும்.',
+        errorMessage: 'Please enter Email and Password.',
       ));
       return;
     }
@@ -145,7 +145,7 @@ class SellerLoginPageBloc
       Emitter<SellerLoginPageState> emit) async {
     final input = state.emailOrPhone.trim();
     if (input.isEmpty) {
-      emit(state.copyWith(emailPhoneError: 'Email அல்லது Phone Number உள்ளிடவும்.'));
+      emit(state.copyWith(emailPhoneError: 'Please enter Email or Phone Number.'));
       return;
     }
 
@@ -176,7 +176,7 @@ class SellerLoginPageBloc
     } else {
       // Email flow: move to password screen
       if (!_validEmail(input)) {
-        emit(state.copyWith(emailPhoneError: 'சரியான Email உள்ளிடவும்.'));
+        emit(state.copyWith(emailPhoneError: 'Please enter a valid Email.'));
         return;
       }
       emit(state.copyWith(
@@ -194,7 +194,7 @@ class SellerLoginPageBloc
   Future<void> _onPasswordStepSubmitted(SellerLoginPasswordStepSubmitted event,
       Emitter<SellerLoginPageState> emit) async {
     if (state.password.isEmpty) {
-      emit(state.copyWith(passwordError: 'Password உள்ளிடவும்.'));
+      emit(state.copyWith(passwordError: 'Please enter Password.'));
       return;
     }
     emit(state.copyWith(
@@ -228,7 +228,7 @@ class SellerLoginPageBloc
       Emitter<SellerLoginPageState> emit) async {
     if (!state.isOtpComplete) {
       emit(state.copyWith(
-          errorMessage: '6-இலக்க OTP-ஐ முழுமையாக உள்ளிடவும்.'));
+          errorMessage: 'Please enter the complete 6-digit OTP.'));
       return;
     }
     emit(state.copyWith(status: SellerLoginStatus.loading, clearError: true));
@@ -245,7 +245,7 @@ class SellerLoginPageBloc
       } else {
         emit(state.copyWith(
           status: SellerLoginStatus.failure,
-          errorMessage: 'தவறான OTP. மீண்டும் முயற்சிக்கவும்.',
+          errorMessage: 'Invalid OTP. Please try again.',
         ));
       }
     } catch (e) {
@@ -324,7 +324,7 @@ class SellerLoginPageBloc
     if (!_validEmail(email)) {
       emit(state.copyWith(
         status: SellerLoginStatus.failure,
-        errorMessage: 'சரியான Email உள்ளிடவும்.',
+        errorMessage: 'Please enter a valid Email.',
       ));
       return;
     }
@@ -339,9 +339,9 @@ class SellerLoginPageBloc
       final msg = e.toString();
       String userMsg;
       if (msg.contains('GOOGLE_ACCOUNT_EXISTS')) {
-        userMsg = 'இந்த Email Google Account-ஐ பயன்படுத்துகிறது. Google-ல் Login செய்யவும்.';
+        userMsg = 'This Email uses a Google Account. Please log in with Google.';
       } else if (msg.contains('APPLE_ACCOUNT_EXISTS')) {
-        userMsg = 'இந்த Email Apple Account-ஐ பயன்படுத்துகிறது. Apple-ல் Login செய்யவும்.';
+        userMsg = 'This Email uses an Apple Account. Please log in with Apple.';
       } else {
         userMsg = _friendlyError(msg);
       }
@@ -503,28 +503,28 @@ class SellerLoginPageBloc
 
   String _friendlyError(String raw) {
     if (raw.contains('PHONE_NOT_REGISTERED')) {
-      return 'இந்த Phone Number பதிவு செய்யப்படவில்லை. Sign Up செய்யவும்.';
+      return 'This Phone Number is not registered. Please sign up.';
     }
     if (raw.contains('GOOGLE_ACCOUNT_EXISTS')) {
-      return 'இந்த Email Google Account-ஐ பயன்படுத்துகிறது. Google-ல் Login செய்யவும்.';
+      return 'This Email uses a Google Account. Please log in with Google.';
     }
     if (raw.contains('APPLE_ACCOUNT_EXISTS')) {
-      return 'இந்த Email Apple Account-ஐ பயன்படுத்துகிறது. Apple-ல் Login செய்யவும்.';
+      return 'This Email uses an Apple Account. Please log in with Apple.';
     }
     if (raw.contains('wrong-password') || raw.contains('invalid-credential')) {
-      return 'தவறான Password. மீண்டும் முயற்சிக்கவும்.';
+      return 'Incorrect password. Please try again.';
     }
     if (raw.contains('user-not-found')) {
-      return 'Account இல்லை. Sign Up செய்யவும்.';
+      return 'Account not found. Please sign up.';
     }
     if (raw.contains('too-many-requests')) {
-      return 'பல முறை தோல்வி. சில நிமிடம் பிறகு முயற்சிக்கவும்.';
+      return 'Too many failed attempts. Try again after a few minutes.';
     }
     if (raw.contains('network')) {
-      return 'இணைய இணைப்பு சரிபார்க்கவும்.';
+      return 'Please check your internet connection.';
     }
     if (raw.contains('invalid-recaptcha-token')) {
-      return 'reCAPTCHA சரிபார்ப்பு தோல்வி. பக்கத்தை புதுப்பித்து மீண்டும் முயற்சிக்கவும்.';
+      return 'reCAPTCHA verification failed. Please refresh and try again.';
     }
     // Strip "Exception:" prefix
     return raw.replaceAll(RegExp(r'^Exception:\s*'), '');

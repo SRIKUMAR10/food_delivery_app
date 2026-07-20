@@ -53,7 +53,7 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 500));
 
-        expect(tester.getSemantics(find.text('Customers')), isNotNull);
+        expect(tester.getSemantics(find.text('Total Customers')), isNotNull);
         expect(tester.getSemantics(find.text('Top Customers')), isNotNull);
       });
 

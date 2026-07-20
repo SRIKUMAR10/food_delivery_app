@@ -37,11 +37,12 @@ class OrderModel extends Equatable {
     if (status == newStatus) return true;
     switch (status) {
       case OrderStatus.newOrder:
-        return newStatus == OrderStatus.accepted || 
-               newStatus == OrderStatus.preparing || 
-               newStatus == OrderStatus.rejected;
+        return newStatus == OrderStatus.accepted ||
+            newStatus == OrderStatus.preparing ||
+            newStatus == OrderStatus.rejected;
       case OrderStatus.accepted:
-        return newStatus == OrderStatus.preparing || newStatus == OrderStatus.rejected;
+        return newStatus == OrderStatus.preparing ||
+            newStatus == OrderStatus.rejected;
       case OrderStatus.preparing:
         return newStatus == OrderStatus.ready;
       case OrderStatus.ready:
@@ -133,17 +134,17 @@ class OrderModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        customerId,
-        customerName,
-        sellerId,
-        riderId,
-        status,
-        amount,
-        timestamp,
-        items,
-        deliveryAddress,
-        customerPhone,
-        paymentMethod,
-      ];
+    id,
+    customerId,
+    customerName,
+    sellerId,
+    riderId,
+    status,
+    amount,
+    timestamp,
+    items,
+    deliveryAddress,
+    customerPhone,
+    paymentMethod,
+  ];
 }

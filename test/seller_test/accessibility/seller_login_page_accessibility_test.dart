@@ -150,7 +150,7 @@ void main() {
       final semantics = tester.getSemantics(
         find.byKey(const Key('forgotPasswordButton')),
       );
-      expect(semantics.label, contains('password'));
+      expect(semantics.label, contains('Password'));
     });
   });
 
@@ -212,7 +212,7 @@ void main() {
       bloc.emit(
         const SellerLoginPageState(
           status: SellerLoginStatus.failure,
-          errorMessage: 'Login தோல்வியடைந்தது',
+          errorMessage: 'Login failed',
         ),
       );
       await tester.pump();

@@ -28,8 +28,8 @@ void main() {
       }
 
       await tester.pumpWidget(buildAppWithLocale(const Locale('en', 'US')));
-      // App Bar title is hardcoded to 'Details Page' in mock, but normally you'd check localized string here
-      expect(find.text('Details Page'), findsOneWidget);
+      // Mock widget shows 'Initial State' by default
+      expect(find.text('Initial State'), findsOneWidget);
 
       await tester.pumpWidget(buildAppWithLocale(const Locale('es', 'ES')));
       // Assuming 'Details Page' changes to 'Página de Detalles' in a real setup

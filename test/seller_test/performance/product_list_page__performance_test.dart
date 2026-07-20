@@ -5,7 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_list_page__ui.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_list_page__bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_list_page__state.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_model.dart';
+import 'package:food_delivery_app/core/models/product_model.dart';
 
 class MockProductListBloc extends Mock implements ProductListBloc {}
 
@@ -28,9 +28,11 @@ void main() {
         id: index.toString(),
         name: 'Pizza $index',
         price: 10.0 + index,
-        imageUrls: const [''],
+        imageUrls: [''],
         status: index % 2 == 0 ? ProductStatus.inStock : ProductStatus.lowStock,
         isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
     );
 
@@ -41,6 +43,7 @@ void main() {
         allCount: 100,
         activeCount: 100,
         inactiveCount: 0,
+        archivedCount: 0,
         averageRating: 0.0,
         lowStockCount: 0,
         nonVegCount: 0,

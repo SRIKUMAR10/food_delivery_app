@@ -6,12 +6,17 @@ class LoadChatSessionsEvent extends ChatSupportEvent {
 }
 
 class SelectChatSessionEvent extends ChatSupportEvent {
-  final String sessionId;
-  SelectChatSessionEvent(this.sessionId);
+  final String conversationId;
+  SelectChatSessionEvent(this.conversationId);
 }
 
 class SendMessageEvent extends ChatSupportEvent {
-  final String sessionId;
+  final String conversationId;
   final String text;
-  SendMessageEvent(this.sessionId, this.text);
+  SendMessageEvent(this.conversationId, this.text);
+}
+
+class FilterChatSessions extends ChatSupportEvent {
+  final String query;
+  FilterChatSessions(this.query);
 }

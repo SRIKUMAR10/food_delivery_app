@@ -5,9 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_ui.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
 
-class MockOrdersListRepository extends Mock implements OrdersListRepository {}
+class MockOrdersListRepository extends Mock implements IOrderRepository {}
 
 void main() {
   group('Orders List Page Error Handling Tests', () {
@@ -19,7 +19,7 @@ void main() {
 
     testWidgets('Displays error message when API fails', (tester) async {
       when(
-        () => mockRepository.getOrdersStream(any()),
+        () => mockRepository.getSellerOrdersStream(any()),
       ).thenAnswer((_) => Stream.error(Exception('Simulated Failure')));
 
       await tester.pumpWidget(

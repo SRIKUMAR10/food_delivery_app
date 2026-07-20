@@ -6,9 +6,9 @@ import 'package:food_delivery_app/core/models/inventory_item_model.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_page_state.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/inventory_low_stock/inventory_low_stock_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_inventory_repository.dart';
 
-class MockInventoryRepository extends Mock implements InventoryRepository {}
+class MockInventoryRepository extends Mock implements IInventoryRepository {}
 
 void main() {
   late MockInventoryRepository mockRepository;

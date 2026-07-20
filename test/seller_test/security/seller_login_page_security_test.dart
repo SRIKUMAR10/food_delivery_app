@@ -129,10 +129,10 @@ void main() {
     // Group 4 – Brute Force Awareness
     // ──────────────────────────────────────────────────────────────────────────
     group('Security – Brute Force Throttling', () {
-      test('too-many-requests error maps to Tamil throttle message', () async {
+      test('too-many-requests error maps to throttle message', () async {
         when(
           () => mockRepo.signIn(any(), any()),
-        ).thenThrow(Exception('பல முறை'));
+        ).thenThrow(Exception('too-many-requests'));
 
         bloc
           ..add(const SellerLoginFieldChanged('brute@test.com'))
@@ -142,7 +142,7 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 100));
 
         expect(bloc.state.status, SellerLoginStatus.failure);
-        expect(bloc.state.errorMessage, contains('பல முறை'));
+        expect(bloc.state.errorMessage, contains('Too many'));
       });
 
       test(

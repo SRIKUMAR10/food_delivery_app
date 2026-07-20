@@ -49,8 +49,8 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
 
   void _showFullScreenImage(BuildContext context, int initialIndex) {
     Navigator.of(context).push(
-      DialogRoute(
-        context: context,
+      MaterialPageRoute(
+        fullscreenDialog: true,
         builder: (context) {
           return Scaffold(
             backgroundColor: Colors.black,
@@ -59,31 +59,33 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
               iconTheme: const IconThemeData(color: Colors.white),
               elevation: 0,
             ),
-            body: PageView.builder(
-              controller: PageController(initialPage: initialIndex),
-              itemCount: widget.imageUrls.length,
-              itemBuilder: (context, index) {
-                return InteractiveViewer(
-                  minScale: 1.0,
-                  maxScale: 4.0,
-                  child: CachedNetworkImage(
-                    imageUrl: widget.imageUrls[index],
-                    fit: BoxFit.contain,
-                    placeholder: (context, url) => const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFFE50914),
+            body: SafeArea(
+              child: PageView.builder(
+                controller: PageController(initialPage: initialIndex),
+                itemCount: widget.imageUrls.length,
+                itemBuilder: (context, index) {
+                  return InteractiveViewer(
+                    minScale: 1.0,
+                    maxScale: 4.0,
+                    child: CachedNetworkImage(
+                      imageUrl: widget.imageUrls[index],
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFE50914),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => const Center(
+                        child: Icon(
+                          Icons.broken_image,
+                          color: Colors.grey,
+                          size: 48,
+                        ),
                       ),
                     ),
-                    errorWidget: (context, url, error) => const Center(
-                      child: Icon(
-                        Icons.broken_image,
-                        color: Colors.grey,
-                        size: 48,
-                      ),
-                    ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           );
         },
@@ -111,88 +113,60 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
       create: (_) => CarouselCubit(),
       child: Builder(
         builder: (context) {
-          return Column(
+          return Stack(
             children: [
-              // Main Image Slider with Zoom Support
-              SizedBox(
-                height: 320,
-                width: double.infinity,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Stack(
-                    children: [
-                      PageView.builder(
-                        controller: _pageController,
-                        itemCount: widget.imageUrls.length,
-                        onPageChanged: (index) {
-                          context.read<CarouselCubit>().onPageChanged(index);
-                          _scrollToThumbnail(index);
-                        },
-                        itemBuilder: (context, index) {
-                          return GestureDetector(
-                            onTap: () => _showFullScreenImage(context, index),
-                            child: CachedNetworkImage(
-                              imageUrl: widget.imageUrls[index],
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => Container(
-                                color: Colors.grey.shade100,
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Color(0xFFE50914),
-                                  ),
-                                ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
-                                color: Colors.grey.shade100,
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  color: Colors.grey,
-                                  size: 48,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-
-                      // Fullscreen button (UI Only for now)
-                      Positioned(
-                        top: 16,
-                        right: 16,
-                        child: CircleAvatar(
-                          backgroundColor: Colors.black.withValues(alpha: 0.5),
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.fullscreen,
-                              color: Colors.white,
-                            ),
-                            onPressed: () {
-                              final currentIndex = context
-                                  .read<CarouselCubit>()
-                                  .state;
-                              _showFullScreenImage(context, currentIndex);
-                            },
+              // Main Image Slider fills the entire Stack
+              PageView.builder(
+                controller: _pageController,
+                itemCount: widget.imageUrls.length,
+                onPageChanged: (index) {
+                  context.read<CarouselCubit>().onPageChanged(index);
+                  _scrollToThumbnail(index);
+                },
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () => _showFullScreenImage(context, index),
+                    child: CachedNetworkImage(
+                      imageUrl: widget.imageUrls[index],
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey.shade100,
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFE50914),
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey.shade100,
+                        child: const Icon(
+                          Icons.broken_image,
+                          color: Colors.grey,
+                          size: 48,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              const SizedBox(height: 16),
 
-              // Navigation Controls & Thumbnails
-              BlocBuilder<CarouselCubit, int>(
-                builder: (context, currentIndex) {
-                  return Column(
-                    children: [
-                      // Thumbnail Gallery
-                      if (widget.imageUrls.length > 1)
-                        SizedBox(
-                          height: 60,
+              // Navigation Controls & Thumbnails overlaid at bottom
+              if (widget.imageUrls.length > 1)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: BlocBuilder<CarouselCubit, int>(
+                    builder: (context, currentIndex) {
+                      return Container(
+                        height: 106,
+                        alignment: Alignment.bottomCenter,
+                        child: SizedBox(
+                          height: 80,
                           child: ListView.builder(
                             controller: _thumbnailScrollController,
                             scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.only(left: 16),
                             itemCount: widget.imageUrls.length,
                             itemBuilder: (context, index) {
                               final isSelected = currentIndex == index;
@@ -206,24 +180,24 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                                 },
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 300),
-                                  margin: const EdgeInsets.only(right: 12),
-                                  width: 60,
+                                  margin: const EdgeInsets.only(right: 12, top: 16, bottom: 10),
+                                  width: 64,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(14),
                                     border: Border.all(
                                       color: isSelected
-                                          ? const Color(0xFFE50914)
-                                          : Colors.transparent,
-                                      width: 2,
+                                          ? const Color(0xFFEF2A39)
+                                          : Colors.grey.shade300,
+                                      width: isSelected ? 3 : 1.5,
                                     ),
                                     boxShadow: isSelected
                                         ? [
                                             BoxShadow(
                                               color: const Color(
-                                                0xFFE50914,
-                                              ).withValues(alpha: 0.3),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
+                                                0xFFEF2A39,
+                                              ).withValues(alpha: 0.35),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 3),
                                             ),
                                           ]
                                         : null,
@@ -247,84 +221,10 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                             },
                           ),
                         ),
-
-                      const SizedBox(height: 16),
-                      // Text Navigation (Image 1 / 3 and Prev/Next)
-                      if (widget.imageUrls.isNotEmpty)
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              TextButton.icon(
-                                onPressed: currentIndex > 0
-                                    ? () {
-                                        _pageController.previousPage(
-                                          duration: const Duration(
-                                            milliseconds: 400,
-                                          ),
-                                          curve: Curves.easeInOut,
-                                        );
-                                      }
-                                    : null,
-                                icon: const Icon(
-                                  Icons.arrow_back_ios,
-                                  size: 14,
-                                ),
-                                label: const Text('Previous'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: currentIndex > 0
-                                      ? Colors.black87
-                                      : Colors.grey,
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: Text(
-                                  'Image ${currentIndex + 1} / ${widget.imageUrls.length}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed:
-                                    currentIndex < widget.imageUrls.length - 1
-                                    ? () {
-                                        _pageController.nextPage(
-                                          duration: const Duration(
-                                            milliseconds: 400,
-                                          ),
-                                          curve: Curves.easeInOut,
-                                        );
-                                      }
-                                    : null,
-                                style: TextButton.styleFrom(
-                                  foregroundColor:
-                                      currentIndex < widget.imageUrls.length - 1
-                                      ? Colors.black87
-                                      : Colors.grey,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Text('Next'),
-                                    SizedBox(width: 4),
-                                    Icon(Icons.arrow_forward_ios, size: 14),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
+                      );
+                    },
+                  ),
+                ),
             ],
           );
         },

@@ -11,6 +11,7 @@ class CartItem extends Equatable {
   final String name;
   final double price;
   final String? image;
+  final List<String> imageUrls;
   final String sellerId;
   final int quantity;
   final bool isSelected;
@@ -22,6 +23,7 @@ class CartItem extends Equatable {
     required this.price,
     required this.sellerId,
     this.image,
+    this.imageUrls = const [],
     this.quantity = 1,
     this.isSelected = true,
     this.selectedAddons = const [],
@@ -61,6 +63,7 @@ class CartItem extends Equatable {
     String? name,
     double? price,
     String? image,
+    List<String>? imageUrls,
     String? sellerId,
     int? quantity,
     bool? isSelected,
@@ -71,6 +74,7 @@ class CartItem extends Equatable {
       name: name ?? this.name,
       price: price ?? this.price,
       image: image ?? this.image,
+      imageUrls: imageUrls ?? this.imageUrls,
       sellerId: sellerId ?? this.sellerId,
       quantity: quantity ?? this.quantity,
       isSelected: isSelected ?? this.isSelected,
@@ -79,5 +83,5 @@ class CartItem extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, name, price, image, sellerId, quantity, isSelected, selectedAddons];
+  List<Object?> get props => [id, name, price, image, imageUrls, sellerId, quantity, isSelected, selectedAddons];
 }

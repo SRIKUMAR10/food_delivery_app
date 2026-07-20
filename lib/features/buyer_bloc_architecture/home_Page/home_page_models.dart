@@ -61,6 +61,9 @@ class FoodItem {
   /// Nullable product image URL (stored as 'imageUrl' in Firestore).
   final String? image;
 
+  /// Multiple product image URLs from Firestore (stored as 'imageUrls').
+  final List<String> imageUrls;
+
   /// Seller UID linking this product to its seller account.
   final String sellerId;
 
@@ -85,6 +88,7 @@ class FoodItem {
     required this.description,
     required this.category,
     this.image,
+    this.imageUrls = const [],
     required this.sellerId,
     this.foodType = '',
     this.isBestSeller = false,

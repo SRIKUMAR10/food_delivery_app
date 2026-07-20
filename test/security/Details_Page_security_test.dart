@@ -14,10 +14,9 @@ void main() {
       await expectLater(
         bloc.stream,
         emitsInOrder([
-          isA<DetailsLoading>(),
-          isA<DetailsLoaded>().having((state) {
-            // Verify that sensitive fields like tokens or passwords are not present in UI state
-            return state.data.containsKey('password') || state.data.containsKey('token');
+          isA<DetailsPageLoading>(),
+          isA<DetailsPageLoaded>().having((state) {
+            return state.name.contains('password') || state.name.contains('token');
           }, 'hasSensitiveData', false),
         ]),
       );

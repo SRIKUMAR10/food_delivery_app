@@ -80,7 +80,7 @@ void main() {
         bloc.add(const SellerLoginBackPressed());
         await Future.delayed(Duration.zero);
 
-        expect(bloc.state.step, SellerLoginStep.loginForm);
+        expect(bloc.state.step, SellerLoginStep.enterEmailPhone);
         // Email preserved
         expect(bloc.state.emailOrPhone, 'email@test.com');
       },

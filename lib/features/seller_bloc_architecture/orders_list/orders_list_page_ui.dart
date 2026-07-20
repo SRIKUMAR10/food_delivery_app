@@ -8,6 +8,7 @@ import 'orders_list_page_bloc.dart';
 import 'orders_list_page_event.dart';
 import 'orders_list_page_state.dart';
 import '../../../../core/repositories/i_order_repository.dart';
+import '../../../../core/repositories/i_chat_repository.dart';
 import '../assign_delivery_page_/assign_delivery_page__ui.dart';
 import '../assign_delivery_page_/assign_delivery_page__bloc.dart';
 import '../assign_delivery_page_/assign_delivery_page__repository.dart';
@@ -22,6 +23,7 @@ class OrdersListPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => OrdersListBloc(
         repository: context.read<IOrderRepository>(),
+        chatRepository: context.read<IChatRepository>(),
       )..add(LoadOrdersStream(FirebaseAuth.instance.currentUser?.uid ?? '')),
       child: const OrdersListView(),
     );
@@ -1097,7 +1099,7 @@ class _OrderTimeline extends StatelessWidget {
 
         return IntrinsicHeight(
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Column(
                 children: [

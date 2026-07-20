@@ -41,7 +41,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify that major interactable controls have semantic annotations
-      expect(tester.getSemantics(find.text('Withdruw')), isNotNull);
+      expect(tester.getSemantics(find.text('Withdraw')), isNotNull);
       expect(tester.getSemantics(find.text('Transactions')), isNotNull);
 
       handle.dispose();

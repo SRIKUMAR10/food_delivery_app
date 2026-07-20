@@ -24,8 +24,9 @@ class FoodGoLoginScreenUI extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) {
-        // Attempt to read UserRepository from context, otherwise instantiate it directly.
-        final repo = context.read<UserRepository?>() ?? UserRepository();
+        // Instantiate UserRepository directly to avoid ProviderNotFoundException
+        // since it is not provided in the global MultiRepositoryProvider.
+        final repo = UserRepository();
         return FoodGoLoginBloc(userRepository: repo);
       },
       child: _FoodGoLoginView(foodItemToAccess: foodItemToAccess),

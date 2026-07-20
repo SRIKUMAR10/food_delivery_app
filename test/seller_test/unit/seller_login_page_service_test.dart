@@ -18,7 +18,6 @@ class MockUserCredential extends Mock implements UserCredential {}
 /// network error mapping, and API contract validation.
 /// ─────────────────────────────────────────────────────────────────────────────
 void main() {
-  return; // SKIP ALL TESTS IN THIS FILE due to missing dependencies
 
   late MockSellerRepository service;
 
@@ -84,7 +83,7 @@ void main() {
     test('verifyPhoneLoginOtp throws when OTP not sent first', () async {
       when(
         () => service.verifyPhoneLoginOtp(any(), any()),
-      ).thenThrow(Exception('OTP அனுப்பப்படவில்லை. மீண்டும் முயற்சிக்கவும்.'));
+      ).thenThrow(Exception('OTP not sent. Please try again.'));
 
       expect(
         () => service.verifyPhoneLoginOtp('123456', '+91000'),
@@ -97,23 +96,23 @@ void main() {
   // Group 3 – Network Error Mapping
   // ──────────────────────────────────────────────────────────────────────────
   group('SellerLoginService – Network Error Mapping', () {
-    test('too-many-requests maps to Tamil throttle message', () async {
+    test('too-many-requests maps to throttle message', () async {
       when(() => service.signIn(any(), any())).thenThrow(
-        Exception('பல முறை தோல்வி. சில நிமிடம் பிறகு முயற்சிக்கவும்.'),
+        Exception('Too many failed attempts. Try again after a few minutes.'),
       );
 
       try {
         await service.signIn('user@test.com', 'pass');
         fail('Expected exception');
       } catch (e) {
-        expect(e.toString(), contains('பல முறை'));
+        expect(e.toString(), contains('Too many'));
       }
     });
 
-    test('network error surfaces relevant Tamil message', () async {
+    test('network error surfaces relevant error message', () async {
       when(
         () => service.signIn(any(), any()),
-      ).thenThrow(Exception('இணைய இணைப்பு சரிபார்க்கவும்.'));
+      ).thenThrow(Exception('Please check your internet connection.'));
 
       expect(() => service.signIn('a@b.com', 'p'), throwsException);
     });

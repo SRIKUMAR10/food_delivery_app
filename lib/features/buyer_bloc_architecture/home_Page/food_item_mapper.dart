@@ -13,6 +13,7 @@ class FoodItemMapper {
       category: product.category,
       // Map the primary image safely
       image: product.primaryImage,
+      imageUrls: product.imageUrls,
       sellerId: product.sellerId,
       foodType: product.foodType,
       isBestSeller: product.isBestSeller,

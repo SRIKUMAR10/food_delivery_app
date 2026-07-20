@@ -24,14 +24,18 @@ class InventoryItemModel extends Equatable {
   });
 
   bool get isOutOfStock => quantity <= 0;
-  
+
   bool get isLowStock => quantity > 0 && quantity <= lowStockThreshold;
 
   bool get isExpired {
     if (expiryDate == null) return false;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final expiry = DateTime(expiryDate!.year, expiryDate!.month, expiryDate!.day);
+    final expiry = DateTime(
+      expiryDate!.year,
+      expiryDate!.month,
+      expiryDate!.day,
+    );
     return expiry.isBefore(today);
   }
 
@@ -40,21 +44,25 @@ class InventoryItemModel extends Equatable {
     if (isExpired) return false; // If already expired, it's not "expiring soon"
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final expiry = DateTime(expiryDate!.year, expiryDate!.month, expiryDate!.day);
+    final expiry = DateTime(
+      expiryDate!.year,
+      expiryDate!.month,
+      expiryDate!.day,
+    );
     final difference = expiry.difference(today).inDays;
     return difference <= 7;
   }
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        quantity,
-        unit,
-        lowStockThreshold,
-        imagePath,
-        category,
-        sku,
-        expiryDate,
-      ];
+    id,
+    name,
+    quantity,
+    unit,
+    lowStockThreshold,
+    imagePath,
+    category,
+    sku,
+    expiryDate,
+  ];
 }

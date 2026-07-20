@@ -1,18 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../../core/services/i_auth_service.dart';
+import '../../../core/services/auth_service.dart';
 
 class DetailsRepository {
   final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
+  final IAuthService _authService;
 
   DetailsRepository({
     FirebaseFirestore? firestore,
-    FirebaseAuth? auth,
+    IAuthService? authService,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+        _authService = authService ?? FirebaseAuthService();
 
-  bool get isUserLoggedIn => _auth.currentUser != null;
-  String? get currentUserId => _auth.currentUser?.uid;
+  bool get isUserLoggedIn => _authService.currentUserId != null;
+  String? get currentUserId => _authService.currentUserId;
 
   Stream<double> getUserRatingStream(String userId, String foodId) {
     return _firestore

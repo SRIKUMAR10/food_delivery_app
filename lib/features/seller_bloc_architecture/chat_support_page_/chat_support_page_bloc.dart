@@ -1,77 +1,170 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'chat_support_page_event.dart';
 import 'chat_support_page_state.dart';
-import 'chat_support_page_repository.dart';
+import '../../../core/repositories/i_chat_repository.dart';
+import '../../../core/models/conversation_model.dart';
+import '../../../core/models/chat_message_model.dart';
+
+class _ConversationsUpdated extends ChatSupportEvent {
+  final List<ConversationModel> conversations;
+  _ConversationsUpdated(this.conversations);
+}
+
+class _MessagesUpdated extends ChatSupportEvent {
+  final String conversationId;
+  final List<ChatMessageModel> messages;
+  _MessagesUpdated(this.conversationId, this.messages);
+}
+
+class _ConversationsError extends ChatSupportEvent {
+  final String error;
+  _ConversationsError(this.error);
+}
+
+class _MessagesError extends ChatSupportEvent {
+  final String error;
+  _MessagesError(this.error);
+}
 
 class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
-  final ChatSupportRepository repository;
+  final IChatRepository repository;
   String? _sellerId;
+  StreamSubscription? _conversationsSub;
+  StreamSubscription? _messagesSub;
 
   ChatSupportBloc({required this.repository}) : super(ChatSupportInitial()) {
     on<LoadChatSessionsEvent>(_onLoadChatSessions);
     on<SelectChatSessionEvent>(_onSelectChatSession);
     on<SendMessageEvent>(_onSendMessage);
+    on<FilterChatSessions>(_onFilterChatSessions);
+    on<_ConversationsUpdated>(_onConversationsUpdated);
+    on<_MessagesUpdated>(_onMessagesUpdated);
+    on<_ConversationsError>(_onConversationsError);
+    on<_MessagesError>(_onMessagesError);
   }
 
-  Future<void> _onLoadChatSessions(LoadChatSessionsEvent event, Emitter<ChatSupportState> emit) async {
+  void _onLoadChatSessions(
+      LoadChatSessionsEvent event, Emitter<ChatSupportState> emit) {
     _sellerId = event.sellerId;
+    _messagesSub?.cancel();
     emit(ChatSupportLoading());
-    try {
-      final sessions = await repository.getActiveSessions(event.sellerId);
-      emit(ChatSupportLoaded(activeSessions: sessions));
-    } catch (e) {
-      emit(ChatSupportError('Failed to load chat sessions: $e'));
+
+    _conversationsSub?.cancel();
+    _conversationsSub = repository
+        .getConversationsForUser(event.sellerId, isSeller: true)
+        .listen((conversations) {
+      if (!isClosed) add(_ConversationsUpdated(conversations));
+    }, onError: (error) {
+      if (!isClosed) add(_ConversationsError('$error'));
+    });
+  }
+
+  void _onConversationsUpdated(
+      _ConversationsUpdated event, Emitter<ChatSupportState> emit) {
+    final current = state;
+    if (current is ChatSupportLoaded) {
+      emit(current.copyWith(conversations: event.conversations));
+    } else {
+      emit(ChatSupportLoaded(
+        currentUserId: _sellerId ?? '',
+        conversations: event.conversations,
+      ));
     }
   }
 
-  void _onSelectChatSession(SelectChatSessionEvent event, Emitter<ChatSupportState> emit) {
-    final currentState = state;
-    if (currentState is! ChatSupportLoaded) return;
+  void _onConversationsError(
+      _ConversationsError event, Emitter<ChatSupportState> emit) {
+    emit(ChatSupportError('Failed to load conversations: ${event.error}'));
+  }
 
-    // Mark session as read locally
-    final updatedSessions = currentState.activeSessions.map((session) {
-      if (session.sessionId == event.sessionId) {
-        return session.copyWith(unreadCount: 0);
+  void _onFilterChatSessions(
+      FilterChatSessions event, Emitter<ChatSupportState> emit) {
+    final current = state;
+    if (current is! ChatSupportLoaded) return;
+    emit(current.copyWith(searchQuery: event.query));
+  }
+
+  void _onSelectChatSession(
+      SelectChatSessionEvent event, Emitter<ChatSupportState> emit) {
+    final current = state;
+    if (current is! ChatSupportLoaded || current.currentUserId.isEmpty) return;
+
+    _messagesSub?.cancel();
+
+    if (event.conversationId.isEmpty) {
+      emit(current.copyWith(
+        selectedConversationId: null,
+        messages: [],
+      ));
+      return;
+    }
+
+    repository.markConversationRead(event.conversationId, current.currentUserId, true);
+
+    emit(current.copyWith(
+      selectedConversationId: event.conversationId,
+      messages: [],
+    ));
+
+    _messagesSub = repository
+        .getMessagesStream(event.conversationId)
+        .listen((messages) {
+      if (!isClosed) {
+        add(_MessagesUpdated(event.conversationId, messages));
       }
-      return session;
-    }).toList();
+    }, onError: (error) {
+      if (!isClosed) add(_MessagesError('$error'));
+    });
+  }
 
-    emit(currentState.copyWith(
-      activeSessions: updatedSessions,
-      selectedSessionId: event.sessionId,
-      clearError: true,
+  void _onMessagesUpdated(
+      _MessagesUpdated event, Emitter<ChatSupportState> emit) {
+    final s = state;
+    if (s is! ChatSupportLoaded) return;
+    if (event.conversationId != s.selectedConversationId) return;
+    emit(s.copyWith(messages: event.messages));
+  }
+
+  void _onMessagesError(
+      _MessagesError event, Emitter<ChatSupportState> emit) {
+    final s = state;
+    if (s is! ChatSupportLoaded) return;
+    emit(s.copyWith(
+      isSendingMessage: false,
+      errorMessage: 'Failed to load messages: ${event.error}',
     ));
   }
 
-  Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatSupportState> emit) async {
-    final currentState = state;
-    if (currentState is! ChatSupportLoaded) return;
+  Future<void> _onSendMessage(
+      SendMessageEvent event, Emitter<ChatSupportState> emit) async {
+    final current = state;
+    if (current is! ChatSupportLoaded) return;
+    if (current.currentUserId.isEmpty) return;
     if (event.text.trim().isEmpty) return;
 
-    emit(currentState.copyWith(isSendingMessage: true, clearError: true));
+    emit(current.copyWith(isSendingMessage: true, clearError: true));
 
     try {
-      if (_sellerId == null) throw Exception('Seller ID not initialized.');
-      final newMessage = await repository.sendMessage(_sellerId!, event.sessionId, event.text);
-      
-      final updatedSessions = currentState.activeSessions.map((session) {
-        if (session.sessionId == event.sessionId) {
-          return session.copyWith(
-            messages: List.from(session.messages)..add(newMessage),
-          );
-        }
-        return session;
-      }).toList();
-
-      emit(currentState.copyWith(
-        activeSessions: updatedSessions,
-        isSendingMessage: false,
-      ));
+      await repository.sendMessage(
+        conversationId: event.conversationId,
+        text: event.text,
+        senderId: current.currentUserId,
+        senderRole: 'seller',
+      );
+      emit(current.copyWith(isSendingMessage: false));
     } catch (e) {
-      emit(currentState.copyWith(
+      emit(current.copyWith(
         isSendingMessage: false,
         errorMessage: 'Failed to send message. Please try again.',
       ));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _conversationsSub?.cancel();
+    _messagesSub?.cancel();
+    return super.close();
   }
 }

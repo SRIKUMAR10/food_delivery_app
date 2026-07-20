@@ -41,11 +41,11 @@ class OrderItemModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        productId,
-        name,
-        quantity,
-        price,
-        imageUrl,
-        specialInstructions,
-      ];
+    productId,
+    name,
+    quantity,
+    price,
+    imageUrl,
+    specialInstructions,
+  ];
 }

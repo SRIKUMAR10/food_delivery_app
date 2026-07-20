@@ -5,4 +5,5 @@ abstract interface class IOrderRepository {
   Stream<List<OrderModel>> getBuyerOrdersStream(String buyerId);
   Stream<List<OrderModel>> getSellerOrdersStream(String sellerId);
   Future<void> updateOrderStatus(String orderId, OrderStatus newStatus);
+  Future<OrderModel?> getOrderById(String orderId);
 }

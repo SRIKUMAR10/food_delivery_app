@@ -14,6 +14,8 @@ void main() {
 
     setUp(() {
       mockRepository = MockTrackOrderRepository();
+      when(() => mockRepository.startTracking(any())).thenAnswer((_) async {});
+      when(() => mockRepository.stopTracking()).thenAnswer((_) async {});
       bloc = TrackOrderBloc(repository: mockRepository);
     });
 
@@ -133,7 +135,7 @@ void main() {
           // Arrange
           when(
             () => mockRepository.startTracking(any()),
-          ).thenAnswer((_) async => {});
+          ).thenAnswer((_) async {});
           when(() => mockRepository.locationStream).thenAnswer(
             (_) => Stream.fromIterable([
               const DriverLocation(lat: 13.0827, lng: 80.2707),

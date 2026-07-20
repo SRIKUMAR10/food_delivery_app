@@ -1,54 +1,48 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order Page/order_UI.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/Order Page/order_repository.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+import 'package:food_delivery_app/core/models/order_model.dart';
+import 'package:food_delivery_app/core/models/order_status.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 
-class MockUser extends Mock implements User {
-  @override
-  final String uid;
-  MockUser(this.uid);
-}
+class MockIOrderRepository extends Mock implements IOrderRepository {}
+
+class MockIAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('Order Page Performance Test', () {
     testWidgets('Measures scrolling performance on Order Page', (
       WidgetTester tester,
     ) async {
-      final fakeFirestore = FakeFirebaseFirestore();
-      final mockAuth = MockFirebaseAuth();
-      final mockUser = MockUser('test_uid');
+      final mockRepository = MockIOrderRepository();
+      final mockAuthService = MockIAuthService();
 
-      for (int i = 0; i < 20; i++) {
-        await fakeFirestore
-            .collection('users')
-            .doc('test_uid')
-            .collection('orders')
-            .doc('order$i')
-            .set({
-              'status': 'Pending',
-              'totalAmount': 500.0,
-              'date': DateTime.now(),
-              'items': [],
-            });
-      }
+      final mockOrders = List.generate(20, (i) => OrderModel(
+        id: 'order$i',
+        customerId: 'test_uid',
+        customerName: 'Test Customer',
+        sellerId: 'seller1',
+        status: OrderStatus.newOrder,
+        amount: 500.0,
+        timestamp: DateTime.now(),
+        items: const [],
+      ));
 
-      when(() => mockAuth.currentUser).thenReturn(mockUser);
+      when(() => mockAuthService.currentUserId).thenReturn('test_uid');
       when(
-        () => mockAuth.authStateChanges(),
-      ).thenAnswer((_) => Stream.value(mockUser));
-
-      final mockRepo = OrderRepository(
-        firestore: fakeFirestore,
-        auth: mockAuth,
-      );
+        () => mockRepository.getBuyerOrdersStream(any()),
+      ).thenAnswer((_) => Stream.value(mockOrders));
 
       await tester.pumpWidget(
-        MaterialApp(home: OrderPageUI(orderRepository: mockRepo)),
+        MaterialApp(
+          home: OrderPageUI(
+            orderRepository: mockRepository,
+            authService: mockAuthService,
+          ),
+        ),
       );
 
       await tester.pumpAndSettle();

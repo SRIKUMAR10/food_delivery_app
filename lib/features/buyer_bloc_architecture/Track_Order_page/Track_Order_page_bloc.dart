@@ -45,6 +45,13 @@ class TrackOrderBloc extends Bloc<TrackOrderEvent, TrackOrderState> {
           imageUrl: details['driverImage'] ?? 'https://i.pravatar.cc/150?img=11',
           phone: details['driverPhone'] ?? '+1234567890',
         ),
+        sellerInfo: SellerInfo(
+          id: details['sellerId'] ?? '',
+          name: details['sellerName'] ?? 'Seller',
+          address: details['sellerAddress'] ?? '',
+          imageUrl: details['sellerImageUrl'] ?? '',
+          phone: details['sellerPhone'] ?? '',
+        ),
       ));
     } catch (e) {
       emit(TrackOrderError(e.toString()));

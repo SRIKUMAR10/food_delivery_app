@@ -62,7 +62,7 @@ void main() {
     test('failed login keeps user on login form with error', () async {
       when(
         () => mockRepo.signIn(any(), any()),
-      ).thenThrow(Exception('தவறான password. மீண்டும் முயற்சிக்கவும்.'));
+      ).thenThrow(Exception('Incorrect password. Please try again.'));
 
       bloc.add(const SellerLoginFieldChanged('seller@shop.com'));
       bloc.add(const SellerLoginPasswordChanged('wrongpass'));

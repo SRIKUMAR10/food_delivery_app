@@ -77,10 +77,10 @@ void main() {
     when(() => mockRepository.getProductsStream('seller1'))
         .thenAnswer((_) => Stream.value(tProducts));
         
-    when(() => mockRepository.deleteProduct(any()))
+    when(() => mockRepository.deleteProduct(any(), any()))
         .thenAnswer((_) async => {});
         
-    when(() => mockRepository.toggleProductStatus(any(), any()))
+    when(() => mockRepository.toggleProductStatus(any(), any(), any()))
         .thenAnswer((_) async => {});
         
     bloc = ProductListBloc(repository: mockRepository, authService: mockAuthService);
@@ -113,7 +113,7 @@ void main() {
             .having((s) => s.averageRating, 'averageRating', (8.5 / 3)),
       ],
       verify: (_) {
-        verify(() => mockRepository.getProductsStream()).called(1);
+        verify(() => mockRepository.getProductsStream(any())).called(1);
       },
     );
   });
@@ -123,7 +123,7 @@ void main() {
       'filters by Active status',
       build: () {
         // mock to return only active
-        when(() => mockRepository.getProductsStream())
+        when(() => mockRepository.getProductsStream(any()))
             .thenAnswer((_) => Stream.value([tProducts[0], tProducts[1]]));
         return bloc;
       },
@@ -139,7 +139,7 @@ void main() {
     blocTest<ProductListBloc, ProductListPageState>(
       'searches products by name (case insensitive)',
       build: () {
-        when(() => mockRepository.getProductsStream())
+        when(() => mockRepository.getProductsStream(any()))
             .thenAnswer((_) => Stream.value([tProducts[1]]));
         return bloc;
       },
@@ -160,7 +160,7 @@ void main() {
       build: () => bloc,
       act: (bloc) => bloc.add(const DeleteProductEvent('1')),
       verify: (_) {
-        verify(() => mockRepository.deleteProduct('1')).called(1);
+        verify(() => mockRepository.deleteProduct('1', any())).called(1);
       },
     );
 
@@ -169,19 +169,20 @@ void main() {
       build: () => bloc,
       act: (bloc) => bloc.add(const ToggleProductStatusEvent('2', false)),
       verify: (_) {
-        verify(() => mockRepository.toggleProductStatus('2', false)).called(1);
+        verify(() => mockRepository.toggleProductStatus('2', false, any())).called(1);
       },
     );
 
     blocTest<ProductListBloc, ProductListPageState>(
       'calls duplicateProduct on DuplicateProductEvent',
       build: () {
-        when(() => mockRepository.duplicateProduct(any())).thenAnswer((_) async => {});
+        when(() => mockRepository.getProduct(any(), any())).thenAnswer((_) async => tProducts.first);
+        when(() => mockRepository.duplicateProduct(any(), any())).thenAnswer((_) async => {});
         return bloc;
       },
       act: (bloc) => bloc.add(DuplicateProductEvent(tProducts.first.id)),
       verify: (_) {
-        verify(() => mockRepository.duplicateProduct(tProducts.first.id)).called(1);
+        verify(() => mockRepository.duplicateProduct(any(), any())).called(1);
       },
     );
   });

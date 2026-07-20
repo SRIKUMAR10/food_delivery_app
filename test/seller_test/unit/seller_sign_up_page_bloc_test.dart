@@ -262,7 +262,7 @@ void main() {
           step: SellerSignUpStep.otpVerification,
           otpDigits: ['1', '2', '3', '', '', ''],
           otpError: 'Please enter the complete 6-digit OTP.',
-          errorMessage: '6-digit OTP முழுவதும் உள்ளிடவும்.',
+          errorMessage: 'Please enter the complete 6-digit OTP.',
         ),
       ],
     );

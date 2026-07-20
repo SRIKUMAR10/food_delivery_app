@@ -4,17 +4,17 @@ import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_state.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_chat_repository.dart';
 
-class MockChatSupportRepository extends Mock implements ChatSupportRepository {}
+class MockIChatRepository extends Mock implements IChatRepository {}
 
 void main() {
   group('ChatSupportPage Error Handling Test', () {
     late ChatSupportBloc bloc;
-    late MockChatSupportRepository mockRepository;
+    late MockIChatRepository mockRepository;
 
     setUp(() {
-      mockRepository = MockChatSupportRepository();
+      mockRepository = MockIChatRepository();
       bloc = ChatSupportBloc(repository: mockRepository);
     });
 
@@ -25,11 +25,20 @@ void main() {
     blocTest<ChatSupportBloc, ChatSupportState>(
       'Handles message send failure gracefully',
       build: () {
-        // Assume loaded state first
-        when(() => mockRepository.sendMessage(any(), any())).thenThrow(Exception('NetworkError'));
+        when(
+          () => mockRepository.sendMessage(
+            conversationId: any(named: 'conversationId'),
+            text: any(named: 'text'),
+            senderId: any(named: 'senderId'),
+            senderRole: any(named: 'senderRole'),
+          ),
+        ).thenThrow(Exception('NetworkError'));
         return bloc;
       },
-      seed: () => ChatSupportLoaded(activeSessions: []),
+      seed: () => ChatSupportLoaded(
+        currentUserId: 'seller1',
+        conversations: [],
+      ),
       act: (bloc) => bloc.add(SendMessageEvent('session1', 'Hello')),
       expect: () => [
         isA<ChatSupportLoaded>().having((s) => s.isSendingMessage, 'isSending', true),

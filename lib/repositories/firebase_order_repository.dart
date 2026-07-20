@@ -56,4 +56,17 @@ class FirebaseOrderRepository implements IOrderRepository {
       throw Exception('Failed to update order status: $e');
     }
   }
+
+  @override
+  Future<OrderModel?> getOrderById(String orderId) async {
+    try {
+      final doc = await _firestore.collection('orders').doc(orderId).get();
+      if (doc.exists && doc.data() != null) {
+        return OrderModel.fromMap(doc.data()!, doc.id);
+      }
+    } catch (e) {
+      // Ignored for now or handle appropriately
+    }
+    return null;
+  }
 }

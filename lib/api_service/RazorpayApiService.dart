@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -67,9 +68,18 @@ class RazorpayApiService {
         'https://us-central1-food-delivery-app-cd4ca.cloudfunctions.net/createRazorpayOrder';
 
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      final idToken = await user?.getIdToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+      if (idToken != null) {
+        headers['Authorization'] = 'Bearer $idToken';
+      }
+
       final response = await http.post(
         Uri.parse(cloudFunctionUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({
           "amount": amount,
           "currency": currency,
@@ -84,17 +94,23 @@ class RazorpayApiService {
   }
 
   Map<String, dynamic> _handleResponse(http.Response response) {
-    final Map<String, dynamic> data = jsonDecode(response.body);
+    try {
+      final Map<String, dynamic> data = jsonDecode(response.body);
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
-    } else {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return data;
+      }
+
       final errorMessage = data['error'] != null
           ? data['error']['description']
-          : "Unknown API Error";
-
+          : (data['message'] ?? "Unknown API Error");
       throw Exception(
         "Razorpay API Error (${response.statusCode}): $errorMessage",
+      );
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception(
+        "Invalid response (${response.statusCode}): ${response.body.length > 200 ? response.body.substring(0, 200) : response.body}",
       );
     }
   }

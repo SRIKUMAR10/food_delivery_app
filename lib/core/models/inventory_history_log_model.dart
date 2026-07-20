@@ -27,15 +27,15 @@ class InventoryHistoryLogModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        productId,
-        previousQuantity,
-        newQuantity,
-        quantityChanged,
-        actionType,
-        reason,
-        timestamp,
-        updatedBy,
-        note,
-      ];
+    id,
+    productId,
+    previousQuantity,
+    newQuantity,
+    quantityChanged,
+    actionType,
+    reason,
+    timestamp,
+    updatedBy,
+    note,
+  ];
 }

@@ -495,7 +495,7 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                             ),
                             const SizedBox(height: 16),
                             const Text(
-                              "இன்றைய ஆடர்கள் இல்லை", // "No orders today" in Tamil as requested
+                              "No orders today",
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,

@@ -134,12 +134,36 @@ class Product extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, name, price, discountPrice, currencyCode, imageUrls, status, isActive, isArchived,
-        foodType, category, spicyLevel, rating, reviewCount, salesCount,
-        description, prepTime, calories, portionSize, addons,
-        isFeatured, isBestSeller, hasUnlimitedStock, availableStock,
-        minimumAlert, sellerId, schemaVersion, createdAt, updatedAt,
-      ];
+    id,
+    name,
+    price,
+    discountPrice,
+    currencyCode,
+    imageUrls,
+    status,
+    isActive,
+    isArchived,
+    foodType,
+    category,
+    spicyLevel,
+    rating,
+    reviewCount,
+    salesCount,
+    description,
+    prepTime,
+    calories,
+    portionSize,
+    addons,
+    isFeatured,
+    isBestSeller,
+    hasUnlimitedStock,
+    availableStock,
+    minimumAlert,
+    sellerId,
+    schemaVersion,
+    createdAt,
+    updatedAt,
+  ];
 
   Map<String, dynamic> toMap() {
     return {
@@ -210,18 +234,18 @@ class Product extends Equatable {
     }
     // Remove duplicates
     parsedImageUrls = parsedImageUrls.toSet().toList();
-    
+
     // Validate stock values
     int availableStock = _parseIntSafely(map['availableStock']);
     if (availableStock < 0) availableStock = 0;
-    
+
     int minimumAlert = _parseIntSafely(map['minimumAlert']);
     if (minimumAlert <= 0) minimumAlert = 10;
 
     // Validate prices
     double price = (map['price'] as num?)?.toDouble() ?? 0.0;
     if (price < 0.0) price = 0.0;
-    
+
     double discountPrice = (map['discountPrice'] as num?)?.toDouble() ?? 0.0;
     if (discountPrice < 0.0) discountPrice = 0.0;
     if (discountPrice > price) discountPrice = price;
@@ -230,7 +254,7 @@ class Product extends Equatable {
     bool isActive = map['isActive'] ?? true;
     bool isArchived = map['isArchived'] ?? false;
     ProductStatus parsedStatus = ProductStatus.inStock;
-    
+
     if (availableStock <= 0) {
       parsedStatus = ProductStatus.outOfStock;
     } else if (availableStock <= minimumAlert) {
@@ -264,14 +288,18 @@ class Product extends Equatable {
       prepTime: _parseIntSafely(map['prepTime']),
       calories: _parseIntSafely(map['calories']),
       portionSize: map['portionSize'] ?? '',
-      addons: map['addons'] != null && map['addons'] is List ? List<String>.from(map['addons']) : [],
+      addons: map['addons'] != null && map['addons'] is List
+          ? List<String>.from(map['addons'])
+          : [],
       isFeatured: map['isFeatured'] ?? false,
       isBestSeller: map['isBestSeller'] ?? false,
       hasUnlimitedStock: map['hasUnlimitedStock'] ?? false,
       availableStock: availableStock,
       minimumAlert: minimumAlert,
       sellerId: map['sellerId'] ?? '',
-      schemaVersion: _parseIntSafely(map['schemaVersion']) == 0 ? 1 : _parseIntSafely(map['schemaVersion']),
+      schemaVersion: _parseIntSafely(map['schemaVersion']) == 0
+          ? 1
+          : _parseIntSafely(map['schemaVersion']),
       createdAt: _parseDateSafely(map['createdAt']),
       updatedAt: _parseDateSafely(map['updatedAt']),
     );

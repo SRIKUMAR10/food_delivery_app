@@ -7,34 +7,18 @@ const crypto = require("crypto");
 admin.initializeApp();
 
 // Use Firebase Environment Configuration for sensitive keys
-const rzpKeyId = functions.config().razorpay ? functions.config().razorpay.key_id : process.env.RAZORPAY_KEY_ID;
+const rzpKeyId = functions.config().razorpay ? functions.config().razorpay.key_id : (process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_API_KEY);
 const rzpKeySecret = functions.config().razorpay ? functions.config().razorpay.key_secret : process.env.RAZORPAY_KEY_SECRET;
 const rzpWebhookSecret = functions.config().razorpay ? functions.config().razorpay.webhook_secret : process.env.RAZORPAY_WEBHOOK_SECRET;
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
-  key_id: rzpKeyId,
-  key_secret: rzpKeySecret,
+  key_id: rzpKeyId || 'dummy_key_id',
+  key_secret: rzpKeySecret || 'dummy_key_secret',
 });
 
-// Configure CORS to only allow the production Firebase Hosting domain
-// Deriving project ID from Firebase config or environment to set the domains
 const projectId = process.env.GCLOUD_PROJECT || "food-delivery-app-cd4ca";
-const allowedOrigins = [
-  `https://${projectId}.web.app`,
-  `https://${projectId}.firebaseapp.com`
-];
-
-const corsHandler = cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps) or allowed origins
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  }
-});
+const corsHandler = cors({ origin: true });
 
 exports.createPaymentLink = functions.https.onRequest((req, res) => {
   corsHandler(req, res, async () => {
@@ -100,6 +84,19 @@ exports.createRazorpayOrder = functions.https.onRequest((req, res) => {
     }
 
     try {
+      // Verify Firebase Authentication ID Token
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).send({ message: "Unauthorized: Missing Authorization header" });
+      }
+      const idToken = authHeader.split("Bearer ")[1];
+      try {
+        await admin.auth().verifyIdToken(idToken);
+      } catch (error) {
+        console.error("Auth Error:", error);
+        return res.status(401).send({ message: "Unauthorized: Invalid token" });
+      }
+
       const { amount, currency, receipt } = req.body;
       
       if (!amount) {
@@ -356,7 +353,13 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
       for (const { snap, item } of productDocs) {
         const productData = snap.data();
         const availableStock = productData.availableStock || 0;
-        const price = productData.price || 0;
+        const dbPrice = parseFloat(productData.price) || 0;
+        const dbDiscountPrice = parseFloat(productData.discountPrice) || 0;
+
+        const effectivePrice =
+          (dbDiscountPrice > 0 && dbDiscountPrice < dbPrice)
+            ? dbDiscountPrice
+            : dbPrice;
 
         if (availableStock < item.quantity) {
           throw new functions.https.HttpsError('failed-precondition', `Not enough stock for ${productData.name}.`);
@@ -380,14 +383,14 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
           };
         }
 
-        itemsBySeller[sellerId].totalAmount += (price * item.quantity);
+        itemsBySeller[sellerId].totalAmount += (effectivePrice * (item.quantity || 1));
         itemsBySeller[sellerId].items.push({
-          id: item.id,
-          productId: item.id,
-          name: productData.name,
-          price: price,
-          quantity: item.quantity,
-          sellerId: sellerId,
+          id: item.id || '',
+          productId: item.id || '',
+          name: productData.name || 'Unknown Product',
+          price: effectivePrice,
+          quantity: item.quantity || 1,
+          sellerId: sellerId || 'Unknown Seller',
           image: productData.imageUrls && productData.imageUrls.length > 0 ? productData.imageUrls[0] : (productData.imageUrl || null),
           imageUrl: productData.imageUrls && productData.imageUrls.length > 0 ? productData.imageUrls[0] : (productData.imageUrl || null)
         });
@@ -398,11 +401,11 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
         const orderData = itemsBySeller[sellerId];
         const orderRef = db.collection('orders').doc();
         transaction.set(orderRef, {
-          customerId: uid,
+          customerId: uid || '',
           customerName: customerName || 'Unknown Customer',
-          sellerId: sellerId,
+          sellerId: sellerId || 'Unknown Seller',
           status: 'New',
-          amount: orderData.totalAmount,
+          amount: orderData.totalAmount || 0,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           items: orderData.items,
           deliveryAddress: deliveryAddress || 'Default Address',

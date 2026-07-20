@@ -1,30 +1,29 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:food_delivery_app/core/repositories/i_cart_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_models.dart';
 
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
-class MockUser extends Mock implements User {}
+class MockCartRepository extends Mock implements ICartRepository {}
+class MockAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('CartBloc Unit Tests', () {
-    late FakeFirebaseFirestore fakeFirestore;
-    late MockFirebaseAuth mockAuth;
-    late MockUser mockUser;
+    late MockCartRepository mockCartRepository;
+    late MockAuthService mockAuthService;
     late CartBloc cartBloc;
 
     setUp(() {
-      fakeFirestore = FakeFirebaseFirestore();
-      mockAuth = MockFirebaseAuth();
-      mockUser = MockUser();
+      mockCartRepository = MockCartRepository();
+      mockAuthService = MockAuthService();
 
-      when(() => mockUser.uid).thenReturn('test_uid');
-      when(() => mockAuth.currentUser).thenReturn(mockUser);
-      when(() => mockAuth.authStateChanges()).thenAnswer((_) => Stream.value(mockUser));
+      when(() => mockAuthService.currentUserId).thenReturn('test_uid');
+      when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value('test_uid'));
+      when(() => mockCartRepository.getCartItemsStream(any()))
+          .thenAnswer((_) => const Stream.empty());
 
-      cartBloc = CartBloc(firestore: fakeFirestore, auth: mockAuth);
+      cartBloc = CartBloc(cartRepository: mockCartRepository, authService: mockAuthService);
     });
 
     tearDown(() {
@@ -46,21 +45,11 @@ void main() {
       );
 
       cartBloc.add(CartItemAdded(item));
-
-      // Wait for async transaction
       await Future.delayed(const Duration(milliseconds: 100));
 
-      final cartDoc = await fakeFirestore
-          .collection('users')
-          .doc('test_uid')
-          .collection('cart')
-          .doc('item1')
-          .get();
-
-      expect(cartDoc.exists, true);
-      expect(cartDoc.data()?['name'], 'Burger');
+      verify(() => mockCartRepository.addItem('test_uid', item)).called(1);
     });
-    
+
     test('checkout creates orders in root collection', () async {
       final item1 = CartItem(
         id: 'item1',
@@ -69,8 +58,9 @@ void main() {
         sellerId: 'seller1',
         image: 'img.png',
         quantity: 1,
+        isSelected: true,
       );
-      
+
       final item2 = CartItem(
         id: 'item2',
         name: 'Pizza',
@@ -78,55 +68,27 @@ void main() {
         sellerId: 'seller2',
         image: 'img2.png',
         quantity: 1,
+        isSelected: true,
       );
 
-      // Add to fake firestore cart
-      await fakeFirestore
-          .collection('users')
-          .doc('test_uid')
-          .collection('cart')
-          .doc('item1')
-          .set(item1.toMap());
-          
-      await fakeFirestore
-          .collection('users')
-          .doc('test_uid')
-          .collection('cart')
-          .doc('item2')
-          .set(item2.toMap());
-          
-      // Add a fake user doc for customer name
-      await fakeFirestore
-          .collection('users')
-          .doc('test_uid')
-          .set({'name': 'Test Customer'});
-          
+      when(() => mockCartRepository.getCartItemsStream('test_uid'))
+          .thenAnswer((_) => Stream.value([item1, item2]));
+
+      cartBloc.close();
+      cartBloc = CartBloc(cartRepository: mockCartRepository, authService: mockAuthService);
+      await Future.delayed(const Duration(milliseconds: 100));
+
       bool successCalled = false;
-          
+
       cartBloc.add(CartCheckoutRequested(
         onSuccess: () {
           successCalled = true;
         }
       ));
-      
-      await Future.delayed(const Duration(milliseconds: 200));
-      
-      // Verify cart is empty
-      final cartDocs = await fakeFirestore
-          .collection('users')
-          .doc('test_uid')
-          .collection('cart')
-          .get();
-      expect(cartDocs.docs.isEmpty, true);
-      
-      // Verify orders created in root
-      final orderDocs = await fakeFirestore.collection('orders').get();
-      expect(orderDocs.docs.length, 2); // One per seller
-      
-      final sellers = orderDocs.docs.map((d) => d.data()['sellerId']).toSet();
-      expect(sellers.contains('seller1'), true);
-      expect(sellers.contains('seller2'), true);
-      
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      verify(() => mockCartRepository.checkoutCart('test_uid', any(), any())).called(1);
       expect(successCalled, true);
     });
   });

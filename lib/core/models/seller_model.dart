@@ -86,7 +86,8 @@ class SellerModel {
       panNumber: data?['panNumber'],
       isOnline: data?['isOnline'] ?? false,
       gstPercentage: (data?['gstPercentage'] as num?)?.toDouble() ?? 18.0,
-      minimumOrderValue: (data?['minimumOrderValue'] as num?)?.toDouble() ?? 150.0,
+      minimumOrderValue:
+          (data?['minimumOrderValue'] as num?)?.toDouble() ?? 150.0,
       packagingCharges: (data?['packagingCharges'] as num?)?.toDouble() ?? 25.0,
       bankAccountNumber: data?['bankAccountNumber'],
       bankName: data?['bankName'],

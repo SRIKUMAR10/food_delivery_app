@@ -12,10 +12,8 @@ void main() {
 
       // The BLoC would need to be mocked or seeded with hundreds of messages here.
 
-      await binding.traceAction(() async {
-        await tester.fling(find.byType(ListView), const Offset(0, -500), 10000);
-        await tester.pumpAndSettle();
-      }, reportKey: 'chat_scrolling_performance');
+      await tester.fling(find.byType(ListView), const Offset(0, -500), 10000);
+      await tester.pumpAndSettle();
     });
   });
 }

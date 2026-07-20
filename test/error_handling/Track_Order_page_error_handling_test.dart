@@ -14,6 +14,8 @@ void main() {
 
     setUp(() {
       mockRepository = MockTrackOrderRepository();
+      when(() => mockRepository.startTracking(any())).thenAnswer((_) async {});
+      when(() => mockRepository.stopTracking()).thenAnswer((_) async {});
       bloc = TrackOrderBloc(repository: mockRepository);
     });
 

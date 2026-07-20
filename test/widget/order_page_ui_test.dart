@@ -64,8 +64,8 @@ void main() {
 
         await tester.pumpWidget(createWidgetUnderTest(mockOrderBloc));
 
-        // The UI shows "Your order is empty"
-        expect(find.textContaining('order is empty'), findsWidgets);
+        // The UI shows "Your order list is empty"
+        expect(find.textContaining('order list is empty'), findsWidgets);
       },
     );
 

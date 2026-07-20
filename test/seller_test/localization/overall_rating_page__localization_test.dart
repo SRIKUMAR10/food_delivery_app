@@ -19,8 +19,6 @@ void main() {
       reviews: [],
     ));
 
-    // To test localization properly, wrap the widget with Localizations widget 
-    // and provide different locales (e.g. 'ta_IN' for Tamil).
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('en', 'US'),
       home: BlocProvider<OverallRatingBloc>.value(
@@ -31,9 +29,6 @@ void main() {
 
     await tester.pumpAndSettle();
     
-    // Verify english text is present
     expect(find.text('Overall Rating'), findsOneWidget);
-    
-    // In a real scenario, you'd pump again with Tamil locale and verify Tamil text.
   });
 }

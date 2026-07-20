@@ -779,7 +779,7 @@ class _SignUpSuccessScreenState extends State<_SignUpSuccessScreen> with SingleT
                   ),
                   const SizedBox(height: 32),
                   Text(
-                    'வரவேற்கிறோம், ${state.name}!',
+                    'Welcome, ${state.name}!',
                     style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.bold, color: _AppColors.textDark),
                   ),
                   const SizedBox(height: 8),

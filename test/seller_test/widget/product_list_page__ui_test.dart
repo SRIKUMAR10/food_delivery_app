@@ -7,12 +7,12 @@ import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_list_page__ui.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_list_page__bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_list_page__state.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_model.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/product_list_page_/product_repository.dart';
+import 'package:food_delivery_app/core/models/product_model.dart';
+import 'package:food_delivery_app/core/repositories/i_product_repository.dart';
 
 class MockProductListBloc extends Mock implements ProductListBloc {}
 
-class MockProductRepository extends Mock implements ProductRepository {}
+class MockProductRepository extends Mock implements IProductRepository {}
 
 void main() {
   setUpAll(() async {
@@ -53,15 +53,17 @@ void main() {
     WidgetTester tester,
   ) async {
     when(() => mockBloc.state).thenReturn(
-      const ProductListLoaded(
+      ProductListLoaded(
         products: [
           Product(
             id: '1',
             name: 'Pizza',
             price: 10,
-            imageUrls: const [''],
+            imageUrls: [''],
             status: ProductStatus.inStock,
             isActive: true,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
           ),
         ],
         activeFilter: 'All',

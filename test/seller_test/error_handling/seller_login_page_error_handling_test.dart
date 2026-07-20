@@ -50,10 +50,10 @@ void main() {
 
       expect(bloc.state.status, SellerLoginStatus.failure);
       expect(bloc.state.errorMessage, isNotNull);
-      expect(bloc.state.errorMessage, contains('தவறான Password'));
+      expect(bloc.state.errorMessage, contains('Incorrect password'));
     });
 
-    test('user-not-found exception maps to Tamil account message', () async {
+    test('user-not-found exception maps to account message', () async {
       when(
         () => mockRepo.signIn(any(), any()),
       ).thenThrow(Exception('user-not-found'));
@@ -82,7 +82,7 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 100));
 
       expect(bloc.state.status, SellerLoginStatus.failure);
-      expect(bloc.state.errorMessage, contains('பல முறை'));
+      expect(bloc.state.errorMessage, contains('Too many'));
     });
 
     test('GOOGLE_ACCOUNT_EXISTS is mapped to friendly message', () async {

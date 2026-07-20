@@ -1,21 +1,50 @@
 import 'dart:async';
-import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TrackOrderService {
-  final http.Client httpClient;
+  final FirebaseFirestore firestore;
 
-  TrackOrderService({required this.httpClient});
+  TrackOrderService({required this.firestore});
 
   Future<Map<String, dynamic>> getOrderDetails(String orderId) async {
-    // Simulating network delay
-    await Future.delayed(const Duration(seconds: 1));
+    final orderDoc = await firestore.collection('orders').doc(orderId).get();
+    if (!orderDoc.exists) {
+      throw Exception('Order not found');
+    }
+    final orderData = orderDoc.data()!;
 
-    // Returning dummy data instead of failing so the UI can render
+    final sellerId = orderData['sellerId'] as String? ?? '';
+
+    String sellerName = '';
+    String sellerAddress = '';
+    String sellerImageUrl = '';
+    String sellerPhone = '';
+
+    if (sellerId.isNotEmpty) {
+      final sellerDoc = await firestore.collection('sellers').doc(sellerId).get();
+      if (sellerDoc.exists) {
+        final sellerData = sellerDoc.data()!;
+        sellerName = (sellerData['shopName'] as String? ?? sellerData['sellerName'] as String? ?? sellerData['name'] as String? ?? 'Restaurant');
+        sellerAddress = sellerData['address'] as String? ?? '';
+        sellerImageUrl = sellerData['profileImageUrl'] as String? ?? '';
+        sellerPhone = sellerData['phoneNumber'] as String? ?? sellerData['contactNumber'] as String? ?? '';
+      }
+    }
+
     return {
       'estimatedDelivery': '30-40 mins',
       'driverName': 'Jane Doe',
       'driverImage': 'https://i.pravatar.cc/150?img=11',
       'driverPhone': '+1234567890',
+      'sellerId': sellerId,
+      'sellerName': sellerName,
+      'sellerAddress': sellerAddress,
+      'sellerImageUrl': sellerImageUrl,
+      'sellerPhone': sellerPhone,
+      'buyerId': orderData['customerId'] as String? ?? '',
+      'buyerName': orderData['customerName'] as String? ?? '',
+      'status': orderData['status'] as String? ?? 'New',
+      'timestamp': orderData['timestamp'],
     };
   }
 

@@ -24,6 +24,7 @@ void main() {
 
     const testUid = 'test_user_id';
 
+    setUp(() {
       mockAuthService = MockAuthService();
       mockOrderRepository = MockOrderRepository();
 
@@ -34,6 +35,7 @@ void main() {
         repository: mockOrderRepository,
         authService: mockAuthService,
       );
+    });
 
     tearDown(() {
       orderBloc.close();
@@ -44,10 +46,9 @@ void main() {
     });
 
     blocTest<OrderBloc, OrderState>(
-      'emits OrderLoaded with empty list when user is not logged in',
+      'emits OrderError when user is not logged in',
       build: () {
         when(() => mockAuthService.currentUserId).thenReturn(null);
-        when(() => mockOrderRepository.getBuyerOrdersStream(any())).thenAnswer((_) => Stream.value([]));
         return OrderBloc(
           repository: mockOrderRepository,
           authService: mockAuthService,
@@ -55,8 +56,7 @@ void main() {
       },
       act: (bloc) => bloc.add(LoadOrdersRequested()),
       expect: () => [
-        isA<OrderLoading>(),
-        isA<OrderLoaded>().having((s) => s.orders, 'orders', isEmpty),
+        isA<OrderError>().having((s) => s.message, 'message', 'User not logged in'),
       ],
     );
 

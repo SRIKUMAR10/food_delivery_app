@@ -7,9 +7,9 @@ import 'package:food_delivery_app/core/models/order_status.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_state.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
 
-class MockOrdersListRepository extends Mock implements OrdersListRepository {}
+class MockOrdersListRepository extends Mock implements IOrderRepository {}
 
 void main() {
   late MockOrdersListRepository mockRepository;
@@ -56,7 +56,7 @@ void main() {
     blocTest<OrdersListBloc, OrdersListState>(
       'emits [Loading, Loaded] when LoadOrdersStream is added',
       build: () {
-        when(() => mockRepository.getOrdersStream('s1')).thenAnswer(
+        when(() => mockRepository.getSellerOrdersStream('s1')).thenAnswer(
           (_) => Stream.value([order1, order2]),
         );
         return bloc;
@@ -79,7 +79,7 @@ void main() {
     blocTest<OrdersListBloc, OrdersListState>(
       'SearchOrders filters orders by name',
       build: () {
-        when(() => mockRepository.getOrdersStream('s1')).thenAnswer(
+        when(() => mockRepository.getSellerOrdersStream('s1')).thenAnswer(
           (_) => Stream.value([order1, order2]), // John (New) and Alice (Preparing)
         );
         return bloc;
@@ -101,7 +101,7 @@ void main() {
     blocTest<OrdersListBloc, OrdersListState>(
       'UpdateOrderStatusEvent validates state transitions and prevents invalid ones',
       build: () {
-        when(() => mockRepository.getOrdersStream('s1')).thenAnswer(
+        when(() => mockRepository.getSellerOrdersStream('s1')).thenAnswer(
           (_) => Stream.value([order1]), // Status is New
         );
         return bloc;
@@ -128,7 +128,7 @@ void main() {
     blocTest<OrdersListBloc, OrdersListState>(
       'UpdateOrderStatusEvent works optimistically and succeeds',
       build: () {
-        when(() => mockRepository.getOrdersStream('s1')).thenAnswer(
+        when(() => mockRepository.getSellerOrdersStream('s1')).thenAnswer(
           (_) => Stream.value([order1]), // Status is New
         );
         when(() => mockRepository.updateOrderStatus('1', OrderStatus.preparing))

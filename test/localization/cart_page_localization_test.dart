@@ -25,7 +25,7 @@ void main() {
     testWidgets('Renders localized text properly', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          locale: const Locale('ta', 'IN'), // Tamil Locale Example
+          locale: const Locale('en', 'US'),
           home: BlocProvider<CartBloc>.value(
             value: mockCartBloc,
             child: CartPageUI(

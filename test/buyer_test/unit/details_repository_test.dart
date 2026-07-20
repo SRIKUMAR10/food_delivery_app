@@ -1,34 +1,28 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Details_Page/details_repository.dart';
 
-// TODO: Remove this ignore_for_file and migrate to fake_cloud_firestore or proper mocktail mocking strategy in the future.
-// ignore_for_file: subtype_of_sealed_class
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockAuthService extends Mock implements IAuthService {}
 class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
-class MockUser extends Mock implements User {}
 class MockCollectionReference extends Mock implements CollectionReference<Map<String, dynamic>> {}
 class MockDocumentReference extends Mock implements DocumentReference<Map<String, dynamic>> {}
 
 void main() {
   group('DetailsRepository', () {
     late DetailsRepository repository;
-    late MockFirebaseAuth mockAuth;
+    late MockAuthService mockAuthService;
     late MockFirebaseFirestore mockFirestore;
-    late MockUser mockUser;
 
     setUp(() {
-      mockAuth = MockFirebaseAuth();
+      mockAuthService = MockAuthService();
       mockFirestore = MockFirebaseFirestore();
-      mockUser = MockUser();
       
-      when(() => mockUser.uid).thenReturn('user_123');
-      when(() => mockAuth.currentUser).thenReturn(mockUser);
+      when(() => mockAuthService.currentUserId).thenReturn('user_123');
 
       repository = DetailsRepository(
-        auth: mockAuth,
+        authService: mockAuthService,
         firestore: mockFirestore,
       );
     });
@@ -38,7 +32,7 @@ void main() {
     });
 
     test('isUserLoggedIn returns false when user is null', () {
-      when(() => mockAuth.currentUser).thenReturn(null);
+      when(() => mockAuthService.currentUserId).thenReturn(null);
       expect(repository.isUserLoggedIn, isFalse);
     });
 

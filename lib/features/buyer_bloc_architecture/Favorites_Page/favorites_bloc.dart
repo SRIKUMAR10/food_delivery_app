@@ -1,25 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'favorites_event.dart';
 import 'favorites_state.dart';
 import 'favorites_models.dart';
+import '../../../core/services/i_auth_service.dart';
+import '../../../core/services/auth_service.dart';
 
 import 'dart:async';
 
 class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
   final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
-  StreamSubscription<User?>? _authSubscription;
+  final IAuthService _authService;
+  StreamSubscription<String?>? _authSubscription;
 
-  FavoritesBloc({FirebaseFirestore? firestore, FirebaseAuth? auth})
+  FavoritesBloc({FirebaseFirestore? firestore, IAuthService? authService})
       : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance,
+        _authService = authService ?? FirebaseAuthService(),
         super(const FavoritesLoading()) {
     on<LoadFavoritesStarted>(_onLoadFavoritesStarted);
     on<FavoritesToggleRequested>(_onFavoritesToggleRequested);
 
-    _authSubscription = _auth.authStateChanges().listen((user) {
+    _authSubscription = _authService.authStateChanges.listen((userId) {
       add(const LoadFavoritesStarted());
     });
   }
@@ -34,7 +35,7 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     LoadFavoritesStarted event,
     Emitter<FavoritesState> emit,
   ) async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _authService.currentUserId;
     if (uid == null) {
       emit(const FavoritesLoaded(items: [], favoriteIds: {}));
       return;
@@ -62,7 +63,7 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     FavoritesToggleRequested event,
     Emitter<FavoritesState> emit,
   ) async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _authService.currentUserId;
     if (uid == null) return;
 
     final docRef = _firestore
@@ -74,10 +75,8 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     final docSnapshot = await docRef.get();
 
     if (docSnapshot.exists) {
-      // Remove from favorites
       await docRef.delete();
     } else {
-      // Add to favorites
       await docRef.set(event.item.toMap());
     }
   }

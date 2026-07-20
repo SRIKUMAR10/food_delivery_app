@@ -32,7 +32,7 @@ void main() {
             debugShowCheckedModeBanner: false,
             home: BlocProvider<MenuCategoryManagementBloc>.value(
               value: mockBloc,
-              child: const ChatSupportView(sellerId: 'test'),
+              child: const MenuCategoryManagementView(sellerId: 'test'),
             ),
           ),
         );

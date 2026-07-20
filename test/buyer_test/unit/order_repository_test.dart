@@ -47,7 +47,7 @@ void main() {
 
       expect(ordersList.length, 1);
       expect(ordersList.first.id, 'order1');
-      expect(ordersList.first.totalAmount, 25.0);
+      expect(ordersList.first.amount, 25.0);
     });
   });
 }

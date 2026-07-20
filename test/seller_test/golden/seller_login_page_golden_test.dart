@@ -214,7 +214,7 @@ void main() {
         bloc,
         const SellerLoginPageState(
           status: SellerLoginStatus.failure,
-          errorMessage: 'தவறான password. மீண்டும் முயற்சிக்கவும்.',
+          errorMessage: 'Incorrect password. Please try again.',
           emailOrPhone: 'seller@restaurant.com',
           password: 'wrong',
         ),

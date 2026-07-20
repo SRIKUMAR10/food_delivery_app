@@ -1,45 +1,35 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_delivery_app/core/repositories/i_cart_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page_Bloc.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
-
-class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
-
-class MockUser extends Mock implements User {}
+class MockCartRepository extends Mock implements ICartRepository {}
+class MockAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('Cart Error Handling Tests', () {
-    late MockFirebaseAuth mockAuth;
-    late MockFirebaseFirestore mockFirestore;
-    late MockUser mockUser;
+    late MockCartRepository mockCartRepository;
+    late MockAuthService mockAuthService;
 
     setUp(() {
-      mockAuth = MockFirebaseAuth();
-      mockFirestore = MockFirebaseFirestore();
-      mockUser = MockUser();
+      mockCartRepository = MockCartRepository();
+      mockAuthService = MockAuthService();
 
-      when(() => mockUser.uid).thenReturn('user123');
-      when(() => mockAuth.currentUser).thenReturn(mockUser);
-      when(
-        () => mockAuth.authStateChanges(),
-      ).thenAnswer((_) => Stream<User?>.empty());
+      when(() => mockAuthService.currentUserId).thenReturn('user123');
+      when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.empty());
     });
 
     blocTest<CartBloc, CartState>(
-      'Handles Firebase exception gracefully without crashing (emits empty or error)',
+      'Handles repository exception gracefully without crashing (emits empty or error)',
       build: () {
-        when(() => mockFirestore.collection('users')).thenThrow(
-          FirebaseException(plugin: 'firestore', code: 'unavailable'),
+        when(() => mockCartRepository.getCartItemsStream('user123')).thenThrow(
+          Exception('unavailable'),
         );
-        return CartBloc(firestore: mockFirestore, auth: mockAuth);
+        return CartBloc(cartRepository: mockCartRepository, authService: mockAuthService);
       },
       act: (bloc) => bloc.add(const LoadCartStarted()),
-      // Note: Current CartBloc implementation returns empty cart on error (onError callback in emit.forEach)
       expect: () => [
         const CartLoading(),
         const CartLoaded(items: [], totalAmount: 0, totalCount: 0),

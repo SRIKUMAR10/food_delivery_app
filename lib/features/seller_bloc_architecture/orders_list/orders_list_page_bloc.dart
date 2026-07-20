@@ -6,9 +6,11 @@ import '../../../../core/services/audio_notification_service.dart';
 import 'orders_list_page_event.dart';
 import 'orders_list_page_state.dart';
 import '../../../../core/repositories/i_order_repository.dart';
+import '../../../../core/repositories/i_chat_repository.dart';
 
 class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
   final IOrderRepository repository;
+  final IChatRepository chatRepository;
   final AudioNotificationService _audioService = AudioNotificationService();
   
   List<OrderModel> _allOrders = [];
@@ -16,7 +18,7 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
   String _searchQuery = '';
   int _previousNewOrderCount = 0;
 
-  OrdersListBloc({required this.repository}) : super(OrdersListInitial()) {
+  OrdersListBloc({required this.repository, required this.chatRepository}) : super(OrdersListInitial()) {
     on<LoadOrdersStream>(_onLoadOrdersStream);
     on<FilterOrders>(_onFilterOrders);
     on<SearchOrders>(_onSearchOrders);
@@ -87,6 +89,23 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
 
     try {
       await repository.updateOrderStatus(event.orderId, event.newStatus);
+      
+      // Auto-create chat conversation when an order is accepted
+      if (event.newStatus == OrderStatus.accepted) {
+        try {
+          await chatRepository.createConversation(
+            buyerId: order.customerId,
+            buyerName: order.customerName,
+            sellerId: order.sellerId,
+            sellerName: 'Store',
+            orderId: order.id,
+            initialMessage: 'Your order #${order.id} has been accepted and is being processed.',
+          );
+        } catch (e) {
+          print('Failed to initiate chat: $e');
+        }
+      }
+
       if (state is OrdersListLoaded) {
         final st = state as OrdersListLoaded;
         final nextUpdating = Set<String>.from(st.updatingOrderIds)..remove(event.orderId);

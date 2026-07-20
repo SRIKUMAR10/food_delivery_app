@@ -19,7 +19,8 @@ class MockUserCredential extends Mock implements UserCredential {}
 class MockUser extends Mock implements User {}
 
 void main() {
-  return; // SKIP ALL TESTS IN THIS FILE due to missing dependencies
+  // Temporarily skipped - uncomment when dependencies are available
+  // return;
 
   late SellerLoginPageBloc bloc;
   late MockSellerRepository mockRepo;
@@ -301,7 +302,7 @@ void main() {
       build: () {
         when(
           () => mockRepo.verifyPhoneLoginOtp(any(), any()),
-        ).thenThrow(Exception('தவறான OTP'));
+        ).thenThrow(Exception('Invalid OTP'));
         return SellerLoginPageBloc(authRepository: mockRepo);
       },
       seed: () => SellerLoginPageState(
@@ -388,7 +389,7 @@ void main() {
       build: () {
         when(
           () => mockRepo.signInWithApple(),
-        ).thenThrow(Exception('Apple Login தோல்வி'));
+        ).thenThrow(Exception('Apple Login failed'));
         return SellerLoginPageBloc(authRepository: mockRepo);
       },
       act: (b) => b.add(const SellerLoginAppleSignInPressed()),

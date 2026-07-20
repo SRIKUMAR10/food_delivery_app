@@ -12,6 +12,7 @@ class OrderMapper {
             price: item.price,
             sellerId: domainOrder.sellerId,
             image: item.imageUrl,
+            imageUrls: item.imageUrl != null ? [item.imageUrl!] : [],
             quantity: item.quantity,
           );
         }).toList() ??

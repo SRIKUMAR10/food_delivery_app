@@ -17,7 +17,7 @@ class MockSellerRepository extends Mock implements SellerRepository {}
 /// ─────────────────────────────────────────────────────────────────────────────
 /// Localization Tests
 /// Validates that the login page handles locale-aware content correctly:
-///  - Tamil strings are present and correct
+///  - English strings are present and correct
 ///  - Date/time formatting adapts to locale
 ///  - RTL layout considerations
 ///  - Locale changes don't crash the app
@@ -37,29 +37,22 @@ Widget buildLocalizationTestWidget(
           builder: (context, state) {
             return Column(
               children: [
-                // Localized hint text simulation
                 TextField(
                   key: const Key('emailField'),
-                  decoration: InputDecoration(
-                    hintText: locale.languageCode == 'ta'
-                        ? 'மின்னஞ்சல் / தொலைபேசி'
-                        : 'Email / Phone',
+                  decoration: const InputDecoration(
+                    hintText: 'Email / Phone',
                   ),
                 ),
                 TextField(
                   key: const Key('passwordField'),
-                  decoration: InputDecoration(
-                    hintText: locale.languageCode == 'ta'
-                        ? 'கடவுச்சொல்'
-                        : 'Password',
+                  decoration: const InputDecoration(
+                    hintText: 'Password',
                   ),
                 ),
                 ElevatedButton(
                   key: const Key('loginButton'),
                   onPressed: () {},
-                  child: Text(
-                    locale.languageCode == 'ta' ? 'உள்நுழை' : 'Login',
-                  ),
+                  child: const Text('Login'),
                 ),
                 if (errorMsg.isNotEmpty)
                   Text(errorMsg, key: const Key('localizedError')),
@@ -84,33 +77,7 @@ void main() {
   tearDown(() => bloc.close());
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Group 1 – Tamil (ta) Locale
-  // ──────────────────────────────────────────────────────────────────────────
-  group('Localization – Tamil (ta)', () {
-    testWidgets('email hint shows Tamil text in ta locale', (tester) async {
-      await tester.pumpWidget(
-        buildLocalizationTestWidget(bloc, const Locale('ta')),
-      );
-      expect(find.text('மின்னஞ்சல் / தொலைபேசி'), findsOneWidget);
-    });
-
-    testWidgets('password hint shows Tamil text in ta locale', (tester) async {
-      await tester.pumpWidget(
-        buildLocalizationTestWidget(bloc, const Locale('ta')),
-      );
-      expect(find.text('கடவுச்சொல்'), findsOneWidget);
-    });
-
-    testWidgets('login button shows Tamil text in ta locale', (tester) async {
-      await tester.pumpWidget(
-        buildLocalizationTestWidget(bloc, const Locale('ta')),
-      );
-      expect(find.text('உள்நுழை'), findsOneWidget);
-    });
-  });
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // Group 2 – English (en) Locale
+  // Group 1 – English (en) Locale
   // ──────────────────────────────────────────────────────────────────────────
   group('Localization – English (en)', () {
     testWidgets('email hint shows English text in en locale', (tester) async {
@@ -136,14 +103,14 @@ void main() {
   });
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Group 3 – Tamil Error Messages in BLoC
+  // Group 2 – Error Messages in BLoC
   // ──────────────────────────────────────────────────────────────────────────
-  group('Localization – Tamil BLoC Error Messages', () {
-    test('empty email/password error is in Tamil', () async {
+  group('Localization – BLoC Error Messages', () {
+    test('empty email/password error shows English message', () async {
       bloc.emit(
         const SellerLoginPageState(
           status: SellerLoginStatus.failure,
-          errorMessage: 'Email மற்றும் Password உள்ளிடவும்.',
+          errorMessage: 'Please enter Email and Password.',
         ),
       );
       await Future.delayed(Duration.zero);
@@ -152,7 +119,7 @@ void main() {
       expect(bloc.state.errorMessage, contains('Password'));
     });
 
-    test('phone not registered error contains Tamil message', () async {
+    test('phone not registered error contains message', () async {
       when(
         () => mockRepo.requestPhoneLoginOtp(any()),
       ).thenThrow(Exception('PHONE_NOT_REGISTERED'));
@@ -165,12 +132,11 @@ void main() {
         ),
       );
 
-      // The bloc's _friendlyError converts PHONE_NOT_REGISTERED to Tamil
       expect(bloc.state.emailOrPhone, '+919876543210');
     });
 
     test(
-      'Google account exists error maps to Tamil message in state',
+      'Google account exists error maps to message in state',
       () async {
         when(
           () => mockRepo.signIn(any(), any()),
@@ -179,21 +145,18 @@ void main() {
         bloc
           ..add(const SellerLoginFieldChanged('g@test.com'))
           ..add(const SellerLoginPasswordChanged('any'));
-        // Simulate submission
-        // (Note: bloc handles _friendlyError internally)
         await Future.delayed(Duration.zero);
 
-        // Verify that the Tamil messages are defined in the codebase
-        expect(true, isTrue); // Structural test — messages exist in bloc.dart
+        expect(true, isTrue);
       },
     );
   });
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Group 4 – Locale Switches Don't Crash
+  // Group 3 – Locale Switches Don't Crash
   // ──────────────────────────────────────────────────────────────────────────
   group('Localization – Locale Switch Stability', () {
-    testWidgets('switching from en to ta locale does not crash', (
+    testWidgets('switching locales does not crash', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -225,7 +188,7 @@ void main() {
   });
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Group 5 – OTP Countdown Format
+  // Group 4 – OTP Countdown Format
   // ──────────────────────────────────────────────────────────────────────────
   group('Localization – OTP Countdown Format', () {
     test('countdown 25 displays as 00:25', () {
@@ -248,20 +211,20 @@ void main() {
   });
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Group 6 – Localized Error Display
+  // Group 5 – Error Display in Widget
   // ──────────────────────────────────────────────────────────────────────────
   group('Localization – Error Display in Widget', () {
-    testWidgets('Tamil error message is displayed in UI', (tester) async {
-      const tamilError = 'தவறான password. மீண்டும் முயற்சிக்கவும்.';
+    testWidgets('error message is displayed in UI', (tester) async {
+      const error = 'Incorrect password. Please try again.';
       await tester.pumpWidget(
         buildLocalizationTestWidget(
           bloc,
-          const Locale('ta'),
-          errorMsg: tamilError,
+          const Locale('en'),
+          errorMsg: error,
         ),
       );
       await tester.pump();
-      expect(find.text(tamilError), findsOneWidget);
+      expect(find.text(error), findsOneWidget);
     });
   });
 }

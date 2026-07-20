@@ -10,6 +10,7 @@ import '../orders_list/orders_list_page_bloc.dart';
 import '../orders_list/orders_list_page_event.dart';
 import '../orders_list/orders_list_page_state.dart';
 import '../../../../core/repositories/i_order_repository.dart';
+import '../../../../core/repositories/i_chat_repository.dart';
 import '../../../../core/models/order_status.dart';
 import '../product_list_page_/product_list_page__ui.dart';
 import '../seller_profile_page/seller_profile_page__ui.dart';
@@ -46,6 +47,7 @@ class SellerNavigationBarViewPageUI extends StatelessWidget {
             final sellerId = authService.currentUserId ?? '';
             return OrdersListBloc(
               repository: context.read<IOrderRepository>(),
+              chatRepository: context.read<IChatRepository>(),
             )..add(LoadOrdersStream(sellerId));
           },
         ),

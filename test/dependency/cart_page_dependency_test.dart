@@ -1,11 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:food_delivery_app/core/repositories/i_cart_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page_Bloc.dart';
 import 'package:mocktail/mocktail.dart';
 
-// Dummy implementation for blueprint compilation since the get_it package is not installed.
 class GetIt {
   static final GetIt instance = GetIt();
   final Map<Type, dynamic> _instances = {};
@@ -27,24 +25,26 @@ class GetIt {
   }
 }
 
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockCartRepository extends Mock implements ICartRepository {}
+class MockAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('Cart Dependency Injection Tests (Blueprint)', () {
     final getIt = GetIt.instance;
 
     setUp(() {
-      final mockAuth = MockFirebaseAuth();
-      when(
-        () => mockAuth.authStateChanges(),
-      ).thenAnswer((_) => Stream<User?>.value(null));
+      final mockCartRepository = MockCartRepository();
+      final mockAuthService = MockAuthService();
 
-      getIt.registerSingleton<FakeFirebaseFirestore>(FakeFirebaseFirestore());
-      getIt.registerSingleton<FirebaseAuth>(mockAuth);
+      when(() => mockAuthService.currentUserId).thenReturn('test_uid');
+      when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value(null));
+
+      getIt.registerSingleton<ICartRepository>(mockCartRepository);
+      getIt.registerSingleton<IAuthService>(mockAuthService);
       getIt.registerFactory<CartBloc>(
         () => CartBloc(
-          firestore: getIt<FakeFirebaseFirestore>(),
-          auth: getIt<FirebaseAuth>(),
+          cartRepository: getIt<ICartRepository>(),
+          authService: getIt<IAuthService>(),
         ),
       );
     });

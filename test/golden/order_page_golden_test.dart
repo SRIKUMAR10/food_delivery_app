@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_UI.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_models.dart';
-
-import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_repository.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockOrderRepository extends Mock implements OrderRepository {}
+import 'package:food_delivery_app/core/models/order_model.dart';
+import 'package:food_delivery_app/core/models/order_status.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+
+class MockOrderRepository extends Mock implements IOrderRepository {}
+
+class MockAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('OrderPageUI Golden Tests', () {
     late MockOrderRepository mockOrderRepository;
+    late MockAuthService mockAuthService;
 
     setUp(() {
       mockOrderRepository = MockOrderRepository();
+      mockAuthService = MockAuthService();
+      when(() => mockAuthService.currentUserId).thenReturn('test_uid');
     });
 
     testWidgets('Golden test for OrderLoaded state', (
@@ -23,19 +30,27 @@ void main() {
       final mockOrders = [
         OrderModel(
           id: '1',
-          status: 'Pending',
-          totalAmount: 100.0,
-          date: DateTime(2023, 1, 1),
+          customerId: 'cust1',
+          customerName: 'Test Customer',
+          sellerId: 'seller1',
+          status: OrderStatus.newOrder,
+          amount: 100.0,
+          timestamp: DateTime(2023, 1, 1),
           items: const [],
         ),
       ];
 
       when(
-        () => mockOrderRepository.getOrdersStream(),
+        () => mockOrderRepository.getBuyerOrdersStream(any()),
       ).thenAnswer((_) => Stream.value(mockOrders));
 
       await tester.pumpWidget(
-        MaterialApp(home: OrderPageUI(orderRepository: mockOrderRepository)),
+        MaterialApp(
+          home: OrderPageUI(
+            orderRepository: mockOrderRepository,
+            authService: mockAuthService,
+          ),
+        ),
       );
 
       await tester.pumpAndSettle();

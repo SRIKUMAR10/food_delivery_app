@@ -1,4 +1,5 @@
-import 'chat_support_page_model.dart';
+import '../../../core/models/conversation_model.dart';
+import '../../../core/models/chat_message_model.dart';
 
 abstract class ChatSupportState {}
 
@@ -7,39 +8,64 @@ class ChatSupportInitial extends ChatSupportState {}
 class ChatSupportLoading extends ChatSupportState {}
 
 class ChatSupportLoaded extends ChatSupportState {
-  final List<ChatSessionModel> activeSessions;
-  final String? selectedSessionId;
+  final String currentUserId;
+  final List<ConversationModel> conversations;
+  final String? selectedConversationId;
+  final List<ChatMessageModel> messages;
   final bool isSendingMessage;
   final String? errorMessage;
+  final String searchQuery;
 
   ChatSupportLoaded({
-    required this.activeSessions,
-    this.selectedSessionId,
+    required this.currentUserId,
+    required this.conversations,
+    this.selectedConversationId,
+    this.messages = const [],
     this.isSendingMessage = false,
     this.errorMessage,
+    this.searchQuery = '',
   });
 
-  ChatSessionModel? get selectedSession {
-    if (selectedSessionId == null) return null;
+  ConversationModel? get selectedConversation {
+    if (selectedConversationId == null) return null;
     try {
-      return activeSessions.firstWhere((s) => s.sessionId == selectedSessionId);
+      return conversations.firstWhere((c) => c.id == selectedConversationId);
     } catch (e) {
       return null;
     }
   }
 
+  List<ConversationModel> get filteredConversations {
+    if (searchQuery.isEmpty) return conversations;
+    final q = searchQuery.toLowerCase();
+    return conversations.where((c) {
+      final orderMatch = c.orderId?.toLowerCase().contains(q) ?? false;
+      final nameMatch = c.buyerName.toLowerCase().contains(q) ||
+          c.sellerName.toLowerCase().contains(q);
+      final shopMatch = c.shopName?.toLowerCase().contains(q) ?? false;
+      return orderMatch || nameMatch || shopMatch;
+    }).toList();
+  }
+
   ChatSupportLoaded copyWith({
-    List<ChatSessionModel>? activeSessions,
-    String? selectedSessionId,
+    String? currentUserId,
+    List<ConversationModel>? conversations,
+    String? selectedConversationId,
+    List<ChatMessageModel>? messages,
     bool? isSendingMessage,
     String? errorMessage,
     bool clearError = false,
+    String? searchQuery,
   }) {
     return ChatSupportLoaded(
-      activeSessions: activeSessions ?? this.activeSessions,
-      selectedSessionId: selectedSessionId ?? this.selectedSessionId,
+      currentUserId: currentUserId ?? this.currentUserId,
+      conversations: conversations ?? this.conversations,
+      selectedConversationId:
+          selectedConversationId ?? this.selectedConversationId,
+      messages: messages ?? this.messages,
       isSendingMessage: isSendingMessage ?? this.isSendingMessage,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      searchQuery: searchQuery ?? this.searchQuery,
     );
   }
 }

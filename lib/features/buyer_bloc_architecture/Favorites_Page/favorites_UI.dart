@@ -86,7 +86,7 @@ class _FavoritesPageContent extends StatelessWidget {
                               price: item.price,
                               description: item.description,
                               sellerId: item.sellerId,
-                              image: item.image,
+                              imageUrls: item.image != null ? [item.image!] : null,
                             ),
                           ),
                         );

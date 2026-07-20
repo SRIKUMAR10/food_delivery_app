@@ -71,7 +71,7 @@ class SellerSignUpPageBloc
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  /// Maps raw exception messages to user-friendly Tamil strings.
+  /// Maps raw exception messages to user-friendly strings.
   String _friendlyError(Object e) {
     final msg = e.toString();
     if (msg.contains('GOOGLE_ACCOUNT_EXISTS')) {
@@ -395,7 +395,7 @@ class SellerSignUpPageBloc
       emit(
         state.copyWith(
           otpError: 'Please enter the complete 6-digit OTP.',
-          errorMessage: '6-digit OTP முழுவதும் உள்ளிடவும்.',
+          errorMessage: 'Please enter the complete 6-digit OTP.',
         ),
       );
       return;
@@ -426,8 +426,8 @@ class SellerSignUpPageBloc
         emit(
           state.copyWith(
             status: SellerSignUpStatus.failure,
-            otpError: 'OTP தவறானது. மீண்டும் முயற்சிக்கவும்.',
-            errorMessage: 'OTP தவறானது. மீண்டும் முயற்சிக்கவும்.',
+            otpError: 'Invalid OTP. Please try again.',
+            errorMessage: 'Invalid OTP. Please try again.',
           ),
         );
       }
@@ -436,7 +436,7 @@ class SellerSignUpPageBloc
         state.copyWith(
           status: SellerSignUpStatus.failure,
           errorMessage: _friendlyError(e),
-          otpError: 'OTP தவறானது. மீண்டும் முயற்சிக்கவும்.',
+          otpError: 'Invalid OTP. Please try again.',
         ),
       );
     }

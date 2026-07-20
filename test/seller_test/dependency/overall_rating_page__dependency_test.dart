@@ -8,10 +8,10 @@ void setupDependencyInjection() {
   // Mock implementations or real ones
   getIt.registerLazySingleton<OverallRatingService>(() => _FakeService());
   getIt.registerLazySingleton<OverallRatingRepository>(
-    () => OverallRatingRepositoryImpl(getIt()),
+    () => OverallRatingRepositoryImpl(getIt<OverallRatingService>()),
   );
   getIt.registerFactory<OverallRatingBloc>(
-    () => OverallRatingBloc(repository: getIt()),
+    () => OverallRatingBloc(repository: getIt<OverallRatingRepository>()),
   );
 }
 
@@ -21,8 +21,8 @@ class _FakeService implements OverallRatingService {
 }
 
 void main() {
-  setUp(() {
-    getIt.reset();
+  setUp(() async {
+    await getIt.reset();
     setupDependencyInjection();
   });
 

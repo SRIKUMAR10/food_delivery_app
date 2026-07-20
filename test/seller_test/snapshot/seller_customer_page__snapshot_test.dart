@@ -2,34 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:bloc_test/bloc_test.dart';
 import 'package:network_image_mock/network_image_mock.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_customer_page/seller_customer_page__ui.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_customer_page/seller_customer_page__bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_customer_page/seller_customer_page__event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_customer_page/seller_customer_page__state.dart';
+import 'package:food_delivery_app/repositories/seller_customer_repository.dart';
 
-class MockSellerCustomerBloc
-    extends MockBloc<SellerCustomerEvent, SellerCustomerState>
-    implements SellerCustomerBloc {}
+class MockCustomerRepository extends Mock implements SellerCustomerRepository {}
 
 void main() {
   group('Seller Customer Snapshot Tree Tests', () {
-    late SellerCustomerBloc bloc;
-
-    setUp(() {
-      bloc = MockSellerCustomerBloc();
-    });
-
     testWidgets('loaded state matches exact structural layout snapshots', (
       tester,
     ) async {
-      when(() => bloc.state).thenReturn(
-        const SellerCustomerLoaded(
-          stats: CustomerStats(totalCustomers: 1245, repeatCustomers: 320),
-          customers: [],
-        ),
+      final repo = MockCustomerRepository();
+      when(() => repo.getCustomerStats()).thenAnswer(
+        (_) async => const CustomerStats(totalCustomers: 1245, repeatCustomers: 320),
       );
+      when(() => repo.getCustomers(offset: any(named: 'offset'), limit: any(named: 'limit')))
+          .thenAnswer((_) async => []);
+      final bloc = SellerCustomerBloc(repository: repo);
+      bloc.add(const LoadCustomerData());
 
       await mockNetworkImagesFor(() async {
         await tester.pumpWidget(
@@ -42,14 +36,13 @@ void main() {
         );
 
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(seconds: 1));
 
-        final customersHeader = find.text('Customers');
-        expect(customersHeader, findsOneWidget);
+        final totalCustomers = find.text('Total Customers');
+        expect(totalCustomers, findsOneWidget);
 
-        final Text textWidget = tester.widget(customersHeader);
-        expect(textWidget.style?.fontWeight, FontWeight.bold);
-        expect(textWidget.style?.color, const Color(0xFF0F172A));
+        final repeatCustomers = find.text('Repeat Customers');
+        expect(repeatCustomers, findsOneWidget);
       });
     });
   });

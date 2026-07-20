@@ -37,7 +37,7 @@ void main() {
     test('signIn throws on wrong password', () async {
       when(
         () => mockRepo.signIn(any(), any()),
-      ).thenThrow(Exception('தவறான password. மீண்டும் முயற்சிக்கவும்.'));
+      ).thenThrow(Exception('Incorrect password. Please try again.'));
 
       expect(
         () => mockRepo.signIn('seller@shop.com', 'wrong'),
@@ -48,7 +48,7 @@ void main() {
     test('signIn throws when no account exists', () async {
       when(
         () => mockRepo.signIn(any(), any()),
-      ).thenThrow(Exception('Account இல்லை. Sign Up செய்யவும்.'));
+      ).thenThrow(Exception('Account not found. Please sign up.'));
 
       expect(
         () => mockRepo.signIn('noone@shop.com', 'password'),
@@ -92,7 +92,7 @@ void main() {
     test('sendPasswordResetEmail throws when email has no account', () async {
       when(
         () => mockRepo.sendPasswordResetEmail(any()),
-      ).thenThrow(Exception('இந்த Email-க்கு Account இல்லை.'));
+      ).thenThrow(Exception('No account found for this Email.'));
 
       expect(
         () => mockRepo.sendPasswordResetEmail('unknown@test.com'),
@@ -199,7 +199,7 @@ void main() {
     test('signInWithGoogle throws on failure', () async {
       when(
         () => mockRepo.signInWithGoogle(),
-      ).thenThrow(Exception('Google Login தோல்வி'));
+      ).thenThrow(Exception('Google Login failed'));
       expect(() => mockRepo.signInWithGoogle(), throwsException);
     });
   });

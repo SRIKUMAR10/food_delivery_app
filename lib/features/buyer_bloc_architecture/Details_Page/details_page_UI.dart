@@ -10,7 +10,11 @@ import '../Favorites_Page/favorites_state.dart';
 import '../Favorites_Page/favorites_models.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import '../home_Page/home_page_models.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../Rating_page/reviews_list_screen.dart';
+import '../../seller_bloc_architecture/product_list_page_/product_image_carousel.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:food_delivery_app/core/models/seller_model.dart';
 import 'details_page_Bloc.dart';
 import 'details_page_Event.dart';
 import 'details_page_State.dart';
@@ -23,8 +27,7 @@ class DetailsPageUI extends StatelessWidget {
   final double price;
   final String description;
   final String sellerId;
-  final String? image;
-  final FirebaseAuth? auth;
+  final List<String>? imageUrls;
   final FoodItem? foodItem;
 
   const DetailsPageUI({
@@ -34,8 +37,7 @@ class DetailsPageUI extends StatelessWidget {
     required this.price,
     required this.description,
     required this.sellerId,
-    this.image,
-    this.auth,
+    this.imageUrls,
     this.foodItem,
     this.detailsBloc,
   });
@@ -44,6 +46,13 @@ class DetailsPageUI extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final urls = imageUrls ??
+        (foodItem != null && foodItem!.imageUrls.isNotEmpty
+            ? foodItem!.imageUrls
+            : foodItem?.image != null
+                ? [foodItem!.image!]
+                : null);
+
     if (detailsBloc != null) {
       return BlocProvider<DetailsBloc>.value(
         value: detailsBloc!,
@@ -53,8 +62,7 @@ class DetailsPageUI extends StatelessWidget {
           price: price,
           description: description,
           sellerId: sellerId,
-          image: image,
-          auth: auth,
+          imageUrls: urls,
           foodItem: foodItem,
         ),
       );
@@ -68,8 +76,7 @@ class DetailsPageUI extends StatelessWidget {
         price: price,
         description: description,
         sellerId: sellerId,
-        image: image,
-        auth: auth,
+        imageUrls: urls,
         foodItem: foodItem,
       ),
     );
@@ -82,8 +89,7 @@ class _DetailsPageContent extends StatefulWidget {
   final double price;
   final String description;
   final String sellerId;
-  final String? image;
-  final FirebaseAuth? auth;
+  final List<String>? imageUrls;
   final FoodItem? foodItem;
 
   const _DetailsPageContent({
@@ -92,8 +98,7 @@ class _DetailsPageContent extends StatefulWidget {
     required this.price,
     required this.description,
     required this.sellerId,
-    this.image,
-    this.auth,
+    this.imageUrls,
     this.foodItem,
   });
 
@@ -109,6 +114,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   late final Animation<Offset> _slideAnim;
   
   final Set<String> _selectedAddons = {};
+  SellerModel? _seller;
+  bool _isLoadingSeller = true;
 
   static const _primaryRed = Color(0xFFEF2A39);
   static const _bgColor = Color(0xFFF8F8F8);
@@ -136,6 +143,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
       begin: const Offset(0, 0.15),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOut));
+    _fetchSeller();
   }
 
   @override
@@ -143,6 +151,25 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     _fadeCtrl.dispose();
     _slideCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchSeller() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('sellers')
+          .doc(widget.sellerId)
+          .get();
+      if (doc.exists && mounted) {
+        setState(() {
+          _seller = SellerModel.fromFirestore(doc);
+          _isLoadingSeller = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoadingSeller = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingSeller = false);
+    }
   }
 
   double get _effectivePrice {
@@ -156,6 +183,9 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
 
   bool get _isActive => widget.foodItem?.isActive ?? true;
 
+  String? get _primaryImage =>
+      widget.imageUrls?.isNotEmpty == true ? widget.imageUrls!.first : null;
+
   void _addToCart(int quantity) {
     if (!_isActive) return;
     HapticFeedback.mediumImpact();
@@ -166,7 +196,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
           name: widget.name,
           price: _effectivePrice,
           sellerId: widget.sellerId,
-          image: widget.image,
+          image: _primaryImage,
+          imageUrls: widget.imageUrls ?? [],
           quantity: quantity,
           selectedAddons: _selectedAddons.toList(),
         ),
@@ -178,13 +209,14 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
         backgroundColor: Colors.transparent,
         elevation: 0,
         duration: const Duration(seconds: 2),
-        content: Container(
+              content: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
             color: const Color(0xFF1C1C1C),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
                 Icons.check_circle_rounded,
@@ -192,15 +224,14 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                 size: 22,
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '${widget.name} added to cart!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
+              Text(
+                '${widget.name} added to cart!',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -228,17 +259,16 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
               margin: const EdgeInsets.all(16),
               content: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('⭐', style: TextStyle(fontSize: 20)),
                   const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Rating updated successfully! 😊',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Text(
+                    'Rating updated successfully! 😊',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -287,7 +317,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
           slivers: [
             // Hero Image SliverAppBar
             SliverAppBar(
-              expandedHeight: mediaHeight * 0.42,
+              expandedHeight: mediaHeight * 0.55,
               pinned: true,
               backgroundColor: Colors.white,
               elevation: 0,
@@ -350,10 +380,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                           ),
                           _buildTitleAndRating(),
                           const SizedBox(height: 6),
-                          _buildSellerAndTimingInfo(),
-                          const SizedBox(height: 20),
-                          const Divider(height: 1, color: Color(0xFFF0F0F0)),
-                          const SizedBox(height: 20),
+                          _buildRestaurantInfo(),
+                          const SizedBox(height: 16),
                           _buildDescription(),
                           const SizedBox(height: 28),
                           _buildPriceAndQuantityRow(),
@@ -379,9 +407,13 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   // ── Desktop / Web Layout ─────────────────────────────────────────────────
 
   Widget _buildWideLayout() {
+    final screenHeight = MediaQuery.of(context).size.height;
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 1100),
+        constraints: BoxConstraints(
+          maxWidth: 1100,
+          maxHeight: screenHeight * 0.85,
+        ),
         margin: const EdgeInsets.all(32),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -395,85 +427,81 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             ),
           ],
         ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Left side: Image and Back Button
-              Expanded(
-                flex: 1,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    _buildHeroImage(),
-                    Positioned(
-                      top: 20,
-                      left: 20,
-                      child: GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.95),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.12),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: Colors.black87,
-                            size: 20,
-                          ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Left side: Image and Back Button
+            Expanded(
+              flex: 1,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildHeroImage(),
+                  Positioned(
+                    top: 20,
+                    left: 20,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.95),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: Colors.black87,
+                          size: 20,
                         ),
                       ),
                     ),
-                    Positioned(
-                      top: 20,
-                      right: 20,
-                      child: _buildFavouriteButton(),
-                    ),
-                  ],
-                ),
+                  ),
+                  Positioned(
+                    top: 20,
+                    right: 20,
+                    child: _buildFavouriteButton(),
+                  ),
+                ],
               ),
+            ),
 
-              // Right side: Details
-              Expanded(
-                flex: 1,
-                child: FadeTransition(
-                  opacity: _fadeAnim,
-                  child: SlideTransition(
-                    position: _slideAnim,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(40),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildTitleAndRating(),
-                          const SizedBox(height: 12),
-                          _buildSellerAndTimingInfo(),
-                          const SizedBox(height: 24),
-                          const Divider(height: 1, color: Color(0xFFF0F0F0)),
-                          const SizedBox(height: 24),
-                          _buildDescription(),
-                          const SizedBox(height: 28),
-                          _buildRatingsAndReviewsButton(),
-                          const SizedBox(height: 24),
-                          _buildPriceAndQuantityRow(),
-                          const SizedBox(height: 32),
-                          _buildDesktopStickyBottom(),
-                        ],
-                      ),
+            // Right side: Details
+            Expanded(
+              flex: 1,
+              child: FadeTransition(
+                opacity: _fadeAnim,
+                child: SlideTransition(
+                  position: _slideAnim,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(40),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildTitleAndRating(),
+                        const SizedBox(height: 12),
+                        _buildRestaurantInfo(),
+                        const SizedBox(height: 20),
+                        _buildDescription(),
+                        const SizedBox(height: 28),
+                        _buildRatingsAndReviewsButton(),
+                        const SizedBox(height: 24),
+                        _buildPriceAndQuantityRow(),
+                        const SizedBox(height: 32),
+                        _buildDesktopStickyBottom(),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -545,36 +573,171 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     );
   }
 
-  Widget _buildSellerAndTimingInfo() {
-    final prepTime = widget.foodItem?.prepTime.isNotEmpty == true ? widget.foodItem!.prepTime : '25–35 min';
-    return Row(
-      children: [
-        const Icon(Icons.store_rounded, size: 14, color: Colors.grey),
-        const SizedBox(width: 4),
-        Text(
-          'Seller ID: ${widget.sellerId.length > 10 ? widget.sellerId.substring(0, 10) + '...' : widget.sellerId}',
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-        ),
-        const SizedBox(width: 16),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.blue.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.timer_outlined, size: 12, color: Colors.blue),
-              const SizedBox(width: 4),
-              Text(
-                prepTime,
-                style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold),
+  Widget _buildRestaurantInfo() {
+    if (_isLoadingSeller) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(8),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 120, height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  width: 80, height: 10,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-      ],
+      );
+    }
+
+    final seller = _seller;
+    if (seller == null) {
+      return Row(
+        children: [
+          const Icon(Icons.store_rounded, size: 14, color: Colors.grey),
+          const SizedBox(width: 4),
+          Text(
+            'Restaurant',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          ),
+          const SizedBox(width: 16),
+          _buildDeliveryTimeBadge(),
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: CachedNetworkImage(
+              imageUrl: seller.profileImageUrl ?? '',
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(
+                color: Colors.grey.shade200,
+                child: const Icon(Icons.store, color: Colors.grey, size: 22),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                color: Colors.grey.shade200,
+                child: const Icon(Icons.store, color: Colors.grey, size: 22),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        seller.shopName?.isNotEmpty == true ? seller.shopName! : 'Restaurant',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1C1C1C),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (seller.isVerified) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.verified_rounded,
+                        size: 16,
+                        color: Colors.blue.shade600,
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Icon(Icons.access_time_rounded, size: 12, color: Colors.grey.shade500),
+                    const SizedBox(width: 4),
+                    Text(
+                      seller.deliveryTime?.isNotEmpty == true
+                          ? seller.deliveryTime!
+                          : (widget.foodItem?.prepTime.isNotEmpty == true
+                              ? widget.foodItem!.prepTime
+                              : '25-35 min'),
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                    if (seller.businessDetails?.isNotEmpty == true) ...[
+                      const SizedBox(width: 12),
+                      Icon(Icons.location_on_outlined, size: 12, color: Colors.grey.shade500),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          seller.businessDetails!,
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryTimeBadge() {
+    final prepTime = widget.foodItem?.prepTime.isNotEmpty == true
+        ? widget.foodItem!.prepTime
+        : '25-35 min';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.timer_outlined, size: 12, color: Colors.blue),
+          const SizedBox(width: 4),
+          Text(
+            prepTime,
+            style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 
@@ -689,6 +852,13 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   }
 
   Widget _buildPriceAndQuantityRow() {
+    final originalPrice = widget.foodItem?.price ?? widget.price;
+    final discountPrice = widget.foodItem?.discountPrice ?? 0;
+    final hasDiscount = discountPrice > 0 && discountPrice < originalPrice;
+    final discountPercent = hasDiscount
+        ? ((originalPrice - discountPrice) / originalPrice * 100).round()
+        : 0;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -701,9 +871,41 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
               'Price',
               style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
             ),
-            const SizedBox(height: 2),
+            if (hasDiscount) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Text(
+                    _currFmt.format(originalPrice),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade400,
+                      decoration: TextDecoration.lineThrough,
+                      decorationColor: Colors.grey.shade400,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '$discountPercent% OFF',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            SizedBox(height: hasDiscount ? 0 : 2),
             Text(
-              _currFmt.format(_effectivePrice),
+              _currFmt.format(hasDiscount ? discountPrice : _effectivePrice),
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
@@ -713,7 +915,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
           ],
         ),
 
-        // Quantity Selector mapped to state
+        // Quantity Selector
         BlocBuilder<DetailsBloc, DetailsState>(
           builder: (context, state) {
             return Container(
@@ -740,15 +942,17 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                       scale: anim,
                       child: FadeTransition(opacity: anim, child: child),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Text(
-                        '${state.quantity}',
-                        key: ValueKey(state.quantity),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1C1C1C),
+                    child: SizedBox(
+                      width: 32,
+                      child: Center(
+                        child: Text(
+                          '${state.quantity}',
+                          key: ValueKey(state.quantity),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1C1C1C),
+                          ),
                         ),
                       ),
                     ),
@@ -788,7 +992,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
               HapticFeedback.lightImpact();
               bool isLoggedIn = false;
               try {
-                isLoggedIn = widget.auth?.currentUser != null;
+                isLoggedIn = FirebaseAuth.instance.currentUser != null;
               } catch (_) {}
 
               if (!isLoggedIn) {
@@ -798,7 +1002,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                   price: widget.price,
                   description: widget.description,
                   sellerId: widget.sellerId,
-                  image: widget.image,
+                  image: _primaryImage,
                   category:
                       'Unknown', // Details page doesn't have category directly
                 );
@@ -818,7 +1022,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                 price: widget.price,
                 description: widget.description,
                 sellerId: widget.sellerId,
-                image: widget.image,
+                image: _primaryImage,
               );
               context.read<FavoritesBloc>().add(
                 FavoritesToggleRequested(favItem),
@@ -858,59 +1062,100 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   }
 
   Widget _buildHeroImage() {
-    final url = widget.image;
-    const fallbackUrl =
-        'https://firebasestorage.googleapis.com/v0/b/food-delivery-app-cd4ca.firebasestorage.app/o/product_images%2FWpN6x21MmWUjG1DS9BfLnX2M3Js2%2F2026-06-12T00%3A40%3A44.162_images%20(1).jpg?alt=media&token=de903631-0a43-438e-b01c-effe404bd982';
-
-    Widget imageWidget;
-
-    if (url != null && url.trim().isNotEmpty) {
-      imageWidget = Image.network(
-        url.trim(),
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        errorBuilder: (_, __, ___) => Image.network(
-          fallbackUrl,
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
+    final urls = widget.imageUrls;
+    if (urls == null || urls.isEmpty) {
+      return Container(
+        color: Colors.grey.shade100,
+        child: const Center(
+          child: Icon(Icons.image_not_supported, color: Colors.grey, size: 48),
         ),
-      );
-    } else {
-      imageWidget = Image.network(
-        fallbackUrl,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        errorBuilder: (_, __, ___) => const SizedBox(),
       );
     }
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        imageWidget,
-        // Subtle gradient at bottom for text readability
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 80,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.25),
-                  Colors.transparent,
-                ],
+    if (urls.length == 1) {
+      return GestureDetector(
+        onTap: () => _showSingleFullScreenImage(context, urls.first),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CachedNetworkImage(
+              imageUrl: urls.first,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: Colors.grey.shade100,
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.grey.shade100,
+                child: const Icon(
+                  Icons.broken_image,
+                  color: Colors.grey,
+                  size: 48,
+                ),
               ),
             ),
-          ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 80,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.25),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      );
+    }
+    return ProductImageCarousel(imageUrls: urls);
+  }
+
+  void _showSingleFullScreenImage(BuildContext context, String url) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) {
+          return Scaffold(
+            backgroundColor: Colors.black,
+            appBar: AppBar(
+              backgroundColor: Colors.black,
+              iconTheme: const IconThemeData(color: Colors.white),
+              elevation: 0,
+            ),
+            body: SafeArea(
+              child: Center(
+                child: InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 4.0,
+                  child: CachedNetworkImage(
+                    imageUrl: url,
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFE50914),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => const Center(
+                      child: Icon(
+                        Icons.broken_image,
+                        color: Colors.grey,
+                        size: 48,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -920,63 +1165,71 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
         HapticFeedback.lightImpact();
         _showReviewsBottomSheet();
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFFB800), Color(0xFFFF8C00)],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFFFB800).withValues(alpha: 0.35),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: BlocBuilder<DetailsBloc, DetailsState>(
-          builder: (context, state) {
-            double averageRating = state.averageRating;
+      child: BlocBuilder<DetailsBloc, DetailsState>(
+        builder: (context, state) {
+          final averageRating = state.averageRating;
+          final hasReviews = averageRating > 0;
 
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ...List.generate(5, (index) {
-                  double starValue = index + 1.0;
-                  if (averageRating >= starValue) {
-                    return const Icon(
-                      Icons.star_rounded,
-                      color: Colors.white,
-                      size: 15,
-                    );
-                  } else if (averageRating >= starValue - 0.5) {
-                    return const Icon(
-                      Icons.star_half_rounded,
-                      color: Colors.white,
-                      size: 15,
-                    );
-                  } else {
-                    return const Icon(
-                      Icons.star_border_rounded,
-                      color: Colors.white,
-                      size: 15,
-                    );
-                  }
-                }),
-                const SizedBox(width: 4),
-                Text(
-                  averageRating.toStringAsFixed(1),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFB800), Color(0xFFFF8C00)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFB800).withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
               ],
-            );
-          },
-        ),
+            ),
+            child: hasReviews
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...List.generate(5, (index) {
+                        final starValue = index + 1.0;
+                        if (averageRating >= starValue) {
+                          return const Icon(
+                            Icons.star_rounded,
+                            color: Colors.white,
+                            size: 15,
+                          );
+                        } else if (averageRating >= starValue - 0.5) {
+                          return const Icon(
+                            Icons.star_half_rounded,
+                            color: Colors.white,
+                            size: 15,
+                          );
+                        } else {
+                          return const Icon(
+                            Icons.star_border_rounded,
+                            color: Colors.white,
+                            size: 15,
+                          );
+                        }
+                      }),
+                      const SizedBox(width: 4),
+                      Text(
+                        averageRating.toStringAsFixed(1),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  )
+                : const Icon(
+                    Icons.star_border_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+          );
+        },
       ),
     );
   }

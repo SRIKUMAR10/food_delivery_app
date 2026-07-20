@@ -1,3 +1,5 @@
+// DEPRECATED: Replaced by repositories/firebase_chat_repository.dart (uses conversations collection).
+// Kept as rollback backup until Phase 4 migration is fully verified.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import 'chat_support_page_model.dart';

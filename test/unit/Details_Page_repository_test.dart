@@ -18,7 +18,7 @@ void main() {
     });
 
     test('getDetails throws exception on error', () async {
-      expect(() => repository.getDetails('error'), throwsException);
+      expect(repository.getDetails('error'), throwsException);
     });
   });
 }

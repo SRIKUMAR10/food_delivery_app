@@ -1,3 +1,5 @@
+// DEPRECATED: Replaced by core/models/chat_message_model.dart and core/models/conversation_model.dart.
+// Kept as rollback backup until Phase 4 migration is fully verified.
 class ChatMessageModel {
   final String id;
   final String text;

@@ -1,10 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 // import 'package:get_it/get_it.dart';
 
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_Bloc.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/Order%20Page/order_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:mocktail/mocktail.dart';
 
 // Dummy implementation for blueprint compilation since the get_it package is not installed.
@@ -29,7 +28,9 @@ class GetIt {
   }
 }
 
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockIOrderRepository extends Mock implements IOrderRepository {}
+
+class MockIAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('Order Dependency Injection Tests', () {
@@ -37,14 +38,12 @@ void main() {
 
     setUp(() {
       // Mock DI Setup
-      getIt.registerSingleton<FakeFirebaseFirestore>(FakeFirebaseFirestore());
-      getIt.registerSingleton<FirebaseAuth>(MockFirebaseAuth());
+      getIt.registerSingleton<IOrderRepository>(MockIOrderRepository());
+      getIt.registerSingleton<IAuthService>(MockIAuthService());
       getIt.registerFactory<OrderBloc>(
         () => OrderBloc(
-          repository: OrderRepository(
-            firestore: getIt<FakeFirebaseFirestore>(),
-            auth: getIt<FirebaseAuth>(),
-          ),
+          repository: getIt<IOrderRepository>(),
+          authService: getIt<IAuthService>(),
         ),
       );
     });

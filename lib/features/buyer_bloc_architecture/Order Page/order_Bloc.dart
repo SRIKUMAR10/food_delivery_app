@@ -24,7 +24,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
   ) async {
     final buyerId = _authService.currentUserId;
     if (buyerId == null) {
-      emit(OrderError('User not logged in'));
+      emit(OrderLoaded([]));
       return;
     }
 

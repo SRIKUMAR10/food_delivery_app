@@ -43,7 +43,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(tester.getSemantics(find.text('Request Payout')), isNotNull);
+      expect(tester.getSemantics(find.text('Request Payout').first), isNotNull);
       expect(tester.getSemantics(find.text('Available Balance')), isNotNull);
 
       handle.dispose();

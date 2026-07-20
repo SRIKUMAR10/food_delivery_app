@@ -3,39 +3,41 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order Page/order_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order Page/order_Event.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/Order Page/order_repository.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Order Page/order_State.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockIOrderRepository extends Mock implements IOrderRepository {}
+
+class MockIAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('Order Security Tests', () {
-    late MockFirebaseAuth mockAuth;
-    late FakeFirebaseFirestore fakeFirestore;
+    late MockIOrderRepository mockRepository;
+    late MockIAuthService mockAuthService;
 
     setUp(() {
-      mockAuth = MockFirebaseAuth();
-      fakeFirestore = FakeFirebaseFirestore();
+      mockRepository = MockIOrderRepository();
+      mockAuthService = MockIAuthService();
+
+      when(() => mockAuthService.currentUserId).thenReturn(null);
     });
 
     blocTest<OrderBloc, OrderState>(
-      'Denies access / Returns empty if user is not authenticated',
+      'Denies access / Returns error if user is not authenticated',
       build: () {
-        when(() => mockAuth.currentUser).thenReturn(null);
         return OrderBloc(
-          repository: OrderRepository(firestore: fakeFirestore, auth: mockAuth),
+          repository: mockRepository,
+          authService: mockAuthService,
         );
       },
       act: (bloc) => bloc.add(LoadOrdersRequested()),
       expect: () => [
-        isA<OrderLoading>(),
-        isA<OrderLoaded>().having((s) => s.orders, 'orders', isEmpty),
+        isA<OrderError>(),
       ],
       verify: (_) {
-        // Verify that firestore was never queried securely.
-        // In fake firestore it's hard to verify calls directly, but we assert the state.
+        // Verify that repository was never queried when unauthenticated.
+        verifyNever(() => mockRepository.getBuyerOrdersStream(any()));
       },
     );
   });

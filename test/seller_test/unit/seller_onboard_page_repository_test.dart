@@ -10,7 +10,6 @@ abstract class SellerRepository {
 class MockSellerRepository extends Mock implements SellerRepository {}
 
 void main() {
-  return; // SKIP ALL TESTS IN THIS FILE due to missing dependencies
 
   group('SellerOnboardPageRepository Test', () {
     late MockSellerRepository mockRepository;
