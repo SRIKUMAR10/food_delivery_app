@@ -13,53 +13,93 @@ class AudioPlayerWidget extends StatefulWidget {
   State<AudioPlayerWidget> createState() => _AudioPlayerWidgetState();
 }
 
-class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
+class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindingObserver {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
+  bool _isDisposed = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     print('AudioPlayerWidget initialized with URL: ${widget.audioUrl}');
     
-    // Do not preload immediately using setSourceUrl to avoid WebM stream errors
     _initAudio();
 
     _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (_isDisposed) return;
       print('4. [Playback] PlayerState changed: $state');
       if (mounted) setState(() => _isPlaying = state == PlayerState.playing);
     });
 
     _audioPlayer.onDurationChanged.listen((newDuration) {
+      if (_isDisposed) return;
       print('4. [Playback] Duration changed: $newDuration');
       if (mounted) setState(() => _duration = newDuration);
     });
 
     _audioPlayer.onPositionChanged.listen((newPosition) {
-      if (newPosition.inSeconds % 5 == 0) {
-        print('4. [Playback] Position changed: $newPosition');
-      }
+      if (_isDisposed) return;
       if (mounted) setState(() => _position = newPosition);
     });
     
     _audioPlayer.onPlayerComplete.listen((event) {
+      if (_isDisposed) return;
       print('4. [Playback] Player Complete');
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+          _position = Duration.zero;
+        });
+      }
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_isDisposed) return;
+    print('AudioPlayerWidget AppLifecycleState: $state');
+    
+    // Pause audio when app goes to background or is hidden
+    if (state == AppLifecycleState.paused || 
+        state == AppLifecycleState.hidden || 
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      if (_isPlaying) {
+        _audioPlayer.pause().catchError((e) => print('Error pausing audio: $e'));
+      }
+    }
   }
 
   Future<void> _initAudio() async {
     try {
-      await _audioPlayer.setSource(UrlSource(widget.audioUrl));
+      // Set volume to maximum allowed by standard Web browsers (1.0)
+      await _audioPlayer.setVolume(1.0);
+      if (!_isDisposed) {
+        await _audioPlayer.setSource(UrlSource(widget.audioUrl));
+      }
     } catch (e) {
-      print('AudioPlayer init error: $e');
+      if (!_isDisposed) {
+        print('AudioPlayer init error: $e');
+      }
     }
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    _isDisposed = true;
+    WidgetsBinding.instance.removeObserver(this);
+    try {
+      _audioPlayer.stop().then((_) {
+        _audioPlayer.dispose();
+      }).catchError((e) {
+        _audioPlayer.dispose();
+      });
+    } catch (e) {
+      print('AudioPlayer dispose error: $e');
+    }
     super.dispose();
   }
 

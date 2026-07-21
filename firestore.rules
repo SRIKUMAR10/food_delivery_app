@@ -131,13 +131,13 @@ service cloud.firestore {
         resource.data.sellerId == request.auth.uid
       );
 
-      // Messages subcollection — participants can read and create, but not modify or delete.
-      match /messages/{messageId} {
-        allow read: if isAuthenticated() && (
+      // Chat subcollections — participants can read and create, but not modify or delete.
+      match /{subcollection}/{messageId} {
+        allow read: if subcollection in ['messages', 'photos', 'videos', 'audios'] && isAuthenticated() && (
           get(/databases/$(database)/documents/conversations/$(conversationId)).data.buyerId == request.auth.uid ||
           get(/databases/$(database)/documents/conversations/$(conversationId)).data.sellerId == request.auth.uid
         );
-        allow create: if isAuthenticated() && (
+        allow create: if subcollection in ['messages', 'photos', 'videos', 'audios'] && isAuthenticated() && (
           get(/databases/$(database)/documents/conversations/$(conversationId)).data.buyerId == request.auth.uid ||
           get(/databases/$(database)/documents/conversations/$(conversationId)).data.sellerId == request.auth.uid
         ) && request.resource.data.senderId == request.auth.uid;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
-
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 class VideoCallPage extends StatelessWidget {
   final String callID;
   final String userID;
@@ -15,12 +16,15 @@ class VideoCallPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Note: ZegoUIKit requires valid appID and appSign.
-    // For a real-time production app, these must be replaced with real credentials from ZegoCloud Console.
-    const int dummyAppID = 0; 
-    const String dummyAppSign = '';
+    final int appID = int.tryParse(dotenv.env['ZEGO_APP_ID'] ?? '0') ?? 0;
+    final String appSign = dotenv.env['ZEGO_APP_SIGN'] ?? '';
+    final String token = dotenv.env['ZEGO_TOKEN'] ?? '';
 
-    if (dummyAppID == 0 || dummyAppSign.isEmpty) {
+    final bool missingCredentials = kIsWeb 
+        ? (appID == 0 || token.isEmpty) 
+        : (appID == 0 || appSign.isEmpty);
+
+    if (missingCredentials) {
       return Scaffold(
         appBar: AppBar(title: const Text('Video Call Setup')),
         body: Center(
@@ -37,7 +41,7 @@ class VideoCallPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'To use real-time video calls, you must enter your ZegoCloud AppID and AppSign in video_call_page.dart. The call cannot connect with dummy credentials.',
+                  'To use real-time video calls, you must enter your ZegoCloud credentials in .env.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
@@ -54,9 +58,10 @@ class VideoCallPage extends StatelessWidget {
 
     return SafeArea(
       child: ZegoUIKitPrebuiltCall(
-        appID: dummyAppID,
-        appSign: dummyAppSign,
-        userID: userID,
+        appID: appID,
+        appSign: kIsWeb ? '' : appSign,
+        token: kIsWeb ? token : '',
+        userID: kIsWeb ? 'buyer_123' : userID,
         userName: userName,
         callID: callID,
         config: ZegoUIKitPrebuiltCallConfig.oneOnOneVideoCall(),

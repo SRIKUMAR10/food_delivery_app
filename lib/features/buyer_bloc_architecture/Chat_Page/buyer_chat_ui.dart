@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/custom_camera_page.dart';
 import 'package:intl/intl.dart';
 
 import 'buyer_chat_bloc.dart';
@@ -15,12 +16,15 @@ import '../../../core/repositories/i_order_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:camera/camera.dart';
 import 'audio_widgets.dart';
 import 'video_call_page.dart';
 import '../Rating_page/Rating_page_ui.dart';
@@ -77,7 +81,8 @@ class BuyerChatPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isPushedRoute = pendingOrderData != null || (orderId != null && sellerId != null);
+    final bool isPushedRoute =
+        pendingOrderData != null || (orderId != null && sellerId != null);
     return BlocProvider(
       create: (context) {
         final bloc = BuyerChatBloc(
@@ -158,7 +163,9 @@ class BuyerChatView extends StatelessWidget {
                             width: 80,
                             height: 80,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE52121).withValues(alpha: 0.1),
+                              color: const Color(
+                                0xFFE52121,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Icon(
@@ -199,7 +206,10 @@ class BuyerChatView extends StatelessWidget {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFE52121),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 14,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -211,11 +221,18 @@ class BuyerChatView extends StatelessWidget {
                   : Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: const Color(0xFFE52929)),
+                        Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: const Color(0xFFE52929),
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           state.message,
-                          style: const TextStyle(color: Color(0xFFE52929), fontSize: 16),
+                          style: const TextStyle(
+                            color: Color(0xFFE52929),
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                     ),
@@ -242,13 +259,15 @@ class BuyerChatView extends StatelessWidget {
                   ),
                   Container(width: 1, color: const Color(0xFFE5E7EB)),
                   Expanded(
-                    child: state.selectedConversationId != null && state.selectedConversation != null
-                          ? _ChatPanel(
-                              conversation: state.selectedConversation!,
-                              messages: state.messages,
-                              isSending: state.isSendingMessage,
-                              isPushedRoute: isPushedRoute,
-                            )
+                    child:
+                        state.selectedConversationId != null &&
+                            state.selectedConversation != null
+                        ? _ChatPanel(
+                            conversation: state.selectedConversation!,
+                            messages: state.messages,
+                            isSending: state.isSendingMessage,
+                            isPushedRoute: isPushedRoute,
+                          )
                         : _EmptyChatPlaceholder(),
                   ),
                 ],
@@ -256,7 +275,8 @@ class BuyerChatView extends StatelessWidget {
             );
           }
 
-          if (state.selectedConversationId != null && state.selectedConversation != null) {
+          if (state.selectedConversationId != null &&
+              state.selectedConversation != null) {
             return Scaffold(
               backgroundColor: const Color(0xFFFBF5F5),
               body: _ChatPanel(
@@ -297,12 +317,20 @@ class _EmptyChatPlaceholder extends StatelessWidget {
                 color: const Color(0xFFE52121).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.chat_bubble_outline_rounded, size: 36, color: Color(0xFFE52121)),
+              child: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 36,
+                color: Color(0xFFE52121),
+              ),
             ),
             const SizedBox(height: 24),
             const Text(
               'Select a conversation',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1C1C1C)),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1C1C1C),
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -356,7 +384,8 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
   @override
   void didUpdateWidget(covariant _BuyerChatListView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.searchQuery != oldWidget.searchQuery && _searchController.text != widget.searchQuery) {
+    if (widget.searchQuery != oldWidget.searchQuery &&
+        _searchController.text != widget.searchQuery) {
       _searchController.text = widget.searchQuery;
     }
   }
@@ -380,7 +409,8 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
                   itemCount: widget.conversations.length,
                   itemBuilder: (context, index) {
                     final conversation = widget.conversations[index];
-                    final isSelected = conversation.id == widget.selectedConversationId;
+                    final isSelected =
+                        conversation.id == widget.selectedConversationId;
                     return _ConversationTile(
                       conversation: conversation,
                       currentUserId: widget.currentUserId,
@@ -411,12 +441,17 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
               child: Row(
                 children: [
                   Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: const Color(0xFFE52121).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.support_agent_rounded, color: Color(0xFFE52121), size: 22),
+                    child: const Icon(
+                      Icons.support_agent_rounded,
+                      color: Color(0xFFE52121),
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Column(
@@ -424,12 +459,19 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
                     children: [
                       const Text(
                         'Support Chat',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF1C1C1C)),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1C1C1C),
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '${widget.conversations.length} conversations',
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF94A3B8),
+                        ),
                       ),
                     ],
                   ),
@@ -444,10 +486,7 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFBF5F5),
-      appBar: AppBar(
-        title: const Text('Support Chat'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Support Chat'), centerTitle: true),
       body: bodyContent,
     );
   }
@@ -473,11 +512,18 @@ class _PremiumSearchBar extends StatelessWidget {
           hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
           prefixIcon: Container(
             padding: const EdgeInsets.all(12),
-            child: const Icon(Icons.search_rounded, color: Color(0xFF94A3B8), size: 22),
+            child: const Icon(
+              Icons.search_rounded,
+              color: Color(0xFF94A3B8),
+              size: 22,
+            ),
           ),
           filled: true,
           fillColor: const Color(0xFFF1F3F5),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 4),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 0,
+            horizontal: 4,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide.none,
@@ -506,12 +552,20 @@ class _EmptyConversationsState extends StatelessWidget {
               color: const Color(0xFFE52121).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.chat_bubble_outline_rounded, size: 28, color: Color(0xFFE52121)),
+            child: const Icon(
+              Icons.chat_bubble_outline_rounded,
+              size: 28,
+              color: Color(0xFFE52121),
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
             'No conversations yet',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1C1C1C)),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1C1C1C),
+            ),
           ),
           const SizedBox(height: 6),
           const Text(
@@ -548,15 +602,23 @@ class _ConversationTileState extends State<_ConversationTile> {
   Widget build(BuildContext context) {
     final conversation = widget.conversation;
     final unread = conversation.unreadCountForUser(widget.currentUserId);
-    final displayName = conversation.shopName ?? conversation.otherParticipantName(widget.currentUserId);
-    final hasImage = conversation.sellerImageUrl != null && conversation.sellerImageUrl!.isNotEmpty;
+    final displayName =
+        conversation.shopName ??
+        conversation.otherParticipantName(widget.currentUserId);
+    final hasImage =
+        conversation.sellerImageUrl != null &&
+        conversation.sellerImageUrl!.isNotEmpty;
     final lastMessageTimestamp = conversation.lastMessageTimestamp;
 
     String timeText = '';
     if (lastMessageTimestamp != null) {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final msgDate = DateTime(lastMessageTimestamp.year, lastMessageTimestamp.month, lastMessageTimestamp.day);
+      final msgDate = DateTime(
+        lastMessageTimestamp.year,
+        lastMessageTimestamp.month,
+        lastMessageTimestamp.day,
+      );
       final diff = today.difference(msgDate).inDays;
       if (diff == 0) {
         timeText = DateFormat('hh:mm a').format(lastMessageTimestamp);
@@ -584,7 +646,9 @@ class _ConversationTileState extends State<_ConversationTile> {
                 : (_isHovered ? const Color(0xFFF5F5F5) : Colors.transparent),
             border: Border(
               left: BorderSide(
-                color: widget.isSelected ? const Color(0xFFE52121) : Colors.transparent,
+                color: widget.isSelected
+                    ? const Color(0xFFE52121)
+                    : Colors.transparent,
                 width: 3,
               ),
             ),
@@ -598,8 +662,15 @@ class _ConversationTileState extends State<_ConversationTile> {
                     height: 48,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: hasImage ? Colors.transparent : const Color(0xFFF1F3F5),
-                      border: Border.all(color: widget.isSelected ? const Color(0xFFE52121).withValues(alpha: 0.3) : Colors.transparent, width: 2),
+                      color: hasImage
+                          ? Colors.transparent
+                          : const Color(0xFFF1F3F5),
+                      border: Border.all(
+                        color: widget.isSelected
+                            ? const Color(0xFFE52121).withValues(alpha: 0.3)
+                            : Colors.transparent,
+                        width: 2,
+                      ),
                     ),
                     child: hasImage
                         ? ClipRRect(
@@ -607,7 +678,8 @@ class _ConversationTileState extends State<_ConversationTile> {
                             child: Image.network(
                               conversation.sellerImageUrl!,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _AvatarFallback(name: displayName),
+                              errorBuilder: (_, __, ___) =>
+                                  _AvatarFallback(name: displayName),
                             ),
                           )
                         : _AvatarFallback(name: displayName),
@@ -624,7 +696,11 @@ class _ConversationTileState extends State<_ConversationTile> {
                         ),
                         child: Text(
                           unread > 99 ? '99+' : '$unread',
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -642,7 +718,9 @@ class _ConversationTileState extends State<_ConversationTile> {
                           child: Text(
                             displayName,
                             style: TextStyle(
-                              fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w600,
+                              fontWeight: unread > 0
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
                               fontSize: 15,
                               color: const Color(0xFF1C1C1C),
                             ),
@@ -657,8 +735,12 @@ class _ConversationTileState extends State<_ConversationTile> {
                               timeText,
                               style: TextStyle(
                                 fontSize: 11,
-                                color: unread > 0 ? const Color(0xFFE52121) : const Color(0xFF94A3B8),
-                                fontWeight: unread > 0 ? FontWeight.w600 : FontWeight.normal,
+                                color: unread > 0
+                                    ? const Color(0xFFE52121)
+                                    : const Color(0xFF94A3B8),
+                                fontWeight: unread > 0
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
                               ),
                             ),
                           ),
@@ -674,8 +756,12 @@ class _ConversationTileState extends State<_ConversationTile> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 13,
-                              color: unread > 0 ? const Color(0xFF334155) : const Color(0xFF94A3B8),
-                              fontWeight: unread > 0 ? FontWeight.w500 : FontWeight.normal,
+                              color: unread > 0
+                                  ? const Color(0xFF334155)
+                                  : const Color(0xFF94A3B8),
+                              fontWeight: unread > 0
+                                  ? FontWeight.w500
+                                  : FontWeight.normal,
                             ),
                           ),
                         ),
@@ -684,14 +770,21 @@ class _ConversationTileState extends State<_ConversationTile> {
                     if (conversation.orderId != null) ...[
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF1F3F5),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '#${conversation.orderId!.length > 8 ? conversation.orderId!.substring(0, 8) : conversation.orderId}',
-                          style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -713,11 +806,18 @@ class _AvatarFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(color: Color(0xFFF1F3F5), shape: BoxShape.circle),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF1F3F5),
+        shape: BoxShape.circle,
+      ),
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 18),
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
       ),
     );
@@ -772,10 +872,7 @@ class _ChatPanelState extends State<_ChatPanel> {
   void _sendMessage() {
     if (_textController.text.trim().isNotEmpty) {
       context.read<BuyerChatBloc>().add(
-        SendBuyerMessage(
-          widget.conversation.id,
-          _textController.text,
-        ),
+        SendBuyerMessage(widget.conversation.id, _textController.text),
       );
       _textController.clear();
     }
@@ -785,10 +882,12 @@ class _ChatPanelState extends State<_ChatPanel> {
     final items = <Widget>[];
     String? lastDateKey;
 
-    items.add(Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: _PremiumOrderContextCard(conversation: widget.conversation),
-    ));
+    items.add(
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: _PremiumOrderContextCard(conversation: widget.conversation),
+      ),
+    );
 
     for (final msg in widget.messages) {
       final dateKey = DateFormat('yyyy-MM-dd').format(msg.timestamp);
@@ -796,13 +895,15 @@ class _ChatPanelState extends State<_ChatPanel> {
         items.add(_DateSeparatorChip(dateTime: msg.timestamp));
         lastDateKey = dateKey;
       }
-      items.add(_AnimatedMessage(
-        index: items.length,
-        child: _BuyerChatBubble(
-          message: msg,
-          isMe: msg.senderRole == 'buyer',
+      items.add(
+        _AnimatedMessage(
+          index: items.length,
+          child: _BuyerChatBubble(
+            message: msg,
+            isMe: msg.senderRole == 'buyer',
+          ),
         ),
-      ));
+      );
     }
 
     return items;
@@ -852,7 +953,9 @@ class _ChatPanelState extends State<_ChatPanel> {
               color: const Color(0xFFFBF5F5),
               child: ListView(
                 controller: _scrollController,
-                padding: EdgeInsets.all(screenType == _ScreenType.mobile ? 12 : 20),
+                padding: EdgeInsets.all(
+                  screenType == _ScreenType.mobile ? 12 : 20,
+                ),
                 children: _buildChatItems(screenType),
               ),
             ),
@@ -864,8 +967,10 @@ class _ChatPanelState extends State<_ChatPanel> {
             onSend: _sendMessage,
             onAttach: _handleAttachment,
             onEmoji: () {
-              final showEmoji = context.read<BuyerChatBloc>().state is BuyerChatLoaded 
-                  ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded).showEmojiPicker 
+              final showEmoji =
+                  context.read<BuyerChatBloc>().state is BuyerChatLoaded
+                  ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded)
+                        .showEmojiPicker
                   : false;
               _handleEmojiToggle(!showEmoji);
             },
@@ -904,10 +1009,13 @@ class _PremiumChatHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = context.read<BuyerChatBloc>().authService.currentUserId ?? '';
+    final currentUserId =
+        context.read<BuyerChatBloc>().authService.currentUserId ?? '';
     final otherName = conversation.otherParticipantName(currentUserId);
     final displayName = conversation.shopName ?? otherName;
-    final hasImage = conversation.sellerImageUrl != null && conversation.sellerImageUrl!.isNotEmpty;
+    final hasImage =
+        conversation.sellerImageUrl != null &&
+        conversation.sellerImageUrl!.isNotEmpty;
     final orderText = conversation.orderId != null
         ? 'Order #${conversation.orderId!.length > 8 ? conversation.orderId!.substring(0, 8) : conversation.orderId}'
         : null;
@@ -927,7 +1035,12 @@ class _PremiumChatHeader extends StatelessWidget {
         bottom: false,
         top: screenType != _ScreenType.desktop,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(screenType == _ScreenType.desktop ? 16 : 4, 8, 16, 8),
+          padding: EdgeInsets.fromLTRB(
+            screenType == _ScreenType.desktop ? 16 : 4,
+            8,
+            16,
+            8,
+          ),
           child: Row(
             children: [
               if (screenType != _ScreenType.desktop)
@@ -937,12 +1050,13 @@ class _PremiumChatHeader extends StatelessWidget {
                     if (isPushedRoute && Navigator.canPop(context)) {
                       Navigator.pop(context);
                     } else {
-                      context.read<BuyerChatBloc>().add(SelectBuyerConversation(''));
+                      context.read<BuyerChatBloc>().add(
+                        SelectBuyerConversation(''),
+                      );
                     }
                   },
                 ),
-              if (screenType == _ScreenType.desktop)
-                const SizedBox(width: 4),
+              if (screenType == _ScreenType.desktop) const SizedBox(width: 4),
               Stack(
                 children: [
                   Container(
@@ -950,8 +1064,13 @@ class _PremiumChatHeader extends StatelessWidget {
                     height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: hasImage ? Colors.transparent : const Color(0xFFF1F3F5),
-                      border: Border.all(color: const Color(0xFFE5E7EB), width: 1.5),
+                      color: hasImage
+                          ? Colors.transparent
+                          : const Color(0xFFF1F3F5),
+                      border: Border.all(
+                        color: const Color(0xFFE5E7EB),
+                        width: 1.5,
+                      ),
                     ),
                     child: hasImage
                         ? ClipRRect(
@@ -959,7 +1078,8 @@ class _PremiumChatHeader extends StatelessWidget {
                             child: Image.network(
                               conversation.sellerImageUrl!,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _AvatarFallback(name: displayName),
+                              errorBuilder: (_, __, ___) =>
+                                  _AvatarFallback(name: displayName),
                             ),
                           )
                         : _AvatarFallback(name: displayName),
@@ -1009,7 +1129,11 @@ class _PremiumChatHeader extends StatelessWidget {
                         const SizedBox(width: 4),
                         const Text(
                           'Online',
-                          style: TextStyle(fontSize: 11, color: Color(0xFF22C55E), fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF22C55E),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -1019,7 +1143,10 @@ class _PremiumChatHeader extends StatelessWidget {
                         if (orderText != null) ...[
                           Text(
                             orderText,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                           const SizedBox(width: 8),
                         ],
@@ -1030,7 +1157,7 @@ class _PremiumChatHeader extends StatelessWidget {
                 ),
               ),
               _CircularIconButton(
-                icon: Icons.phone_outlined, 
+                icon: Icons.phone_outlined,
                 onPressed: () {
                   const String dummyPhone = '+1234567890';
                   if (kIsWeb) {
@@ -1039,17 +1166,38 @@ class _PremiumChatHeader extends StatelessWidget {
                       SnackBar(
                         content: Row(
                           children: [
-                            const Icon(Icons.phone_android_rounded, color: Colors.white, size: 20),
+                            const Icon(
+                              Icons.phone_android_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                             const SizedBox(width: 12),
-                            const Expanded(child: Text('Phone: $dummyPhone', style: TextStyle(fontSize: 15))),
+                            const Expanded(
+                              child: Text(
+                                'Phone: $dummyPhone',
+                                style: TextStyle(fontSize: 15),
+                              ),
+                            ),
                             IconButton(
-                              icon: const Icon(Icons.copy_rounded, color: Colors.white, size: 20),
+                              icon: const Icon(
+                                Icons.copy_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                               tooltip: 'Copy to clipboard',
                               onPressed: () async {
-                                await Clipboard.setData(const ClipboardData(text: dummyPhone));
+                                await Clipboard.setData(
+                                  const ClipboardData(text: dummyPhone),
+                                );
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard!')));
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).hideCurrentSnackBar();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Copied to clipboard!'),
+                                    ),
+                                  );
                                 }
                               },
                             ),
@@ -1065,15 +1213,19 @@ class _PremiumChatHeader extends StatelessWidget {
                       if (canLaunch) {
                         launchUrl(url);
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch phone dialer')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Could not launch phone dialer'),
+                          ),
+                        );
                       }
                     });
                   }
-                }
+                },
               ),
               const SizedBox(width: 4),
               _CircularIconButton(
-                icon: Icons.videocam_outlined, 
+                icon: Icons.videocam_outlined,
                 onPressed: () {
                   final bloc = context.read<BuyerChatBloc>();
                   Navigator.push(
@@ -1086,11 +1238,14 @@ class _PremiumChatHeader extends StatelessWidget {
                       ),
                     ),
                   );
-                }
+                },
               ),
               if (screenType != _ScreenType.mobile) ...[
                 const SizedBox(width: 4),
-                _CircularIconButton(icon: Icons.more_vert_rounded, onPressed: () {}),
+                _CircularIconButton(
+                  icon: Icons.more_vert_rounded,
+                  onPressed: () {},
+                ),
               ],
             ],
           ),
@@ -1119,7 +1274,11 @@ class _OrderStatusBadge extends StatelessWidget {
           SizedBox(width: 4),
           Text(
             'Active',
-            style: TextStyle(fontSize: 10, color: Color(0xFF22C55E), fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 10,
+              color: Color(0xFF22C55E),
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -1205,17 +1364,36 @@ class _PremiumComposerState extends State<_PremiumComposer> {
   }
 
   void _handleCamera() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
-    if (pickedFile != null && mounted) {
-      context.read<BuyerChatBloc>().add(
-        SendBuyerMediaMessage(
-          conversationId: context.read<BuyerChatBloc>().state is BuyerChatLoaded ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded).selectedConversationId! : '',
-          file: kIsWeb ? await pickedFile.readAsBytes() : File(pickedFile.path),
-          messageType: 'image',
-          fileName: pickedFile.name,
-        ),
+    try {
+      // Use the custom camera page for all platforms as requested.
+      final XFile? pickedFile = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CustomCameraPage()),
       );
+
+      if (pickedFile != null && mounted) {
+        context.read<BuyerChatBloc>().add(
+          SendBuyerMediaMessage(
+            conversationId:
+                context.read<BuyerChatBloc>().state is BuyerChatLoaded
+                ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded)
+                      .selectedConversationId!
+                : '',
+            file: kIsWeb
+                ? await pickedFile.readAsBytes()
+                : File(pickedFile.path),
+            messageType: 'image',
+            fileName: pickedFile.name,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to open camera.')));
+      }
+      print('Camera Error: $e');
     }
   }
 
@@ -1229,12 +1407,12 @@ class _PremiumComposerState extends State<_PremiumComposer> {
           try {
             print('--- AUDIO RECORDING AUDIT ---');
             print('1. Recorded File Path: $path');
-            
+
             // Using XFile is the safest way to read blob URLs in Flutter Web
             // to avoid 0-byte/corrupted file uploads.
             final xFile = XFile(path);
             fileData = await xFile.readAsBytes();
-            
+
             print('1. FileData bytes length: ${fileData.length}');
             if (fileData.isEmpty) {
               print('🚨 ERROR: Recorded audio is 0 bytes!');
@@ -1248,7 +1426,11 @@ class _PremiumComposerState extends State<_PremiumComposer> {
         }
         context.read<BuyerChatBloc>().add(
           SendBuyerMediaMessage(
-            conversationId: context.read<BuyerChatBloc>().state is BuyerChatLoaded ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded).selectedConversationId! : '',
+            conversationId:
+                context.read<BuyerChatBloc>().state is BuyerChatLoaded
+                ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded)
+                      .selectedConversationId!
+                : '',
             file: fileData,
             messageType: 'audio',
             fileName: kIsWeb ? 'audio_message.webm' : 'audio_message.m4a',
@@ -1258,17 +1440,25 @@ class _PremiumComposerState extends State<_PremiumComposer> {
     } else {
       if (await _audioRecorder.hasPermission()) {
         if (kIsWeb) {
-          await _audioRecorder.start(const RecordConfig(encoder: AudioEncoder.opus), path: '');
+          await _audioRecorder.start(
+            const RecordConfig(encoder: AudioEncoder.opus),
+            path: '',
+          );
         } else {
           final dir = await getApplicationDocumentsDirectory();
-          final path = '${dir.path}/audio_message_${DateTime.now().millisecondsSinceEpoch}.m4a';
+          final path =
+              '${dir.path}/audio_message_${DateTime.now().millisecondsSinceEpoch}.m4a';
           await _audioRecorder.start(const RecordConfig(), path: path);
         }
         setState(() => _isRecording = true);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Microphone permission denied. Please allow microphone access in your browser/device.')),
+            const SnackBar(
+              content: Text(
+                'Microphone permission denied. Please allow microphone access in your browser/device.',
+              ),
+            ),
           );
         }
       }
@@ -1296,7 +1486,10 @@ class _PremiumComposerState extends State<_PremiumComposer> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              _ComposerIconButton(icon: Icons.emoji_emotions_outlined, onPressed: widget.onEmoji),
+              _ComposerIconButton(
+                icon: Icons.emoji_emotions_outlined,
+                onPressed: widget.onEmoji,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Container(
@@ -1308,11 +1501,17 @@ class _PremiumComposerState extends State<_PremiumComposer> {
                     controller: widget.controller,
                     decoration: const InputDecoration(
                       hintText: 'Type a message',
-                      hintStyle: TextStyle(color: Color(0xFF8696A0), fontSize: 15),
+                      hintStyle: TextStyle(
+                        color: Color(0xFF8696A0),
+                        fontSize: 15,
+                      ),
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
                     ),
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => widget.onSend(),
@@ -1320,25 +1519,36 @@ class _PremiumComposerState extends State<_PremiumComposer> {
                 ),
               ),
               const SizedBox(width: 8),
-              _ComposerIconButton(icon: Icons.attach_file_outlined, onPressed: widget.onAttach),
               _ComposerIconButton(
-                icon: Icons.camera_alt_outlined, 
-                onPressed: _handleCamera
+                icon: Icons.attach_file_outlined,
+                onPressed: widget.onAttach,
+              ),
+              _ComposerIconButton(
+                icon: Icons.camera_alt_outlined,
+                onPressed: _handleCamera,
               ),
               const SizedBox(width: 4),
               Container(
                 decoration: BoxDecoration(
-                  color: hasText ? const Color(0xFF00A884) : (_isRecording ? Colors.red : Colors.transparent),
+                  color: hasText
+                      ? const Color(0xFF00A884)
+                      : (_isRecording ? Colors.red : Colors.transparent),
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
                   icon: Icon(
-                    hasText ? Icons.send_rounded : (_isRecording ? Icons.stop_circle_outlined : Icons.mic_outlined),
-                    color: (hasText || _isRecording) ? Colors.white : const Color(0xFF8696A0),
+                    hasText
+                        ? Icons.send_rounded
+                        : (_isRecording
+                              ? Icons.stop_circle_outlined
+                              : Icons.mic_outlined),
+                    color: (hasText || _isRecording)
+                        ? Colors.white
+                        : const Color(0xFF8696A0),
                     size: 22,
                   ),
-                  onPressed: widget.isSending 
-                      ? null 
+                  onPressed: widget.isSending
+                      ? null
                       : (hasText ? widget.onSend : _toggleRecording),
                   splashRadius: 20,
                 ),
@@ -1396,7 +1606,8 @@ class _AnimatedMessage extends StatefulWidget {
   State<_AnimatedMessage> createState() => _AnimatedMessageState();
 }
 
-class _AnimatedMessageState extends State<_AnimatedMessage> with SingleTickerProviderStateMixin {
+class _AnimatedMessageState extends State<_AnimatedMessage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _opacityAnimation;
@@ -1412,9 +1623,10 @@ class _AnimatedMessageState extends State<_AnimatedMessage> with SingleTickerPro
       begin: const Offset(0, 0.2),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-    _opacityAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _opacityAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
   }
 
@@ -1428,10 +1640,7 @@ class _AnimatedMessageState extends State<_AnimatedMessage> with SingleTickerPro
   Widget build(BuildContext context) {
     return SlideTransition(
       position: _slideAnimation,
-      child: FadeTransition(
-        opacity: _opacityAnimation,
-        child: widget.child,
-      ),
+      child: FadeTransition(opacity: _opacityAnimation, child: widget.child),
     );
   }
 }
@@ -1489,11 +1698,13 @@ class _BuyerChatBubble extends StatelessWidget {
                         message.mediaUrl!,
                         width: 250,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.image_not_supported),
                       ),
                     ),
                   )
-                else if (message.messageType == 'audio' && message.mediaUrl != null)
+                else if (message.messageType == 'audio' &&
+                    message.mediaUrl != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4.0),
                     child: AudioPlayerWidget(
@@ -1526,7 +1737,9 @@ class _BuyerChatBubble extends StatelessWidget {
                       Icon(
                         message.isRead ? Icons.done_all : Icons.done,
                         size: 14,
-                        color: message.isRead ? const Color(0xFF53BDEB) : Colors.white70,
+                        color: message.isRead
+                            ? const Color(0xFF53BDEB)
+                            : Colors.white70,
                       ),
                     ],
                   ],
@@ -1638,14 +1851,19 @@ class _PremiumOrderContextCard extends StatelessWidget {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(32.0),
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFFE52121)),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Color(0xFFE52121),
+              ),
             ),
           );
         }
         final order = snapshot.data;
         if (order == null) return const SizedBox.shrink();
 
-        final item = order.items?.isNotEmpty == true ? order.items!.first : null;
+        final item = order.items?.isNotEmpty == true
+            ? order.items!.first
+            : null;
 
         return _HoverCard(
           child: Column(
@@ -1659,9 +1877,16 @@ class _PremiumOrderContextCard extends StatelessWidget {
                     height: 110,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+                      border: Border.all(
+                        color: const Color(0xFFE5E7EB),
+                        width: 1,
+                      ),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
                     ),
                     child: ClipRRect(
@@ -1670,7 +1895,11 @@ class _PremiumOrderContextCard extends StatelessWidget {
                           ? Image.network(item!.imageUrl!, fit: BoxFit.cover)
                           : Container(
                               color: const Color(0xFFF1F3F5),
-                              child: const Icon(Icons.fastfood_rounded, size: 36, color: Color(0xFFCBD5E1)),
+                              child: const Icon(
+                                Icons.fastfood_rounded,
+                                size: 36,
+                                color: Color(0xFFCBD5E1),
+                              ),
                             ),
                     ),
                   ),
@@ -1681,26 +1910,52 @@ class _PremiumOrderContextCard extends StatelessWidget {
                       children: [
                         Text(
                           item?.name ?? 'Multiple Items',
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1C1C1C)),
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1C1C1C),
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.star_rounded, size: 16, color: Color(0xFFF59E0B)),
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 16,
+                              color: Color(0xFFF59E0B),
+                            ),
                             const SizedBox(width: 4),
-                            const Text('4.8', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFF59E0B))),
+                            const Text(
+                              '4.8',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFF59E0B),
+                              ),
+                            ),
                             const SizedBox(width: 12),
                             _VegBadge(),
                             const SizedBox(width: 12),
-                            Text('Qty ${item?.quantity ?? 1}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF64748B))),
+                            Text(
+                              'Qty ${item?.quantity ?? 1}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 10),
                         Text(
                           '₹${order.amount.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFE52121)),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFE52121),
+                          ),
                         ),
                       ],
                     ),
@@ -1721,12 +1976,38 @@ class _PremiumOrderContextCard extends StatelessWidget {
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
                     children: [
-                      _InfoGridItem(icon: Icons.receipt_long_rounded, label: 'Order ID', value: '#${order.id.toUpperCase().substring(0, 8)}'),
-                      _InfoGridItem(icon: Icons.storefront_rounded, label: 'Seller', value: conversation.shopName ?? 'Store'),
-                      _InfoGridItem(icon: Icons.account_balance_wallet_rounded, label: 'Payment', value: order.paymentMethod ?? 'Wallet'),
-                      _InfoGridItem(icon: Icons.inventory_2_rounded, label: 'Items', value: '${order.items?.length ?? 1} Item'),
-                      _InfoGridItem(icon: Icons.local_shipping_rounded, label: 'Delivery', value: 'Standard'),
-                      _InfoGridItem(icon: Icons.calendar_month_rounded, label: 'Date', value: DateFormat('MMM dd, yyyy').format(order.timestamp)),
+                      _InfoGridItem(
+                        icon: Icons.receipt_long_rounded,
+                        label: 'Order ID',
+                        value: '#${order.id.toUpperCase().substring(0, 8)}',
+                      ),
+                      _InfoGridItem(
+                        icon: Icons.storefront_rounded,
+                        label: 'Seller',
+                        value: conversation.shopName ?? 'Store',
+                      ),
+                      _InfoGridItem(
+                        icon: Icons.account_balance_wallet_rounded,
+                        label: 'Payment',
+                        value: order.paymentMethod ?? 'Wallet',
+                      ),
+                      _InfoGridItem(
+                        icon: Icons.inventory_2_rounded,
+                        label: 'Items',
+                        value: '${order.items?.length ?? 1} Item',
+                      ),
+                      _InfoGridItem(
+                        icon: Icons.local_shipping_rounded,
+                        label: 'Delivery',
+                        value: 'Standard',
+                      ),
+                      _InfoGridItem(
+                        icon: Icons.calendar_month_rounded,
+                        label: 'Date',
+                        value: DateFormat(
+                          'MMM dd, yyyy',
+                        ).format(order.timestamp),
+                      ),
                     ],
                   );
                 },
@@ -1747,7 +2028,15 @@ class _PremiumOrderContextCard extends StatelessWidget {
                     isOutlined: true,
                     onTap: () {
                       if (item != null) {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => RatingPageUI(foodId: item.productId, foodName: item.name)));
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RatingPageUI(
+                              foodId: item.productId,
+                              foodName: item.name,
+                            ),
+                          ),
+                        );
                       }
                     },
                   ),
@@ -1765,11 +2054,36 @@ class _PremiumOrderContextCard extends StatelessWidget {
                     isOutlined: true,
                     onTap: () {
                       final orderViewModel = OrderViewModel(
-                        id: order.id, status: order.status.name, totalAmount: order.amount, date: order.timestamp,
-                        items: order.items?.map((i) => CartItem(id: i.productId, name: i.name, price: i.price,
-                            sellerId: order.sellerId, image: i.imageUrl, quantity: i.quantity)).toList() ?? [],
+                        id: order.id,
+                        status: order.status.name,
+                        totalAmount: order.amount,
+                        date: order.timestamp,
+                        items:
+                            order.items
+                                ?.map(
+                                  (i) => CartItem(
+                                    id: i.productId,
+                                    name: i.name,
+                                    price: i.price,
+                                    sellerId: order.sellerId,
+                                    image: i.imageUrl,
+                                    quantity: i.quantity,
+                                  ),
+                                )
+                                .toList() ??
+                            [],
                       );
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => TrackOrderPageUI(orderId: order.id, order: orderViewModel, isEmbedded: false, allowPopOnDesktop: false)));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TrackOrderPageUI(
+                            orderId: order.id,
+                            order: orderViewModel,
+                            isEmbedded: false,
+                            allowPopOnDesktop: false,
+                          ),
+                        ),
+                      );
                     },
                   ),
                   _ActionButton(
@@ -1779,10 +2093,24 @@ class _PremiumOrderContextCard extends StatelessWidget {
                     isGradient: true,
                     onTap: () {
                       if (item != null) {
-                        context.read<CartBloc>().add(CartItemAdded(CartItem(id: item.productId, name: item.name, price: item.price,
-                            sellerId: conversation.sellerId, image: item.imageUrl)));
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to cart')));
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPageUI()));
+                        context.read<CartBloc>().add(
+                          CartItemAdded(
+                            CartItem(
+                              id: item.productId,
+                              name: item.name,
+                              price: item.price,
+                              sellerId: conversation.sellerId,
+                              image: item.imageUrl,
+                            ),
+                          ),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Added to cart')),
+                        );
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CartPageUI()),
+                        );
                       }
                     },
                   ),
@@ -1802,19 +2130,32 @@ class _PremiumOrderContextCard extends StatelessWidget {
       case 'neworder':
       case 'new_order':
       case 'new':
-        bgColor = const Color(0xFF3B82F6); label = 'New'; break;
+        bgColor = const Color(0xFF3B82F6);
+        label = 'New';
+        break;
       case 'delivered':
-        bgColor = const Color(0xFF22C55E); label = 'Delivered'; break;
+        bgColor = const Color(0xFF22C55E);
+        label = 'Delivered';
+        break;
       case 'preparing':
-        bgColor = const Color(0xFFF59E0B); label = 'Preparing'; break;
+        bgColor = const Color(0xFFF59E0B);
+        label = 'Preparing';
+        break;
       case 'outfordelivery':
-        bgColor = const Color(0xFF2563EB); label = 'Out for Delivery'; break;
+        bgColor = const Color(0xFF2563EB);
+        label = 'Out for Delivery';
+        break;
       case 'accepted':
-        bgColor = const Color(0xFF22C55E); label = 'Accepted'; break;
+        bgColor = const Color(0xFF22C55E);
+        label = 'Accepted';
+        break;
       case 'cancelled':
-        bgColor = const Color(0xFFEF4444); label = 'Cancelled'; break;
+        bgColor = const Color(0xFFEF4444);
+        label = 'Cancelled';
+        break;
       default:
-        bgColor = const Color(0xFF6B7280); label = status;
+        bgColor = const Color(0xFF6B7280);
+        label = status;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -1826,20 +2167,35 @@ class _PremiumOrderContextCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 8, height: 8,
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: bgColor)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: bgColor,
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildOrderSummaryCard(OrderModel order) {
-    final subtotal = order.items?.fold(0.0, (sum, item) => sum + item.price * item.quantity) ?? order.amount;
+    final subtotal =
+        order.items?.fold(
+          0.0,
+          (sum, item) => sum + item.price * item.quantity,
+        ) ??
+        order.amount;
     final total = order.amount;
-    final delivery = total >= subtotal ? 0.0 : (total - subtotal).abs().clamp(0, 50);
+    final delivery = total >= subtotal
+        ? 0.0
+        : (total - subtotal).abs().clamp(0, 50);
     final taxes = (total - subtotal - delivery).abs();
 
     return Container(
@@ -1853,29 +2209,55 @@ class _PremiumOrderContextCard extends StatelessWidget {
         children: [
           _summaryRow('Subtotal', '₹${subtotal.toStringAsFixed(2)}', false),
           const SizedBox(height: 8),
-          _summaryRow('Delivery', delivery == 0 ? 'FREE' : '₹${delivery.toStringAsFixed(2)}', delivery == 0),
+          _summaryRow(
+            'Delivery',
+            delivery == 0 ? 'FREE' : '₹${delivery.toStringAsFixed(2)}',
+            delivery == 0,
+          ),
           const SizedBox(height: 8),
           _summaryRow('Taxes', '₹${taxes.toStringAsFixed(2)}', false),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 10),
             child: Divider(color: Color(0xFFE5E7EB), height: 1),
           ),
-          _summaryRow('Total', '₹${total.toStringAsFixed(2)}', false, isTotal: true),
+          _summaryRow(
+            'Total',
+            '₹${total.toStringAsFixed(2)}',
+            false,
+            isTotal: true,
+          ),
         ],
       ),
     );
   }
 
-  Widget _summaryRow(String label, String value, bool isFree, {bool isTotal = false}) {
+  Widget _summaryRow(
+    String label,
+    String value,
+    bool isFree, {
+    bool isTotal = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(fontSize: isTotal ? 15 : 13, fontWeight: isTotal ? FontWeight.bold : FontWeight.w500, color: const Color(0xFF64748B))),
-        Text(value, style: TextStyle(
-          fontSize: isTotal ? 20 : 13,
-          fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-          color: isFree ? const Color(0xFF22C55E) : (isTotal ? const Color(0xFF1C1C1C) : const Color(0xFF1C1C1C)),
-        )),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isTotal ? 15 : 13,
+            fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
+            color: const Color(0xFF64748B),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: isTotal ? 20 : 13,
+            fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+            color: isFree
+                ? const Color(0xFF22C55E)
+                : (isTotal ? const Color(0xFF1C1C1C) : const Color(0xFF1C1C1C)),
+          ),
+        ),
       ],
     );
   }
@@ -1987,14 +2369,28 @@ class _ActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
-          color: isGradient ? null : (isOutlined ? Colors.transparent : color.withValues(alpha: 0.1)),
+          color: isGradient
+              ? null
+              : (isOutlined
+                    ? Colors.transparent
+                    : color.withValues(alpha: 0.1)),
           gradient: isGradient
-              ? const LinearGradient(colors: [Color(0xFFE52121), Color(0xFFDC2626)])
+              ? const LinearGradient(
+                  colors: [Color(0xFFE52121), Color(0xFFDC2626)],
+                )
               : null,
           borderRadius: BorderRadius.circular(20),
-          border: isOutlined ? Border.all(color: const Color(0xFFE5E7EB)) : null,
+          border: isOutlined
+              ? Border.all(color: const Color(0xFFE5E7EB))
+              : null,
           boxShadow: isGradient
-              ? [BoxShadow(color: const Color(0xFFE52121).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))]
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFE52121).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
               : null,
         ),
         child: Row(
@@ -2007,7 +2403,9 @@ class _ActionButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: isGradient ? Colors.white : (isOutlined ? const Color(0xFF475569) : color),
+                color: isGradient
+                    ? Colors.white
+                    : (isOutlined ? const Color(0xFF475569) : color),
               ),
             ),
           ],
@@ -2022,10 +2420,12 @@ class _OrderTimelineWithAnimation extends StatefulWidget {
   const _OrderTimelineWithAnimation({required this.currentStatus});
 
   @override
-  State<_OrderTimelineWithAnimation> createState() => _OrderTimelineWithAnimationState();
+  State<_OrderTimelineWithAnimation> createState() =>
+      _OrderTimelineWithAnimationState();
 }
 
-class _OrderTimelineWithAnimationState extends State<_OrderTimelineWithAnimation>
+class _OrderTimelineWithAnimationState
+    extends State<_OrderTimelineWithAnimation>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -2103,7 +2503,10 @@ class _OrderTimelineWithAnimationState extends State<_OrderTimelineWithAnimation
               const Spacer(),
               if (currentIdx >= 0 && !isCancelled)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF22C55E).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -2111,11 +2514,22 @@ class _OrderTimelineWithAnimationState extends State<_OrderTimelineWithAnimation
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF22C55E), shape: BoxShape.circle)),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF22C55E),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Est. ${stepsData.last['time']}',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF22C55E), fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF22C55E),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -2141,10 +2555,17 @@ class _OrderTimelineWithAnimationState extends State<_OrderTimelineWithAnimation
                     isCurrent = true;
                   }
 
-                  bool isFuture = !isCancelled && currentIdx < stepLevel && !(currentIdx == 1 && stepLevel == 2);
+                  bool isFuture =
+                      !isCancelled &&
+                      currentIdx < stepLevel &&
+                      !(currentIdx == 1 && stepLevel == 2);
                   if (isCancelled) isFuture = true;
 
-                  final animatedOpacity = isCompleted ? 1.0 : (isCurrent ? _progressController.value * 0.8 + 0.2 : 0.3);
+                  final animatedOpacity = isCompleted
+                      ? 1.0
+                      : (isCurrent
+                            ? _progressController.value * 0.8 + 0.2
+                            : 0.3);
 
                   return IntrinsicHeight(
                     child: Row(
@@ -2168,10 +2589,19 @@ class _OrderTimelineWithAnimationState extends State<_OrderTimelineWithAnimation
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: isCompleted
-                                            ? [const Color(0xFF22C55E), const Color(0xFF22C55E)]
+                                            ? [
+                                                const Color(0xFF22C55E),
+                                                const Color(0xFF22C55E),
+                                              ]
                                             : isCurrent
-                                                ? [const Color(0xFF22C55E), const Color(0xFFD1D5DB)]
-                                                : [const Color(0xFFD1D5DB), const Color(0xFFD1D5DB)],
+                                            ? [
+                                                const Color(0xFF22C55E),
+                                                const Color(0xFFD1D5DB),
+                                              ]
+                                            : [
+                                                const Color(0xFFD1D5DB),
+                                                const Color(0xFFD1D5DB),
+                                              ],
                                         begin: Alignment.topCenter,
                                         end: Alignment.bottomCenter,
                                       ),
@@ -2192,7 +2622,8 @@ class _OrderTimelineWithAnimationState extends State<_OrderTimelineWithAnimation
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         step['title'] as String,
@@ -2231,7 +2662,10 @@ class _OrderTimelineWithAnimationState extends State<_OrderTimelineWithAnimation
                                             ),
                                           ),
                                           const SizedBox(width: 6),
-                                          _PulsatingDot(size: 5, color: const Color(0xFF22C55E)),
+                                          _PulsatingDot(
+                                            size: 5,
+                                            color: const Color(0xFF22C55E),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -2276,7 +2710,11 @@ class _TimelineNode extends StatelessWidget {
           color: const Color(0xFF22C55E),
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(color: const Color(0xFF22C55E).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2)),
+            BoxShadow(
+              color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: const Icon(Icons.check_rounded, color: Colors.white, size: 16),
@@ -2350,7 +2788,8 @@ class _PulsatingDot extends StatefulWidget {
   State<_PulsatingDot> createState() => _PulsatingDotState();
 }
 
-class _PulsatingDotState extends State<_PulsatingDot> with SingleTickerProviderStateMixin {
+class _PulsatingDotState extends State<_PulsatingDot>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -2361,9 +2800,10 @@ class _PulsatingDotState extends State<_PulsatingDot> with SingleTickerProviderS
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: 0.5,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override

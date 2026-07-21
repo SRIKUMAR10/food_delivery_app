@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../core/models/conversation_model.dart';
 import '../core/models/chat_message_model.dart';
 import '../core/repositories/i_chat_repository.dart';
+import 'package:rxdart/rxdart.dart';
 
 class FirebaseChatRepository implements IChatRepository {
   final FirebaseFirestore _firestore;
@@ -49,23 +50,43 @@ class FirebaseChatRepository implements IChatRepository {
       return Stream.value([]);
     }
 
-    return _firestore
-        .collection('conversations')
-        .doc(conversationId)
-        .collection('messages')
-        .orderBy('timestamp', descending: false)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs
-              .map(
-                (doc) => ChatMessageModel.fromMap(
-                  doc.data(),
-                  doc.id,
-                  conversationId: conversationId,
-                ),
-              )
-              .toList();
+    final docRef = _firestore.collection('conversations').doc(conversationId);
+
+    final textStream = docRef.collection('messages').snapshots();
+    final photosStream = docRef.collection('photos').snapshots();
+    final videosStream = docRef.collection('videos').snapshots();
+    final audiosStream = docRef.collection('audios').snapshots();
+
+    return Rx.combineLatest4(
+      textStream,
+      photosStream,
+      videosStream,
+      audiosStream,
+      (textSnap, photosSnap, videosSnap, audiosSnap) {
+        final allDocs = [
+          ...textSnap.docs,
+          ...photosSnap.docs,
+          ...videosSnap.docs,
+          ...audiosSnap.docs,
+        ];
+        
+        final messages = allDocs
+            .map(
+              (doc) => ChatMessageModel.fromMap(
+                doc.data(),
+                doc.id,
+                conversationId: conversationId,
+              ),
+            )
+            .toList();
+
+        messages.sort((a, b) {
+          return a.timestamp.compareTo(b.timestamp);
         });
+
+        return messages;
+      },
+    );
   }
 
   @override
@@ -85,10 +106,19 @@ class FirebaseChatRepository implements IChatRepository {
 
     final batch = _firestore.batch();
 
+    String subCollection = 'messages';
+    if (messageType == 'image') {
+      subCollection = 'photos';
+    } else if (messageType == 'video') {
+      subCollection = 'videos';
+    } else if (messageType == 'audio') {
+      subCollection = 'audios';
+    }
+
     final messageRef = _firestore
         .collection('conversations')
         .doc(conversationId)
-        .collection('messages')
+        .collection(subCollection)
         .doc(messageId);
 
     batch.set(messageRef, {
