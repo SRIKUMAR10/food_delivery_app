@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/custom_camera_page.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'buyer_chat_bloc.dart';
 import 'buyer_chat_event.dart';
@@ -16,17 +17,16 @@ import '../../../core/repositories/i_order_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
-import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
 import 'package:camera/camera.dart';
 import 'audio_widgets.dart';
 import 'video_call_page.dart';
+import 'voice_call_page.dart';
 import '../Rating_page/Rating_page_ui.dart';
 import '../Track_Order_page/Track_Order_page_ui.dart';
 import '../Cart Page/cart_page_Bloc.dart';
@@ -34,6 +34,110 @@ import '../Order Page/order_view_model.dart';
 import '../Cart Page/cart_models.dart';
 import '../Cart Page/cart_page_UI.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
+
+class _AppTheme {
+  _AppTheme._();
+
+  // Premium Colors
+  static const Color primary = Color(0xFFEF4444);
+  static const Color primaryLight = Color(0xFFFF6B6B);
+  static const Color success = Color(0xFF22C55E);
+  static const Color successLight = Color(0xFF16A34A);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color info = Color(0xFF3B82F6);
+
+  // Neutrals
+  static const Color background = Color(0xFFF8FAFC);
+  static const Color card = Color(0xFFFFFFFF);
+  static const Color border = Color(0xFFE5E7EB);
+  static const Color borderLight = Color(0xFFF0F0F0);
+  static const Color textPrimary = Color(0xFF1C1C1C);
+  static const Color textSecondary = Color(0xFF64748B);
+  static const Color textTertiary = Color(0xFF94A3B8);
+  static const Color textInverse = Color(0xFFFFFFFF);
+  static const Color surfaceHover = Color(0xFFF1F3F5);
+  static const Color surfaceActive = Color(0xFFF8FAFC);
+
+  // Glassmorphism
+  static const Color glassBg = Color(0xBBFFFFFF);
+  static const Color glassBorder = Color(0x80FFFFFF);
+
+  // Chat specific
+  static const Color bubbleMine = Color(0xFFEF4444);
+  static const Color bubbleOther = Color(0xFFFFFFFF);
+  static const Color chatBgStart = Color(0xFFFAFAFA);
+  static const Color chatBgEnd = Color(0xFFF4F6F8);
+
+  // Spacing
+  static const double pagePadding = 24.0;
+  static const double cardPadding = 20.0;
+  static const double messageSpacing = 16.0;
+  static const double sectionGap = 20.0;
+  static const double headerHeight = 80.0;
+  static const double inputHeight = 64.0;
+
+  // Radius
+  static const double cardRadius = 22.0;
+  static const double bubbleRadius = 18.0;
+  static const double searchRadius = 18.0;
+  static const double inputRadius = 30.0;
+  static const double avatarRadius = 30.0;
+  static const double badgeRadius = 20.0;
+  static const double buttonRadius = 14.0;
+
+  // Shadows
+  static List<BoxShadow> get cardShadow => [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 16,
+          offset: const Offset(0, 4),
+        ),
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+        ),
+      ];
+
+  static List<BoxShadow> get glassShadow => [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.08),
+          blurRadius: 24,
+          offset: const Offset(0, 8),
+        ),
+      ];
+
+  static List<BoxShadow> get elevatedShadow => [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.12),
+          blurRadius: 32,
+          offset: const Offset(0, 12),
+        ),
+      ];
+
+  static List<BoxShadow> get bubbleShadow => [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+        ),
+      ];
+
+  // Gradients
+  static const LinearGradient primaryGradient = LinearGradient(
+    colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+  );
+  static const LinearGradient chatBackground = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFFFAFAFA), Color(0xFFF4F6F8)],
+  );
+
+  // Duration
+  static const Duration fastDuration = Duration(milliseconds: 200);
+  static const Duration normalDuration = Duration(milliseconds: 250);
+  static const Duration slowDuration = Duration(milliseconds: 350);
+}
 
 class SupportNavigationData {
   final String orderId;
@@ -136,7 +240,8 @@ class BuyerChatView extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.errorMessage!),
-              backgroundColor: const Color(0xFFE52929),
+              backgroundColor: _AppTheme.primary,
+              behavior: SnackBarBehavior.floating,
             ),
           );
         }
@@ -144,14 +249,14 @@ class BuyerChatView extends StatelessWidget {
       builder: (context, state) {
         if (state is BuyerChatLoading || state is BuyerChatInitial) {
           return Scaffold(
-            backgroundColor: const Color(0xFFFBF5F5),
+            backgroundColor: _AppTheme.background,
             body: Center(
-              child: CircularProgressIndicator(color: const Color(0xFFE52121)),
+              child: CircularProgressIndicator(color: _AppTheme.primary),
             ),
           );
         } else if (state is BuyerChatError) {
           return Scaffold(
-            backgroundColor: const Color(0xFFFBF5F5),
+            backgroundColor: _AppTheme.background,
             body: Center(
               child: state.message == 'User not logged in'
                   ? Padding(
@@ -159,62 +264,60 @@ class BuyerChatView extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFE52121,
-                              ).withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
+                    Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: _AppTheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Icon(
+                                Icons.support_agent_rounded,
+                                size: 40,
+                                color: _AppTheme.primary,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.support_agent_rounded,
-                              size: 40,
-                              color: Color(0xFFE52121),
+                            const SizedBox(height: 24),
+                            const Text(
+                              'Support Chat',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: _AppTheme.textPrimary,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Support Chat',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1C1C1C),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Please log in to access support',
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: _AppTheme.textSecondary,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Please log in to access support',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const FoodGoLoginScreenUI(),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const FoodGoLoginScreenUI(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.login_rounded),
+                              label: const Text('Log In'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _AppTheme.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 32,
+                                  vertical: 14,
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.login_rounded),
-                            label: const Text('Log In'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE52121),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(_AppTheme.buttonRadius),
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     )
@@ -224,13 +327,13 @@ class BuyerChatView extends StatelessWidget {
                         Icon(
                           Icons.error_outline,
                           size: 48,
-                          color: const Color(0xFFE52929),
+                          color: _AppTheme.primary,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           state.message,
                           style: const TextStyle(
-                            color: Color(0xFFE52929),
+                            color: _AppTheme.primary,
                             fontSize: 16,
                           ),
                         ),
@@ -244,33 +347,61 @@ class BuyerChatView extends StatelessWidget {
 
           if (isDesktop) {
             return Scaffold(
-              backgroundColor: const Color(0xFFFBF5F5),
-              body: Row(
-                children: [
-                  SizedBox(
-                    width: 380,
-                    child: _BuyerChatListView(
-                      conversations: state.filteredConversations,
-                      currentUserId: state.currentUserId,
-                      searchQuery: state.searchQuery,
-                      embedded: true,
-                      selectedConversationId: state.selectedConversationId,
+              backgroundColor: _AppTheme.background,
+              body: Padding(
+                padding: const EdgeInsets.all(_AppTheme.pagePadding),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 380,
+                      decoration: BoxDecoration(
+                        color: _AppTheme.card,
+                        borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+                        boxShadow: _AppTheme.cardShadow,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+                        child: _BuyerChatListView(
+                          conversations: state.filteredConversations,
+                          currentUserId: state.currentUserId,
+                          searchQuery: state.searchQuery,
+                          embedded: true,
+                          selectedConversationId: state.selectedConversationId,
+                        ),
+                      ),
                     ),
-                  ),
-                  Container(width: 1, color: const Color(0xFFE5E7EB)),
-                  Expanded(
-                    child:
-                        state.selectedConversationId != null &&
-                            state.selectedConversation != null
-                        ? _ChatPanel(
-                            conversation: state.selectedConversation!,
-                            messages: state.messages,
-                            isSending: state.isSendingMessage,
-                            isPushedRoute: isPushedRoute,
-                          )
-                        : _EmptyChatPlaceholder(),
-                  ),
-                ],
+                    const SizedBox(width: _AppTheme.pagePadding),
+                    Expanded(
+                      child:
+                          state.selectedConversationId != null &&
+                              state.selectedConversation != null
+                          ? Container(
+                              decoration: BoxDecoration(
+                                color: _AppTheme.card,
+                                borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+                                boxShadow: _AppTheme.cardShadow,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+                                child: _ChatPanel(
+                                  conversation: state.selectedConversation!,
+                                  messages: state.messages,
+                                  isSending: state.isSendingMessage,
+                                  isPushedRoute: isPushedRoute,
+                                ),
+                              ),
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                color: _AppTheme.card,
+                                borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+                                boxShadow: _AppTheme.cardShadow,
+                              ),
+                              child: _EmptyChatPlaceholder(),
+                            ),
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -278,7 +409,7 @@ class BuyerChatView extends StatelessWidget {
           if (state.selectedConversationId != null &&
               state.selectedConversation != null) {
             return Scaffold(
-              backgroundColor: const Color(0xFFFBF5F5),
+              backgroundColor: _AppTheme.background,
               body: _ChatPanel(
                 conversation: state.selectedConversation!,
                 messages: state.messages,
@@ -305,37 +436,37 @@ class _EmptyChatPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFFBF5F5),
+      color: _AppTheme.background,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 88,
+              height: 88,
               decoration: BoxDecoration(
-                color: const Color(0xFFE52121).withValues(alpha: 0.1),
+                color: _AppTheme.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.chat_bubble_outline_rounded,
-                size: 36,
-                color: Color(0xFFE52121),
+                size: 40,
+                color: _AppTheme.primary,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             const Text(
               'Select a conversation',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF1C1C1C),
+                color: _AppTheme.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
             const Text(
               'Choose a chat from the left panel',
-              style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+              style: TextStyle(fontSize: 14, color: _AppTheme.textTertiary),
             ),
           ],
         ),
@@ -405,7 +536,7 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
           child: widget.conversations.isEmpty
               ? _EmptyConversationsState()
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   itemCount: widget.conversations.length,
                   itemBuilder: (context, index) {
                     final conversation = widget.conversations[index];
@@ -429,27 +560,29 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
 
     if (widget.embedded) {
       return Container(
-        color: Colors.white,
+        color: _AppTheme.card,
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(bottom: BorderSide(color: Color(0xFFF0F0F0))),
+              padding: const EdgeInsets.fromLTRB(16, 22, 16, 14),
+              decoration: BoxDecoration(
+                color: _AppTheme.card,
+                border: Border(
+                  bottom: BorderSide(color: _AppTheme.borderLight),
+                ),
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE52121).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      color: _AppTheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Icon(
                       Icons.support_agent_rounded,
-                      color: Color(0xFFE52121),
+                      color: _AppTheme.primary,
                       size: 22,
                     ),
                   ),
@@ -462,15 +595,15 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF1C1C1C),
+                          color: _AppTheme.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         '${widget.conversations.length} conversations',
                         style: const TextStyle(
                           fontSize: 13,
-                          color: Color(0xFF94A3B8),
+                          color: _AppTheme.textTertiary,
                         ),
                       ),
                     ],
@@ -485,8 +618,12 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF5F5),
-      appBar: AppBar(title: const Text('Support Chat'), centerTitle: true),
+      backgroundColor: _AppTheme.background,
+      appBar: AppBar(
+        title: const Text('Support Chat'),
+        centerTitle: true,
+        backgroundColor: _AppTheme.card,
+      ),
       body: bodyContent,
     );
   }
@@ -501,36 +638,84 @@ class _PremiumSearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      color: Colors.white,
-      child: TextField(
-        controller: controller,
-        onChanged: (query) {
-          context.read<BuyerChatBloc>().add(FilterBuyerConversations(query));
-        },
-        decoration: InputDecoration(
-          hintText: 'Search by order ID or restaurant...',
-          hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-          prefixIcon: Container(
-            padding: const EdgeInsets.all(12),
-            child: const Icon(
-              Icons.search_rounded,
-              color: Color(0xFF94A3B8),
-              size: 22,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(_AppTheme.searchRadius),
+          boxShadow: _AppTheme.glassShadow,
+        ),
+        child: TextField(
+          controller: controller,
+          onChanged: (query) {
+            context.read<BuyerChatBloc>().add(FilterBuyerConversations(query));
+          },
+          decoration: InputDecoration(
+            hintText: 'Search customer or order...',
+            hintStyle: const TextStyle(
+              color: _AppTheme.textTertiary,
+              fontSize: 14,
             ),
-          ),
-          filled: true,
-          fillColor: const Color(0xFFF1F3F5),
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 0,
-            horizontal: 4,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Color(0xFFE52121), width: 1.5),
+            prefixIcon: Container(
+              padding: const EdgeInsets.all(12),
+              child: const Icon(
+                Icons.search_rounded,
+                color: _AppTheme.textTertiary,
+                size: 22,
+              ),
+            ),
+            suffixIcon: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.black.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    child: const Text(
+                      '⌘K',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _AppTheme.textTertiary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            filled: true,
+            fillColor: _AppTheme.glassBg,
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 14,
+              horizontal: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(_AppTheme.searchRadius),
+              borderSide: BorderSide(
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(_AppTheme.searchRadius),
+              borderSide: BorderSide(
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(_AppTheme.searchRadius),
+              borderSide: const BorderSide(
+                color: _AppTheme.primary,
+                width: 1.5,
+              ),
+            ),
           ),
         ),
       ),
@@ -546,31 +731,31 @@ class _EmptyConversationsState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 64,
-            height: 64,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
-              color: const Color(0xFFE52121).withValues(alpha: 0.1),
+              color: _AppTheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.chat_bubble_outline_rounded,
-              size: 28,
-              color: Color(0xFFE52121),
+              size: 32,
+              color: _AppTheme.primary,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           const Text(
             'No conversations yet',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1C1C1C),
+              color: _AppTheme.textPrimary,
             ),
           ),
           const SizedBox(height: 6),
           const Text(
             'Start chatting with a restaurant',
-            style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+            style: TextStyle(fontSize: 13, color: _AppTheme.textTertiary),
           ),
         ],
       ),
@@ -598,6 +783,22 @@ class _ConversationTile extends StatefulWidget {
 class _ConversationTileState extends State<_ConversationTile> {
   bool _isHovered = false;
 
+  String _formatTime(DateTime? lastMessageTimestamp) {
+    if (lastMessageTimestamp == null) return '';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final msgDate = DateTime(
+      lastMessageTimestamp.year,
+      lastMessageTimestamp.month,
+      lastMessageTimestamp.day,
+    );
+    final diff = today.difference(msgDate).inDays;
+    if (diff == 0) return DateFormat('hh:mm a').format(lastMessageTimestamp);
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return DateFormat('EEEE').format(lastMessageTimestamp);
+    return DateFormat('MMM dd').format(lastMessageTimestamp);
+  }
+
   @override
   Widget build(BuildContext context) {
     final conversation = widget.conversation;
@@ -608,28 +809,6 @@ class _ConversationTileState extends State<_ConversationTile> {
     final hasImage =
         conversation.sellerImageUrl != null &&
         conversation.sellerImageUrl!.isNotEmpty;
-    final lastMessageTimestamp = conversation.lastMessageTimestamp;
-
-    String timeText = '';
-    if (lastMessageTimestamp != null) {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final msgDate = DateTime(
-        lastMessageTimestamp.year,
-        lastMessageTimestamp.month,
-        lastMessageTimestamp.day,
-      );
-      final diff = today.difference(msgDate).inDays;
-      if (diff == 0) {
-        timeText = DateFormat('hh:mm a').format(lastMessageTimestamp);
-      } else if (diff == 1) {
-        timeText = 'Yesterday';
-      } else if (diff < 7) {
-        timeText = DateFormat('EEEE').format(lastMessageTimestamp);
-      } else {
-        timeText = DateFormat('MMM dd').format(lastMessageTimestamp);
-      }
-    }
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -637,17 +816,24 @@ class _ConversationTileState extends State<_ConversationTile> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: _AppTheme.normalDuration,
           curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          transform: Matrix4.translationValues(
+            0,
+            _isHovered && !widget.isSelected ? -2 : 0,
+            0,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: widget.isSelected
-                ? const Color(0xFFE52121).withValues(alpha: 0.08)
-                : (_isHovered ? const Color(0xFFF5F5F5) : Colors.transparent),
+                ? _AppTheme.primary.withValues(alpha: 0.06)
+                : (_isHovered
+                      ? _AppTheme.background
+                      : Colors.transparent),
             border: Border(
               left: BorderSide(
                 color: widget.isSelected
-                    ? const Color(0xFFE52121)
+                    ? _AppTheme.primary
                     : Colors.transparent,
                 width: 3,
               ),
@@ -658,23 +844,23 @@ class _ConversationTileState extends State<_ConversationTile> {
               Stack(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: hasImage
                           ? Colors.transparent
-                          : const Color(0xFFF1F3F5),
+                          : _AppTheme.surfaceHover,
                       border: Border.all(
                         color: widget.isSelected
-                            ? const Color(0xFFE52121).withValues(alpha: 0.3)
-                            : Colors.transparent,
+                            ? _AppTheme.primary.withValues(alpha: 0.3)
+                            : _AppTheme.border,
                         width: 2,
                       ),
                     ),
                     child: hasImage
                         ? ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(26),
                             child: Image.network(
                               conversation.sellerImageUrl!,
                               fit: BoxFit.cover,
@@ -684,21 +870,40 @@ class _ConversationTileState extends State<_ConversationTile> {
                           )
                         : _AvatarFallback(name: displayName),
                   ),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: _OnlineDot(
+                      size: 14,
+                      borderWidth: 2.5,
+                      pulse: true,
+                    ),
+                  ),
                   if (unread > 0)
                     Positioned(
-                      right: 0,
-                      top: 0,
+                      left: 0,
+                      bottom: 0,
                       child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFE52121),
-                          shape: BoxShape.circle,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _AppTheme.primary,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _AppTheme.primary.withValues(alpha: 0.4),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Text(
                           unread > 99 ? '99+' : '$unread',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 9,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -722,22 +927,22 @@ class _ConversationTileState extends State<_ConversationTile> {
                                   ? FontWeight.w700
                                   : FontWeight.w600,
                               fontSize: 15,
-                              color: const Color(0xFF1C1C1C),
+                              color: _AppTheme.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (lastMessageTimestamp != null)
+                        if (conversation.lastMessageTimestamp != null)
                           Padding(
                             padding: const EdgeInsets.only(left: 8),
                             child: Text(
-                              timeText,
+                              _formatTime(conversation.lastMessageTimestamp),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: unread > 0
-                                    ? const Color(0xFFE52121)
-                                    : const Color(0xFF94A3B8),
+                                    ? _AppTheme.primary
+                                    : _AppTheme.textTertiary,
                                 fontWeight: unread > 0
                                     ? FontWeight.w600
                                     : FontWeight.normal,
@@ -746,7 +951,7 @@ class _ConversationTileState extends State<_ConversationTile> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Expanded(
@@ -757,8 +962,8 @@ class _ConversationTileState extends State<_ConversationTile> {
                             style: TextStyle(
                               fontSize: 13,
                               color: unread > 0
-                                  ? const Color(0xFF334155)
-                                  : const Color(0xFF94A3B8),
+                                  ? _AppTheme.textPrimary
+                                  : _AppTheme.textTertiary,
                               fontWeight: unread > 0
                                   ? FontWeight.w500
                                   : FontWeight.normal,
@@ -768,21 +973,21 @@ class _ConversationTileState extends State<_ConversationTile> {
                       ],
                     ),
                     if (conversation.orderId != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
+                          horizontal: 10,
+                          vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F3F5),
-                          borderRadius: BorderRadius.circular(6),
+                          color: _AppTheme.surfaceHover,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '#${conversation.orderId!.length > 8 ? conversation.orderId!.substring(0, 8) : conversation.orderId}',
                           style: const TextStyle(
                             fontSize: 10,
-                            color: Color(0xFF64748B),
+                            color: _AppTheme.textSecondary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -807,16 +1012,16 @@ class _AvatarFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFFF1F3F5),
+        color: _AppTheme.surfaceHover,
         shape: BoxShape.circle,
       ),
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
           style: const TextStyle(
-            color: Color(0xFF64748B),
+            color: _AppTheme.textSecondary,
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 20,
           ),
         ),
       ),
@@ -950,7 +1155,9 @@ class _ChatPanelState extends State<_ChatPanel> {
           ),
           Expanded(
             child: Container(
-              color: const Color(0xFFFBF5F5),
+              decoration: const BoxDecoration(
+                gradient: _AppTheme.chatBackground,
+              ),
               child: ListView(
                 controller: _scrollController,
                 padding: EdgeInsets.all(
@@ -1022,265 +1229,216 @@ class _PremiumChatHeader extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: _AppTheme.glassBg,
+        border: Border(bottom: BorderSide(color: _AppTheme.borderLight)),
+        boxShadow: _AppTheme.glassShadow,
       ),
-      child: SafeArea(
-        bottom: false,
-        top: screenType != _ScreenType.desktop,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            screenType == _ScreenType.desktop ? 16 : 4,
-            8,
-            16,
-            8,
-          ),
-          child: Row(
-            children: [
-              if (screenType != _ScreenType.desktop)
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: () {
-                    if (isPushedRoute && Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    } else {
-                      context.read<BuyerChatBloc>().add(
-                        SelectBuyerConversation(''),
-                      );
-                    }
-                  },
-                ),
-              if (screenType == _ScreenType.desktop) const SizedBox(width: 4),
-              Stack(
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: SafeArea(
+            bottom: false,
+            top: screenType != _ScreenType.desktop,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                screenType == _ScreenType.desktop ? 16 : 4,
+                10,
+                16,
+                10,
+              ),
+              child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: hasImage
-                          ? Colors.transparent
-                          : const Color(0xFFF1F3F5),
-                      border: Border.all(
-                        color: const Color(0xFFE5E7EB),
-                        width: 1.5,
-                      ),
+                  if (screenType != _ScreenType.desktop)
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      onPressed: () {
+                        if (isPushedRoute && Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        } else {
+                          context.read<BuyerChatBloc>().add(
+                            SelectBuyerConversation(''),
+                          );
+                        }
+                      },
                     ),
-                    child: hasImage
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(22),
-                            child: Image.network(
-                              conversation.sellerImageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  _AvatarFallback(name: displayName),
-                            ),
-                          )
-                        : _AvatarFallback(name: displayName),
-                  ),
-                  Positioned(
-                    right: 1,
-                    bottom: 1,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF22C55E),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            displayName,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1C1C1C),
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                  if (screenType == _ScreenType.desktop) const SizedBox(width: 4),
+                  Stack(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: hasImage
+                              ? Colors.transparent
+                              : _AppTheme.surfaceHover,
+                          border: Border.all(
+                            color: _AppTheme.border,
+                            width: 2,
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF22C55E),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Online',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF22C55E),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        if (orderText != null) ...[
-                          Text(
-                            orderText,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        _OrderStatusBadge(conversation: conversation),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              _CircularIconButton(
-                icon: Icons.phone_outlined,
-                onPressed: () {
-                  const String dummyPhone = '+1234567890';
-                  if (kIsWeb) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            const Icon(
-                              Icons.phone_android_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Text(
-                                'Phone: $dummyPhone',
-                                style: TextStyle(fontSize: 15),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.copy_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                              tooltip: 'Copy to clipboard',
-                              onPressed: () async {
-                                await Clipboard.setData(
-                                  const ClipboardData(text: dummyPhone),
-                                );
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(
-                                    context,
-                                  ).hideCurrentSnackBar();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Copied to clipboard!'),
-                                    ),
-                                  );
-                                }
-                              },
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x1A000000),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
                             ),
                           ],
                         ),
-                        duration: const Duration(seconds: 5),
-                        behavior: SnackBarBehavior.floating,
+                        child: hasImage
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(28),
+                                child: Image.network(
+                                  conversation.sellerImageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      _AvatarFallback(name: displayName),
+                                ),
+                              )
+                            : _AvatarFallback(name: displayName),
                       ),
-                    );
-                  } else {
-                    final Uri url = Uri(scheme: 'tel', path: dummyPhone);
-                    canLaunchUrl(url).then((canLaunch) {
-                      if (canLaunch) {
-                        launchUrl(url);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Could not launch phone dialer'),
+                      Positioned(
+                        right: 1,
+                        bottom: 1,
+                        child: _OnlineDot(size: 14, borderWidth: 2.5, pulse: true),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                displayName,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: _AppTheme.textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.verified_rounded,
+                              size: 18,
+                              color: _AppTheme.info,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_today_rounded,
+                              size: 11,
+                              color: _AppTheme.textTertiary,
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'Customer since 2025',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _AppTheme.textTertiary,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            if (orderText != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _AppTheme.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(
+                                    _AppTheme.badgeRadius,
+                                  ),
+                                ),
+                                child: Text(
+                                  orderText,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: _AppTheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  _CircularIconButton(
+                    icon: Icons.phone_outlined,
+                    onPressed: () async {
+                      final bloc = context.read<BuyerChatBloc>();
+                      final userId = bloc.authService.currentUserId;
+                      if (userId == null) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please log in to make a voice call.')),
+                          );
+                        }
+                        return;
+                      }
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => VoiceCallPage(
+                              callID: conversation.id,
+                              userID: userId,
+                              userName: conversation.buyerName,
+                            ),
                           ),
                         );
                       }
-                    });
-                  }
-                },
-              ),
-              const SizedBox(width: 4),
-              _CircularIconButton(
-                icon: Icons.videocam_outlined,
-                onPressed: () {
-                  final bloc = context.read<BuyerChatBloc>();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => VideoCallPage(
-                        callID: conversation.id,
-                        userID: bloc.authService.currentUserId ?? 'buyer_123',
-                        userName: conversation.buyerName,
-                      ),
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  _CircularIconButton(
+                    icon: Icons.videocam_outlined,
+                    onPressed: () async {
+                      final bloc = context.read<BuyerChatBloc>();
+                      final userId = bloc.authService.currentUserId;
+                      if (userId == null) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please log in to make a video call.')),
+                          );
+                        }
+                        return;
+                      }
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => VideoCallPage(
+                              callID: conversation.id,
+                              userID: userId,
+                              userName: conversation.buyerName,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  if (screenType != _ScreenType.mobile) ...[
+                    const SizedBox(width: 4),
+                    _CircularIconButton(
+                      icon: Icons.more_vert_rounded,
+                      onPressed: () {},
                     ),
-                  );
-                },
+                  ],
+                ],
               ),
-              if (screenType != _ScreenType.mobile) ...[
-                const SizedBox(width: 4),
-                _CircularIconButton(
-                  icon: Icons.more_vert_rounded,
-                  onPressed: () {},
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _OrderStatusBadge extends StatelessWidget {
-  final ConversationModel conversation;
-  const _OrderStatusBadge({required this.conversation});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFF22C55E).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.check_circle, size: 10, color: Color(0xFF22C55E)),
-          SizedBox(width: 4),
-          Text(
-            'Active',
-            style: TextStyle(
-              fontSize: 10,
-              color: Color(0xFF22C55E),
-              fontWeight: FontWeight.w600,
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1305,14 +1463,14 @@ class _CircularIconButtonState extends State<_CircularIconButton> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: _AppTheme.fastDuration,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: _isHovered ? const Color(0xFFF1F3F5) : Colors.transparent,
+          color: _isHovered ? _AppTheme.surfaceHover : Colors.transparent,
         ),
         child: IconButton(
           icon: Icon(widget.icon, size: 22),
-          color: const Color(0xFF64748B),
+          color: _AppTheme.textSecondary,
           onPressed: widget.onPressed,
           splashRadius: 20,
         ),
@@ -1471,89 +1629,118 @@ class _PremiumComposerState extends State<_PremiumComposer> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        border: Border(top: BorderSide(color: _AppTheme.borderLight)),
       ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              _ComposerIconButton(
-                icon: Icons.emoji_emotions_outlined,
-                onPressed: widget.onEmoji,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F3F5),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: TextField(
-                    controller: widget.controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Type a message',
-                      hintStyle: TextStyle(
-                        color: Color(0xFF8696A0),
-                        fontSize: 15,
-                      ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 16,
+      child: Container(
+        decoration: BoxDecoration(
+          color: _AppTheme.glassBg,
+          boxShadow: _AppTheme.glassShadow,
+        ),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    _ComposerIconButton(
+                      icon: Icons.emoji_emotions_outlined,
+                      onPressed: widget.onEmoji,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(
+                            _AppTheme.inputRadius,
+                          ),
+                          border: Border.all(
+                            color: _AppTheme.border.withValues(alpha: 0.5),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: widget.controller,
+                          decoration: const InputDecoration(
+                            hintText: 'Type a message...',
+                            hintStyle: TextStyle(
+                              color: _AppTheme.textTertiary,
+                              fontSize: 15,
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: 14,
+                              horizontal: 20,
+                            ),
+                          ),
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => widget.onSend(),
+                        ),
                       ),
                     ),
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => widget.onSend(),
-                  ),
+                    const SizedBox(width: 8),
+                    _ComposerIconButton(
+                      icon: Icons.attach_file_outlined,
+                      onPressed: widget.onAttach,
+                    ),
+                    _ComposerIconButton(
+                      icon: Icons.camera_alt_outlined,
+                      onPressed: _handleCamera,
+                    ),
+                    const SizedBox(width: 4),
+                    AnimatedContainer(
+                      duration: _AppTheme.fastDuration,
+                      decoration: BoxDecoration(
+                        color: hasText
+                            ? _AppTheme.primary
+                            : (_isRecording ? Colors.red : Colors.transparent),
+                        shape: BoxShape.circle,
+                        boxShadow: hasText
+                            ? [
+                                BoxShadow(
+                                  color: _AppTheme.primary.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          hasText
+                              ? Icons.send_rounded
+                              : (_isRecording
+                                    ? Icons.stop_circle_outlined
+                                    : Icons.mic_outlined),
+                          color: (hasText || _isRecording)
+                              ? Colors.white
+                              : _AppTheme.textTertiary,
+                          size: 22,
+                        ),
+                        onPressed: widget.isSending
+                            ? null
+                            : (hasText ? widget.onSend : _toggleRecording),
+                        splashRadius: 20,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              _ComposerIconButton(
-                icon: Icons.attach_file_outlined,
-                onPressed: widget.onAttach,
-              ),
-              _ComposerIconButton(
-                icon: Icons.camera_alt_outlined,
-                onPressed: _handleCamera,
-              ),
-              const SizedBox(width: 4),
-              Container(
-                decoration: BoxDecoration(
-                  color: hasText
-                      ? const Color(0xFF00A884)
-                      : (_isRecording ? Colors.red : Colors.transparent),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    hasText
-                        ? Icons.send_rounded
-                        : (_isRecording
-                              ? Icons.stop_circle_outlined
-                              : Icons.mic_outlined),
-                    color: (hasText || _isRecording)
-                        ? Colors.white
-                        : const Color(0xFF8696A0),
-                    size: 22,
-                  ),
-                  onPressed: widget.isSending
-                      ? null
-                      : (hasText ? widget.onSend : _toggleRecording),
-                  splashRadius: 20,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1580,14 +1767,14 @@ class _ComposerIconButtonState extends State<_ComposerIconButton> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: _AppTheme.fastDuration,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: _isHovered ? const Color(0xFFF1F3F5) : Colors.transparent,
+          color: _isHovered ? _AppTheme.surfaceHover : Colors.transparent,
         ),
         child: IconButton(
           icon: Icon(widget.icon, size: 22),
-          color: const Color(0xFF8696A0),
+          color: _AppTheme.textTertiary,
           onPressed: widget.onPressed,
           splashRadius: 20,
         ),
@@ -1654,59 +1841,60 @@ class _BuyerChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenType = _screenType(context);
-    final maxWidthFactor = switch (screenType) {
-      _ScreenType.mobile => 0.85,
-      _ScreenType.tablet => 0.75,
-      _ScreenType.desktop => 0.65,
+    final maxWidth = switch (screenType) {
+      _ScreenType.mobile => MediaQuery.of(context).size.width * 0.8,
+      _ScreenType.tablet => 380.0,
+      _ScreenType.desktop => 420.0,
     };
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * maxWidthFactor,
-          ),
+          constraints: BoxConstraints(maxWidth: maxWidth),
           decoration: BoxDecoration(
-            color: isMe ? const Color(0xFF00A884) : Colors.white,
+            gradient: isMe
+                ? const LinearGradient(
+                    colors: [Color(0xFFFF4B4B), Color(0xFFFF6B6B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isMe ? null : _AppTheme.bubbleOther,
             borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(18),
-              topRight: const Radius.circular(18),
-              bottomLeft: Radius.circular(isMe ? 18 : 4),
-              bottomRight: Radius.circular(isMe ? 4 : 18),
+              topLeft: const Radius.circular(22),
+              topRight: const Radius.circular(22),
+              bottomLeft: Radius.circular(isMe ? 22 : 4),
+              bottomRight: Radius.circular(isMe ? 4 : 22),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
+                color: isMe 
+                  ? const Color(0xFFFF4B4B).withValues(alpha: 0.25) 
+                  : Colors.black.withValues(alpha: 0.08),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (message.messageType == 'image' && message.mediaUrl != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4.0),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        message.mediaUrl!,
-                        width: 250,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.image_not_supported),
-                      ),
-                    ),
+                  _PremiumImageMessage(
+                    imageUrl: message.mediaUrl!,
+                    timestamp: message.timestamp,
+                    isRead: message.isRead,
+                    isMe: isMe,
+                    maxWidth: maxWidth,
                   )
                 else if (message.messageType == 'audio' &&
                     message.mediaUrl != null)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 4.0),
+                    padding: const EdgeInsets.only(bottom: 6.0),
                     child: AudioPlayerWidget(
                       key: ValueKey(message.mediaUrl),
                       audioUrl: message.mediaUrl!,
@@ -1717,34 +1905,344 @@ class _BuyerChatBubble extends StatelessWidget {
                     message.text,
                     style: TextStyle(
                       color: isMe ? Colors.white : const Color(0xFF111B21),
-                      fontSize: 14.5,
-                      height: 1.35,
+                      fontSize: 15,
+                      height: 1.4,
                     ),
                   ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      DateFormat('hh:mm a').format(message.timestamp),
-                      style: TextStyle(
-                        color: isMe ? Colors.white70 : const Color(0xFF667781),
-                        fontSize: 10.5,
+                if (message.messageType != 'image')
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: _MessageFooter(
+                      timestamp: message.timestamp,
+                      isRead: message.isRead,
+                      isMe: isMe,
+                      isDarkBg: isMe,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MessageFooter extends StatelessWidget {
+  final DateTime timestamp;
+  final bool isRead;
+  final bool isMe;
+  final bool isDarkBg;
+
+  const _MessageFooter({
+    required this.timestamp,
+    required this.isRead,
+    required this.isMe,
+    this.isDarkBg = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          DateFormat('hh:mm a').format(timestamp),
+          style: TextStyle(
+            color: isDarkBg ? Colors.white : const Color(0xFF667781),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            shadows: isDarkBg ? [
+              Shadow(
+                offset: const Offset(0, 1),
+                blurRadius: 2,
+                color: Colors.black.withValues(alpha: 0.3),
+              )
+            ] : null,
+          ),
+        ),
+        if (isMe) ...[
+          const SizedBox(width: 3),
+          Icon(
+            isRead ? Icons.done_all : Icons.done,
+            size: 12,
+            color: isRead
+                ? const Color(0xFF53BDEB)
+                : (isDarkBg ? Colors.white : const Color(0xFF667781)),
+            shadows: isDarkBg ? [
+              Shadow(
+                offset: const Offset(0, 1),
+                blurRadius: 2,
+                color: Colors.black.withValues(alpha: 0.3),
+              )
+            ] : null,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _PremiumImageMessage extends StatefulWidget {
+  final String imageUrl;
+  final DateTime timestamp;
+  final bool isRead;
+  final bool isMe;
+  final double maxWidth;
+
+  const _PremiumImageMessage({
+    required this.imageUrl,
+    required this.timestamp,
+    required this.isRead,
+    required this.isMe,
+    required this.maxWidth,
+  });
+
+  @override
+  State<_PremiumImageMessage> createState() => _PremiumImageMessageState();
+}
+
+class _PremiumImageMessageState extends State<_PremiumImageMessage> {
+  bool _isHovered = false;
+  bool _isLoaded = false;
+  bool _isPressed = false;
+
+  void _openFullScreen() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => _FullScreenImage(imageUrl: widget.imageUrl),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+        opaque: false,
+        barrierColor: Colors.black,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imageWidth = widget.maxWidth - 32;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) {
+          setState(() => _isPressed = false);
+          _openFullScreen();
+        },
+        onTapCancel: () => setState(() => _isPressed = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+          transform: _isPressed
+              ? Matrix4.diagonal3Values(0.97, 0.97, 1)
+              : _isHovered
+                  ? Matrix4.diagonal3Values(1.02, 1.02, 1)
+                  : Matrix4.identity(),
+          transformAlignment: Alignment.center,
+          child: Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: imageWidth,
+                    minHeight: 120,
+                  ),
+                  child: CachedNetworkImage(
+                    imageUrl: widget.imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => _ShimmerPlaceholder(),
+                    errorWidget: (_, __, ___) => Container(
+                      color: Colors.grey.shade200,
+                      height: 120,
+                      width: imageWidth,
+                      child: const Center(
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          color: Colors.grey,
+                          size: 36,
+                        ),
                       ),
                     ),
-                    if (isMe) ...[
-                      const SizedBox(width: 4),
-                      Icon(
-                        message.isRead ? Icons.done_all : Icons.done,
-                        size: 14,
-                        color: message.isRead
-                            ? const Color(0xFF53BDEB)
-                            : Colors.white70,
-                      ),
-                    ],
-                  ],
+                    imageBuilder: (_, imageProvider) {
+                      return AnimatedOpacity(
+                        opacity: _isLoaded ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 400),
+                        onEnd: () => setState(() => _isLoaded = true),
+                        child: Container(
+                          foregroundDecoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              width: 0.5,
+                            ),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.0),
+                                Colors.black.withValues(alpha: 0.0),
+                                Colors.black.withValues(alpha: 0.5),
+                              ],
+                              stops: const [0.0, 0.6, 1.0],
+                            ),
+                          ),
+                          child: Image(
+                            image: imageProvider,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ],
+              ),
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: _MessageFooter(
+                    timestamp: widget.timestamp,
+                    isRead: widget.isRead,
+                    isMe: widget.isMe,
+                    isDarkBg: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShimmerPlaceholder extends StatefulWidget {
+  @override
+  State<_ShimmerPlaceholder> createState() => _ShimmerPlaceholderState();
+}
+
+class _ShimmerPlaceholderState extends State<_ShimmerPlaceholder>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+    _animation = Tween<double>(begin: -1, end: 2).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (_, __) {
+        return Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: ShaderMask(
+              shaderCallback: (bounds) {
+                return LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Colors.grey.shade200,
+                    Colors.grey.shade100,
+                    Colors.grey.shade200,
+                  ],
+                  stops: [
+                    _animation.value.clamp(0.0, 1.0),
+                    (_animation.value + 0.3).clamp(0.0, 1.0),
+                    (_animation.value + 0.6).clamp(0.0, 1.0),
+                  ],
+                ).createShader(bounds);
+              },
+              blendMode: BlendMode.srcOver,
+              child: Container(color: Colors.white),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FullScreenImage extends StatelessWidget {
+  final String imageUrl;
+
+  const _FullScreenImage({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+          onPressed: () => Navigator.pop(context),
+          splashRadius: 24,
+        ),
+      ),
+      body: Center(
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Hero(
+            tag: imageUrl,
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.contain,
+                placeholder: (_, __) => const Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                ),
+                errorWidget: (_, __, ___) => const Center(
+                  child: Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.white54,
+                    size: 48,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -1773,21 +2271,24 @@ class _DateSeparatorChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
           decoration: BoxDecoration(
-            color: const Color(0xFFE8ECF0),
+            color: Colors.black.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
           ),
           child: Text(
             _formatDate(),
             style: const TextStyle(
-              fontSize: 11.5,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B),
-              letterSpacing: 0.2,
+              color: _AppTheme.textSecondary,
+              letterSpacing: 0.3,
             ),
           ),
         ),
@@ -1812,15 +2313,15 @@ class _HoverCardState extends State<_HoverCard> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
+        duration: _AppTheme.normalDuration,
         curve: Curves.easeOut,
         transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFEEF2F7)),
+          color: _AppTheme.card,
+          borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+          border: Border.all(color: _AppTheme.borderLight),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: _isHovered ? 0.10 : 0.05),
@@ -1835,28 +2336,28 @@ class _HoverCardState extends State<_HoverCard> {
   }
 }
 
-class _PremiumOrderContextCard extends StatelessWidget {
+class _PremiumOrderContextCard extends StatefulWidget {
   final ConversationModel conversation;
   const _PremiumOrderContextCard({required this.conversation});
 
   @override
+  State<_PremiumOrderContextCard> createState() =>
+      _PremiumOrderContextCardState();
+}
+
+class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    if (conversation.orderId == null) return const SizedBox.shrink();
+    if (widget.conversation.orderId == null) return const SizedBox.shrink();
     final orderRepo = context.read<IOrderRepository>();
 
     return FutureBuilder<OrderModel?>(
-      future: orderRepo.getOrderById(conversation.orderId!),
+      future: orderRepo.getOrderById(widget.conversation.orderId!),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32.0),
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: Color(0xFFE52121),
-              ),
-            ),
-          );
+          return _buildLoadingSkeleton();
         }
         final order = snapshot.data;
         if (order == null) return const SizedBox.shrink();
@@ -1865,259 +2366,174 @@ class _PremiumOrderContextCard extends StatelessWidget {
             ? order.items!.first
             : null;
 
-        return _HoverCard(
+        return MouseRegion(
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: AnimatedContainer(
+            duration: _AppTheme.normalDuration,
+            curve: Curves.easeOut,
+            transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: _AppTheme.card,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: _AppTheme.borderLight),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 40,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProductHeader(item, order, context),
+                const SizedBox(height: 24),
+                _buildInfoGrid(order, context),
+                const SizedBox(height: 24),
+                _buildOrderStatusChip(order.status.name),
+                const SizedBox(height: 24),
+                _OrderTimelineWithAnimation(currentStatus: order.status),
+                const SizedBox(height: 24),
+                _buildOrderSummaryCard(order),
+                const SizedBox(height: 24),
+                _buildActionButtons(item, order, context),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingSkeleton() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: _AppTheme.card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: _AppTheme.primary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductHeader(
+    dynamic item,
+    OrderModel order,
+    BuildContext context,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ProductImageWidget(
+          imageUrl: item?.imageUrl,
+          itemName: item?.name,
+        ),
+        const SizedBox(width: 20),
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                item?.name ?? 'Multiple Items',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                  height: 1.2,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: const Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(19),
-                      child: item?.imageUrl != null
-                          ? Image.network(item!.imageUrl!, fit: BoxFit.cover)
-                          : Container(
-                              color: const Color(0xFFF1F3F5),
-                              child: const Icon(
-                                Icons.fastfood_rounded,
-                                size: 36,
-                                color: Color(0xFFCBD5E1),
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item?.name ?? 'Multiple Items',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1C1C1C),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 16,
-                              color: Color(0xFFF59E0B),
-                            ),
-                            const SizedBox(width: 4),
-                            const Text(
-                              '4.8',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFFF59E0B),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _VegBadge(),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Qty ${item?.quantity ?? 1}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          '₹${order.amount.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFE52121),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _RatingChip(),
+                  const SizedBox(width: 10),
+                  _VegBadge(),
+                  const SizedBox(width: 10),
+                  _QuantityChip(qty: item?.quantity ?? 1),
                 ],
               ),
-              const SizedBox(height: 16),
-              _buildOrderStatusChip(order.status.name),
-              const SizedBox(height: 24),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth > 600;
-                  return GridView.count(
-                    crossAxisCount: isWide ? 3 : 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: isWide ? 3.5 : 3.0,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    children: [
-                      _InfoGridItem(
-                        icon: Icons.receipt_long_rounded,
-                        label: 'Order ID',
-                        value: '#${order.id.toUpperCase().substring(0, 8)}',
-                      ),
-                      _InfoGridItem(
-                        icon: Icons.storefront_rounded,
-                        label: 'Seller',
-                        value: conversation.shopName ?? 'Store',
-                      ),
-                      _InfoGridItem(
-                        icon: Icons.account_balance_wallet_rounded,
-                        label: 'Payment',
-                        value: order.paymentMethod ?? 'Wallet',
-                      ),
-                      _InfoGridItem(
-                        icon: Icons.inventory_2_rounded,
-                        label: 'Items',
-                        value: '${order.items?.length ?? 1} Item',
-                      ),
-                      _InfoGridItem(
-                        icon: Icons.local_shipping_rounded,
-                        label: 'Delivery',
-                        value: 'Standard',
-                      ),
-                      _InfoGridItem(
-                        icon: Icons.calendar_month_rounded,
-                        label: 'Date',
-                        value: DateFormat(
-                          'MMM dd, yyyy',
-                        ).format(order.timestamp),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              _OrderTimelineWithAnimation(currentStatus: order.status),
-              const SizedBox(height: 24),
-              _buildOrderSummaryCard(order),
-              const SizedBox(height: 24),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _ActionButton(
-                    icon: Icons.star_rounded,
-                    label: 'Rate',
-                    color: const Color(0xFFF59E0B),
-                    isOutlined: true,
-                    onTap: () {
-                      if (item != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => RatingPageUI(
-                              foodId: item.productId,
-                              foodName: item.name,
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  _ActionButton(
-                    icon: Icons.receipt_long_outlined,
-                    label: 'Invoice',
-                    color: const Color(0xFF2563EB),
-                    isOutlined: true,
-                    onTap: () {},
-                  ),
-                  _ActionButton(
-                    icon: Icons.local_shipping_rounded,
-                    label: 'Track',
-                    color: const Color(0xFF2563EB),
-                    isOutlined: true,
-                    onTap: () {
-                      final orderViewModel = OrderViewModel(
-                        id: order.id,
-                        status: order.status.name,
-                        totalAmount: order.amount,
-                        date: order.timestamp,
-                        items:
-                            order.items
-                                ?.map(
-                                  (i) => CartItem(
-                                    id: i.productId,
-                                    name: i.name,
-                                    price: i.price,
-                                    sellerId: order.sellerId,
-                                    image: i.imageUrl,
-                                    quantity: i.quantity,
-                                  ),
-                                )
-                                .toList() ??
-                            [],
-                      );
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TrackOrderPageUI(
-                            orderId: order.id,
-                            order: orderViewModel,
-                            isEmbedded: false,
-                            allowPopOnDesktop: false,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  _ActionButton(
-                    icon: Icons.shopping_cart_rounded,
-                    label: 'Buy Again',
-                    color: const Color(0xFFE52121),
-                    isGradient: true,
-                    onTap: () {
-                      if (item != null) {
-                        context.read<CartBloc>().add(
-                          CartItemAdded(
-                            CartItem(
-                              id: item.productId,
-                              name: item.name,
-                              price: item.price,
-                              sellerId: conversation.sellerId,
-                              image: item.imageUrl,
-                            ),
-                          ),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Added to cart')),
-                        );
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const CartPageUI()),
-                        );
-                      }
-                    },
-                  ),
-                ],
+              const SizedBox(height: 14),
+              Text(
+                '₹${order.amount.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: _AppTheme.primary,
+                  height: 1.1,
+                ),
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoGrid(OrderModel order, BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 500;
+        return GridView.count(
+          crossAxisCount: isWide ? 3 : 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: isWide ? 3.8 : 3.2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          children: [
+            _PremiumInfoCard(
+              icon: Icons.receipt_long_rounded,
+              label: 'Order ID',
+              value: '#${order.id.toUpperCase().substring(0, 8)}',
+            ),
+            _PremiumInfoCard(
+              icon: Icons.storefront_rounded,
+              label: 'Seller',
+              value: widget.conversation.shopName ?? 'Store',
+            ),
+            _PremiumInfoCard(
+              icon: Icons.account_balance_wallet_rounded,
+              label: 'Payment',
+              value: order.paymentMethod ?? 'Wallet',
+            ),
+            _PremiumInfoCard(
+              icon: Icons.inventory_2_rounded,
+              label: 'Items',
+              value: '${order.items?.length ?? 1} Item',
+            ),
+            _PremiumInfoCard(
+              icon: Icons.local_shipping_rounded,
+              label: 'Delivery',
+              value: 'Standard',
+            ),
+            _PremiumInfoCard(
+              icon: Icons.calendar_month_rounded,
+              label: 'Date',
+              value: DateFormat('MMM dd, yyyy').format(order.timestamp),
+            ),
+          ],
         );
       },
     );
@@ -2125,59 +2541,78 @@ class _PremiumOrderContextCard extends StatelessWidget {
 
   Widget _buildOrderStatusChip(String status) {
     Color bgColor;
+    Color textColor;
+    IconData icon;
     String label;
     switch (status.toLowerCase()) {
       case 'neworder':
       case 'new_order':
       case 'new':
         bgColor = const Color(0xFF3B82F6);
-        label = 'New';
+        textColor = const Color(0xFF1D4ED8);
+        icon = Icons.fiber_new_rounded;
+        label = 'New Order';
         break;
       case 'delivered':
         bgColor = const Color(0xFF22C55E);
+        textColor = const Color(0xFF16A34A);
+        icon = Icons.check_circle_rounded;
         label = 'Delivered';
         break;
       case 'preparing':
         bgColor = const Color(0xFFF59E0B);
+        textColor = const Color(0xFFD97706);
+        icon = Icons.restaurant_rounded;
         label = 'Preparing';
         break;
       case 'outfordelivery':
         bgColor = const Color(0xFF2563EB);
+        textColor = const Color(0xFF1D4ED8);
+        icon = Icons.delivery_dining_rounded;
         label = 'Out for Delivery';
         break;
       case 'accepted':
         bgColor = const Color(0xFF22C55E);
+        textColor = const Color(0xFF16A34A);
+        icon = Icons.thumb_up_rounded;
         label = 'Accepted';
         break;
       case 'cancelled':
         bgColor = const Color(0xFFEF4444);
+        textColor = const Color(0xFFDC2626);
+        icon = Icons.cancel_rounded;
         label = 'Cancelled';
         break;
       default:
         bgColor = const Color(0xFF6B7280);
+        textColor = const Color(0xFF4B5563);
+        icon = Icons.info_outline_rounded;
         label = status;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: bgColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [bgColor.withValues(alpha: 0.12), bgColor.withValues(alpha: 0.06)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: bgColor.withValues(alpha: 0.15),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-          ),
+          Icon(icon, size: 16, color: textColor),
           const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: bgColor,
+              fontWeight: FontWeight.w700,
+              color: textColor,
             ),
           ),
         ],
@@ -2201,24 +2636,32 @@ class _PremiumOrderContextCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFA),
+        color: _AppTheme.background,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: _AppTheme.border),
       ),
       child: Column(
         children: [
-          _summaryRow('Subtotal', '₹${subtotal.toStringAsFixed(2)}', false),
-          const SizedBox(height: 8),
+          _summaryRow(
+            'Subtotal',
+            '₹${subtotal.toStringAsFixed(2)}',
+            false,
+          ),
+          const SizedBox(height: 10),
           _summaryRow(
             'Delivery',
             delivery == 0 ? 'FREE' : '₹${delivery.toStringAsFixed(2)}',
             delivery == 0,
           ),
-          const SizedBox(height: 8),
-          _summaryRow('Taxes', '₹${taxes.toStringAsFixed(2)}', false),
+          const SizedBox(height: 10),
+          _summaryRow(
+            'Taxes & Fees',
+            '₹${taxes.toStringAsFixed(2)}',
+            false,
+          ),
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(color: Color(0xFFE5E7EB), height: 1),
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(color: _AppTheme.border, height: 1),
           ),
           _summaryRow(
             'Total',
@@ -2243,22 +2686,259 @@ class _PremiumOrderContextCard extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: isTotal ? 15 : 13,
-            fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
-            color: const Color(0xFF64748B),
+            fontSize: isTotal ? 14 : 13,
+            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w500,
+            color: isTotal ? const Color(0xFF111827) : const Color(0xFF6B7280),
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            fontSize: isTotal ? 20 : 13,
-            fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+            fontSize: isTotal ? 18 : 13,
+            fontWeight: isTotal ? FontWeight.w700 : FontWeight.w600,
             color: isFree
-                ? const Color(0xFF22C55E)
-                : (isTotal ? const Color(0xFF1C1C1C) : const Color(0xFF1C1C1C)),
+                ? _AppTheme.success
+                : (isTotal ? const Color(0xFF111827) : const Color(0xFF111827)),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildActionButtons(dynamic item, OrderModel order, BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _PremiumActionButton(
+          icon: Icons.star_rounded,
+          label: 'Rate',
+          color: const Color(0xFFF59E0B),
+          isOutlined: true,
+          onTap: () {
+            if (item != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RatingPageUI(
+                    foodId: item.productId,
+                    foodName: item.name,
+                  ),
+                ),
+              );
+            }
+          },
+        ),
+        _PremiumActionButton(
+          icon: Icons.receipt_long_outlined,
+          label: 'Invoice',
+          color: const Color(0xFF2563EB),
+          isOutlined: true,
+          onTap: () {},
+        ),
+        _PremiumActionButton(
+          icon: Icons.local_shipping_rounded,
+          label: 'Track',
+          color: const Color(0xFF2563EB),
+          isOutlined: true,
+          onTap: () {
+            final orderViewModel = OrderViewModel(
+              id: order.id,
+              status: order.status.name,
+              totalAmount: order.amount,
+              date: order.timestamp,
+              items:
+                  order.items
+                      ?.map(
+                        (i) => CartItem(
+                          id: i.productId,
+                          name: i.name,
+                          price: i.price,
+                          sellerId: order.sellerId,
+                          image: i.imageUrl,
+                          quantity: i.quantity,
+                        ),
+                      )
+                      .toList() ??
+                  [],
+            );
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TrackOrderPageUI(
+                  orderId: order.id,
+                  order: orderViewModel,
+                  isEmbedded: false,
+                  allowPopOnDesktop: false,
+                ),
+              ),
+            );
+          },
+        ),
+        _PremiumActionButton(
+          icon: Icons.shopping_cart_rounded,
+          label: 'Buy Again',
+          color: _AppTheme.primary,
+          isGradient: true,
+          onTap: () {
+            if (item != null) {
+              context.read<CartBloc>().add(
+                CartItemAdded(
+                  CartItem(
+                    id: item.productId,
+                    name: item.name,
+                    price: item.price,
+                    sellerId: widget.conversation.sellerId,
+                    image: item.imageUrl,
+                  ),
+                ),
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Added to cart')),
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CartPageUI()),
+              );
+            }
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _ProductImageWidget extends StatefulWidget {
+  final String? imageUrl;
+  final String? itemName;
+
+  const _ProductImageWidget({this.imageUrl, this.itemName});
+
+  @override
+  State<_ProductImageWidget> createState() => _ProductImageWidgetState();
+}
+
+class _ProductImageWidgetState extends State<_ProductImageWidget> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: _AppTheme.normalDuration,
+        curve: Curves.easeOut,
+        transform: _isHovered
+            ? Matrix4.diagonal3Values(1.05, 1.05, 1)
+            : Matrix4.identity(),
+        width: 110,
+        height: 110,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _AppTheme.border, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(19),
+          child: widget.imageUrl != null
+              ? CachedNetworkImage(
+                  imageUrl: widget.imageUrl!,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                    color: _AppTheme.surfaceHover,
+                    child: const Center(
+                      child: Icon(
+                        Icons.fastfood_rounded,
+                        size: 36,
+                        color: Color(0xFFCBD5E1),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: _AppTheme.surfaceHover,
+                    child: const Center(
+                      child: Icon(
+                        Icons.fastfood_rounded,
+                        size: 36,
+                        color: Color(0xFFCBD5E1),
+                      ),
+                    ),
+                  ),
+                )
+              : Container(
+                  color: _AppTheme.surfaceHover,
+                  child: const Center(
+                    child: Icon(
+                      Icons.fastfood_rounded,
+                      size: 36,
+                      color: Color(0xFFCBD5E1),
+                    ),
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RatingChip extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star_rounded, size: 14, color: Color(0xFFF59E0B)),
+          const SizedBox(width: 3),
+          const Text(
+            '4.8',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFD97706),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuantityChip extends StatelessWidget {
+  final int qty;
+  const _QuantityChip({required this.qty});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: _AppTheme.surfaceHover,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        'Qty $qty',
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF6B7280),
+        ),
+      ),
     );
   }
 }
@@ -2267,84 +2947,132 @@ class _VegBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 16,
-      height: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFF22C55E),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Center(
-        child: Container(
-          width: 6,
-          height: 6,
-          decoration: const BoxDecoration(
-            color: Color(0xFF22C55E),
-            shape: BoxShape.circle,
-          ),
+        color: _AppTheme.success.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: _AppTheme.success.withValues(alpha: 0.25),
         ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: _AppTheme.success,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Text(
+            'Veg',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF16A34A),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _InfoGridItem extends StatelessWidget {
+class _PremiumInfoCard extends StatefulWidget {
   final IconData icon;
   final String label;
   final String value;
 
-  const _InfoGridItem({
+  const _PremiumInfoCard({
     required this.icon,
     required this.label,
     required this.value,
   });
 
   @override
+  State<_PremiumInfoCard> createState() => _PremiumInfoCardState();
+}
+
+class _PremiumInfoCardState extends State<_PremiumInfoCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE52121).withValues(alpha: 0.08),
-            shape: BoxShape.circle,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: _AppTheme.fastDuration,
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: _AppTheme.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isHovered
+                ? _AppTheme.primary.withValues(alpha: 0.2)
+                : _AppTheme.border,
           ),
-          child: Icon(icon, size: 20, color: const Color(0xFFE52121)),
+          boxShadow: _isHovered
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF94A3B8),
-                ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: _AppTheme.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1E293B),
-                ),
-                overflow: TextOverflow.ellipsis,
+              child: Icon(widget.icon, size: 18, color: _AppTheme.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    widget.label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.value,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
-class _ActionButton extends StatelessWidget {
+class _PremiumActionButton extends StatefulWidget {
   final IconData icon;
   final String label;
   final Color color;
@@ -2352,7 +3080,7 @@ class _ActionButton extends StatelessWidget {
   final bool isGradient;
   final VoidCallback? onTap;
 
-  const _ActionButton({
+  const _PremiumActionButton({
     required this.icon,
     required this.label,
     required this.color,
@@ -2362,53 +3090,90 @@ class _ActionButton extends StatelessWidget {
   });
 
   @override
+  State<_PremiumActionButton> createState() => _PremiumActionButtonState();
+}
+
+class _PremiumActionButtonState extends State<_PremiumActionButton> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color: isGradient
-              ? null
-              : (isOutlined
-                    ? Colors.transparent
-                    : color.withValues(alpha: 0.1)),
-          gradient: isGradient
-              ? const LinearGradient(
-                  colors: [Color(0xFFE52121), Color(0xFFDC2626)],
-                )
-              : null,
-          borderRadius: BorderRadius.circular(20),
-          border: isOutlined
-              ? Border.all(color: const Color(0xFFE5E7EB))
-              : null,
-          boxShadow: isGradient
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFFE52121).withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: _AppTheme.fastDuration,
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(20),
+            child: AnimatedContainer(
+              duration: _AppTheme.fastDuration,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: widget.isGradient
+                    ? null
+                    : (widget.isOutlined
+                          ? (_isHovered
+                                ? widget.color.withValues(alpha: 0.06)
+                                : Colors.transparent)
+                          : widget.color.withValues(alpha: 0.1)),
+                gradient: widget.isGradient
+                    ? const LinearGradient(
+                        colors: [_AppTheme.primary, Color(0xFFDC2626)],
+                      )
+                    : null,
+                borderRadius: BorderRadius.circular(20),
+                border: widget.isOutlined
+                    ? Border.all(
+                        color: _isHovered
+                            ? widget.color.withValues(alpha: 0.4)
+                            : _AppTheme.border,
+                      )
+                    : null,
+                boxShadow: widget.isGradient
+                    ? [
+                        BoxShadow(
+                          color: _AppTheme.primary.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    widget.icon,
+                    size: 16,
+                    color: widget.isGradient
+                        ? Colors.white
+                        : widget.color,
                   ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: isGradient ? Colors.white : color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isGradient
-                    ? Colors.white
-                    : (isOutlined ? const Color(0xFF475569) : color),
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: widget.isGradient
+                          ? Colors.white
+                          : (widget.isOutlined
+                                ? const Color(0xFF475569)
+                                : widget.color),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -2483,9 +3248,9 @@ class _OrderTimelineWithAnimationState
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFA),
+        color: _AppTheme.background,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
+        border: Border.all(color: _AppTheme.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2775,6 +3540,84 @@ class _TimelineNode extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+class _OnlineDot extends StatefulWidget {
+  final double size;
+  final double borderWidth;
+  final bool pulse;
+
+  const _OnlineDot({
+    this.size = 12,
+    this.borderWidth = 2,
+    this.pulse = false,
+  });
+
+  @override
+  State<_OnlineDot> createState() => _OnlineDotState();
+}
+
+class _OnlineDotState extends State<_OnlineDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.pulse) {
+      _controller = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 1500),
+      )..repeat(reverse: true);
+      _animation = Tween<double>(begin: 0.6, end: 1.0).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      );
+    } else {
+      _controller = AnimationController(
+        vsync: this,
+        value: 1,
+      );
+      _animation = Tween<double>(begin: 1, end: 1).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.linear),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: widget.size,
+          height: widget.size,
+          decoration: BoxDecoration(
+            color: _AppTheme.success,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white,
+              width: widget.borderWidth,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _AppTheme.success.withValues(
+                  alpha: _animation.value * 0.5,
+                ),
+                blurRadius: 4,
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 

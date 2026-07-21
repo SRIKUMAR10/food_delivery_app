@@ -7,6 +7,7 @@ import 'chat_support_page_state.dart';
 import '../../../core/repositories/i_chat_repository.dart';
 import '../../../core/models/conversation_model.dart';
 import '../../../core/models/chat_message_model.dart';
+import '../../buyer_bloc_architecture/Chat_Page/video_call_page.dart';
 
 class ChatSupportPage extends StatelessWidget {
   final String sellerId;
@@ -716,7 +717,18 @@ class _SellerChatHeader extends StatelessWidget {
                 icon: Icons.phone_outlined, onPressed: () {}),
             const SizedBox(width: 4),
             _SellerCircularIconButton(
-                icon: Icons.videocam_outlined, onPressed: () {}),
+                icon: Icons.videocam_outlined, onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VideoCallPage(
+                    callID: conversation.id,
+                    userID: 'seller_${conversation.id}',
+                    userName: conversation.buyerName,
+                  ),
+                ),
+              );
+            }),
             if (isDesktop) ...[
               const SizedBox(width: 4),
               _SellerCircularIconButton(

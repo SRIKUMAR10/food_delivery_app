@@ -1,8 +1,6 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
-
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
 class AudioPlayerWidget extends StatefulWidget {
   final String audioUrl;
@@ -118,61 +116,127 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
     }
     if (currentPosition < 0) currentPosition = 0;
 
+    final progress = maxDuration > 0 ? currentPosition / maxDuration : 0.0;
+
     return Container(
-      width: 200,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      width: 220,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.black12,
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.black.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: Icon(
-              _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
-              color: Colors.white,
-            ),
-            onPressed: () async {
+          GestureDetector(
+            onTap: () async {
               if (_isPlaying) {
                 await _audioPlayer.pause();
               } else {
                 try {
-                  print('4. [Playback] Attempting to resume audio: ${widget.audioUrl}');
                   await _audioPlayer.resume();
-                  print('4. [Playback] Resume succeeded.');
                 } catch (e) {
-                  print('🚨 4. [Playback] Resume failed: $e');
                   try {
-                    print('4. [Playback] Attempting to play URL: ${widget.audioUrl}');
                     await _audioPlayer.play(UrlSource(widget.audioUrl));
-                    print('4. [Playback] Play() succeeded.');
                   } catch (webError) {
-                    print('🚨 4. [Playback] Fallback play failed: $webError');
+                    // silently fail
                   }
                 }
               }
             },
-          ),
-          Expanded(
-            child: Slider(
-              min: 0,
-              max: maxDuration,
-              value: currentPosition,
-              activeColor: Colors.white,
-              inactiveColor: Colors.white54,
-              onChanged: (value) async {
-                final position = Duration(seconds: value.toInt());
-                await _audioPlayer.seek(position);
-              },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: _isPlaying
+                    ? const Color(0xFFEF4444)
+                    : const Color(0xFFEF4444).withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _isPlaying
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
+                color: _isPlaying ? Colors.white : const Color(0xFFEF4444),
+                size: 18,
+              ),
             ),
           ),
-          Text(
-            _formatDuration(_position),
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 24,
+                  child: CustomPaint(
+                    size: const Size(double.infinity, 24),
+                    painter: _WaveformPainter(
+                      progress: progress,
+                      isPlaying: _isPlaying,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    _formatDuration(_position),
+                    style: TextStyle(
+                      color: const Color(0xFF64748B).withValues(alpha: 0.8),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+class _WaveformPainter extends CustomPainter {
+  final double progress;
+  final bool isPlaying;
+
+  _WaveformPainter({required this.progress, required this.isPlaying});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final barCount = 30;
+    final barWidth = size.width / barCount;
+    final paint = Paint()
+      ..strokeWidth = barWidth * 0.6
+      ..strokeCap = StrokeCap.round;
+
+    for (int i = 0; i < barCount; i++) {
+      final barProgress = (i + 1) / barCount;
+      final height = 4 + (i.isEven ? 12 : 8) +
+          (sin(i * 0.5 + DateTime.now().millisecondsSinceEpoch / 500) * 4);
+      final clampedHeight = height.clamp(4.0, size.height - 2);
+
+      final x = i * barWidth + barWidth * 0.2;
+      final y = (size.height - clampedHeight) / 2;
+
+      final isActive = barProgress <= progress;
+      paint.color = isActive
+          ? const Color(0xFFEF4444)
+          : const Color(0xFFD1D5DB);
+      paint.strokeWidth = barWidth * 0.5;
+
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(x, y + clampedHeight),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WaveformPainter oldDelegate) => true;
 }

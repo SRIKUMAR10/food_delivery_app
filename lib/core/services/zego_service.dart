@@ -1,14 +1,24 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
+import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart'
+    if (dart.library.html) 'zego_service_stub.dart';
 
 class ZegoService {
   static Future<void> init(String userId, String userName) async {
+    if (kIsWeb) {
+      return;
+    }
+
     final appIdStr = dotenv.env['ZEGO_APP_ID'];
     final appSign = dotenv.env['ZEGO_APP_SIGN'];
 
-    if (appIdStr == null || appSign == null || appIdStr.isEmpty || appSign.isEmpty) {
-      debugPrint('ZegoCloud AppID or AppSign not found in .env');
+    if (appIdStr == null || appIdStr.isEmpty) {
+      debugPrint('ZegoCloud AppID not found in .env');
+      return;
+    }
+
+    if (appSign == null || appSign.isEmpty) {
+      debugPrint('ZegoCloud AppSign not found in .env');
       return;
     }
 
@@ -23,11 +33,12 @@ class ZegoService {
       appSign: appSign,
       userID: userId,
       userName: userName,
-      plugins: [], // Add ZegoUIKitSignalingPlugin() here if you add the zego_uikit_signaling_plugin package
+      plugins: [],
     );
   }
 
   static void deinit() {
+    if (kIsWeb) return;
     ZegoUIKitPrebuiltCallInvitationService().uninit();
   }
 }
