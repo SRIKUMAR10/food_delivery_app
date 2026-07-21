@@ -80,6 +80,7 @@ dependencies:
   zego_uikit_prebuilt_call: ^4.16.5
   emoji_picker_flutter: any
   record: ^5.0.5
+  speech_to_text: ^7.0.0
   permission_handler: any
   path_provider: ^2.1.3
 

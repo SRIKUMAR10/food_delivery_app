@@ -258,14 +258,43 @@ class FirebaseChatRepository implements IChatRepository {
         .child(conversationId)
         .child('${_uuid.v4()}_$fileName');
 
-    if (file is File) {
-      await storageRef.putFile(file);
-    } else {
-      // Assuming file is Uint8List for web
-      await storageRef.putData(file);
+    String contentType = 'application/octet-stream';
+    if (fileName.toLowerCase().endsWith('.m4a')) {
+      contentType = 'audio/mp4';
+    } else if (fileName.toLowerCase().endsWith('.png')) {
+      contentType = 'image/png';
+    } else if (fileName.toLowerCase().endsWith('.jpg') || fileName.toLowerCase().endsWith('.jpeg')) {
+      contentType = 'image/jpeg';
+    } else if (fileName.toLowerCase().endsWith('.webm')) {
+      contentType = 'audio/webm';
+    } else if (fileName.toLowerCase().endsWith('.wav')) {
+      contentType = 'audio/wav';
+    } else if (fileName.toLowerCase().endsWith('.pdf')) {
+      contentType = 'application/pdf';
     }
 
-    return await storageRef.getDownloadURL();
+    final metadata = SettableMetadata(contentType: contentType);
+
+    if (file is File) {
+      final uploadTask = storageRef.putFile(file, metadata);
+      final snapshot = await uploadTask;
+      print('2. [Firebase Upload] Snapshot Total Bytes: ${snapshot.totalBytes}');
+      print('2. [Firebase Upload] Snapshot Bytes Transferred: ${snapshot.bytesTransferred}');
+      final finalMetadata = await snapshot.ref.getMetadata();
+      print('2. [Firebase Upload] Uploaded Content-Type: ${finalMetadata.contentType}');
+    } else {
+      // Assuming file is Uint8List for web
+      final uploadTask = storageRef.putData(file, metadata);
+      final snapshot = await uploadTask;
+      print('2. [Firebase Upload] Snapshot Total Bytes: ${snapshot.totalBytes}');
+      print('2. [Firebase Upload] Snapshot Bytes Transferred: ${snapshot.bytesTransferred}');
+      final finalMetadata = await snapshot.ref.getMetadata();
+      print('2. [Firebase Upload] Uploaded Content-Type: ${finalMetadata.contentType}');
+    }
+
+    final downloadUrl = await storageRef.getDownloadURL();
+    print('2. [Firebase Upload] Download URL: $downloadUrl');
+    return downloadUrl;
   }
 
   @override

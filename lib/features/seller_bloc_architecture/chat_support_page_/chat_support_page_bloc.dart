@@ -152,12 +152,18 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
         senderId: current.currentUserId,
         senderRole: 'seller',
       );
-      emit(current.copyWith(isSendingMessage: false));
+      final s = state;
+      if (s is ChatSupportLoaded) {
+        emit(s.copyWith(isSendingMessage: false));
+      }
     } catch (e) {
-      emit(current.copyWith(
-        isSendingMessage: false,
-        errorMessage: 'Failed to send message. Please try again.',
-      ));
+      final s = state;
+      if (s is ChatSupportLoaded) {
+        emit(s.copyWith(
+          isSendingMessage: false,
+          errorMessage: 'Failed to send message. Please try again.',
+        ));
+      }
     }
   }
 

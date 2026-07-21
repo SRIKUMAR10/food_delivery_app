@@ -40,7 +40,8 @@ service firebase.storage {
       // Ideal security would check if the user is part of the conversation via firestore, 
       // but since storage rules can't easily cross-check complex firestore documents without custom claims,
       // we restrict to authenticated users only.
-      allow read, write: if isAuthenticated();
+      allow write: if isAuthenticated();
+      allow read: if true;
     }
   }
 }

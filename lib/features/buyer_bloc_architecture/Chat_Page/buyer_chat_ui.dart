@@ -12,12 +12,24 @@ import '../../../core/models/chat_message_model.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/models/order_status.dart';
 import '../../../core/repositories/i_order_repository.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'audio_widgets.dart';
+import 'video_call_page.dart';
 import '../Rating_page/Rating_page_ui.dart';
 import '../Track_Order_page/Track_Order_page_ui.dart';
 import '../Cart Page/cart_page_Bloc.dart';
 import '../Order Page/order_view_model.dart';
 import '../Cart Page/cart_models.dart';
 import '../Cart Page/cart_page_UI.dart';
+import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 
 class SupportNavigationData {
   final String orderId;
@@ -127,36 +139,86 @@ class BuyerChatView extends StatelessWidget {
       builder: (context, state) {
         if (state is BuyerChatLoading || state is BuyerChatInitial) {
           return Scaffold(
-            backgroundColor: const Color(0xFFF8F9FB),
+            backgroundColor: const Color(0xFFFBF5F5),
             body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(color: const Color(0xFFE52121)),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Loading conversations...',
-                    style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
-                  ),
-                ],
-              ),
+              child: CircularProgressIndicator(color: const Color(0xFFE52121)),
             ),
           );
         } else if (state is BuyerChatError) {
           return Scaffold(
-            backgroundColor: const Color(0xFFF8F9FB),
+            backgroundColor: const Color(0xFFFBF5F5),
             body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.error_outline, size: 48, color: const Color(0xFFE52929)),
-                  const SizedBox(height: 16),
-                  Text(
-                    state.message,
-                    style: const TextStyle(color: Color(0xFFE52929), fontSize: 16),
-                  ),
-                ],
-              ),
+              child: state.message == 'User not logged in'
+                  ? Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE52121).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(
+                              Icons.support_agent_rounded,
+                              size: 40,
+                              color: Color(0xFFE52121),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Support Chat',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1C1C1C),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Please log in to access support',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const FoodGoLoginScreenUI(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.login_rounded),
+                            label: const Text('Log In'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE52121),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline, size: 48, color: const Color(0xFFE52929)),
+                        const SizedBox(height: 16),
+                        Text(
+                          state.message,
+                          style: const TextStyle(color: Color(0xFFE52929), fontSize: 16),
+                        ),
+                      ],
+                    ),
             ),
           );
         } else if (state is BuyerChatLoaded) {
@@ -165,7 +227,7 @@ class BuyerChatView extends StatelessWidget {
 
           if (isDesktop) {
             return Scaffold(
-              backgroundColor: const Color(0xFFF8F9FB),
+              backgroundColor: const Color(0xFFFBF5F5),
               body: Row(
                 children: [
                   SizedBox(
@@ -196,7 +258,7 @@ class BuyerChatView extends StatelessWidget {
 
           if (state.selectedConversationId != null && state.selectedConversation != null) {
             return Scaffold(
-              backgroundColor: const Color(0xFFF8F9FB),
+              backgroundColor: const Color(0xFFFBF5F5),
               body: _ChatPanel(
                 conversation: state.selectedConversation!,
                 messages: state.messages,
@@ -223,7 +285,7 @@ class _EmptyChatPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFF0F2F5),
+      color: const Color(0xFFFBF5F5),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -232,18 +294,15 @@ class _EmptyChatPlaceholder extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFFE52121).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 4)),
-                ],
               ),
-              child: const Icon(Icons.chat_bubble_outline_rounded, size: 36, color: Color(0xFF94A3B8)),
+              child: const Icon(Icons.chat_bubble_outline_rounded, size: 36, color: Color(0xFFE52121)),
             ),
             const SizedBox(height: 24),
             const Text(
               'Select a conversation',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1C1C1C)),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -384,7 +443,7 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFBF5F5),
       appBar: AppBar(
         title: const Text('Support Chat'),
         centerTitle: true,
@@ -444,15 +503,15 @@ class _EmptyConversationsState extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F3F5),
+              color: const Color(0xFFE52121).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.chat_bubble_outline_rounded, size: 28, color: Color(0xFF94A3B8)),
+            child: const Icon(Icons.chat_bubble_outline_rounded, size: 28, color: Color(0xFFE52121)),
           ),
           const SizedBox(height: 16),
           const Text(
             'No conversations yet',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1C1C1C)),
           ),
           const SizedBox(height: 6),
           const Text(
@@ -749,6 +808,25 @@ class _ChatPanelState extends State<_ChatPanel> {
     return items;
   }
 
+  void _handleAttachment() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null && context.mounted) {
+      context.read<BuyerChatBloc>().add(
+        SendBuyerMediaMessage(
+          conversationId: widget.conversation.id,
+          file: kIsWeb ? await pickedFile.readAsBytes() : File(pickedFile.path),
+          messageType: 'image',
+          fileName: pickedFile.name,
+        ),
+      );
+    }
+  }
+
+  void _handleEmojiToggle(bool show) {
+    context.read<BuyerChatBloc>().add(ToggleEmojiPicker(show));
+  }
+
   @override
   void dispose() {
     _textController.dispose();
@@ -771,7 +849,7 @@ class _ChatPanelState extends State<_ChatPanel> {
           ),
           Expanded(
             child: Container(
-              color: const Color(0xFFF0F2F5),
+              color: const Color(0xFFFBF5F5),
               child: ListView(
                 controller: _scrollController,
                 padding: EdgeInsets.all(screenType == _ScreenType.mobile ? 12 : 20),
@@ -784,6 +862,28 @@ class _ChatPanelState extends State<_ChatPanel> {
             isSending: widget.isSending,
             screenType: screenType,
             onSend: _sendMessage,
+            onAttach: _handleAttachment,
+            onEmoji: () {
+              final showEmoji = context.read<BuyerChatBloc>().state is BuyerChatLoaded 
+                  ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded).showEmojiPicker 
+                  : false;
+              _handleEmojiToggle(!showEmoji);
+            },
+          ),
+          BlocBuilder<BuyerChatBloc, BuyerChatState>(
+            builder: (context, state) {
+              if (state is BuyerChatLoaded && state.showEmojiPicker) {
+                return SizedBox(
+                  height: 250,
+                  child: EmojiPicker(
+                    onEmojiSelected: (category, emoji) {
+                      _textController.text = _textController.text + emoji.emoji;
+                    },
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
           ),
         ],
       ),
@@ -929,9 +1029,65 @@ class _PremiumChatHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              _CircularIconButton(icon: Icons.phone_outlined, onPressed: () {}),
+              _CircularIconButton(
+                icon: Icons.phone_outlined, 
+                onPressed: () {
+                  const String dummyPhone = '+1234567890';
+                  if (kIsWeb) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.phone_android_rounded, color: Colors.white, size: 20),
+                            const SizedBox(width: 12),
+                            const Expanded(child: Text('Phone: $dummyPhone', style: TextStyle(fontSize: 15))),
+                            IconButton(
+                              icon: const Icon(Icons.copy_rounded, color: Colors.white, size: 20),
+                              tooltip: 'Copy to clipboard',
+                              onPressed: () async {
+                                await Clipboard.setData(const ClipboardData(text: dummyPhone));
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard!')));
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        duration: const Duration(seconds: 5),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  } else {
+                    final Uri url = Uri(scheme: 'tel', path: dummyPhone);
+                    canLaunchUrl(url).then((canLaunch) {
+                      if (canLaunch) {
+                        launchUrl(url);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch phone dialer')));
+                      }
+                    });
+                  }
+                }
+              ),
               const SizedBox(width: 4),
-              _CircularIconButton(icon: Icons.videocam_outlined, onPressed: () {}),
+              _CircularIconButton(
+                icon: Icons.videocam_outlined, 
+                onPressed: () {
+                  final bloc = context.read<BuyerChatBloc>();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => VideoCallPage(
+                        callID: conversation.id,
+                        userID: bloc.authService.currentUserId ?? 'buyer_123',
+                        userName: conversation.buyerName,
+                      ),
+                    ),
+                  );
+                }
+              ),
               if (screenType != _ScreenType.mobile) ...[
                 const SizedBox(width: 4),
                 _CircularIconButton(icon: Icons.more_vert_rounded, onPressed: () {}),
@@ -1011,12 +1167,16 @@ class _PremiumComposer extends StatefulWidget {
   final bool isSending;
   final _ScreenType screenType;
   final VoidCallback onSend;
+  final VoidCallback onAttach;
+  final VoidCallback onEmoji;
 
   const _PremiumComposer({
     required this.controller,
     required this.isSending,
     required this.screenType,
     required this.onSend,
+    required this.onAttach,
+    required this.onEmoji,
   });
 
   @override
@@ -1024,6 +1184,9 @@ class _PremiumComposer extends StatefulWidget {
 }
 
 class _PremiumComposerState extends State<_PremiumComposer> {
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  bool _isRecording = false;
+
   @override
   void initState() {
     super.initState();
@@ -1037,37 +1200,111 @@ class _PremiumComposerState extends State<_PremiumComposer> {
   @override
   void dispose() {
     widget.controller.removeListener(_onTextChanged);
+    _audioRecorder.dispose();
     super.dispose();
+  }
+
+  void _handleCamera() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    if (pickedFile != null && mounted) {
+      context.read<BuyerChatBloc>().add(
+        SendBuyerMediaMessage(
+          conversationId: context.read<BuyerChatBloc>().state is BuyerChatLoaded ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded).selectedConversationId! : '',
+          file: kIsWeb ? await pickedFile.readAsBytes() : File(pickedFile.path),
+          messageType: 'image',
+          fileName: pickedFile.name,
+        ),
+      );
+    }
+  }
+
+  void _toggleRecording() async {
+    if (_isRecording) {
+      final path = await _audioRecorder.stop();
+      setState(() => _isRecording = false);
+      if (path != null && mounted) {
+        dynamic fileData;
+        if (kIsWeb) {
+          try {
+            print('--- AUDIO RECORDING AUDIT ---');
+            print('1. Recorded File Path: $path');
+            
+            // Using XFile is the safest way to read blob URLs in Flutter Web
+            // to avoid 0-byte/corrupted file uploads.
+            final xFile = XFile(path);
+            fileData = await xFile.readAsBytes();
+            
+            print('1. FileData bytes length: ${fileData.length}');
+            if (fileData.isEmpty) {
+              print('🚨 ERROR: Recorded audio is 0 bytes!');
+            }
+          } catch (e) {
+            print('🚨 ERROR fetching web audio blob using XFile: $e');
+            return;
+          }
+        } else {
+          fileData = File(path);
+        }
+        context.read<BuyerChatBloc>().add(
+          SendBuyerMediaMessage(
+            conversationId: context.read<BuyerChatBloc>().state is BuyerChatLoaded ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded).selectedConversationId! : '',
+            file: fileData,
+            messageType: 'audio',
+            fileName: kIsWeb ? 'audio_message.webm' : 'audio_message.m4a',
+          ),
+        );
+      }
+    } else {
+      if (await _audioRecorder.hasPermission()) {
+        if (kIsWeb) {
+          await _audioRecorder.start(const RecordConfig(encoder: AudioEncoder.opus), path: '');
+        } else {
+          final dir = await getApplicationDocumentsDirectory();
+          final path = '${dir.path}/audio_message_${DateTime.now().millisecondsSinceEpoch}.m4a';
+          await _audioRecorder.start(const RecordConfig(), path: path);
+        }
+        setState(() => _isRecording = true);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone permission denied. Please allow microphone access in your browser/device.')),
+          );
+        }
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = widget.screenType == _ScreenType.mobile;
     final hasText = widget.controller.text.trim().isNotEmpty;
 
     return Container(
-      color: const Color(0xFFF0F2F5),
-      padding: EdgeInsets.fromLTRB(16, 8, 16, isMobile ? 20 : 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: SafeArea(
         top: false,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              const SizedBox(width: 4),
-              _ComposerIconButton(icon: Icons.emoji_emotions_outlined, onPressed: () {}),
+              _ComposerIconButton(icon: Icons.emoji_emotions_outlined, onPressed: widget.onEmoji),
+              const SizedBox(width: 8),
               Expanded(
-                child: TextField(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: TextField(
                     controller: widget.controller,
                     decoration: const InputDecoration(
                       hintText: 'Type a message',
@@ -1075,28 +1312,34 @@ class _PremiumComposerState extends State<_PremiumComposer> {
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 14),
+                      contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                     ),
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => widget.onSend(),
                   ),
+                ),
               ),
-              _ComposerIconButton(icon: Icons.attach_file_outlined, onPressed: () {}),
-              if (!isMobile)
-                _ComposerIconButton(icon: Icons.camera_alt_outlined, onPressed: () {}),
+              const SizedBox(width: 8),
+              _ComposerIconButton(icon: Icons.attach_file_outlined, onPressed: widget.onAttach),
+              _ComposerIconButton(
+                icon: Icons.camera_alt_outlined, 
+                onPressed: _handleCamera
+              ),
+              const SizedBox(width: 4),
               Container(
-                margin: const EdgeInsets.only(right: 6),
                 decoration: BoxDecoration(
-                  color: hasText ? const Color(0xFF00A884) : Colors.transparent,
+                  color: hasText ? const Color(0xFF00A884) : (_isRecording ? Colors.red : Colors.transparent),
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
                   icon: Icon(
-                    hasText ? Icons.send_rounded : Icons.mic_outlined,
-                    color: hasText ? Colors.white : const Color(0xFF8696A0),
+                    hasText ? Icons.send_rounded : (_isRecording ? Icons.stop_circle_outlined : Icons.mic_outlined),
+                    color: (hasText || _isRecording) ? Colors.white : const Color(0xFF8696A0),
                     size: 22,
                   ),
-                  onPressed: widget.isSending ? null : (hasText ? widget.onSend : () {}),
+                  onPressed: widget.isSending 
+                      ? null 
+                      : (hasText ? widget.onSend : _toggleRecording),
                   splashRadius: 20,
                 ),
               ),
@@ -1237,14 +1480,36 @@ class _BuyerChatBubble extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  message.text,
-                  style: TextStyle(
-                    color: isMe ? Colors.white : const Color(0xFF111B21),
-                    fontSize: 14.5,
-                    height: 1.35,
+                if (message.messageType == 'image' && message.mediaUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        message.mediaUrl!,
+                        width: 250,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                      ),
+                    ),
+                  )
+                else if (message.messageType == 'audio' && message.mediaUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: AudioPlayerWidget(
+                      key: ValueKey(message.mediaUrl),
+                      audioUrl: message.mediaUrl!,
+                    ),
+                  )
+                else if (message.text.isNotEmpty)
+                  Text(
+                    message.text,
+                    style: TextStyle(
+                      color: isMe ? Colors.white : const Color(0xFF111B21),
+                      fontSize: 14.5,
+                      height: 1.35,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 4),
                 Row(
                   mainAxisSize: MainAxisSize.min,

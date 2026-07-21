@@ -261,12 +261,18 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
         senderId: userId,
         senderRole: 'buyer',
       );
-      emit(current.copyWith(isSendingMessage: false));
+      final s = state;
+      if (s is BuyerChatLoaded) {
+        emit(s.copyWith(isSendingMessage: false));
+      }
     } catch (e) {
-      emit(current.copyWith(
-        isSendingMessage: false,
-        errorMessage: 'Failed to send message. Please try again.',
-      ));
+      final s = state;
+      if (s is BuyerChatLoaded) {
+        emit(s.copyWith(
+          isSendingMessage: false,
+          errorMessage: 'Failed to send message. Please try again.',
+        ));
+      }
     }
   }
 
@@ -296,12 +302,18 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
         fileName: event.fileName,
         duration: event.duration,
       );
-      emit(current.copyWith(isSendingMessage: false));
+      final s = state;
+      if (s is BuyerChatLoaded) {
+        emit(s.copyWith(isSendingMessage: false));
+      }
     } catch (e) {
-      emit(current.copyWith(
-        isSendingMessage: false,
-        errorMessage: 'Failed to send media. Please try again.',
-      ));
+      final s = state;
+      if (s is BuyerChatLoaded) {
+        emit(s.copyWith(
+          isSendingMessage: false,
+          errorMessage: 'Failed to send media. Please try again.',
+        ));
+      }
     }
   }
 
@@ -355,9 +367,12 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
       );
       add(SelectBuyerConversation(conversationId));
     } catch (e) {
-      emit(current.copyWith(
-        errorMessage: 'Failed to start conversation. Please try again.',
-      ));
+      final s = state;
+      if (s is BuyerChatLoaded) {
+        emit(s.copyWith(
+          errorMessage: 'Failed to start conversation. Please try again.',
+        ));
+      }
     }
   }
 
