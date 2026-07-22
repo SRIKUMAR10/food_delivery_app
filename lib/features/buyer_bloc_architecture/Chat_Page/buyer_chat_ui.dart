@@ -1892,14 +1892,21 @@ class _AnimatedMessageState extends State<_AnimatedMessage>
   }
 }
 
-class _BuyerChatBubble extends StatelessWidget {
+class _BuyerChatBubble extends StatefulWidget {
   final ChatMessageModel message;
   final bool isMe;
 
   const _BuyerChatBubble({required this.message, required this.isMe});
 
+  @override
+  State<_BuyerChatBubble> createState() => _BuyerChatBubbleState();
+}
+
+class _BuyerChatBubbleState extends State<_BuyerChatBubble> {
+  bool _isHovered = false;
+
   void _showMessageOptions(BuildContext context, Offset position) {
-    if (message.isDeletedForEveryone) return;
+    if (widget.message.isDeletedForEveryone) return;
     
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     showMenu<String>(
@@ -1921,7 +1928,7 @@ class _BuyerChatBubble extends StatelessWidget {
             ],
           ),
         ),
-        if (isMe)
+        if (widget.isMe)
           PopupMenuItem(
             value: 'delete_everyone',
             child: Row(
@@ -1937,11 +1944,11 @@ class _BuyerChatBubble extends StatelessWidget {
       if (!context.mounted) return;
       if (value == 'delete_me') {
         context.read<BuyerChatBloc>().add(
-          DeleteBuyerMessage(message, forEveryone: false),
+          DeleteBuyerMessage(widget.message, forEveryone: false),
         );
       } else if (value == 'delete_everyone') {
         context.read<BuyerChatBloc>().add(
-          DeleteBuyerMessage(message, forEveryone: true),
+          DeleteBuyerMessage(widget.message, forEveryone: true),
         );
       }
     });
@@ -1959,53 +1966,57 @@ class _BuyerChatBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Align(
-        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          decoration: BoxDecoration(
-            gradient: isMe
-                ? const LinearGradient(
-                    colors: [Color(0xFFFF4B4B), Color(0xFFFF6B6B)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: isMe ? null : _AppTheme.bubbleOther,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(22),
-              topRight: const Radius.circular(22),
-              bottomLeft: Radius.circular(isMe ? 22 : 4),
-              bottomRight: Radius.circular(isMe ? 4 : 22),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isMe
-                    ? const Color(0xFFFF4B4B).withValues(alpha: 0.25)
-                    : Colors.black.withValues(alpha: 0.08),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+        alignment: widget.isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: Container(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            decoration: BoxDecoration(
+              gradient: widget.isMe
+                  ? const LinearGradient(
+                      colors: [Color(0xFFFF4B4B), Color(0xFFFF6B6B)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: widget.isMe ? null : _AppTheme.bubbleOther,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(22),
+                topRight: const Radius.circular(22),
+                bottomLeft: Radius.circular(widget.isMe ? 22 : 4),
+                bottomRight: Radius.circular(widget.isMe ? 4 : 22),
               ),
-            ],
-          ),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.isMe
+                      ? const Color(0xFFFF4B4B).withValues(alpha: 0.25)
+                      : Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
           child: GestureDetector(
             onLongPressStart: (details) => _showMessageOptions(context, details.globalPosition),
             onSecondaryTapDown: (details) => _showMessageOptions(context, details.globalPosition),
             child: Stack(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: message.isDeletedForEveryone 
+                  padding: EdgeInsets.all(
+                      widget.message.messageType == 'image' && !widget.message.isDeletedForEveryone ? 4.0 : 16.0),
+                  child: widget.message.isDeletedForEveryone 
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.block, size: 16, color: isMe ? Colors.white70 : Colors.grey),
+                                Icon(Icons.block, size: 16, color: widget.isMe ? Colors.white70 : Colors.grey),
                                 const SizedBox(width: 8),
                                 Text(
                                   'This message was deleted', 
-                                  style: TextStyle(color: isMe ? Colors.white : Colors.grey, fontStyle: FontStyle.italic, fontSize: 15),
+                                  style: TextStyle(color: widget.isMe ? Colors.white : Colors.grey, fontStyle: FontStyle.italic, fontSize: 15),
                                 ),
                               ],
                             ),
@@ -2014,65 +2025,64 @@ class _BuyerChatBubble extends StatelessWidget {
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (message.messageType == 'image' && message.mediaUrl != null)
+                            if (widget.message.messageType == 'image' && widget.message.mediaUrl != null)
                               _PremiumImageMessage(
-                                imageUrl: message.mediaUrl!,
-                                timestamp: message.timestamp,
-                                isRead: message.isRead,
-                                isMe: isMe,
+                                imageUrl: widget.message.mediaUrl!,
+                                timestamp: widget.message.timestamp,
+                                isRead: widget.message.isRead,
+                                isMe: widget.isMe,
                                 maxWidth: maxWidth,
                               )
-                            else if (message.messageType == 'audio' &&
-                                message.mediaUrl != null)
+                            else if (widget.message.messageType == 'audio' &&
+                                widget.message.mediaUrl != null)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 6.0),
                                 child: AudioPlayerWidget(
-                                  key: ValueKey(message.mediaUrl),
-                                  audioUrl: message.mediaUrl!,
-                                  isMe: isMe,
+                                  key: ValueKey(widget.message.mediaUrl),
+                                  audioUrl: widget.message.mediaUrl!,
+                                  isMe: widget.isMe,
                                 ),
                               )
-                            else if (message.text.isNotEmpty)
+                            else if (widget.message.text.isNotEmpty)
                               Text(
-                                message.text,
+                                widget.message.text,
                                 style: TextStyle(
-                                  color: isMe ? Colors.white : const Color(0xFF111B21),
+                                  color: widget.isMe ? Colors.white : const Color(0xFF111B21),
                                   fontSize: 15,
                                   height: 1.4,
                                 ),
                               ),
-                            if (message.messageType != 'image')
+                            if (widget.message.messageType != 'image')
                               Padding(
                                 padding: const EdgeInsets.only(top: 6),
                                 child: _MessageFooter(
-                                  timestamp: message.timestamp,
-                                  isRead: message.isRead,
-                                  isMe: isMe,
-                                  isDarkBg: isMe,
+                                  timestamp: widget.message.timestamp,
+                                  isRead: widget.message.isRead,
+                                  isMe: widget.isMe,
+                                  isDarkBg: widget.isMe,
                                 ),
                               ),
                           ],
                         ),
                 ),
-                if (!message.isDeletedForEveryone)
+                if (!widget.message.isDeletedForEveryone && _isHovered)
                   Positioned(
-                    top: 4,
-                    right: 4,
+                    bottom: widget.message.messageType == 'image' ? 38 : 4,
+                    right: widget.message.messageType == 'image' ? 12 : 4,
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(12),
                         onTapDown: (details) => _showMessageOptions(context, details.globalPosition),
-                        child: Container(
-                          padding: const EdgeInsets.all(2.0),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isMe ? Colors.black.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.6),
-                          ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
                           child: Icon(
                             Icons.keyboard_arrow_down_rounded,
-                            size: 22,
-                            color: isMe ? Colors.white : Colors.black54,
+                            size: 24,
+                            color: widget.message.messageType == 'image' ? Colors.white : (widget.isMe ? Colors.white : Colors.black54),
+                            shadows: const [
+                              Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 1))
+                            ],
                           ),
                         ),
                       ),
@@ -2081,6 +2091,7 @@ class _BuyerChatBubble extends StatelessWidget {
               ],
             ),
           ),
+        ),
         ),
       ),
     );
