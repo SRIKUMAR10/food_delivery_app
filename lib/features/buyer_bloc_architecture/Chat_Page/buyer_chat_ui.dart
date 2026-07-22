@@ -139,6 +139,45 @@ class _AppTheme {
   static const Duration slowDuration = Duration(milliseconds: 350);
 }
 
+class ChatBackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.02)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+      
+    final dotPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.03)
+      ..style = PaintingStyle.fill;
+
+    const double spacing = 60.0;
+    
+    for (double x = 0; x < size.width; x += spacing) {
+      for (double y = 0; y < size.height; y += spacing) {
+        // Draw a mix of tiny dots, crosses, and small circles
+        final mod = ((x + y) / spacing).round() % 3;
+        
+        if (mod == 0) {
+          canvas.drawCircle(Offset(x + spacing/2, y + spacing/2), 1.5, dotPaint);
+        } else if (mod == 1) {
+          // Draw small plus
+          final cx = x + spacing/2;
+          final cy = y + spacing/2;
+          canvas.drawLine(Offset(cx - 3, cy), Offset(cx + 3, cy), paint);
+          canvas.drawLine(Offset(cx, cy - 3), Offset(cx, cy + 3), paint);
+        } else {
+          // Draw a small outline circle
+          canvas.drawCircle(Offset(x + spacing/2, y + spacing/2), 3.0, paint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class SupportNavigationData {
   final String orderId;
   final String sellerId;
@@ -448,40 +487,99 @@ class _EmptyChatPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _AppTheme.background,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: _AppTheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.chat_bubble_outline_rounded,
-                size: 40,
-                color: _AppTheme.primary,
-              ),
+      decoration: const BoxDecoration(
+        color: _AppTheme.background,
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: ChatBackgroundPainter(),
             ),
-            const SizedBox(height: 28),
-            const Text(
-              'Select a conversation',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: _AppTheme.textPrimary,
-              ),
+          ),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: _AppTheme.primary.withValues(alpha: 0.05),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: _AppTheme.primary.withValues(alpha: 0.1),
+                        blurRadius: 40,
+                        spreadRadius: 10,
+                      )
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: _AppTheme.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.forum_outlined,
+                        size: 40,
+                        color: _AppTheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'FoodGo Support',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: _AppTheme.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Select a conversation to start messaging.\nWe are here to help you 24/7.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: _AppTheme.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 48),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _AppTheme.surfaceHover,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _AppTheme.borderLight),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.lock_outline, size: 12, color: _AppTheme.textTertiary),
+                      SizedBox(width: 6),
+                      Text(
+                        'End-to-end encrypted',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _AppTheme.textTertiary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Choose a chat from the left panel',
-              style: TextStyle(fontSize: 14, color: _AppTheme.textTertiary),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1051,11 +1149,23 @@ class _ChatPanel extends StatefulWidget {
 class _ChatPanelState extends State<_ChatPanel> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  bool _showScrollToBottom = false;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_scrollListener);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  void _scrollListener() {
+    if (_scrollController.hasClients) {
+      // Show button if we are scrolled up by more than 200 pixels
+      final isNotAtBottom = _scrollController.position.pixels < _scrollController.position.maxScrollExtent - 200;
+      if (isNotAtBottom != _showScrollToBottom) {
+        setState(() => _showScrollToBottom = isNotAtBottom);
+      }
+    }
   }
 
   @override
@@ -1137,6 +1247,7 @@ class _ChatPanelState extends State<_ChatPanel> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -1160,18 +1271,49 @@ class _ChatPanelState extends State<_ChatPanel> {
               decoration: const BoxDecoration(
                 gradient: _AppTheme.chatBackground,
               ),
-              child: Builder(
-                builder: (context) {
-                  final items = _buildChatItems(screenType);
-                  return ListView.builder(
-                    controller: _scrollController,
-                    padding: EdgeInsets.all(
-                      screenType == _ScreenType.mobile ? 12 : 20,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: ChatBackgroundPainter(),
                     ),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) => items[index],
-                  );
-                },
+                  ),
+                  Builder(
+                    builder: (context) {
+                      final items = _buildChatItems(screenType);
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: EdgeInsets.all(
+                          screenType == _ScreenType.mobile ? 12 : 20,
+                        ),
+                        itemCount: items.length,
+                        itemBuilder: (context, index) => items[index],
+                      );
+                    },
+                  ),
+                  if (_showScrollToBottom)
+                    Positioned(
+                      bottom: 16,
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: _scrollToBottom,
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: _AppTheme.card,
+                            shape: BoxShape.circle,
+                            boxShadow: _AppTheme.cardShadow,
+                          ),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: _AppTheme.textSecondary,
+                            size: 28,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -1387,6 +1529,27 @@ class _PremiumChatHeader extends StatelessWidget {
                                       ),
                                     ),
                                   ),
+                                const SizedBox(width: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _AppTheme.success.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'Online',
+                                    style: TextStyle(
+                                      color: _AppTheme.success,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ],
