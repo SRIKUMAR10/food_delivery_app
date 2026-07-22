@@ -162,207 +162,301 @@ class _RatingPageViewState extends State<RatingPageView>
           }
         },
         builder: (context, state) {
-          return Center(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: FadeTransition(
-                opacity: _fadeAnim,
-                child: SlideTransition(
-                  position: _slideAnim,
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth > 800) {
+                return _buildDesktopLayout(context, state);
+              }
+              return _buildMobileLayout(context, state);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context, RatingPageState state) {
+    return Center(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: SlideTransition(
+            position: _slideAnim,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 600),
+              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: _buildRatingForm(context, state, isDesktop: false),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(BuildContext context, RatingPageState state) {
+    return Center(
+      child: FadeTransition(
+        opacity: _fadeAnim,
+        child: SlideTransition(
+          position: _slideAnim,
+          child: Container(
+            width: 900,
+            height: 600,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 30,
+                  offset: const Offset(0, 15),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Left Side: Illustration
+                Expanded(
+                  flex: 5,
                   child: Container(
-                    constraints: const BoxConstraints(maxWidth: 600),
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(32),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFF7E6),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(32),
+                        bottomLeft: Radius.circular(32),
+                      ),
                     ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Illustration Placeholder
                         Container(
-                          width: 120,
-                          height: 120,
+                          width: 160,
+                          height: 160,
                           decoration: BoxDecoration(
                             color: const Color(
                               0xFFFFB800,
-                            ).withValues(alpha: 0.1),
+                            ).withValues(alpha: 0.15),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
                             Icons.star_rounded,
-                            size: 64,
+                            size: 100,
                             color: Color(0xFFFFB800),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 32),
                         Text(
-                          'How was your food?',
-                          style: Theme.of(context).textTheme.headlineSmall
+                          'Your Feedback\nMeans A Lot!',
+                          style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: const Color(0xFF1C1C1C),
+                                height: 1.2,
                               ),
                           textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Please rate ${widget.foodName}',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 15,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Star Rating Row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(5, (index) {
-                            return GestureDetector(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                // Allows tapping the star directly to jump to an integer value
-                                context.read<RatingPageBloc>().add(
-                                  RatingChanged((index + 1).toDouble()),
-                                );
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                child: _buildFractionalStar(
-                                  state.rating,
-                                  index,
-                                ),
-                              ),
-                            );
-                          }),
                         ),
                         const SizedBox(height: 16),
-                        // Slider for fractional rating
-                        SliderTheme(
-                          data: SliderThemeData(
-                            activeTrackColor: const Color(0xFFFFB800),
-                            inactiveTrackColor: const Color(
-                              0xFFFFB800,
-                            ).withValues(alpha: 0.2),
-                            thumbColor: const Color(0xFFFFB800),
-                            overlayColor: const Color(
-                              0xFFFFB800,
-                            ).withValues(alpha: 0.1),
-                            trackHeight: 6.0,
-                          ),
-                          child: Slider(
-                            value: state.rating,
-                            min: 1.0,
-                            max: 5.0,
-                            divisions: 8, // Supports 0.5 increments
-                            label: state.rating.toStringAsFixed(1),
-                            onChanged: (value) {
-                              HapticFeedback.selectionClick();
-                              context.read<RatingPageBloc>().add(
-                                RatingChanged(value),
-                              );
-                            },
-                          ),
-                        ),
-                        Text(
-                          '${state.rating.toStringAsFixed(1)} / 5.0',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1C1C1C),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Review Input
-                        TextField(
-                          controller: _reviewController,
-                          maxLines: 4,
-                          decoration: InputDecoration(
-                            hintText: 'Leave a comment (optional)...',
-                            hintStyle: TextStyle(color: Colors.grey.shade400),
-                            filled: true,
-                            fillColor: const Color(0xFFF8F8F8),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                          child: Text(
+                            'Help us improve by rating your experience with .',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 16,
                             ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFEF2A39),
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Submit Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: state is RatingLoading
-                                ? null
-                                : () => _submitRating(context, state.rating),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFEF2A39),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 4,
-                              shadowColor: const Color(
-                                0xFFEF2A39,
-                              ).withValues(alpha: 0.4),
-                            ),
-                            child: state is RatingLoading
-                                ? const SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                : const Text(
-                                    'Submit Review',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
+                // Right Side: Form
+                Expanded(
+                  flex: 6,
+                  child: Padding(
+                    padding: const EdgeInsets.all(48.0),
+                    child: Center(
+                      child: SingleChildScrollView(
+                        child: _buildRatingForm(
+                          context,
+                          state,
+                          isDesktop: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRatingForm(
+    BuildContext context,
+    RatingPageState state, {
+    bool isDesktop = false,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!isDesktop) ...[
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFB800).withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.star_rounded,
+              size: 64,
+              color: Color(0xFFFFB800),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+        Text(
+          'How was your food?',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1C1C1C),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Please rate ',
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 32),
+        // Star Rating Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(5, (index) {
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                context.read<RatingPageBloc>().add(
+                  RatingChanged((index + 1).toDouble()),
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _buildFractionalStar(state.rating, index),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 16),
+        // Slider for fractional rating
+        SliderTheme(
+          data: SliderThemeData(
+            activeTrackColor: const Color(0xFFFFB800),
+            inactiveTrackColor: const Color(0xFFFFB800).withValues(alpha: 0.2),
+            thumbColor: const Color(0xFFFFB800),
+            overlayColor: const Color(0xFFFFB800).withValues(alpha: 0.1),
+            trackHeight: 6.0,
+          ),
+          child: Slider(
+            value: state.rating,
+            min: 1.0,
+            max: 5.0,
+            divisions: 8,
+            label: state.rating.toStringAsFixed(1),
+            onChanged: (value) {
+              HapticFeedback.selectionClick();
+              context.read<RatingPageBloc>().add(RatingChanged(value));
+            },
+          ),
+        ),
+        Text(
+          ' / 5.0',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1C1C1C),
+          ),
+        ),
+        const SizedBox(height: 32),
+        // Review Input
+        TextField(
+          controller: _reviewController,
+          maxLines: 4,
+          decoration: InputDecoration(
+            hintText: 'Leave a comment (optional)...',
+            hintStyle: TextStyle(color: Colors.grey.shade400),
+            filled: true,
+            fillColor: const Color(0xFFF8F8F8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(
+                color: Color(0xFFEF2A39),
+                width: 1.5,
               ),
             ),
-          );
-        },
-      ),
+          ),
+        ),
+        const SizedBox(height: 32),
+        // Submit Button
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton(
+            onPressed: state is RatingLoading
+                ? null
+                : () => _submitRating(context, state.rating),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF2A39),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 4,
+              shadowColor: const Color(0xFFEF2A39).withValues(alpha: 0.4),
+            ),
+            child: state is RatingLoading
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text(
+                    'Submit Review',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }

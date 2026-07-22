@@ -25,6 +25,7 @@ import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:camera/camera.dart';
 import 'audio_widgets.dart';
+import 'invoice_generator.dart';
 import 'video_call_page.dart';
 import 'voice_call_page.dart';
 import '../Rating_page/Rating_page_ui.dart';
@@ -2206,6 +2207,13 @@ class _BuyerChatBubbleState extends State<_BuyerChatBubble> {
                                   isMe: widget.isMe,
                                 ),
                               )
+                            else if (widget.message.messageType == 'document' &&
+                                widget.message.mediaUrl != null)
+                              _PremiumDocumentMessage(
+                                fileUrl: widget.message.mediaUrl!,
+                                fileName: 'Invoice.pdf', // Or fetch from message if available
+                                isMe: widget.isMe,
+                              )
                             else if (widget.message.text.isNotEmpty)
                               Text(
                                 widget.message.text,
@@ -3076,7 +3084,49 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
           label: 'Invoice',
           color: const Color(0xFF2563EB),
           isOutlined: true,
-          onTap: () {},
+          onTap: () async {
+            try {
+              final pdfBytes = await InvoiceGenerator.generateInvoice(
+                orderId: order.id,
+                buyerName: 'Buyer', // Name can be fetched from conversation if passed down, or default to Buyer
+                sellerName: 'Seller',
+                shopName: 'FoodGo Shop',
+                totalAmount: order.amount,
+                date: order.timestamp,
+                items: order.items?.map((i) => {
+                  'name': i.name,
+                  'qty': i.quantity ?? 1,
+                  'price': i.price,
+                }).toList() ?? [],
+              );
+              
+              if (context.mounted) {
+                final state = context.read<BuyerChatBloc>().state;
+                if (state is BuyerChatLoaded && state.selectedConversationId != null) {
+                  context.read<BuyerChatBloc>().add(
+                    SendBuyerMediaMessage(
+                      conversationId: state.selectedConversationId!,
+                      file: pdfBytes,
+                      messageType: 'document',
+                      fileName: 'invoice_${order.id.substring(0, 8)}.pdf',
+                    ),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invoice generated and sent to chat!'),
+                      backgroundColor: _AppTheme.success,
+                    )
+                  );
+                }
+              }
+            } catch(e) {
+              if (context.mounted) {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                   SnackBar(content: Text('Failed to generate invoice: $e'), backgroundColor: Colors.red,)
+                 );
+              }
+            }
+          },
         ),
         _PremiumActionButton(
           icon: Icons.local_shipping_rounded,
@@ -3997,6 +4047,96 @@ class _PulsatingDotState extends State<_PulsatingDot>
           ),
         );
       },
+    );
+  }
+}
+
+class _PremiumDocumentMessage extends StatelessWidget {
+  final String fileUrl;
+  final String fileName;
+  final bool isMe;
+
+  const _PremiumDocumentMessage({
+    required this.fileUrl,
+    required this.fileName,
+    required this.isMe,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final uri = Uri.parse(fileUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not open document')),
+            );
+          }
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.black.withValues(alpha: 0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: isMe ? null : Border.all(color: _AppTheme.borderLight),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isMe ? Colors.white.withValues(alpha: 0.2) : _AppTheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.picture_as_pdf_rounded,
+                color: isMe ? Colors.white : _AppTheme.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    fileName,
+                    style: TextStyle(
+                      color: isMe ? Colors.white : _AppTheme.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'PDF Document • Tap to view',
+                    style: TextStyle(
+                      color: isMe ? Colors.white70 : _AppTheme.textTertiary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Icon(
+              Icons.download_rounded,
+              color: isMe ? Colors.white : _AppTheme.textSecondary,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

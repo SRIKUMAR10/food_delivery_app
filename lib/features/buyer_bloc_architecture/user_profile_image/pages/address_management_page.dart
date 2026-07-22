@@ -105,6 +105,81 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 800) {
+          return _buildDesktopLayout(context);
+        }
+        return _buildMobileLayout(context);
+      },
+    );
+  }
+
+  Widget _buildDesktopLayout(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F4F6),
+      body: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 200,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFEF2A39), Color(0xFFFF5E6B)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 24,
+            left: 24,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 550, maxHeight: 650),
+              child: Card(
+                elevation: 12,
+                shadowColor: Colors.black26,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Scaffold(
+                    appBar: AppBar(
+                      backgroundColor: Colors.white,
+                      elevation: 0,
+                      centerTitle: true,
+                      title: const Text(
+                        'My Addresses',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      automaticallyImplyLeading: false,
+                    ),
+                    body: _buildFormBody(context),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -114,169 +189,163 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: BlocConsumer<UserProfileBloc, UserProfileState>(
-        listener: (context, state) {
-          if (state is ProfileError) {
-            _showSnack(context, state.message, isError: true);
-          } else if (state is ProfileSuccessAction) {
-            _showSnack(context, state.message, isError: false);
-            if (state.message.contains('Profile saved')) {
-              Navigator.pop(context);
+      body: _buildFormBody(context),
+    );
+  }
+
+  Widget _buildFormBody(BuildContext context) {
+    return BlocConsumer<UserProfileBloc, UserProfileState>(
+      listener: (context, state) {
+        if (state is ProfileError) {
+          _showSnack(context, state.message, isError: true);
+        } else if (state is ProfileSuccessAction) {
+          _showSnack(context, state.message, isError: false);
+          if (state.message.contains('Profile saved')) {
+            Navigator.pop(context);
+          }
+        }
+      },
+      builder: (context, state) {
+        bool isLoading = state is ProfileLoading;
+        bool isSaving = false;
+        UserProfile? profile;
+
+        if (state is ProfileLoaded) {
+          profile = state.profile;
+          isSaving = state.isSaving;
+          // Initialize local state if not done yet
+          if (!_isInitialized) {
+            _homeAddress = profile.homeAddress;
+            _workAddress = profile.workAddress;
+            _otherAddress = profile.otherAddress;
+            _selectedAddressType = profile.selectedAddressType;
+            if (_selectedAddressType.isEmpty) _selectedAddressType = 'Home';
+
+            // Fallback for older profiles that only had 'address'
+            if (_homeAddress.isEmpty &&
+                _workAddress.isEmpty &&
+                _otherAddress.isEmpty &&
+                profile.address.isNotEmpty) {
+              _homeAddress = profile.address;
             }
+            _isInitialized = true;
           }
-        },
-        builder: (context, state) {
-          bool isLoading = state is ProfileLoading;
-          bool isSaving = false;
-          UserProfile? profile;
+        }
 
-          if (state is ProfileLoaded) {
-            profile = state.profile;
-            isSaving = state.isSaving;
-            // Initialize local state if not done yet
-            if (!_isInitialized) {
-              _homeAddress = profile.homeAddress;
-              _workAddress = profile.workAddress;
-              _otherAddress = profile.otherAddress;
-              _selectedAddressType = profile.selectedAddressType;
-              if (_selectedAddressType.isEmpty) _selectedAddressType = 'Home';
+        if (isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFFEF2A39)),
+          );
+        }
 
-              // Fallback for older profiles that only had 'address'
-              if (_homeAddress.isEmpty &&
-                  _workAddress.isEmpty &&
-                  _otherAddress.isEmpty &&
-                  profile.address.isNotEmpty) {
-                _homeAddress = profile.address;
-              }
-              _isInitialized = true;
-            }
-          }
-
-          if (isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFEF2A39)),
-            );
-          }
-
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final isDesktop = constraints.maxWidth > 800;
-              return Center(
-                child: Container(
-                  width: isDesktop ? 600 : double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ListView(
-                            physics: const BouncingScrollPhysics(),
-                            shrinkWrap: true,
-                            children: [
-                              _buildAddressItem('Home', _homeAddress),
-                              Divider(
-                                height: 1,
-                                indent: 24,
-                                endIndent: 24,
-                                color: Colors.grey.withValues(alpha: 0.1),
-                              ),
-                              _buildAddressItem('Work', _workAddress),
-                              Divider(
-                                height: 1,
-                                indent: 24,
-                                endIndent: 24,
-                                color: Colors.grey.withValues(alpha: 0.1),
-                              ),
-                              _buildAddressItem('Other', _otherAddress),
-                            ],
-                          ),
+        return Center(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 55,
-                        child: ElevatedButton(
-                          onPressed: isSaving
-                              ? null
-                              : () {
-                                  final selectedString =
-                                      _selectedAddressType == 'Home'
-                                      ? _homeAddress
-                                      : _selectedAddressType == 'Work'
-                                      ? _workAddress
-                                      : _otherAddress;
-
-                                  final profileToSave =
-                                      profile?.copyWith(
-                                        homeAddress: _homeAddress,
-                                        workAddress: _workAddress,
-                                        otherAddress: _otherAddress,
-                                        selectedAddressType:
-                                            _selectedAddressType,
-                                        address: selectedString,
-                                      ) ??
-                                      UserProfile.empty().copyWith(
-                                        homeAddress: _homeAddress,
-                                        workAddress: _workAddress,
-                                        otherAddress: _otherAddress,
-                                        selectedAddressType:
-                                            _selectedAddressType,
-                                        address: selectedString,
-                                      );
-                                  context.read<UserProfileBloc>().add(
-                                    ProfileSaved(profileToSave),
-                                  );
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFEF2A39),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: isSaving
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  "Save Address",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                      ],
+                    ),
+                    child: ListView(
+                      physics: const BouncingScrollPhysics(),
+                      shrinkWrap: true,
+                      children: [
+                        _buildAddressItem('Home', _homeAddress),
+                        Divider(
+                          height: 1,
+                          indent: 24,
+                          endIndent: 24,
+                          color: Colors.grey.withValues(alpha: 0.1),
                         ),
-                      ),
-                      const SizedBox(height: 40),
-                    ],
+                        _buildAddressItem('Work', _workAddress),
+                        Divider(
+                          height: 1,
+                          indent: 24,
+                          endIndent: 24,
+                          color: Colors.grey.withValues(alpha: 0.1),
+                        ),
+                        _buildAddressItem('Other', _otherAddress),
+                      ],
+                    ),
                   ),
                 ),
-              );
-            },
-          );
-        },
-      ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: isSaving
+                        ? null
+                        : () {
+                            final selectedString =
+                                _selectedAddressType == 'Home'
+                                ? _homeAddress
+                                : _selectedAddressType == 'Work'
+                                ? _workAddress
+                                : _otherAddress;
+
+                            final profileToSave =
+                                profile?.copyWith(
+                                  homeAddress: _homeAddress,
+                                  workAddress: _workAddress,
+                                  otherAddress: _otherAddress,
+                                  selectedAddressType: _selectedAddressType,
+                                  address: selectedString,
+                                ) ??
+                                UserProfile.empty().copyWith(
+                                  homeAddress: _homeAddress,
+                                  workAddress: _workAddress,
+                                  otherAddress: _otherAddress,
+                                  selectedAddressType: _selectedAddressType,
+                                  address: selectedString,
+                                );
+                            context.read<UserProfileBloc>().add(
+                              ProfileSaved(profileToSave),
+                            );
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE52121),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : const Text(
+                            "Save Changes",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
