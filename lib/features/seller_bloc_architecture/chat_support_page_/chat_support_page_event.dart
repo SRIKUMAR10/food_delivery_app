@@ -1,4 +1,12 @@
+import '../../../core/models/chat_message_model.dart';
+
 abstract class ChatSupportEvent {}
+
+class DeleteSupportMessageEvent extends ChatSupportEvent {
+  final ChatMessageModel message;
+  final bool forEveryone;
+  DeleteSupportMessageEvent(this.message, {required this.forEveryone});
+}
 
 class LoadChatSessionsEvent extends ChatSupportEvent {
   final String sellerId;

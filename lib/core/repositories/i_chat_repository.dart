@@ -18,6 +18,13 @@ abstract interface class IChatRepository {
     int? fileSize,
     int? duration,
   });
+  Future<void> deleteMessage({
+    required String conversationId,
+    required String messageId,
+    required String messageType,
+    required bool forEveryone,
+    required String userId,
+  });
   Future<String> uploadChatAttachment(
     dynamic file, // Can be File or byte array depending on platform
     String conversationId,

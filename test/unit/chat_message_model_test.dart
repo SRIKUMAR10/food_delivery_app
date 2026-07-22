@@ -171,6 +171,10 @@ void main() {
         testTimestamp,
         false,
         'text',
+        null,
+        null,
+        null,
+        null,
       ]);
     });
 

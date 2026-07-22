@@ -42,6 +42,7 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
     on<_MessagesUpdated>(_onMessagesUpdated);
     on<_ConversationsError>(_onConversationsError);
     on<_MessagesError>(_onMessagesError);
+    on<DeleteSupportMessageEvent>(_onDeleteMessage);
   }
 
   void _onLoadChatSessions(
@@ -123,7 +124,12 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
     final s = state;
     if (s is! ChatSupportLoaded) return;
     if (event.conversationId != s.selectedConversationId) return;
-    emit(s.copyWith(messages: event.messages));
+    final userId = s.currentUserId;
+    if (userId.isEmpty) return;
+    final filteredMessages = event.messages
+        .where((m) => !m.deletedBy.contains(userId))
+        .toList();
+    emit(s.copyWith(messages: filteredMessages));
   }
 
   void _onMessagesError(
@@ -152,11 +158,13 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
         senderId: current.currentUserId,
         senderRole: 'seller',
       );
+      if (isClosed) return;
       final s = state;
       if (s is ChatSupportLoaded) {
         emit(s.copyWith(isSendingMessage: false));
       }
     } catch (e) {
+      if (isClosed) return;
       final s = state;
       if (s is ChatSupportLoaded) {
         emit(s.copyWith(
@@ -164,6 +172,29 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
           errorMessage: 'Failed to send message. Please try again.',
         ));
       }
+    }
+  }
+
+  Future<void> _onDeleteMessage(
+      DeleteSupportMessageEvent event, Emitter<ChatSupportState> emit) async {
+    final current = state;
+    if (current is! ChatSupportLoaded) return;
+    final userId = current.currentUserId;
+    if (userId.isEmpty) return;
+
+    try {
+      await repository.deleteMessage(
+        conversationId: event.message.conversationId,
+        messageId: event.message.id,
+        messageType: event.message.messageType,
+        forEveryone: event.forEveryone,
+        userId: userId,
+      );
+    } catch (e) {
+      if (isClosed) return;
+      emit(current.copyWith(
+        errorMessage: 'Failed to delete message. Please try again.',
+      ));
     }
   }
 

@@ -21,6 +21,7 @@ import '../Favorites_Page/favorites_models.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import 'home_Page_Bloc.dart';
 import 'home_page_models.dart';
+import 'home_page_models.dart';
 import '../user_profile_image/user_profile_image.dart';
 
 // ─── HomePage (entry point) ────────────────────────────────────────────────────
@@ -671,6 +672,7 @@ class _FoodCardState extends State<FoodCard> {
         ),
       ),
       child: MouseRegion(
+        hitTestBehavior: HitTestBehavior.opaque,
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),

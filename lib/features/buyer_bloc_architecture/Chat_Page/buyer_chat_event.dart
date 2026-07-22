@@ -1,3 +1,5 @@
+import '../../../core/models/chat_message_model.dart';
+
 abstract class BuyerChatEvent {}
 
 class LoadBuyerConversations extends BuyerChatEvent {}
@@ -11,6 +13,12 @@ class SendBuyerMessage extends BuyerChatEvent {
   final String conversationId;
   final String text;
   SendBuyerMessage(this.conversationId, this.text);
+}
+
+class DeleteBuyerMessage extends BuyerChatEvent {
+  final ChatMessageModel message;
+  final bool forEveryone;
+  DeleteBuyerMessage(this.message, {required this.forEveryone});
 }
 
 class StartBuyerConversation extends BuyerChatEvent {

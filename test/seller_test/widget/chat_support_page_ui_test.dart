@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:bloc_test/bloc_test.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_bloc.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_state.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_ui.dart';
 
-class MockChatSupportBloc extends Mock implements ChatSupportBloc {}
+class MockChatSupportBloc extends MockBloc<ChatSupportEvent, ChatSupportState> implements ChatSupportBloc {}
 
 void main() {
   group('ChatSupportPage UI Tests', () {
@@ -20,7 +22,11 @@ void main() {
 
     testWidgets('renders loading state', (WidgetTester tester) async {
       when(() => mockBloc.state).thenReturn(ChatSupportLoading());
-      
+
+      final gesture = await tester.createGesture();
+      await gesture.moveTo(const Offset(0, 0));
+      await tester.pump();
+
       await tester.pumpWidget(
         MaterialApp(
           home: BlocProvider<ChatSupportBloc>.value(
@@ -29,7 +35,7 @@ void main() {
           ),
         ),
       );
-      
+
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
   });

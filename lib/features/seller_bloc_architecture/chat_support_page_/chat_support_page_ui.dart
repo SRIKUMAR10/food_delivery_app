@@ -306,8 +306,14 @@ class _SellerConversationTileState extends State<_SellerConversationTile> {
     }
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) {
+        if (!mounted) return;
+        setState(() => _isHovered = true);
+      },
+      onExit: (_) {
+        if (!mounted) return;
+        setState(() => _isHovered = false);
+      },
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
@@ -338,9 +344,11 @@ class _SellerConversationTileState extends State<_SellerConversationTile> {
                     ),
                     child: Center(
                       child: Text(
-                        conversation.buyerName
-                            .substring(0, 1)
-                            .toUpperCase(),
+                        conversation.buyerName.isNotEmpty
+                            ? conversation.buyerName
+                                .substring(0, 1)
+                                .toUpperCase()
+                            : '?',
                         style: const TextStyle(
                           color: Color(0xFF64748B),
                           fontWeight: FontWeight.bold,
@@ -494,14 +502,20 @@ class _ChatDetailsViewState extends State<_ChatDetailsView> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scrollToBottom();
+    });
   }
 
   @override
   void didUpdateWidget(covariant _ChatDetailsView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.messages.length > oldWidget.messages.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _scrollToBottom();
+      });
     }
   }
 
@@ -786,8 +800,14 @@ class _SellerCircularIconButtonState extends State<_SellerCircularIconButton> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) {
+        if (!mounted) return;
+        setState(() => _isHovered = true);
+      },
+      onExit: (_) {
+        if (!mounted) return;
+        setState(() => _isHovered = false);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
@@ -832,6 +852,7 @@ class _SellerComposerState extends State<_SellerComposer> {
   }
 
   void _onTextChanged() {
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -869,8 +890,10 @@ class _SellerComposerState extends State<_SellerComposer> {
                   icon: Icons.emoji_emotions_outlined, onPressed: () {}),
               Expanded(
                 child: Focus(
-                  onFocusChange: (focused) =>
-                      setState(() => _isFocused = focused),
+                  onFocusChange: (focused) {
+                    if (!mounted) return;
+                    setState(() => _isFocused = focused);
+                  },
                   child: TextField(
                     controller: widget.controller,
                     decoration: const InputDecoration(
@@ -940,8 +963,14 @@ class _SellerComposerIconButtonState
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) {
+        if (!mounted) return;
+        setState(() => _isHovered = true);
+      },
+      onExit: (_) {
+        if (!mounted) return;
+        setState(() => _isHovered = false);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
@@ -966,6 +995,45 @@ class _SellerChatBubble extends StatelessWidget {
   final bool isMe;
 
   const _SellerChatBubble({required this.message, required this.isMe});
+
+  void _showMessageOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Delete for me', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.read<ChatSupportBloc>().add(
+                    DeleteSupportMessageEvent(message, forEveryone: false),
+                  );
+                },
+              ),
+              if (isMe)
+                ListTile(
+                  leading: const Icon(Icons.delete_forever, color: Colors.red),
+                  title: const Text('Delete for everyone', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.read<ChatSupportBloc>().add(
+                      DeleteSupportMessageEvent(message, forEveryone: true),
+                    );
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -995,13 +1063,32 @@ class _SellerChatBubble extends StatelessWidget {
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  message.text,
+          child: GestureDetector(
+            onLongPress: () => _showMessageOptions(context),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+              child: message.isDeletedForEveryone
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.block, size: 16, color: isMe ? Colors.white70 : Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              'This message was deleted',
+                              style: TextStyle(color: isMe ? Colors.white : Colors.grey, fontStyle: FontStyle.italic, fontSize: 14.5),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          message.text,
                   style: TextStyle(
                     color: isMe
                         ? Colors.white
@@ -1042,7 +1129,7 @@ class _SellerChatBubble extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

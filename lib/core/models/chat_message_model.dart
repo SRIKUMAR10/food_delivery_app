@@ -14,6 +14,8 @@ class ChatMessageModel extends Equatable {
   final String? fileName;
   final int? fileSize;
   final int? duration; // for audio
+  final List<String> deletedBy;
+  final bool isDeletedForEveryone;
 
   const ChatMessageModel({
     required this.id,
@@ -28,6 +30,8 @@ class ChatMessageModel extends Equatable {
     this.fileName,
     this.fileSize,
     this.duration,
+    this.deletedBy = const [],
+    this.isDeletedForEveryone = false,
   });
 
   factory ChatMessageModel.fromMap(
@@ -48,6 +52,8 @@ class ChatMessageModel extends Equatable {
       fileName: map['fileName'] as String?,
       fileSize: map['fileSize'] as int?,
       duration: map['duration'] as int?,
+      deletedBy: List<String>.from(map['deletedBy'] ?? []),
+      isDeletedForEveryone: map['isDeletedForEveryone'] as bool? ?? false,
     );
   }
 
@@ -64,6 +70,8 @@ class ChatMessageModel extends Equatable {
       'fileName': fileName,
       'fileSize': fileSize,
       'duration': duration,
+      'deletedBy': deletedBy,
+      'isDeletedForEveryone': isDeletedForEveryone,
     };
   }
 
@@ -80,6 +88,8 @@ class ChatMessageModel extends Equatable {
     String? fileName,
     int? fileSize,
     int? duration,
+    List<String>? deletedBy,
+    bool? isDeletedForEveryone,
   }) {
     return ChatMessageModel(
       id: id ?? this.id,
@@ -94,6 +104,8 @@ class ChatMessageModel extends Equatable {
       fileName: fileName ?? this.fileName,
       fileSize: fileSize ?? this.fileSize,
       duration: duration ?? this.duration,
+      deletedBy: deletedBy ?? this.deletedBy,
+      isDeletedForEveryone: isDeletedForEveryone ?? this.isDeletedForEveryone,
     );
   }
 
@@ -111,5 +123,7 @@ class ChatMessageModel extends Equatable {
     fileName,
     fileSize,
     duration,
+    deletedBy,
+    isDeletedForEveryone,
   ];
 }

@@ -5,12 +5,12 @@
 //   3 — Orders
 //   4 — Support (Chat)
 
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buyer_chat_ui.dart';
 
 import '../Order%20Page/order_UI.dart';
@@ -283,14 +283,14 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
         index: _selectedIndex,
         height: 60.0,
         items: <Widget>[
-          _buildNavItem(Icons.home_outlined, 'Home', 0),
-          _buildNavItem(Icons.account_balance_wallet_outlined, 'Wallet', 1),
-          _buildNavItem(Icons.shopping_cart_outlined, 'Cart', 2),
-          _buildNavItem(Icons.receipt_long_outlined, 'Orders', 3),
-          _buildNavItem(Icons.support_agent_outlined, 'Support', 4),
+          _buildNavItem(Icons.home_outlined, Icons.home_rounded, 'Home', 0),
+          _buildNavItem(Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded, 'Wallet', 1),
+          _buildNavItem(Icons.shopping_cart_outlined, Icons.shopping_cart_rounded, 'Cart', 2),
+          _buildNavItem(Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Orders', 3),
+          _buildNavItem(Icons.support_agent_outlined, Icons.support_agent_rounded, 'Support', 4),
         ],
         color: Colors.white,
-        buttonBackgroundColor: const Color(0xFFE52121),
+        buttonBackgroundColor: const Color(0xFFE52121).withValues(alpha: 0.1),
         backgroundColor: const Color(0xFFFBF5F5),
         animationCurve: Curves.easeInOut,
         animationDuration: const Duration(milliseconds: 300),
@@ -300,9 +300,10 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
   }
 
   /// Builds a nav bar item — icon only when selected, icon + label otherwise.
-  Widget _buildNavItem(IconData icon, String label, int index) {
+  Widget _buildNavItem(IconData iconOutlined, IconData iconFilled, String label, int index) {
     final bool isSelected = _selectedIndex == index;
-    final color = isSelected ? Colors.white : Colors.black54;
+    final color = isSelected ? const Color(0xFFE52121) : Colors.black54;
+    final icon = isSelected ? iconFilled : iconOutlined;
 
     return Column(
       mainAxisSize: MainAxisSize.min,

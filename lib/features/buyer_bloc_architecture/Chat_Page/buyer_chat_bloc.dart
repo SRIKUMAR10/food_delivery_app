@@ -60,6 +60,7 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     on<_ConversationsError>(_onConversationsError);
     on<_MessagesError>(_onMessagesError);
     on<_AutoOpenConversation>(_onAutoOpenConversation);
+    on<DeleteBuyerMessage>(_onDeleteMessage);
 
     _authSub = authService.authStateChanges.listen((userId) {
       if (userId != null) {
@@ -231,7 +232,12 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     final s = state;
     if (s is! BuyerChatLoaded) return;
     if (event.conversationId != s.selectedConversationId) return;
-    emit(s.copyWith(messages: event.messages));
+    final userId = authService.currentUserId;
+    if (userId == null) return;
+    final filteredMessages = event.messages
+        .where((m) => !m.deletedBy.contains(userId))
+        .toList();
+    emit(s.copyWith(messages: filteredMessages));
   }
 
   void _onMessagesError(
@@ -273,6 +279,28 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
           errorMessage: 'Failed to send message. Please try again.',
         ));
       }
+    }
+  }
+
+  Future<void> _onDeleteMessage(
+      DeleteBuyerMessage event, Emitter<BuyerChatState> emit) async {
+    final current = state;
+    if (current is! BuyerChatLoaded) return;
+    final userId = authService.currentUserId;
+    if (userId == null) return;
+
+    try {
+      await repository.deleteMessage(
+        conversationId: event.message.conversationId,
+        messageId: event.message.id,
+        messageType: event.message.messageType,
+        forEveryone: event.forEveryone,
+        userId: userId,
+      );
+    } catch (e) {
+      emit(current.copyWith(
+        errorMessage: 'Failed to delete message. Please try again.',
+      ));
     }
   }
 

@@ -96,13 +96,22 @@ class _TrackOrderView extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        centerTitle: false,
+        titleSpacing: 0,
         leading: MediaQuery.of(context).size.width < 800
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new, size: 20),
                 onPressed: () => Navigator.pop(context),
               )
             : null,
-        title: const Text('Track Order'),
+        title: Text(
+          'Track Order',
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF1C1C1C),
+          ),
+        ),
       ),
       body: SafeArea(child: content),
     );
@@ -690,7 +699,6 @@ class _TrackOrderView extends StatelessWidget {
     final profile = state.sellerInfo!;
     final isVerified = true;
     final distance = '2.4 km away';
-    final statusColor = const Color(0xFF22C55E);
 
     return Container(
       padding: const EdgeInsets.all(24),

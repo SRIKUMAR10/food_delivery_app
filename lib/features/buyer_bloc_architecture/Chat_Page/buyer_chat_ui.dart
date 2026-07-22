@@ -87,41 +87,41 @@ class _AppTheme {
 
   // Shadows
   static List<BoxShadow> get cardShadow => [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.06),
-          blurRadius: 16,
-          offset: const Offset(0, 4),
-        ),
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.04),
-          blurRadius: 6,
-          offset: const Offset(0, 2),
-        ),
-      ];
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.06),
+      blurRadius: 16,
+      offset: const Offset(0, 4),
+    ),
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.04),
+      blurRadius: 6,
+      offset: const Offset(0, 2),
+    ),
+  ];
 
   static List<BoxShadow> get glassShadow => [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.08),
-          blurRadius: 24,
-          offset: const Offset(0, 8),
-        ),
-      ];
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.08),
+      blurRadius: 24,
+      offset: const Offset(0, 8),
+    ),
+  ];
 
   static List<BoxShadow> get elevatedShadow => [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.12),
-          blurRadius: 32,
-          offset: const Offset(0, 12),
-        ),
-      ];
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.12),
+      blurRadius: 32,
+      offset: const Offset(0, 12),
+    ),
+  ];
 
   static List<BoxShadow> get bubbleShadow => [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.06),
-          blurRadius: 6,
-          offset: const Offset(0, 2),
-        ),
-      ];
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.06),
+      blurRadius: 6,
+      offset: const Offset(0, 2),
+    ),
+  ];
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
@@ -264,60 +264,62 @@ class BuyerChatView extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                    Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: _AppTheme.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Icon(
-                                Icons.support_agent_rounded,
-                                size: 40,
-                                color: _AppTheme.primary,
-                              ),
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: _AppTheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                            const SizedBox(height: 24),
-                            const Text(
-                              'Support Chat',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: _AppTheme.textPrimary,
-                              ),
+                            child: const Icon(
+                              Icons.support_agent_rounded,
+                              size: 40,
+                              color: _AppTheme.primary,
                             ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Please log in to access support',
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: _AppTheme.textSecondary,
-                              ),
+                          ),
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Support Chat',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: _AppTheme.textPrimary,
                             ),
-                            const SizedBox(height: 24),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const FoodGoLoginScreenUI(),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.login_rounded),
-                              label: const Text('Log In'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _AppTheme.primary,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 32,
-                                  vertical: 14,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Please log in to access support',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: _AppTheme.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const FoodGoLoginScreenUI(),
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(_AppTheme.buttonRadius),
+                              );
+                            },
+                            icon: const Icon(Icons.login_rounded),
+                            label: const Text('Log In'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _AppTheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  _AppTheme.buttonRadius,
                                 ),
                               ),
                             ),
+                          ),
                         ],
                       ),
                     )
@@ -356,11 +358,15 @@ class BuyerChatView extends StatelessWidget {
                       width: 380,
                       decoration: BoxDecoration(
                         color: _AppTheme.card,
-                        borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+                        borderRadius: BorderRadius.circular(
+                          _AppTheme.cardRadius,
+                        ),
                         boxShadow: _AppTheme.cardShadow,
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+                        borderRadius: BorderRadius.circular(
+                          _AppTheme.cardRadius,
+                        ),
                         child: _BuyerChatListView(
                           conversations: state.filteredConversations,
                           currentUserId: state.currentUserId,
@@ -378,11 +384,15 @@ class BuyerChatView extends StatelessWidget {
                           ? Container(
                               decoration: BoxDecoration(
                                 color: _AppTheme.card,
-                                borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+                                borderRadius: BorderRadius.circular(
+                                  _AppTheme.cardRadius,
+                                ),
                                 boxShadow: _AppTheme.cardShadow,
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+                                borderRadius: BorderRadius.circular(
+                                  _AppTheme.cardRadius,
+                                ),
                                 child: _ChatPanel(
                                   conversation: state.selectedConversation!,
                                   messages: state.messages,
@@ -394,7 +404,9 @@ class BuyerChatView extends StatelessWidget {
                           : Container(
                               decoration: BoxDecoration(
                                 color: _AppTheme.card,
-                                borderRadius: BorderRadius.circular(_AppTheme.cardRadius),
+                                borderRadius: BorderRadius.circular(
+                                  _AppTheme.cardRadius,
+                                ),
                                 boxShadow: _AppTheme.cardShadow,
                               ),
                               child: _EmptyChatPlaceholder(),
@@ -811,25 +823,19 @@ class _ConversationTileState extends State<_ConversationTile> {
         conversation.sellerImageUrl!.isNotEmpty;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
+      onExit: (_) { if (mounted) setState(() => _isHovered = false); },
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: _AppTheme.normalDuration,
           curve: Curves.easeOut,
-          transform: Matrix4.translationValues(
-            0,
-            _isHovered && !widget.isSelected ? -2 : 0,
-            0,
-          ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: widget.isSelected
                 ? _AppTheme.primary.withValues(alpha: 0.06)
-                : (_isHovered
-                      ? _AppTheme.background
-                      : Colors.transparent),
+                : (_isHovered ? _AppTheme.background : Colors.transparent),
             border: Border(
               left: BorderSide(
                 color: widget.isSelected
@@ -873,11 +879,7 @@ class _ConversationTileState extends State<_ConversationTile> {
                   Positioned(
                     right: 0,
                     top: 0,
-                    child: _OnlineDot(
-                      size: 14,
-                      borderWidth: 2.5,
-                      pulse: true,
-                    ),
+                    child: _OnlineDot(size: 14, borderWidth: 2.5, pulse: true),
                   ),
                   if (unread > 0)
                     Positioned(
@@ -1158,12 +1160,18 @@ class _ChatPanelState extends State<_ChatPanel> {
               decoration: const BoxDecoration(
                 gradient: _AppTheme.chatBackground,
               ),
-              child: ListView(
-                controller: _scrollController,
-                padding: EdgeInsets.all(
-                  screenType == _ScreenType.mobile ? 12 : 20,
-                ),
-                children: _buildChatItems(screenType),
+              child: Builder(
+                builder: (context) {
+                  final items = _buildChatItems(screenType);
+                  return ListView.builder(
+                    controller: _scrollController,
+                    padding: EdgeInsets.all(
+                      screenType == _ScreenType.mobile ? 12 : 20,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) => items[index],
+                  );
+                },
               ),
             ),
           ),
@@ -1246,195 +1254,219 @@ class _PremiumChatHeader extends StatelessWidget {
                 16,
                 10,
               ),
-              child: Row(
-                children: [
-                  if (screenType != _ScreenType.desktop)
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      onPressed: () {
-                        if (isPushedRoute && Navigator.canPop(context)) {
-                          Navigator.pop(context);
-                        } else {
-                          context.read<BuyerChatBloc>().add(
-                            SelectBuyerConversation(''),
-                          );
-                        }
-                      },
-                    ),
-                  if (screenType == _ScreenType.desktop) const SizedBox(width: 4),
-                  Stack(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final showActions = constraints.maxWidth > 220;
+                  return Row(
                     children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: hasImage
-                              ? Colors.transparent
-                              : _AppTheme.surfaceHover,
-                          border: Border.all(
-                            color: _AppTheme.border,
-                            width: 2,
+                      if (screenType != _ScreenType.desktop)
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          onPressed: () {
+                            if (isPushedRoute && Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            } else {
+                              context.read<BuyerChatBloc>().add(
+                                SelectBuyerConversation(''),
+                              );
+                            }
+                          },
+                        ),
+                      if (screenType == _ScreenType.desktop)
+                        const SizedBox(width: 4),
+                      Stack(
+                        children: [
+                          Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: hasImage
+                                  ? Colors.transparent
+                                  : _AppTheme.surfaceHover,
+                              border: Border.all(
+                                color: _AppTheme.border,
+                                width: 2,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x1A000000),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: hasImage
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(28),
+                                    child: Image.network(
+                                      conversation.sellerImageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          _AvatarFallback(name: displayName),
+                                    ),
+                                  )
+                                : _AvatarFallback(name: displayName),
                           ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x1A000000),
-                              blurRadius: 8,
-                              offset: Offset(0, 2),
+                          Positioned(
+                            right: 1,
+                            bottom: 1,
+                            child: _OnlineDot(
+                              size: 14,
+                              borderWidth: 2.5,
+                              pulse: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    displayName,
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w700,
+                                      color: _AppTheme.textPrimary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(
+                                  Icons.verified_rounded,
+                                  size: 18,
+                                  color: _AppTheme.info,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 4,
+                              runSpacing: 4,
+                              children: [
+                                const Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 11,
+                                  color: _AppTheme.textTertiary,
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'Customer since 2025',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: _AppTheme.textTertiary,
+                                  ),
+                                ),
+                                if (orderText != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _AppTheme.primary.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        _AppTheme.badgeRadius,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      orderText,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: _AppTheme.primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ],
                         ),
-                        child: hasImage
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(28),
-                                child: Image.network(
-                                  conversation.sellerImageUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      _AvatarFallback(name: displayName),
-                                ),
-                              )
-                            : _AvatarFallback(name: displayName),
                       ),
-                      Positioned(
-                        right: 1,
-                        bottom: 1,
-                        child: _OnlineDot(size: 14, borderWidth: 2.5, pulse: true),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                displayName,
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                  color: _AppTheme.textPrimary,
+                      if (showActions) ...[
+                        _CircularIconButton(
+                          icon: Icons.phone_outlined,
+                          onPressed: () async {
+                            final bloc = context.read<BuyerChatBloc>();
+                            final userId = bloc.authService.currentUserId;
+                            if (userId == null) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please log in to make a voice call.',
+                                    ),
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+                            if (context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => VoiceCallPage(
+                                    callID: conversation.id,
+                                    userID: userId,
+                                    userName: conversation.buyerName,
+                                  ),
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Icon(
-                              Icons.verified_rounded,
-                              size: 18,
-                              color: _AppTheme.info,
-                            ),
-                          ],
+                              );
+                            }
+                          },
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.calendar_today_rounded,
-                              size: 11,
-                              color: _AppTheme.textTertiary,
-                            ),
-                            const SizedBox(width: 4),
-                            const Text(
-                              'Customer since 2025',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _AppTheme.textTertiary,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            if (orderText != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _AppTheme.primary.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(
-                                    _AppTheme.badgeRadius,
+                        const SizedBox(width: 4),
+                        _CircularIconButton(
+                          icon: Icons.videocam_outlined,
+                          onPressed: () async {
+                            final bloc = context.read<BuyerChatBloc>();
+                            final userId = bloc.authService.currentUserId;
+                            if (userId == null) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please log in to make a video call.',
+                                    ),
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+                            if (context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => VideoCallPage(
+                                    callID: conversation.id,
+                                    userID: userId,
+                                    userName: conversation.buyerName,
                                   ),
                                 ),
-                                child: Text(
-                                  orderText,
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: _AppTheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                          ],
+                              );
+                            }
+                          },
                         ),
                       ],
-                    ),
-                  ),
-                  _CircularIconButton(
-                    icon: Icons.phone_outlined,
-                    onPressed: () async {
-                      final bloc = context.read<BuyerChatBloc>();
-                      final userId = bloc.authService.currentUserId;
-                      if (userId == null) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please log in to make a voice call.')),
-                          );
-                        }
-                        return;
-                      }
-                      if (context.mounted) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => VoiceCallPage(
-                              callID: conversation.id,
-                              userID: userId,
-                              userName: conversation.buyerName,
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  _CircularIconButton(
-                    icon: Icons.videocam_outlined,
-                    onPressed: () async {
-                      final bloc = context.read<BuyerChatBloc>();
-                      final userId = bloc.authService.currentUserId;
-                      if (userId == null) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please log in to make a video call.')),
-                          );
-                        }
-                        return;
-                      }
-                      if (context.mounted) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => VideoCallPage(
-                              callID: conversation.id,
-                              userID: userId,
-                              userName: conversation.buyerName,
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  if (screenType != _ScreenType.mobile) ...[
-                    const SizedBox(width: 4),
-                    _CircularIconButton(
-                      icon: Icons.more_vert_rounded,
-                      onPressed: () {},
-                    ),
-                  ],
-                ],
+                      if (screenType != _ScreenType.mobile) ...[
+                        const SizedBox(width: 4),
+                        _CircularIconButton(
+                          icon: Icons.more_vert_rounded,
+                          onPressed: () {},
+                        ),
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -1460,8 +1492,9 @@ class _CircularIconButtonState extends State<_CircularIconButton> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
+      onExit: (_) { if (mounted) setState(() => _isHovered = false); },
       child: AnimatedContainer(
         duration: _AppTheme.fastDuration,
         decoration: BoxDecoration(
@@ -1503,6 +1536,7 @@ class _PremiumComposer extends StatefulWidget {
 class _PremiumComposerState extends State<_PremiumComposer> {
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isRecording = false;
+  dynamic _recordedAudioData;
 
   @override
   void initState() {
@@ -1582,18 +1616,9 @@ class _PremiumComposerState extends State<_PremiumComposer> {
         } else {
           fileData = File(path);
         }
-        context.read<BuyerChatBloc>().add(
-          SendBuyerMediaMessage(
-            conversationId:
-                context.read<BuyerChatBloc>().state is BuyerChatLoaded
-                ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded)
-                      .selectedConversationId!
-                : '',
-            file: fileData,
-            messageType: 'audio',
-            fileName: kIsWeb ? 'audio_message.webm' : 'audio_message.m4a',
-          ),
-        );
+        setState(() {
+          _recordedAudioData = fileData;
+        });
       }
     } else {
       if (await _audioRecorder.hasPermission()) {
@@ -1626,6 +1651,8 @@ class _PremiumComposerState extends State<_PremiumComposer> {
   @override
   Widget build(BuildContext context) {
     final hasText = widget.controller.text.trim().isNotEmpty;
+    final hasAudio = _recordedAudioData != null;
+    final canSend = hasText || hasAudio;
 
     return Container(
       decoration: BoxDecoration(
@@ -1673,46 +1700,51 @@ class _PremiumComposerState extends State<_PremiumComposer> {
                         ),
                         child: TextField(
                           controller: widget.controller,
-                          decoration: const InputDecoration(
-                            hintText: 'Type a message...',
+                          readOnly: hasAudio,
+                          decoration: InputDecoration(
+                            hintText: hasAudio ? 'Audio recorded (Press send to send)' : 'Type a message...',
                             hintStyle: TextStyle(
-                              color: _AppTheme.textTertiary,
+                              color: hasAudio ? _AppTheme.primary : _AppTheme.textTertiary,
+                              fontWeight: hasAudio ? FontWeight.w500 : FontWeight.normal,
                               fontSize: 15,
                             ),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
+                            contentPadding: const EdgeInsets.symmetric(
                               vertical: 14,
                               horizontal: 20,
                             ),
                           ),
                           textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => widget.onSend(),
+                          onSubmitted: (_) => _handleSend(),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     _ComposerIconButton(
-                      icon: Icons.attach_file_outlined,
-                      onPressed: widget.onAttach,
+                      icon: hasAudio ? Icons.delete_outline : Icons.attach_file_outlined,
+                      onPressed: hasAudio ? () => setState(() => _recordedAudioData = null) : widget.onAttach,
                     ),
-                    _ComposerIconButton(
-                      icon: Icons.camera_alt_outlined,
-                      onPressed: _handleCamera,
-                    ),
+                    if (!hasAudio)
+                      _ComposerIconButton(
+                        icon: Icons.camera_alt_outlined,
+                        onPressed: _handleCamera,
+                      ),
                     const SizedBox(width: 4),
                     AnimatedContainer(
                       duration: _AppTheme.fastDuration,
                       decoration: BoxDecoration(
-                        color: hasText
+                        color: canSend
                             ? _AppTheme.primary
-                            : (_isRecording ? Colors.red : Colors.transparent),
+                            : Colors.transparent, // No round background for recording
                         shape: BoxShape.circle,
-                        boxShadow: hasText
+                        boxShadow: canSend
                             ? [
                                 BoxShadow(
-                                  color: _AppTheme.primary.withValues(alpha: 0.4),
+                                  color: _AppTheme.primary.withValues(
+                                    alpha: 0.4,
+                                  ),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -1721,19 +1753,19 @@ class _PremiumComposerState extends State<_PremiumComposer> {
                       ),
                       child: IconButton(
                         icon: Icon(
-                          hasText
+                          canSend
                               ? Icons.send_rounded
                               : (_isRecording
-                                    ? Icons.stop_circle_outlined
-                                    : Icons.mic_outlined),
-                          color: (hasText || _isRecording)
+                                    ? Icons.mic_rounded // Selected state
+                                    : Icons.mic_none_outlined), // Unselected state
+                          color: canSend
                               ? Colors.white
-                              : _AppTheme.textTertiary,
-                          size: 22,
+                              : (_isRecording ? Colors.red : _AppTheme.textTertiary),
+                          size: 24,
                         ),
                         onPressed: widget.isSending
                             ? null
-                            : (hasText ? widget.onSend : _toggleRecording),
+                            : (canSend ? _handleSend : _toggleRecording),
                         splashRadius: 20,
                       ),
                     ),
@@ -1745,6 +1777,29 @@ class _PremiumComposerState extends State<_PremiumComposer> {
         ),
       ),
     );
+  }
+
+  void _handleSend() {
+    if (_recordedAudioData != null) {
+      context.read<BuyerChatBloc>().add(
+        SendBuyerMediaMessage(
+          conversationId:
+              context.read<BuyerChatBloc>().state is BuyerChatLoaded
+              ? (context.read<BuyerChatBloc>().state as BuyerChatLoaded)
+                    .selectedConversationId!
+              : '',
+          file: _recordedAudioData,
+          messageType: 'audio',
+          fileName: kIsWeb ? 'audio_message.webm' : 'audio_message.m4a',
+        ),
+      );
+      setState(() {
+        _recordedAudioData = null;
+      });
+      widget.controller.clear();
+    } else {
+      widget.onSend();
+    }
   }
 }
 
@@ -1764,8 +1819,9 @@ class _ComposerIconButtonState extends State<_ComposerIconButton> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
+      onExit: (_) { if (mounted) setState(() => _isHovered = false); },
       child: AnimatedContainer(
         duration: _AppTheme.fastDuration,
         decoration: BoxDecoration(
@@ -1794,7 +1850,7 @@ class _AnimatedMessage extends StatefulWidget {
 }
 
 class _AnimatedMessageState extends State<_AnimatedMessage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _opacityAnimation;
@@ -1824,7 +1880,11 @@ class _AnimatedMessageState extends State<_AnimatedMessage>
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return SlideTransition(
       position: _slideAnimation,
       child: FadeTransition(opacity: _opacityAnimation, child: widget.child),
@@ -1837,6 +1897,55 @@ class _BuyerChatBubble extends StatelessWidget {
   final bool isMe;
 
   const _BuyerChatBubble({required this.message, required this.isMe});
+
+  void _showMessageOptions(BuildContext context, Offset position) {
+    if (message.isDeletedForEveryone) return;
+    
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        position & const Size(40, 40),
+        Offset.zero & overlay.size,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 8,
+      items: [
+        PopupMenuItem(
+          value: 'delete_me',
+          child: Row(
+            children: const [
+              Icon(Icons.delete_outline, color: Colors.red, size: 20),
+              SizedBox(width: 8),
+              Text('Delete for me', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+        if (isMe)
+          PopupMenuItem(
+            value: 'delete_everyone',
+            child: Row(
+              children: const [
+                Icon(Icons.delete_forever, color: Colors.red, size: 20),
+                SizedBox(width: 8),
+                Text('Delete for everyone', style: TextStyle(color: Colors.red)),
+              ],
+            ),
+          ),
+      ],
+    ).then((value) {
+      if (!context.mounted) return;
+      if (value == 'delete_me') {
+        context.read<BuyerChatBloc>().add(
+          DeleteBuyerMessage(message, forEveryone: false),
+        );
+      } else if (value == 'delete_everyone') {
+        context.read<BuyerChatBloc>().add(
+          DeleteBuyerMessage(message, forEveryone: true),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1870,53 +1979,103 @@ class _BuyerChatBubble extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: isMe 
-                  ? const Color(0xFFFF4B4B).withValues(alpha: 0.25) 
-                  : Colors.black.withValues(alpha: 0.08),
+                color: isMe
+                    ? const Color(0xFFFF4B4B).withValues(alpha: 0.25)
+                    : Colors.black.withValues(alpha: 0.08),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: GestureDetector(
+            onLongPressStart: (details) => _showMessageOptions(context, details.globalPosition),
+            onSecondaryTapDown: (details) => _showMessageOptions(context, details.globalPosition),
+            child: Stack(
               children: [
-                if (message.messageType == 'image' && message.mediaUrl != null)
-                  _PremiumImageMessage(
-                    imageUrl: message.mediaUrl!,
-                    timestamp: message.timestamp,
-                    isRead: message.isRead,
-                    isMe: isMe,
-                    maxWidth: maxWidth,
-                  )
-                else if (message.messageType == 'audio' &&
-                    message.mediaUrl != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6.0),
-                    child: AudioPlayerWidget(
-                      key: ValueKey(message.mediaUrl),
-                      audioUrl: message.mediaUrl!,
-                    ),
-                  )
-                else if (message.text.isNotEmpty)
-                  Text(
-                    message.text,
-                    style: TextStyle(
-                      color: isMe ? Colors.white : const Color(0xFF111B21),
-                      fontSize: 15,
-                      height: 1.4,
-                    ),
-                  ),
-                if (message.messageType != 'image')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: _MessageFooter(
-                      timestamp: message.timestamp,
-                      isRead: message.isRead,
-                      isMe: isMe,
-                      isDarkBg: isMe,
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: message.isDeletedForEveryone 
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.block, size: 16, color: isMe ? Colors.white70 : Colors.grey),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'This message was deleted', 
+                                  style: TextStyle(color: isMe ? Colors.white : Colors.grey, fontStyle: FontStyle.italic, fontSize: 15),
+                                ),
+                              ],
+                            ),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (message.messageType == 'image' && message.mediaUrl != null)
+                              _PremiumImageMessage(
+                                imageUrl: message.mediaUrl!,
+                                timestamp: message.timestamp,
+                                isRead: message.isRead,
+                                isMe: isMe,
+                                maxWidth: maxWidth,
+                              )
+                            else if (message.messageType == 'audio' &&
+                                message.mediaUrl != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6.0),
+                                child: AudioPlayerWidget(
+                                  key: ValueKey(message.mediaUrl),
+                                  audioUrl: message.mediaUrl!,
+                                  isMe: isMe,
+                                ),
+                              )
+                            else if (message.text.isNotEmpty)
+                              Text(
+                                message.text,
+                                style: TextStyle(
+                                  color: isMe ? Colors.white : const Color(0xFF111B21),
+                                  fontSize: 15,
+                                  height: 1.4,
+                                ),
+                              ),
+                            if (message.messageType != 'image')
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: _MessageFooter(
+                                  timestamp: message.timestamp,
+                                  isRead: message.isRead,
+                                  isMe: isMe,
+                                  isDarkBg: isMe,
+                                ),
+                              ),
+                          ],
+                        ),
+                ),
+                if (!message.isDeletedForEveryone)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTapDown: (details) => _showMessageOptions(context, details.globalPosition),
+                        child: Container(
+                          padding: const EdgeInsets.all(2.0),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isMe ? Colors.black.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.6),
+                          ),
+                          child: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 22,
+                            color: isMe ? Colors.white : Colors.black54,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
               ],
@@ -1952,13 +2111,15 @@ class _MessageFooter extends StatelessWidget {
             color: isDarkBg ? Colors.white : const Color(0xFF667781),
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            shadows: isDarkBg ? [
-              Shadow(
-                offset: const Offset(0, 1),
-                blurRadius: 2,
-                color: Colors.black.withValues(alpha: 0.3),
-              )
-            ] : null,
+            shadows: isDarkBg
+                ? [
+                    Shadow(
+                      offset: const Offset(0, 1),
+                      blurRadius: 2,
+                      color: Colors.black.withValues(alpha: 0.3),
+                    ),
+                  ]
+                : null,
           ),
         ),
         if (isMe) ...[
@@ -1969,13 +2130,15 @@ class _MessageFooter extends StatelessWidget {
             color: isRead
                 ? const Color(0xFF53BDEB)
                 : (isDarkBg ? Colors.white : const Color(0xFF667781)),
-            shadows: isDarkBg ? [
-              Shadow(
-                offset: const Offset(0, 1),
-                blurRadius: 2,
-                color: Colors.black.withValues(alpha: 0.3),
-              )
-            ] : null,
+            shadows: isDarkBg
+                ? [
+                    Shadow(
+                      offset: const Offset(0, 1),
+                      blurRadius: 2,
+                      color: Colors.black.withValues(alpha: 0.3),
+                    ),
+                  ]
+                : null,
           ),
         ],
       ],
@@ -2011,7 +2174,8 @@ class _PremiumImageMessageState extends State<_PremiumImageMessage> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => _FullScreenImage(imageUrl: widget.imageUrl),
+        pageBuilder: (_, __, ___) =>
+            _FullScreenImage(imageUrl: widget.imageUrl),
         transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -2024,11 +2188,12 @@ class _PremiumImageMessageState extends State<_PremiumImageMessage> {
 
   @override
   Widget build(BuildContext context) {
-    final imageWidth = widget.maxWidth - 32;
+    final imageWidth = (widget.maxWidth - 32) > 0 ? (widget.maxWidth - 32) : 0.0;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
+      onExit: (_) { if (mounted) setState(() => _isHovered = false); },
       child: GestureDetector(
         onTapDown: (_) => setState(() => _isPressed = true),
         onTapUp: (_) {
@@ -2041,9 +2206,7 @@ class _PremiumImageMessageState extends State<_PremiumImageMessage> {
           curve: Curves.easeOut,
           transform: _isPressed
               ? Matrix4.diagonal3Values(0.97, 0.97, 1)
-              : _isHovered
-                  ? Matrix4.diagonal3Values(1.02, 1.02, 1)
-                  : Matrix4.identity(),
+              : Matrix4.identity(),
           transformAlignment: Alignment.center,
           child: Stack(
             children: [
@@ -2071,33 +2234,25 @@ class _PremiumImageMessageState extends State<_PremiumImageMessage> {
                       ),
                     ),
                     imageBuilder: (_, imageProvider) {
-                      return AnimatedOpacity(
-                        opacity: _isLoaded ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 400),
-                        onEnd: () => setState(() => _isLoaded = true),
-                        child: Container(
-                          foregroundDecoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              width: 0.5,
-                            ),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.0),
-                                Colors.black.withValues(alpha: 0.0),
-                                Colors.black.withValues(alpha: 0.5),
-                              ],
-                              stops: const [0.0, 0.6, 1.0],
-                            ),
+                      return Container(
+                        foregroundDecoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            width: 0.5,
                           ),
-                          child: Image(
-                            image: imageProvider,
-                            fit: BoxFit.cover,
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.0),
+                              Colors.black.withValues(alpha: 0.0),
+                              Colors.black.withValues(alpha: 0.5),
+                            ],
+                            stops: const [0.0, 0.6, 1.0],
                           ),
                         ),
+                        child: Image(image: imageProvider, fit: BoxFit.cover),
                       );
                     },
                   ),
@@ -2165,8 +2320,6 @@ class _ShimmerPlaceholderState extends State<_ShimmerPlaceholder>
       animation: _animation,
       builder: (_, __) {
         return Container(
-          width: double.infinity,
-          height: double.infinity,
           decoration: BoxDecoration(
             color: Colors.grey.shade200,
             borderRadius: BorderRadius.circular(16),
@@ -2278,9 +2431,7 @@ class _DateSeparatorChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
           ),
           child: Text(
             _formatDate(),
@@ -2310,12 +2461,12 @@ class _HoverCardState extends State<_HoverCard> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
+      onExit: (_) { if (mounted) setState(() => _isHovered = false); },
       child: AnimatedContainer(
         duration: _AppTheme.normalDuration,
         curve: Curves.easeOut,
-        transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
@@ -2347,14 +2498,37 @@ class _PremiumOrderContextCard extends StatefulWidget {
 
 class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
   bool _isHovered = false;
+  Future<OrderModel?>? _orderFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOrder();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PremiumOrderContextCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.conversation.orderId != widget.conversation.orderId) {
+      _loadOrder();
+    }
+  }
+
+  void _loadOrder() {
+    if (widget.conversation.orderId != null) {
+      final orderRepo = context.read<IOrderRepository>();
+      _orderFuture = orderRepo.getOrderById(widget.conversation.orderId!);
+    } else {
+      _orderFuture = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     if (widget.conversation.orderId == null) return const SizedBox.shrink();
-    final orderRepo = context.read<IOrderRepository>();
 
     return FutureBuilder<OrderModel?>(
-      future: orderRepo.getOrderById(widget.conversation.orderId!),
+      future: _orderFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildLoadingSkeleton();
@@ -2367,12 +2541,12 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
             : null;
 
         return MouseRegion(
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
+          hitTestBehavior: HitTestBehavior.opaque,
+          onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
+          onExit: (_) { if (mounted) setState(() => _isHovered = false); },
           child: AnimatedContainer(
             duration: _AppTheme.normalDuration,
             curve: Curves.easeOut,
-            transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
             margin: const EdgeInsets.symmetric(horizontal: 2),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -2444,10 +2618,7 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ProductImageWidget(
-          imageUrl: item?.imageUrl,
-          itemName: item?.name,
-        ),
+        _ProductImageWidget(imageUrl: item?.imageUrl, itemName: item?.name),
         const SizedBox(width: 20),
         Expanded(
           child: Column(
@@ -2495,13 +2666,15 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 500;
-        return GridView.count(
-          crossAxisCount: isWide ? 3 : 2,
+        return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isWide ? 3.8 : 3.2,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: isWide ? 3 : 2,
+            mainAxisExtent: 72,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+          ),
           children: [
             _PremiumInfoCard(
               icon: Icons.receipt_long_rounded,
@@ -2593,14 +2766,15 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [bgColor.withValues(alpha: 0.12), bgColor.withValues(alpha: 0.06)],
+          colors: [
+            bgColor.withValues(alpha: 0.12),
+            bgColor.withValues(alpha: 0.06),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: bgColor.withValues(alpha: 0.15),
-        ),
+        border: Border.all(color: bgColor.withValues(alpha: 0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2642,11 +2816,7 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
       ),
       child: Column(
         children: [
-          _summaryRow(
-            'Subtotal',
-            '₹${subtotal.toStringAsFixed(2)}',
-            false,
-          ),
+          _summaryRow('Subtotal', '₹${subtotal.toStringAsFixed(2)}', false),
           const SizedBox(height: 10),
           _summaryRow(
             'Delivery',
@@ -2654,11 +2824,7 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
             delivery == 0,
           ),
           const SizedBox(height: 10),
-          _summaryRow(
-            'Taxes & Fees',
-            '₹${taxes.toStringAsFixed(2)}',
-            false,
-          ),
+          _summaryRow('Taxes & Fees', '₹${taxes.toStringAsFixed(2)}', false),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Divider(color: _AppTheme.border, height: 1),
@@ -2705,7 +2871,11 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
     );
   }
 
-  Widget _buildActionButtons(dynamic item, OrderModel order, BuildContext context) {
+  Widget _buildActionButtons(
+    dynamic item,
+    OrderModel order,
+    BuildContext context,
+  ) {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -2720,10 +2890,8 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => RatingPageUI(
-                    foodId: item.productId,
-                    foodName: item.name,
-                  ),
+                  builder: (_) =>
+                      RatingPageUI(foodId: item.productId, foodName: item.name),
                 ),
               );
             }
@@ -2793,9 +2961,9 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
                   ),
                 ),
               );
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Added to cart')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Added to cart')));
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const CartPageUI()),
@@ -2824,14 +2992,12 @@ class _ProductImageWidgetState extends State<_ProductImageWidget> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
+      onExit: (_) { if (mounted) setState(() => _isHovered = false); },
       child: AnimatedContainer(
         duration: _AppTheme.normalDuration,
         curve: Curves.easeOut,
-        transform: _isHovered
-            ? Matrix4.diagonal3Values(1.05, 1.05, 1)
-            : Matrix4.identity(),
         width: 110,
         height: 110,
         decoration: BoxDecoration(
@@ -2951,9 +3117,7 @@ class _VegBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: _AppTheme.success.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: _AppTheme.success.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: _AppTheme.success.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -3002,12 +3166,12 @@ class _PremiumInfoCardState extends State<_PremiumInfoCard> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
+      onExit: (_) { if (mounted) setState(() => _isHovered = false); },
       child: AnimatedContainer(
         duration: _AppTheme.fastDuration,
         curve: Curves.easeOut,
-        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: _AppTheme.card,
@@ -3099,12 +3263,12 @@ class _PremiumActionButtonState extends State<_PremiumActionButton> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
+      onExit: (_) { if (mounted) setState(() => _isHovered = false); },
       child: AnimatedContainer(
         duration: _AppTheme.fastDuration,
         curve: Curves.easeOut,
-        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -3112,10 +3276,7 @@ class _PremiumActionButtonState extends State<_PremiumActionButton> {
             borderRadius: BorderRadius.circular(20),
             child: AnimatedContainer(
               duration: _AppTheme.fastDuration,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               decoration: BoxDecoration(
                 color: widget.isGradient
                     ? null
@@ -3153,9 +3314,7 @@ class _PremiumActionButtonState extends State<_PremiumActionButton> {
                   Icon(
                     widget.icon,
                     size: 16,
-                    color: widget.isGradient
-                        ? Colors.white
-                        : widget.color,
+                    color: widget.isGradient ? Colors.white : widget.color,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -3548,11 +3707,7 @@ class _OnlineDot extends StatefulWidget {
   final double borderWidth;
   final bool pulse;
 
-  const _OnlineDot({
-    this.size = 12,
-    this.borderWidth = 2,
-    this.pulse = false,
-  });
+  const _OnlineDot({this.size = 12, this.borderWidth = 2, this.pulse = false});
 
   @override
   State<_OnlineDot> createState() => _OnlineDotState();
@@ -3571,17 +3726,16 @@ class _OnlineDotState extends State<_OnlineDot>
         vsync: this,
         duration: const Duration(milliseconds: 1500),
       )..repeat(reverse: true);
-      _animation = Tween<double>(begin: 0.6, end: 1.0).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-      );
+      _animation = Tween<double>(
+        begin: 0.6,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     } else {
-      _controller = AnimationController(
-        vsync: this,
-        value: 1,
-      );
-      _animation = Tween<double>(begin: 1, end: 1).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.linear),
-      );
+      _controller = AnimationController(vsync: this, value: 1);
+      _animation = Tween<double>(
+        begin: 1,
+        end: 1,
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
     }
   }
 
@@ -3602,10 +3756,7 @@ class _OnlineDotState extends State<_OnlineDot>
           decoration: BoxDecoration(
             color: _AppTheme.success,
             shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white,
-              width: widget.borderWidth,
-            ),
+            border: Border.all(color: Colors.white, width: widget.borderWidth),
             boxShadow: [
               BoxShadow(
                 color: _AppTheme.success.withValues(

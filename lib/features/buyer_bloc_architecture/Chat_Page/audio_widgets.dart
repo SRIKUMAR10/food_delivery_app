@@ -4,8 +4,9 @@ import 'package:audioplayers/audioplayers.dart';
 
 class AudioPlayerWidget extends StatefulWidget {
   final String audioUrl;
+  final bool isMe;
 
-  const AudioPlayerWidget({Key? key, required this.audioUrl}) : super(key: key);
+  const AudioPlayerWidget({Key? key, required this.audioUrl, this.isMe = false}) : super(key: key);
 
   @override
   State<AudioPlayerWidget> createState() => _AudioPlayerWidgetState();
@@ -90,11 +91,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
     _isDisposed = true;
     WidgetsBinding.instance.removeObserver(this);
     try {
-      _audioPlayer.stop().then((_) {
-        _audioPlayer.dispose();
-      }).catchError((e) {
-        _audioPlayer.dispose();
-      });
+      _audioPlayer.dispose();
     } catch (e) {
       print('AudioPlayer dispose error: $e');
     }
@@ -117,17 +114,37 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
     if (currentPosition < 0) currentPosition = 0;
 
     final progress = maxDuration > 0 ? currentPosition / maxDuration : 0.0;
+    
+    final bool isMe = widget.isMe;
 
     return Container(
-      width: 220,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      constraints: const BoxConstraints(maxWidth: 300, minWidth: 200),
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        gradient: LinearGradient(
+          colors: isMe 
+            ? [Colors.white.withValues(alpha: 0.25), Colors.white.withValues(alpha: 0.15)]
+            : [Colors.black.withValues(alpha: 0.08), Colors.black.withValues(alpha: 0.04)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+            color: isMe ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.1),
+            width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           GestureDetector(
             onTap: () async {
@@ -147,27 +164,35 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: _isPlaying
-                    ? const Color(0xFFEF4444)
-                    : const Color(0xFFEF4444).withValues(alpha: 0.2),
+                color: isMe
+                    ? (_isPlaying ? Colors.white : Colors.white.withValues(alpha: 0.25))
+                    : (_isPlaying ? const Color(0xFF0F172A) : const Color(0xFF0F172A).withValues(alpha: 0.15)),
                 shape: BoxShape.circle,
+                boxShadow: _isPlaying ? [
+                  BoxShadow(
+                    color: (isMe ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ] : null,
               ),
               child: Icon(
-                _isPlaying
-                    ? Icons.pause_rounded
-                    : Icons.play_arrow_rounded,
-                color: _isPlaying ? Colors.white : const Color(0xFFEF4444),
-                size: 18,
+                _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                color: _isPlaying
+                    ? (isMe ? const Color(0xFFEF4444) : Colors.white)
+                    : (isMe ? Colors.white : const Color(0xFF0F172A)),
+                size: 20,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
                   height: 24,
@@ -176,6 +201,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
                     painter: _WaveformPainter(
                       progress: progress,
                       isPlaying: _isPlaying,
+                      isMe: isMe,
                     ),
                   ),
                 ),
@@ -185,9 +211,12 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
                   child: Text(
                     _formatDuration(_position),
                     style: TextStyle(
-                      color: const Color(0xFF64748B).withValues(alpha: 0.8),
+                      color: isMe 
+                          ? Colors.white.withValues(alpha: 0.9) 
+                          : const Color(0xFF64748B).withValues(alpha: 0.9),
                       fontSize: 10,
-                      fontWeight: FontWeight.w500,
+                      height: 1.1,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -203,12 +232,13 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
 class _WaveformPainter extends CustomPainter {
   final double progress;
   final bool isPlaying;
+  final bool isMe;
 
-  _WaveformPainter({required this.progress, required this.isPlaying});
+  _WaveformPainter({required this.progress, required this.isPlaying, this.isMe = false});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final barCount = 30;
+    final barCount = (size.width / 5).floor().clamp(20, 80);
     final barWidth = size.width / barCount;
     final paint = Paint()
       ..strokeWidth = barWidth * 0.6
@@ -216,18 +246,20 @@ class _WaveformPainter extends CustomPainter {
 
     for (int i = 0; i < barCount; i++) {
       final barProgress = (i + 1) / barCount;
-      final height = 4 + (i.isEven ? 12 : 8) +
-          (sin(i * 0.5 + DateTime.now().millisecondsSinceEpoch / 500) * 4);
+      final height = 4 + (i.isEven ? 14 : 8) +
+          (sin(i * 0.4 + DateTime.now().millisecondsSinceEpoch / 400) * 4);
       final clampedHeight = height.clamp(4.0, size.height - 2);
 
       final x = i * barWidth + barWidth * 0.2;
       final y = (size.height - clampedHeight) / 2;
 
       final isActive = barProgress <= progress;
-      paint.color = isActive
-          ? const Color(0xFFEF4444)
-          : const Color(0xFFD1D5DB);
-      paint.strokeWidth = barWidth * 0.5;
+      if (isMe) {
+        paint.color = isActive ? Colors.white : Colors.white.withValues(alpha: 0.4);
+      } else {
+        paint.color = isActive ? const Color(0xFF0F172A) : const Color(0xFF94A3B8);
+      }
+      paint.strokeWidth = barWidth * 0.55;
 
       canvas.drawLine(
         Offset(x, y),

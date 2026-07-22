@@ -155,6 +155,40 @@ class FirebaseChatRepository implements IChatRepository {
   }
 
   @override
+  Future<void> deleteMessage({
+    required String conversationId,
+    required String messageId,
+    required String messageType,
+    required bool forEveryone,
+    required String userId,
+  }) async {
+    String subCollection = 'messages';
+    if (messageType == 'image') {
+      subCollection = 'photos';
+    } else if (messageType == 'video') {
+      subCollection = 'videos';
+    } else if (messageType == 'audio') {
+      subCollection = 'audios';
+    }
+
+    final messageRef = _firestore
+        .collection('conversations')
+        .doc(conversationId)
+        .collection(subCollection)
+        .doc(messageId);
+
+    if (forEveryone) {
+      await messageRef.update({
+        'isDeletedForEveryone': true,
+      });
+    } else {
+      await messageRef.update({
+        'deletedBy': FieldValue.arrayUnion([userId]),
+      });
+    }
+  }
+
+  @override
   Future<String> createConversation({
     required String buyerId,
     required String buyerName,

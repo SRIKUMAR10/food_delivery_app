@@ -8,7 +8,6 @@ import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import 'WalletScreen_Bloc.dart';
 import 'WalletScreen_Event.dart';
 import 'WalletScreen_State.dart';
-
 // ─────────────────────────────────────────────
 //  WALLET SCREEN UI (DI layer)
 // ─────────────────────────────────────────────
@@ -416,6 +415,8 @@ class _WalletViewState extends State<WalletView> {
     );
   }
 
+
+
   Widget _buildMobileLayout(
     BuildContext context,
     WalletState state,
@@ -434,7 +435,7 @@ class _WalletViewState extends State<WalletView> {
           _buildHeader(),
           const SizedBox(height: 24),
           _buildBalanceCard(db, size),
-          const SizedBox(height: 30),
+          const SizedBox(height: 32),
           Text(
             'Quick Top-up',
             style: TextStyle(
@@ -483,7 +484,7 @@ class _WalletViewState extends State<WalletView> {
                 _buildHeader(),
                 const SizedBox(height: 24),
                 _buildBalanceCard(db, size),
-                const SizedBox(height: 30),
+                const SizedBox(height: 32),
                 Text(
                   'Quick Top-up',
                   style: TextStyle(
@@ -1416,3 +1417,5 @@ class _WalletViewState extends State<WalletView> {
     );
   }
 }
+
+

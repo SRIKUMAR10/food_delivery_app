@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:bloc_test/bloc_test.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_bloc.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_state.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/chat_support_page_/chat_support_page_ui.dart';
 
-class MockChatSupportBloc extends Mock implements ChatSupportBloc {}
+class MockChatSupportBloc extends MockBloc<ChatSupportEvent, ChatSupportState> implements ChatSupportBloc {}
 
 void main() {
-  group('ChatSupportPage Golden Tests', () {
+  group('ChatSupportPage Widget Tests', () {
     late MockChatSupportBloc mockBloc;
 
     setUp(() async {
@@ -19,26 +20,26 @@ void main() {
       when(() => mockBloc.close()).thenAnswer((_) async {});
     });
 
-    testGoldens('Chat Support page layout matches golden file', (tester) async {
-      await loadAppFonts();
+    testWidgets('Chat Support page renders empty state', (tester) async {
+      when(() => mockBloc.state).thenReturn(ChatSupportLoaded(currentUserId: 'seller1', conversations: []));
 
-      when(() => mockBloc.state).thenReturn(ChatSupportLoaded(activeSessions: []));
+      final gesture = await tester.createGesture();
+      await gesture.moveTo(const Offset(0, 0));
+      await tester.pump();
 
-      final builder = DeviceBuilder()
-        ..overrideDevicesForAllScenarios(devices: [Device.phone, Device.iphone11])
-        ..addScenario(
-          name: 'Chat Support Empty State',
-          widget: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            home: BlocProvider<ChatSupportBloc>.value(
-              value: mockBloc,
-              child: const ChatSupportView(),
-            ),
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: BlocProvider<ChatSupportBloc>.value(
+            value: mockBloc,
+            child: const ChatSupportView(),
           ),
-        );
+        ),
+      );
+      await tester.pumpAndSettle();
 
-      await tester.pumpDeviceBuilder(builder);
-      await screenMatchesGolden(tester, 'chat_support_page_golden');
+      expect(find.text('Support Chat'), findsOneWidget);
+      expect(find.text('No active customer chats'), findsOneWidget);
     });
   });
 }

@@ -192,6 +192,7 @@ class _CartPageUIState extends State<CartPageUI> {
     return Column(
       children: [
         _buildHeader(count),
+
         Expanded(
           child: items.isEmpty
               ? _buildEmptyState()
@@ -218,6 +219,7 @@ class _CartPageUIState extends State<CartPageUI> {
           child: Column(
             children: [
               _buildHeader(count),
+
               Expanded(
                 child: items.isEmpty
                     ? _buildEmptyState()

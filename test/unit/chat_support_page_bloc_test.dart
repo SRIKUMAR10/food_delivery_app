@@ -69,24 +69,19 @@ void main() {
   });
 
   group('LoadChatSessionsEvent error handling', () {
-    test('handles stream error and emits ChatSupportError', () async {
-      final conversationsCtrl = StreamController<List<ConversationModel>>();
-      when(() => mockRepository.getConversationsForUser(
-          testSellerId, isSeller: true))
-          .thenAnswer((_) => conversationsCtrl.stream);
-
-      final bloc = ChatSupportBloc(repository: mockRepository);
-      bloc.add(LoadChatSessionsEvent(testSellerId));
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      conversationsCtrl.addError('Missing index');
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      expect(bloc.state, isA<ChatSupportError>());
-
-      await conversationsCtrl.close();
-      bloc.close();
-    });
+    blocTest<ChatSupportBloc, ChatSupportState>(
+      'handles stream error and emits ChatSupportError',
+      build: () {
+        when(() => mockRepository.getConversationsForUser(testSellerId, isSeller: true))
+            .thenAnswer((_) => Stream.error('Missing index'));
+        return ChatSupportBloc(repository: mockRepository);
+      },
+      act: (bloc) => bloc.add(LoadChatSessionsEvent(testSellerId)),
+      expect: () => [
+        isA<ChatSupportLoading>(),
+        isA<ChatSupportError>(),
+      ],
+    );
   });
 
   group('SendMessageEvent', () {
