@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_product_page__event.dart';
 import 'add_product_page__state.dart';
 import '../../../../core/repositories/i_product_repository.dart';
@@ -22,6 +23,28 @@ class AddProductPageBloc
     on<SpicyLevelChangedEvent>(_onSpicyLevelChanged);
     on<FieldChangedEvent>(_onFieldChanged);
     on<SubmitProductEvent>(_onSubmitProduct);
+    on<ResetFormEvent>(_onResetForm);
+    on<FetchGstPercentageEvent>(_onFetchGstPercentage);
+  }
+
+  Future<void> _onFetchGstPercentage(FetchGstPercentageEvent event, Emitter<AddProductPageState> emit) async {
+    final userId = authService.currentUserId;
+    if (userId != null) {
+      try {
+        final doc = await FirebaseFirestore.instance.collection('sellers').doc(userId).get();
+        if (doc.exists) {
+          final data = doc.data();
+          final gst = (data?['gstPercentage'] as num?)?.toDouble() ?? 0.0;
+          emit(state.copyWith(gstPercentage: gst));
+        }
+      } catch (_) {
+        // Ignore errors, use default 0.0
+      }
+    }
+  }
+
+  void _onResetForm(ResetFormEvent event, Emitter<AddProductPageState> emit) {
+    emit(const AddProductPageState());
   }
 
   void _onLoadProduct(LoadProductEvent event, Emitter<AddProductPageState> emit) async {
@@ -175,10 +198,14 @@ class AddProductPageBloc
         isArchived: initial?.isArchived ?? false,
       );
 
+      final effectiveSellerId = (authService.currentUserId != null && authService.currentUserId!.isNotEmpty)
+          ? authService.currentUserId!
+          : (initial?.sellerId != null && initial!.sellerId.isNotEmpty ? initial.sellerId : 'default_seller');
+
       if (initial != null) {
-        await repository.updateProduct(productToSave, state.images, authService.currentUserId ?? '', existingImages: state.existingImages);
+        await repository.updateProduct(productToSave, state.images, effectiveSellerId, existingImages: state.existingImages);
       } else {
-        await repository.addProduct(productToSave, state.images, authService.currentUserId ?? '');
+        await repository.addProduct(productToSave, state.images, effectiveSellerId);
       }
 
       emit(state.copyWith(status: AddProductStatus.success));

@@ -9,7 +9,6 @@ abstract class OutForDeliveryPageEvent extends Equatable {
 
 class FetchDeliveryDetails extends OutForDeliveryPageEvent {
   final String orderId;
-
   const FetchDeliveryDetails({required this.orderId});
 
   @override
@@ -18,7 +17,6 @@ class FetchDeliveryDetails extends OutForDeliveryPageEvent {
 
 class CallRider extends OutForDeliveryPageEvent {
   final String phoneNumber;
-
   const CallRider({required this.phoneNumber});
 
   @override
@@ -27,7 +25,6 @@ class CallRider extends OutForDeliveryPageEvent {
 
 class MessageRider extends OutForDeliveryPageEvent {
   final String riderId;
-
   const MessageRider({required this.riderId});
 
   @override

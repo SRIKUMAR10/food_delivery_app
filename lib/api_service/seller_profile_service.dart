@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 
 class SellerProfileService {
   final FirebaseFirestore _firestore;
@@ -79,7 +81,40 @@ class SellerProfileService {
     }
 
     try {
-      // Typically in Firebase, you'd want a Cloud Function to clean up data before deleting user
+      // 1. Fetch seller profile to get profile image URL
+      final docSnapshot = await _firestore.collection('sellers').doc(user.uid).get();
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data()!;
+        final imageUrl = data['imageUrl'] as String?;
+        if (imageUrl != null && imageUrl.isNotEmpty) {
+          try {
+            await FirebaseStorage.instance.refFromURL(imageUrl).delete();
+            debugPrint('Deleted seller profile image: $imageUrl');
+          } catch (e) {
+            debugPrint('Warning: Failed to delete seller profile image: $e');
+          }
+        }
+      }
+
+      // 2. Fetch and delete all products and their images for this seller
+      final productsQuery = await _firestore.collection('products').where('sellerId', isEqualTo: user.uid).get();
+      for (var productDoc in productsQuery.docs) {
+        final productData = productDoc.data();
+        if (productData['imageUrls'] != null) {
+          List<dynamic> imageUrls = productData['imageUrls'];
+          for (var url in imageUrls) {
+            try {
+              await FirebaseStorage.instance.refFromURL(url as String).delete();
+              debugPrint('Deleted product image: $url');
+            } catch (e) {
+              debugPrint('Warning: Failed to delete product image: $e');
+            }
+          }
+        }
+        await productDoc.reference.delete();
+      }
+
+      // 3. Delete the seller profile document and auth account
       await _firestore.collection('sellers').doc(user.uid).delete();
       await user.delete();
       return true;

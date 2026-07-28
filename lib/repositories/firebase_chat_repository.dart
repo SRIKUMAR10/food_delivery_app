@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
 import '../core/models/conversation_model.dart';
 import '../core/models/chat_message_model.dart';
 import '../core/repositories/i_chat_repository.dart';
@@ -339,7 +340,12 @@ class FirebaseChatRepository implements IChatRepository {
 
     final metadata = SettableMetadata(contentType: contentType);
 
-    if (file is File) {
+    if (file is XFile) {
+      final bytes = await file.readAsBytes();
+      final uploadTask = storageRef.putData(bytes, metadata);
+      final snapshot = await uploadTask;
+      print('2. [Firebase Upload] Snapshot Total Bytes: ${snapshot.totalBytes}');
+    } else if (file is File) {
       final uploadTask = storageRef.putFile(file, metadata);
       final snapshot = await uploadTask;
       print('2. [Firebase Upload] Snapshot Total Bytes: ${snapshot.totalBytes}');

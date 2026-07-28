@@ -19,6 +19,7 @@ class AddProductPageState extends Equatable {
   final bool isBestSeller;
   final Product? initialProduct;
   final List<String> existingImages;
+  final double gstPercentage;
 
   const AddProductPageState({
     this.status = AddProductStatus.initial,
@@ -35,6 +36,7 @@ class AddProductPageState extends Equatable {
     this.isBestSeller = false,
     this.initialProduct,
     this.existingImages = const [],
+    this.gstPercentage = 0.0,
   });
 
   AddProductPageState copyWith({
@@ -52,6 +54,7 @@ class AddProductPageState extends Equatable {
     bool? isBestSeller,
     Product? initialProduct,
     List<String>? existingImages,
+    double? gstPercentage,
   }) {
     return AddProductPageState(
       status: status ?? this.status,
@@ -68,6 +71,7 @@ class AddProductPageState extends Equatable {
       isBestSeller: isBestSeller ?? this.isBestSeller,
       initialProduct: initialProduct ?? this.initialProduct,
       existingImages: existingImages ?? this.existingImages,
+      gstPercentage: gstPercentage ?? this.gstPercentage,
     );
   }
 
@@ -87,5 +91,6 @@ class AddProductPageState extends Equatable {
         isBestSeller,
         initialProduct,
         existingImages,
+        gstPercentage,
       ];
 }

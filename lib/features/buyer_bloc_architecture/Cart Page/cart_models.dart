@@ -85,3 +85,30 @@ class CartItem extends Equatable {
   @override
   List<Object?> get props => [id, name, price, image, imageUrls, sellerId, quantity, isSelected, selectedAddons];
 }
+
+class AppliedCoupon extends Equatable {
+  final String code;
+  final String sellerId;
+  final double discountAmount;
+  final bool isPercentage;
+  final String couponId;
+
+  const AppliedCoupon({
+    required this.code,
+    required this.sellerId,
+    required this.discountAmount,
+    required this.isPercentage,
+    required this.couponId,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'code': code,
+    'sellerId': sellerId,
+    'discountAmount': discountAmount,
+    'isPercentage': isPercentage,
+    'couponId': couponId,
+  };
+
+  @override
+  List<Object?> get props => [code, sellerId, discountAmount, isPercentage, couponId];
+}

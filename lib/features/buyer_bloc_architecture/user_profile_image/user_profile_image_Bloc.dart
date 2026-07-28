@@ -177,44 +177,50 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
       // 2. Read bytes
       final Uint8List originalBytes = await picked.readAsBytes();
 
-      // 3. Compress using the 'image' package
-      // This runs on the main thread. In a highly optimized app, consider compute().
-      img.Image? decoded = img.decodeImage(originalBytes);
-      if (decoded == null) {
-        emit(
-          ProfileError(
-            'Could not decode image.',
-            previousState: currentState,
-          ),
-        );
-        emit(currentState.copyWith(uploadProgress: 0.0));
-        return;
+      // 3. Compress using the 'image' package with fallback to originalBytes
+      Uint8List bytesToUpload = originalBytes;
+      String contentType = 'image/jpeg';
+
+      try {
+        img.Image? decoded = img.decodeImage(originalBytes);
+        if (decoded != null) {
+          if (decoded.width > 800 || decoded.height > 800) {
+            decoded = decoded.width >= decoded.height
+                ? img.copyResize(decoded, width: 800)
+                : img.copyResize(decoded, height: 800);
+          }
+          bytesToUpload = Uint8List.fromList(
+            img.encodeJpg(decoded, quality: 75),
+          );
+        }
+      } catch (decodeErr) {
+        debugPrint('Image decode/compress warning, using original bytes: $decodeErr');
       }
 
-      // Resize if necessary (max 800px on the longest side)
-      if (decoded.width > 800 || decoded.height > 800) {
-        decoded = decoded.width >= decoded.height
-            ? img.copyResize(decoded, width: 800)
-            : img.copyResize(decoded, height: 800);
+      if (picked.name.toLowerCase().endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (picked.name.toLowerCase().endsWith('.webp')) {
+        contentType = 'image/webp';
       }
-
-      // Encode as JPEG at 75% quality
-      final Uint8List compressedBytes = Uint8List.fromList(
-        img.encodeJpg(decoded, quality: 75),
-      );
 
       // 4. Upload to Firebase Storage
       final Reference ref = _storage.ref('user/image/${user.uid}.jpg');
       final UploadTask uploadTask = ref.putData(
-        compressedBytes,
-        SettableMetadata(contentType: 'image/jpeg'),
+        bytesToUpload,
+        SettableMetadata(contentType: contentType),
       );
 
-      // Listen to progress updates
-      final progressSubscription = uploadTask.snapshotEvents.listen((snap) {
-        final total = snap.totalBytes == 0 ? 1 : snap.totalBytes;
-        add(ProfileImageUploadProgress(snap.bytesTransferred / total));
-      });
+      // Listen to progress updates safely
+      final progressSubscription = uploadTask.snapshotEvents.listen(
+        (snap) {
+          final total = snap.totalBytes == 0 ? 1 : snap.totalBytes;
+          add(ProfileImageUploadProgress(snap.bytesTransferred / total));
+        },
+        onError: (err) {
+          debugPrint('Upload progress stream error: $err');
+        },
+        cancelOnError: true,
+      );
 
       await uploadTask;
       await progressSubscription.cancel();
@@ -235,9 +241,12 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
       emit(currentState.copyWith(profile: updatedProfile, uploadProgress: 0.0));
     } catch (e) {
       debugPrint('Upload error: $e');
+      final String message = e.toString().contains('unauthorized')
+          ? '❌ Storage Permission Error: User is not authorized to upload to Firebase Storage. Please check Firebase Storage Security Rules.'
+          : '❌ Upload failed: ${e.toString().replaceAll('Exception: ', '')}';
       emit(
         ProfileError(
-          '❌ Upload failed. Please try again.',
+          message,
           previousState: currentState,
         ),
       );

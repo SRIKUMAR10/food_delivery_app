@@ -1,29 +1,35 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/core/repositories/i_cart_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_coupon_repository.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_models.dart';
 
 class MockCartRepository extends Mock implements ICartRepository {}
+class MockCouponRepository extends Mock implements ICouponRepository {}
 class MockAuthService extends Mock implements IAuthService {}
 
 void main() {
   group('CartBloc Unit Tests', () {
     late MockCartRepository mockCartRepository;
+    late MockCouponRepository mockCouponRepository;
     late MockAuthService mockAuthService;
     late CartBloc cartBloc;
 
     setUp(() {
       mockCartRepository = MockCartRepository();
+      mockCouponRepository = MockCouponRepository();
       mockAuthService = MockAuthService();
 
       when(() => mockAuthService.currentUserId).thenReturn('test_uid');
       when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value('test_uid'));
       when(() => mockCartRepository.getCartItemsStream(any()))
           .thenAnswer((_) => const Stream.empty());
+      when(() => mockCouponRepository.getActiveCouponsBySellers(any()))
+          .thenAnswer((_) => const Stream.empty());
 
-      cartBloc = CartBloc(cartRepository: mockCartRepository, authService: mockAuthService);
+      cartBloc = CartBloc(cartRepository: mockCartRepository, couponRepository: mockCouponRepository, authService: mockAuthService);
     });
 
     tearDown(() {
@@ -73,9 +79,11 @@ void main() {
 
       when(() => mockCartRepository.getCartItemsStream('test_uid'))
           .thenAnswer((_) => Stream.value([item1, item2]));
+      when(() => mockCartRepository.checkoutCart(any(), any(), any()))
+          .thenAnswer((_) async => {});
 
       cartBloc.close();
-      cartBloc = CartBloc(cartRepository: mockCartRepository, authService: mockAuthService);
+      cartBloc = CartBloc(cartRepository: mockCartRepository, couponRepository: mockCouponRepository, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       bool successCalled = false;

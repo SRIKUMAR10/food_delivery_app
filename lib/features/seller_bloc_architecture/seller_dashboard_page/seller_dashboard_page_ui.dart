@@ -151,12 +151,12 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                     // Header
                     SellerAppBarPageUI(
                       title: 'Good Morning, ${data.storeName} 👋',
+                      notificationCount: data.pendingOrdersCount,
                       onNotificationTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                const NewOrderNotificationPage(orderId: '1025'),
+                            builder: (context) => const NewOrderNotificationPage(),
                           ),
                         );
                       },

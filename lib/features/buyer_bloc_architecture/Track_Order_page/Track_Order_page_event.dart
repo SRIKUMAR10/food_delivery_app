@@ -27,7 +27,11 @@ class RefreshTrackOrder extends TrackOrderEvent {
 }
 
 class StartTracking extends TrackOrderEvent {
-  const StartTracking();
+  final String orderId;
+  const StartTracking({required this.orderId});
+
+  @override
+  List<Object> get props => [orderId];
 }
 
 class UpdateDriverLocation extends TrackOrderEvent {

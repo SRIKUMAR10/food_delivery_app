@@ -2,12 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/core/repositories/i_cart_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_coupon_repository.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_models.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockCartRepository extends Mock implements ICartRepository {}
+class MockCouponRepository extends Mock implements ICouponRepository {}
 class MockAuthService extends Mock implements IAuthService {}
 
 void main() {
@@ -16,6 +18,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final mockCartRepository = MockCartRepository();
+      final mockCouponRepository = MockCouponRepository();
       final mockAuthService = MockAuthService();
 
       when(() => mockAuthService.currentUserId).thenReturn('test_uid');
@@ -32,12 +35,14 @@ void main() {
 
       when(() => mockCartRepository.getCartItemsStream('test_uid'))
           .thenAnswer((_) => Stream.value(items));
+      when(() => mockCouponRepository.getActiveCouponsBySellers(any()))
+          .thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(
         MaterialApp(
           home: BlocProvider(
             create: (_) =>
-                CartBloc(cartRepository: mockCartRepository, authService: mockAuthService)
+                CartBloc(cartRepository: mockCartRepository, couponRepository: mockCouponRepository, authService: mockAuthService)
                   ..add(const LoadCartStarted()),
             child: const CartPageUI(),
           ),

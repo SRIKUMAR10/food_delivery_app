@@ -91,7 +91,7 @@ class FirebaseCartRepository implements ICartRepository {
   }
 
   @override
-  Future<void> checkoutCart(String buyerId, List<CartItem> selectedItems, String customerName) async {
+  Future<void> checkoutCart(String buyerId, List<CartItem> selectedItems, String customerName, {AppliedCoupon? appliedCoupon}) async {
     if (buyerId.isEmpty || selectedItems.isEmpty) return;
 
     final selectedCartItemsPayload = selectedItems.map((item) => {
@@ -100,12 +100,18 @@ class FirebaseCartRepository implements ICartRepository {
       'sellerId': item.sellerId,
     }).toList();
 
-    final httpsCallable = FirebaseFunctions.instance.httpsCallable('createSecureOrder');
-    await httpsCallable.call({
+    final payload = <String, dynamic>{
       'selectedCartItems': selectedCartItemsPayload,
       'customerName': customerName,
       'deliveryAddress': 'Default Address',
       'paymentMethod': 'Wallet',
-    });
+    };
+
+    if (appliedCoupon != null) {
+      payload['coupon'] = appliedCoupon.toMap();
+    }
+
+    final httpsCallable = FirebaseFunctions.instance.httpsCallable('createSecureOrder');
+    await httpsCallable.call(payload);
   }
 }

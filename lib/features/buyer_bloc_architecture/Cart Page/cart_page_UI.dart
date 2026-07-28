@@ -159,18 +159,15 @@ class _CartPageUIState extends State<CartPageUI> {
               }
 
               final loadedState = state as CartLoaded;
-              final items = loadedState.items;
-              final total = loadedState.totalAmount;
-              final count = loadedState.totalCount;
 
               return LayoutBuilder(
                 builder: (context, constraints) {
                   // If the screen is wide enough (e.g., Web or Tablet landscape), use side-by-side layout.
                   if (constraints.maxWidth > 800) {
-                    return _buildWebLayout(context, items, total, count);
+                    return _buildWebLayout(context, loadedState);
                   }
                   // Otherwise, use standard stacked phone layout.
-                  return _buildPhoneLayout(context, items, total, count);
+                  return _buildPhoneLayout(context, loadedState);
                 },
               );
             },
@@ -185,10 +182,10 @@ class _CartPageUIState extends State<CartPageUI> {
   /// Builds the standard stacked layout for mobile phones.
   Widget _buildPhoneLayout(
     BuildContext context,
-    List<CartItem> items,
-    double total,
-    int count,
+    CartLoaded loadedState,
   ) {
+    final items = loadedState.items;
+    final count = loadedState.totalCount;
     return Column(
       children: [
         _buildHeader(count),
@@ -198,7 +195,7 @@ class _CartPageUIState extends State<CartPageUI> {
               ? _buildEmptyState()
               : _buildItemList(items, isDesktop: false),
         ),
-        if (items.isNotEmpty) _buildBottomBar(context, total),
+        if (items.isNotEmpty) _buildBottomBar(context, loadedState),
       ],
     );
   }
@@ -206,10 +203,10 @@ class _CartPageUIState extends State<CartPageUI> {
   /// Builds a side-by-side layout for web and tablet, showing items on the left and summary on the right.
   Widget _buildWebLayout(
     BuildContext context,
-    List<CartItem> items,
-    double total,
-    int count,
+    CartLoaded loadedState,
   ) {
+    final items = loadedState.items;
+    final count = loadedState.totalCount;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -304,7 +301,7 @@ class _CartPageUIState extends State<CartPageUI> {
                     },
                   ),
                 ),
-                _buildBottomBar(context, total),
+                _buildBottomBar(context, loadedState),
               ],
             ),
           ),
@@ -703,8 +700,12 @@ class _CartPageUIState extends State<CartPageUI> {
     );
   }
 
-  /// Sticky bottom bar with Total Amount and Checkout button.
-  Widget _buildBottomBar(BuildContext context, double total) {
+  /// Sticky bottom bar with Total Amount, Coupon section, and Checkout button.
+  Widget _buildBottomBar(BuildContext context, CartLoaded state) {
+    final total = state.totalAmount;
+    final displayAmount = state.appliedCoupon != null ? state.finalAmount : total;
+    final hasDiscount = state.appliedCoupon != null && state.discountAmount > 0;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       decoration: BoxDecoration(
@@ -721,29 +722,115 @@ class _CartPageUIState extends State<CartPageUI> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Coupon message
+          if (state.couponMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                state.couponMessage!,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: state.appliedCoupon != null ? Colors.green : Colors.red,
+                ),
+              ),
+            ),
+
+          // Coupon section
+          if (state.appliedCoupon != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.local_offer, size: 16, color: Colors.green.shade600),
+                      const SizedBox(width: 6),
+                      Text(
+                        state.appliedCoupon!.code,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () => context.read<CartBloc>().add(const CouponRemoved()),
+                    child: Text(
+                      'Remove',
+                      style: TextStyle(fontSize: 12, color: _primaryRed),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Discount row
+          if (hasDiscount)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Discount',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.green.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    '-${_currFmt.format(state.discountAmount)}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Total row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Total Amount',
+                hasDiscount ? 'Total after discount' : 'Total Amount',
                 style: TextStyle(
                   fontSize: 15,
                   color: Colors.grey.shade600,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: Text(
-                  _currFmt.format(total),
-                  key: ValueKey(total),
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1C1C1C),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (hasDiscount)
+                    Text(
+                      _currFmt.format(total),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade400,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: Text(
+                      _currFmt.format(displayAmount),
+                      key: ValueKey(displayAmount),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1C1C1C),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),

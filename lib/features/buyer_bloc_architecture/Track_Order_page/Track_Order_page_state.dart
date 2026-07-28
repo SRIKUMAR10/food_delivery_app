@@ -17,6 +17,8 @@ class TrackOrderLoaded extends TrackOrderState {
   final List<TrackingStep> trackingSteps;
   final DeliveryPartner deliveryPartner;
   final SellerInfo? sellerInfo;
+  final double? driverLat;
+  final double? driverLng;
 
   const TrackOrderLoaded({
     required this.orderId,
@@ -24,10 +26,12 @@ class TrackOrderLoaded extends TrackOrderState {
     required this.trackingSteps,
     required this.deliveryPartner,
     this.sellerInfo,
+    this.driverLat,
+    this.driverLng,
   });
 
   @override
-  List<Object?> get props => [orderId, estimatedDelivery, trackingSteps, deliveryPartner, sellerInfo];
+  List<Object?> get props => [orderId, estimatedDelivery, trackingSteps, deliveryPartner, sellerInfo, driverLat, driverLng];
 }
 
 class TrackOrderError extends TrackOrderState {

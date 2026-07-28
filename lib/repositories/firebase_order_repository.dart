@@ -48,10 +48,38 @@ class FirebaseOrderRepository implements IOrderRepository {
   @override
   Future<void> updateOrderStatus(String orderId, OrderStatus newStatus) async {
     try {
-      await _firestore.collection('orders').doc(orderId).update({
-        'status': newStatus.name,
-        'updatedAt': FieldValue.serverTimestamp(), // Assuming updatedAt exists or is a good practice
-      });
+      final Map<String, dynamic> updates = {
+        'status': newStatus.value,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      switch (newStatus) {
+        case OrderStatus.accepted:
+          updates['acceptedAt'] = FieldValue.serverTimestamp();
+          break;
+        case OrderStatus.rejected:
+          updates['rejectedAt'] = FieldValue.serverTimestamp();
+          break;
+        case OrderStatus.preparing:
+          updates['preparingAt'] = FieldValue.serverTimestamp();
+          break;
+        case OrderStatus.ready:
+          updates['readyAt'] = FieldValue.serverTimestamp();
+          break;
+        case OrderStatus.outForDelivery:
+          updates['outForDeliveryAt'] = FieldValue.serverTimestamp();
+          break;
+        case OrderStatus.delivered:
+          updates['deliveredAt'] = FieldValue.serverTimestamp();
+          break;
+        case OrderStatus.cancelled:
+          updates['cancelledAt'] = FieldValue.serverTimestamp();
+          break;
+        case OrderStatus.newOrder:
+          break;
+      }
+
+      await _firestore.collection('orders').doc(orderId).update(updates);
     } catch (e) {
       throw Exception('Failed to update order status: $e');
     }

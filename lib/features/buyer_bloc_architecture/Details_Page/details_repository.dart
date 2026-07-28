@@ -32,21 +32,30 @@ class DetailsRepository {
   }
 
   Future<void> submitRating(String userId, String foodId, double rating) async {
-    final cartDocRef = _firestore
-        .collection('orders')
-        .doc(userId)
-        .collection('transactions')
-        .doc(foodId)
-        .collection('cart')
-        .doc(userId);
+    final batch = _firestore.batch();
 
-    await cartDocRef.set(
-      {
-        'rating': rating,
-        'timestamp': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    final userRatingRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('ratings')
+        .doc(foodId);
+    batch.set(userRatingRef, {
+      'rating': rating,
+      'timestamp': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    final reviewRef = _firestore
+        .collection('products')
+        .doc(foodId)
+        .collection('reviews')
+        .doc();
+    batch.set(reviewRef, {
+      'userId': userId,
+      'rating': rating,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
   }
 
   Stream<double> getAverageProductRatingStream(String foodId) {

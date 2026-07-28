@@ -1076,9 +1076,29 @@ class _OrderTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int activeStep = 0; // default for 'New'
-    if (currentStatus == 'Preparing') activeStep = 2;
-    if (currentStatus == 'Completed') activeStep = 3;
+    int activeStep = 0;
+    switch (currentStatus) {
+      case 'New':
+      case 'Accepted':
+        activeStep = 0;
+        break;
+      case 'Rejected':
+      case 'Cancelled':
+        activeStep = -1;
+        break;
+      case 'Preparing':
+        activeStep = 2;
+        break;
+      case 'Ready':
+        activeStep = 3;
+        break;
+      case 'OutForDelivery':
+        activeStep = 4;
+        break;
+      case 'Delivered':
+        activeStep = 5;
+        break;
+    }
 
     final steps = [
       {'title': 'Order accepted', 'subtitle': ''},
@@ -1240,17 +1260,47 @@ class _StatusBadge extends StatelessWidget {
         iconData = Icons.auto_awesome_rounded;
         label = 'New';
         break;
+      case 'Accepted':
+        bgColor = const Color(0xFFEFF6FF);
+        textColor = const Color(0xFF3B82F6);
+        iconData = Icons.thumb_up_rounded;
+        label = 'Accepted';
+        break;
       case 'Preparing':
         bgColor = const Color(0xFFFFF7ED);
         textColor = const Color(0xFFF97316);
         iconData = Icons.soup_kitchen_rounded;
         label = 'Preparing';
         break;
-      case 'Completed':
+      case 'Ready':
+        bgColor = const Color(0xFFFEF9C3);
+        textColor = const Color(0xFFA16207);
+        iconData = Icons.checklist_rounded;
+        label = 'Ready';
+        break;
+      case 'OutForDelivery':
+        bgColor = const Color(0xFFE0F2FE);
+        textColor = const Color(0xFF0369A1);
+        iconData = Icons.delivery_dining_rounded;
+        label = 'Out for Delivery';
+        break;
+      case 'Delivered':
         bgColor = const Color(0xFFF0FDF4);
         textColor = const Color(0xFF22C55E);
         iconData = Icons.check_circle_rounded;
-        label = 'Ready';
+        label = 'Delivered';
+        break;
+      case 'Rejected':
+        bgColor = const Color(0xFFFEF2F2);
+        textColor = const Color(0xFFDC2626);
+        iconData = Icons.cancel_rounded;
+        label = 'Rejected';
+        break;
+      case 'Cancelled':
+        bgColor = const Color(0xFFFEF2F2);
+        textColor = const Color(0xFFDC2626);
+        iconData = Icons.cancel_rounded;
+        label = 'Cancelled';
         break;
       default:
         bgColor = const Color(0xFFF8FAFC);

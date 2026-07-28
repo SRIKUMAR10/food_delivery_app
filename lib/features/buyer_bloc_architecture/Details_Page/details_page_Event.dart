@@ -20,12 +20,4 @@ class LoadDetailsRating extends DetailsEvent {
   List<Object> get props => [foodId];
 }
 
-class SubmitRating extends DetailsEvent {
-  final double rating;
-  final String foodId;
 
-  const SubmitRating({required this.rating, required this.foodId});
-
-  @override
-  List<Object> get props => [rating, foodId];
-}

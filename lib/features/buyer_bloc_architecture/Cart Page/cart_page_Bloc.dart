@@ -1,14 +1,11 @@
-// lib/Buyer Bloc Architecture/Cart Page/cart_page_Bloc.dart
-//
-// The Business Logic Component (BLoC) for the Cart.
-// Handles adding, removing, updating items, and calculating totals.
-
 import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/services/i_auth_service.dart';
+import '../../../core/services/business_hours_validator.dart';
 import '../../../core/repositories/i_cart_repository.dart';
+import '../../../core/repositories/i_coupon_repository.dart';
 import 'cart_models.dart';
 
 part 'cart_page_Event.dart';
@@ -16,14 +13,18 @@ part 'cart_page_State.dart';
 
 class CartBloc extends Bloc<CartEvent, CartState> {
   final ICartRepository _cartRepository;
+  final ICouponRepository _couponRepository;
   final IAuthService _authService;
 
   StreamSubscription<String?>? _authSubscription;
+  StreamSubscription<List<AppliedCoupon>>? _couponSubscription;
 
   CartBloc({
     required ICartRepository cartRepository,
+    required ICouponRepository couponRepository,
     required IAuthService authService,
   })  : _cartRepository = cartRepository,
+        _couponRepository = couponRepository,
         _authService = authService,
         super(const CartLoading()) {
     
@@ -42,15 +43,41 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<CartItemSelectionToggled>(_onCartItemSelectionToggled);
     on<CartCleared>(_onCartCleared);
     on<CartCheckoutRequested>(_onCartCheckoutRequested);
+    on<LoadAvailableCoupons>(_onLoadAvailableCoupons);
+    on<_CouponsLoaded>(_onCouponsLoaded);
+    on<CouponApplied>(_onCouponApplied);
+    on<CouponRemoved>(_onCouponRemoved);
+    on<CouponError>(_onCouponError);
   }
 
   @override
   Future<void> close() {
     _authSubscription?.cancel();
+    _couponSubscription?.cancel();
     return super.close();
   }
 
   String? get _currentUserId => _authService.currentUserId;
+
+  void _subscribeToCoupons(List<String> sellerIds) {
+    _couponSubscription?.cancel();
+    _couponSubscription = _couponRepository
+        .getActiveCouponsBySellers(sellerIds)
+        .map(
+          (coupons) => coupons.map((c) => AppliedCoupon(
+            code: c.code,
+            sellerId: c.sellerId,
+            discountAmount: c.discountAmount,
+            isPercentage: c.isPercentage,
+            couponId: c.id,
+          )).toList(),
+        )
+        .listen((availableCoupons) {
+      if (!isClosed) {
+        add(_CouponsLoaded(availableCoupons));
+      }
+    });
+  }
 
   Future<void> _onLoadCartStarted(
     LoadCartStarted event,
@@ -75,6 +102,11 @@ class CartBloc extends Bloc<CartEvent, CartState> {
               totalAmount += (item.price * item.quantity);
               totalCount += item.quantity;
             }
+          }
+
+          final sellerIds = items.map((i) => i.sellerId).toSet().toList();
+          if (sellerIds.isNotEmpty) {
+            _subscribeToCoupons(sellerIds);
           }
 
           return CartLoaded(
@@ -147,6 +179,9 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     CartCleared event,
     Emitter<CartState> emit,
   ) async {
+    _couponSubscription?.cancel();
+    _couponSubscription = null;
+
     final uid = _currentUserId;
     if (uid == null) {
       emit(const CartLoaded(items: [], totalAmount: 0, totalCount: 0));
@@ -167,17 +202,15 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     if (uid == null) return;
 
     try {
-      // Note: customerName could be retrieved via another service or usecase.
-      // For now, passing a placeholder or getting it if the state holds it.
-      // We will pass 'Customer' since the old code did a firestore read here.
-      // Alternatively, the UI should provide it, but to match existing behavior:
-      
       final currentState = state;
       if (currentState is CartLoaded) {
         final selectedItems = currentState.items.where((i) => i.isSelected).toList();
         if (selectedItems.isEmpty) return;
 
-        await _cartRepository.checkoutCart(uid, selectedItems, 'Customer');
+        await _cartRepository.checkoutCart(
+          uid, selectedItems, 'Customer',
+          appliedCoupon: currentState.appliedCoupon,
+        );
         
         if (event.onSuccess != null) {
           event.onSuccess!();
@@ -187,4 +220,79 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       print("Checkout Error: $e");
     }
   }
+
+  void _onLoadAvailableCoupons(
+    LoadAvailableCoupons event,
+    Emitter<CartState> emit,
+  ) {
+    _subscribeToCoupons(event.sellerIds);
+  }
+
+  void _onCouponsLoaded(
+    _CouponsLoaded event,
+    Emitter<CartState> emit,
+  ) {
+    if (state is CartLoaded) {
+      emit((state as CartLoaded).copyWith(
+        availableCoupons: event.coupons,
+      ));
+    }
+  }
+
+  void _onCouponApplied(
+    CouponApplied event,
+    Emitter<CartState> emit,
+  ) {
+    if (state is CartLoaded) {
+      final current = state as CartLoaded;
+      final discount = event.coupon.isPercentage
+          ? ((current.totalAmount * event.coupon.discountAmount / 100).clamp(0, current.totalAmount) as double)
+          : (event.coupon.discountAmount.clamp(0, current.totalAmount) as double);
+      final finalAmount = current.totalAmount - discount;
+
+      emit(current.copyWith(
+        appliedCoupon: event.coupon,
+        discountAmount: discount,
+        finalAmount: finalAmount,
+        couponMessage: 'Coupon applied! You save ₹${discount.toStringAsFixed(0)}',
+        clearCouponMessage: false,
+      ));
+    }
+  }
+
+  void _onCouponRemoved(
+    CouponRemoved event,
+    Emitter<CartState> emit,
+  ) {
+    if (state is CartLoaded) {
+      final current = state as CartLoaded;
+      emit(current.copyWith(
+        clearCoupon: true,
+        discountAmount: 0,
+        finalAmount: current.totalAmount,
+        couponMessage: 'Coupon removed',
+        clearCouponMessage: false,
+      ));
+    }
+  }
+
+  void _onCouponError(
+    CouponError event,
+    Emitter<CartState> emit,
+  ) {
+    if (state is CartLoaded) {
+      emit((state as CartLoaded).copyWith(
+        couponMessage: event.message,
+        clearCouponMessage: false,
+      ));
+    }
+  }
+}
+
+class _CouponsLoaded extends CartEvent {
+  final List<AppliedCoupon> coupons;
+  const _CouponsLoaded(this.coupons);
+
+  @override
+  List<Object?> get props => [coupons];
 }

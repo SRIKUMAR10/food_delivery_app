@@ -64,7 +64,7 @@ void main() {
       expectLater(bloc.stream, emitsInOrder(expectedStates));
 
       // Act
-      bloc.add(const StartTracking());
+      bloc.add(const StartTracking(orderId: '123'));
     });
   });
 }

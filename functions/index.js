@@ -204,7 +204,112 @@ exports.checkAuthExists = functions.https.onCall(async (data, context) => {
   }
 });
 
-// Order Status Notifications
+// ────────────────────────────────────────────────────────────
+// IDEMPOTENT STOCK RESTORE
+// Restores product stock when an order is rejected or cancelled.
+// Uses availableStock (the same field deducted by createSecureOrder).
+// ────────────────────────────────────────────────────────────
+async function restoreOrderStock(db, orderData, orderId) {
+  const items = orderData.items;
+  if (!items || items.length === 0) return;
+
+  const batch = db.batch();
+  let hasWrites = false;
+
+  for (const item of items) {
+    if (!item.productId) continue;
+    const productRef = db.collection('products').doc(item.productId);
+    const productSnap = await productRef.get();
+    if (!productSnap.exists) continue;
+
+    const productData = productSnap.data();
+    const currentStock = productData.availableStock || 0;
+    const qtyToRestore = item.quantity || 1;
+
+    batch.update(productRef, {
+      availableStock: currentStock + qtyToRestore,
+      status: 'available',
+    });
+    hasWrites = true;
+  }
+
+  if (hasWrites) {
+    await batch.commit();
+    console.log(`Stock restored for order ${orderId}`);
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// IDEMPOTENT SELLER WALLET CREDIT
+// Credits the seller's wallet when an order is delivered.
+// Idempotent: checks walletCreditedAt before crediting.
+// Uses Firestore transaction to ensure consistency.
+// ────────────────────────────────────────────────────────────
+async function creditSellerWallet(db, orderData, orderId) {
+  const sellerId = orderData.sellerId;
+  const amount = parseFloat(orderData.amount) || 0;
+
+  if (!sellerId || amount <= 0) {
+    console.log(`Skipping wallet credit: sellerId=${sellerId}, amount=${amount}`);
+    return;
+  }
+
+  // Idempotency check: skip if already credited
+  if (orderData.walletCreditedAt) {
+    console.log(`Wallet already credited for order ${orderId}, skipping.`);
+    return;
+  }
+
+  const sellerRef = db.collection('sellers').doc(sellerId);
+  const orderRef = db.collection('orders').doc(orderId);
+  const txnRef = db.collection('sellers').doc(sellerId).collection('transactions').doc();
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const sellerSnap = await transaction.get(sellerRef);
+      if (!sellerSnap.exists) {
+        console.log(`Seller ${sellerId} not found, skipping wallet credit.`);
+        return;
+      }
+
+      // Double-check idempotency inside transaction
+      const orderSnap = await transaction.get(orderRef);
+      if (orderSnap.exists && orderSnap.data().walletCreditedAt) {
+        console.log(`Concurrent wallet credit detected for order ${orderId}, skipping.`);
+        return;
+      }
+
+      const currentBalance = parseFloat(sellerSnap.data().walletBalance) || 0;
+
+      transaction.update(sellerRef, {
+        walletBalance: currentBalance + amount,
+      });
+
+      transaction.update(orderRef, {
+        walletCreditedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      transaction.set(txnRef, {
+        type: 'order_credit',
+        orderId: orderId,
+        amount: amount,
+        balanceBefore: currentBalance,
+        balanceAfter: currentBalance + amount,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    console.log(`Wallet credited: seller=${sellerId}, amount=${amount}, order=${orderId}`);
+  } catch (error) {
+    console.error(`Failed to credit seller wallet for order ${orderId}:`, error);
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// ORDER STATUS CHANGED — MASTER TRIGGER
+// Handles all status transitions with FCM + business side effects.
+// Each business flow is idempotent (safe on retry).
+// ────────────────────────────────────────────────────────────
 exports.onOrderStatusChanged = functions.firestore
   .document("orders/{orderId}")
   .onWrite(async (change, context) => {
@@ -228,6 +333,8 @@ exports.onOrderStatusChanged = functions.firestore
     const sellerId = afterData.sellerId;
     const riderId = afterData.riderId;
 
+    const db = admin.firestore();
+
     let targetUids = [];
     let title = "Order Update";
     let body = `Order ${orderId} status changed to ${newStatus}`;
@@ -244,11 +351,15 @@ exports.onOrderStatusChanged = functions.firestore
         body = `Your order has been accepted and is being prepared.`;
         break;
       case "Preparing":
+        targetUids.push(customerId);
+        title = "Preparing Your Order";
+        body = `Your order is being prepared.`;
         break;
       case "Ready":
+        targetUids.push(customerId);
         if (riderId) targetUids.push(riderId);
         title = "Order Ready";
-        body = `Your order is ready for delivery.`;
+        body = `Your order is ready!`;
         break;
       case "OutForDelivery":
         targetUids.push(customerId);
@@ -259,13 +370,29 @@ exports.onOrderStatusChanged = functions.firestore
         targetUids.push(customerId);
         title = "Order Delivered";
         body = `Your order has been delivered. Enjoy!`;
+        // ─── BUSINESS FLOW 3: Delivered → Wallet Credit ───
+        await creditSellerWallet(db, afterData, orderId);
+        break;
+      case "Rejected":
+        targetUids.push(customerId);
+        title = "Order Rejected";
+        body = `Your order has been rejected.`;
+        // ─── BUSINESS FLOW 1: Rejected → Stock Restore ───
+        await restoreOrderStock(db, afterData, orderId);
+        break;
+      case "Cancelled":
+        targetUids.push(customerId);
+        targetUids.push(sellerId);
+        title = "Order Cancelled";
+        body = `Order ${orderId} has been cancelled.`;
+        // ─── BUSINESS FLOW 2: Cancelled → Stock Restore ───
+        await restoreOrderStock(db, afterData, orderId);
         break;
     }
 
     if (targetUids.length === 0) return null;
 
     const tokens = [];
-    const db = admin.firestore();
     
     // Using Set to avoid duplicate tokens if same user is involved
     const processedUids = new Set();
@@ -298,12 +425,9 @@ exports.onOrderStatusChanged = functions.firestore
     };
 
     try {
-      // Using sendToDevice which is legacy but widely used in existing setups. 
-      // In newer SDKs, sendEachForMulticast is preferred. 
       const response = await admin.messaging().sendToDevice(tokens, payload);
       console.log("Successfully sent messages:", response.successCount);
       
-      // Token cleanup
       response.results.forEach((result, index) => {
         const error = result.error;
         if (error) {
@@ -317,14 +441,14 @@ exports.onOrderStatusChanged = functions.firestore
     return null;
   });
 
-// --- Secure Checkout ---
+// --- Secure Checkout with Coupon Support ---
 exports.createSecureOrder = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
   }
 
   const uid = context.auth.uid;
-  const { selectedCartItems, customerName, deliveryAddress, paymentMethod } = data;
+  const { selectedCartItems, customerName, deliveryAddress, paymentMethod, coupon } = data;
 
   if (!selectedCartItems || selectedCartItems.length === 0) {
     throw new functions.https.HttpsError('invalid-argument', 'No items selected.');
@@ -396,11 +520,70 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
         });
       }
 
-      // 3. Perform Writes
+      // 3. Server-side Coupon Validation
+      let appliedDiscount = 0;
+      if (coupon && coupon.code && coupon.sellerId) {
+        const couponRef = db.collection('sellers')
+          .doc(coupon.sellerId)
+          .collection('coupons')
+          .doc(coupon.couponId);
+        const couponSnap = await transaction.get(couponRef);
+
+        if (!couponSnap.exists) {
+          throw new functions.https.HttpsError('not-found', 'Coupon not found.');
+        }
+
+        const couponData = couponSnap.data();
+        const sellerOrder = itemsBySeller[coupon.sellerId];
+        const orderTotal = sellerOrder ? sellerOrder.totalAmount : 0;
+
+        // Validate coupon fields
+        if (!couponData.isActive) {
+          throw new functions.https.HttpsError('failed-precondition', 'Coupon is no longer active.');
+        }
+
+        const expiryDate = couponData.expiryDate ? couponData.expiryDate.toDate() : new Date(0);
+        if (expiryDate < new Date()) {
+          throw new functions.https.HttpsError('failed-precondition', 'Coupon has expired.');
+        }
+
+        const usageLimit = couponData.usageLimit || 0;
+        const usedCount = couponData.usedCount || 0;
+        if (usageLimit > 0 && usedCount >= usageLimit) {
+          throw new functions.https.HttpsError('failed-precondition', 'Coupon usage limit reached.');
+        }
+
+        const minimumOrderValue = parseFloat(couponData.minimumOrderValue) || 0;
+        if (orderTotal < minimumOrderValue) {
+          throw new functions.https.HttpsError('failed-precondition',
+            `Minimum order value of ${minimumOrderValue} required for this coupon.`);
+        }
+
+        // Calculate discount
+        const discountAmount = parseFloat(couponData.discountAmount) || 0;
+        const isPercentage = couponData.isPercentage || false;
+        appliedDiscount = isPercentage
+          ? Math.min(orderTotal * discountAmount / 100, orderTotal)
+          : Math.min(discountAmount, orderTotal);
+
+        // Decrement coupon usage count
+        transaction.update(couponRef, {
+          usedCount: usedCount + 1,
+        });
+
+        // Adjust order total for this seller
+        if (sellerOrder) {
+          sellerOrder.totalAmount = orderTotal - appliedDiscount;
+          sellerOrder.discountAmount = appliedDiscount;
+          sellerOrder.couponCode = coupon.code;
+        }
+      }
+
+      // 4. Perform Writes
       for (const sellerId in itemsBySeller) {
         const orderData = itemsBySeller[sellerId];
         const orderRef = db.collection('orders').doc();
-        transaction.set(orderRef, {
+        const orderPayload = {
           customerId: uid || '',
           customerName: customerName || 'Unknown Customer',
           sellerId: sellerId || 'Unknown Seller',
@@ -410,7 +593,15 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
           items: orderData.items,
           deliveryAddress: deliveryAddress || 'Default Address',
           paymentMethod: paymentMethod || 'Wallet'
-        });
+        };
+
+        if (orderData.discountAmount) {
+          orderPayload.discountAmount = orderData.discountAmount;
+          orderPayload.couponCode = orderData.couponCode || '';
+          orderPayload.originalAmount = orderData.totalAmount + orderData.discountAmount;
+        }
+
+        transaction.set(orderRef, orderPayload);
       }
 
       for (const update of productUpdates) {

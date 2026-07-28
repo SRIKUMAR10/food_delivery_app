@@ -109,3 +109,7 @@ class SubmitProductEvent extends AddProductPageEvent {
   @override
   List<Object?> get props => [name, price, discountPrice, description, prepTime, portionSize, addons, calories, availableStock, minimumAlert];
 }
+
+class ResetFormEvent extends AddProductPageEvent {}
+
+class FetchGstPercentageEvent extends AddProductPageEvent {}

@@ -8,7 +8,7 @@ service firebase.storage {
     }
     
     function isImage() {
-      return request.resource.contentType.matches('image/.*');
+      return request.resource.contentType != null && request.resource.contentType.matches('image/.*');
     }
     
     function isUnder5MB() {
@@ -18,20 +18,29 @@ service firebase.storage {
     match /product_images/{sellerId}/{imageId} {
       // Only the authenticated seller can upload images to their own folder.
       // Image must be less than 5MB and must be an image type.
-      allow write: if isAuthenticated() && 
+      allow create, update: if isAuthenticated() && 
                       request.auth.uid == sellerId &&
                       isImage() && 
                       isUnder5MB();
-                      
+      allow delete: if isAuthenticated() && request.auth.uid == sellerId;
       // Anyone can read product images
       allow read: if true;
     }
 
     match /profile_images/{userId}/{imageId} {
-      allow write: if isAuthenticated() && 
+      allow create, update: if isAuthenticated() && 
                       request.auth.uid == userId &&
                       isImage() && 
                       isUnder5MB();
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if true;
+    }
+
+    match /user/image/{filename} {
+      allow create, update: if isAuthenticated() && 
+                      isImage() && 
+                      isUnder5MB();
+      allow delete: if isAuthenticated();
       allow read: if true;
     }
 

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:food_delivery_app/api_service/seller_review_service.dart';
 import 'overall_rating_page__bloc.dart';
 import 'overall_rating_page__event.dart';
 import 'overall_rating_page__state.dart';
@@ -12,117 +13,126 @@ class OverallRatingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Premium light background
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF8FAFC).withValues(alpha: 0.95),
-        elevation: 0,
-        scrolledUnderElevation: 4,
-        shadowColor: Colors.black.withValues(alpha: 0.1),
-        centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Color(0xFF1E293B),
-            size: 20,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Rating & Reviews',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF1E293B),
-              ),
-            ),
-            Text(
-              'Customer Feedback',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
+    return BlocProvider(
+      create: (context) => OverallRatingBloc(
+        service: SellerReviewService(),
       ),
-      body: BlocBuilder<OverallRatingBloc, OverallRatingState>(
-        builder: (context, state) {
-          if (state is OverallRatingInitial) {
-            context.read<OverallRatingBloc>().add(LoadOverallRatingEvent());
-            return const _LoadingSkeleton();
-          } else if (state is OverallRatingLoading) {
-            return const _LoadingSkeleton();
-          } else if (state is OverallRatingLoaded) {
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<OverallRatingBloc>().add(RefreshOverallRatingEvent());
-              },
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 800),
-                  child: ListView(
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top + kToolbarHeight + 24.0,
-                      left: 16.0,
-                      right: 16.0,
-                      bottom: 32.0,
-                    ),
-                    children: [
-                      _OverallRatingCard(
-                        overallRating: state.overallRating,
-                        totalReviews: state.totalReviews,
-                      ),
-                      const SizedBox(height: 16),
-                      ...state.reviews.map((review) => Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: _ReviewCard(review: review),
-                          )),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade600,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'View All Reviews',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                    ],
-                  ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC), // Premium light background
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFF8FAFC).withValues(alpha: 0.95),
+          elevation: 0,
+          scrolledUnderElevation: 4,
+          shadowColor: Colors.black.withValues(alpha: 0.1),
+          centerTitle: false,
+          leading: BlocBuilder<OverallRatingBloc, OverallRatingState>(
+            builder: (context, state) {
+              return IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Color(0xFF1E293B),
+                  size: 20,
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              );
+            },
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Rating & Reviews',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B),
                 ),
               ),
-            );
-          } else if (state is OverallRatingError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Error: ${state.message}', style: const TextStyle(color: Colors.red)),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => context.read<OverallRatingBloc>().add(LoadOverallRatingEvent()),
-                    child: const Text('Retry'),
-                  ),
-                ],
+              Text(
+                'Customer Feedback',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF64748B),
+                ),
               ),
-            );
-          }
-          return const SizedBox.shrink();
-        },
+            ],
+          ),
+        ),
+        body: BlocBuilder<OverallRatingBloc, OverallRatingState>(
+          builder: (context, state) {
+            if (state is OverallRatingInitial) {
+              context.read<OverallRatingBloc>().add(LoadOverallRatingEvent());
+              return const _LoadingSkeleton();
+            } else if (state is OverallRatingLoading) {
+              return const _LoadingSkeleton();
+            } else if (state is OverallRatingLoaded) {
+              return RefreshIndicator(
+                onRefresh: () async {
+                  context.read<OverallRatingBloc>().add(RefreshOverallRatingEvent());
+                },
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 800),
+                    child: ListView(
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).padding.top + kToolbarHeight + 24.0,
+                        left: 16.0,
+                        right: 16.0,
+                        bottom: 32.0,
+                      ),
+                      children: [
+                        _OverallRatingCard(
+                          overallRating: state.overallRating,
+                          totalReviews: state.totalReviews,
+                        ),
+                        const SizedBox(height: 16),
+                        ...state.reviews.map((review) => Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: _ReviewCard(review: review),
+                            )),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'View All Reviews',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            } else if (state is OverallRatingError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Error: ${state.message}', style: const TextStyle(color: Colors.red)),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => context.read<OverallRatingBloc>().add(LoadOverallRatingEvent()),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }

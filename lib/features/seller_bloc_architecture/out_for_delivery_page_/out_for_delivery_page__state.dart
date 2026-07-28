@@ -14,16 +14,18 @@ class RiderDetails extends Equatable {
   final String name;
   final String phone;
   final String imageUrl;
+  final double rating;
 
   const RiderDetails({
     required this.id,
     required this.name,
     required this.phone,
     required this.imageUrl,
+    this.rating = 0.0,
   });
 
   @override
-  List<Object?> get props => [id, name, phone, imageUrl];
+  List<Object?> get props => [id, name, phone, imageUrl, rating];
 }
 
 abstract class OutForDeliveryPageState extends Equatable {
@@ -43,7 +45,6 @@ class OutForDeliveryPageLoaded extends OutForDeliveryPageState {
   final DeliveryStatus currentStatus;
   final String estimatedTime;
   final String distance;
-  // LatLng coordinates can be added here if needed
 
   const OutForDeliveryPageLoaded({
     required this.orderId,

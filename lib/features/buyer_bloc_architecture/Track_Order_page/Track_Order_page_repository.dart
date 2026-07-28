@@ -2,16 +2,12 @@ import 'dart:async';
 import 'Track_Order_page_service.dart';
 
 abstract class TrackOrderRepository {
-  /// Stream of driver location updates
   Stream<DriverLocation> get locationStream;
 
-  /// Fetch initial order tracking details
   Future<Map<String, dynamic>> fetchOrderDetails(String orderId);
-  
-  /// Start tracking the order
+
   Future<void> startTracking(String orderId);
-  
-  /// Stop tracking the order
+
   Future<void> stopTracking();
 }
 
@@ -35,7 +31,11 @@ class DriverLocation {
 
 class TrackOrderRepositoryImpl implements TrackOrderRepository {
   final TrackOrderService service;
-  
+  StreamSubscription<Map<String, dynamic>>? _locationSub;
+
+  final StreamController<DriverLocation> _locationController =
+      StreamController<DriverLocation>.broadcast();
+
   TrackOrderRepositoryImpl({required this.service});
 
   @override
@@ -44,20 +44,42 @@ class TrackOrderRepositoryImpl implements TrackOrderRepository {
   }
 
   @override
-  Stream<DriverLocation> get locationStream {
-    return service.connectDriverLocationSocket('dummy').map(
-      (data) => DriverLocation(lat: data['lat'] ?? 0.0, lng: data['lng'] ?? 0.0),
+  Stream<DriverLocation> get locationStream => _locationController.stream;
+
+  @override
+  Future<void> startTracking(String orderId) async {
+    final details = await service.getOrderDetails(orderId);
+    final riderId = details['riderId'] as String?;
+    if (riderId == null || riderId.isEmpty) return;
+
+    await _locationSub?.cancel();
+
+    _locationSub = service.riderLocationStream(riderId).listen(
+      (data) {
+        if (!_locationController.isClosed) {
+          _locationController.add(DriverLocation(
+            lat: (data['lat'] as num?)?.toDouble() ?? 0.0,
+            lng: (data['lng'] as num?)?.toDouble() ?? 0.0,
+          ));
+        }
+      },
+      onError: (e) {
+        if (!_locationController.isClosed) {
+          _locationController.addError(e);
+        }
+      },
     );
   }
 
   @override
-  Future<void> startTracking(String orderId) async {
-    // In a real app, initialize sockets or background services here
+  Future<void> stopTracking() async {
+    await _locationSub?.cancel();
+    _locationSub = null;
   }
 
-  @override
-  Future<void> stopTracking() async {
-    // Clean up
+  void dispose() {
+    _locationSub?.cancel();
+    _locationController.close();
   }
 }
 

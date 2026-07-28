@@ -1,17 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/repositories/i_app_settings_repository.dart';
+import '../../../../core/services/theme_manager.dart';
+import '../../../../core/services/locale_manager.dart';
+import '../AppSettings_Bloc.dart';
+import '../AppSettings_Event.dart';
+import '../AppSettings_UI.dart';
 
 class AppSettingsPage extends StatelessWidget {
   const AppSettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth > 800) {
-          return _buildDesktopLayout(context);
-        }
-        return _buildMobileLayout(context);
-      },
+    return BlocProvider(
+      create: (context) => AppSettingsBloc(
+        repository: context.read<IAppSettingsRepository>(),
+        themeManager: context.read<ThemeManager>(),
+        localeManager: context.read<LocaleManager>(),
+      )..add(const AppSettingsLoadStarted()),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth > 800) {
+            return _buildDesktopLayout(context);
+          }
+          return _buildMobileLayout(context);
+        },
+      ),
     );
   }
 
@@ -40,7 +54,7 @@ class AppSettingsPage extends StatelessWidget {
           ),
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 550, maxHeight: 650),
+              constraints: const BoxConstraints(maxWidth: 650, maxHeight: 750),
               child: Card(
                 elevation: 12,
                 shadowColor: Colors.black26,
@@ -48,13 +62,21 @@ class AppSettingsPage extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24),
                   child: Scaffold(
+                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                     appBar: AppBar(
-                      backgroundColor: Colors.white,
-                      elevation: 0, centerTitle: true,
-                      title: const Text('App Settings', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      centerTitle: true,
+                      title: const Text(
+                        'App Settings',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       automaticallyImplyLeading: false,
                     ),
-                    body: _buildFormBody(context),
+                    body: const AppSettingsPageView(),
                   ),
                 ),
               ),
@@ -75,18 +97,7 @@ class AppSettingsPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _buildFormBody(context),
-    );
-  }
-
-  Widget _buildFormBody(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: const Center(
-          child: Text('App Settings Page (Placeholder)'),
-        ),
-      ),
+      body: const AppSettingsPageView(),
     );
   }
 }

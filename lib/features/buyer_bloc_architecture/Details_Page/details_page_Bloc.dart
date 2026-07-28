@@ -12,7 +12,6 @@ class DetailsBloc extends Bloc<DetailsEvent, DetailsState> {
         super(const DetailsState()) {
     on<DetailsQuantityIncreased>(_onQuantityIncreased);
     on<DetailsQuantityDecreased>(_onQuantityDecreased);
-    on<SubmitRating>(_onSubmitRating);
     on<LoadDetailsRating>(_onLoadDetailsRating);
   }
 
@@ -59,38 +58,4 @@ class DetailsBloc extends Bloc<DetailsEvent, DetailsState> {
     }
   }
 
-  Future<void> _onSubmitRating(
-    SubmitRating event,
-    Emitter<DetailsState> emit,
-  ) async {
-    emit(state.copyWith(ratingStatus: RatingStatus.submitting));
-
-    try {
-      final userId = _repository.currentUserId;
-      if (userId == null) {
-        emit(
-          state.copyWith(
-            ratingStatus: RatingStatus.failure,
-            ratingMessage: 'User not signed in.',
-          ),
-        );
-        return;
-      }
-
-      await _repository.submitRating(userId, event.foodId, event.rating);
-
-      emit(state.copyWith(
-        ratingStatus: RatingStatus.success,
-        currentRating: event.rating, // Sync UI state with Firestore
-        ratingMessage: 'Rating submitted successfully!',
-      ));
-    } catch (e) {
-      emit(
-        state.copyWith(
-          ratingStatus: RatingStatus.failure,
-          ratingMessage: 'Failed to submit rating: $e',
-        ),
-      );
-    }
-  }
 }

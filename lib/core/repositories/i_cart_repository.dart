@@ -7,5 +7,5 @@ abstract interface class ICartRepository {
   Future<void> updateQuantity(String buyerId, String itemId, int delta);
   Future<void> toggleSelection(String buyerId, String itemId, bool isSelected);
   Future<void> clearCart(String buyerId);
-  Future<void> checkoutCart(String buyerId, List<CartItem> selectedItems, String customerName);
+  Future<void> checkoutCart(String buyerId, List<CartItem> selectedItems, String customerName, {AppliedCoupon? appliedCoupon});
 }

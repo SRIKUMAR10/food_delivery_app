@@ -8,6 +8,23 @@ class UserRepository {
   final UserCollection _userCollection = UserCollection();
 
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'user-not-found':
+          throw Exception('No account found for this email address.');
+        case 'invalid-email':
+          throw Exception('Please enter a valid email address.');
+        case 'too-many-requests':
+          throw Exception('Too many attempts. Please try again later.');
+        default:
+          throw Exception('Failed to send reset email: ${e.message}');
+      }
+    }
+  }
+
   // Centralized Auth operations
   Future<UserCredential> signUp(
     String email,

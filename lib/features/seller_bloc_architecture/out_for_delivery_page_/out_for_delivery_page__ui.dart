@@ -13,7 +13,9 @@ class OutForDeliveryPageUI extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => OutForDeliveryPageBloc()..add(FetchDeliveryDetails(orderId: orderId)),
+      create: (context) => OutForDeliveryPageBloc(
+        repository: OutForDeliveryRepository(),
+      )..add(FetchDeliveryDetails(orderId: orderId)),
       child: const _OutForDeliveryView(),
     );
   }

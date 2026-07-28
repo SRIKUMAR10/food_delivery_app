@@ -21,7 +21,7 @@ class ProductRepositoryImpl implements ProductRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  String get _sellerId => _auth.currentUser?.uid ?? '';
+  String get _sellerId => _auth.currentUser?.uid ?? 'default_seller';
 
   @override
   Future<List<Product>> getProducts() async {
@@ -109,9 +109,20 @@ class ProductRepositoryImpl implements ProductRepository {
     
     for (int i = 0; i < images.length; i++) {
       final file = images[i];
-      final imageRef = storageRef.child('${DateTime.now().millisecondsSinceEpoch}_$i.jpg');
+      final fileName = file.name.isNotEmpty ? file.name : '$i.jpg';
+      final ext = fileName.toLowerCase().endsWith('.png')
+          ? 'png'
+          : fileName.toLowerCase().endsWith('.webp')
+              ? 'webp'
+              : 'jpg';
+      final contentType = ext == 'png'
+          ? 'image/png'
+          : ext == 'webp'
+              ? 'image/webp'
+              : 'image/jpeg';
+      final imageRef = storageRef.child('${DateTime.now().millisecondsSinceEpoch}_$i.$ext');
       final bytes = await file.readAsBytes();
-      final uploadTask = await imageRef.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+      final uploadTask = await imageRef.putData(bytes, SettableMetadata(contentType: contentType));
       final url = await uploadTask.ref.getDownloadURL();
       urls.add(url);
     }

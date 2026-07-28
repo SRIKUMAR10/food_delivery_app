@@ -6,6 +6,9 @@ class CouponModel {
   final bool isPercentage;
   final DateTime expiryDate;
   final bool isActive;
+  final int usageLimit;
+  final int usedCount;
+  final double minimumOrderValue;
 
   CouponModel({
     required this.id,
@@ -15,6 +18,9 @@ class CouponModel {
     required this.isPercentage,
     required this.expiryDate,
     required this.isActive,
+    this.usageLimit = 0,
+    this.usedCount = 0,
+    this.minimumOrderValue = 0,
   });
 
   factory CouponModel.fromJson(Map<String, dynamic> json) {
@@ -28,6 +34,9 @@ class CouponModel {
           ? DateTime.parse(json['expiryDate']) 
           : DateTime.now(),
       isActive: json['isActive'] ?? true,
+      usageLimit: (json['usageLimit'] as num?)?.toInt() ?? 0,
+      usedCount: (json['usedCount'] as num?)?.toInt() ?? 0,
+      minimumOrderValue: (json['minimumOrderValue'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -40,6 +49,9 @@ class CouponModel {
       'isPercentage': isPercentage,
       'expiryDate': expiryDate.toIso8601String(),
       'isActive': isActive,
+      'usageLimit': usageLimit,
+      'usedCount': usedCount,
+      'minimumOrderValue': minimumOrderValue,
     };
   }
 
@@ -51,6 +63,9 @@ class CouponModel {
     bool? isPercentage,
     DateTime? expiryDate,
     bool? isActive,
+    int? usageLimit,
+    int? usedCount,
+    double? minimumOrderValue,
   }) {
     return CouponModel(
       id: id ?? this.id,
@@ -60,6 +75,9 @@ class CouponModel {
       isPercentage: isPercentage ?? this.isPercentage,
       expiryDate: expiryDate ?? this.expiryDate,
       isActive: isActive ?? this.isActive,
+      usageLimit: usageLimit ?? this.usageLimit,
+      usedCount: usedCount ?? this.usedCount,
+      minimumOrderValue: minimumOrderValue ?? this.minimumOrderValue,
     );
   }
 }

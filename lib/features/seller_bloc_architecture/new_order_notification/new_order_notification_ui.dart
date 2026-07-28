@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../core/models/order_model.dart';
 import 'new_order_notification_bloc.dart';
 import 'new_order_notification_event.dart';
 import 'new_order_notification_state.dart';
@@ -7,28 +9,24 @@ import 'new_order_notification_repository.dart';
 import 'new_order_notification_service.dart';
 
 class NewOrderNotificationPage extends StatelessWidget {
-  final String orderId;
-
-  const NewOrderNotificationPage({Key? key, required this.orderId})
-    : super(key: key);
+  const NewOrderNotificationPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final sellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
     return BlocProvider(
       create: (context) => NewOrderNotificationBloc(
         repository: NewOrderNotificationRepository(
           service: NewOrderNotificationService(),
         ),
-      )..add(LoadOrderDetails(orderId)),
-      child: NewOrderNotificationView(orderId: orderId),
+      )..add(StartListening(sellerId: sellerId)),
+      child: const NewOrderNotificationView(),
     );
   }
 }
 
 class NewOrderNotificationView extends StatefulWidget {
-  final String orderId;
-  const NewOrderNotificationView({Key? key, required this.orderId})
-    : super(key: key);
+  const NewOrderNotificationView({super.key});
 
   @override
   State<NewOrderNotificationView> createState() =>
@@ -44,7 +42,6 @@ class _NewOrderNotificationViewState extends State<NewOrderNotificationView>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  Map<String, dynamic>? _cachedOrderDetails;
   bool _isAccepting = false;
   bool _isRejecting = false;
 
@@ -101,106 +98,88 @@ class _NewOrderNotificationViewState extends State<NewOrderNotificationView>
                   vertical: 24,
                   horizontal: constraints.maxWidth < 600 ? 16 : 0,
                 ),
-                child:
-                    BlocConsumer<
-                      NewOrderNotificationBloc,
-                      NewOrderNotificationState
-                    >(
-                      listener: (context, state) {
-                        if (state is NewOrderNotificationLoaded) {
-                          _cachedOrderDetails = state.orderDetails;
-                          _animationController.forward();
-                        } else if (state is OrderAcceptedState) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Order Accepted Successfully!'),
-                            ),
-                          );
-                          Navigator.of(context).pop();
-                        } else if (state is OrderRejectedState) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Order Rejected.')),
-                          );
-                          Navigator.of(context).pop();
-                        } else if (state is NewOrderNotificationError) {
+                child: BlocConsumer<NewOrderNotificationBloc, NewOrderNotificationState>(
+                  listener: (context, state) {
+                    if (state is NewOrderLoaded) {
+                      _animationController.forward();
+                      setState(() {
+                        _isAccepting = false;
+                        _isRejecting = false;
+                      });
+                    } else if (state is OrderAcceptedState) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Order Accepted Successfully!')),
+                      );
+                    } else if (state is OrderRejectedState) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Order Rejected.')),
+                      );
+                    } else if (state is NewOrderNotificationError) {
+                      setState(() {
+                        _isAccepting = false;
+                        _isRejecting = false;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(state.message)),
+                      );
+                    }
+                  },
+                  builder: (context, state) {
+                    if (state is NewOrderNotificationError) {
+                      return _ErrorView(
+                        message: state.message,
+                        onRetry: () {
                           setState(() {
                             _isAccepting = false;
                             _isRejecting = false;
                           });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(state.message)),
-                          );
-                        }
-                      },
-                      builder: (context, state) {
-                        if (state is NewOrderNotificationLoaded) {
-                          _cachedOrderDetails = state.orderDetails;
-                        }
+                        },
+                      );
+                    }
 
-                        if (state is NewOrderNotificationError) {
-                          return _ErrorView(
-                            message: state.message,
-                            onRetry: () {
-                              setState(() {
-                                _isAccepting = false;
-                                _isRejecting = false;
-                              });
-                              context.read<NewOrderNotificationBloc>().add(
-                                LoadOrderDetails(widget.orderId),
-                              );
-                            },
-                          );
-                        }
+                    if (state is NewOrderNotificationInitial ||
+                        state is NewOrderNotificationLoading) {
+                      return const _LoadingView();
+                    }
 
-                        if (state is NewOrderNotificationInitial ||
-                            (state is NewOrderNotificationLoading &&
-                                _cachedOrderDetails == null)) {
-                          return const _LoadingView();
-                        }
-
-                        if (_cachedOrderDetails != null) {
-                          return FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: ScaleTransition(
-                              scale: _scaleAnimation,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth: cardWidth,
-                                ),
-                                child: _OrderDetailsCard(
-                                  data: _cachedOrderDetails!,
-                                  pulseAnimation: _pulseAnimation,
-                                  isAccepting: _isAccepting,
-                                  isRejecting: _isRejecting,
-                                  onAccept: () {
-                                    setState(() => _isAccepting = true);
-                                    context
-                                        .read<NewOrderNotificationBloc>()
-                                        .add(
-                                          AcceptOrderEvent(
-                                            _cachedOrderDetails!['orderId'],
-                                          ),
-                                        );
-                                  },
-                                  onReject: () {
-                                    setState(() => _isRejecting = true);
-                                    context
-                                        .read<NewOrderNotificationBloc>()
-                                        .add(
-                                          RejectOrderEvent(
-                                            _cachedOrderDetails!['orderId'],
-                                          ),
-                                        );
-                                  },
-                                ),
-                              ),
+                    if (state is NewOrderLoaded) {
+                      return FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: ScaleTransition(
+                          scale: _scaleAnimation,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: cardWidth),
+                            child: _OrderDetailsCard(
+                              order: state.order,
+                              pendingCount: state.pendingCount,
+                              pulseAnimation: _pulseAnimation,
+                              isAccepting: _isAccepting,
+                              isRejecting: _isRejecting,
+                              onAccept: () {
+                                setState(() => _isAccepting = true);
+                                context.read<NewOrderNotificationBloc>().add(
+                                  AcceptOrderEvent(state.order.id),
+                                );
+                              },
+                              onReject: () {
+                                setState(() => _isRejecting = true);
+                                context.read<NewOrderNotificationBloc>().add(
+                                  RejectOrderEvent(state.order.id),
+                                );
+                              },
                             ),
-                          );
-                        }
+                          ),
+                        ),
+                      );
+                    }
 
-                        return const _EmptyView();
-                      },
-                    ),
+                    if (state is NoNewOrders) {
+                      return const _EmptyView();
+                    }
+
+                    return const _EmptyView();
+                  },
+                ),
               ),
             );
           },
@@ -212,41 +191,66 @@ class _NewOrderNotificationViewState extends State<NewOrderNotificationView>
 
 class _NotificationHeader extends StatelessWidget {
   final Animation<double> pulseAnimation;
+  final int pendingCount;
 
-  const _NotificationHeader({required this.pulseAnimation});
+  const _NotificationHeader({required this.pulseAnimation, this.pendingCount = 1});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AnimatedBuilder(
-          animation: pulseAnimation,
-          builder: (context, child) {
-            return Transform.scale(
-              scale: pulseAnimation.value,
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const RadialGradient(
-                    colors: [Color(0xFFFFE5E5), Color(0xFFFEE2E2)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFE52929).withValues(alpha: 0.2),
-                      blurRadius: 16,
-                      spreadRadius: 4,
+        Stack(
+          children: [
+            AnimatedBuilder(
+              animation: pulseAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: pulseAnimation.value,
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const RadialGradient(
+                        colors: [Color(0xFFFFE5E5), Color(0xFFFEE2E2)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE52929).withValues(alpha: 0.2),
+                          blurRadius: 16,
+                          spreadRadius: 4,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.notifications_active_rounded,
-                  color: Color(0xFFE52929),
-                  size: 40,
+                    child: const Icon(
+                      Icons.notifications_active_rounded,
+                      color: Color(0xFFE52929),
+                      size: 40,
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (pendingCount > 1)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE52929),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '$pendingCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-            );
-          },
+          ],
         ),
         const SizedBox(height: 24),
         const Text(
@@ -260,9 +264,11 @@ class _NotificationHeader extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
-        const Text(
-          'You have received a new customer order.',
-          style: TextStyle(
+        Text(
+          pendingCount > 1
+              ? 'You have $pendingCount new orders waiting.'
+              : 'You have received a new customer order.',
+          style: const TextStyle(
             fontSize: 16,
             color: Color(0xFF6B7280),
             fontWeight: FontWeight.w500,
@@ -471,7 +477,8 @@ class _ActionButtons extends StatelessWidget {
 }
 
 class _OrderDetailsCard extends StatelessWidget {
-  final Map<String, dynamic> data;
+  final OrderModel order;
+  final int pendingCount;
   final Animation<double> pulseAnimation;
   final bool isAccepting;
   final bool isRejecting;
@@ -479,7 +486,8 @@ class _OrderDetailsCard extends StatelessWidget {
   final VoidCallback onReject;
 
   const _OrderDetailsCard({
-    required this.data,
+    required this.order,
+    required this.pendingCount,
     required this.pulseAnimation,
     required this.isAccepting,
     required this.isRejecting,
@@ -506,7 +514,7 @@ class _OrderDetailsCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _NotificationHeader(pulseAnimation: pulseAnimation),
+          _NotificationHeader(pulseAnimation: pulseAnimation, pendingCount: pendingCount),
           const SizedBox(height: 32),
           const _StatusChip(),
           const SizedBox(height: 32),
@@ -522,31 +530,25 @@ class _OrderDetailsCard extends StatelessWidget {
                 _OrderInfoRow(
                   icon: Icons.tag,
                   label: 'Order ID',
-                  value: '#${data['orderId']}',
+                  value: '#${order.id.length > 7 ? order.id.substring(0, 7) : order.id}',
                 ),
                 const Divider(height: 1, color: Color(0xFFF3F4F6)),
                 _OrderInfoRow(
                   icon: Icons.person_outline,
                   label: 'Customer',
-                  value: data['customer'] ?? 'Unknown',
+                  value: order.customerName,
                 ),
                 const Divider(height: 1, color: Color(0xFFF3F4F6)),
                 _OrderInfoRow(
                   icon: Icons.shopping_bag_outlined,
                   label: 'Items',
-                  value: '${data['itemsCount']} Items',
-                ),
-                const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                _OrderInfoRow(
-                  icon: Icons.fastfood_outlined,
-                  label: 'Order Type',
-                  value: data['orderType'] ?? 'Delivery',
+                  value: '${order.items?.length ?? 0} Items',
                 ),
                 const Divider(height: 1, color: Color(0xFFF3F4F6)),
                 _OrderInfoRow(
                   icon: Icons.payments_outlined,
                   label: 'Amount',
-                  value: '₹${(data['amount'] ?? 0).toInt()}',
+                  value: '₹${order.amount.toInt()}',
                   isAmount: true,
                 ),
               ],

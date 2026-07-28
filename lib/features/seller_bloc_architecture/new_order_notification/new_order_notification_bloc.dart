@@ -1,44 +1,82 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/models/order_model.dart';
 import 'new_order_notification_event.dart';
 import 'new_order_notification_state.dart';
 import 'new_order_notification_repository.dart';
 
 class NewOrderNotificationBloc extends Bloc<NewOrderNotificationEvent, NewOrderNotificationState> {
   final NewOrderNotificationRepository repository;
+  StreamSubscription<OrderModel>? _ordersSubscription;
+  final List<OrderModel> _pendingOrders = [];
+  OrderModel? _currentOrder;
 
-  NewOrderNotificationBloc({required this.repository}) : super(NewOrderNotificationInitial()) {
-    on<LoadOrderDetails>(_onLoadOrderDetails);
+  NewOrderNotificationBloc({required this.repository})
+      : super(NewOrderNotificationInitial()) {
+    on<StartListening>(_onStartListening);
     on<AcceptOrderEvent>(_onAcceptOrder);
     on<RejectOrderEvent>(_onRejectOrder);
+    on<DismissCurrentOrder>(_onDismissCurrentOrder);
   }
 
-  Future<void> _onLoadOrderDetails(LoadOrderDetails event, Emitter<NewOrderNotificationState> emit) async {
+  void _onStartListening(StartListening event, Emitter<NewOrderNotificationState> emit) {
     emit(NewOrderNotificationLoading());
-    try {
-      final orderDetails = await repository.getOrderDetails(event.orderId);
-      emit(NewOrderNotificationLoaded(orderDetails));
-    } catch (e) {
-      emit(NewOrderNotificationError(e.toString()));
+    _ordersSubscription?.cancel();
+    _ordersSubscription = repository.streamNewOrders(event.sellerId).listen(
+      (order) {
+        if (_currentOrder != null && _currentOrder!.id == order.id) return;
+        if (_pendingOrders.any((o) => o.id == order.id)) return;
+
+        _pendingOrders.add(order);
+        _showNextOrder(emit);
+      },
+      onError: (error) {
+        emit(NewOrderNotificationError(error.toString()));
+      },
+    );
+  }
+
+  void _showNextOrder(Emitter<NewOrderNotificationState> emit) {
+    if (_pendingOrders.isEmpty) {
+      _currentOrder = null;
+      emit(NoNewOrders());
+      return;
     }
+
+    _currentOrder = _pendingOrders.removeAt(0);
+    emit(NewOrderLoaded(order: _currentOrder!, pendingCount: _pendingOrders.length + 1));
   }
 
   Future<void> _onAcceptOrder(AcceptOrderEvent event, Emitter<NewOrderNotificationState> emit) async {
-    emit(NewOrderNotificationLoading());
     try {
       await repository.acceptOrder(event.orderId);
-      emit(OrderAcceptedState());
+      _currentOrder = null;
+      emit(OrderAcceptedState(event.orderId));
+      _showNextOrder(emit);
     } catch (e) {
       emit(NewOrderNotificationError(e.toString()));
     }
   }
 
   Future<void> _onRejectOrder(RejectOrderEvent event, Emitter<NewOrderNotificationState> emit) async {
-    emit(NewOrderNotificationLoading());
     try {
       await repository.rejectOrder(event.orderId);
-      emit(OrderRejectedState());
+      _currentOrder = null;
+      emit(OrderRejectedState(event.orderId));
+      _showNextOrder(emit);
     } catch (e) {
       emit(NewOrderNotificationError(e.toString()));
     }
+  }
+
+  void _onDismissCurrentOrder(DismissCurrentOrder event, Emitter<NewOrderNotificationState> emit) {
+    _currentOrder = null;
+    _showNextOrder(emit);
+  }
+
+  @override
+  Future<void> close() {
+    _ordersSubscription?.cancel();
+    return super.close();
   }
 }

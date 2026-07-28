@@ -23,27 +23,25 @@ class TrackOrderBloc extends Bloc<TrackOrderEvent, TrackOrderState> {
     emit(TrackOrderLoading());
     try {
       final details = await repository.fetchOrderDetails(event.orderId);
-      
-      final confirmedTime = event.orderDate;
-      final preparingTime = confirmedTime.add(const Duration(minutes: 5));
-      final outForDeliveryTime = confirmedTime.add(const Duration(minutes: 20));
 
+      final confirmedTime = event.orderDate;
       final timeFormat = DateFormat('hh:mm a');
+      final status = details['status'] as String? ?? 'New';
+
+      final steps = _buildTrackingSteps(status, confirmedTime, timeFormat, details);
+
+      final driverLat = details['driverLat'] as double?;
+      final driverLng = details['driverLng'] as double?;
 
       emit(TrackOrderLoaded(
         orderId: event.orderId,
         estimatedDelivery: details['estimatedDelivery'] ?? '30-40 mins',
-        trackingSteps: [
-          TrackingStep(title: 'Order Confirmed', time: timeFormat.format(confirmedTime), status: TrackingStatus.completed),
-          TrackingStep(title: 'Preparing Your Food', time: timeFormat.format(preparingTime), status: TrackingStatus.current),
-          TrackingStep(title: 'Out for Delivery', time: timeFormat.format(outForDeliveryTime), status: TrackingStatus.upcoming),
-          const TrackingStep(title: 'Delivered', time: 'Upcoming', status: TrackingStatus.future),
-        ],
+        trackingSteps: steps,
         deliveryPartner: DeliveryPartner(
-          name: details['driverName'] ?? 'John D.',
+          name: details['driverName'] as String? ?? '',
           role: 'Your Delivery Partner',
-          imageUrl: details['driverImage'] ?? 'https://i.pravatar.cc/150?img=11',
-          phone: details['driverPhone'] ?? '+1234567890',
+          imageUrl: details['driverImage'] as String? ?? '',
+          phone: details['driverPhone'] as String? ?? '',
         ),
         sellerInfo: SellerInfo(
           id: details['sellerId'] ?? '',
@@ -52,10 +50,58 @@ class TrackOrderBloc extends Bloc<TrackOrderEvent, TrackOrderState> {
           imageUrl: details['sellerImageUrl'] ?? '',
           phone: details['sellerPhone'] ?? '',
         ),
+        driverLat: driverLat,
+        driverLng: driverLng,
       ));
+
+      if (status == 'OutForDelivery' || status == 'outForDelivery') {
+        add(StartTracking(orderId: event.orderId));
+      }
     } catch (e) {
       emit(TrackOrderError(e.toString()));
     }
+  }
+
+  List<TrackingStep> _buildTrackingSteps(
+    String status,
+    DateTime confirmedTime,
+    DateFormat timeFormat,
+    Map<String, dynamic> details,
+  ) {
+    DateTime? _ts(String key) => details[key] as DateTime?;
+
+    final acceptedAt = _ts('acceptedAt');
+    final preparingAt = _ts('preparingAt') ?? (acceptedAt != null ? acceptedAt.add(const Duration(minutes: 5)) : confirmedTime.add(const Duration(minutes: 5)));
+    final outForDeliveryAt = _ts('outForDeliveryAt') ?? (preparingAt.add(const Duration(minutes: 15)));
+    final deliveredAt = _ts('deliveredAt') ?? (outForDeliveryAt.add(const Duration(minutes: 15)));
+
+    final orderConfirmed = status == 'Delivered' || status == 'OutForDelivery' || status == 'Ready' || status == 'Preparing' || status == 'Accepted' || status == 'New';
+    final preparing = status == 'Delivered' || status == 'OutForDelivery' || status == 'Ready' || status == 'Preparing';
+    final outForDelivery = status == 'Delivered' || status == 'OutForDelivery';
+    final delivered = status == 'Delivered';
+
+    return [
+      TrackingStep(
+        title: 'Order Confirmed',
+        time: timeFormat.format(confirmedTime),
+        status: orderConfirmed ? TrackingStatus.completed : TrackingStatus.current,
+      ),
+      TrackingStep(
+        title: 'Preparing Your Food',
+        time: preparing ? timeFormat.format(preparingAt) : null,
+        status: preparing ? (status == 'Preparing' ? TrackingStatus.current : TrackingStatus.completed) : TrackingStatus.upcoming,
+      ),
+      TrackingStep(
+        title: 'Out for Delivery',
+        time: outForDelivery ? timeFormat.format(outForDeliveryAt) : null,
+        status: outForDelivery ? (status == 'OutForDelivery' ? TrackingStatus.current : TrackingStatus.completed) : TrackingStatus.upcoming,
+      ),
+      TrackingStep(
+        title: 'Delivered',
+        time: delivered ? timeFormat.format(deliveredAt) : null,
+        status: delivered ? TrackingStatus.completed : TrackingStatus.future,
+      ),
+    ];
   }
 
   Future<void> _onRefreshTrackOrder(
@@ -69,9 +115,8 @@ class TrackOrderBloc extends Bloc<TrackOrderEvent, TrackOrderState> {
     StartTracking event,
     Emitter<TrackOrderState> emit,
   ) async {
-    emit(TrackingLoading());
     try {
-      await repository.startTracking('dummy_order');
+      await repository.startTracking(event.orderId);
       _locationSubscription?.cancel();
       _locationSubscription = repository.locationStream.listen((location) {
         if (!isClosed) {
@@ -79,7 +124,7 @@ class TrackOrderBloc extends Bloc<TrackOrderEvent, TrackOrderState> {
         }
       });
     } catch (e) {
-      emit(TrackOrderError(e.toString()));
+      // Ignore error to avoid wiping out the loaded UI
     }
   }
 
@@ -87,7 +132,18 @@ class TrackOrderBloc extends Bloc<TrackOrderEvent, TrackOrderState> {
     UpdateDriverLocation event,
     Emitter<TrackOrderState> emit,
   ) {
-    emit(LocationUpdated(lat: event.lat, lng: event.lng));
+    if (state is TrackOrderLoaded) {
+      final currentState = state as TrackOrderLoaded;
+      emit(TrackOrderLoaded(
+        orderId: currentState.orderId,
+        estimatedDelivery: currentState.estimatedDelivery,
+        trackingSteps: currentState.trackingSteps,
+        deliveryPartner: currentState.deliveryPartner,
+        sellerInfo: currentState.sellerInfo,
+        driverLat: event.lat,
+        driverLng: event.lng,
+      ));
+    }
   }
 
   @override

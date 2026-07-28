@@ -135,6 +135,8 @@ class _TrackOrderView extends StatelessWidget {
                 const SizedBox(height: 24),
                 _buildTimelineCard(state),
                 const SizedBox(height: 20),
+                _buildDeliveryPartnerCard(context, state),
+                const SizedBox(height: 20),
                 _buildUserInfo(context, state),
                 if (order != null) ...[
                   const SizedBox(height: 24),
@@ -236,6 +238,8 @@ class _TrackOrderView extends StatelessWidget {
                             ),
                             const SizedBox(height: 24),
                             _buildTimeline(state.trackingSteps),
+                            const SizedBox(height: 24),
+                            _buildDesktopDeliveryPartnerCard(context, state),
                           ],
                         ),
                       ),
@@ -507,6 +511,223 @@ class _TrackOrderView extends StatelessWidget {
     }
   }
 
+  Future<void> _openMap(BuildContext context, double? lat, double? lng) async {
+    if (lat == null || lng == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Driver location not available yet')),
+        );
+      }
+      return;
+    }
+
+    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Widget _buildDeliveryPartnerCard(BuildContext context, TrackOrderLoaded state) {
+    final partner = state.deliveryPartner;
+    final hasDriver = partner.name.isNotEmpty;
+
+    if (!hasDriver) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.person_outline, color: Colors.grey, size: 24),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Text(
+                'Looking for a delivery partner...',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: Colors.grey[200],
+            backgroundImage: partner.imageUrl.isNotEmpty
+                ? NetworkImage(partner.imageUrl)
+                : null,
+            child: partner.imageUrl.isEmpty
+                ? const Icon(Icons.person, color: Colors.grey, size: 26)
+                : null,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  partner.name,
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: const Color(0xFF1C1C1C),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  partner.role,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              _buildActionSquare(
+                Icons.call,
+                const Color(0xFF22C55E),
+                onTap: partner.phone.isNotEmpty
+                    ? () => _handlePhoneCall(context, partner.phone)
+                    : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopDeliveryPartnerCard(BuildContext context, TrackOrderLoaded state) {
+    final partner = state.deliveryPartner;
+    final hasDriver = partner.name.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF0F0F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Delivery Partner',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1C1C1C),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (!hasDriver)
+            const Row(
+              children: [
+                Icon(Icons.hourglass_empty, color: Colors.grey, size: 20),
+                SizedBox(width: 12),
+                Text(
+                  'Assigning a delivery partner...',
+                  style: TextStyle(color: Colors.black54, fontSize: 14),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: partner.imageUrl.isNotEmpty
+                      ? NetworkImage(partner.imageUrl)
+                      : null,
+                  child: partner.imageUrl.isEmpty
+                      ? const Icon(Icons.person, color: Colors.grey, size: 28)
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        partner.name,
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: const Color(0xFF1C1C1C),
+                        ),
+                      ),
+                      Text(
+                        partner.role,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: const Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: _buildDesktopActionButton(
+                    icon: Icons.call,
+                    label: 'Call',
+                    color: const Color(0xFF22C55E),
+                    onTap: partner.phone.isNotEmpty
+                        ? () => _handlePhoneCall(context, partner.phone)
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildUserInfo(BuildContext context, TrackOrderLoaded state) {
     if (state.sellerInfo == null) return const SizedBox.shrink();
     final profile = state.sellerInfo!;
@@ -622,10 +843,8 @@ class _TrackOrderView extends StatelessWidget {
                                 color: const Color(0xFFD1D5DB),
                               ),
                             ),
-                            GestureDetector(
-                              onTap: () {
-                                // TODO: Open map
-                              },
+                                GestureDetector(
+                                  onTap: () => _openMap(context, state.driverLat, state.driverLng),
                               child: Text(
                                 'View on map',
                                 style: GoogleFonts.poppins(
@@ -836,7 +1055,7 @@ class _TrackOrderView extends StatelessWidget {
                                 ),
                               ),
                               GestureDetector(
-                                onTap: () {},
+                                onTap: () => _openMap(context, state.driverLat, state.driverLng),
                                 child: Text(
                                   'View on map',
                                   style: GoogleFonts.poppins(
@@ -929,7 +1148,7 @@ class _TrackOrderView extends StatelessWidget {
     required IconData icon,
     required String label,
     required Color color,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
   }) {
     return Material(
       color: Colors.transparent,

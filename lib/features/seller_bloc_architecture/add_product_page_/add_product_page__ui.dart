@@ -37,7 +37,7 @@ class AddProductPage extends StatelessWidget {
         final bloc = AddProductPageBloc(
           repository: context.read<IProductRepository>(),
           authService: context.read<IAuthService>(),
-        );
+        )..add(FetchGstPercentageEvent());
         if (productId != null) {
           bloc.add(LoadProductEvent(productId!));
         }
@@ -173,8 +173,7 @@ class _AddProductViewState extends State<AddProductView> {
 
               double pct = 0.0;
               if (p.discountPrice > 0 && p.price > 0) {
-                // If discountPrice holds finalPrice (with 18% GST)
-                pct = 100 * (1 - (p.discountPrice / (p.price * 1.18)));
+                pct = 100 * (1 - (p.discountPrice / p.price));
                 if (pct < 0) pct = 0;
               }
               _discountController.text = pct > 0 ? pct.toStringAsFixed(0) : '';
@@ -267,7 +266,12 @@ class _AddProductViewState extends State<AddProductView> {
                                 child: ElevatedButton(
                                   onPressed: () {
                                     Navigator.pop(context); // Close dialog
-                                    // Normally you'd reset the form/bloc here
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const AddProductPage(),
+                                      ),
+                                    );
                                   },
                                   style: ElevatedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
@@ -1283,8 +1287,8 @@ class _AddProductViewState extends State<AddProductView> {
     final price = double.tryParse(_priceController.text) ?? 0.0;
     final discount = double.tryParse(_discountController.text) ?? 0.0;
     final discountedPrice = price - (price * (discount / 100));
-    final gst = discountedPrice * 0.18; // 18% GST example
-    final finalPrice = discountedPrice + gst;
+    final gstAmount = discountedPrice * (state.gstPercentage / 100);
+    final finalPrice = discountedPrice + gstAmount;
 
     return _buildCard(
       child: Column(
@@ -1328,16 +1332,24 @@ class _AddProductViewState extends State<AddProductView> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildPriceStat(
-                  'Discount Price',
-                  '₹${discountedPrice.toStringAsFixed(2)}',
+                  'Base Price',
+                  '₹${price.toStringAsFixed(2)}',
                   _textPrimary,
                 ),
                 Container(width: 1, height: 40, color: _borderColor),
                 _buildPriceStat(
-                  'GST (18%)',
-                  '₹${gst.toStringAsFixed(2)}',
+                  'Discount',
+                  '₹${(price - discountedPrice).toStringAsFixed(2)}',
                   _warningColor,
                 ),
+                if (state.gstPercentage > 0) ...[
+                  Container(width: 1, height: 40, color: _borderColor),
+                  _buildPriceStat(
+                    'GST (${state.gstPercentage.toStringAsFixed(0)}%)',
+                    '₹${gstAmount.toStringAsFixed(2)}',
+                    _textSecondary,
+                  ),
+                ],
                 Container(width: 1, height: 40, color: _borderColor),
                 _buildPriceStat(
                   'Final Price',
@@ -1986,7 +1998,7 @@ class _AddProductViewState extends State<AddProductView> {
                     final basePrice = double.tryParse(_priceController.text) ?? 0.0;
                     final discountPct = double.tryParse(_discountController.text) ?? 0.0;
                     final discounted = basePrice - (basePrice * (discountPct / 100));
-                    final finalPrice = discounted + (discounted * 0.18); // Always calculate with GST
+                    final finalPrice = discounted;
 
                     context.read<AddProductPageBloc>().add(
                       SubmitProductEvent(
@@ -2082,7 +2094,7 @@ class _AddProductViewState extends State<AddProductView> {
                           final basePrice = double.tryParse(_priceController.text) ?? 0.0;
                           final discountPct = double.tryParse(_discountController.text) ?? 0.0;
                           final discounted = basePrice - (basePrice * (discountPct / 100));
-                          final finalPrice = discounted + (discounted * 0.18); // Always calculate with GST
+                          final finalPrice = discounted;
 
                           context.read<AddProductPageBloc>().add(
                             SubmitProductEvent(

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_login_page/seller_login_page_ui.dart';
 
 import 'features/buyer_bloc_architecture/Cart Page/cart_page_Bloc.dart';
@@ -18,15 +20,23 @@ import 'core/services/i_auth_service.dart';
 import 'core/services/auth_service.dart';
 import 'core/repositories/i_product_repository.dart';
 import 'core/repositories/i_cart_repository.dart';
+import 'core/repositories/i_coupon_repository.dart';
 import 'core/repositories/i_order_repository.dart';
 import 'core/repositories/i_inventory_repository.dart';
 import 'repositories/firebase_product_repository.dart';
 import 'repositories/firebase_cart_repository.dart';
+import 'repositories/firebase_coupon_repository.dart';
 import 'repositories/firebase_order_repository.dart';
 import 'repositories/firebase_inventory_repository.dart';
 import 'repositories/category_repository.dart';
 import 'repositories/firebase_chat_repository.dart';
 import 'core/repositories/i_chat_repository.dart';
+import 'core/repositories/i_app_settings_repository.dart';
+
+import 'repositories/firebase_app_settings_repository.dart';
+
+import 'core/services/theme_manager.dart';
+import 'core/services/locale_manager.dart';
 
 import 'firebase_options.dart';
 
@@ -53,11 +63,12 @@ final Logger appLogger = Logger(
 );
 
 /// Toggle this flag to switch between the Buyer and Seller App flows.
-const bool isBuyerApp = true;
+const bool isBuyerApp = false;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await FirebaseFirestore.instance.clearPersistence();
 
   await FirebaseAppCheck.instance.activate(
     providerWeb: ReCaptchaV3Provider(
@@ -102,6 +113,109 @@ void main() async {
   runApp(const MyApp());
 }
 
+class _AppThemeWrapper extends StatefulWidget {
+  final ThemeManager themeManager;
+  final LocaleManager localeManager;
+
+  const _AppThemeWrapper({
+    required this.themeManager,
+    required this.localeManager,
+  });
+
+  @override
+  State<_AppThemeWrapper> createState() => _AppThemeWrapperState();
+}
+
+class _AppThemeWrapperState extends State<_AppThemeWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    widget.themeManager.themeModeNotifier.addListener(_onChanged);
+    widget.localeManager.localeNotifier.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.themeManager.themeModeNotifier.removeListener(_onChanged);
+    widget.localeManager.localeNotifier.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() {
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeMode = widget.themeManager.themeMode;
+    final locale = widget.localeManager.locale;
+
+    final lightTheme = ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE52121)),
+      scaffoldBackgroundColor: const Color(0xFFFBF5F5),
+      appBarTheme: const AppBarTheme(
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleTextStyle: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF1C1C1C),
+        ),
+        iconTheme: IconThemeData(color: Colors.black),
+      ),
+    );
+
+    final darkTheme = ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFFE52121),
+        brightness: Brightness.dark,
+      ),
+      scaffoldBackgroundColor: const Color(0xFF121212),
+      appBarTheme: const AppBarTheme(
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleTextStyle: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+        iconTheme: IconThemeData(color: Colors.white),
+      ),
+    );
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: themeMode,
+      locale: locale,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('ta'),
+        Locale('es'),
+        Locale('fr'),
+      ],
+      initialRoute: isBuyerApp ? '/onboard' : '/selleronboard',
+      routes: {
+        '/onboard': (context) => const OnboardingPage(),
+        '/sellerlogin': (context) => const SellerLoginPageUI(),
+        '/selleronboard': (context) => const SellerOnboardPageUI(),
+        '/sellerSignUp': (context) => const SellerSignUpPageUI(),
+        '/sellerDashboard': (context) => const SellerNavigationBarViewPageUI(),
+      },
+    );
+  }
+}
+
 class MyApp extends StatelessWidget {
   final CartBloc? cartBloc;
   final FavoritesBloc? favoritesBloc;
@@ -116,6 +230,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeManager = ThemeManager();
+    final localeManager = LocaleManager();
+
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<IAuthService>(
@@ -139,9 +256,17 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<SellerDashboardRepository>(
           create: (context) => FirebaseSellerDashboardRepository(),
         ),
+        RepositoryProvider<ICouponRepository>(
+          create: (context) => FirebaseCouponRepository(),
+        ),
         RepositoryProvider<IChatRepository>(
           create: (context) => FirebaseChatRepository(),
         ),
+        RepositoryProvider<IAppSettingsRepository>(
+          create: (context) => FirebaseAppSettingsRepository(),
+        ),
+        RepositoryProvider<ThemeManager>(create: (context) => themeManager),
+        RepositoryProvider<LocaleManager>(create: (context) => localeManager),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -150,6 +275,7 @@ class MyApp extends StatelessWidget {
                 cartBloc ??
                 CartBloc(
                   cartRepository: context.read<ICartRepository>(),
+                  couponRepository: context.read<ICouponRepository>(),
                   authService: context.read<IAuthService>(),
                 ),
           ),
@@ -168,35 +294,14 @@ class MyApp extends StatelessWidget {
                 )..add(const HomePageStarted())),
           ),
         ],
-        child: MaterialApp(
-          theme: ThemeData(
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFE52121),
-            ),
-            scaffoldBackgroundColor: const Color(0xFFFBF5F5),
-            appBarTheme: const AppBarTheme(
-              centerTitle: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              titleTextStyle: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1C1C1C),
-              ),
-              iconTheme: IconThemeData(color: Colors.black),
-            ),
-          ),
-          debugShowCheckedModeBanner: false,
-          initialRoute: isBuyerApp ? '/onboard' : '/selleronboard',
-          routes: {
-            '/onboard': (context) => const OnboardingPage(),
-            '/sellerlogin': (context) => const SellerLoginPageUI(),
-            '/selleronboard': (context) => const SellerOnboardPageUI(),
-            '/sellerSignUp': (context) => const SellerSignUpPageUI(),
-            //'/sellerForgotPassword': (context) => const SellerForgotPasswordPageUI(),
-            '/sellerDashboard': (context) =>
-                const SellerNavigationBarViewPageUI(),
+        child: Builder(
+          builder: (context) {
+            final themeManager = context.read<ThemeManager>();
+            final localeManager = context.read<LocaleManager>();
+            return _AppThemeWrapper(
+              themeManager: themeManager,
+              localeManager: localeManager,
+            );
           },
         ),
       ),

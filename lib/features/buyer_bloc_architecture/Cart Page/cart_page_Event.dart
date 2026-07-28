@@ -70,3 +70,35 @@ class CartCheckoutRequested extends CartEvent {
 
   const CartCheckoutRequested({this.onSuccess, this.onInsufficientBalance});
 }
+
+/// Dispatched when available coupons should be loaded for sellers in cart.
+class LoadAvailableCoupons extends CartEvent {
+  final List<String> sellerIds;
+  const LoadAvailableCoupons(this.sellerIds);
+
+  @override
+  List<Object?> get props => [sellerIds];
+}
+
+/// Dispatched when user applies a coupon code.
+class CouponApplied extends CartEvent {
+  final AppliedCoupon coupon;
+  const CouponApplied(this.coupon);
+
+  @override
+  List<Object?> get props => [coupon];
+}
+
+/// Dispatched when user removes an applied coupon.
+class CouponRemoved extends CartEvent {
+  const CouponRemoved();
+}
+
+/// Dispatched when a coupon validation error occurs.
+class CouponError extends CartEvent {
+  final String message;
+  const CouponError(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}

@@ -1,3 +1,5 @@
+import 'dart:async';
+import '../../../../core/models/order_model.dart';
 import 'new_order_notification_service.dart';
 
 class NewOrderNotificationRepository {
@@ -5,33 +7,15 @@ class NewOrderNotificationRepository {
 
   NewOrderNotificationRepository({required this.service});
 
-  Future<Map<String, dynamic>> getOrderDetails(String orderId) async {
-    try {
-      return await service.fetchOrderDetails(orderId);
-    } catch (e) {
-      throw Exception('Failed to fetch order details: $e');
-    }
+  Stream<OrderModel> streamNewOrders(String sellerId) {
+    return service.streamNewOrders(sellerId);
   }
 
   Future<void> acceptOrder(String orderId) async {
-    try {
-      final success = await service.acceptOrder(orderId);
-      if (!success) {
-        throw Exception('Failed to accept order on server');
-      }
-    } catch (e) {
-      throw Exception('Failed to accept order: $e');
-    }
+    await service.acceptOrder(orderId);
   }
 
   Future<void> rejectOrder(String orderId) async {
-    try {
-      final success = await service.rejectOrder(orderId);
-      if (!success) {
-        throw Exception('Failed to reject order on server');
-      }
-    } catch (e) {
-      throw Exception('Failed to reject order: $e');
-    }
+    await service.rejectOrder(orderId);
   }
 }

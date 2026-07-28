@@ -87,7 +87,23 @@ class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
         'reviewText': event.reviewText,
         'timestamp': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-      
+
+      final productDoc = await _firestore.collection('products').doc(event.foodId).get();
+      final sellerId = productDoc.data()?['sellerId'] as String?;
+
+      if (sellerId != null && sellerId.isNotEmpty) {
+        await _firestore.collection('reviews').add({
+          'sellerId': sellerId,
+          'productId': event.foodId,
+          'customerId': user.uid,
+          'customerName': user.displayName ?? 'Anonymous User',
+          'customerAvatarUrl': user.photoURL ?? '',
+          'rating': event.rating,
+          'content': event.reviewText,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
       emit(RatingSuccess(rating: state.rating));
     } catch (e) {
       emit(RatingError(

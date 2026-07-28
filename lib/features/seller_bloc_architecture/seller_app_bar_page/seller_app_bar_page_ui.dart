@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class SellerAppBarPageUI extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final VoidCallback? onNotificationTap;
+  final int notificationCount;
 
   const SellerAppBarPageUI({
     Key? key,
     required this.title,
     this.onNotificationTap,
+    this.notificationCount = 0,
   }) : super(key: key);
 
   @override
@@ -54,33 +56,34 @@ class SellerAppBarPageUI extends StatelessWidget implements PreferredSizeWidget 
                     '🔔',
                     style: TextStyle(fontSize: 24),
                   ),
-                  Positioned(
-                    right: 0,
-                    top: 2,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF3B30),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFFF3B30).withValues(alpha: 0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                  if (notificationCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF3B30),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF3B30).withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          notificationCount > 99 ? '99+' : notificationCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
                           ),
-                        ],
-                      ),
-                      child: const Text(
-                        '3', // Example badge count
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

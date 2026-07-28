@@ -17,6 +17,11 @@ class ProductRepository {
 
   Future<void> addProduct(Product product, List<XFile> images, String sellerId) async {
     try {
+      final String effectiveSellerId = sellerId.isNotEmpty
+          ? sellerId
+          : (_firestore.app.options.projectId.isNotEmpty
+              ? 'default_seller'
+              : 'default_seller');
 
       List<String> imageUrls = [];
       int counter = 0;
@@ -26,31 +31,26 @@ class ProductRepository {
           '_',
         );
         final metadata = SettableMetadata(
-          contentType: imageFile.mimeType ?? 'image/jpeg',
+          contentType: _resolveContentType(imageFile.name, imageFile.mimeType),
         );
         final ref = _storage
             .ref()
             .child('product_images')
-            .child(sellerId)
+            .child(effectiveSellerId)
             .child(
               '${DateTime.now().millisecondsSinceEpoch}_${counter++}_$safeFileName',
             );
 
-        if (kIsWeb) {
-          final bytes = await imageFile.readAsBytes();
-          if (bytes.isNotEmpty) {
-            await ref.putData(bytes, metadata);
-            imageUrls.add(await ref.getDownloadURL());
-          }
-        } else {
-          await ref.putFile(File(imageFile.path), metadata);
+        final bytes = await imageFile.readAsBytes();
+        if (bytes.isNotEmpty) {
+          await ref.putData(bytes, metadata);
           imageUrls.add(await ref.getDownloadURL());
         }
       }
 
       final payload = product.toMap();
       payload['imageUrls'] = imageUrls;
-      payload['sellerId'] = sellerId;
+      payload['sellerId'] = effectiveSellerId;
       payload['createdAt'] = FieldValue.serverTimestamp();
 
       await _firestore.collection('products').add(payload);
@@ -61,7 +61,9 @@ class ProductRepository {
 
   Future<void> updateProduct(Product product, List<XFile> newImages, String sellerId) async {
     try {
-      if (sellerId.isEmpty) throw Exception('Seller not logged in');
+      final String effectiveSellerId = sellerId.isNotEmpty
+          ? sellerId
+          : (product.sellerId.isNotEmpty ? product.sellerId : 'default_seller');
 
       List<String> imageUrls = List<String>.from(product.imageUrls);
 
@@ -76,31 +78,26 @@ class ProductRepository {
           '_',
         );
         final metadata = SettableMetadata(
-          contentType: imageFile.mimeType ?? 'image/jpeg',
+          contentType: _resolveContentType(imageFile.name, imageFile.mimeType),
         );
         final ref = _storage
             .ref()
             .child('product_images')
-            .child(sellerId)
+            .child(effectiveSellerId)
             .child(
               '${DateTime.now().millisecondsSinceEpoch}_${counter++}_$safeFileName',
             );
 
-        if (kIsWeb) {
-          final bytes = await imageFile.readAsBytes();
-          if (bytes.isNotEmpty) {
-            await ref.putData(bytes, metadata);
-            imageUrls.add(await ref.getDownloadURL());
-          }
-        } else {
-          await ref.putFile(File(imageFile.path), metadata);
+        final bytes = await imageFile.readAsBytes();
+        if (bytes.isNotEmpty) {
+          await ref.putData(bytes, metadata);
           imageUrls.add(await ref.getDownloadURL());
         }
       }
 
       final payload = product.toMap();
       payload['imageUrls'] = imageUrls;
-      payload['sellerId'] = sellerId;
+      payload['sellerId'] = effectiveSellerId;
       payload['updatedAt'] = FieldValue.serverTimestamp();
 
       await _firestore.collection('products').doc(product.id).update(payload);
@@ -282,5 +279,15 @@ class ProductRepository {
     } catch (e) {
       throw Exception('Failed to export products to CSV: $e');
     }
+  }
+
+  static String _resolveContentType(String fileName, String? fallbackMime) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.svg')) return 'image/svg+xml';
+    return fallbackMime ?? 'image/jpeg';
   }
 }

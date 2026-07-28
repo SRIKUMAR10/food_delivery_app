@@ -8,8 +8,14 @@ class MockAuthService extends Mock implements IAuthService {}
 class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
 class MockCollectionReference extends Mock implements CollectionReference<Map<String, dynamic>> {}
 class MockDocumentReference extends Mock implements DocumentReference<Map<String, dynamic>> {}
+class MockWriteBatch extends Mock implements WriteBatch {}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(MockDocumentReference());
+    registerFallbackValue(SetOptions(merge: true));
+  });
+
   group('DetailsRepository', () {
     late DetailsRepository repository;
     late MockAuthService mockAuthService;
@@ -40,28 +46,32 @@ void main() {
       expect(repository.currentUserId, 'user_123');
     });
 
-    test('submitRating calls set on correct document reference', () async {
-      final mockOrdersCollection = MockCollectionReference();
+    test('submitRating writes via batch to users/ratings and products/reviews', () async {
+      final mockBatch = MockWriteBatch();
+      final mockUsersCollection = MockCollectionReference();
       final mockUserDoc = MockDocumentReference();
-      final mockTransactionsCollection = MockCollectionReference();
-      final mockFoodDoc = MockDocumentReference();
-      final mockCartCollection = MockCollectionReference();
-      final mockCartDoc = MockDocumentReference();
+      final mockRatingsCollection = MockCollectionReference();
+      final mockUserRatingRef = MockDocumentReference();
+      final mockProductsCollection = MockCollectionReference();
+      final mockProductDoc = MockDocumentReference();
+      final mockReviewsCollection = MockCollectionReference();
+      final mockReviewRef = MockDocumentReference();
 
-      when(() => mockFirestore.collection('orders')).thenReturn(mockOrdersCollection);
-      when(() => mockOrdersCollection.doc('user_123')).thenReturn(mockUserDoc);
-      when(() => mockUserDoc.collection('transactions')).thenReturn(mockTransactionsCollection);
-      when(() => mockTransactionsCollection.doc('food_123')).thenReturn(mockFoodDoc);
-      when(() => mockFoodDoc.collection('cart')).thenReturn(mockCartCollection);
-      when(() => mockCartCollection.doc('user_123')).thenReturn(mockCartDoc);
-      when(() => mockCartDoc.set(any(), any())).thenAnswer((_) async => {});
+      when(() => mockFirestore.batch()).thenReturn(mockBatch);
+      when(() => mockFirestore.collection('users')).thenReturn(mockUsersCollection);
+      when(() => mockUsersCollection.doc('user_123')).thenReturn(mockUserDoc);
+      when(() => mockUserDoc.collection('ratings')).thenReturn(mockRatingsCollection);
+      when(() => mockRatingsCollection.doc('food_123')).thenReturn(mockUserRatingRef);
+      when(() => mockFirestore.collection('products')).thenReturn(mockProductsCollection);
+      when(() => mockProductsCollection.doc('food_123')).thenReturn(mockProductDoc);
+      when(() => mockProductDoc.collection('reviews')).thenReturn(mockReviewsCollection);
+      when(() => mockReviewsCollection.doc()).thenReturn(mockReviewRef);
+      when(() => mockBatch.commit()).thenAnswer((_) async => {});
 
       await repository.submitRating('user_123', 'food_123', 4.5);
 
-      verify(() => mockCartDoc.set(
-        any(),
-        any(),
-      )).called(1);
+      verify(() => mockBatch.set(any<DocumentReference<Map<String, dynamic>>>(), any<Map<String, dynamic>>(), any<SetOptions?>())).called(2);
+      verify(() => mockBatch.commit()).called(1);
     });
   });
 }

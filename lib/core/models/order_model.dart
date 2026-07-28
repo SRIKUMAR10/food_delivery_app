@@ -16,6 +16,13 @@ class OrderModel extends Equatable {
   final String? deliveryAddress;
   final String? customerPhone;
   final String? paymentMethod;
+  final DateTime? acceptedAt;
+  final DateTime? rejectedAt;
+  final DateTime? preparingAt;
+  final DateTime? readyAt;
+  final DateTime? outForDeliveryAt;
+  final DateTime? deliveredAt;
+  final DateTime? cancelledAt;
 
   const OrderModel({
     required this.id,
@@ -30,6 +37,13 @@ class OrderModel extends Equatable {
     this.deliveryAddress,
     this.customerPhone,
     this.paymentMethod,
+    this.acceptedAt,
+    this.rejectedAt,
+    this.preparingAt,
+    this.readyAt,
+    this.outForDeliveryAt,
+    this.deliveredAt,
+    this.cancelledAt,
   });
 
   /// Validates if a transition from current status to [newStatus] is allowed.
@@ -68,6 +82,8 @@ class OrderModel extends Equatable {
   }
 
   factory OrderModel.fromMap(Map<String, dynamic> map, String documentId) {
+    DateTime? _ts(String key) =>
+        (map[key] as Timestamp?)?.toDate();
     return OrderModel(
       id: documentId,
       customerId: map['customerId'] as String? ?? '',
@@ -83,6 +99,13 @@ class OrderModel extends Equatable {
       deliveryAddress: map['deliveryAddress'] as String?,
       customerPhone: map['customerPhone'] as String?,
       paymentMethod: map['paymentMethod'] as String?,
+      acceptedAt: _ts('acceptedAt'),
+      rejectedAt: _ts('rejectedAt'),
+      preparingAt: _ts('preparingAt'),
+      readyAt: _ts('readyAt'),
+      outForDeliveryAt: _ts('outForDeliveryAt'),
+      deliveredAt: _ts('deliveredAt'),
+      cancelledAt: _ts('cancelledAt'),
     );
   }
 
@@ -99,6 +122,13 @@ class OrderModel extends Equatable {
       'deliveryAddress': deliveryAddress,
       'customerPhone': customerPhone,
       'paymentMethod': paymentMethod,
+      'acceptedAt': acceptedAt != null ? Timestamp.fromDate(acceptedAt!) : null,
+      'rejectedAt': rejectedAt != null ? Timestamp.fromDate(rejectedAt!) : null,
+      'preparingAt': preparingAt != null ? Timestamp.fromDate(preparingAt!) : null,
+      'readyAt': readyAt != null ? Timestamp.fromDate(readyAt!) : null,
+      'outForDeliveryAt': outForDeliveryAt != null ? Timestamp.fromDate(outForDeliveryAt!) : null,
+      'deliveredAt': deliveredAt != null ? Timestamp.fromDate(deliveredAt!) : null,
+      'cancelledAt': cancelledAt != null ? Timestamp.fromDate(cancelledAt!) : null,
     };
   }
 
@@ -115,6 +145,13 @@ class OrderModel extends Equatable {
     String? deliveryAddress,
     String? customerPhone,
     String? paymentMethod,
+    DateTime? acceptedAt,
+    DateTime? rejectedAt,
+    DateTime? preparingAt,
+    DateTime? readyAt,
+    DateTime? outForDeliveryAt,
+    DateTime? deliveredAt,
+    DateTime? cancelledAt,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -129,6 +166,13 @@ class OrderModel extends Equatable {
       deliveryAddress: deliveryAddress ?? this.deliveryAddress,
       customerPhone: customerPhone ?? this.customerPhone,
       paymentMethod: paymentMethod ?? this.paymentMethod,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
+      rejectedAt: rejectedAt ?? this.rejectedAt,
+      preparingAt: preparingAt ?? this.preparingAt,
+      readyAt: readyAt ?? this.readyAt,
+      outForDeliveryAt: outForDeliveryAt ?? this.outForDeliveryAt,
+      deliveredAt: deliveredAt ?? this.deliveredAt,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
     );
   }
 
@@ -146,5 +190,12 @@ class OrderModel extends Equatable {
     deliveryAddress,
     customerPhone,
     paymentMethod,
+    acceptedAt,
+    rejectedAt,
+    preparingAt,
+    readyAt,
+    outForDeliveryAt,
+    deliveredAt,
+    cancelledAt,
   ];
 }

@@ -14,6 +14,7 @@ class TrackOrderService {
     final orderData = orderDoc.data()!;
 
     final sellerId = orderData['sellerId'] as String? ?? '';
+    final riderId = orderData['riderId'] as String?;
 
     String sellerName = '';
     String sellerAddress = '';
@@ -31,11 +32,41 @@ class TrackOrderService {
       }
     }
 
+    String driverName = '';
+    String driverImage = '';
+    String driverPhone = '';
+    double? driverLat;
+    double? driverLng;
+
+    if (riderId != null && riderId.isNotEmpty) {
+      final riderDoc = await firestore.collection('riders').doc(riderId).get();
+      if (riderDoc.exists) {
+        final riderData = riderDoc.data()!;
+        driverName = riderData['name'] as String? ?? '';
+        driverImage = riderData['imageUrl'] as String? ?? '';
+        driverPhone = riderData['phone'] as String? ?? '';
+        final location = riderData['currentLocation'];
+        if (location is Map<String, dynamic>) {
+          driverLat = (location['lat'] as num?)?.toDouble();
+          driverLng = (location['lng'] as num?)?.toDouble();
+        }
+      }
+    }
+
+    final acceptedAt = orderData['acceptedAt'];
+    final preparingAt = orderData['preparingAt'];
+    final readyAt = orderData['readyAt'];
+    final outForDeliveryAt = orderData['outForDeliveryAt'];
+    final deliveredAt = orderData['deliveredAt'];
+
     return {
       'estimatedDelivery': '30-40 mins',
-      'driverName': 'Jane Doe',
-      'driverImage': 'https://i.pravatar.cc/150?img=11',
-      'driverPhone': '+1234567890',
+      'driverName': driverName,
+      'driverImage': driverImage,
+      'driverPhone': driverPhone,
+      'driverLat': driverLat,
+      'driverLng': driverLng,
+      'riderId': riderId,
       'sellerId': sellerId,
       'sellerName': sellerName,
       'sellerAddress': sellerAddress,
@@ -45,14 +76,37 @@ class TrackOrderService {
       'buyerName': orderData['customerName'] as String? ?? '',
       'status': orderData['status'] as String? ?? 'New',
       'timestamp': orderData['timestamp'],
+      'acceptedAt': acceptedAt is Timestamp ? acceptedAt.toDate() : null,
+      'preparingAt': preparingAt is Timestamp ? preparingAt.toDate() : null,
+      'readyAt': readyAt is Timestamp ? readyAt.toDate() : null,
+      'outForDeliveryAt': outForDeliveryAt is Timestamp ? outForDeliveryAt.toDate() : null,
+      'deliveredAt': deliveredAt is Timestamp ? deliveredAt.toDate() : null,
     };
   }
 
-  // Simulating a WebSocket Stream for location
-  Stream<Map<String, dynamic>> connectDriverLocationSocket(String orderId) {
-    // In a real app, this would use web_socket_channel
+  Stream<Map<String, dynamic>> riderLocationStream(String riderId) {
     final controller = StreamController<Map<String, dynamic>>();
-    // We don't implement the real socket here for brevity, but the interface exists.
+
+    final subscription = firestore.collection('riders').doc(riderId).snapshots().listen(
+      (snapshot) {
+        if (!snapshot.exists) return;
+        final data = snapshot.data()!;
+        final location = data['currentLocation'];
+        if (location is Map<String, dynamic>) {
+          controller.add({
+            'lat': (location['lat'] as num?)?.toDouble() ?? 0.0,
+            'lng': (location['lng'] as num?)?.toDouble() ?? 0.0,
+          });
+        }
+      },
+      onError: (e) {
+        if (!controller.isClosed) {
+          controller.addError(e);
+        }
+      },
+    );
+
+    controller.onCancel = subscription.cancel;
     return controller.stream;
   }
 }

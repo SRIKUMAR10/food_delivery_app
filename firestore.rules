@@ -58,8 +58,7 @@ service cloud.firestore {
       // Anyone can read reviews. Buyers can create/update/delete their own reviews.
       match /reviews/{reviewId} {
         allow read: if true;
-        allow create: if isOwner(request.resource.data.userId);
-        allow update, delete: if isOwner(resource.data.userId);
+        allow create, update, delete: if isOwner(reviewId);
       }
     }
 
@@ -142,6 +141,17 @@ service cloud.firestore {
           get(/databases/$(database)/documents/conversations/$(conversationId)).data.sellerId == request.auth.uid
         ) && request.resource.data.senderId == request.auth.uid;
         allow update, delete: if false;
+      }
+    }
+
+    // --- 11. Riders Collection ---
+    // Buyers and sellers need to read rider details for tracking orders.
+    match /riders/{riderId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(riderId);
+      
+      match /{subcollection}/{document=**} {
+        allow read, write: if isOwner(riderId);
       }
     }
   }

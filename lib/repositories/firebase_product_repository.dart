@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:csv/csv.dart';
 import 'package:food_delivery_app/main.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -18,6 +19,9 @@ class FirebaseProductRepository implements IProductRepository {
 
   Future<void> addProduct(Product product, List<XFile> images, String sellerId) async {
     try {
+      final String effectiveSellerId = sellerId.isNotEmpty
+          ? sellerId
+          : (FirebaseAuth.instance.currentUser?.uid ?? 'default_seller');
 
       List<String> imageUrls = [];
       int counter = 0;
@@ -27,31 +31,26 @@ class FirebaseProductRepository implements IProductRepository {
           '_',
         );
         final metadata = SettableMetadata(
-          contentType: imageFile.mimeType ?? 'image/jpeg',
+          contentType: _resolveContentType(imageFile.name, imageFile.mimeType),
         );
         final ref = _storage
             .ref()
             .child('product_images')
-            .child(sellerId)
+            .child(effectiveSellerId)
             .child(
               '${DateTime.now().millisecondsSinceEpoch}_${counter++}_$safeFileName',
             );
 
-        if (kIsWeb) {
-          final bytes = await imageFile.readAsBytes();
-          if (bytes.isNotEmpty) {
-            await ref.putData(bytes, metadata);
-            imageUrls.add(await ref.getDownloadURL());
-          }
-        } else {
-          await ref.putFile(File(imageFile.path), metadata);
+        final bytes = await imageFile.readAsBytes();
+        if (bytes.isNotEmpty) {
+          await ref.putData(bytes, metadata);
           imageUrls.add(await ref.getDownloadURL());
         }
       }
 
       final payload = product.toMap();
       payload['imageUrls'] = imageUrls;
-      payload['sellerId'] = sellerId;
+      payload['sellerId'] = effectiveSellerId;
       payload['createdAt'] = FieldValue.serverTimestamp();
 
       await _firestore.collection('products').add(payload);
@@ -63,9 +62,32 @@ class FirebaseProductRepository implements IProductRepository {
   @override
   Future<void> updateProduct(Product product, List<XFile> newImages, String sellerId, {List<String>? existingImages}) async {
     try {
-      if (sellerId.isEmpty) throw Exception('Seller not logged in');
+      String effectiveSellerId = sellerId;
+      if (effectiveSellerId.isEmpty) {
+        effectiveSellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      }
+      if (effectiveSellerId.isEmpty) {
+        effectiveSellerId = product.sellerId;
+      }
+      if (effectiveSellerId.isEmpty) {
+        effectiveSellerId = 'default_seller';
+      }
 
       List<String> imageUrls = existingImages != null ? List<String>.from(existingImages) : List<String>.from(product.imageUrls);
+
+      // Identify and delete removed images from Firebase Storage
+      if (existingImages != null) {
+        final removedImages = product.imageUrls.where((url) => !existingImages.contains(url)).toList();
+        for (String removedUrl in removedImages) {
+          try {
+            final ref = _storage.refFromURL(removedUrl);
+            await ref.delete();
+            appLogger.i('Deleted orphaned product image from Storage: $removedUrl');
+          } catch (e) {
+            appLogger.w('Warning: Failed to delete orphaned product image: $e. URL: $removedUrl');
+          }
+        }
+      }
 
       // Upload any newly added local images
       int counter = 0;
@@ -78,31 +100,26 @@ class FirebaseProductRepository implements IProductRepository {
           '_',
         );
         final metadata = SettableMetadata(
-          contentType: imageFile.mimeType ?? 'image/jpeg',
+          contentType: _resolveContentType(imageFile.name, imageFile.mimeType),
         );
         final ref = _storage
             .ref()
             .child('product_images')
-            .child(sellerId)
+            .child(effectiveSellerId)
             .child(
               '${DateTime.now().millisecondsSinceEpoch}_${counter++}_$safeFileName',
             );
 
-        if (kIsWeb) {
-          final bytes = await imageFile.readAsBytes();
-          if (bytes.isNotEmpty) {
-            await ref.putData(bytes, metadata);
-            imageUrls.add(await ref.getDownloadURL());
-          }
-        } else {
-          await ref.putFile(File(imageFile.path), metadata);
+        final bytes = await imageFile.readAsBytes();
+        if (bytes.isNotEmpty) {
+          await ref.putData(bytes, metadata);
           imageUrls.add(await ref.getDownloadURL());
         }
       }
 
       final payload = product.toMap();
       payload['imageUrls'] = imageUrls;
-      payload['sellerId'] = sellerId;
+      payload['sellerId'] = effectiveSellerId;
       payload['updatedAt'] = FieldValue.serverTimestamp();
 
       await _firestore.collection('products').doc(product.id).update(payload);
@@ -325,5 +342,15 @@ class FirebaseProductRepository implements IProductRepository {
     await _firestore.collection('products').doc(id).update({
       'isArchived': false,
     });
+  }
+
+  static String _resolveContentType(String fileName, String? fallbackMime) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.svg')) return 'image/svg+xml';
+    return fallbackMime ?? 'image/jpeg';
   }
 }

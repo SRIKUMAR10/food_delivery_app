@@ -9,9 +9,9 @@ class PromotionsCouponsService {
       final snapshot = await _firestore
           .collection('sellers')
           .doc(sellerId)
-          .collection('promotions')
+          .collection('coupons')
           .get();
-      
+
       return snapshot.docs.map((doc) {
         final data = doc.data();
         return CouponModel(
@@ -22,6 +22,9 @@ class PromotionsCouponsService {
           isPercentage: data['isPercentage'] ?? false,
           expiryDate: (data['expiryDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
           isActive: data['isActive'] ?? true,
+          usageLimit: (data['usageLimit'] as num?)?.toInt() ?? 0,
+          usedCount: (data['usedCount'] as num?)?.toInt() ?? 0,
+          minimumOrderValue: (data['minimumOrderValue'] as num?)?.toDouble() ?? 0,
         );
       }).toList();
     } catch (e) {
@@ -34,9 +37,9 @@ class PromotionsCouponsService {
       final docRef = _firestore
           .collection('sellers')
           .doc(sellerId)
-          .collection('promotions')
+          .collection('coupons')
           .doc();
-          
+
       await docRef.set({
         'code': coupon.code,
         'description': coupon.description,
@@ -44,8 +47,11 @@ class PromotionsCouponsService {
         'isPercentage': coupon.isPercentage,
         'expiryDate': Timestamp.fromDate(coupon.expiryDate),
         'isActive': coupon.isActive,
+        'usageLimit': coupon.usageLimit,
+        'usedCount': 0,
+        'minimumOrderValue': coupon.minimumOrderValue,
       });
-      
+
       return coupon.copyWith(id: docRef.id);
     } catch (e) {
       throw Exception('Failed to add coupon: $e');
@@ -57,7 +63,7 @@ class PromotionsCouponsService {
       await _firestore
           .collection('sellers')
           .doc(sellerId)
-          .collection('promotions')
+          .collection('coupons')
           .doc(coupon.id)
           .update({
         'code': coupon.code,
@@ -66,6 +72,8 @@ class PromotionsCouponsService {
         'isPercentage': coupon.isPercentage,
         'expiryDate': Timestamp.fromDate(coupon.expiryDate),
         'isActive': coupon.isActive,
+        'usageLimit': coupon.usageLimit,
+        'minimumOrderValue': coupon.minimumOrderValue,
       });
       return coupon;
     } catch (e) {
@@ -78,7 +86,7 @@ class PromotionsCouponsService {
       await _firestore
           .collection('sellers')
           .doc(sellerId)
-          .collection('promotions')
+          .collection('coupons')
           .doc(couponId)
           .delete();
     } catch (e) {
@@ -91,7 +99,7 @@ class PromotionsCouponsService {
       await _firestore
           .collection('sellers')
           .doc(sellerId)
-          .collection('promotions')
+          .collection('coupons')
           .doc(couponId)
           .update({'isActive': isActive});
     } catch (e) {
@@ -99,4 +107,3 @@ class PromotionsCouponsService {
     }
   }
 }
-

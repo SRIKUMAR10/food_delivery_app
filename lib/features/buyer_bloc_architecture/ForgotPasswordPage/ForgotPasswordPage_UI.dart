@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:food_delivery_app/repositories/user_repository.dart';
 
-import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart'; // To navigate back to login
+import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import 'ForgotPasswordPage_Bloc.dart';
 import 'ForgotPasswordPage_Event.dart';
 import 'ForgotPasswordPage_State.dart';
 
-/// The entry point for the Forgot Password Screen.
-/// This widget provides the ForgotPasswordBloc to its children and wraps the responsive UI view.
 class ForgotPasswordScreenUI extends StatelessWidget {
   const ForgotPasswordScreenUI({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => ForgotPasswordBloc(),
+      create: (context) => ForgotPasswordBloc(
+        userRepository: context.read<UserRepository>(),
+      ),
       child: const _ForgotPasswordView(),
     );
   }

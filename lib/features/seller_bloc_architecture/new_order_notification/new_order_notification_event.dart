@@ -7,12 +7,12 @@ abstract class NewOrderNotificationEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadOrderDetails extends NewOrderNotificationEvent {
-  final String orderId;
-  const LoadOrderDetails(this.orderId);
+class StartListening extends NewOrderNotificationEvent {
+  final String sellerId;
+  const StartListening({required this.sellerId});
 
   @override
-  List<Object?> get props => [orderId];
+  List<Object?> get props => [sellerId];
 }
 
 class AcceptOrderEvent extends NewOrderNotificationEvent {
@@ -29,4 +29,8 @@ class RejectOrderEvent extends NewOrderNotificationEvent {
 
   @override
   List<Object?> get props => [orderId];
+}
+
+class DismissCurrentOrder extends NewOrderNotificationEvent {
+  const DismissCurrentOrder();
 }
