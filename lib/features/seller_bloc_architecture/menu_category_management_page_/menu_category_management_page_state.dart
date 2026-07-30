@@ -1,10 +1,20 @@
+import 'package:equatable/equatable.dart';
 import 'menu_category_management_page_model.dart';
 
-abstract class MenuCategoryManagementState {}
+abstract class MenuCategoryManagementState extends Equatable {
+  const MenuCategoryManagementState();
 
-class MenuCategoryManagementInitial extends MenuCategoryManagementState {}
+  @override
+  List<Object?> get props => [];
+}
 
-class MenuCategoryManagementLoading extends MenuCategoryManagementState {}
+class MenuCategoryManagementInitial extends MenuCategoryManagementState {
+  const MenuCategoryManagementInitial();
+}
+
+class MenuCategoryManagementLoading extends MenuCategoryManagementState {
+  const MenuCategoryManagementLoading();
+}
 
 class MenuCategoryManagementLoaded extends MenuCategoryManagementState {
   final List<MenuCategoryModel> categories;
@@ -13,7 +23,7 @@ class MenuCategoryManagementLoaded extends MenuCategoryManagementState {
   final String? errorMessage;
   final bool hasUnsavedChanges;
 
-  MenuCategoryManagementLoaded({
+  const MenuCategoryManagementLoaded({
     required this.categories,
     this.isSaving = false,
     this.successMessage,
@@ -37,9 +47,15 @@ class MenuCategoryManagementLoaded extends MenuCategoryManagementState {
       hasUnsavedChanges: hasUnsavedChanges ?? this.hasUnsavedChanges,
     );
   }
+
+  @override
+  List<Object?> get props => [categories, isSaving, successMessage, errorMessage, hasUnsavedChanges];
 }
 
 class MenuCategoryManagementError extends MenuCategoryManagementState {
   final String message;
-  MenuCategoryManagementError(this.message);
+  const MenuCategoryManagementError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/repositories/i_product_repository.dart';
+import '../../../core/services/seller_status_service.dart';
 import '../../../repositories/category_repository.dart';
 import 'home_page_models.dart';
 import 'food_item_mapper.dart';
@@ -19,31 +20,40 @@ part 'home_Page_State.dart';
 class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
   final IProductRepository _productRepository;
   final CategoryRepository _categoryRepository;
+  final SellerStatusService _sellerStatusService;
 
   List<FoodItem> _allItems = [];
   List<FoodCategory> _categories = [];
+  Map<String, SellerAvailability> _sellerAvailabilities = {};
 
   String _selectedCategoryId = '';
   String _searchQuery = '';
 
   StreamSubscription<List<FoodCategory>>? _categorySubscription;
+  final Map<String, StreamSubscription<SellerAvailability>> _sellerStatusSubscriptions = {};
+  Timer? _batchTimer;
 
   HomePageBloc({
     required IProductRepository productRepository,
     required CategoryRepository categoryRepository,
+    SellerStatusService? sellerStatusService,
   }) : _productRepository = productRepository,
        _categoryRepository = categoryRepository,
+       _sellerStatusService = sellerStatusService ?? SellerStatusService(),
        super(const HomePageInitial('', [])) {
     on<HomePageStarted>(_onStarted);
     on<CategorySelected>(_onCategorySelected);
     on<SearchQueryChanged>(_onSearchQueryChanged);
     on<SearchCleared>(_onSearchCleared);
     on<CategoriesUpdated>(_onCategoriesUpdated);
+    on<_SellerAvailabilitiesUpdated>(_onSellerAvailabilitiesUpdated);
   }
 
   @override
   Future<void> close() {
     _categorySubscription?.cancel();
+    _cancelSellerStatusSubscriptions();
+    _batchTimer?.cancel();
     return super.close();
   }
 
@@ -73,8 +83,42 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
         selectedCategoryId: _selectedCategoryId,
         categories: _categories,
         searchQuery: _searchQuery,
+        sellerAvailabilities: Map.from(_sellerAvailabilities),
       ),
     );
+  }
+
+  void _subscribeToSellerStatuses(List<String> sellerIds) {
+    _cancelSellerStatusSubscriptions();
+    _sellerAvailabilities = {};
+
+    for (final sellerId in sellerIds) {
+      final sub = _sellerStatusService.watchSellerStatus(sellerId).listen((status) {
+        if (!isClosed) {
+          _onSellerStatusReceived(sellerId, status);
+        }
+      });
+      _sellerStatusSubscriptions[sellerId] = sub;
+    }
+  }
+
+  void _onSellerStatusReceived(String sellerId, SellerAvailability status) {
+    _sellerAvailabilities[sellerId] = status;
+    _batchTimer?.cancel();
+    _batchTimer = Timer(const Duration(milliseconds: 100), () {
+      if (!isClosed) {
+        add(_SellerAvailabilitiesUpdated(Map.from(_sellerAvailabilities)));
+      }
+    });
+  }
+
+  void _cancelSellerStatusSubscriptions() {
+    for (final sub in _sellerStatusSubscriptions.values) {
+      sub.cancel();
+    }
+    _sellerStatusSubscriptions.clear();
+    _batchTimer?.cancel();
+    _batchTimer = null;
   }
 
   // ── Event Handlers ────────────────────────────────────────────────────────────
@@ -147,6 +191,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     _selectedCategoryId = event.categoryId;
     _searchQuery = '';
     _allItems = [];
+    _cancelSellerStatusSubscriptions();
 
     emit(HomePageLoading(_selectedCategoryId, _categories));
 
@@ -156,12 +201,17 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
           .map((products) => products.map(FoodItemMapper.toViewModel).toList()),
       onData: (items) {
         _allItems = items;
-        if (_allItems.isEmpty)
+        final sellerIds = items.map((i) => i.sellerId).toSet().toList();
+        _subscribeToSellerStatuses(sellerIds);
+
+        if (_allItems.isEmpty) {
+          _cancelSellerStatusSubscriptions();
           return HomePageEmpty(
             _selectedCategoryName,
             _selectedCategoryId,
             _categories,
           );
+        }
 
         return HomePageLoaded(
           allItems: _allItems,
@@ -169,6 +219,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
           selectedCategoryId: _selectedCategoryId,
           categories: _categories,
           searchQuery: '',
+          sellerAvailabilities: Map.from(_sellerAvailabilities),
         );
       },
       onError: (e, _) => HomePageError(
@@ -210,6 +261,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
           selectedCategoryId: _selectedCategoryId,
           categories: _categories,
           searchQuery: _searchQuery,
+          sellerAvailabilities: Map.from(_sellerAvailabilities),
         );
       },
       onError: (e, _) =>
@@ -221,4 +273,20 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     _searchQuery = '';
     _emitFilteredState(emit);
   }
+
+  void _onSellerAvailabilitiesUpdated(
+    _SellerAvailabilitiesUpdated event,
+    Emitter<HomePageState> emit,
+  ) {
+    if (state is HomePageLoaded) {
+      emit((state as HomePageLoaded).copyWith(
+        sellerAvailabilities: event.availabilities,
+      ));
+    }
+  }
+}
+
+final class _SellerAvailabilitiesUpdated extends HomePageEvent {
+  final Map<String, SellerAvailability> availabilities;
+  const _SellerAvailabilitiesUpdated(this.availabilities);
 }

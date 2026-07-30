@@ -93,7 +93,7 @@ class _CustomCameraPageState extends State<CustomCameraPage> {
         Navigator.pop(context, picture);
       }
     } catch (e) {
-      print('Error taking picture: $e');
+      debugPrint('Error taking picture: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to take picture: $e')),

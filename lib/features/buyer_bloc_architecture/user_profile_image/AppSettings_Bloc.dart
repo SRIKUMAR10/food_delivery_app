@@ -1,21 +1,22 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/material.dart';
-import '../../../core/repositories/i_app_settings_repository.dart';
-import '../../../core/services/theme_manager.dart';
-import '../../../core/services/locale_manager.dart';
+import 'package:food_delivery_app/core/repositories/i_app_settings_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/services/theme_manager.dart';
+import 'package:food_delivery_app/core/services/locale_manager.dart';
 import 'AppSettings_Event.dart';
 import 'AppSettings_State.dart';
 
 class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
+  final IAuthService authService;
   final IAppSettingsRepository _repository;
   final ThemeManager _themeManager;
   final LocaleManager _localeManager;
 
   AppSettingsBloc({
+    required this.authService,
     required IAppSettingsRepository repository,
     required ThemeManager themeManager,
     required LocaleManager localeManager,
@@ -39,10 +40,10 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
     on<AppSettingsRetryRequested>(_onRetryRequested);
   }
 
-  Future<String> _getUserId() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw Exception('User not authenticated');
-    return user.uid;
+  String _getUserId() {
+    final uid = authService.currentUserId;
+    if (uid == null || uid.isEmpty) throw Exception('User not authenticated');
+    return uid;
   }
 
   Future<void> _onLoadStarted(
@@ -51,7 +52,7 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
   ) async {
     emit(state.copyWith(isLoading: true, error: null));
     try {
-      final userId = await _getUserId();
+      final userId = _getUserId();
       final settings = await _repository.loadSettings(userId);
       emit(settings.copyWith(isLoading: false));
 
@@ -152,7 +153,9 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
             if (file is File) {
               try {
                 file.deleteSync();
-              } catch (_) {}
+              } catch (_) {
+                debugPrint('Failed to delete temp file: ${file.path}');
+              }
             }
           });
         }
@@ -169,20 +172,9 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
   ) async {
     emit(state.copyWith(error: null));
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception('User not authenticated');
-
-      if (user.email != null && event.password.isNotEmpty) {
-        final credential = EmailAuthProvider.credential(
-          email: user.email!,
-          password: event.password,
-        );
-        await user.reauthenticateWithCredential(credential);
-      }
-
-      final uid = user.uid;
-      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
-      await user.delete();
+      final uid = _getUserId();
+      await authService.deleteAccount(event.password);
+      await _repository.deleteUserData(uid);
       add(const LogoutRequested());
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
@@ -194,7 +186,7 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
     Emitter<AppSettingsState> emit,
   ) async {
     try {
-      await FirebaseAuth.instance.signOut();
+      await authService.signOut();
       emit(state.copyWith(isLoggedOut: true));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
@@ -219,8 +211,7 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
     try {
       await _repository.saveSettings(newState);
     } catch (e) {
-      // Error is handled by the caller's emit; repository errors surface via
-      // the on-event handler's own try/catch where possible.
+      debugPrint('AppSettingsBloc._saveSettings error: $e');
     }
   }
 }

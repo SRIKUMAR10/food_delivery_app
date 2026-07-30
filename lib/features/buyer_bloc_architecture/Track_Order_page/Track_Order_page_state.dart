@@ -70,7 +70,7 @@ class TrackingStep extends Equatable {
   List<Object?> get props => [title, time, status];
 }
 
-enum TrackingStatus { completed, current, upcoming, future }
+enum TrackingStatus { completed, current, upcoming, future, cancelled }
 
 class DeliveryPartner extends Equatable {
   final String name;

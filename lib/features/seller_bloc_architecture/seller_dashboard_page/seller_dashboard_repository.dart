@@ -27,6 +27,7 @@ class FirebaseSellerDashboardRepository implements SellerDashboardRepository {
         revenueToday: 0.0,
         revenueChangePercentage: 0.0,
         pendingOrdersCount: 0,
+        newOrdersCount: 0,
         todaysOrdersCount: 0,
         lowStockCount: 0,
         activeProductsCount: 0,
@@ -70,6 +71,7 @@ class FirebaseSellerDashboardRepository implements SellerDashboardRepository {
 
         int todaysOrdersCount = 0;
         int pendingOrdersCount = 0;
+        int newOrdersCount = 0;
         double revenueToday = 0.0;
         List<DashboardOrder> todaysOrders = [];
 
@@ -119,6 +121,9 @@ class FirebaseSellerDashboardRepository implements SellerDashboardRepository {
 
           if (status == 'New' || status == 'Accepted' || status == 'Preparing') {
             pendingOrdersCount++;
+          }
+          if (status == 'New') {
+            newOrdersCount++;
           }
         }
 
@@ -198,6 +203,7 @@ class FirebaseSellerDashboardRepository implements SellerDashboardRepository {
           revenueToday: revenueToday,
           revenueChangePercentage: 0.0, // Keeping 0 for now as it requires historical data
           pendingOrdersCount: pendingOrdersCount,
+          newOrdersCount: newOrdersCount,
           todaysOrdersCount: todaysOrdersCount,
           lowStockCount: lowStockCount,
           activeProductsCount: activeProductsCount,
@@ -232,6 +238,7 @@ class MockSellerDashboardRepository implements SellerDashboardRepository {
       revenueToday: 45600.0,
       revenueChangePercentage: 12.5,
       pendingOrdersCount: 26,
+      newOrdersCount: 1,
       todaysOrdersCount: 128,
       lowStockCount: 8,
       activeProductsCount: 145,

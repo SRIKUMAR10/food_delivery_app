@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -35,7 +36,7 @@ class AuthLinkingService {
 
       return false;
     } catch (e) {
-      print('Error checking phone existence: $e');
+      debugPrint('Error checking phone existence: $e');
       return false;
     }
   }

@@ -15,6 +15,11 @@ import 'features/seller_bloc_architecture/seller_onboard_page/seller_onboard_pag
 import 'features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_ui.dart';
 import 'features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
 import 'features/seller_bloc_architecture/seller_dashboard_page/seller_dashboard_repository.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_bloc.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_repository.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_service.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Login Page_page/Delivery_Login Page_page_ui.dart';
 
 import 'core/services/i_auth_service.dart';
 import 'core/services/auth_service.dart';
@@ -28,10 +33,20 @@ import 'repositories/firebase_cart_repository.dart';
 import 'repositories/firebase_coupon_repository.dart';
 import 'repositories/firebase_order_repository.dart';
 import 'repositories/firebase_inventory_repository.dart';
+import 'repositories/firebase_favorites_repository.dart';
+import 'repositories/firebase_rating_repository.dart';
+import 'repositories/firebase_seller_repository.dart';
 import 'repositories/category_repository.dart';
 import 'repositories/firebase_chat_repository.dart';
 import 'core/repositories/i_chat_repository.dart';
 import 'core/repositories/i_app_settings_repository.dart';
+import 'core/repositories/i_favorites_repository.dart';
+import 'core/repositories/i_rating_repository.dart';
+import 'core/repositories/i_seller_repository.dart';
+import 'core/repositories/i_seller_profile_repository.dart';
+import 'core/repositories/i_user_profile_repository.dart';
+import 'repositories/firebase_seller_profile_repository.dart';
+import 'repositories/firebase_user_profile_repository.dart';
 
 import 'repositories/firebase_app_settings_repository.dart';
 
@@ -62,8 +77,17 @@ final Logger appLogger = Logger(
   ),
 );
 
-/// Toggle this flag to switch between the Buyer and Seller App flows.
-const bool isBuyerApp = false;
+/// App mode enumeration to toggle between different application onboarding flows.
+enum AppMode { buyer, seller, delivery }
+
+/// Toggle this variable to switch between Buyer, Seller, and Delivery Partner App flows.
+/// - AppMode.buyer   : Buyer Onboarding Page (/onboard)
+/// - AppMode.seller  : Seller Onboarding Page (/selleronboard)
+/// - AppMode.delivery: Delivery Partner Onboarding Page (/deliveryonboard)
+const AppMode activeAppMode = AppMode.delivery;
+
+/// Backward compatibility flag for legacy checks
+const bool isBuyerApp = activeAppMode == AppMode.delivery;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -204,13 +228,26 @@ class _AppThemeWrapperState extends State<_AppThemeWrapper> {
         Locale('es'),
         Locale('fr'),
       ],
-      initialRoute: isBuyerApp ? '/onboard' : '/selleronboard',
+      initialRoute: activeAppMode == AppMode.buyer
+          ? '/onboard'
+          : (activeAppMode == AppMode.seller
+                ? '/selleronboard'
+                : '/deliveryonboard'),
       routes: {
         '/onboard': (context) => const OnboardingPage(),
         '/sellerlogin': (context) => const SellerLoginPageUI(),
         '/selleronboard': (context) => const SellerOnboardPageUI(),
         '/sellerSignUp': (context) => const SellerSignUpPageUI(),
         '/sellerDashboard': (context) => const SellerNavigationBarViewPageUI(),
+        '/deliverylogin': (context) => const DeliveryLoginPage(),
+        '/deliveryonboard': (context) =>
+            BlocProvider<DeliveryOnboardingPageBloc>(
+              create: (context) => DeliveryOnboardingPageBloc(
+                repository: context.read<DeliveryOnboardingRepositoryBase>(),
+                service: context.read<DeliveryOnboardingServiceBase>(),
+              ),
+              child: const DeliveryOnboardingPageUI(),
+            ),
       },
     );
   }
@@ -265,6 +302,27 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<IAppSettingsRepository>(
           create: (context) => FirebaseAppSettingsRepository(),
         ),
+        RepositoryProvider<IFavoritesRepository>(
+          create: (context) => FirebaseFavoritesRepository(),
+        ),
+        RepositoryProvider<IRatingRepository>(
+          create: (context) => FirebaseRatingRepository(),
+        ),
+        RepositoryProvider<ISellerRepository>(
+          create: (context) => FirebaseSellerRepository(),
+        ),
+        RepositoryProvider<ISellerProfileRepository>(
+          create: (context) => FirebaseSellerProfileRepository(),
+        ),
+        RepositoryProvider<IUserProfileRepository>(
+          create: (context) => FirebaseUserProfileRepository(),
+        ),
+        RepositoryProvider<DeliveryOnboardingRepositoryBase>(
+          create: (context) => DeliveryOnboardingRepository(),
+        ),
+        RepositoryProvider<DeliveryOnboardingServiceBase>(
+          create: (context) => DeliveryOnboardingService(),
+        ),
         RepositoryProvider<ThemeManager>(create: (context) => themeManager),
         RepositoryProvider<LocaleManager>(create: (context) => localeManager),
       ],
@@ -277,13 +335,16 @@ class MyApp extends StatelessWidget {
                   cartRepository: context.read<ICartRepository>(),
                   couponRepository: context.read<ICouponRepository>(),
                   authService: context.read<IAuthService>(),
+                  productRepository: context.read<IProductRepository>(),
                 ),
           ),
           BlocProvider(
             create: (context) =>
                 favoritesBloc ??
-                (FavoritesBloc(authService: context.read<IAuthService>())
-                  ..add(const LoadFavoritesStarted())),
+                (FavoritesBloc(
+                  favoritesRepository: context.read<IFavoritesRepository>(),
+                  authService: context.read<IAuthService>(),
+                )..add(const LoadFavoritesStarted())),
           ),
           BlocProvider(
             create: (context) =>

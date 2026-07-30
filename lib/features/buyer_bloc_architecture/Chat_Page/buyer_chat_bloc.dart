@@ -6,6 +6,7 @@ import '../../../core/repositories/i_chat_repository.dart';
 import '../../../core/services/i_auth_service.dart';
 import '../../../core/models/conversation_model.dart';
 import '../../../core/models/chat_message_model.dart';
+import '../home_Page/home_page_models.dart';
 
 class _ConversationsUpdated extends BuyerChatEvent {
   final List<ConversationModel> conversations;
@@ -42,6 +43,8 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
 
   // Pending auto-open after conversations load
   String? _pendingConversationId;
+  // Pending product selection after conversations load
+  FoodItem? _pendingProduct;
 
   BuyerChatBloc({required this.repository, required this.authService})
       : super(BuyerChatInitial()) {
@@ -61,6 +64,7 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     on<_MessagesError>(_onMessagesError);
     on<_AutoOpenConversation>(_onAutoOpenConversation);
     on<DeleteBuyerMessage>(_onDeleteMessage);
+    on<SelectProductForSupport>(_onSelectProduct);
 
     _authSub = authService.authStateChanges.listen((userId) {
       if (userId != null) {
@@ -165,8 +169,10 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
         emit(BuyerChatLoaded(
           currentUserId: userId,
           conversations: event.conversations,
+          selectedProduct: _pendingProduct,
         ));
       }
+      _pendingProduct = null;
     }
 
     if (_pendingConversationId != null && state is BuyerChatLoaded) {
@@ -401,6 +407,16 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
           errorMessage: 'Failed to start conversation. Please try again.',
         ));
       }
+    }
+  }
+
+  void _onSelectProduct(
+      SelectProductForSupport event, Emitter<BuyerChatState> emit) {
+    final s = state;
+    if (s is BuyerChatLoaded) {
+      emit(s.copyWith(selectedProduct: event.product));
+    } else {
+      _pendingProduct = event.product;
     }
   }
 

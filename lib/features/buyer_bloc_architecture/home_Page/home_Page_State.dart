@@ -44,12 +44,16 @@ final class HomePageLoaded extends HomePageState {
   /// Current search query string (empty string when search is inactive).
   final String searchQuery;
 
+  /// Per-seller availability map (sellerId → availability).
+  final Map<String, SellerAvailability> sellerAvailabilities;
+
   const HomePageLoaded({
     required this.allItems,
     required this.filteredItems,
     required String selectedCategoryId,
     required List<FoodCategory> categories,
     this.searchQuery = '',
+    this.sellerAvailabilities = const {},
   }) : super(selectedCategoryId, categories);
 
   /// Returns a copy with the given fields overridden.
@@ -59,6 +63,7 @@ final class HomePageLoaded extends HomePageState {
     String? selectedCategoryId,
     List<FoodCategory>? categories,
     String? searchQuery,
+    Map<String, SellerAvailability>? sellerAvailabilities,
   }) {
     return HomePageLoaded(
       allItems: allItems ?? this.allItems,
@@ -66,12 +71,13 @@ final class HomePageLoaded extends HomePageState {
       selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
       categories: categories ?? this.categories,
       searchQuery: searchQuery ?? this.searchQuery,
+      sellerAvailabilities: sellerAvailabilities ?? this.sellerAvailabilities,
     );
   }
 
   @override
   List<Object?> get props =>
-      [allItems, filteredItems, selectedCategoryId, categories, searchQuery];
+      [allItems, filteredItems, selectedCategoryId, categories, searchQuery, sellerAvailabilities];
 }
 
 /// Emitted when a Firestore error occurs during product loading.

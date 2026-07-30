@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/models/order_model.dart';
 import '../core/models/order_status.dart';
@@ -5,6 +6,9 @@ import '../core/repositories/i_order_repository.dart';
 
 class FirebaseOrderRepository implements IOrderRepository {
   final FirebaseFirestore _firestore;
+  
+  // Cache to store loaded orders for performance optimization
+  static final Map<String, OrderModel> _orderCache = {};
 
   FirebaseOrderRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
@@ -21,9 +25,11 @@ class FirebaseOrderRepository implements IOrderRepository {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => OrderModel.fromMap(doc.data(), doc.id))
-          .toList();
+      return snapshot.docs.map((doc) {
+        final order = OrderModel.fromMap(doc.data(), doc.id);
+        _orderCache[doc.id] = order;
+        return order;
+      }).toList();
     });
   }
 
@@ -39,9 +45,11 @@ class FirebaseOrderRepository implements IOrderRepository {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => OrderModel.fromMap(doc.data(), doc.id))
-          .toList();
+      return snapshot.docs.map((doc) {
+        final order = OrderModel.fromMap(doc.data(), doc.id);
+        _orderCache[doc.id] = order;
+        return order;
+      }).toList();
     });
   }
 
@@ -80,6 +88,8 @@ class FirebaseOrderRepository implements IOrderRepository {
       }
 
       await _firestore.collection('orders').doc(orderId).update(updates);
+      // Invalidate the cache to fetch fresh data on subsequent queries
+      _orderCache.remove(orderId);
     } catch (e) {
       throw Exception('Failed to update order status: $e');
     }
@@ -87,14 +97,41 @@ class FirebaseOrderRepository implements IOrderRepository {
 
   @override
   Future<OrderModel?> getOrderById(String orderId) async {
+    if (_orderCache.containsKey(orderId)) {
+      return _orderCache[orderId];
+    }
     try {
       final doc = await _firestore.collection('orders').doc(orderId).get();
       if (doc.exists && doc.data() != null) {
-        return OrderModel.fromMap(doc.data()!, doc.id);
+        final order = OrderModel.fromMap(doc.data()!, doc.id);
+        _orderCache[orderId] = order;
+        return order;
       }
     } catch (e) {
-      // Ignored for now or handle appropriately
+      debugPrint('firebase_order_repository.getOrderById error: $e');
     }
     return null;
+  }
+
+  @override
+  Future<void> addOrderWalletTransaction({
+    required String customerId,
+    required String orderId,
+    required String sellerId,
+    required double amount,
+  }) async {
+    await _firestore
+        .collection('users')
+        .doc(customerId)
+        .collection('transactions')
+        .add({
+      'orderId': orderId,
+      'sellerId': sellerId,
+      'amount': -amount,
+      'type': 'order_payment',
+      'description': 'Order #$orderId completed',
+      'status': 'completed',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 }

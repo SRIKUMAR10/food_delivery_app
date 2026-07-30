@@ -9,6 +9,8 @@ abstract class TrackOrderRepository {
   Future<void> startTracking(String orderId);
 
   Future<void> stopTracking();
+
+  Future<void> cancelOrder(String orderId);
 }
 
 class DriverLocation {
@@ -75,6 +77,11 @@ class TrackOrderRepositoryImpl implements TrackOrderRepository {
   Future<void> stopTracking() async {
     await _locationSub?.cancel();
     _locationSub = null;
+  }
+
+  @override
+  Future<void> cancelOrder(String orderId) {
+    return service.cancelOrder(orderId);
   }
 
   void dispose() {

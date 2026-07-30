@@ -18,6 +18,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     on<AddProductEvent>(_onAddProductEvent);
     on<ClearInventoryMessage>(_onClearMessage);
     on<_InventoryDataReceived>(_onDataReceived);
+    on<_InventoryErrorReceived>(_onInventoryError);
   }
 
   void _onLoadInventoryStream(LoadInventoryStream event, Emitter<InventoryState> emit) {
@@ -57,12 +58,22 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
         ));
       },
       onError: (error) {
-        // Since we can't emit directly, ideally we'd add an error event.
+        add(_InventoryErrorReceived(error.toString()));
       }
     );
   }
 
   // Internal event handler
+  void _onInventoryError(_InventoryErrorReceived event, Emitter<InventoryState> emit) {
+    if (state is InventoryLoading) {
+      emit(InventoryError(message: event.message));
+    } else if (state is InventoryLoaded) {
+      emit((state as InventoryLoaded).copyWith(
+        errorMessage: () => event.message,
+      ));
+    }
+  }
+
   void _onDataReceived(_InventoryDataReceived event, Emitter<InventoryState> emit) {
     emit(InventoryLoaded(
       sellerId: event.sellerId,
@@ -263,4 +274,12 @@ class _InventoryDataReceived extends InventoryEvent {
 
   @override
   List<Object?> get props => [sellerId, items, summary, filteredItems, activeFilter, searchQuery, updatingIds];
+}
+
+class _InventoryErrorReceived extends InventoryEvent {
+  final String message;
+  const _InventoryErrorReceived(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

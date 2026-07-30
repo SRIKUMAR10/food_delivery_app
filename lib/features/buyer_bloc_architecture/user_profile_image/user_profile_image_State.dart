@@ -27,27 +27,37 @@ class ProfileLoaded extends UserProfileState {
   final UserProfile profile;
   final double uploadProgress;
   final bool isSaving;
+  final String? successMessage;
+  final String? errorMessage;
 
   const ProfileLoaded({
     required this.profile,
     this.uploadProgress = 0.0,
     this.isSaving = false,
+    this.successMessage,
+    this.errorMessage,
   });
 
   ProfileLoaded copyWith({
     UserProfile? profile,
     double? uploadProgress,
     bool? isSaving,
+    String? successMessage,
+    bool clearSuccessMessage = false,
+    String? errorMessage,
+    bool clearErrorMessage = false,
   }) {
     return ProfileLoaded(
       profile: profile ?? this.profile,
       uploadProgress: uploadProgress ?? this.uploadProgress,
       isSaving: isSaving ?? this.isSaving,
+      successMessage: clearSuccessMessage ? null : (successMessage ?? this.successMessage),
+      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
     );
   }
 
   @override
-  List<Object?> get props => [profile, uploadProgress, isSaving];
+  List<Object?> get props => [profile, uploadProgress, isSaving, successMessage, errorMessage];
 }
 
 /// State to indicate a success message (e.g., profile saved, image uploaded).

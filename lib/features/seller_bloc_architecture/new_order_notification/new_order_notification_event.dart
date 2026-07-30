@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:food_delivery_app/core/models/order_model.dart';
 
 abstract class NewOrderNotificationEvent extends Equatable {
   const NewOrderNotificationEvent();
@@ -33,4 +34,20 @@ class RejectOrderEvent extends NewOrderNotificationEvent {
 
 class DismissCurrentOrder extends NewOrderNotificationEvent {
   const DismissCurrentOrder();
+}
+
+class OrdersUpdated extends NewOrderNotificationEvent {
+  final List<OrderModel> orders;
+  const OrdersUpdated(this.orders);
+
+  @override
+  List<Object?> get props => [orders];
+}
+
+class NewOrderNotificationErrorEvent extends NewOrderNotificationEvent {
+  final String message;
+  const NewOrderNotificationErrorEvent(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

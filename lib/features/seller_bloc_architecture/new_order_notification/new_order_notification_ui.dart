@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/models/order_model.dart';
 import 'new_order_notification_bloc.dart';
 import 'new_order_notification_event.dart';
@@ -110,6 +111,7 @@ class _NewOrderNotificationViewState extends State<NewOrderNotificationView>
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Order Accepted Successfully!')),
                       );
+                      Navigator.pop(context, true);
                     } else if (state is OrderRejectedState) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Order Rejected.')),
@@ -280,82 +282,6 @@ class _NotificationHeader extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE52929),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: const Text(
-        'NEW',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.0,
-        ),
-      ),
-    );
-  }
-}
-
-class _OrderInfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final bool isAmount;
-
-  const _OrderInfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.isAmount = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, size: 20, color: const Color(0xFF4B5563)),
-          ),
-          const SizedBox(width: 16),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF6B7280),
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: isAmount ? 18 : 15,
-              fontWeight: FontWeight.bold,
-              color: isAmount
-                  ? const Color(0xFFE52929)
-                  : const Color(0xFF111827),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _ActionButtons extends StatelessWidget {
   final bool isAccepting;
@@ -516,40 +442,145 @@ class _OrderDetailsCard extends StatelessWidget {
         children: [
           _NotificationHeader(pulseAnimation: pulseAnimation, pendingCount: pendingCount),
           const SizedBox(height: 32),
-          const _StatusChip(),
-          const SizedBox(height: 32),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: const Color(0xFFF3F4F6), width: 1.5),
+              color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFFF1F5F9),
+                width: 1.5,
+              ),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _OrderInfoRow(
-                  icon: Icons.tag,
-                  label: 'Order ID',
-                  value: '#${order.id.length > 7 ? order.id.substring(0, 7) : order.id}',
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Order #${order.id}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        order.status.value,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF3B82F6),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                _OrderInfoRow(
-                  icon: Icons.person_outline,
-                  label: 'Customer',
-                  value: order.customerName,
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(Icons.person_outline, size: 20, color: Color(0xFF64748B)),
+                    const SizedBox(width: 8),
+                    Text(
+                      order.customerName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF334155),
+                      ),
+                    ),
+                  ],
                 ),
-                const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                _OrderInfoRow(
-                  icon: Icons.shopping_bag_outlined,
-                  label: 'Items',
-                  value: '${order.items?.length ?? 0} Items',
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Divider(color: Color(0xFFE2E8F0)),
                 ),
-                const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                _OrderInfoRow(
-                  icon: Icons.payments_outlined,
-                  label: 'Amount',
-                  value: '₹${order.amount.toInt()}',
-                  isAmount: true,
+                const Text(
+                  'Items',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (order.items != null)
+                  ...order.items!.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${item.quantity}x',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                          ),
+                          Text(
+                            NumberFormat.currency(
+                              locale: 'en_IN',
+                              symbol: '₹',
+                            ).format(item.price),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ).toList(),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(color: Color(0xFFE2E8F0)),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Total Amount',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    Text(
+                      NumberFormat.currency(
+                        locale: 'en_IN',
+                        symbol: '₹',
+                      ).format(order.amount),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

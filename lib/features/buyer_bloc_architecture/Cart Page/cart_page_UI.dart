@@ -28,11 +28,12 @@ class CartPageUI extends StatefulWidget {
 
 class _CartPageUIState extends State<CartPageUI> {
   static const _primaryRed = Color(0xFFEF2A39);
+  bool _showCouponPicker = false;
 
   static final _currFmt = NumberFormat.currency(
     locale: 'en_IN',
     symbol: '₹',
-    decimalDigits: 2,
+    decimalDigits: 0,
   );
 
   @override
@@ -703,7 +704,9 @@ class _CartPageUIState extends State<CartPageUI> {
   /// Sticky bottom bar with Total Amount, Coupon section, and Checkout button.
   Widget _buildBottomBar(BuildContext context, CartLoaded state) {
     final total = state.totalAmount;
-    final displayAmount = state.appliedCoupon != null ? state.finalAmount : total;
+    final rawDisplayAmount = state.appliedCoupon != null ? state.finalAmount : total;
+    final displayAmount = rawDisplayAmount.roundToDouble();
+    final roundOff = displayAmount - rawDisplayAmount;
     final hasDiscount = state.appliedCoupon != null && state.discountAmount > 0;
 
     return Container(
@@ -732,6 +735,89 @@ class _CartPageUIState extends State<CartPageUI> {
                   fontSize: 12,
                   color: state.appliedCoupon != null ? Colors.green : Colors.red,
                 ),
+              ),
+            ),
+
+          // Available coupons selector
+          if (state.availableCoupons.isNotEmpty && state.appliedCoupon == null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _showCouponPicker = !_showCouponPicker),
+                    child: Row(
+                      children: [
+                        Icon(Icons.local_offer, size: 16, color: Colors.orange.shade600),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${state.availableCoupons.length} coupon${state.availableCoupons.length > 1 ? 's' : ''} available',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.orange.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          _showCouponPicker ? Icons.expand_less : Icons.expand_more,
+                          size: 18,
+                          color: Colors.grey,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_showCouponPicker) ...[
+                    const SizedBox(height: 6),
+                    ...state.availableCoupons.map((coupon) => GestureDetector(
+                      onTap: () {
+                        context.read<CartBloc>().add(CouponApplied(coupon));
+                        setState(() => _showCouponPicker = false);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    coupon.code,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Colors.orange.shade900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    coupon.isPercentage
+                                        ? '${coupon.discountAmount.toStringAsFixed(0)}% OFF'
+                                        : '₹${coupon.discountAmount.toStringAsFixed(0)} OFF',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.orange.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.arrow_forward_ios, size: 14, color: Colors.orange.shade400),
+                          ],
+                        ),
+                      ),
+                    )),
+                  ],
+                ],
               ),
             ),
 
@@ -794,6 +880,33 @@ class _CartPageUIState extends State<CartPageUI> {
               ),
             ),
 
+          // Round Off row
+          if (roundOff != 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Round Off',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    '${roundOff > 0 ? '+' : ''}₹${roundOff.abs().toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Total row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -846,13 +959,13 @@ class _CartPageUIState extends State<CartPageUI> {
                 _showCheckoutSnackBar(context);
                 context.read<CartBloc>().add(
                   CartCheckoutRequested(
-                    onSuccess: () {
+                    onSuccess: (_) {
                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
                       if (widget.onNavigateToOrders != null) {
                         widget.onNavigateToOrders!();
                       }
                     },
-                    onInsufficientBalance: () {
+                    onInsufficientBalance: (message) {
                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -865,7 +978,7 @@ class _CartPageUIState extends State<CartPageUI> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  'Insufficient balance to checkout.',
+                                  message ?? 'Unable to proceed with checkout.',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,

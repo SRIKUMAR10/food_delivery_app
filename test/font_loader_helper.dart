@@ -50,6 +50,12 @@ void overrideFontAssetLoading() {
             "google_fonts/PlusJakartaSans-ExtraBold.ttf",
             "google_fonts/PlusJakartaSans-Light.ttf",
             "google_fonts/PlusJakartaSans-Italic.ttf",
+            "google_fonts/Inter-Regular.ttf",
+            "google_fonts/Inter-Medium.ttf",
+            "google_fonts/Inter-SemiBold.ttf",
+            "google_fonts/Inter-Bold.ttf",
+            "google_fonts/Outfit-Regular.ttf",
+            "google_fonts/Outfit-Bold.ttf",
           ];
           for (final font in fonts) {
             manifestMap[font] = [

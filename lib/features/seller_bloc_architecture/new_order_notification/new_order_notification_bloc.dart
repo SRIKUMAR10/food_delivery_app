@@ -7,7 +7,7 @@ import 'new_order_notification_repository.dart';
 
 class NewOrderNotificationBloc extends Bloc<NewOrderNotificationEvent, NewOrderNotificationState> {
   final NewOrderNotificationRepository repository;
-  StreamSubscription<OrderModel>? _ordersSubscription;
+  StreamSubscription<List<OrderModel>>? _ordersSubscription;
   final List<OrderModel> _pendingOrders = [];
   OrderModel? _currentOrder;
 
@@ -17,23 +17,45 @@ class NewOrderNotificationBloc extends Bloc<NewOrderNotificationEvent, NewOrderN
     on<AcceptOrderEvent>(_onAcceptOrder);
     on<RejectOrderEvent>(_onRejectOrder);
     on<DismissCurrentOrder>(_onDismissCurrentOrder);
+    on<OrdersUpdated>(_onOrdersUpdated);
+    on<NewOrderNotificationErrorEvent>(_onErrorEvent);
   }
 
   void _onStartListening(StartListening event, Emitter<NewOrderNotificationState> emit) {
     emit(NewOrderNotificationLoading());
     _ordersSubscription?.cancel();
     _ordersSubscription = repository.streamNewOrders(event.sellerId).listen(
-      (order) {
-        if (_currentOrder != null && _currentOrder!.id == order.id) return;
-        if (_pendingOrders.any((o) => o.id == order.id)) return;
-
-        _pendingOrders.add(order);
-        _showNextOrder(emit);
+      (orders) {
+        add(OrdersUpdated(orders));
       },
       onError: (error) {
-        emit(NewOrderNotificationError(error.toString()));
+        add(NewOrderNotificationErrorEvent(error.toString()));
       },
     );
+  }
+
+  void _onErrorEvent(NewOrderNotificationErrorEvent event, Emitter<NewOrderNotificationState> emit) {
+    emit(NewOrderNotificationError(event.message));
+  }
+
+  void _onOrdersUpdated(OrdersUpdated event, Emitter<NewOrderNotificationState> emit) {
+    final orders = event.orders;
+    if (orders.isEmpty) {
+      _pendingOrders.clear();
+      _currentOrder = null;
+      emit(NoNewOrders());
+      return;
+    }
+
+    for (var order in orders) {
+      if (_currentOrder != null && _currentOrder!.id == order.id) continue;
+      if (_pendingOrders.any((o) => o.id == order.id)) continue;
+      _pendingOrders.add(order);
+    }
+
+    if (_currentOrder == null) {
+      _showNextOrder(emit);
+    }
   }
 
   void _showNextOrder(Emitter<NewOrderNotificationState> emit) {

@@ -1,883 +1,715 @@
 
-# 🚀 Food Delivery App — BLoC Architecture Audit Report (Buyer ↔ Seller Data Flow)
+# 🏗️ Food Delivery App — Architecture Audit Report
 
-**Audit Date:** July 28, 2026  
-**App:** food_delivery_app (Flutter + Firebase)  
-**Total Buyer Pages:** 17  
-**Total Seller Pages:** 29  
-**Shared Core Models:** 10  
-**Shared Repository Interfaces:** 6  
-**Shared Firebase Services:** 10+
+> **📅 Audit Date:** 2026-07-29
+> **🔍 Scope:** buyer_bloc_architecture (104 files) + seller_bloc_architecture (148 files) = **252 Dart files**
+> **🎯 Coverage:** BLoC Pattern, Repository Layer, State Management, Error Handling, Lifecycle, **Buyer↔Seller Data Flow Synchronization**
 
 ---
 
-## 📑 பொருளடக்கம் (Table of Contents)
+## 📋 Table of Contents
 
-1. [Buyer Pages (17) — Complete Architecture](#1-buyer-pages-17--complete-architecture)
-2. [Seller Pages (29) — Complete Architecture](#2-seller-pages-29--complete-architecture)
-3. [Buyer ↔ Seller Cross Data Flow Analysis](#3-buyer--seller-cross-data-flow-analysis)
-4. [Gap Analysis — Mocked Pages Needing Firebase Connection](#4-gap-analysis--mocked-pages-needing-firebase-connection)
-5. [Firebase Firestore Collections Map](#5-firebase-firestore-collections-map)
-6. [Real-Time Stream Architecture Diagram](#6-real-time-stream-architecture-diagram)
-7. [Recommendations & Implementation Plan](#7-recommendations--implementation-plan)
-
----
-
-## 1. Buyer Pages (17) — Complete Architecture
-
-| # | Page Name | BLoC | Repository | Backend Service | Data Flow Pattern | Real-Time? |
-|---|-----------|------|-----------|----------------|-------------------|-----------|
-| 1 | **Onboarding Page** | `OnboardingPageBloc` | — | `FirebaseAuthService` (authStateChanges) | Auth state stream → Navigation | ✅ Yes (auth stream) |
-| 2 | **Home Page** (Product Browsing) | `HomePageBloc` | `IProductRepository` → `FirebaseProductRepository`, `CategoryRepository` | Firestore (`products`, `global_categories`) | `Stream<List<Product>>` via `.snapshots()` | ✅ Yes |
-| 3 | **Details Page** (Product + Rating) | `DetailsBloc` | `DetailsRepository` | Firestore (`products`, `users/{uid}/ratings/`, `products/{id}/reviews`) | `Rx.combineLatest2` — user rating + avg rating streams | ✅ Yes |
-| 4 | **Cart Page** | `CartBloc` | `ICartRepository` → `FirebaseCartRepository` | Firestore (`users/{buyerId}/cart/`), Firebase Cloud Function (`createSecureOrder`) | `Stream<List<CartItem>>` via `.snapshots()` | ✅ Yes |
-| 5 | **Favorites Page** | `FavoritesBloc` | — (direct Firestore) | Firestore (`users/{uid}/favorites/`) | `QuerySnapshot` stream | ✅ Yes |
-| 6 | **Order Page** | `OrderBloc` | `IOrderRepository` → `FirebaseOrderRepository` | Firestore (`orders` collection — filtered by `customerId`) | `Stream<List<OrderModel>>` via `.snapshots()` | ✅ Yes |
-| 7 | **Track Order Page** | `TrackOrderBloc` | `TrackOrderRepository` | Firestore (`orders/{orderId}`, `sellers/{sellerId}`, `riders/{riderId}`) | Rider location stream + order status stream | ✅ Yes |
-| 8 | **Chat Page** (Buyer) | `BuyerChatBloc` | `IChatRepository` → `FirebaseChatRepository` | Firestore (`conversations`, `messages`), Firebase Storage (media) | `Rx.combineLatest4` — conversations + messages streams | ✅ Yes |
-| 9 | **Video Call Page** | `VideoCallBloc` | — | ZegoCloud SDK, PermissionService | Event-driven state machine | ❌ No (P2P) |
-| 10 | **Wallet Screen** | `WalletBloc` | `WalletDatabase` (inline) | Firestore (`users/{uid}`, `users/{uid}/transactions/`), Razorpay API | `Stream<DocumentSnapshot>` + `Stream<QuerySnapshot>` | ✅ Yes |
-| 11 | **Login Screen** | `FoodGoLoginBloc` | `UserRepository` | Firebase Auth (`signInWithEmailAndPassword`) | Synchronous (Future-based) | ❌ No |
-| 12 | **Sign Up Page** | `SignUpBloc` | `UserRepository` | Firebase Auth + Firestore (`users/{uid}`) | Synchronous (Future-based) | ❌ No |
-| 13 | **Forgot Password Page** | `ForgotPasswordBloc` | `UserRepository` | Firebase Auth (`sendPasswordResetEmail`) | Synchronous (Future-based) | ❌ No |
-| 14 | **Payment Methods Page** | `PaymentMethodsBloc` | `PaymentMethodsRepository` (inline) | Firestore (`users/{uid}/payment_methods/`) | `Stream<List<PaymentMethodModel>>` via `.snapshots()` | ✅ Yes |
-| 15 | **Help & Support Page** | `HelpSupportBloc` | `HelpSupportRepository` | Firestore (`users/{uid}/support_tickets/`, `users/{uid}/feedback/`) | Synchronous writes | ❌ No |
-| 16 | **User Profile Page** | `UserProfileBloc` | — (direct Firebase) | Firestore (`users/{uid}`), Firebase Storage, Firebase Auth | Synchronous (Future-based) | ❌ No |
-| 17 | **App Settings Page** | `AppSettingsBloc` | `IAppSettingsRepository` → `FirebaseAppSettingsRepository` | Firestore (`users/{uid}/settings/app`), SharedPreferences | Synchronous (Future-based) | ❌ No |
-
-### Buyer Navigation Shell
-
-| Component | Type | Notes |
-|-----------|------|-------|
-| **CurvedNavigationBarView** | Root shell (5 tabs) | No BLoC — uses `ValueNotifier` |
-| Tab 0: Home | `HomePage` | Products browsing |
-| Tab 1: Wallet | `WalletScreen` | Balance + transactions |
-| Tab 2: Cart | `CartPage` | Cart items + checkout |
-| Tab 3: Orders | `OrderPage` | Order history |
-| Tab 4: Support/Chat | `BuyerChatUI` + `HelpSupportUI` |
+1. [Total Page Count](#1-total-page-count)
+2. [Firestore Collection Inventory](#2-firestore-collection-inventory)
+3. [Repository Layer Architecture](#3-repository-layer-architecture)
+4. [Buyer BLoC Architecture Audit](#4-buyer-bloc-architecture-audit)
+5. [Seller BLoC Architecture Audit](#5-seller-bloc-architecture-audit)
+6. [Cross-Cutting Issues](#6-cross-cutting-issues)
+7. [🚨 Buyer–Seller Data Flow Synchronization Audit](#7-buyer-seller-data-flow-synchronization-audit)
+8. [Synchronization Coverage Scorecard](#8-synchronization-coverage-scorecard)
+9. [Cross-Architecture Dependency Graph](#9-cross-architecture-dependency-graph)
+10. [Action Items (Prioritized)](#10-action-items-prioritized)
+11. [Final Assessment](#11-final-assessment)
 
 ---
 
-## 2. Seller Pages (29) — Complete Architecture
+## 1. Total Page Count
 
-| # | Page Name | BLoC | Repository | Backend Service | Data Flow Pattern | Real-Time? |
-|---|-----------|------|-----------|----------------|-------------------|-----------|
-| 1 | **Seller Dashboard** | `SellerDashboardPageBloc` | `SellerDashboardRepository` | Firestore (`orders`, `products`, `sellers`) | `Rx.combineLatest3` — orders + products + sellers streams | ✅ Yes |
-| 2 | **Seller Login** | `SellerLoginPageBloc` | `SellerRepository` | Firebase Auth (email, phone OTP, Google, Apple) | Synchronous (Future-based) | ❌ No |
-| 3 | **Seller Sign-Up** | `SellerSignUpPageBloc` | `SellerRepository` | Firebase Auth + Firestore (`sellers`) | Synchronous (Future-based) | ❌ No |
-| 4 | **Seller Navigation Bar** | `SellerNavigationBarViewPageBloc` | — | — | Local state (tab index) | ❌ No |
-| 5 | **Seller Onboard** | `SellerOnboardPageBloc` | — | — | Navigation flow only | ❌ No |
-| 6 | **Seller Forgot Password** | `SellerForgotPasswordBloc` | `SellerRepository` | Firebase Auth | Synchronous | ❌ No |
-| 7 | **Seller Analytics** | `SellerAnalyticsBloc` | `SellerAnalyticsRepository` | Firestore (`orders` — sellerId + timestamp) | Future-based `.get()` → client-side compute | ❌ No |
-| 8 | **Seller Wallet** | `SellerWalletBloc` | `SellerWalletRepository` | Firestore (`sellers/{id}`, `payouts`, `payout_requests`) | Future-based (transaction for withdrawal) | ❌ No |
-| 9 | **Seller Request Payout** | `SellerRequestPayoutBloc` | `SellerRequestPayoutRepository` | Firestore (`sellers`, `payout_requests`, `payouts`) | Future-based (Firestore transaction) | ❌ No |
-| 10 | **Seller Payout History** | `SellerPayoutHistoryBloc` | `SellerPayoutHistoryRepository` | Firestore (`payouts` — sellerId) | Future-based (pagination) | ❌ No |
-| 11 | **Seller Customers** | `SellerCustomerBloc` | `SellerCustomerRepository` | Firestore (`orders` — sellerId → dedup customers) | Future-based `.get()` | ❌ No |
-| 12 | **Seller Product List** | `ProductListBloc` | `IProductRepository` → `FirebaseProductRepository` | Firestore (`products` — sellerId), Firebase Storage | **Real-time stream** `.listen()` | ✅ Yes |
-| 13 | **Seller Add/Edit Product** | `AddProductPageBloc` | `IProductRepository` | Firestore (`products`), Firebase Storage | Synchronous (Future-based) | ❌ No |
-| 14 | **Seller Orders List** | `OrdersListBloc` | `IOrderRepository` → `FirebaseOrderRepository` | Firestore (`orders` — sellerId), `IChatRepository` | **Real-time stream** via `emit.forEach` | ✅ Yes |
-| 15 | **New Order Notification** | `NewOrderNotificationBloc` | `NewOrderNotificationRepository` | **⚠️ MOCKED** (simulated delays) | **⚠️ Mocked** — no real Firebase calls | ❌ No |
-| 16 | **Out For Delivery** | `OutForDeliveryPageBloc` | — | **⚠️ MOCKED** (hardcoded rider data) | **⚠️ Mocked** — no real Firebase calls | ❌ No |
-| 17 | **Assign Delivery** | `AssignDeliveryBloc` | `AssignDeliveryRepository` | Firestore (`orders` — status + riderId) — but rider list is **mocked** | Partially mocked | ❌ No |
-| 18 | **Overall Rating** | `OverallRatingBloc` | `OverallRatingRepository` | Firestore (`reviews` — sellerId) via `SellerReviewService` | Future-based `.get()` | ❌ No |
-| 19 | **Promotions & Coupons** | `PromotionsCouponsBloc` | `PromotionsCouponsRepository` | Firestore (`sellers/{id}/promotions`) | Future-based CRUD | ❌ No |
-| 20 | **Business Hours** | `BusinessHoursBloc` | `BusinessHoursRepository` | Firestore (`sellers/{id}/settings/business_hours`) | Future-based (read/write) | ❌ No |
-| 21 | **Menu Category Management** | `MenuCategoryManagementBloc` | `MenuCategoryManagementRepository` | Firestore (`global_categories`, `sellers/{id}/menu_preferences`) | Future-based (batch write) | ❌ No |
-| 22 | **Chat Support** (Seller) | `ChatSupportBloc` | `IChatRepository` → `FirebaseChatRepository` | Firestore (`conversations`, `messages`) | **Real-time streams** — conversations + messages | ✅ Yes |
-| 23 | **Inventory / Low Stock** | `InventoryBloc` | `IInventoryRepository` → `InventoryRepository` | Firestore (`products` — sellerId, `inventory_logs`) | **Real-time stream** `.listen()` | ✅ Yes |
-| 24 | **Low Stock Alert** (separate) | `LowStockAlertBloc` | — | **⚠️ MOCKED** (hardcoded data) | **⚠️ Mocked** — no real Firebase | ❌ No |
-| 25 | **Seller Settings** | `SellerSettingBloc` | `SellerSettingRepository` | Firestore (`seller_notification_settings/{id}`) | Synchronous (Future-based) | ❌ No |
-| 26 | **Seller Store Details** | `SellerStoreDetailsBloc` | `SellerRepository` | Firestore (`sellers/{id}`) | Synchronous (Future-based) | ❌ No |
-| 27 | **Seller Profile** | `SellerProfilePageBloc` | `SellerCollection`, `SellerRepository` | Firestore (`sellers/{id}`), Firebase Storage | Synchronous (Future-based) | ❌ No |
-| 28 | **Seller Verification Form** | (Shares `SellerProfilePageBloc`) | `SellerCollection` | Firestore (`sellers/{id}`) | Synchronous (Future-based) | ❌ No |
-| 29 | **Seller Payment** | `SellerPaymentPageBloc` | `SellerPaymentRepository` (inline) | Firestore (`sellers/{id}/payment/details`) | Future-based (mix of real + mock data) | ❌ No |
-
-### Seller Navigation Tab Structure
-
-| Tab | Page | Notes |
-|-----|------|-------|
-| Tab 0: Dashboard | `SellerDashboardPageUI` | Real-time KPIs |
-| Tab 1: Products | `ProductListPageUI` | CRUD + inventory |
-| Tab 2: Orders | `OrdersListPageUI` | Accept/Reject → Track |
-| Tab 3: Wallet | `SellerWalletPageUI` | Balance + payout |
-| Tab 4: Profile/More | Settings, Store, Chat, etc. | Settings drawer/menu |
+| Folder | Dart File Count |
+|--------|:-:|
+| `lib/features/buyer_bloc_architecture/` | **104** |
+| `lib/features/seller_bloc_architecture/` | **148** |
+| **Grand Total** | **252** |
 
 ---
 
-## 3. Buyer ↔ Seller Cross Data Flow Analysis
+## 2. Firestore Collection Inventory
 
-### 🔴 CRITICAL DATA FLOWS (Already Connected via Firestore)
+### 2.1 Collection Map
 
-#### Flow 1: Orders — Buyer Order → Seller Accept/Reject → Buyer Track
+| # | Collection Path | Type | Real-time? | Buyer Writes | Seller Writes |
+|---|----------------|------|:----------:|:------------:|:-------------:|
+| 1 | `users/{userId}` | Root Doc | ✅ Stream | Yes | No |
+| 2 | `users/{userId}/ratings/{foodId}` | Sub | ✅ Stream | Yes | No |
+| 3 | `users/{userId}/favorites/{itemId}` | Sub | ✅ Stream | Yes | No |
+| 4 | `users/{userId}/transactions/{txnId}` | Sub | ✅ Stream | Yes | No |
+| 5 | `users/{userId}/payment_methods/{methodId}` | Sub | ✅ Stream | Yes | No |
+| 6 | `users/{userId}/cart/{itemId}` | Sub | ✅ Stream | Yes | No |
+| 7 | `users/{userId}/support_tickets` | Sub | ❌ Get | Yes | No |
+| 8 | `users/{userId}/settings/app` | Sub | ❌ Get | Yes | No |
+| 9 | `sellers/{sellerId}` | Root Doc | ✅ Stream | Read only | Yes |
+| 10 | `sellers/{sellerId}/settings/business_hours` | Sub | ❌ Get | No | Yes |
+| 11 | `sellers/{sellerId}/menu_preferences` | Sub | ❌ Get | No | Yes |
+| 12 | `sellers/{sellerId}/coupons/{couponId}` | Sub | ✅ Stream (via repo) | No | Yes |
+| 13 | `sellers/{sellerId}/disputes` | Sub | ❌ Get | No | Yes |
+| 14 | `sellers/{sellerId}/payment/details` | Sub | ❌ Get | No | Yes |
+| 15 | `products/{productId}` | Root Doc | ✅ Stream | Read only | Yes |
+| 16 | `products/{productId}/reviews/{userId}` | Sub | ✅ Stream | Yes | Read only |
+| 17 | `orders/{orderId}` | Root Doc | ✅ Stream | Cloud Function | Yes |
+| 18 | `riders/{riderId}` | Root Doc | ✅ Stream | Read only | Read only |
+| 19 | `global_categories/{catId}` | Root Doc | ✅ Stream | Read only | Read only |
+| 20 | `conversations/{convId}` | Root Doc | ✅ Stream | Yes | Yes |
+| 21 | `conversations/{convId}/messages` | Sub | ✅ Stream | Yes | Yes |
+| 22 | `conversations/{convId}/photos` | Sub | ✅ Stream | Yes | Yes |
+| 23 | `conversations/{convId}/videos` | Sub | ✅ Stream | Yes | Yes |
+| 24 | `conversations/{convId}/audios` | Sub | ✅ Stream | Yes | Yes |
+| 25 | `seller_notification_settings/{sellerId}` | Root Doc | ❌ Get | No | Yes |
+| 26 | `inventory_logs/{logId}` | Root Doc | ✅ Stream | No | Yes |
 
-```
-Buyer (Cart Page)                Firestore                    Seller (Orders List)
-     │                              │                              │
-     │── checkout ──► Cloud Function ──► orders/{orderId}          │
-     │                              │    status: "New"             │
-     │                              │    customerId: buyerUid      │
-     │                              │    sellerId: sellerUid       │
-     │                              │                              │
-     │                              │◄── real-time stream ────────┤
-     │                              │   (filtered by sellerId)     │
-     │                              │                              │
-     │                              │              Seller accepts  │
-     │                              │◄── status: "Accepted" ──────┤
-     │                              │                              │
-     │◄── real-time stream ────────┤                              │
-     │   (filtered by customerId)   │                              │
-     │                              │         Seller prepares     │
-     │                              │◄── status: "Preparing" ─────┤
-     │                              │                              │
-     │◄── status: "Preparing" ─────┤                              │
-     │                              │         Seller assigns rider│
-     │                              │◄── status: "OutForDelivery" ─┤
-     │                              │    assignedRiderId: riderId  │
-     │                              │                              │
-Buyer (Track Order Page)           │                              │
-     │◄── rider location stream ───┤                              │
-     │   (riders/{riderId})         │                              │
-     │                              │         Rider delivers      │
-     │                              │◄── status: "Delivered" ─────┤
-     │◄── status: "Delivered" ─────┤                              │
-```
+**Total Collections: 26** (11 Root + 15 Sub/Sub-sub)
 
-**BLoC Chain:** `CartBloc` (checkout) → `OrderBloc` (buyer orders stream) ↔ `OrdersListBloc` (seller orders stream) → `TrackOrderBloc` (buyer tracking)
+### 2.2 Shared Collections (Buyer ↔ Seller Bridge)
 
-**Firestore Collections:** `orders` (shared), `riders` (for location), `sellers` (for seller info)
+| Collection | Buyer Access | Seller Access | Sync Mechanism |
+|-----------|-------------|--------------|:--------------:|
+| `products` | Stream (Home, Details) | Stream (Product List, Inventory) | ✅ Real-time |
+| `orders` | Stream (Order List) | Stream (Orders List, Dashboard) | ✅ Real-time |
+| `products/{pid}/reviews` | Write (Rating) | Stream (Analytics) | ✅ Real-time |
+| `users/{uid}/favorites` | Write (Favorites) | CG Stream (Analytics) | ✅ Real-time |
+| `users/{uid}/ratings` | Write (Rating) | — | ⚠️ One-way |
+| `sellers/{sid}/coupons` | — | Write (Promotions) | ❌ No direct buyer listener |
+| `sellers/{sid}/settings/business_hours` | — | Write (Business Hours) | ✅ Via SellerStatusService |
+| `conversations` | Stream (Chat) | Stream (Chat) | ✅ Real-time both ways |
 
-**Real-Time Status:** ✅ **Full real-time sync via Firestore snapshots**
-
----
-
-#### Flow 2: Chat — Buyer ↔ Seller Messaging
-
-```
-Buyer (Chat Page)                 Firestore                    Seller (Chat Support)
-     │                              │                              │
-     │── sendMessage() ──────────► conversations/{convId}          │
-     │                              │    /messages/{msgId}         │
-     │                              │                              │
-     │◄── real-time stream ────────┤◄── real-time stream ────────┤
-     │   (getMessagesStream)        │   (getMessagesStream)        │
-     │                              │                              │
-     │── markConversationRead() ──► │◄── markConversationRead() ──┤
-```
-
-**BLoC Chain:** `BuyerChatBloc` ↔ `ChatSupportBloc` (both use `IChatRepository` → `FirebaseChatRepository`)
-
-**Firestore Collections:** `conversations` (shared), `conversations/{convId}/messages` (shared)
-
-**Real-Time Status:** ✅ **Full real-time sync via Rx.combineLatest4**
+> **CG = Collection Group query**
 
 ---
 
-#### Flow 3: Products — Seller Adds/Updates → Buyer Sees Changes
+## 3. Repository Layer Architecture
+
+### 3.1 Interface Contracts (`lib/core/repositories/`)
+
+| Interface | Implementation | Key Collections |
+|-----------|--------------|----------------|
+| `IProductRepository` | `FirebaseProductRepository` | `products` |
+| `IOrderRepository` | `FirebaseOrderRepository` | `orders` |
+| `IInventoryRepository` | `FirebaseInventoryRepository` | `products` + `inventory_logs` |
+| `ICouponRepository` | `FirebaseCouponRepository` | `sellers/{id}/coupons` (CG) |
+| `IChatRepository` | `FirebaseChatRepository` | `conversations` + subcollections |
+| `ICartRepository` | `FirebaseCartRepository` | `users/{uid}/cart` |
+| `IAppSettingsRepository` | `FirebaseAppSettingsRepository` | `users/{uid}/settings/app` |
+
+### 3.2 Architecture Pattern Inconsistency
 
 ```
-Seller (AddProductPage)           Firestore                    Buyer (Home Page)
-     │                              │                              │
-     │── addProduct() ───────────► products/{productId}            │
-     │   (or updateProduct())       │    sellerId: sellerUid       │
-     │                              │    name, price, image...     │
-     │                              │                              │
-     │                              │◄── real-time stream ────────┤
-     │                              │   (products collection)      │
-     │                              │                              │
-Seller (ProductListPage)            │                              │
-     │── toggleStatus() ─────────► │                              │
-     │   (isActive: true/false)     │                              │
-     │                              │◄── real-time stream ────────┤
-     │                              │   (filtered by category)     │
+core/repositories/* (interfaces)  ──implemented by──►  lib/repositories/* (Firebase)
+         │                                                    │
+         │ Buyer BLoCs import from                             │ Seller BLoCs import from
+         ▼                                                     ▼
+   i_product_repository.dart                      product_repository.dart (standalone duplicate)
+   i_order_repository.dart                        orders_list_page_repository.dart (UNUSED)
+                                                   seller_dashboard_repository.dart (inline)
+                                                   business_hours_page_repository.dart (concrete)
 ```
 
-**BLoC Chain:** `AddProductPageBloc` / `ProductListBloc` → `HomePageBloc` (via `IProductRepository`)
-
-**Firestore Collections:** `products` (shared, filtered by `sellerId` for seller, by `categoryId` for buyer)
-
-**Real-Time Status:** ✅ **Full real-time sync via Firestore snapshots**
+**Key Issues:**
+- Some seller BLoCs use `I*Repository` interfaces from `core/` (correct)
+- Some seller BLoCs define their own concrete repositories (inconsistent)
+- `orders_list_page_repository.dart` is fully **unused dead code**
+- Buyer uses mix of interfaces (Cart, Chat, Coupon) and direct Firebase (Favorites, Rating, Wallet)
 
 ---
 
-#### Flow 4: Ratings — Buyer Submits → Seller Sees
+## 4. Buyer BLoC Architecture Audit
 
-```
-Buyer (Details Page)              Firestore                    Seller (Overall Rating)
-     │                              │                              │
-     │── submitRating() ─────────► products/{foodId}/reviews       │
-     │                              │    /{reviewId}               │
-     │                              │    userId: buyerUid          │
-     │                              │    users/{uid}/ratings/      │
-     │                              │                              │
-     │◄── avg rating stream ───────┤                              │
-     │                              │                              │
-     │                              │◄── .get() reviews ──────────┤
-     │                              │   (filtered by product's     │
-     │                              │    sellerId or sellerId)     │
-```
+### 4.1 Home Page (`home_Page/`)
+- **Files:** `home_Page_Bloc.dart`, `home_Page_Event.dart`, `home_Page_State.dart`, `food_item_mapper.dart`, `home_page_models.dart`, `seller_model.dart`
+- **Data Source:** `IProductRepository.getProductsStream()` → Real-time stream of `products` collection
+- **Seller Sync:** `SellerStatusService` → reads `sellers/{id}` stream for Open/Closed availability
+- **Issues:**
+  - `SearchQueryChanged` doc says "in-memory filter" but calls Firestore `searchProducts()`
+  - `_emitFilteredState` ignores `sellerAvailabilities` map
+  - Category subscription failure falls back silently
+  - `_onSellerAvailabilitiesUpdated` drops updates when state ≠ `HomePageLoaded`
+- **BLoC Lifecycle:** ✅ Proper `close()` cancels all subscriptions
 
-**BLoC Chain:** `DetailsBloc` (buyer submits) → `OverallRatingBloc` (seller views reviews)
+### 4.2 Cart Page (`Cart Page/`)
+- **Files:** `cart_page_Bloc.dart`, `cart_page_Event.dart`, `cart_page_State.dart`, `cart_models.dart`, `cart_page.dart`
+- **Data Source:** `ICartRepository.getCartItemsStream()` → Real-time stream of `users/{uid}/cart`
+- **Coupon:** `ICouponRepository.getActiveCouponsBySellers()` → one-time subscription at load
+- **Issues:**
+  - ❌ **No optimistic updates** — ~200-500ms lag on add/remove/qty
+  - ❌ **Empty catch blocks** on all cart mutations
+  - ❌ **Null crash risk** — `event.onInsufficientBalance!()` with nullable callback
+  - ❌ **Coupon subscription never refreshed** when cart items change
+  - `CartError` state **defined but never emitted**
+- **BLoC Lifecycle:** ✅ Proper `close()`
 
-**Firestore Collections:** `products/{foodId}/reviews` (subcollection), `users/{uid}/ratings/` (subcollection)
+### 4.3 Order Page (`Order Page/`)
+- **Files:** `order_Bloc.dart`, `order_Event.dart`, `order_State.dart`, `order_repository.dart` (UNUSED), `order_mapper.dart`, `order_view_model.dart`, `order_UI.dart`
+- **Data Source:** `IOrderRepository.getBuyerOrdersStream()` → Real-time stream of `orders` collection
+- **Issues:**
+  - ❌ **Dead code** — `order_repository.dart` is never used by BLoC
+  - Architecture inconsistency: uses `import` not `part`
+- **BLoC Lifecycle:** ⚠️ No `close()` override
 
-**Real-Time Status:** ⚠️ **Buyer side real-time ✅, Seller side is Future-based `.get()` only — needs real-time stream upgrade**
+### 4.4 Track Order Page (`Track_Order_page/`)
+- **Files:** `*_bloc.dart`, `*_event.dart`, `*_state.dart`, `*_repository.dart`, `*_service.dart`, `*_ui.dart`
+- **Data Source:** `Track_Order_page_service.getOrderDetails()` → **one-time** `get()` on `orders/{id}` + `riders/{id}` stream for location
+- **❌ CRITICAL:** Order status is fetched **once** at page load — does **NOT** listen to real-time `orders/{id}` status changes
+- **Issues:**
+  - ❌ `TrackOrderRepositoryImpl.dispose()` never called — StreamController leak
+  - ❌ Empty catch block — user gets no failure feedback
+  - Case-sensitive status bugs (`'Preparing'` vs `'preparing'`)
+  - Fabricated timestamps (fake +5min/+15min)
+- **BLoC Lifecycle:** ❌ Incomplete
 
----
+### 4.5 Favorites Page (`Favorites_Page/`)
+- **Files:** `favorites_bloc.dart`, `favorites_event.dart`, `favorites_state.dart`, `favorites_models.dart`, `favorites_UI.dart`
+- **Data Source:** Direct `FirebaseFirestore` access to `users/{uid}/favorites` + `collectionGroup('reviews')`
+- **Issues:**
+  - ❌ **Repository pattern violation** — direct Firebase in BLoC
+  - ❌ **No optimistic updates** on toggle
+  - ❌ **No error handling** on toggle failure
+- **BLoC Lifecycle:** ⚠️ No `close()` override
 
-#### Flow 5: Cart → Order Creation (Checkout)
+### 4.6 Details Page (`Details_Page/`)
+- **Files:** `details_page_Bloc.dart`, `details_page_Event.dart`, `details_page_State.dart`, `details_repository.dart`, `details_page_UI.dart`
+- **Data Source:** `products` stream (via `details_repository`), `sellers/{id}` one-time `get()`, `SellerStatusService` stream
+- **Issues:**
+  - ❌ Dead fields — `ratingStatus`/`ratingMessage` never set
+  - ❌ Tight coupling — `DetailsBloc()` defaults to `DetailsRepository()` (no DI)
+  - ❌ Silent stream error swallowing on rating stream
+- **BLoC Lifecycle:** ⚠️ No `close()` override (but no subscriptions — using `emit.forEach`)
 
-```
-Buyer (Cart Page)
-     │
-     │── checkoutCart()
-     │   └─► calls Firebase Cloud Function: "createSecureOrder"
-     │         │
-     │         ├─► Creates order doc in `orders` collection
-     │         │     orderId: auto-generated
-     │         │     customerId: buyerUid
-     │         │     sellerId: extracted from cart items
-     │         │     status: "New"
-     │         │     items: [...cart items]
-     │         │     totalAmount: calculated
-     │         │     timestamp: now
-     │         │
-     │         ├─► Clears buyer's cart
-     │         │     users/{buyerId}/cart/ → delete all
-     │         │
-     │         └─► Sends push notification to seller
-     │               (via FCM — seller's token from users/{sellerId}/fcmToken)
-     │
-Seller (Orders List)
-     │◄── real-time stream detects new order ────┘
-     │   status: "New" → shows in seller's pending orders
-     │
-     ├─► AudioNotificationService plays "new_order.mp3"
-     └─► Seller taps → navigates to NewOrderNotification UI
-```
+### 4.7 Login Page (`FoodGoLoginScreen/`)
+- **Files:** `FoodGoLoginScreen_Bloc.dart`, `FoodGoLoginScreen_Event.dart`, `FoodGoLoginScreen_State.dart`, `FoodGoLoginScreen_UI.dart`
+- **Data Source:** `UserRepository` (concrete, not interface)
+- **Assessment:** ✅ **Cleanest BLoC in buyer side** — proper state transitions, loading guard, error handling
+- **Minor:** Uses concrete `UserRepository` instead of `I*Repository`
 
-**Real-Time Status:** ✅ **Full real-time (stream + FCM push)**
+### 4.8 Rating Page (`Rating_page/`)
+- **Files:** `Rating_page_bloc.dart`, `Rating_page_event.dart`, `Rating_page_state.dart`, `Rating_page_ui.dart`, `Rating_page_ui_backup.dart`, `reviews_list_screen.dart`
+- **Data Source:** Direct `FirebaseFirestore` on `users/{uid}/ratings` + `products/{pid}/reviews`
+- **Issues:**
+  - ❌ **Repository pattern violation** — direct Firebase
+  - ❌ **Duplicate rating write logic** — `DetailsRepository.submitRating()` also writes ratings (two code paths)
+  - ❌ **Race condition** — uses `state.rating` instead of `event.rating` on success emit
+- **BLoC Lifecycle:** ⚠️ No `close()`
 
----
+### 4.9 User Profile (`user_profile_image/`)
+- **Files:** `user_profile_image_Bloc.dart`, `*_Event.dart`, `*_State.dart`, `*_UI.dart`, `user_profile_models.dart`, `transactions_page.dart`
+- **Data Source:** `FirebaseFirestore` on `users/{uid}`, Firebase Storage for images
+- **Issues:**
+  - ❌ **Success flash-over** — `ProfileSuccessAction` immediately overwritten by `ProfileLoaded`
+  - ❌ **Error flash-over** — `ProfileError` immediately overwritten
+  - ❌ Image compression on main isolate (no `compute()`)
+- **BLoC Lifecycle:** ⚠️ No `close()`
 
-#### Flow 6: Wallet → Order Payment Flow
+### 4.10 Wallet Screen (`WalletScreen/`)
+- **Files:** `WalletScreen_Bloc.dart`, `*_Event.dart`, `*_State.dart`, `*_UI.dart`
+- **Data Source:** Direct `FirebaseFirestore` on `users/{uid}` + `transactions` subcollection
+- **Issues:**
+  - ❌ **Repository in BLoC file** — `WalletDatabase` defined inline
+  - ❌ **Events don't extend Equatable**
+  - ❌ **`LoadWalletData` does nothing** — no actual data loading
+- **BLoC Lifecycle:** ❌ Events don't extend Equatable
 
-```
-Buyer (Wallet)                    Firestore                    Seller (Wallet / Dashboard)
-     │                              │                              │
-     │── Razorpay payment ──────► (external)                       │
-     │   (top-up or pay)           │                              │
-     │                              │                              │
-Buyer (Cart → Checkout)            │                              │
-     │── order placed ──────────► orders/{orderId}                │
-     │   paymentMethod: "Wallet"   │    paymentStatus: "Paid"      │
-     │   or "COD"                  │                              │
-     │                              │◄── real-time stream ────────┤
-     │                              │   order count + revenue      │
-     │                              │                              │
-     │                              │         Seller's wallet      │
-     │                              │◄── updated on delivery ─────┤
-     │                              │   sellers/{id}/walletBalance │
-```
+### 4.11 AppSettings (`user_profile_image/AppSettings_*`)
+- **Files:** `AppSettings_Bloc.dart`, `*_Event.dart`, `*_State.dart`, `*_UI.dart`
+- **Data Source:** `IAppSettingsRepository` + direct `FirebaseAuth.instance`
+- **Issues:**
+  - ❌ `_getUserId()` accesses `FirebaseAuth.instance` directly — breaks testability
+  - ❌ **Empty catch block** on settings save
+  - ❌ **Blocking IO** on main isolate (cache clear)
+- **BLoC Lifecycle:** ⚠️ No Equatable on all events
 
-**BLoC Chain:** `WalletBloc` (buyer) + `CartBloc` (checkout) → `SellerWalletBloc` (seller balance) + `SellerDashboardPageBloc` (revenue)
-
-**Real-Time Status:** ⚠️ **Order sync is real-time ✅. Seller wallet balance updates are Future-based ❌ — no real-time stream for balance changes**
-
----
-
-### 🟡 CROSS-DATA-FLOW SUMMARY MATRIX
-
-| Data Entity | Buyer Page(s) | Seller Page(s) | Firestore Collection | Sync Method | Real-Time? |
-|------------|---------------|----------------|---------------------|-------------|-----------|
-| **Orders** | `Order Page`, `Track Order` | `Orders List`, `New Order Notification`, `Dashboard` | `orders` | Firestore `.snapshots()` stream | ✅ |
-| **Products** | `Home Page`, `Details Page` | `Product List`, `Add Product`, `Dashboard` | `products` | Firestore `.snapshots()` stream | ✅ |
-| **Chat** | `Chat Page` | `Chat Support` | `conversations`, `messages` | Firestore `.snapshots()` stream | ✅ |
-| **Ratings** | `Details Page` | `Overall Rating` | `products/{id}/reviews`, `users/{uid}/ratings` | Buyer: stream ✅ / Seller: Future-based ⚠️ | ⚠️ Partial |
-| **Cart → Order** | `Cart Page` | `Orders List` | `orders` | Cloud Function + Firestore stream | ✅ |
-| **Payment/Wallet** | `Wallet`, `Payment Methods` | `Wallet`, `Payout`, `Dashboard` | `sellers/{id}`, `users/{id}`, `payouts` | Future-based on seller side ❌ | ⚠️ Partial |
-| **Inventory** | `Details Page` (stock qty) | `Inventory`, `Product List` | `products` (quantity field) | Real-time stream on seller ✅, buyer sees product changes ✅ | ✅ |
-| **Favorites** | `Favorites Page` | — (seller sees popularity) | `users/{uid}/favorites` | Buyer stream ✅ → Seller needs analytics | ❌ No seller view |
-| **Settings** | `App Settings`, `Profile` | `Settings`, `Store Details`, `Profile` | `users/{uid}`, `sellers/{id}` | Future-based (both sides) | ❌ No |
-
----
-
-## 4. Gap Analysis — Mocked Pages Needing Firebase Connection
-
-### 🔴 CRITICAL GAPS (Must Fix)
-
-#### Gap 1: New Order Notification (Seller) — Fully Mocked
-
-**Current State:**
-- **File:** `lib/features/seller_bloc_architecture/new_order_notification/`
-- `NewOrderNotificationService` has **500ms simulated delays** with hardcoded data
-- No real Firebase calls for accept/reject
-- No real FCM push notification integration
-
-**What Should Happen:**
-```
-Seller's FCM receives push → taps notification → opens NewOrderNotificationPage
-                                                            │
-                    ┌───────────────────────────────────────┤
-                    │                                       │
-                    ▼                                       ▼
-            Accept Order                               Reject Order
-                    │                                       │
-                    ▼                                       ▼
-    orders/{orderId}.update({                 orders/{orderId}.update({
-      status: "Accepted",                      status: "Rejected",
-      acceptedAt: timestamp,                   rejectedAt: timestamp,
-      preparationTime: X min                   rejectionReason: "..."
-    })                                        })
-                    │                                       │
-                    ▼                                       ▼
-    Auto-create conversation               Buyer receives FCM
-    via IChatRepository                    "Your order was rejected"
-    + Send FCM to buyer:
-    "Your order is being prepared!"
-```
-
-**Firebase Implementation Plan:**
-```dart
-// NewOrderNotificationService — REAL IMPLEMENTATION
-class NewOrderNotificationService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  Future<OrderModel> loadOrderDetails(String orderId) async {
-    final doc = await _firestore.collection('orders').doc(orderId).get();
-    return OrderModel.fromFirestore(doc);
-  }
-
-  Future<void> acceptOrder(String orderId, int prepTime) async {
-    await _firestore.collection('orders').doc(orderId).update({
-      'status': OrderStatus.accepted.value,
-      'acceptedAt': FieldValue.serverTimestamp(),
-      'preparationTime': prepTime,
-    });
-    // Auto-create conversation
-    final order = await loadOrderDetails(orderId);
-    await _chatRepository.createConversation(
-      buyerId: order.customerId,
-      sellerId: order.sellerId,
-      orderId: orderId,
-    );
-    // Send FCM to buyer
-    await _fcmService.sendNotification(
-      userId: order.customerId,
-      title: 'Order Accepted',
-      body: 'Your order is being prepared!',
-    );
-  }
-
-  Future<void> rejectOrder(String orderId, String reason) async {
-    await _firestore.collection('orders').doc(orderId).update({
-      'status': OrderStatus.rejected.value,
-      'rejectedAt': FieldValue.serverTimestamp(),
-      'rejectionReason': reason,
-    });
-    // Send FCM to buyer
-    final order = await loadOrderDetails(orderId);
-    await _fcmService.sendNotification(
-      userId: order.customerId,
-      title: 'Order Rejected',
-      body: reason,
-    );
-  }
-}
-```
+### 4.12 Chat Page (`Chat_Page/`)
+- **Files:** `buyer_chat_bloc.dart`, `*_event.dart`, `*_state.dart`, `*_ui.dart`, `video_call_*`, `voice_call_*`, `audio_widgets.dart`, `invoice_generator.dart`, `custom_camera_page.dart`
+- **Data Source:** `IChatRepository` → `conversations` collection + subcollections
+- **Issues:**
+  - ❌ **Events/states don't extend Equatable** — plain abstract classes
+  - ❌ `SendBuyerMediaMessage.file` is `dynamic`
+  - ❌ `openOrderConversation` silently swallows errors
+- **BLoC Lifecycle:** ⚠️ No Equatable on events/states
 
 ---
 
-#### Gap 2: Out For Delivery Page (Seller) — Fully Mocked
+## 5. Seller BLoC Architecture Audit
 
-**Current State:**
-- **File:** `lib/features/seller_bloc_architecture/out_for_delivery_page_/`
-- All rider data is **hardcoded** (mock name, phone, location, OTP)
-- No real-time rider location tracking from seller side
-- No connection to `riders` collection
+### 5.1 Dashboard (`seller_dashboard_page`)
+- **Data Source:** `orders`, `products`, `sellers` — combineLatest3 stream
+- **Issues:**
+  - ❌ **No loading state on refresh** — emits loaded directly
+  - ❌ **Dead sort code** — `todaysOrders.sort(...)` returns 0 then redone
+- **BLoC Lifecycle:** ✅ OK
 
-**What Should Happen:**
-```
-Seller (Assign Delivery)                Firestore                  
-     │                                      │
-     │── assignRider(orderId, riderId) ──► orders/{orderId}        
-     │   status: "OutForDelivery"           │  assignedRiderId
-     │                                      │  deliveryOTP
-     │                                      │
-Seller (Out For Delivery Page)              │
-     │                                      │
-     │◄── real-time rider location ────────┤
-     │   riders/{riderId}/currentLocation   │
-     │   (lat, lng, updatedAt)              │
-     │                                      │
-     │── callRider() ──► (phone dial)       │
-     │── messageRider() ──► (chat)          │
-```
+### 5.2 Orders List (`orders_list`)
+- **Data Source:** `IOrderRepository.getSellerOrdersStream()` → Real-time stream on `orders`
+- **Issues:**
+  - ❌ **🚨 CRITICAL BUG** — `orElse: () => _allOrders.first` silently updates wrong order
+  - ❌ **Dead code** — `orders_list_page_repository.dart` is **unused**
+  - ❌ Chat init error uses `print()` instead of logging
+- **BLoC Lifecycle:** ✅ OK — `close()` disposes `_audioService`
 
-**Firebase Implementation Plan:**
-```dart
-class OutForDeliveryRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+### 5.3 Add Product (`add_product_page_`)
+- **Data Source:** Direct `FirebaseFirestore.instance.collection('sellers')` in BLoC
+- **Issues:**
+  - ❌ **LAYERING VIOLATION** — direct Firestore call in BLoC
+  - ❌ **Empty catch block** — GST errors silently swallowed
+  - ❌ `FieldChangedEvent.value` is `dynamic` — runtime error risk
+- **BLoC Lifecycle:** ✅ OK
 
-  Stream<RiderModel> riderLocationStream(String riderId) {
-    return _firestore
-        .collection('riders')
-        .doc(riderId)
-        .snapshots()
-        .map((doc) => RiderModel.fromFirestore(doc));
-  }
+### 5.4 Product List (`product_list_page_`)
+- **Data Source:** `products` stream (via `product_repository.dart` — standalone, not `IProductRepository`)
+- **Issues:**
+  - ❌ **State-destroying error handling** — error replaces entire list with blank page
+  - ❌ **No optimistic updates** — relies on stream push-back
+  - ❌ No loading indicators during mutations
+- **BLoC Lifecycle:** ✅ OK — `close()` cancels subscription
 
-  Future<DeliveryDetails> loadDeliveryDetails(String orderId) async {
-    final orderDoc = await _firestore.collection('orders').doc(orderId).get();
-    final order = OrderModel.fromFirestore(orderDoc);
-    if (order.assignedRiderId == null) throw Exception('No rider assigned');
-    
-    final riderDoc = await _firestore
-        .collection('riders')
-        .doc(order.assignedRiderId)
-        .get();
-    final rider = RiderModel.fromFirestore(riderDoc);
-    
-    return DeliveryDetails(order: order, rider: rider);
-  }
-}
-```
+### 5.5 Business Hours (`business_hours_page_`)
+- **Data Source:** `sellers/{id}/settings/business_hours` — one-time get/set
+- **Issues:**
+  - ❌ **Missing Equatable** — every state change triggers rebuild
+  - ❌ **IMMUTABILITY VIOLATION** — mutates state in-place (`removeAt`/`insert`)
+- **BLoC Lifecycle:** ✅ OK
 
----
+### 5.6 Promotions/Coupons (`promotions_coupons_page_`)
+- **Data Source:** `sellers/{id}/coupons` — one-time get (despite `i_coupon_repository` supporting stream)
+- **Issues:**
+  - ❌ **Missing Equatable**
+  - ❌ `_onAddCoupon` has no loading indicator (others do)
+- **BLoC Lifecycle:** ✅ OK
 
-#### Gap 3: Assign Delivery (Seller) — Rider List is Mocked
+### 5.7 Seller Login (`seller_login_page`)
+- **Assessment:** ✅ **Most complete BLoC in seller side**
+- **Issues:**
+  - ❌ **Hardcoded `+91` country code** — breaks for non-Indian numbers
+  - Uses concrete `SellerRepository` instead of interface
+- **BLoC Lifecycle:** ✅ Excellent — `close()` cancels `_otpTimer`
 
-**Current State:**
-- **File:** `lib/features/seller_bloc_architecture/assign_delivery_page_/`
-- Rider list is **hardcoded mock** with simulated 1-second delay
-- No real query to `riders` collection
-- Assignment writes to Firestore correctly (order status + riderId)
+### 5.8 Analytics (`seller_analytics_page_`)
+- **Data Source:** `orders` (one-time get), `favorites` (CG stream), `reviews` (CG stream)
+- **Issues:**
+  - ❌ **🚨 CRITICAL — Subscription leak on failure**: subscriptions set up BEFORE `fetchAnalyticsData()`. If it throws, subs never cancelled
+  - ❌ Real-time data held in `_last*` fields but not emitted until reload
+- **BLoC Lifecycle:** ⚠️ Incomplete
 
-**Firebase Implementation Plan:**
-```dart
-// In AssignDeliveryRepository
-Future<List<RiderModel>> loadAvailableRiders(String sellerId) async {
-  // Query riders collection for available riders in seller's area
-  final snapshot = await _firestore
-      .collection('riders')
-      .where('isAvailable', isEqualTo: true)
-      .where('serviceAreas', arrayContains: sellerId)
-      .get();
-  return snapshot.docs.map((doc) => RiderModel.fromFirestore(doc)).toList();
-}
+### 5.9 Inventory Low Stock (`inventory_low_stock`)
+- **Data Source:** `products` stream (via `inventory_low_stock_repository.dart`)
+- **Issues:**
+  - ❌ **🚨 CRITICAL — Silently swallowed stream errors**: `onError: (error) { }` — BLoC stuck in loading forever
+  - ❌ Inconsistent `updatingItemIds` — `_onAddProductEvent` doesn't set it
+- **BLoC Lifecycle:** ✅ Good — `close()` cancels subscription
 
-Future<void> assignRider(String orderId, String riderId, String instructions) async {
-  await _firestore.collection('orders').doc(orderId).update({
-    'status': OrderStatus.outForDelivery.value,
-    'assignedRiderId': riderId,
-    'deliveryInstructions': instructions,
-    'assignedAt': FieldValue.serverTimestamp(),
-    'deliveryOtp': _generateDeliveryOtp(), // 4-digit OTP
-  });
-  // Notify rider via FCM
-  await _fcmService.sendNotification(
-    userId: riderId,
-    title: 'New Delivery',
-    body: 'You have a new delivery assignment',
-  );
-}
-```
+### 5.10 New Order Notification (`new_order_notification`)
+- **Data Source:** `orders` stream filtered to `status == 'New'`
+- **Issues:**
+  - ❌ **No loading state for accept/reject**
+  - ❌ **No error recovery** — BLoC cannot recover after error without being re-created
+- **BLoC Lifecycle:** ✅ Good — `close()` cancels subscription
+
+### 5.11 Menu Category Management (`menu_category_management_page_`)
+- **Data Source:** `sellers/{id}/menu_preferences` — one-time get/set
+- **Issues:**
+  - ❌ **Missing Equatable**
+  - ❌ **IMMUTABILITY VIOLATION** — `removeAt`/`insert` on state
+- **BLoC Lifecycle:** ✅ OK
+
+### 5.12 Assign Delivery (`assign_delivery_page_`)
+- **Data Source:** `riders` (one-time get), `orders/{id}` (one-time update)
+- **Issues:**
+  - ❌ **Double emission / UI flicker** — error state immediately overwritten
+- **BLoC Lifecycle:** ✅ OK
 
 ---
 
-#### Gap 4: Low Stock Alert (Seller) — Fully Mocked
+## 6. Cross-Cutting Issues
 
-**Current State:**
-- **File:** `lib/features/seller_bloc_architecture/add_product_page_/low_stock_alert_page__bloc.dart`
-- Fully mocked with 1-second simulated delay and hardcoded list of 3 items
-- Not connected to real inventory data
-
-**Firebase Implementation Plan:**
-```dart
-class LowStockAlertBloc extends Bloc<LowStockAlertEvent, LowStockAlertState> {
-  LowStockAlertBloc({required String sellerId}) : super(LowStockAlertInitial()) {
-    on<LoadLowStockData>((event, emit) async {
-      emit(LowStockAlertLoading());
-      try {
-        // Real-time stream from products collection
-        await emit.forEach(
-          _productRepository.getProductsStream(sellerId),
-          onData: (products) {
-            final lowStock = products
-                .where((p) => p.quantity < p.lowStockThreshold)
-                .toList();
-            return LowStockAlertLoaded(
-              items: lowStock,
-              totalLowStockCount: lowStock.length,
-            );
-          },
-          onError: (error, _) => LowStockAlertError(error.toString()),
-        );
-      } catch (e) {
-        emit(LowStockAlertError(e.toString()));
-      }
-    });
-  }
-}
-```
-
-**Key Change:** Transform the existing `InventoryBloc`'s real-time stream to also emit low-stock alerts. Add a `lowStockThreshold` field to `Product` model (currently may not exist).
+| # | Issue | Affected | Severity |
+|---|-------|----------|:--------:|
+| 1 | No optimistic updates anywhere | Cart, Favorites, Orders, Product List, Promotions, Inventory | 🔴 |
+| 2 | Silent error swallowing (empty catch) | Cart(4x), TrackOrder, AddProduct, Inventory, AppSettings, Chat | 🔴 |
+| 3 | Repository pattern violations (direct Firebase) | Favorites, Rating, Wallet, AddProduct | 🔴 |
+| 4 | Missing Equatable on events/states | BusinessHours, Promotions, MenuCategories, Wallet, Chat | 🟡 |
+| 5 | Dead code/unused files | `order_repository.dart`, `orders_list_page_repository.dart` | 🟡 |
+| 6 | Success/Error flash-over (immediate re-emit) | UserProfile, AssignDelivery | 🟡 |
+| 7 | State immutability violations | BusinessHours, MenuCategories | 🔴 |
+| 8 | Stream subscription leaks | Analytics, TrackOrder | 🔴 |
+| 9 | Race conditions | Rating page | 🔴 |
+| 10 | Wrong-order update bug | Orders List (`orElse`) | 🚨 |
+| 11 | Hardcoded assumptions | Login (`+91`), TrackOrder (fake timestamps) | 🟡 |
 
 ---
 
-#### Gap 5: Overall Rating (Seller) — No Real-Time Stream
+## 7. Buyer–Seller Data Flow Synchronization Audit
 
-**Current State:**
-- Uses Future-based `.get()` on `reviews` collection
-- No real-time updates — seller must manually refresh
-- Connected to `SellerReviewService` which does Firestore queries correctly
+### 7.1 End-to-End Flow Matrix
 
-**Upgrade to Real-Time:**
-```dart
-// In OverallRatingRepository
-Stream<OverallRatingData> getRatingStream(String sellerId) {
-  return _firestore
-      .collection('products')
-      .where('sellerId', isEqualTo: sellerId)
-      .snapshots()
-      .asyncMap((snapshot) async {
-    double totalRating = 0;
-    int totalReviews = 0;
-    List<ReviewModel> reviews = [];
+#### FLOW 1: Seller Add/Update Product ➔ Buyer Home
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: `ProductListBloc._onAddProduct` | `products/{id}` | Write | ✅ |
+| 2 | Firestore `products` document updated | — | — | ✅ |
+| 3 | Buyer: `HomePageBloc._onProductsUpdated` | `products` collection | Stream `snapshots()` | ✅ |
+| 4 | `FoodItemMapper.toViewModel()` | — | Transform | ✅ |
+| 5 | `HomePageUI` re-renders cards | — | — | ✅ |
+| **Verdict** | **✅ REAL-TIME** | | | **Pass** |
 
-    for (var productDoc in snapshot.docs) {
-      final reviewsSnapshot = await productDoc.reference
-          .collection('reviews')
-          .orderBy('createdAt', descending: true)
-          .get();
-      
-      for (var reviewDoc in reviewsSnapshot.docs) {
-        final review = ReviewModel.fromFirestore(reviewDoc);
-        reviews.add(review);
-        totalRating += review.rating;
-        totalReviews++;
-      }
-    }
+#### FLOW 2: Seller Update Product ➔ Buyer Details
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: `ProductListBloc._onToggleProductStatus` | `products/{id}` | Write | ✅ |
+| 2 | Firestore `products` document updated | — | — | ✅ |
+| 3 | Buyer: `DetailsRepository` stream | `products/{id}` | Stream `snapshots()` | ✅ |
+| 4 | Details Page UI re-renders | — | — | ✅ |
+| **Verdict** | **✅ REAL-TIME** | | | **Pass** |
 
-    return OverallRatingData(
-      overallRating: totalReviews > 0 ? totalRating / totalReviews : 0,
-      totalReviews: totalReviews,
-      reviews: reviews,
-    );
-  });
-}
-```
+#### FLOW 3: Seller Archive Product ➔ Buyer Search
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: archive product | `products/{id}` (isArchived=true) | Write | ✅ |
+| 2 | Buyer stream picks up change | `products` collection | Stream | ✅ |
+| 3 | `FoodItemMapper` filters out `isArchived` | — | — | ✅ |
+| **Verdict** | **✅ REAL-TIME** | | | **Pass** |
 
-Alternatively, maintain a `reviews` collection at root level (not subcollection of products) for easier querying:
-```dart
-// New root-level collection: reviews
-_firestore.collection('reviews')
-    .where('sellerId', isEqualTo: sellerId)
-    .orderBy('createdAt', descending: true)
-    .snapshots()
-```
+#### FLOW 4: Seller Stock Change ➔ Buyer Cart ❌
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: `InventoryBloc._onUpdateStock` | `products/{id}` (availableStock) | Write | ✅ |
+| 2 | Firestore updates product stock | — | — | ✅ |
+| 3 | **Buyer Cart does NOT listen to `products` collection** | — | ❌ | **MISSING** |
+| 4 | Buyer checks out with stale stock | — | — | ❌ |
+| **Verdict** | **❌ NO SYNC** | Buyer cart never knows stock changed | | **Fail** |
 
----
+#### FLOW 5: Seller Price Change ➔ Buyer Cart ❌
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: update product price | `products/{id}` (price) | Write | ✅ |
+| 2 | **Cart stores price at add-time** in `users/{uid}/cart/{id}` | — | — | ❌ |
+| 3 | **Buyer Cart shows OLD price** | — | — | ❌ |
+| **Verdict** | **❌ NO SYNC** | Cart price frozen at add-time | | **Fail** |
 
-#### Gap 6: Seller Wallet Balance — No Real-Time Stream
+#### FLOW 6: Seller Business Hours ➔ Buyer Home
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: `BusinessHoursBloc` update | `sellers/{id}/settings/business_hours` | Write | ✅ |
+| 2 | `SellerStatusService` watches `sellers/{id}` | `sellers` collection | Stream `snapshots()` | ✅ |
+| 3 | Buyer Home reads `SellerStatusService` | — | Stream | ✅ |
+| 4 | HomePageUI renders Open/Closed badge | — | — | ✅ |
+| **Verdict** | **✅ REAL-TIME** | | | **Pass** |
 
-**Current State:**
-- `SellerWalletBloc` uses Future-based `.get()` for balance
-- When a new order is delivered, seller wallet updates, but seller must refresh
+#### FLOW 7: Seller Emergency Close ➔ Buyer Details/Cart
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: toggle emergency close | `sellers/{id}` (isEmergencyClosed) | Write | ✅ |
+| 2 | `SellerStatusService` picks up change | `sellers/{id}` stream | Stream | ✅ |
+| 3 | Buyer Details: `sellerAvailability.isAvailable` | Details Page | Stream | ✅ |
+| 4 | **Buyer Cart: does NOT check seller availability** | Cart Page | ❌ | **MISSING** |
+| **Verdict** | **⚠️ PARTIAL** | Details OK, Cart blind to emergency close | | **Warn** |
 
-**Upgrade to Real-Time:**
-```dart
-// In SellerWalletRepository
-Stream<double> getWalletBalanceStream(String sellerId) {
-  return _firestore
-      .collection('sellers')
-      .doc(sellerId)
-      .snapshots()
-      .map((doc) => (doc.data()?['walletBalance'] ?? 0.0).toDouble());
-}
+#### FLOW 8: Seller Coupon Create/Update ➔ Buyer Cart
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: add/update coupon | `sellers/{id}/coupons/{couponId}` | Write | ✅ |
+| 2 | Buyer Cart: coupon subscription at load-time | Collection Group query | One-time | ❌ |
+| 3 | **Coupon subscription NEVER refreshed when cart changes** | — | ❌ | **MISSING** |
+| **Verdict** | **⚠️ STALE** | Coupons loaded once, never re-fetched | | **Fail** |
 
-Stream<List<PayoutModel>> getPayoutHistoryStream(String sellerId) {
-  return _firestore
-      .collection('payouts')
-      .where('sellerId', isEqualTo: sellerId)
-      .orderBy('createdAt', descending: true)
-      .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => PayoutModel.fromFirestore(doc))
-          .toList());
-}
-```
+#### FLOW 9: Buyer Creates Order ➔ Seller Notifications
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Buyer: checkout via Cloud Function | `orders/{orderId}` (status='New') | Write (CF) | ✅ |
+| 2 | Firestore `orders` document created | — | — | ✅ |
+| 3 | Seller: `NewOrderNotificationBloc` stream | `orders` (status='New') | Stream `snapshots()` | ✅ |
+| 4 | Seller: `OrdersListBloc` stream | `orders` (by sellerId) | Stream `snapshots()` | ✅ |
+| **Verdict** | **✅ REAL-TIME** | | | **Pass** |
 
----
+#### FLOW 10: Seller Accepts Order ➔ Buyer Track Order ⚠️
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: `OrdersListBloc._onUpdateOrderStatus` | `orders/{id}` (status='Accepted') | Write | ✅ |
+| 2 | Firestore updates order status | — | — | ✅ |
+| 3 | **Buyer: `OrderListBloc` gets real-time update** | `orders` by customerId | Stream `snapshots()` | ✅ |
+| 4 | **Buyer: `TrackOrderBloc` uses ONE-TIME `get()` — no real-time** | `orders/{id}` | ❌ `get()` | **❌ MISSING** |
+| 5 | **Buyer Track Order page shows STALE status** | — | — | ❌ |
+| **Verdict** | **⚠️ INCONSISTENT** | Order List sees it, Track Order doesn't | | **Warn** |
 
-### 🟡 MEDIUM GAPS (Nice to Have)
+#### FLOW 11: Seller Rejects Order ➔ Buyer Orders
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: reject order | `orders/{id}` (status='Rejected') | Write | ✅ |
+| 2 | Buyer Order List sees stream update | `orders` by customerId | Stream | ✅ |
+| 3 | **Order UI re-renders with Rejected badge** | — | — | ✅ |
+| **Verdict** | **✅ REAL-TIME** (for list view) | | | **Pass** |
 
-#### Gap 7: Seller Analytics — No Real-Time
+#### FLOW 12: Seller Assigns Delivery ➔ Buyer Track Order
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: assign delivery | `orders/{id}` (riderId, status='OutForDelivery') | Write | ✅ |
+| 2 | Firestore updates order | — | — | ✅ |
+| 3 | Buyer Track Order: **must manually refresh to see rider data** | `orders/{id}` | ❌ `get()` | **MISSING** |
+| 4 | **Rider location IS streamed** | `riders/{riderId}` | ✅ Stream | ✅ |
+| **Verdict** | **⚠️ PARTIAL** | Rider location is stream, but order status/rider assignment is NOT | | **Warn** |
 
-Upgrade `SellerAnalyticsBloc` to use Firestore `.snapshots()` stream instead of `.get()` for real-time dashboard updates.
+#### FLOW 13: Seller Marks Complete ➔ Buyer Wallet/History ❌
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: mark order delivered | `orders/{id}` (status='Delivered') | Write | ✅ |
+| 2 | Buyer Order List sees delivered status | Stream | ✅ | ✅ |
+| 3 | **Buyer Wallet does NOT get updated** — no transaction created on delivery | `users/{uid}/transactions` | ❌ | **MISSING** |
+| 4 | **No payout/earnings reflected in buyer wallet** | — | — | ❌ |
+| **Verdict** | **❌ NO SYNC** | Order completion doesn't update wallet/transactions | | **Fail** |
 
-#### Gap 8: Seller Customers — No Real-Time
+#### FLOW 14: Buyer Rates Product ➔ Seller Analytics
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Buyer: `RatingPageBloc._onSubmitRating` | `products/{pid}/reviews` + `users/{uid}/ratings` | Write | ✅ |
+| 2 | Firestore updates | — | — | ✅ |
+| 3 | Seller: `AnalyticsBloc` listens to reviews | `products/{pid}/reviews` | CG Stream | ✅ |
+| 4 | Seller Analytics re-renders | — | — | ✅ |
+| **Verdict** | **✅ REAL-TIME** | | | **Pass** |
 
-Upgrade `SellerCustomerBloc` to listen to `orders` collection stream and recompute customer stats reactively.
+#### FLOW 15: Buyer Favorites Product ➔ Seller Analytics
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Buyer: `FavoritesBloc` toggle | `users/{uid}/favorites/{itemId}` | Write | ✅ |
+| 2 | Firestore updates | — | — | ✅ |
+| 3 | Seller: `AnalyticsBloc` listens to favorites | `users/{uid}/favorites` | CG Stream | ✅ |
+| 4 | Seller Dashboard sees favorite count | — | — | ✅ |
+| **Verdict** | **✅ REAL-TIME** | | | **Pass** |
 
-#### Gap 9: Help & Support Tickets — No Cross-Role Visibility
+#### FLOW 16: Buyer ↔ Seller Chat (Bidirectional)
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Buyer sends message | `conversations/{cid}/messages` | Write | ✅ |
+| 2 | Seller receives via stream | Stream | ✅ | ✅ |
+| 3 | Seller sends message | `conversations/{cid}/messages` | Write | ✅ |
+| 4 | Buyer receives via stream | Stream | ✅ | ✅ |
+| **Verdict** | **✅ REAL-TIME BIDIRECTIONAL** | | | **Pass** |
 
-Buyer submissions (`users/{uid}/support_tickets/`) are not visible to Seller. Should sync to a shared `support_tickets` collection visible to admin/seller dashboard.
+#### FLOW 17: Seller Deletes Product ➔ Buyer Favorites ❌
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: delete product | `products/{id}` | Delete | ✅ |
+| 2 | **Buyer Favorites still references deleted product** | `users/{uid}/favorites/{itemId}` | ❌ | **ORPHANED** |
+| 3 | **Buyer Favorites page shows broken/empty item** | — | — | ❌ |
+| **Verdict** | **❌ ORPHAN DATA** | No cleanup on product delete | | **Fail** |
 
-#### Gap 10: Favorites Data — Not Visible to Seller
-
-Buyer favorites (`users/{uid}/favorites/`) are not aggregated. Seller cannot see most-liked products. Add an aggregation pipeline:
-```dart
-// Cloud Function: onFavoritesWrite → increment productFavoritesCount
-exports.incrementFavoritesCount = functions.firestore
-    .document('users/{uid}/favorites/{productId}')
-    .onWrite((change, context) => {
-      const productRef = admin.firestore()
-          .collection('products').doc(context.params.productId);
-      if (!change.before.exists && change.after.exists) {
-        return productRef.update({ favoritesCount: admin.firestore.FieldValue.increment(1) });
-      }
-      if (change.before.exists && !change.after.exists) {
-        return productRef.update({ favoritesCount: admin.firestore.FieldValue.increment(-1) });
-      }
-      return null;
-    });
-```
-
----
-
-## 5. Firebase Firestore Collections Map
-
-```
-Firestore Root
-│
-├── users/                          # Buyer & User data
-│   └── {userId}/
-│       ├── cart/                   # CartItem[]
-│       ├── favorites/              # FavoriteItem[]
-│       ├── ratings/                # User's ratings
-│       ├── transactions/           # Wallet transactions
-│       ├── payment_methods/        # Saved payment methods
-│       ├── support_tickets/        # Help & support tickets
-│       ├── feedback/               # User feedback
-│       └── settings/
-│           └── app                 # App settings
-│
-├── sellers/                        # Seller data
-│   └── {sellerId}/
-│       ├── promotions/             # Coupons & offers
-│       ├── menu_preferences/       # Selected categories + order
-│       ├── settings/
-│       │   └── business_hours      # Operating hours
-│       ├── payment/
-│       │   └── details             # Bank account info
-│       └── disputes/               # Disputes & refunds
-│
-├── products/                       # Shared by Buyer & Seller
-│   └── {productId}/
-│       └── reviews/                # Product reviews (subcollection)
-│
-├── orders/                         # Shared by Buyer & Seller ← KEY
-│   └── {orderId}
-│       ├── status: OrderStatus
-│       ├── customerId: string
-│       ├── sellerId: string
-│       ├── items: OrderItem[]
-│       ├── totalAmount: number
-│       ├── assignedRiderId: string?
-│       └── timestamp: Timestamp
-│
-├── conversations/                  # Shared Chat
-│   └── {conversationId}/
-│       ├── buyerId: string
-│       ├── sellerId: string
-│       ├── orderId: string?
-│       ├── messages/               # Message[]
-│       ├── photos/                 # PhotoMessage[]
-│       ├── videos/                 # VideoMessage[]
-│       └── audios/                 # AudioMessage[]
-│
-├── riders/                         # Delivery Riders (Seller uses)
-│   └── {riderId}/
-│       ├── name: string
-│       ├── phone: string
-│       ├── isAvailable: boolean
-│       ├── currentLocation: GeoPoint
-│       └── serviceAreas: string[]
-│
-├── payouts/                        # Seller payout history
-│   └── {payoutId}
-│
-├── payout_requests/               # Pending payout requests
-│   └── {requestId}
-│
-├── global_categories/             # Shared categories
-│
-├── inventory_logs/                # Inventory change logs
-│
-└── seller_notification_settings/  # Seller notification prefs
-```
+#### FLOW 18: Seller Disables Product ➔ Buyer Cart ❌
+| Step | Component | Collection | Mode | Status |
+|------|-----------|-----------|:----:|:------:|
+| 1 | Seller: toggle product inactive | `products/{id}` (isActive=false) | Write | ✅ |
+| 2 | **Buyer Cart does NOT check if product is still active** | `users/{uid}/cart` | ❌ | **MISSING** |
+| 3 | Buyer can still checkout with disabled product | — | — | ❌ |
+| **Verdict** | **❌ NO SYNC** | Cart allows checkout of disabled products | | **Fail** |
 
 ---
 
-## 6. Real-Time Stream Architecture Diagram
+## 8. Synchronization Coverage Scorecard
 
-```
-                   ┌─────────────────────────────────────────────┐
-                   │              FIREBASE FIRESTORE              │
-                   │                                             │
-                   │  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
-                   │  │  orders  │  │ products │  │   chat   │  │
-                   │  │    📄    │  │    📄    │  │   💬     │  │
-                   │  └────┬─────┘  └────┬─────┘  └────┬─────┘  │
-                   │       │              │              │        │
-                   └───────┼──────────────┼──────────────┼────────┘
-                           │              │              │
-           ┌───────────────┼──────┐       │       ┌──────┼───────────────┐
-           │               │      │       │       │      │               │
-           ▼               ▼      │       ▼       │      ▼               ▼
-   ┌──────────────┐ ┌──────────┐ │ ┌───────────┐ │ ┌──────────┐ ┌──────────────┐
-   │  Buyer App   │ │  Buyer   │ │ │  Seller   │ │ │  Seller  │ │  Seller App  │
-   │  Order Page  │ │ HomePage │ │ │Dashboard  │ │ │ProductList│ │  Chat Support│
-   │  (snapshots) │ │(snapshots│ │ │(combine3) │ │ │(snapshots│ │  (snapshots) │
-   └──────────────┘ └──────────┘ │ └───────────┘ │ └──────────┘ └──────────────┘
-                                 │               │
-                                 ▼               ▼
-                         ┌──────────────┐ ┌───────────────────┐
-                         │  Buyer       │ │  Seller           │
-                         │  Track Order │ │  Orders List      │
-                         │  (snapshots) │ │  (snapshots)      │
-                         └──────────────┘ └───────────────────┘
-                                              │
-                                              ▼
-                                     ┌───────────────────┐
-                                     │  Seller           │
-                                     │  Inventory        │
-                                     │  (snapshots)      │
-                                     └───────────────────┘
+### 8.1 Business Flow Scores
 
-Streaming Pages:    8 Buyer + 6 Seller = 14 pages with real-time Firestore streams
-Future-based Pages: 9 Buyer + 23 Seller = 32 pages with synchronous calls
-Mocked Pages:       0 Buyer + 4 Seller = 4 pages with no real backend
-```
+| # | Flow | Source → Target | Sync Type | Score | Status |
+|---|------|----------------|:---------:|:----:|:------:|
+| 1 | Product → Buyer Home | Seller → Firestore → Buyer Stream | Real-time | 100% | ✅ |
+| 2 | Product Update → Buyer Details | Seller → Firestore → Buyer Stream | Real-time | 100% | ✅ |
+| 3 | Archive → Buyer Search | Seller → Firestore → Buyer Stream | Real-time | 100% | ✅ |
+| 4 | **Stock → Buyer Cart** | Seller → Firestore ⇢ **Cart blind** | **None** | **0%** | **❌** |
+| 5 | **Price → Buyer Cart** | Seller → Firestore ⇢ **Cart has stale price** | **None** | **0%** | **❌** |
+| 6 | Business Hours → Buyer | Seller → FS → SellerStatusService → Buyer | Real-time | **90%** | ✅ |
+| 7 | Emergency Close → Cart | Seller → FS → StatusService → **Cart blind** | **Partial** | **50%** | ⚠️ |
+| 8 | **Coupon → Buyer Cart** | Seller → FS → **One-time load, never refreshed** | **Stale** | **30%** | **❌** |
+| 9 | Order → Seller Notification | Buyer → CF → Firestore → Seller Stream | Real-time | 100% | ✅ |
+| 10 | **Accept → Buyer Track** | Seller → FS → **Track uses one-time get()** | **Partial** | **50%** | ⚠️ |
+| 11 | Reject → Buyer Orders | Seller → FS → Buyer Order Stream | Real-time | 100% | ✅ |
+| 12 | **Assign Delivery → Buyer** | Seller → FS → **Track gets stale** | **Partial** | **40%** | ⚠️ |
+| 13 | **Complete → Buyer Wallet** | Seller → FS → **Wallet never notified** | **None** | **0%** | **❌** |
+| 14 | Rating → Seller Analytics | Buyer → FS → Seller Analytics Stream | Real-time | 100% | ✅ |
+| 15 | Favorite → Seller Analytics | Buyer → FS → Seller Analytics CG | Real-time | 100% | ✅ |
+| 16 | Chat Bidirectional | Both → FS → Both Stream | Real-time | 100% | ✅ |
+| 17 | **Delete → Buyer Favorites** | Seller → FS → **Favorites orphaned** | **None** | **0%** | **❌** |
+| 18 | **Disable → Buyer Cart** | Seller → FS → **Cart doesn't check** | **None** | **0%** | **❌** |
 
----
+### 8.2 Overall Synchronization Health
 
-## 7. Recommendations & Implementation Plan
+| Metric | Score |
+|--------|:-----:|
+| Flows with Full Real-time Sync (100%) | **9 / 18 (50%)** |
+| Flows with Partial Sync (30-90%) | **3 / 18 (17%)** |
+| Flows with NO Sync (0%) | **6 / 18 (33%)** |
+| **Overall Synchronization Coverage** | **⚠️ 53%** |
 
-### Priority Matrix
+### 8.3 Synchronization Gap Analysis
 
-| Priority | Gap | Effort | Impact | Current State |
-|----------|-----|--------|--------|---------------|
-| 🔴 P0 | New Order Notification | Medium | High | Fully Mocked |
-| 🔴 P0 | Assign Delivery (riders) | Medium | High | Partially Mocked |
-| 🔴 P0 | Out For Delivery | Medium | High | Fully Mocked |
-| 🔴 P0 | Low Stock Alert | Low | Medium | Fully Mocked |
-| 🟡 P1 | Overall Rating → Real-time | Low | Medium | Future-based |
-| 🟡 P1 | Seller Wallet → Real-time | Low | Medium | Future-based |
-| 🟡 P1 | Seller Analytics → Stream | Medium | Low | Future-based |
-| 🟢 P2 | Favorites → Seller Analytics | Medium | Low | Not Visible |
-| 🟢 P2 | Support Tickets → Cross-role | Low | Low | Buyer-only |
-| 🟢 P2 | Seller Customers → Stream | Medium | Low | Future-based |
-
-### Implementation Roadmap
-
-```
-Phase 1 (Week 1-2): Fix Mocked Pages
-  ├── New Order Notification → Firebase real accept/reject + FCM
-  ├── Assign Delivery → Real riders query from Firestore
-  ├── Out For Delivery → Real rider location stream
-  └── Low Stock Alert → Real-time inventory threshold check
-
-Phase 2 (Week 3-4): Upgrade to Real-Time
-  ├── Overall Rating → Switch from .get() to .snapshots()
-  ├── Seller Wallet → Add snapshots() for balance/payouts
-  └── Seller Analytics → Add real-time order stream
-
-Phase 3 (Week 5-6): Cross-Role Features
-  ├── Favorites aggregation for Seller
-  ├── Support Tickets sharing
-  └── Seller Customers real-time updates
-```
-
-### Key Architecture Patterns to Follow
-
-```dart
-// PATTERN 1: Real-time stream in BLoC (emit.forEach)
-on<LoadOrdersRequested>((event, emit) async {
-  emit(OrderLoading());
-  await emit.forEach(
-    _orderRepository.getBuyerOrdersStream(userId),
-    onData: (orders) => OrderLoaded(orders: orders),
-    onError: (error, _) => OrderError(message: error.toString()),
-  );
-});
-
-// PATTERN 2: Real-time stream with Rx.combineLatest
-Stream<DashboardData> getDashboardData(String sellerId) {
-  return Rx.combineLatest3(
-    _firestore.collection('orders')
-        .where('sellerId', isEqualTo: sellerId).snapshots(),
-    _firestore.collection('products')
-        .where('sellerId', isEqualTo: sellerId).snapshots(),
-    _firestore.collection('sellers').doc(sellerId).snapshots(),
-    (ordersSnap, productsSnap, sellerDoc) => DashboardData(
-      orders: ordersSnap.docs.map(OrderModel.fromFirestore).toList(),
-      products: productsSnap.docs.map(Product.fromFirestore).toList(),
-      seller: SellerModel.fromFirestore(sellerDoc),
-    ),
-  );
-}
-
-// PATTERN 3: Firestore Transaction (for critical writes)
-Future<void> processWithdrawal(String sellerId, double amount) async {
-  await _firestore.runTransaction((transaction) async {
-    final sellerRef = _firestore.collection('sellers').doc(sellerId);
-    final sellerDoc = await transaction.get(sellerRef);
-    final balance = (sellerDoc.data()?['walletBalance'] ?? 0).toDouble();
-    if (balance < amount) throw Exception('Insufficient balance');
-    transaction.update(sellerRef, {'walletBalance': balance - amount});
-    transaction.set(
-      _firestore.collection('payout_requests').doc(),
-      {'sellerId': sellerId, 'amount': amount, 'status': 'Pending'},
-    );
-  });
-}
-```
+| Gap ID | Missing Sync | Business Impact | Severity |
+|--------|-------------|----------------|:--------:|
+| G1 | Stock → Cart | Buyer checks out with out-of-stock item → order fails | 🔴 Critical |
+| G2 | Price → Cart | Buyer pays old price → seller loses money or order cancelled | 🔴 Critical |
+| G3 | Complete → Wallet | No transaction history → buyer cannot track spending | 🔴 High |
+| G4 | Delete → Favorites | Broken UI, orphaned data | 🟡 Medium |
+| G5 | Disable → Cart | Buyer can order disabled product → order fails | 🔴 Critical |
+| G6 | Coupon → Cart (stale) | Buyer sees expired/wrong coupons → bad UX | 🟡 Medium |
+| G7 | Accept → Track (stale) | Order status in Track page is stale | 🟡 Medium |
+| G8 | Assign Delivery → Track (stale) | Rider assignment not reflected in real-time | 🟡 Medium |
+| G9 | Emergency Close → Cart | Buyer can add to cart from closed store → wasted effort | 🟡 Medium |
 
 ---
 
-## 📊 Final Statistics
+## 9. Cross-Architecture Dependency Graph
 
-| Metric | Buyer | Seller | Total |
-|--------|-------|--------|-------|
-| **Pages** | 17 | 29 | 46 |
-| **Real-Time Stream Pages** | 8 (47%) | 6 (21%) | 14 (30%) |
-| **Future-Based Pages** | 9 (53%) | 19 (65%) | 28 (61%) |
-| **Mocked Pages (No Backend)** | 0 (0%) | 4 (14%) | 4 (9%) |
-| **BLoCs** | 14 | 22 | 36 |
-| **Repositories** | 12 | 20 | 32 |
-| **Shared Models** | — | — | 10 |
-| **Shared Repository Interfaces** | — | — | 6 |
-| **Firebase Services Used** | Auth, Firestore, Storage, Functions, FCM | Auth, Firestore, Storage, FCM | 5 services |
+```
+SELLER SIDE                                      FIRESTORE                                      BUYER SIDE
+=============                                    =========                                      ===========
 
-### ✅ Already Working in Real-Time
-1. **Orders:** Buyer Order → Seller Accept/Reject → Buyer Track (full cycle)
-2. **Products:** Seller Add/Update → Buyer Browse (instant sync)
-3. **Chat:** Buyer ↔ Seller (bidirectional real-time)
-4. **Inventory:** Seller stock changes → reflected in real-time
-5. **Cart:** Real-time cart management for buyer
+AddProductBloc ──► products/{pid} ──────► snapshots() ──► HomePageBloc ──► HomePageUI (cards)
+                    │                                   │
+                    │                                   └──► DetailsBloc ──► DetailsPageUI
+                    │                                              │
+                    ▼                                              ▼
+ProductListBloc ──► isActive, price, stock              CartPageBloc ◄── users/{uid}/cart
+Archive/Toggle                                             │
+                    │                                      │ ❌ Doesn't watch products collection
+InventoryBloc ────► availableStock ────► Snapshots()       │
+                    │                                      ▼
+                    │                                [Out-of-stock items in cart]
+                    │
+BusinessHoursBloc ─► sellers/{id}/settings/business_hours
+                    │        │
+                    │        └──► SellerStatusService(watch seller/{id}) ───► BuyerHome (Open/Closed badge)
+                    │                                        │
+                    │                                        └──► BuyerDetails (Add-to-cart disabled if closed)
+                    │
+CouponBloc ───────► sellers/{id}/coupons ───► CollectionGroup ──► CartPageBloc (loaded once, never refreshed)
+                    │
+OrdersListBloc ────┐
+NewOrderNotif ─────┤
+DashboardBloc ─────┤
+                    │
+                    ▼
+              orders/{orderId} ────────── snapshots() ──► BuyerOrderListBloc ──► OrderPageUI
+                    │                                        │
+                    │                                        └──► TrackOrderBloc (USES get(), NOT snapshots!)
+                    │                                                │
+AssignDelivery ────► riderId, status='OutForDelivery' ──► one-time get() → stale rider data
+                    │                                     Only rider location is streamed (riders/{id})
+Seller marks ──────► status='Delivered' ──► Stream        Buyer Wallet ❌ not updated
+Complete                                                      │
+                    │                                         └──► No transaction created on delivery
+                    │
+AnalyticsBloc ─────┤
+   ◄── CG favorites (users/{uid}/favorites) ◄──── FavoritesBloc (Buyer)
+   ◄── CG reviews (products/{pid}/reviews) ◄──── RatingPageBloc (Buyer)
+   ◄── orders (one-time get) ◄──── Order creation
 
-### ❌ Needs Immediate Fix
-1. **New Order Notification (Seller)** — Replace mock with real Firebase
-2. **Out For Delivery (Seller)** — Replace mock with real rider tracking
-3. **Assign Delivery (Seller)** — Replace mock rider list with Firestore query
-4. **Low Stock Alert (Seller)** — Connect to real inventory stream
+                    ▲
+ChatBloc (Seller)──┤
+                    │
+              conversations/{cid}/messages ── snapshots() (bidirectional)
+                    │
+ChatBloc (Buyer)───┘
+```
 
-### ⚠️ Needs Upgrade
-1. **Overall Rating (Seller)** — Add real-time stream
-2. **Seller Wallet** — Add real-time balance updates
-3. **Seller Analytics** — Add real-time data pipeline
+### 9.1 Key Dependency Paths Missing From Graph
+
+| Path | Status | Issue |
+|------|:------:|-------|
+| `products.isActive` → `Cart checkout guard` | ❌ | Cart doesn't check if product is still active before checkout |
+| `products.availableStock` → `Cart quantity cap` | ❌ | Cart allows quantity beyond available stock |
+| `products.price` → `Cart price recalc` | ❌ | Cart uses add-time price, doesn't re-fetch |
+| `orders.status` → `TrackOrder status` | ❌ | TrackOrder uses one-time get, not stream |
+| `orders.status='Delivered'` → `Wallet transaction` | ❌ | No wallet credit/transaction on delivery |
+| `products` delete → `Favorites cleanup` | ❌ | Favorites reference deleted products |
+| `sellers/{id}/coupons` → `Cart coupon refresh` | ❌ | Coupons loaded once, never refreshed |
 
 ---
 
-*Report generated by BLoC Architecture Audit — July 28, 2026*
+## 10. Action Items (Prioritized)
+
+### 🚨 CRITICAL — Immediate (Synchronization Bugs)
+
+| # | Action | Expected Effort |
+|---|--------|:----------------:|
+| **S1** | Fix `orElse` bug in orders: replace `orElse: () => _allOrders.first` with error emit | 15 min |
+| **S2** | Fix Cart stock validation: add `products/{id}` listener to Cart BLoC, prevent checkout if `availableStock < quantity` | 2 hrs |
+| **S3** | Fix Cart price sync: re-fetch product price on cart load, show warning if price changed | 2 hrs |
+| **S4** | Fix Cart disabled-product guard: check `products.isActive` before allowing checkout | 1 hr |
+| **S5** | Fix Track Order to use real-time stream on `orders/{id}` instead of one-time `get()` | 1 hr |
+| **S6** | Add wallet transaction on order delivery: Cloud Function or repository to add `users/{uid}/transactions` when status='Delivered' | 2 hrs |
+| **S7** | Fix Analytics subscription leak: cancel subs before `fetchAnalyticsData()` | 30 min |
+
+### 🔴 HIGH Priority
+
+| # | Action | Expected Effort |
+|---|--------|:----------------:|
+| **S8** | Fix Inventory stream error: replace empty catch with error state emit | 15 min |
+| **S9** | Add optimistic updates to Cart (add/remove/qty) | 2 hrs |
+| **S10** | Fix silent catch blocks across Cart(4x), TrackOrder, AddProduct, Inventory | 1 hr |
+| **S11** | Replace direct Firebase calls with repository interfaces (Favorites, Rating, Wallet, AddProduct) | 3 hrs |
+| **S12** | Fix coupon subscription: refresh when cart items change | 1 hr |
+| **S13** | Add Favorites cleanup when product is deleted (or at least show "unavailable" state) | 1 hr |
+| **S14** | Add Cart seller-availability check: block checkout if seller emergency-closed | 1 hr |
+
+### 🟡 MEDIUM Priority
+
+| # | Action | Expected Effort |
+|---|--------|:----------------:|
+| **S15** | Standardize all BLoCs to use Equatable on events/states | 2 hrs |
+| **S16** | Remove dead code files (`order_repository.dart`, `orders_list_page_repository.dart`) | 15 min |
+| **S17** | Fix UserProfile double-emit (success/error overwrite) | 30 min |
+| **S18** | Fix AssignDelivery double-emission pattern | 30 min |
+| **S19** | Add loading states for all mutations (ProductList, AddProduct, NewOrderNotification) | 1.5 hrs |
+| **S20** | Replace hardcoded `+91` with dynamic country code detection | 30 min |
+
+### 🟢 LOW Priority
+
+| # | Action | Expected Effort |
+|---|--------|:----------------:|
+| **S21** | Remove dead state fields (`ratingStatus`/`ratingMessage` in Details) | 15 min |
+| **S22** | Fix wallet transaction history: standardize transaction creation | 30 min |
+| **S23** | Add Order-TrackOrder consistent status: convert TrackOrder to use real-time orders stream | 1 hr |
+| **S24** | Fix TrackOrder `dispose()` not called | 15 min |
+| **S25** | Fix Business Hours & Menu Categories immutability (in-place mutation) | 30 min |
+
+### 📋 Estimated Total Effort
+
+| Priority | Items | Effort |
+|----------|:----:|:------:|
+| 🚨 Critical | 7 items | ~9 hrs |
+| 🔴 High | 7 items | ~9 hrs |
+| 🟡 Medium | 6 items | ~5 hrs |
+| 🟢 Low | 5 items | ~2.5 hrs |
+| **Total** | **25 items** | **~25.5 hrs** |
+
+---
+
+## 11. Final Assessment
+
+| Criterion | Rating | Notes |
+|-----------|:------:|-------|
+| **BLoC Pattern Correctness** | ⚠️ 65% | Direct Firebase, missing Equatable, no DI in many BLoCs |
+| **Data Flow Synchronization (Buyer↔Seller)** | **❌ 53%** | **6 of 18 business flows have ZERO sync** |
+| **Error Handling Completeness** | ❌ 35% | Widespread empty catch blocks, no recovery |
+| **State Immutability** | ⚠️ 70% | Two features mutate state in-place |
+| **Repository Layer Separation** | ⚠️ 55% | Mixed patterns, direct Firebase in 4+ BLoCs |
+| **Code Consistency** | ❌ 30% | `part` vs `import`, Equatable vs non-Equatable |
+| **Real-time Stream Coverage** | ✅ 85% | Most collections use `snapshots()`, but critical gaps exist |
+| **Overall Health** | **⚠️ 56%** | **18 synchronization gaps found — S1-S7 need immediate action** |
+
+### Summary of What Works ✅
+- Product → Home/Details real-time sync (stream-based, solid)
+- Business Hours → Buyer Availability (via SellerStatusService, clean pattern)
+- Order → Seller Notifications (real-time stream)
+- Rating/Favorite → Seller Analytics (collection group queries)
+- Chat (bidirectional real-time messaging)
+
+### Summary of What's Broken ❌
+1. **Cart is completely disconnected from product data** — stock, price, availability changes invisible
+2. **Track Order is NOT real-time** for order status — only rider location is streamed
+3. **Order completion doesn't update wallet/transactions**
+4. **Product deletion orphans favorites**
+5. **Coupons are loaded once and never refreshed**
+6. **Seller emergency close not propagated to Cart**
+
+> **Bottom Line (Revised):** Beyond the BLoC quality issues identified earlier, the **Buyer↔Seller data flow synchronization is critically broken in 6 out of 18 business flows**. The Cart feature is the most affected — it operates in complete isolation from the `products` collection, leading to out-of-stock purchases, stale pricing, and disabled-product checkouts. Fixing the 7 critical synchronization gaps (S1-S7) should be the **top priority** before any architectural refactoring.

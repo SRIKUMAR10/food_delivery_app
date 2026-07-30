@@ -7,7 +7,7 @@ class BusinessHoursBloc extends Bloc<BusinessHoursEvent, BusinessHoursState> {
   final BusinessHoursRepository repository;
   String? _sellerId;
 
-  BusinessHoursBloc({required this.repository}) : super(BusinessHoursInitial()) {
+  BusinessHoursBloc({required this.repository}) : super(const BusinessHoursInitial()) {
     on<LoadBusinessHoursEvent>(_onLoadBusinessHours);
     on<UpdateBusinessDayEvent>(_onUpdateBusinessDay);
     on<ToggleEmergencyCloseEvent>(_onToggleEmergencyClose);

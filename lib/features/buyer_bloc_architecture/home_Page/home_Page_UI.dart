@@ -4,13 +4,11 @@
 // This file contains zero business logic — it reads state from HomePageBloc
 // and dispatches events back to it. All Firebase calls are inside the BLoC.
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../Details_Page/details_page_UI.dart';
 import '../Favorites_Page/favorites_UI.dart';
@@ -19,8 +17,11 @@ import '../Favorites_Page/favorites_event.dart';
 import '../Favorites_Page/favorites_state.dart';
 import '../Favorites_Page/favorites_models.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
+import '../Chat_Page/buyer_chat_ui.dart';
+import '../../../core/services/i_auth_service.dart';
+import '../../../core/repositories/i_user_profile_repository.dart';
+import '../../../core/services/seller_status_service.dart';
 import 'home_Page_Bloc.dart';
-import 'home_page_models.dart';
 import 'home_page_models.dart';
 import '../user_profile_image/user_profile_image.dart';
 
@@ -298,32 +299,16 @@ class _ProfileAvatar extends StatelessWidget {
 
   const _ProfileAvatar({this.onNavigateToCart});
 
-  Stream<User?>? get _authStream {
-    try {
-      return FirebaseAuth.instance.authStateChanges();
-    } catch (_) {
-      return null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Builder(
-          // Builder provides a context that is a descendant of Scaffold,
-          // which is required to call Scaffold.of(context).openEndDrawer().
           builder: (innerCtx) => GestureDetector(
             onTap: () {
-              bool isLoggedIn = false;
-              try {
-                isLoggedIn = FirebaseAuth.instance.currentUser != null;
-              } catch (_) {
-                // Firebase not initialized — treat as not logged in.
-              }
+              final isLoggedIn = context.read<IAuthService>().currentUserId != null;
               if (!isLoggedIn) {
-                // Redirect unauthenticated users to the login screen.
                 Navigator.push(
                   innerCtx,
                   MaterialPageRoute(
@@ -331,35 +316,25 @@ class _ProfileAvatar extends StatelessWidget {
                   ),
                 );
               } else {
-                // Navigate to the profile screen for authenticated users.
                 Navigator.push(
                   innerCtx,
                   MaterialPageRoute(builder: (_) => const user_profile_image()),
                 );
               }
             },
-            child: StreamBuilder<User?>(
-              stream: _authStream,
+            child: StreamBuilder<String?>(
+              stream: context.read<IAuthService>().authStateChanges,
               builder: (context, authSnapshot) {
-                final user = authSnapshot.data;
+                final uid = authSnapshot.data;
 
-                if (user == null) {
+                if (uid == null) {
                   return _buildAvatarContainer(null);
                 }
 
-                return StreamBuilder<DocumentSnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(user.uid)
-                      .snapshots(),
-                  builder: (_, snapshot) {
-                    String? imageUrl;
-                    if (snapshot.hasData && snapshot.data!.exists) {
-                      imageUrl =
-                          (snapshot.data!.data()
-                              as Map<String, dynamic>?)?['imageUrl'];
-                    }
-
+                return StreamBuilder<String?>(
+                  stream: context.read<IUserProfileRepository>().watchProfileImageUrl(uid),
+                  builder: (_, imageSnapshot) {
+                    final imageUrl = imageSnapshot.data;
                     return _buildAvatarContainer(imageUrl);
                   },
                 );
@@ -652,7 +627,7 @@ class _FoodCardState extends State<FoodCard> {
   static final _currencyFormatter = NumberFormat.currency(
     locale: 'en_IN',
     symbol: '₹',
-    decimalDigits: 2,
+    decimalDigits: 0,
   );
 
   @override
@@ -678,14 +653,8 @@ class _FoodCardState extends State<FoodCard> {
         onExit: (_) => setState(() => _isHovered = false),
         child: GestureDetector(
           onTap: () async {
-            bool isLoggedIn = false;
-            try {
-              isLoggedIn = FirebaseAuth.instance.currentUser != null;
-            } catch (_) {
-              // Firebase not initialized — treat as not logged in.
-            }
+            final isLoggedIn = context.read<IAuthService>().currentUserId != null;
             if (isLoggedIn) {
-              // Navigate to DetailsPageUI for authenticated users.
               final result = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(
@@ -799,6 +768,41 @@ class _FoodCardState extends State<FoodCard> {
                                       ),
                                     ),
                                   Positioned(
+                                    bottom: 8,
+                                    left: 8,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => BuyerChatPage(
+                                              foodItem: widget.item,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.9),
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.1),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.chat_bubble_outline_rounded,
+                                          size: 16,
+                                          color: Color(0xFFEF2A39),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
                                     top: 8,
                                     right: 8,
                                     child:
@@ -816,14 +820,7 @@ class _FoodCardState extends State<FoodCard> {
                                             return GestureDetector(
                                               onTap: () {
                                                 HapticFeedback.lightImpact();
-                                                bool isLoggedIn = false;
-                                                try {
-                                                  isLoggedIn =
-                                                      FirebaseAuth
-                                                          .instance
-                                                          .currentUser !=
-                                                      null;
-                                                } catch (_) {}
+                                                final isLoggedIn = context.read<IAuthService>().currentUserId != null;
 
                                                 if (!isLoggedIn) {
                                                   Navigator.push(
@@ -992,6 +989,44 @@ class _FoodCardState extends State<FoodCard> {
                             ),
                           ),
                         ],
+
+                        // Seller availability badge
+                        BlocSelector<HomePageBloc, HomePageState, SellerAvailability?>(
+                          selector: (state) {
+                            if (state is HomePageLoaded) {
+                              return state.sellerAvailabilities[widget.item.sellerId];
+                            }
+                            return null;
+                          },
+                          builder: (context, availability) {
+                            if (availability == null) return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: availability.isAvailable ? Colors.green : Colors.red,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    availability.isAvailable ? 'Open' : 'Closed',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                      color: availability.isAvailable ? Colors.green : Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
 
                         const SizedBox(height: 4),
 

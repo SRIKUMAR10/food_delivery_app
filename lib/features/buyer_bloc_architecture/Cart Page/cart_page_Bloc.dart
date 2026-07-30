@@ -1,11 +1,13 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/services/i_auth_service.dart';
-import '../../../core/services/business_hours_validator.dart';
+import '../../../core/services/seller_status_service.dart';
 import '../../../core/repositories/i_cart_repository.dart';
 import '../../../core/repositories/i_coupon_repository.dart';
+import '../../../core/repositories/i_product_repository.dart';
 import 'cart_models.dart';
 
 part 'cart_page_Event.dart';
@@ -14,7 +16,9 @@ part 'cart_page_State.dart';
 class CartBloc extends Bloc<CartEvent, CartState> {
   final ICartRepository _cartRepository;
   final ICouponRepository _couponRepository;
+  final IProductRepository _productRepository;
   final IAuthService _authService;
+  final SellerStatusService _sellerStatusService;
 
   StreamSubscription<String?>? _authSubscription;
   StreamSubscription<List<AppliedCoupon>>? _couponSubscription;
@@ -22,10 +26,14 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   CartBloc({
     required ICartRepository cartRepository,
     required ICouponRepository couponRepository,
+    required IProductRepository productRepository,
     required IAuthService authService,
+    SellerStatusService? sellerStatusService,
   })  : _cartRepository = cartRepository,
         _couponRepository = couponRepository,
+        _productRepository = productRepository,
         _authService = authService,
+        _sellerStatusService = sellerStatusService ?? SellerStatusService(),
         super(const CartLoading()) {
     
     _authSubscription = _authService.authStateChanges.listen((userId) {
@@ -109,6 +117,28 @@ class CartBloc extends Bloc<CartEvent, CartState> {
             _subscribeToCoupons(sellerIds);
           }
 
+          final currentState = state;
+          if (currentState is CartLoaded) {
+            double discountAmount = 0.0;
+            double finalAmount = totalAmount;
+            
+            if (currentState.appliedCoupon != null) {
+              final coupon = currentState.appliedCoupon!;
+              discountAmount = coupon.isPercentage
+                  ? (totalAmount * coupon.discountAmount / 100).clamp(0, totalAmount) as double
+                  : coupon.discountAmount.clamp(0, totalAmount) as double;
+              finalAmount = totalAmount - discountAmount;
+            }
+
+            return currentState.copyWith(
+              items: items,
+              totalAmount: totalAmount,
+              totalCount: totalCount,
+              discountAmount: discountAmount,
+              finalAmount: finalAmount,
+            );
+          }
+
           return CartLoaded(
             items: items,
             totalAmount: totalAmount,
@@ -130,9 +160,25 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     final uid = _currentUserId;
     if (uid == null) return;
     try {
+      final currentState = state;
+      if (currentState is CartLoaded && event.item.quantity > 0) {
+        final product = await _productRepository.getProduct(event.item.id, event.item.sellerId);
+        if (product != null) {
+          if (!product.isActive || product.isArchived) {
+            emit(_cartErrorWithPrevious(currentState, '${event.item.name} is currently unavailable.'));
+            return;
+          }
+          if (product.availableStock < event.item.quantity) {
+            emit(_cartErrorWithPrevious(currentState, '${event.item.name} only has ${product.availableStock} in stock.'));
+            return;
+          }
+        }
+      }
       await _cartRepository.addItem(uid, event.item);
     } catch (e) {
-      // Emit error or log
+      if (state is CartLoaded) {
+        emit(_cartErrorWithPrevious(state as CartLoaded, 'Failed to add item to cart.'));
+      }
     }
   }
 
@@ -145,7 +191,9 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     try {
       await _cartRepository.removeItem(uid, event.id);
     } catch (e) {
-      // Emit error or log
+      if (state is CartLoaded) {
+        emit(_cartErrorWithPrevious(state as CartLoaded, 'Failed to remove item.'));
+      }
     }
   }
 
@@ -158,7 +206,9 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     try {
       await _cartRepository.updateQuantity(uid, event.id, event.delta);
     } catch (e) {
-      // Emit error or log
+      if (state is CartLoaded) {
+        emit(_cartErrorWithPrevious(state as CartLoaded, 'Failed to update quantity.'));
+      }
     }
   }
 
@@ -171,8 +221,14 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     try {
       await _cartRepository.toggleSelection(uid, event.id, event.isSelected);
     } catch (e) {
-      // Emit error or log
+      if (state is CartLoaded) {
+        emit(_cartErrorWithPrevious(state as CartLoaded, 'Failed to update selection.'));
+      }
     }
+  }
+
+  CartError _cartErrorWithPrevious(CartLoaded previous, String message) {
+    return CartError(message, previousState: previous);
   }
 
   Future<void> _onCartCleared(
@@ -190,7 +246,9 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     try {
       await _cartRepository.clearCart(uid);
     } catch (e) {
-      // Handle error
+      if (state is CartLoaded) {
+        emit(_cartErrorWithPrevious(state as CartLoaded, 'Failed to clear cart.'));
+      }
     }
   }
 
@@ -203,21 +261,79 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
     try {
       final currentState = state;
-      if (currentState is CartLoaded) {
-        final selectedItems = currentState.items.where((i) => i.isSelected).toList();
-        if (selectedItems.isEmpty) return;
+      if (currentState is! CartLoaded) return;
 
-        await _cartRepository.checkoutCart(
-          uid, selectedItems, 'Customer',
-          appliedCoupon: currentState.appliedCoupon,
-        );
-        
-        if (event.onSuccess != null) {
-          event.onSuccess!();
+      final selectedItems = currentState.items.where((i) => i.isSelected).toList();
+      if (selectedItems.isEmpty) return;
+
+      final sellerIds = selectedItems.map((i) => i.sellerId).toSet().toList();
+      for (final sellerId in sellerIds) {
+        final availability = await _sellerStatusService.checkAvailability(sellerId);
+        if (!availability.isAvailable) {
+          final msg = !availability.isOnline
+              ? 'Store is currently offline.'
+              : (availability.message ?? 'Store is currently closed.');
+          emit(currentState.copyWith(
+            couponMessage: msg,
+            clearCouponMessage: false,
+          ));
+          if (event.onInsufficientBalance != null) {
+            event.onInsufficientBalance!(msg);
+          }
+          return;
         }
       }
+
+      List<String> validationErrors = [];
+      for (final item in selectedItems) {
+        final product = await _productRepository.getProduct(item.id, item.sellerId);
+        if (product == null) {
+          validationErrors.add('${item.name} is no longer available.');
+          continue;
+        }
+        if (!product.isActive || product.isArchived) {
+          validationErrors.add('${item.name} is currently disabled.');
+          continue;
+        }
+        if (product.availableStock < item.quantity) {
+          validationErrors.add('${item.name} only has ${product.availableStock} in stock (you requested ${item.quantity}).');
+          continue;
+        }
+        if (product.effectivePrice != item.price) {
+          await _cartRepository.updateItemPrice(uid, item.id, product.effectivePrice);
+          validationErrors.add('${item.name} price has been automatically updated from ₹${item.price.toStringAsFixed(0)} to ₹${product.effectivePrice.toStringAsFixed(0)}.');
+          continue;
+        }
+      }
+
+      if (validationErrors.isNotEmpty) {
+        final msg = validationErrors.join('\n');
+        emit(currentState.copyWith(
+          couponMessage: msg,
+          clearCouponMessage: false,
+        ));
+        if (event.onInsufficientBalance != null) {
+          event.onInsufficientBalance!(msg);
+        }
+        return;
+      }
+
+      await _cartRepository.checkoutCart(
+        uid, selectedItems, 'Customer',
+        appliedCoupon: currentState.appliedCoupon,
+      );
+
+      if (event.onSuccess != null) {
+        event.onSuccess!(null);
+      }
     } catch (e) {
-      print("Checkout Error: $e");
+      debugPrint("Checkout Error: $e");
+      if (state is CartLoaded) {
+        emit((state as CartLoaded).copyWith(
+          couponMessage: 'Checkout failed. Please try again.',
+          clearCouponMessage: false,
+        ));
+      }
     }
   }
 

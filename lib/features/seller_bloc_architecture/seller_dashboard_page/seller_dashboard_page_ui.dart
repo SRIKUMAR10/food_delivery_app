@@ -5,6 +5,10 @@ import 'seller_dashboard_page_bloc.dart';
 import 'seller_dashboard_page_event.dart';
 import 'seller_dashboard_page_state.dart';
 import 'seller_dashboard_repository.dart';
+import '../seller_NavigationBarView_page/seller_NavigationBarView_page_bloc.dart';
+import '../seller_NavigationBarView_page/seller_NavigationBarView_page_event.dart';
+import '../orders_list/orders_list_page_bloc.dart';
+import '../orders_list/orders_list_page_event.dart';
 
 import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
 import '../new_order_notification/new_order_notification_ui.dart';
@@ -151,14 +155,15 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                     // Header
                     SellerAppBarPageUI(
                       title: 'Good Morning, ${data.storeName} 👋',
-                      notificationCount: data.pendingOrdersCount,
+                      notificationCount: data.newOrdersCount,
                       onNotificationTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NewOrderNotificationPage(),
-                          ),
-                        );
+                        try {
+                          context.read<SellerNavigationBarViewPageBloc>().add(TabChangedEvent(1));
+                          context.read<OrdersListBloc>().add(FilterOrders('New'));
+                        } catch (e) {
+                          // Blocs might not be available if not in the correct context hierarchy,
+                          // but SellerNavigationBarViewPageUI provides them.
+                        }
                       },
                     ),
                     const SizedBox(height: 24),

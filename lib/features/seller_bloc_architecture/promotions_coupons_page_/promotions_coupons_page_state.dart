@@ -1,10 +1,20 @@
+import 'package:equatable/equatable.dart';
 import 'promotions_coupons_page_model.dart';
 
-abstract class PromotionsCouponsState {}
+abstract class PromotionsCouponsState extends Equatable {
+  const PromotionsCouponsState();
 
-class PromotionsCouponsInitial extends PromotionsCouponsState {}
+  @override
+  List<Object?> get props => [];
+}
 
-class PromotionsCouponsLoading extends PromotionsCouponsState {}
+class PromotionsCouponsInitial extends PromotionsCouponsState {
+  const PromotionsCouponsInitial();
+}
+
+class PromotionsCouponsLoading extends PromotionsCouponsState {
+  const PromotionsCouponsLoading();
+}
 
 class PromotionsCouponsLoaded extends PromotionsCouponsState {
   final List<CouponModel> coupons;
@@ -12,7 +22,7 @@ class PromotionsCouponsLoaded extends PromotionsCouponsState {
   final String? errorMessage;
   final Set<String> processingCouponIds;
 
-  PromotionsCouponsLoaded({
+  const PromotionsCouponsLoaded({
     required this.coupons,
     this.successMessage,
     this.errorMessage,
@@ -33,9 +43,15 @@ class PromotionsCouponsLoaded extends PromotionsCouponsState {
       processingCouponIds: processingCouponIds ?? this.processingCouponIds,
     );
   }
+
+  @override
+  List<Object?> get props => [coupons, successMessage, errorMessage, processingCouponIds];
 }
 
 class PromotionsCouponsError extends PromotionsCouponsState {
   final String message;
-  PromotionsCouponsError(this.message);
+  const PromotionsCouponsError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

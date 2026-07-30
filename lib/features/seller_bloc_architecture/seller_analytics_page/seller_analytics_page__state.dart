@@ -15,11 +15,18 @@ class AnalyticsLoading extends SellerAnalyticsState {}
 class AnalyticsLoaded extends SellerAnalyticsState {
   final AnalyticsDataModel data;
   final String selectedTimeRange;
+  final FavoritesAnalytics? favorites;
+  final RatingAnalytics? ratingAnalytics;
 
-  const AnalyticsLoaded({required this.data, required this.selectedTimeRange});
+  const AnalyticsLoaded({
+    required this.data,
+    required this.selectedTimeRange,
+    this.favorites,
+    this.ratingAnalytics,
+  });
 
   @override
-  List<Object?> get props => [data, selectedTimeRange];
+  List<Object?> get props => [data, selectedTimeRange, favorites, ratingAnalytics];
 }
 
 class AnalyticsEmpty extends SellerAnalyticsState {

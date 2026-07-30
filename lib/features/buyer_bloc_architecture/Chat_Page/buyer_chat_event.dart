@@ -1,24 +1,42 @@
+import 'package:equatable/equatable.dart';
 import '../../../core/models/chat_message_model.dart';
+import '../home_Page/home_page_models.dart';
 
-abstract class BuyerChatEvent {}
+abstract class BuyerChatEvent extends Equatable {
+  const BuyerChatEvent();
 
-class LoadBuyerConversations extends BuyerChatEvent {}
+  @override
+  List<Object?> get props => [];
+}
+
+class LoadBuyerConversations extends BuyerChatEvent {
+  const LoadBuyerConversations();
+}
 
 class SelectBuyerConversation extends BuyerChatEvent {
   final String conversationId;
-  SelectBuyerConversation(this.conversationId);
+  const SelectBuyerConversation(this.conversationId);
+
+  @override
+  List<Object?> get props => [conversationId];
 }
 
 class SendBuyerMessage extends BuyerChatEvent {
   final String conversationId;
   final String text;
-  SendBuyerMessage(this.conversationId, this.text);
+  const SendBuyerMessage(this.conversationId, this.text);
+
+  @override
+  List<Object?> get props => [conversationId, text];
 }
 
 class DeleteBuyerMessage extends BuyerChatEvent {
   final ChatMessageModel message;
   final bool forEveryone;
-  DeleteBuyerMessage(this.message, {required this.forEveryone});
+  const DeleteBuyerMessage(this.message, {required this.forEveryone});
+
+  @override
+  List<Object?> get props => [message, forEveryone];
 }
 
 class StartBuyerConversation extends BuyerChatEvent {
@@ -30,7 +48,7 @@ class StartBuyerConversation extends BuyerChatEvent {
   final String? orderId;
   final String? initialMessage;
 
-  StartBuyerConversation({
+  const StartBuyerConversation({
     required this.sellerId,
     required this.sellerName,
     required this.buyerName,
@@ -39,39 +57,66 @@ class StartBuyerConversation extends BuyerChatEvent {
     this.orderId,
     this.initialMessage,
   });
+
+  @override
+  List<Object?> get props => [sellerId, sellerName, buyerName, shopName, sellerImageUrl, orderId, initialMessage];
 }
 
 class FilterBuyerConversations extends BuyerChatEvent {
   final String query;
-  FilterBuyerConversations(this.query);
+  const FilterBuyerConversations(this.query);
+
+  @override
+  List<Object?> get props => [query];
 }
 
 class SendBuyerMediaMessage extends BuyerChatEvent {
   final String conversationId;
-  final dynamic file; // File or byte array
-  final String messageType; // 'image', 'audio', 'document'
+  final dynamic file;
+  final String messageType;
   final String fileName;
   final int? duration;
 
-  SendBuyerMediaMessage({
+  const SendBuyerMediaMessage({
     required this.conversationId,
     required this.file,
     required this.messageType,
     required this.fileName,
     this.duration,
   });
+
+  @override
+  List<Object?> get props => [conversationId, messageType, fileName, duration];
 }
 
 class ToggleEmojiPicker extends BuyerChatEvent {
   final bool show;
-  ToggleEmojiPicker(this.show);
+  const ToggleEmojiPicker(this.show);
+
+  @override
+  List<Object?> get props => [show];
 }
 
-class StartAudioRecording extends BuyerChatEvent {}
+class StartAudioRecording extends BuyerChatEvent {
+  const StartAudioRecording();
+}
 
 class StopAudioRecording extends BuyerChatEvent {
   final String conversationId;
-  StopAudioRecording(this.conversationId);
+  const StopAudioRecording(this.conversationId);
+
+  @override
+  List<Object?> get props => [conversationId];
 }
 
-class CancelAudioRecording extends BuyerChatEvent {}
+class CancelAudioRecording extends BuyerChatEvent {
+  const CancelAudioRecording();
+}
+
+class SelectProductForSupport extends BuyerChatEvent {
+  final FoodItem? product;
+  const SelectProductForSupport(this.product);
+
+  @override
+  List<Object?> get props => [product];
+}

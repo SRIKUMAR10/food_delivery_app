@@ -473,7 +473,12 @@ class _DesktopSideMenuState extends State<_DesktopSideMenu> {
                             iconColor: const Color(0xFFE52929),
                             textColor: const Color(0xFFE52929),
                             onTap: () async {
-                              await SellerRepository().signOut();
+                              final repo = SellerRepository();
+                              final uid = repo.currentUser?.uid;
+                              if (uid != null) {
+                                await repo.updateSellerData(uid, {'isOnline': false});
+                              }
+                              await repo.signOut();
                               if (context.mounted) {
                                 Navigator.pushAndRemoveUntil(
                                   context,

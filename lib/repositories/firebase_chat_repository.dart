@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
@@ -206,6 +207,22 @@ class FirebaseChatRepository implements IChatRepository {
   }) async {
     final existing = await getConversationByParticipants(buyerId, sellerId);
     if (existing != null) {
+      if (orderId != null && orderId != existing.orderId) {
+        final updateData = <String, dynamic>{'orderId': orderId};
+        if (orderImageUrl != null) updateData['orderImageUrl'] = orderImageUrl;
+        if (orderTitle != null) updateData['orderTitle'] = orderTitle;
+        if (orderTotal != null) updateData['orderTotal'] = orderTotal;
+        await _firestore.collection('conversations').doc(existing.id).update(updateData);
+        
+        await sendMessage(
+          conversationId: existing.id,
+          text: orderId,
+          senderId: buyerId,
+          senderRole: 'buyer',
+          messageType: 'order_card',
+        );
+      }
+      
       if (initialMessage != null && initialMessage.isNotEmpty) {
         await sendMessage(
           conversationId: existing.id,
@@ -242,6 +259,16 @@ class FirebaseChatRepository implements IChatRepository {
       'createdAt': Timestamp.fromDate(now),
       'updatedAt': Timestamp.fromDate(now),
     });
+
+    if (orderId != null) {
+      await sendMessage(
+        conversationId: conversationId,
+        text: orderId,
+        senderId: buyerId,
+        senderRole: 'buyer',
+        messageType: 'order_card',
+      );
+    }
 
     if (initialMessage != null && initialMessage.isNotEmpty) {
       await sendMessage(
@@ -344,26 +371,26 @@ class FirebaseChatRepository implements IChatRepository {
       final bytes = await file.readAsBytes();
       final uploadTask = storageRef.putData(bytes, metadata);
       final snapshot = await uploadTask;
-      print('2. [Firebase Upload] Snapshot Total Bytes: ${snapshot.totalBytes}');
+      debugPrint('2. [Firebase Upload] Snapshot Total Bytes: ${snapshot.totalBytes}');
     } else if (file is File) {
       final uploadTask = storageRef.putFile(file, metadata);
       final snapshot = await uploadTask;
-      print('2. [Firebase Upload] Snapshot Total Bytes: ${snapshot.totalBytes}');
-      print('2. [Firebase Upload] Snapshot Bytes Transferred: ${snapshot.bytesTransferred}');
+      debugPrint('2. [Firebase Upload] Snapshot Total Bytes: ${snapshot.totalBytes}');
+      debugPrint('2. [Firebase Upload] Snapshot Bytes Transferred: ${snapshot.bytesTransferred}');
       final finalMetadata = await snapshot.ref.getMetadata();
-      print('2. [Firebase Upload] Uploaded Content-Type: ${finalMetadata.contentType}');
+      debugPrint('2. [Firebase Upload] Uploaded Content-Type: ${finalMetadata.contentType}');
     } else {
       // Assuming file is Uint8List for web
       final uploadTask = storageRef.putData(file, metadata);
       final snapshot = await uploadTask;
-      print('2. [Firebase Upload] Snapshot Total Bytes: ${snapshot.totalBytes}');
-      print('2. [Firebase Upload] Snapshot Bytes Transferred: ${snapshot.bytesTransferred}');
+      debugPrint('2. [Firebase Upload] Snapshot Total Bytes: ${snapshot.totalBytes}');
+      debugPrint('2. [Firebase Upload] Snapshot Bytes Transferred: ${snapshot.bytesTransferred}');
       final finalMetadata = await snapshot.ref.getMetadata();
-      print('2. [Firebase Upload] Uploaded Content-Type: ${finalMetadata.contentType}');
+      debugPrint('2. [Firebase Upload] Uploaded Content-Type: ${finalMetadata.contentType}');
     }
 
     final downloadUrl = await storageRef.getDownloadURL();
-    print('2. [Firebase Upload] Download URL: $downloadUrl');
+    debugPrint('2. [Firebase Upload] Download URL: $downloadUrl');
     return downloadUrl;
   }
 

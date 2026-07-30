@@ -23,19 +23,19 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    print('AudioPlayerWidget initialized with URL: ${widget.audioUrl}');
+    debugPrint('AudioPlayerWidget initialized with URL: ${widget.audioUrl}');
     
     _initAudio();
 
     _audioPlayer.onPlayerStateChanged.listen((state) {
       if (_isDisposed) return;
-      print('4. [Playback] PlayerState changed: $state');
+      debugPrint('4. [Playback] PlayerState changed: $state');
       if (mounted) setState(() => _isPlaying = state == PlayerState.playing);
     });
 
     _audioPlayer.onDurationChanged.listen((newDuration) {
       if (_isDisposed) return;
-      print('4. [Playback] Duration changed: $newDuration');
+      debugPrint('4. [Playback] Duration changed: $newDuration');
       if (mounted) setState(() => _duration = newDuration);
     });
 
@@ -46,7 +46,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
     
     _audioPlayer.onPlayerComplete.listen((event) {
       if (_isDisposed) return;
-      print('4. [Playback] Player Complete');
+      debugPrint('4. [Playback] Player Complete');
       if (mounted) {
         setState(() {
           _isPlaying = false;
@@ -59,7 +59,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_isDisposed) return;
-    print('AudioPlayerWidget AppLifecycleState: $state');
+    debugPrint('AudioPlayerWidget AppLifecycleState: $state');
     
     // Pause audio when app goes to background or is hidden
     if (state == AppLifecycleState.paused || 
@@ -67,7 +67,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
       if (_isPlaying) {
-        _audioPlayer.pause().catchError((e) => print('Error pausing audio: $e'));
+        _audioPlayer.pause().catchError((e) => debugPrint('Error pausing audio: $e'));
       }
     }
   }
@@ -81,7 +81,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
       }
     } catch (e) {
       if (!_isDisposed) {
-        print('AudioPlayer init error: $e');
+        debugPrint('AudioPlayer init error: $e');
       }
     }
   }
@@ -93,7 +93,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
     try {
       _audioPlayer.dispose();
     } catch (e) {
-      print('AudioPlayer dispose error: $e');
+      debugPrint('AudioPlayer dispose error: $e');
     }
     super.dispose();
   }
@@ -157,7 +157,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> with WidgetsBindi
                   try {
                     await _audioPlayer.play(UrlSource(widget.audioUrl));
                   } catch (webError) {
-                    // silently fail
+                    debugPrint('Audio playback resume failed: $webError');
                   }
                 }
               }

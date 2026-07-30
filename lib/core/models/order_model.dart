@@ -91,7 +91,7 @@ class OrderModel extends Equatable {
       sellerId: map['sellerId'] as String? ?? '',
       riderId: map['riderId'] as String?,
       status: OrderStatus.fromString(map['status'] as String? ?? 'New'),
-      amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+      amount: ((map['amount'] as num?)?.toDouble() ?? 0.0).roundToDouble(),
       timestamp: (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       items: (map['items'] as List<dynamic>?)
           ?.map((e) => OrderItemModel.fromMap(e as Map<String, dynamic>))

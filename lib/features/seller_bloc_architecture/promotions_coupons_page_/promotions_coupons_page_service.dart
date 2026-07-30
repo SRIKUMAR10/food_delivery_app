@@ -41,6 +41,7 @@ class PromotionsCouponsService {
           .doc();
 
       await docRef.set({
+        'sellerId': sellerId,
         'code': coupon.code,
         'description': coupon.description,
         'discountAmount': coupon.discountAmount,
@@ -66,6 +67,7 @@ class PromotionsCouponsService {
           .collection('coupons')
           .doc(coupon.id)
           .update({
+        'sellerId': sellerId,
         'code': coupon.code,
         'description': coupon.description,
         'discountAmount': coupon.discountAmount,

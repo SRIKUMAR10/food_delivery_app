@@ -40,6 +40,14 @@ class InventoryInitial extends InventoryState {}
 
 class InventoryLoading extends InventoryState {}
 
+class InventoryError extends InventoryState {
+  final String message;
+  const InventoryError({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}
+
 class InventoryLoaded extends InventoryState {
   final String sellerId;
   final List<InventoryItemModel> allItems;

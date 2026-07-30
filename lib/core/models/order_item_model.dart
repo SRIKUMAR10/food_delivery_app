@@ -22,7 +22,7 @@ class OrderItemModel extends Equatable {
       productId: map['productId'] as String? ?? '',
       name: map['name'] as String? ?? 'Unknown Item',
       quantity: (map['quantity'] as num?)?.toInt() ?? 1,
-      price: (map['price'] as num?)?.toDouble() ?? 0.0,
+      price: ((map['price'] as num?)?.toDouble() ?? 0.0).roundToDouble(),
       imageUrl: map['imageUrl'] as String?,
       specialInstructions: map['specialInstructions'] as String?,
     );

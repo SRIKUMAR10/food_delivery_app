@@ -118,20 +118,19 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-   - assets/images/chef.png
-   - assets/images/FoodGo.svg
-   - assets/images/Sign up.png
-   - assets/images/google.png
-   - assets/images/apple_logo.png
-   - assets/images/Seller_login.png
-   - assets/images/seller onboard page.png
-   - assets/images/seller onboard page_2.png
-  
-   - assets/images/seller_curved_ImgID1.svg
-   - .env
-
-  
-  
+    - assets/images/chef.png
+    - assets/images/FoodGo.svg
+    - assets/images/Sign up.png
+    - assets/images/google.png
+    - assets/images/apple_logo.png
+    - assets/images/Seller_login.png
+    - assets/images/seller onboard page.png
+    - assets/images/seller onboard page_2.png
+    - assets/images/Delivery_onboarding.png
+    - assets/images/Delivery_scooter.png
+    - assets/images/Delivery_Login_scooter.png
+    - assets/images/seller_curved_ImgID1.svg
+    - .env
 
 
 

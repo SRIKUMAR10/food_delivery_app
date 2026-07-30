@@ -1,10 +1,20 @@
+import 'package:equatable/equatable.dart';
 import 'business_hours_page_model.dart';
 
-abstract class BusinessHoursState {}
+abstract class BusinessHoursState extends Equatable {
+  const BusinessHoursState();
 
-class BusinessHoursInitial extends BusinessHoursState {}
+  @override
+  List<Object?> get props => [];
+}
 
-class BusinessHoursLoading extends BusinessHoursState {}
+class BusinessHoursInitial extends BusinessHoursState {
+  const BusinessHoursInitial();
+}
+
+class BusinessHoursLoading extends BusinessHoursState {
+  const BusinessHoursLoading();
+}
 
 class BusinessHoursLoaded extends BusinessHoursState {
   final List<BusinessDayModel> schedule;
@@ -13,7 +23,7 @@ class BusinessHoursLoaded extends BusinessHoursState {
   final String? errorMessage;
   final bool isUpdating;
 
-  BusinessHoursLoaded({
+  const BusinessHoursLoaded({
     required this.schedule,
     required this.isEmergencyClosed,
     this.successMessage,
@@ -37,9 +47,15 @@ class BusinessHoursLoaded extends BusinessHoursState {
       isUpdating: isUpdating ?? this.isUpdating,
     );
   }
+
+  @override
+  List<Object?> get props => [schedule, isEmergencyClosed, successMessage, errorMessage, isUpdating];
 }
 
 class BusinessHoursError extends BusinessHoursState {
   final String message;
-  BusinessHoursError(this.message);
+  const BusinessHoursError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

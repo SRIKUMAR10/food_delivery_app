@@ -13,6 +13,7 @@ import 'add_product_page__state.dart';
 import '../product_list_page_/product_preview_page.dart';
 import '../../../../core/models/product_model.dart';
 import '../../../../core/repositories/i_product_repository.dart';
+import '../../../../core/repositories/i_seller_repository.dart';
 import '../../../../core/services/i_auth_service.dart';
 
 // --- Theme Constants (Material 3) ---
@@ -37,6 +38,7 @@ class AddProductPage extends StatelessWidget {
         final bloc = AddProductPageBloc(
           repository: context.read<IProductRepository>(),
           authService: context.read<IAuthService>(),
+          sellerRepository: context.read<ISellerRepository>(),
         )..add(FetchGstPercentageEvent());
         if (productId != null) {
           bloc.add(LoadProductEvent(productId!));
@@ -169,11 +171,16 @@ class _AddProductViewState extends State<AddProductView> {
             if (state.initialProduct != null && !_isInitialized) {
               final p = state.initialProduct!;
               _nameController.text = p.name;
-              _priceController.text = p.price.toString();
+              _priceController.text = p.basePrice > 0 ? p.basePrice.toString() : p.price.toString();
 
               double pct = 0.0;
-              if (p.discountPrice > 0 && p.price > 0) {
-                pct = 100 * (1 - (p.discountPrice / p.price));
+              final currentBasePrice = p.basePrice > 0 ? p.basePrice : p.price;
+              if (p.discountPrice > 0 && currentBasePrice > 0) {
+                // Determine discount based on pre-GST base price vs. post-GST final price.
+                // The easiest way is to use the discountPercentage if we stored it,
+                // but since we don't, we can reverse calculate the discount.
+                final basePriceWithGst = currentBasePrice * (1 + (p.gstPercentage / 100));
+                pct = 100 * (1 - (p.discountPrice / basePriceWithGst));
                 if (pct < 0) pct = 0;
               }
               _discountController.text = pct > 0 ? pct.toStringAsFixed(0) : '';
@@ -1289,6 +1296,8 @@ class _AddProductViewState extends State<AddProductView> {
     final discountedPrice = price - (price * (discount / 100));
     final gstAmount = discountedPrice * (state.gstPercentage / 100);
     final finalPrice = discountedPrice + gstAmount;
+    final roundedFinalPrice = finalPrice.roundToDouble();
+    final roundOff = roundedFinalPrice - finalPrice;
 
     return _buildCard(
       child: Column(
@@ -1352,8 +1361,14 @@ class _AddProductViewState extends State<AddProductView> {
                 ],
                 Container(width: 1, height: 40, color: _borderColor),
                 _buildPriceStat(
+                  'Round Off',
+                  '₹${roundOff.toStringAsFixed(2)}',
+                  _textSecondary,
+                ),
+                Container(width: 1, height: 40, color: _borderColor),
+                _buildPriceStat(
                   'Final Price',
-                  '₹${finalPrice.toStringAsFixed(2)}',
+                  '₹${roundedFinalPrice.toStringAsFixed(2)}',
                   _primaryColor,
                 ),
               ],
@@ -1929,13 +1944,17 @@ class _AddProductViewState extends State<AddProductView> {
     final price = double.tryParse(_priceController.text) ?? 0.0;
     final discount = double.tryParse(_discountController.text) ?? 0.0;
     final discountedPrice = price - (price * (discount / 100));
-    final finalPrice = discountedPrice + (discountedPrice * 0.18);
+    final gstAmount = discountedPrice * (state.gstPercentage / 100);
+    final finalPrice = discountedPrice + gstAmount;
+    final roundedFinalPrice = finalPrice.roundToDouble();
+    final basePriceWithGst = price + (price * (state.gstPercentage / 100));
+    final roundedBasePriceWithGst = basePriceWithGst.roundToDouble();
 
     final previewProduct = Product(
       id: state.initialProduct?.id ?? 'preview-id',
       name: _nameController.text,
-      price: price,
-      discountPrice: finalPrice,
+      price: roundedBasePriceWithGst,
+      discountPrice: roundedFinalPrice,
       description: _descController.text,
       imageUrls: [
         ...state.existingImages,
@@ -1998,13 +2017,19 @@ class _AddProductViewState extends State<AddProductView> {
                     final basePrice = double.tryParse(_priceController.text) ?? 0.0;
                     final discountPct = double.tryParse(_discountController.text) ?? 0.0;
                     final discounted = basePrice - (basePrice * (discountPct / 100));
-                    final finalPrice = discounted;
+                    final gstAmount = discounted * (state.gstPercentage / 100);
+                    final finalPrice = discounted + gstAmount;
+                    final roundedFinalPrice = finalPrice.roundToDouble();
+                    final basePriceWithGst = basePrice + (basePrice * (state.gstPercentage / 100));
+                    final roundedBasePriceWithGst = basePriceWithGst.roundToDouble();
 
                     context.read<AddProductPageBloc>().add(
                       SubmitProductEvent(
                         name: _nameController.text,
-                        price: basePrice,
-                        discountPrice: finalPrice,
+                        price: roundedBasePriceWithGst,
+                        basePrice: basePrice,
+                        gstPercentage: state.gstPercentage,
+                        discountPrice: roundedFinalPrice,
                         description: _descController.text,
                         prepTime: _prepTimeController.text,
                         calories: _caloriesController.text,
@@ -2094,13 +2119,19 @@ class _AddProductViewState extends State<AddProductView> {
                           final basePrice = double.tryParse(_priceController.text) ?? 0.0;
                           final discountPct = double.tryParse(_discountController.text) ?? 0.0;
                           final discounted = basePrice - (basePrice * (discountPct / 100));
-                          final finalPrice = discounted;
+                          final gstAmount = discounted * (state.gstPercentage / 100);
+                          final finalPrice = discounted + gstAmount;
+                          final roundedFinalPrice = finalPrice.roundToDouble();
+                          final basePriceWithGst = basePrice + (basePrice * (state.gstPercentage / 100));
+                          final roundedBasePriceWithGst = basePriceWithGst.roundToDouble();
 
                           context.read<AddProductPageBloc>().add(
                             SubmitProductEvent(
                               name: _nameController.text,
-                              price: basePrice,
-                              discountPrice: finalPrice,
+                              price: roundedBasePriceWithGst,
+                              basePrice: basePrice,
+                              gstPercentage: state.gstPercentage,
+                              discountPrice: roundedFinalPrice,
                               description: _descController.text,
                               prepTime: _prepTimeController.text,
                               calories: _caloriesController.text,

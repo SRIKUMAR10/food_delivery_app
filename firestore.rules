@@ -154,5 +154,12 @@ service cloud.firestore {
         allow read, write: if isOwner(riderId);
       }
     }
+
+    // --- 12. Seller Reviews Collection ---
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isOwner(request.resource.data.customerId);
+      allow update, delete: if isOwner(resource.data.customerId);
+    }
   }
 }

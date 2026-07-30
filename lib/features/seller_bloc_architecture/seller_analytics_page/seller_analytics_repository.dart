@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/models/analytics_data_model.dart';
 import '../../../../core/models/order_status.dart';
@@ -158,5 +159,117 @@ class SellerAnalyticsRepository {
       bestSellingProducts: topProducts,
       revenueChartData: chartDataPoints,
     );
+  }
+
+  Stream<FavoritesAnalytics> streamFavoritesAnalytics(String sellerId) {
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final startOfThisWeek =
+        startOfToday.subtract(Duration(days: now.weekday - 1));
+    final startOfThisMonth = DateTime(now.year, now.month, 1);
+
+    return _firestore
+        .collectionGroup('favorites')
+        .where('sellerId', isEqualTo: sellerId)
+        .snapshots()
+        .map((snapshot) {
+      final totalFavorites = snapshot.docs.length;
+
+      final Map<String, int> perProduct = {};
+      final Map<String, String> productNames = {};
+      int todayCount = 0;
+      int thisWeekCount = 0;
+      int thisMonthCount = 0;
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final productId = doc.id;
+        perProduct[productId] = (perProduct[productId] ?? 0) + 1;
+
+        final name = data['name'] as String? ?? productId;
+        productNames[productId] = name;
+
+        final addedAt = (data['addedAt'] as Timestamp?)?.toDate();
+        if (addedAt != null) {
+          if (!addedAt.isBefore(startOfToday)) todayCount++;
+          if (!addedAt.isBefore(startOfThisWeek)) thisWeekCount++;
+          if (!addedAt.isBefore(startOfThisMonth)) thisMonthCount++;
+        }
+      }
+
+      final sorted = perProduct.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+
+      final topProducts = sorted.take(10).map((e) => FavoriteProductStats(
+            productId: e.key,
+            productName: productNames[e.key] ?? e.key,
+            favoriteCount: e.value,
+          )).toList();
+
+      return FavoritesAnalytics(
+        totalFavorites: totalFavorites,
+        todayCount: todayCount,
+        thisWeekCount: thisWeekCount,
+        thisMonthCount: thisMonthCount,
+        topProducts: topProducts,
+      );
+    });
+  }
+
+  Stream<RatingAnalytics> streamRatingAnalytics(String sellerId) {
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final startOfThisWeek =
+        startOfToday.subtract(Duration(days: now.weekday - 1));
+    final startOfThisMonth = DateTime(now.year, now.month, 1);
+
+    return _firestore
+        .collection('reviews')
+        .where('sellerId', isEqualTo: sellerId)
+        .snapshots()
+        .map((snapshot) {
+      final totalReviews = snapshot.docs.length;
+      double totalRating = 0;
+      int todayCount = 0;
+      int thisWeekCount = 0;
+      int thisMonthCount = 0;
+      final Map<int, int> distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+      final List<RecentReview> recent = [];
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final rating = (data['rating'] as num?)?.toDouble() ?? 0;
+        totalRating += rating;
+
+        final star = rating.round();
+        if (star >= 1 && star <= 5) distribution[star] = (distribution[star] ?? 0) + 1;
+
+        final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+        if (createdAt != null) {
+          if (!createdAt.isBefore(startOfToday)) todayCount++;
+          if (!createdAt.isBefore(startOfThisWeek)) thisWeekCount++;
+          if (!createdAt.isBefore(startOfThisMonth)) thisMonthCount++;
+          recent.add(RecentReview(
+            customerName: data['customerName'] as String? ?? 'Anonymous',
+            customerAvatarUrl: data['customerAvatarUrl'] as String?,
+            rating: rating,
+            content: data['content'] as String? ?? '',
+            createdAt: createdAt,
+          ));
+        }
+      }
+
+      recent.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return RatingAnalytics(
+        averageRating: totalReviews > 0 ? totalRating / totalReviews : 0.0,
+        totalReviews: totalReviews,
+        todayCount: todayCount,
+        thisWeekCount: thisWeekCount,
+        thisMonthCount: thisMonthCount,
+        ratingDistribution: distribution,
+        recentReviews: recent.take(5).toList(),
+      );
+    });
   }
 }

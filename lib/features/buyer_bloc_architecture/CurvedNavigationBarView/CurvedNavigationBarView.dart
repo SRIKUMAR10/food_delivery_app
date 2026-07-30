@@ -89,10 +89,22 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
       if (_selectedIndex != 4) {
         _returnTabIndex = _selectedIndex;
       }
-      _tabNavigators[4] = _buildTabNavigator(
-        4,
-        BuyerChatPage(pendingOrderData: data),
-      );
+      
+      final navState = _navigatorKeys[4].currentState;
+      if (navState != null) {
+        navState.pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => BuyerChatPage(pendingOrderData: data),
+          ),
+          (route) => false,
+        );
+      } else {
+        _tabNavigators[4] = _buildTabNavigator(
+          4,
+          BuyerChatPage(pendingOrderData: data),
+        );
+      }
+      
       if (mounted) setState(() => _selectedIndex = 4);
     }
   }

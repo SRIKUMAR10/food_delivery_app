@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'menu_category_management_page_model.dart';
 
@@ -20,7 +21,7 @@ class MenuCategoryManagementService {
           );
         }).toList();
       } catch (e) {
-        print('Could not fetch global categories: $e');
+        debugPrint('Could not fetch global categories: $e');
       }
 
       // If no global categories exist (or permission denied), provide some defaults to bootstrap
@@ -48,7 +49,7 @@ class MenuCategoryManagementService {
           sellerPrefs[doc.id] = doc.data();
         }
       } catch (e) {
-        print('Could not fetch seller preferences: $e');
+        debugPrint('Could not fetch seller preferences: $e');
       }
 
       // 3. Merge them

@@ -7,7 +7,7 @@ class NewOrderNotificationRepository {
 
   NewOrderNotificationRepository({required this.service});
 
-  Stream<OrderModel> streamNewOrders(String sellerId) {
+  Stream<List<OrderModel>> streamNewOrders(String sellerId) {
     return service.streamNewOrders(sellerId);
   }
 

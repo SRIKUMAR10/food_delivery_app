@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/repositories/i_seller_repository.dart';
 import '../Cart Page/cart_page.dart';
 import '../Favorites_Page/favorites_bloc.dart';
 import '../Favorites_Page/favorites_event.dart';
@@ -13,8 +15,8 @@ import '../home_Page/home_page_models.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../Rating_page/reviews_list_screen.dart';
 import '../../seller_bloc_architecture/product_list_page_/product_image_carousel.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:food_delivery_app/core/models/seller_model.dart';
+import 'package:food_delivery_app/core/services/seller_status_service.dart';
 import 'details_page_Bloc.dart';
 import 'details_page_Event.dart';
 import 'details_page_State.dart';
@@ -116,6 +118,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   final Set<String> _selectedAddons = {};
   SellerModel? _seller;
   bool _isLoadingSeller = true;
+  SellerAvailability? _sellerAvailability;
+  StreamSubscription<SellerAvailability>? _sellerStatusSub;
 
   static const _primaryRed = Color(0xFFEF2A39);
   static const _bgColor = Color(0xFFF8F8F8);
@@ -123,7 +127,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   final NumberFormat _currFmt = NumberFormat.currency(
     locale: 'en_IN',
     symbol: '₹',
-    decimalDigits: 2,
+    decimalDigits: 0,
   );
 
   @override
@@ -144,24 +148,23 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOut));
     _fetchSeller();
+    _watchSellerStatus();
   }
 
   @override
   void dispose() {
     _fadeCtrl.dispose();
     _slideCtrl.dispose();
+    _sellerStatusSub?.cancel();
     super.dispose();
   }
 
   Future<void> _fetchSeller() async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('sellers')
-          .doc(widget.sellerId)
-          .get();
-      if (doc.exists && mounted) {
+      final seller = await context.read<ISellerRepository>().getSeller(widget.sellerId);
+      if (seller != null && mounted) {
         setState(() {
-          _seller = SellerModel.fromFirestore(doc);
+          _seller = seller;
           _isLoadingSeller = false;
         });
       } else if (mounted) {
@@ -170,6 +173,16 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     } catch (_) {
       if (mounted) setState(() => _isLoadingSeller = false);
     }
+  }
+
+  void _watchSellerStatus() {
+    _sellerStatusSub?.cancel();
+    final service = SellerStatusService();
+    _sellerStatusSub = service.watchSellerStatus(widget.sellerId).listen((status) {
+      if (mounted) {
+        setState(() => _sellerAvailability = status);
+      }
+    });
   }
 
   double get _effectivePrice {
@@ -181,7 +194,11 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     return widget.price;
   }
 
-  bool get _isActive => widget.foodItem?.isActive ?? true;
+  bool get _isActive {
+    final productActive = widget.foodItem?.isActive ?? true;
+    final sellerAvailable = _sellerAvailability?.isAvailable ?? true;
+    return productActive && sellerAvailable;
+  }
 
   String? get _primaryImage =>
       widget.imageUrls?.isNotEmpty == true ? widget.imageUrls!.first : null;
@@ -680,6 +697,28 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                         color: Colors.blue.shade600,
                       ),
                     ],
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _sellerAvailability?.isAvailable == true
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        _sellerAvailability == null
+                            ? '...'
+                            : (_sellerAvailability!.isAvailable ? 'Open' : 'Closed'),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: _sellerAvailability?.isAvailable == true
+                              ? Colors.green.shade700
+                              : Colors.red.shade700,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -990,10 +1029,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             key: const Key('details_favorite_button'),
             onTap: () {
               HapticFeedback.lightImpact();
-              bool isLoggedIn = false;
-              try {
-                isLoggedIn = FirebaseAuth.instance.currentUser != null;
-              } catch (_) {}
+              final isLoggedIn = context.read<IAuthService>().currentUserId != null;
 
               if (!isLoggedIn) {
                 final foodItem = FoodItem(
@@ -1370,7 +1406,11 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          _isActive ? 'Add to Cart' : 'Out of Stock',
+                          _isActive
+                              ? 'Add to Cart'
+                              : (widget.foodItem?.isActive == false
+                                  ? 'Out of Stock'
+                                  : 'Unavailable'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -1445,7 +1485,11 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _isActive ? 'Add to Cart' : 'Out of Stock',
+                      _isActive
+                          ? 'Add to Cart'
+                          : (widget.foodItem?.isActive == false
+                              ? 'Out of Stock'
+                              : 'Unavailable'),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

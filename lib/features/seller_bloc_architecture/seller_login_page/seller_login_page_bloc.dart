@@ -22,11 +22,14 @@ import 'seller_login_page_state.dart';
 class SellerLoginPageBloc
     extends Bloc<SellerLoginPageEvent, SellerLoginPageState> {
   final SellerRepository authRepository;
+  final String countryCode;
 
   Timer? _otpTimer;
 
-  SellerLoginPageBloc({required this.authRepository})
-      : super(const SellerLoginPageState()) {
+  SellerLoginPageBloc({
+    required this.authRepository,
+    this.countryCode = '+91',
+  }) : super(const SellerLoginPageState()) {
     // ── Field / credential changes ──────────────────────────────────────────
     on<SellerLoginFieldChanged>(_onFieldChanged);
     on<SellerLoginPasswordChanged>(_onPasswordChanged);
@@ -124,6 +127,10 @@ class SellerLoginPageBloc
       } else {
         // Email/password login
         await authRepository.signIn(state.emailOrPhone, state.password);
+        final uid = authRepository.currentUser?.uid;
+        if (uid != null) {
+          await authRepository.updateSellerData(uid, {'isOnline': true});
+        }
         emit(state.copyWith(
           status: SellerLoginStatus.success,
           step: SellerLoginStep.loginSuccess,
@@ -201,6 +208,10 @@ class SellerLoginPageBloc
         status: SellerLoginStatus.loading, clearPasswordError: true));
     try {
       await authRepository.signIn(state.emailOrPhone, state.password);
+      final uid = authRepository.currentUser?.uid;
+      if (uid != null) {
+        await authRepository.updateSellerData(uid, {'isOnline': true});
+      }
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
@@ -238,6 +249,10 @@ class SellerLoginPageBloc
           state.otpCode, formattedPhone);
       if (success) {
         _cancelOtpTimer();
+        final uid = authRepository.currentUser?.uid;
+        if (uid != null) {
+          await authRepository.updateSellerData(uid, {'isOnline': true});
+        }
         emit(state.copyWith(
           status: SellerLoginStatus.success,
           step: SellerLoginStep.loginSuccess,
@@ -369,6 +384,10 @@ class SellerLoginPageBloc
     emit(state.copyWith(status: SellerLoginStatus.loading, clearError: true));
     try {
       await authRepository.signInWithGoogle();
+      final uid = authRepository.currentUser?.uid;
+      if (uid != null) {
+        await authRepository.updateSellerData(uid, {'isOnline': true});
+      }
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
@@ -386,6 +405,10 @@ class SellerLoginPageBloc
     emit(state.copyWith(status: SellerLoginStatus.loading, clearError: true));
     try {
       await authRepository.signInWithApple();
+      final uid = authRepository.currentUser?.uid;
+      if (uid != null) {
+        await authRepository.updateSellerData(uid, {'isOnline': true});
+      }
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
@@ -480,18 +503,16 @@ class SellerLoginPageBloc
     return RegExp(r'^\+?[0-9]{7,15}$').hasMatch(trimmed);
   }
 
-  /// Formats the phone number to always include the country code (+91 by default)
+  /// Formats the phone number to always include the [countryCode] (defaults to +91).
   String _formatPhoneNumber(String input) {
     String formatted = input.trim().replaceAll(' ', '');
     if (_looksLikePhone(formatted)) {
       if (!formatted.startsWith('+')) {
-        if (formatted.length == 10) {
-          return '+91$formatted';
-        } else if (formatted.length == 12 && formatted.startsWith('91')) {
+        final ccDigits = countryCode.replaceAll('+', '');
+        if (formatted.length == ccDigits.length - 1 && formatted.startsWith(ccDigits.substring(0, ccDigits.length - 1))) {
           return '+$formatted';
-        } else {
-          return '+91$formatted';
         }
+        return '$countryCode$formatted';
       }
     }
     return formatted;

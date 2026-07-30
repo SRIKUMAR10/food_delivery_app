@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/repositories/i_rating_repository.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import '../home_Page/home_page_models.dart';
 import 'Rating_page_ui.dart';
@@ -59,11 +60,7 @@ class ReviewsListScreen extends StatelessWidget {
                     TextButton.icon(
                       onPressed: () {
                         HapticFeedback.lightImpact();
-                        bool isLoggedIn = false;
-                        try {
-                          isLoggedIn =
-                              FirebaseAuth.instance.currentUser != null;
-                        } catch (_) {}
+                        final isLoggedIn = context.read<IAuthService>().currentUserId != null;
 
                         if (!isLoggedIn) {
                           // Note: Creating a dummy food item here just for navigation requirements.
@@ -113,13 +110,8 @@ class ReviewsListScreen extends StatelessWidget {
               const Divider(),
               // Reviews List Stream
               Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('products')
-                      .doc(productId)
-                      .collection('reviews')
-                      .orderBy('timestamp', descending: true)
-                      .snapshots(),
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: context.read<IRatingRepository>().watchProductReviews(productId),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
@@ -133,56 +125,30 @@ class ReviewsListScreen extends StatelessWidget {
                         child: Text('Error loading reviews.'),
                       );
                     }
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
                       return const Center(
                         child: Text('No reviews yet. Be the first!'),
                       );
                     }
 
-                    final reviews = snapshot.data!.docs;
+                    final reviews = snapshot.data!;
 
                     return ListView.separated(
                       controller:
-                          scrollController, // Controls the DraggableScrollableSheet
+                          scrollController,
                       padding: const EdgeInsets.all(20),
                       itemCount: reviews.length,
                       separatorBuilder: (context, index) =>
                           Divider(color: Colors.grey.shade300, height: 24),
                       itemBuilder: (context, index) {
-                        final data =
-                            reviews[index].data() as Map<String, dynamic>;
-                        final String fallbackName =
+                        final data = reviews[index];
+                        final String displayName =
                             data['reviewerName'] ?? 'Anonymous';
                         final double rating =
                             (data['rating'] as num?)?.toDouble() ?? 0.0;
                         final String text = data['reviewText'] ?? '';
-                        final String reviewerId = reviews[index].id;
 
-                        // Listen to individual user profile for real-time name updates
-                        return StreamBuilder<DocumentSnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(reviewerId)
-                              .snapshots(),
-                          builder: (context, userSnapshot) {
-                            String displayName = fallbackName;
-
-                            if (userSnapshot.hasData &&
-                                userSnapshot.data!.exists) {
-                              final userData =
-                                  userSnapshot.data!.data()
-                                      as Map<String, dynamic>?;
-                              if (userData != null &&
-                                  userData['name'] != null &&
-                                  userData['name']
-                                      .toString()
-                                      .trim()
-                                      .isNotEmpty) {
-                                displayName = userData['name'];
-                              }
-                            }
-
-                            return Column(
+                        return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
@@ -241,8 +207,6 @@ class ReviewsListScreen extends StatelessWidget {
                                 ],
                               ],
                             );
-                          },
-                        );
                       },
                     );
                   },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/services/i_auth_service.dart';
 import '../../../../core/repositories/i_app_settings_repository.dart';
 import '../../../../core/services/theme_manager.dart';
 import '../../../../core/services/locale_manager.dart';
@@ -14,6 +15,7 @@ class AppSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => AppSettingsBloc(
+        authService: context.read<IAuthService>(),
         repository: context.read<IAppSettingsRepository>(),
         themeManager: context.read<ThemeManager>(),
         localeManager: context.read<LocaleManager>(),

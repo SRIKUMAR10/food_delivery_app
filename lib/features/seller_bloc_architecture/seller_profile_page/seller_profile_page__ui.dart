@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/repositories/i_seller_profile_repository.dart';
 import 'seller_profile_page__bloc.dart';
 import 'seller_profile_page__event.dart';
 import 'seller_profile_page__state.dart';
@@ -27,7 +29,10 @@ class SellerProfilePageUI extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => SellerProfilePageBloc()..add(LoadProfile()),
+      create: (context) => SellerProfilePageBloc(
+        authService: context.read<IAuthService>(),
+        profileRepository: context.read<ISellerProfileRepository>(),
+      )..add(LoadProfile()),
       child: const Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(child: ResponsiveProfileLayout()),
@@ -271,7 +276,12 @@ class ProfileContent extends StatelessWidget {
                           'title': 'Logout',
                           'subtitle': 'Sign out from your account',
                           'onTap': () async {
-                            await SellerRepository().signOut();
+                            final repo = SellerRepository();
+                            final uid = repo.currentUser?.uid;
+                            if (uid != null) {
+                              await repo.updateSellerData(uid, {'isOnline': false});
+                            }
+                            await repo.signOut();
                             if (context.mounted) {
                               Navigator.pushAndRemoveUntil(
                                 context,

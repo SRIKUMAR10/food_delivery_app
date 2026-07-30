@@ -7,7 +7,7 @@ class PromotionsCouponsBloc extends Bloc<PromotionsCouponsEvent, PromotionsCoupo
   final PromotionsCouponsRepository repository;
   String? _sellerId;
 
-  PromotionsCouponsBloc({required this.repository}) : super(PromotionsCouponsInitial()) {
+  PromotionsCouponsBloc({required this.repository}) : super(const PromotionsCouponsInitial()) {
     on<LoadCouponsEvent>(_onLoadCoupons);
     on<AddCouponEvent>(_onAddCoupon);
     on<UpdateCouponEvent>(_onUpdateCoupon);

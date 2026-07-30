@@ -91,6 +91,12 @@ class FirebaseCartRepository implements ICartRepository {
   }
 
   @override
+  Future<void> updateItemPrice(String buyerId, String itemId, double newPrice) async {
+    if (buyerId.isEmpty) return;
+    await _getCartCollection(buyerId).doc(itemId).update({'price': newPrice});
+  }
+
+  @override
   Future<void> checkoutCart(String buyerId, List<CartItem> selectedItems, String customerName, {AppliedCoupon? appliedCoupon}) async {
     if (buyerId.isEmpty || selectedItems.isEmpty) return;
 

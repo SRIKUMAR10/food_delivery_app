@@ -109,6 +109,11 @@ class FirebaseAppSettingsRepository implements IAppSettingsRepository {
     return cachedValue ?? 'en';
   }
 
+  @override
+  Future<void> deleteUserData(String userId) async {
+    await _firestore.collection('users').doc(userId).delete();
+  }
+
   Future<void> _cacheToPrefs(String theme, String language) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_settings_theme', theme);

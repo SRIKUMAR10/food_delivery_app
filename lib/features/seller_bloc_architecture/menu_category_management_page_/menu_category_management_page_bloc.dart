@@ -1,12 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'menu_category_management_page_event.dart';
 import 'menu_category_management_page_state.dart';
+import 'menu_category_management_page_model.dart';
 import 'menu_category_management_page_repository.dart';
 
 class MenuCategoryManagementBloc extends Bloc<MenuCategoryManagementEvent, MenuCategoryManagementState> {
   final MenuCategoryManagementRepository repository;
 
-  MenuCategoryManagementBloc({required this.repository}) : super(MenuCategoryManagementInitial()) {
+  MenuCategoryManagementBloc({required this.repository}) : super(const MenuCategoryManagementInitial()) {
     on<LoadMenuCategoriesEvent>(_onLoadMenuCategories);
     on<ToggleCategorySelectionEvent>(_onToggleCategorySelection);
     on<ReorderCategoriesEvent>(_onReorderCategories);
@@ -50,16 +51,16 @@ class MenuCategoryManagementBloc extends Bloc<MenuCategoryManagementEvent, MenuC
       newIndex -= 1;
     }
     
-    final item = currentState.categories.removeAt(event.oldIndex);
-    currentState.categories.insert(newIndex, item);
+    final mutable = List<MenuCategoryModel>.from(currentState.categories);
+    final item = mutable.removeAt(event.oldIndex);
+    mutable.insert(newIndex, item);
 
-    // Update sortOrder for all items
-    for (int i = 0; i < currentState.categories.length; i++) {
-      currentState.categories[i] = currentState.categories[i].copyWith(sortOrder: i);
-    }
+    final updated = mutable.map((cat) {
+      return cat.copyWith(sortOrder: mutable.indexOf(cat));
+    }).toList();
 
     emit(currentState.copyWith(
-      categories: List.from(currentState.categories),
+      categories: updated,
       hasUnsavedChanges: true,
       clearMessages: true,
     ));

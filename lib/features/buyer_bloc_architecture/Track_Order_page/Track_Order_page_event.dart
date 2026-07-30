@@ -44,3 +44,21 @@ class UpdateDriverLocation extends TrackOrderEvent {
   List<Object> get props => [lat, lng];
 }
 
+class OrderStatusUpdated extends TrackOrderEvent {
+  final String orderId;
+  final DateTime orderDate;
+
+  const OrderStatusUpdated({required this.orderId, required this.orderDate});
+
+  @override
+  List<Object> get props => [orderId, orderDate];
+}
+
+class CancelOrderEvent extends TrackOrderEvent {
+  final String orderId;
+  const CancelOrderEvent(this.orderId);
+
+  @override
+  List<Object> get props => [orderId];
+}
+

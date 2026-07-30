@@ -1,21 +1,21 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'favorites_event.dart';
 import 'favorites_state.dart';
 import 'favorites_models.dart';
 import '../../../core/services/i_auth_service.dart';
-import '../../../core/services/auth_service.dart';
-
-import 'dart:async';
+import '../../../core/repositories/i_favorites_repository.dart';
 
 class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
-  final FirebaseFirestore _firestore;
+  final IFavoritesRepository _favoritesRepository;
   final IAuthService _authService;
   StreamSubscription<String?>? _authSubscription;
 
-  FavoritesBloc({FirebaseFirestore? firestore, IAuthService? authService})
-      : _firestore = firestore ?? FirebaseFirestore.instance,
-        _authService = authService ?? FirebaseAuthService(),
+  FavoritesBloc({
+    required IFavoritesRepository favoritesRepository,
+    required IAuthService authService,
+  })  : _favoritesRepository = favoritesRepository,
+        _authService = authService,
         super(const FavoritesLoading()) {
     on<LoadFavoritesStarted>(_onLoadFavoritesStarted);
     on<FavoritesToggleRequested>(_onFavoritesToggleRequested);
@@ -43,15 +43,9 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
 
     emit(const FavoritesLoading());
 
-    await emit.forEach<QuerySnapshot>(
-      _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('favorites')
-          .orderBy('addedAt', descending: true)
-          .snapshots(),
-      onData: (snapshot) {
-        final items = snapshot.docs.map((doc) => FavoriteItem.fromFirestore(doc)).toList();
+    await emit.forEach<List<FavoriteItem>>(
+      _favoritesRepository.getFavoritesStream(uid),
+      onData: (items) {
         final favoriteIds = items.map((item) => item.id).toSet();
         return FavoritesLoaded(items: items, favoriteIds: favoriteIds);
       },
@@ -66,18 +60,13 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     final uid = _authService.currentUserId;
     if (uid == null) return;
 
-    final docRef = _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('favorites')
-        .doc(event.item.id);
-
-    final docSnapshot = await docRef.get();
-
-    if (docSnapshot.exists) {
-      await docRef.delete();
-    } else {
-      await docRef.set(event.item.toMap());
+    try {
+      await _favoritesRepository.toggleFavorite(uid, event.item);
+    } catch (e) {
+      if (state is FavoritesLoaded) {
+        emit(FavoritesError('Failed to update favorite: $e'));
+        emit(state);
+      }
     }
   }
 }

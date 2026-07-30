@@ -5,7 +5,9 @@ enum ProductStatus { inStock, lowStock, outOfStock }
 class Product extends Equatable {
   final String id;
   final String name;
-  final double price;
+  final double price; // GST-inclusive
+  final double basePrice; // Pre-GST
+  final double gstPercentage;
   final double discountPrice;
   final String currencyCode;
   final List<String> imageUrls;
@@ -37,6 +39,8 @@ class Product extends Equatable {
     required this.id,
     required this.name,
     required this.price,
+    this.basePrice = 0.0,
+    this.gstPercentage = 0.0,
     this.discountPrice = 0.0,
     this.currencyCode = 'USD',
     this.imageUrls = const [],
@@ -68,10 +72,15 @@ class Product extends Equatable {
   /// Computed primary image for the Buyer UI
   String? get primaryImage => imageUrls.isNotEmpty ? imageUrls.first : null;
 
+  /// Computed final effective price
+  double get effectivePrice => (discountPrice > 0 && discountPrice < price) ? discountPrice : price;
+
   Product copyWith({
     String? id,
     String? name,
     double? price,
+    double? basePrice,
+    double? gstPercentage,
     double? discountPrice,
     String? currencyCode,
     List<String>? imageUrls,
@@ -103,6 +112,8 @@ class Product extends Equatable {
       id: id ?? this.id,
       name: name ?? this.name,
       price: price ?? this.price,
+      basePrice: basePrice ?? this.basePrice,
+      gstPercentage: gstPercentage ?? this.gstPercentage,
       discountPrice: discountPrice ?? this.discountPrice,
       currencyCode: currencyCode ?? this.currencyCode,
       imageUrls: imageUrls ?? this.imageUrls,
@@ -137,6 +148,8 @@ class Product extends Equatable {
     id,
     name,
     price,
+    basePrice,
+    gstPercentage,
     discountPrice,
     currencyCode,
     imageUrls,
@@ -169,6 +182,8 @@ class Product extends Equatable {
     return {
       'name': name,
       'price': price,
+      'basePrice': basePrice,
+      'gstPercentage': gstPercentage,
       'discountPrice': discountPrice,
       'currencyCode': currencyCode,
       'imageUrls': imageUrls,
@@ -245,10 +260,15 @@ class Product extends Equatable {
     // Validate prices
     double price = (map['price'] as num?)?.toDouble() ?? 0.0;
     if (price < 0.0) price = 0.0;
+    price = price.roundToDouble();
+
+    double basePrice = (map['basePrice'] as num?)?.toDouble() ?? price;
+    double gstPercentage = (map['gstPercentage'] as num?)?.toDouble() ?? 0.0;
 
     double discountPrice = (map['discountPrice'] as num?)?.toDouble() ?? 0.0;
     if (discountPrice < 0.0) discountPrice = 0.0;
     if (discountPrice > price) discountPrice = price;
+    discountPrice = discountPrice.roundToDouble();
 
     // Status Logic
     bool isActive = map['isActive'] ?? true;
@@ -272,6 +292,8 @@ class Product extends Equatable {
       id: id,
       name: map['name'] ?? '',
       price: price,
+      basePrice: basePrice,
+      gstPercentage: gstPercentage,
       discountPrice: discountPrice,
       currencyCode: map['currencyCode'] ?? 'USD',
       imageUrls: parsedImageUrls,

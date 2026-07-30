@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/models/order_model.dart';
 import '../../../../core/models/order_status.dart';
@@ -72,10 +73,15 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
     final currentState = state;
     if (currentState is! OrdersListLoaded) return;
 
-    final order = _allOrders.firstWhere(
-      (o) => o.id == event.orderId,
-      orElse: () => _allOrders.first,
-    );
+    final orderIndex = _allOrders.indexWhere((o) => o.id == event.orderId);
+    if (orderIndex == -1) {
+      emit(currentState.copyWith(
+        errorMessage: 'Order not found.',
+      ));
+      return;
+    }
+
+    final order = _allOrders[orderIndex];
 
     if (!order.canTransitionTo(event.newStatus)) {
       emit(currentState.copyWith(
@@ -102,7 +108,21 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
             initialMessage: 'Your order #${order.id} has been accepted and is being processed.',
           );
         } catch (e) {
-          print('Failed to initiate chat: $e');
+          debugPrint('Failed to initiate chat: $e');
+        }
+      }
+
+      // Add wallet transaction when order is delivered
+      if (event.newStatus == OrderStatus.delivered) {
+        try {
+          await repository.addOrderWalletTransaction(
+            customerId: order.customerId,
+            orderId: order.id,
+            sellerId: order.sellerId,
+            amount: order.amount,
+          );
+        } catch (e) {
+          debugPrint('Failed to create wallet transaction: $e');
         }
       }
 

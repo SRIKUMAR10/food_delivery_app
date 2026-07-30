@@ -84,6 +84,10 @@ class TrackOrderService {
     };
   }
 
+  Stream<DocumentSnapshot> watchOrder(String orderId) {
+    return firestore.collection('orders').doc(orderId).snapshots();
+  }
+
   Stream<Map<String, dynamic>> riderLocationStream(String riderId) {
     final controller = StreamController<Map<String, dynamic>>();
 
@@ -108,5 +112,12 @@ class TrackOrderService {
 
     controller.onCancel = subscription.cancel;
     return controller.stream;
+  }
+
+  Future<void> cancelOrder(String orderId) async {
+    await firestore.collection('orders').doc(orderId).update({
+      'status': 'Cancelled',
+      'cancelledAt': FieldValue.serverTimestamp(),
+    });
   }
 }

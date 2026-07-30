@@ -1,14 +1,19 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:food_delivery_app/repositories/seller_repository.dart';
-import '../../../../app_data_collection/seller_collections/seller_collection.dart';
+import 'package:food_delivery_app/core/repositories/i_seller_profile_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'seller_profile_page__event.dart';
 import 'seller_profile_page__state.dart';
 
 class SellerProfilePageBloc
     extends Bloc<SellerProfilePageEvent, SellerProfilePageState> {
-  SellerProfilePageBloc() : super(ProfileInitial()) {
+  final IAuthService authService;
+  final ISellerProfileRepository profileRepository;
+
+  SellerProfilePageBloc({
+    required this.authService,
+    required this.profileRepository,
+  }) : super(ProfileInitial()) {
     on<LoadProfile>(_onLoadProfile);
     on<LogoutRequested>(_onLogoutRequested);
     on<NotificationSettingsChanged>(_onNotificationSettingsChanged);
@@ -22,50 +27,43 @@ class SellerProfilePageBloc
   ) async {
     emit(ProfileLoading());
     try {
-      final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      final String uid = authService.currentUserId ?? '';
 
       if (uid.isNotEmpty) {
-        final seller = await SellerCollection().getSeller(uid);
-
+        final result = await profileRepository.loadProfile(uid);
+        final seller = result['seller'];
         if (seller != null) {
+          final s = seller as dynamic;
           emit(
             ProfileLoaded(
-              storeName:
-                  seller.shopName ??
-                  (seller.name.isNotEmpty
-                      ? seller.name
-                      : 'Picarhub Restaurant'),
-              email: seller.email.isNotEmpty
-                  ? seller.email
-                  : 'seller@picarhub.com',
-              phone: seller.phoneNumber ?? '+91 98765 43210',
-              profileImageUrl:
-                  seller.profileImageUrl ?? 'https://via.placeholder.com/150',
-              notificationsEnabled: seller.notificationsEnabled,
-              address: seller.businessDetails ?? '123 Main Street',
-              gstNumber: seller.gstNumber,
-              fssaiLicense: seller.fssaiNumber,
-              bankAccountNumber: seller.bankAccountNumber,
-              ifscCode: seller.ifscCode,
-              taxConfiguration: seller.taxConfiguration,
-              role: seller.role.isNotEmpty ? seller.role : 'seller',
-              createdAt: seller.createdAt,
-              isVerified: seller.isVerified,
-              bankName: seller.bankName,
-              accountHolderName: seller.accountHolderName,
-              bankBranch: seller.bankBranch,
-              panNumber: seller.panNumber,
-              openingHours: seller.openingHours,
-              deliveryTime: seller.deliveryTime,
-              deliveryArea: seller.deliveryArea,
-              businessDetails: seller.businessDetails,
+              storeName: s.shopName ?? (s.name.isNotEmpty ? s.name : 'Picarhub Restaurant'),
+              email: s.email.isNotEmpty ? s.email : 'seller@picarhub.com',
+              phone: s.phoneNumber ?? '+91 98765 43210',
+              profileImageUrl: s.profileImageUrl ?? 'https://via.placeholder.com/150',
+              notificationsEnabled: s.notificationsEnabled,
+              address: s.businessDetails ?? '123 Main Street',
+              gstNumber: s.gstNumber,
+              fssaiLicense: s.fssaiNumber,
+              bankAccountNumber: s.bankAccountNumber,
+              ifscCode: s.ifscCode,
+              taxConfiguration: s.taxConfiguration,
+              role: s.role.isNotEmpty ? s.role : 'seller',
+              createdAt: s.createdAt,
+              isVerified: s.isVerified,
+              bankName: s.bankName,
+              accountHolderName: s.accountHolderName,
+              bankBranch: s.bankBranch,
+              panNumber: s.panNumber,
+              openingHours: s.openingHours,
+              deliveryTime: s.deliveryTime,
+              deliveryArea: s.deliveryArea,
+              businessDetails: s.businessDetails,
             ),
           );
           return;
         }
       }
 
-      // Fallback if no user is logged in or seller not found
       emit(
         ProfileLoaded(
           storeName: 'Picarhub Restaurant',
@@ -93,7 +91,6 @@ class SellerProfilePageBloc
     LogoutRequested event,
     Emitter<SellerProfilePageState> emit,
   ) async {
-    // Handle logout logic
     emit(ProfileInitial());
   }
 
@@ -138,11 +135,10 @@ class SellerProfilePageBloc
   ) async {
     if (state is ProfileLoaded) {
       final currentState = state as ProfileLoaded;
-
-      final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      final String uid = authService.currentUserId ?? '';
       if (uid.isNotEmpty) {
         try {
-          await SellerCollection().updateSeller(uid, {
+          await profileRepository.updateProfile(uid, {
             'shopName': event.storeName,
             'email': event.email,
             'phoneNumber': event.phone,
@@ -154,7 +150,7 @@ class SellerProfilePageBloc
             'taxConfiguration': event.taxConfiguration,
           });
         } catch (e) {
-          print('Error updating verification form: $e');
+          debugPrint('Error updating verification form: $e');
         }
       }
 
@@ -194,7 +190,6 @@ class SellerProfilePageBloc
     if (state is ProfileLoaded) {
       final currentState = state as ProfileLoaded;
 
-      // Optimistic UI update: Show the selected image immediately
       emit(
         ProfileLoaded(
           storeName: currentState.storeName,
@@ -225,36 +220,18 @@ class SellerProfilePageBloc
       );
 
       try {
-        final authUid = FirebaseAuth.instance.currentUser?.uid;
-        final repoUid = SellerRepository().currentUser?.uid;
-        final String uid = (authUid != null && authUid.isNotEmpty)
-            ? authUid
-            : ((repoUid != null && repoUid.isNotEmpty)
-                  ? repoUid
-                  : 'default_seller');
+        final String uid = authService.currentUserId ?? '';
+        final effectiveUid = uid.isNotEmpty ? uid : 'default_seller';
 
-        final String fileName = 'profile_images/$uid/${event.fileName}';
-
-        final Reference storageRef = FirebaseStorage.instance.ref().child(
-          fileName,
+        final downloadUrl = await profileRepository.uploadProfileImage(
+          sellerId: effectiveUid,
+          fileName: event.fileName,
+          imageBytes: event.imageBytes,
         );
-        final String contentType = _getContentType(event.fileName);
-        final UploadTask uploadTask = storageRef.putData(
-          event.imageBytes,
-          SettableMetadata(contentType: contentType),
-        );
-        final TaskSnapshot snapshot = await uploadTask;
 
-        final String downloadUrl = await snapshot.ref.getDownloadURL();
-
-        // Update Firestore
-        try {
-          await SellerCollection().updateSeller(uid, {
-            'profileImageUrl': downloadUrl,
-          });
-        } catch (dbErr) {
-          print('Warning: Failed to update seller doc in firestore: $dbErr');
-        }
+        await profileRepository.updateProfile(effectiveUid, {
+          'profileImageUrl': downloadUrl,
+        });
 
         emit(
           ProfileLoaded(
@@ -281,17 +258,16 @@ class SellerProfilePageBloc
             deliveryArea: currentState.deliveryArea,
             businessDetails: currentState.businessDetails,
             isImageUploading: false,
-            localImageBytes: null, // Clear local image, rely on network url now
+            localImageBytes: null,
           ),
         );
       } catch (e) {
-        // On error, revert optimistic update
         emit(
           ProfileLoaded(
             storeName: currentState.storeName,
             email: currentState.email,
             phone: currentState.phone,
-            profileImageUrl: currentState.profileImageUrl, // old url
+            profileImageUrl: currentState.profileImageUrl,
             notificationsEnabled: currentState.notificationsEnabled,
             address: currentState.address,
             gstNumber: currentState.gstNumber,
@@ -314,18 +290,8 @@ class SellerProfilePageBloc
             localImageBytes: null,
           ),
         );
-        print('Error uploading image: $e');
+        debugPrint('Error uploading image: $e');
       }
     }
-  }
-
-  String _getContentType(String fileName) {
-    final lower = fileName.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-    if (lower.endsWith('.webp')) return 'image/webp';
-    if (lower.endsWith('.gif')) return 'image/gif';
-    if (lower.endsWith('.svg')) return 'image/svg+xml';
-    return 'image/jpeg';
   }
 }

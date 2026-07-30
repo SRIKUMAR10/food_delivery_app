@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/api_service/RazorpayApiService.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import 'WalletScreen_Bloc.dart';
 import 'WalletScreen_Event.dart';
@@ -22,7 +21,7 @@ class WalletScreen_UI extends StatelessWidget {
       create: (_) => RazorpayApiService(),
       child: BlocProvider(
         create: (ctx) =>
-            WalletBloc(WalletDatabase(), ctx.read<RazorpayApiService>()),
+            WalletBloc(WalletDatabase(authService: ctx.read<IAuthService>()), ctx.read<RazorpayApiService>()),
         child: const _WalletAuthGate(),
       ),
     );
@@ -33,18 +32,15 @@ class WalletScreen_UI extends StatelessWidget {
 //  AUTH GATE — Login check
 // ─────────────────────────────────────────────
 
-/// Listen to Firebase Auth state.
-/// If not logged in, returns [FoodGoLoginScreen];
-/// If logged in, shows [WalletView].
+/// Listen to auth state via [IAuthService].
 class _WalletAuthGate extends StatelessWidget {
   const _WalletAuthGate();
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+    return StreamBuilder<String?>(
+      stream: context.read<IAuthService>().authStateChanges,
       builder: (context, snapshot) {
-        // Connection waiting
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
@@ -53,14 +49,12 @@ class _WalletAuthGate extends StatelessWidget {
           );
         }
 
-        final user = snapshot.data;
+        final uid = snapshot.data;
 
-        // Not logged in → Login page
-        if (user == null) {
+        if (uid == null) {
           return const FoodGoLoginScreenUI();
         }
 
-        // Logged in → Wallet UI
         return const WalletView();
       },
     );
@@ -277,7 +271,7 @@ class _WalletViewState extends State<WalletView> {
           context.read<RazorpayApiService>().startPayment(
             amount: state.pendingAmount ?? 0,
             email:
-                context.read<WalletBloc>().database.currentUserEmail ??
+                context.read<WalletBloc>().database.authService.currentUserEmail ??
                 'user@example.com',
             orderId: state.orderId,
           );
@@ -538,14 +532,10 @@ class _WalletViewState extends State<WalletView> {
   // ── Balance Card ─────────────────────────────────────────────────────────
 
   Widget _buildBalanceCard(WalletDatabase db, Size size) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: db.getWalletStream(),
+    return StreamBuilder<double?>(
+      stream: db.getWalletBalanceStream(),
       builder: (context, snapshot) {
-        double balance = 0.0;
-        if (snapshot.hasData && snapshot.data!.exists) {
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          balance = (data['wallet'] as num?)?.toDouble() ?? 0.0;
-        }
+        double balance = snapshot.data ?? 0.0;
 
         return AspectRatio(
           aspectRatio: 1.8,
@@ -624,7 +614,7 @@ class _WalletViewState extends State<WalletView> {
                           duration: const Duration(milliseconds: 300),
                           child: Text(
                             _isBalanceVisible
-                                ? '₹${balance.toStringAsFixed(2)}'
+                                ? '₹${balance.toStringAsFixed(0)}'
                                 : '••••••',
                             key: ValueKey(_isBalanceVisible),
                             style: TextStyle(
@@ -972,7 +962,7 @@ class _WalletViewState extends State<WalletView> {
           ],
         ),
         const SizedBox(height: 16),
-        StreamBuilder<QuerySnapshot>(
+        StreamBuilder<List<Map<String, dynamic>>>(
           stream: db.getTransactionsStream(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -984,14 +974,13 @@ class _WalletViewState extends State<WalletView> {
               );
             }
 
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return _buildEmptyTransactions();
             }
 
-            final allDocs = snapshot.data!.docs;
+            final allDocs = snapshot.data!;
 
-            final docs = allDocs.where((doc) {
-              final data = doc.data() as Map<String, dynamic>;
+            final docs = allDocs.where((data) {
               final bool isCredit = data['isCredit'] ?? true;
               if (_selectedFilter == 'Credits') return isCredit;
               if (_selectedFilter == 'Debits') return !isCredit;
@@ -1000,8 +989,7 @@ class _WalletViewState extends State<WalletView> {
 
             double totalDebits = 0;
             double totalCredits = 0;
-            for (var doc in docs) {
-              final data = doc.data() as Map<String, dynamic>;
+            for (var data in docs) {
               final bool isCredit = data['isCredit'] ?? true;
               if (!isCredit) {
                 totalDebits += (data['amount'] as num?)?.toDouble() ?? 0.0;
@@ -1041,7 +1029,7 @@ class _WalletViewState extends State<WalletView> {
                             ),
                           ),
                           Text(
-                            '+₹${totalCredits.toStringAsFixed(2)}',
+                            '+₹${totalCredits.toStringAsFixed(0)}',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -1080,7 +1068,7 @@ class _WalletViewState extends State<WalletView> {
                             ),
                           ),
                           Text(
-                            '₹${totalDebits.toStringAsFixed(2)}',
+                            '₹${totalDebits.toStringAsFixed(0)}',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -1099,7 +1087,7 @@ class _WalletViewState extends State<WalletView> {
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: docs.length,
                     itemBuilder: (context, index) {
-                      final data = docs[index].data() as Map<String, dynamic>;
+                      final data = docs[index];
                       return _buildTransactionItem(data, context);
                     },
                   ),
@@ -1152,9 +1140,9 @@ class _WalletViewState extends State<WalletView> {
     final String title =
         data['title'] ?? (isCredit ? 'Wallet Top-up' : 'Wallet Payment');
 
-    final Timestamp? ts =
-        data['createdAt'] as Timestamp? ?? data['timestamp'] as Timestamp?;
-    final String dateStr = ts != null ? _formatDate(ts.toDate()) : '';
+    final DateTime? date =
+        data['createdAt'] as DateTime? ?? data['timestamp'] as DateTime?;
+    final String dateStr = date != null ? _formatDate(date) : '';
 
     final bool isSuccess = status == 'success';
 
@@ -1218,7 +1206,7 @@ class _WalletViewState extends State<WalletView> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '${isCredit ? '+' : '-'}₹${amount.toStringAsFixed(2)}',
+                  '${isCredit ? '+' : '-'}₹${amount.toStringAsFixed(0)}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -1283,9 +1271,9 @@ class _WalletViewState extends State<WalletView> {
     final String currency = data['currency'] ?? 'INR';
     final String paymentId = data['paymentId'] ?? data['title'] ?? 'N/A';
     final bool isCredit = data['isCredit'] ?? true;
-    final Timestamp? ts =
-        data['createdAt'] as Timestamp? ?? data['timestamp'] as Timestamp?;
-    final String dateStr = ts != null ? _formatDate(ts.toDate()) : 'N/A';
+    final DateTime? date =
+        data['createdAt'] as DateTime? ?? data['timestamp'] as DateTime?;
+    final String dateStr = date != null ? _formatDate(date) : 'N/A';
 
     showModalBottomSheet(
       context: context,
@@ -1338,7 +1326,7 @@ class _WalletViewState extends State<WalletView> {
             const SizedBox(height: 24),
             _detailRow(
               'Amount',
-              '${isCredit ? '+' : '-'}₹${amount.toStringAsFixed(2)}',
+              '${isCredit ? '+' : '-'}₹${amount.toStringAsFixed(0)}',
               valueColor: isCredit
                   ? Colors.green.shade600
                   : Colors.red.shade600,

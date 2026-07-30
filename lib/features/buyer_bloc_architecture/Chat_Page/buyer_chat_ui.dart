@@ -12,6 +12,7 @@ import '../../../core/services/i_auth_service.dart';
 import '../../../core/models/conversation_model.dart';
 import '../../../core/models/chat_message_model.dart';
 import '../../../core/models/order_model.dart';
+import '../../../core/models/order_item_model.dart';
 import '../../../core/models/order_status.dart';
 import '../../../core/repositories/i_order_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -35,6 +36,7 @@ import '../Order Page/order_view_model.dart';
 import '../Cart Page/cart_models.dart';
 import '../Cart Page/cart_page_UI.dart';
 import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
+import '../home_Page/home_page_models.dart';
 
 class _AppTheme {
   _AppTheme._();
@@ -211,6 +213,7 @@ class BuyerChatPage extends StatelessWidget {
   final String? sellerImageUrl;
   final String? buyerName;
   final SupportNavigationData? pendingOrderData;
+  final FoodItem? foodItem;
 
   const BuyerChatPage({
     Key? key,
@@ -221,12 +224,13 @@ class BuyerChatPage extends StatelessWidget {
     this.sellerImageUrl,
     this.buyerName,
     this.pendingOrderData,
+    this.foodItem,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final bool isPushedRoute =
-        pendingOrderData != null || (orderId != null && sellerId != null);
+        pendingOrderData != null || (orderId != null && sellerId != null) || foodItem != null;
     return BlocProvider(
       create: (context) {
         final bloc = BuyerChatBloc(
@@ -260,6 +264,9 @@ class BuyerChatPage extends StatelessWidget {
           );
         } else {
           bloc.add(LoadBuyerConversations());
+        }
+        if (foodItem != null) {
+          bloc.add(SelectProductForSupport(foodItem));
         }
         return bloc;
       },
@@ -413,6 +420,7 @@ class BuyerChatView extends StatelessWidget {
                           searchQuery: state.searchQuery,
                           embedded: true,
                           selectedConversationId: state.selectedConversationId,
+                          selectedProduct: state.selectedProduct,
                         ),
                       ),
                     ),
@@ -476,6 +484,7 @@ class BuyerChatView extends StatelessWidget {
             currentUserId: state.currentUserId,
             searchQuery: state.searchQuery,
             selectedConversationId: state.selectedConversationId,
+            selectedProduct: state.selectedProduct,
           );
         }
         return const SizedBox.shrink();
@@ -601,6 +610,7 @@ class _BuyerChatListView extends StatefulWidget {
   final String searchQuery;
   final bool embedded;
   final String? selectedConversationId;
+  final FoodItem? selectedProduct;
 
   const _BuyerChatListView({
     required this.conversations,
@@ -608,6 +618,7 @@ class _BuyerChatListView extends StatefulWidget {
     required this.searchQuery,
     this.embedded = false,
     this.selectedConversationId,
+    this.selectedProduct,
   });
 
   @override
@@ -638,6 +649,18 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
     super.dispose();
   }
 
+  Widget _buildProductBar() {
+    if (widget.selectedProduct == null) return const SizedBox.shrink();
+    return _ProductInfoBar(
+      product: widget.selectedProduct!,
+      onDismiss: () {
+        context.read<BuyerChatBloc>().add(
+          const SelectProductForSupport(null),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     Widget bodyContent = Column(
@@ -666,6 +689,7 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
                   },
                 ),
         ),
+        _buildProductBar(),
       ],
     );
 
@@ -1200,25 +1224,64 @@ class _ChatPanelState extends State<_ChatPanel> {
     final items = <Widget>[];
     String? lastDateKey;
 
-    items.add(
-      Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: _PremiumOrderContextCard(conversation: widget.conversation),
-      ),
-    );
-
     for (final msg in widget.messages) {
       final dateKey = DateFormat('yyyy-MM-dd').format(msg.timestamp);
       if (dateKey != lastDateKey) {
         items.add(_DateSeparatorChip(dateTime: msg.timestamp));
         lastDateKey = dateKey;
       }
+      
+      if (msg.messageType == 'order_card') {
+        final timeFormat = DateFormat('hh:mm a');
+        items.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 16),
+            child: Column(
+              children: [
+                _PremiumOrderContextCard(
+                  orderId: msg.text,
+                  fallbackTitle: widget.conversation.orderTitle,
+                  fallbackImageUrl: widget.conversation.orderImageUrl,
+                  fallbackTotal: widget.conversation.orderTotal,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  timeFormat.format(msg.timestamp),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        items.add(
+          _AnimatedMessage(
+            index: items.length,
+            child: _BuyerChatBubble(
+              message: msg,
+              isMe: msg.senderRole == 'buyer',
+            ),
+          ),
+        );
+      }
+    }
+
+    // If there are no order cards in the messages, but the conversation has an orderId,
+    // we show the legacy card at the bottom as a fallback.
+    final hasOrderCardMessage = widget.messages.any((m) => m.messageType == 'order_card');
+    if (!hasOrderCardMessage && widget.conversation.orderId != null && widget.conversation.orderId!.isNotEmpty) {
       items.add(
-        _AnimatedMessage(
-          index: items.length,
-          child: _BuyerChatBubble(
-            message: msg,
-            isMe: msg.senderRole == 'buyer',
+        Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 16),
+          child: _PremiumOrderContextCard(
+            orderId: widget.conversation.orderId!,
+            fallbackTitle: widget.conversation.orderTitle,
+            fallbackImageUrl: widget.conversation.orderImageUrl,
+            fallbackTotal: widget.conversation.orderTotal,
           ),
         ),
       );
@@ -1317,6 +1380,21 @@ class _ChatPanelState extends State<_ChatPanel> {
                 ],
               ),
             ),
+          ),
+          BlocBuilder<BuyerChatBloc, BuyerChatState>(
+            builder: (context, state) {
+              if (state is BuyerChatLoaded && state.selectedProduct != null) {
+                return _ProductInfoBar(
+                  product: state.selectedProduct!,
+                  onDismiss: () {
+                    context.read<BuyerChatBloc>().add(
+                      const SelectProductForSupport(null),
+                    );
+                  },
+                );
+              }
+              return const SizedBox.shrink();
+            },
           ),
           _PremiumComposer(
             controller: _textController,
@@ -1749,7 +1827,7 @@ class _PremiumComposerState extends State<_PremiumComposer> {
           context,
         ).showSnackBar(const SnackBar(content: Text('Failed to open camera.')));
       }
-      print('Camera Error: $e');
+      debugPrint('Camera Error: $e');
     }
   }
 
@@ -1761,20 +1839,20 @@ class _PremiumComposerState extends State<_PremiumComposer> {
         dynamic fileData;
         if (kIsWeb) {
           try {
-            print('--- AUDIO RECORDING AUDIT ---');
-            print('1. Recorded File Path: $path');
+            debugPrint('--- AUDIO RECORDING AUDIT ---');
+            debugPrint('1. Recorded File Path: $path');
 
             // Using XFile is the safest way to read blob URLs in Flutter Web
             // to avoid 0-byte/corrupted file uploads.
             final xFile = XFile(path);
             fileData = await xFile.readAsBytes();
 
-            print('1. FileData bytes length: ${fileData.length}');
+            debugPrint('1. FileData bytes length: ${fileData.length}');
             if (fileData.isEmpty) {
-              print('🚨 ERROR: Recorded audio is 0 bytes!');
+              debugPrint('🚨 ERROR: Recorded audio is 0 bytes!');
             }
           } catch (e) {
-            print('🚨 ERROR fetching web audio blob using XFile: $e');
+            debugPrint('🚨 ERROR fetching web audio blob using XFile: $e');
             return;
           }
         } else {
@@ -1964,6 +2042,119 @@ class _PremiumComposerState extends State<_PremiumComposer> {
     } else {
       widget.onSend();
     }
+  }
+}
+
+class _ProductInfoBar extends StatelessWidget {
+  final FoodItem product;
+  final VoidCallback onDismiss;
+
+  const _ProductInfoBar({
+    required this.product,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: _AppTheme.borderLight),
+          bottom: BorderSide(color: _AppTheme.borderLight),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: (product.image != null ||
+                          product.imageUrls.isNotEmpty)
+                      ? Image.network(
+                          product.image ?? product.imageUrls.first,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: _AppTheme.surfaceHover,
+                            child: const Icon(
+                              Icons.fastfood_rounded,
+                              size: 24,
+                              color: Color(0xFFCBD5E1),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: _AppTheme.surfaceHover,
+                          child: const Icon(
+                            Icons.fastfood_rounded,
+                            size: 24,
+                            color: Color(0xFFCBD5E1),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '₹${(product.discountPrice > 0 ? product.discountPrice : product.price).toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: _AppTheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: onDismiss,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _AppTheme.surfaceHover,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: _AppTheme.textTertiary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -2670,8 +2861,18 @@ class _HoverCardState extends State<_HoverCard> {
 }
 
 class _PremiumOrderContextCard extends StatefulWidget {
-  final ConversationModel conversation;
-  const _PremiumOrderContextCard({required this.conversation});
+  final String orderId;
+  final String? fallbackTitle;
+  final String? fallbackImageUrl;
+  final double? fallbackTotal;
+
+  const _PremiumOrderContextCard({
+    Key? key,
+    required this.orderId,
+    this.fallbackTitle,
+    this.fallbackImageUrl,
+    this.fallbackTotal,
+  }) : super(key: key);
 
   @override
   State<_PremiumOrderContextCard> createState() =>
@@ -2681,33 +2882,102 @@ class _PremiumOrderContextCard extends StatefulWidget {
 class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
   bool _isHovered = false;
   Future<OrderModel?>? _orderFuture;
+  OrderModel? _localCachedOrder;
+
+  // Local memory cache for UI state across chat card instances
+  static final Map<String, OrderModel> _staticOrderCache = {};
 
   @override
   void initState() {
     super.initState();
     _loadOrder();
+    if (_localCachedOrder != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottomIfNeeded());
+    }
   }
 
   @override
   void didUpdateWidget(covariant _PremiumOrderContextCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.conversation.orderId != widget.conversation.orderId) {
+    if (oldWidget.orderId != widget.orderId) {
       _loadOrder();
     }
   }
 
+  void _scrollToBottomIfNeeded() {
+    try {
+      final scrollable = Scrollable.maybeOf(context);
+      if (scrollable != null && scrollable.position.hasContentDimensions) {
+        scrollable.position.animateTo(
+          scrollable.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    } catch (_) {}
+  }
+
   void _loadOrder() {
-    if (widget.conversation.orderId != null) {
-      final orderRepo = context.read<IOrderRepository>();
-      _orderFuture = orderRepo.getOrderById(widget.conversation.orderId!);
-    } else {
+    if (widget.orderId.isEmpty) {
+      _localCachedOrder = null;
       _orderFuture = null;
+      return;
     }
+
+    // 1. Check local static cache for instant rendering
+    if (_staticOrderCache.containsKey(widget.orderId)) {
+      _localCachedOrder = _staticOrderCache[widget.orderId];
+    } else if (widget.fallbackTitle != null || widget.fallbackTotal != null) {
+      // 1b. Create a temporary fallback OrderModel from passed conversation metadata
+      _localCachedOrder = OrderModel(
+        id: widget.orderId,
+        customerId: '',
+        customerName: 'Buyer',
+        sellerId: '',
+        status: OrderStatus.newOrder, // temporary fallback
+        amount: widget.fallbackTotal ?? 0.0,
+        timestamp: DateTime.now(),
+        items: [
+          OrderItemModel(
+            productId: '',
+            name: widget.fallbackTitle ?? 'Order Item',
+            quantity: 1,
+            price: widget.fallbackTotal ?? 0.0,
+            imageUrl: widget.fallbackImageUrl,
+          ),
+        ],
+      );
+    }
+
+    // 2. Fetch/Revalidate in background
+    final orderRepo = context.read<IOrderRepository>();
+    _orderFuture = orderRepo.getOrderById(widget.orderId).then((order) {
+      if (order != null) {
+        final isDifferent = _localCachedOrder == null ||
+            _localCachedOrder!.status != order.status ||
+            _localCachedOrder!.amount != order.amount ||
+            _localCachedOrder!.items?.length != order.items?.length;
+
+        _staticOrderCache[widget.orderId] = order;
+        if (mounted && isDifferent) {
+          setState(() {
+            _localCachedOrder = order;
+          });
+          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottomIfNeeded());
+        }
+      }
+      return order;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.conversation.orderId == null) return const SizedBox.shrink();
+    if (widget.orderId.isEmpty) return const SizedBox.shrink();
+
+    // If cached locally, render instantly without FutureBuilder connection delay
+    if (_localCachedOrder != null) {
+      return _buildCardContent(_localCachedOrder!);
+    }
 
     return FutureBuilder<OrderModel?>(
       future: _orderFuture,
@@ -2718,50 +2988,75 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
         final order = snapshot.data;
         if (order == null) return const SizedBox.shrink();
 
-        final item = order.items?.isNotEmpty == true
-            ? order.items!.first
-            : null;
+        // Populate caches
+        _staticOrderCache[widget.orderId] = order;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _localCachedOrder == null) {
+            setState(() {
+              _localCachedOrder = order;
+            });
+          }
+        });
 
-        return MouseRegion(
-          hitTestBehavior: HitTestBehavior.opaque,
-          onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
-          onExit: (_) { if (mounted) setState(() => _isHovered = false); },
-          child: AnimatedContainer(
-            duration: _AppTheme.normalDuration,
-            curve: Curves.easeOut,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: _AppTheme.card,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: _AppTheme.borderLight),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 40,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildProductHeader(item, order, context),
-                const SizedBox(height: 24),
-                _buildInfoGrid(order, context),
-                const SizedBox(height: 24),
-                _buildOrderStatusChip(order.status.name),
-                const SizedBox(height: 24),
-                _OrderTimelineWithAnimation(currentStatus: order.status),
-                const SizedBox(height: 24),
-                _buildOrderSummaryCard(order),
-                const SizedBox(height: 24),
-                _buildActionButtons(item, order, context),
-              ],
-            ),
-          ),
-        );
+        return _buildCardContent(order);
       },
+    );
+  }
+
+  Widget _buildCardContent(OrderModel order) {
+    final item = order.items?.isNotEmpty == true
+        ? order.items!.first
+        : null;
+
+    return MouseRegion(
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) { if (mounted) setState(() => _isHovered = true); },
+      onExit: (_) { if (mounted) setState(() => _isHovered = false); },
+      child: AnimatedContainer(
+        duration: _AppTheme.normalDuration,
+        curve: Curves.easeOut,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: _AppTheme.card,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _AppTheme.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 40,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Order Details',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1C1C1C),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildOrderDetailsHeader(order),
+            const SizedBox(height: 24),
+            _OrderTimelineWithAnimation(order: order),
+            const SizedBox(height: 24),
+            const Divider(color: Color(0xFFF0F0F0), thickness: 1),
+            const SizedBox(height: 24),
+            _buildOrderItemsList(order),
+            const SizedBox(height: 24),
+            const Divider(color: Color(0xFFF0F0F0), thickness: 1),
+            const SizedBox(height: 16),
+            _buildPaymentSummary(order),
+            const SizedBox(height: 24),
+            _buildActionButtons(item, order, context),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2792,261 +3087,136 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
     );
   }
 
-  Widget _buildProductHeader(
-    dynamic item,
-    OrderModel order,
-    BuildContext context,
-  ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildOrderDetailsHeader(OrderModel order) {
+    final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
+    final formattedDate = dateFormat.format(order.timestamp);
+
+    return Column(
       children: [
-        _ProductImageWidget(imageUrl: item?.imageUrl, itemName: item?.name),
-        const SizedBox(width: 20),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item?.name ?? 'Multiple Items',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF111827),
-                  height: 1.2,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Order ID',
+              style: TextStyle(color: Colors.black54, fontSize: 14),
+            ),
+            Text(
+              '#${order.id.length <= 8 ? order.id.toUpperCase() : order.id.substring(0, 8).toUpperCase()}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Date & Time',
+              style: TextStyle(color: Colors.black54, fontSize: 14),
+            ),
+            Text(
+              formattedDate,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: Colors.black87,
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _RatingChip(),
-                  const SizedBox(width: 10),
-                  _VegBadge(),
-                  const SizedBox(width: 10),
-                  _QuantityChip(qty: item?.quantity ?? 1),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                '₹${order.amount.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _AppTheme.primary,
-                  height: 1.1,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildInfoGrid(OrderModel order, BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 500;
-        return GridView(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: isWide ? 3 : 2,
-            mainAxisExtent: 72,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
+  Widget _buildOrderItemsList(OrderModel order) {
+    if (order.items == null || order.items!.isEmpty) return const SizedBox.shrink();
+    return Column(
+      children: order.items!.map((item) {
+        final imageUrl = item.imageUrl ?? 'https://firebasestorage.googleapis.com/v0/b/food-delivery-app-cd4ca.firebasestorage.app/o/product_images%2FWpN6x21MmWUjG1DS9BfLnX2M3Js2%2F2026-06-12T00%3A40%3A44.162_images%20(1).jpg?alt=media&token=de903631-0a43-438e-b01c-effe404bd982';
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.network(
+                  imageUrl,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 80,
+                    height: 80,
+                    color: Colors.grey[200],
+                    child: const Icon(
+                      Icons.fastfood,
+                      color: Colors.grey,
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Qty: ${item.quantity}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '₹${(item.price * item.quantity).toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
           ),
-          children: [
-            _PremiumInfoCard(
-              icon: Icons.receipt_long_rounded,
-              label: 'Order ID',
-              value: '#${order.id.toUpperCase().substring(0, 8)}',
-            ),
-            _PremiumInfoCard(
-              icon: Icons.storefront_rounded,
-              label: 'Seller',
-              value: widget.conversation.shopName ?? 'Store',
-            ),
-            _PremiumInfoCard(
-              icon: Icons.account_balance_wallet_rounded,
-              label: 'Payment',
-              value: order.paymentMethod ?? 'Wallet',
-            ),
-            _PremiumInfoCard(
-              icon: Icons.inventory_2_rounded,
-              label: 'Items',
-              value: '${order.items?.length ?? 1} Item',
-            ),
-            _PremiumInfoCard(
-              icon: Icons.local_shipping_rounded,
-              label: 'Delivery',
-              value: 'Standard',
-            ),
-            _PremiumInfoCard(
-              icon: Icons.calendar_month_rounded,
-              label: 'Date',
-              value: DateFormat('MMM dd, yyyy').format(order.timestamp),
-            ),
-          ],
         );
-      },
+      }).toList(),
     );
   }
 
-  Widget _buildOrderStatusChip(String status) {
-    Color bgColor;
-    Color textColor;
-    IconData icon;
-    String label;
-    switch (status.toLowerCase()) {
-      case 'neworder':
-      case 'new_order':
-      case 'new':
-        bgColor = const Color(0xFF3B82F6);
-        textColor = const Color(0xFF1D4ED8);
-        icon = Icons.fiber_new_rounded;
-        label = 'New Order';
-        break;
-      case 'delivered':
-        bgColor = const Color(0xFF22C55E);
-        textColor = const Color(0xFF16A34A);
-        icon = Icons.check_circle_rounded;
-        label = 'Delivered';
-        break;
-      case 'preparing':
-        bgColor = const Color(0xFFF59E0B);
-        textColor = const Color(0xFFD97706);
-        icon = Icons.restaurant_rounded;
-        label = 'Preparing';
-        break;
-      case 'outfordelivery':
-        bgColor = const Color(0xFF2563EB);
-        textColor = const Color(0xFF1D4ED8);
-        icon = Icons.delivery_dining_rounded;
-        label = 'Out for Delivery';
-        break;
-      case 'accepted':
-        bgColor = const Color(0xFF22C55E);
-        textColor = const Color(0xFF16A34A);
-        icon = Icons.thumb_up_rounded;
-        label = 'Accepted';
-        break;
-      case 'cancelled':
-        bgColor = const Color(0xFFEF4444);
-        textColor = const Color(0xFFDC2626);
-        icon = Icons.cancel_rounded;
-        label = 'Cancelled';
-        break;
-      default:
-        bgColor = const Color(0xFF6B7280);
-        textColor = const Color(0xFF4B5563);
-        icon = Icons.info_outline_rounded;
-        label = status;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            bgColor.withValues(alpha: 0.12),
-            bgColor.withValues(alpha: 0.06),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: bgColor.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: textColor),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: textColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrderSummaryCard(OrderModel order) {
-    final subtotal =
-        order.items?.fold(
-          0.0,
-          (sum, item) => sum + item.price * item.quantity,
-        ) ??
-        order.amount;
-    final total = order.amount;
-    final delivery = total >= subtotal
-        ? 0.0
-        : (total - subtotal).abs().clamp(0, 50);
-    final taxes = (total - subtotal - delivery).abs();
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _AppTheme.background,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _AppTheme.border),
-      ),
-      child: Column(
-        children: [
-          _summaryRow('Subtotal', '₹${subtotal.toStringAsFixed(2)}', false),
-          const SizedBox(height: 10),
-          _summaryRow(
-            'Delivery',
-            delivery == 0 ? 'FREE' : '₹${delivery.toStringAsFixed(2)}',
-            delivery == 0,
-          ),
-          const SizedBox(height: 10),
-          _summaryRow('Taxes & Fees', '₹${taxes.toStringAsFixed(2)}', false),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(color: _AppTheme.border, height: 1),
-          ),
-          _summaryRow(
-            'Total',
-            '₹${total.toStringAsFixed(2)}',
-            false,
-            isTotal: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _summaryRow(
-    String label,
-    String value,
-    bool isFree, {
-    bool isTotal = false,
-  }) {
+  Widget _buildPaymentSummary(OrderModel order) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
+        const Text(
+          'Total Amount',
           style: TextStyle(
-            fontSize: isTotal ? 14 : 13,
-            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w500,
-            color: isTotal ? const Color(0xFF111827) : const Color(0xFF6B7280),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
           ),
         ),
         Text(
-          value,
-          style: TextStyle(
-            fontSize: isTotal ? 18 : 13,
-            fontWeight: isTotal ? FontWeight.w700 : FontWeight.w600,
-            color: isFree
-                ? _AppTheme.success
-                : (isTotal ? const Color(0xFF111827) : const Color(0xFF111827)),
+          '₹${order.amount.toStringAsFixed(0)}',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFFE52121),
           ),
         ),
       ],
@@ -3180,7 +3350,7 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
                     id: item.productId,
                     name: item.name,
                     price: item.price,
-                    sellerId: widget.conversation.sellerId,
+                    sellerId: order.sellerId,
                     image: item.imageUrl,
                   ),
                 ),
@@ -3564,8 +3734,8 @@ class _PremiumActionButtonState extends State<_PremiumActionButton> {
 }
 
 class _OrderTimelineWithAnimation extends StatefulWidget {
-  final OrderStatus currentStatus;
-  const _OrderTimelineWithAnimation({required this.currentStatus});
+  final OrderModel order;
+  const _OrderTimelineWithAnimation({required this.order});
 
   @override
   State<_OrderTimelineWithAnimation> createState() =>
@@ -3604,10 +3774,11 @@ class _OrderTimelineWithAnimationState
 
   @override
   Widget build(BuildContext context) {
-    return _buildTimeline(widget.currentStatus);
+    return _buildTimeline(widget.order);
   }
 
-  Widget _buildTimeline(OrderStatus currentStatus) {
+  Widget _buildTimeline(OrderModel order) {
+    final currentStatus = order.status;
     final statusOrder = {
       OrderStatus.newOrder: 0,
       OrderStatus.accepted: 1,
@@ -3620,12 +3791,34 @@ class _OrderTimelineWithAnimationState
     };
     final currentIdx = statusOrder[currentStatus] ?? 0;
     final isCancelled = currentStatus == OrderStatus.cancelled;
+    final timeFormat = DateFormat('hh:mm a');
 
     final stepsData = [
-      {'title': 'Order Confirmed', 'index': 0, 'time': '12:30 PM'},
-      {'title': 'Preparing Your Food', 'index': 2, 'time': '12:45 PM'},
-      {'title': 'Out for Delivery', 'index': 3, 'time': '01:15 PM'},
-      {'title': 'Delivered', 'index': 4, 'time': '01:45 PM'},
+      {
+        'title': 'Order Confirmed',
+        'index': 0,
+        'time': timeFormat.format(order.timestamp),
+      },
+      {
+        'title': 'Accepted',
+        'index': 1,
+        'time': order.acceptedAt != null ? timeFormat.format(order.acceptedAt!) : null,
+      },
+      {
+        'title': 'Preparing Your Food',
+        'index': 2,
+        'time': order.preparingAt != null ? timeFormat.format(order.preparingAt!) : null,
+      },
+      {
+        'title': 'Out for Delivery',
+        'index': 3,
+        'time': order.outForDeliveryAt != null ? timeFormat.format(order.outForDeliveryAt!) : null,
+      },
+      {
+        'title': 'Delivered',
+        'index': 4,
+        'time': order.deliveredAt != null ? timeFormat.format(order.deliveredAt!) : null,
+      },
     ];
 
     return Container(
@@ -3672,7 +3865,9 @@ class _OrderTimelineWithAnimationState
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Est. ${stepsData.last['time']}',
+                        currentStatus == OrderStatus.delivered
+                            ? 'Delivered'
+                            : 'In Progress',
                         style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF22C55E),
@@ -3693,7 +3888,7 @@ class _OrderTimelineWithAnimationState
                   int idx = entry.key;
                   var step = entry.value;
                   int stepLevel = step['index'] as int;
-                  String stepTime = step['time'] as String;
+                  String? stepTime = step['time'] as String?;
                   bool isLast = idx == stepsData.length - 1;
 
                   bool isCompleted = !isCancelled && currentIdx > stepLevel;
@@ -3783,7 +3978,7 @@ class _OrderTimelineWithAnimationState
                                               : const Color(0xFF1C1C1C),
                                         ),
                                       ),
-                                      if (!isFuture)
+                                      if (!isFuture && stepTime != null)
                                         Text(
                                           stepTime,
                                           style: TextStyle(

@@ -1,18 +1,18 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'Rating_page_event.dart';
 import 'Rating_page_state.dart';
+import '../../../core/repositories/i_rating_repository.dart';
+import '../../../core/services/i_auth_service.dart';
 
 class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
-  final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
+  final IRatingRepository _ratingRepository;
+  final IAuthService _authService;
 
   RatingPageBloc({
-    FirebaseFirestore? firestore,
-    FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance,
+    required IRatingRepository ratingRepository,
+    required IAuthService authService,
+  })  : _ratingRepository = ratingRepository,
+        _authService = authService,
         super(const RatingInitial()) {
     on<RatingChanged>(_onRatingChanged);
     on<SubmitRating>(_onSubmitRating);
@@ -20,25 +20,14 @@ class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
   }
 
   Future<void> _onLoadRating(LoadRating event, Emitter<RatingPageState> emit) async {
-    final user = _auth.currentUser;
+    final user = _authService.currentUserId;
     if (user == null) return;
-    
-    final ratingsStream = _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('ratings')
-        .doc(event.foodId)
-        .snapshots();
-        
-    await emit.forEach<DocumentSnapshot>(
-      ratingsStream,
-      onData: (snapshot) {
-        if (snapshot.exists) {
-          final data = snapshot.data() as Map<String, dynamic>;
-          return RatingLoaded(
-            rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
-            reviewText: data['reviewText'] as String? ?? '',
-          );
+
+    await emit.forEach<double?>(
+      _ratingRepository.getUserRatingStream(user, event.foodId),
+      onData: (rating) {
+        if (rating != null) {
+          return RatingLoaded(rating: rating, reviewText: '');
         }
         return const RatingInitial();
       },
@@ -51,64 +40,45 @@ class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
   }
 
   Future<void> _onSubmitRating(SubmitRating event, Emitter<RatingPageState> emit) async {
-    emit(RatingLoading(rating: state.rating));
+    emit(RatingLoading(rating: event.rating));
     
     try {
       if (event.rating == 0) {
         throw Exception("Please provide a valid rating greater than 0.");
       }
 
-      final user = _auth.currentUser;
-      if (user == null) {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
         throw Exception("User not logged in.");
       }
 
-      final ratingsRef = _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('ratings')
-          .doc(event.foodId);
+      await _ratingRepository.submitRating(
+        userId: userId,
+        foodId: event.foodId,
+        rating: event.rating,
+        reviewText: event.reviewText,
+        reviewerName: _authService.currentUserDisplayName ?? 'Anonymous User',
+        reviewerAvatarUrl: _authService.currentUserPhotoUrl,
+      );
 
-      await ratingsRef.set({
-        'rating': event.rating,
-        'reviewText': event.reviewText,
-        'timestamp': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      final productReviewsRef = _firestore
-          .collection('products')
-          .doc(event.foodId)
-          .collection('reviews')
-          .doc(user.uid);
-
-      await productReviewsRef.set({
-        'reviewerName': user.displayName ?? 'Anonymous User',
-        'rating': event.rating,
-        'reviewText': event.reviewText,
-        'timestamp': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      final productDoc = await _firestore.collection('products').doc(event.foodId).get();
-      final sellerId = productDoc.data()?['sellerId'] as String?;
-
+      final sellerId = await _ratingRepository.getProductSellerId(event.foodId);
       if (sellerId != null && sellerId.isNotEmpty) {
-        await _firestore.collection('reviews').add({
-          'sellerId': sellerId,
-          'productId': event.foodId,
-          'customerId': user.uid,
-          'customerName': user.displayName ?? 'Anonymous User',
-          'customerAvatarUrl': user.photoURL ?? '',
-          'rating': event.rating,
-          'content': event.reviewText,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        await _ratingRepository.addSellerReview(
+          sellerId: sellerId,
+          productId: event.foodId,
+          customerId: userId,
+          customerName: _authService.currentUserDisplayName ?? 'Anonymous User',
+          customerAvatarUrl: _authService.currentUserPhotoUrl ?? '',
+          rating: event.rating,
+          content: event.reviewText,
+        );
       }
 
-      emit(RatingSuccess(rating: state.rating));
+      emit(RatingSuccess(rating: event.rating));
     } catch (e) {
       emit(RatingError(
         message: e.toString().replaceAll("Exception: ", ""), 
-        rating: state.rating,
+        rating: event.rating,
       ));
     }
   }

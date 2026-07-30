@@ -1,9 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_product_page__event.dart';
 import 'add_product_page__state.dart';
 import '../../../../core/repositories/i_product_repository.dart';
+import '../../../../core/repositories/i_seller_repository.dart';
 import '../../../../core/models/product_model.dart';
 import '../../../../core/services/i_auth_service.dart';
 
@@ -11,8 +11,13 @@ class AddProductPageBloc
     extends Bloc<AddProductPageEvent, AddProductPageState> {
   final IProductRepository repository;
   final IAuthService authService;
+  final ISellerRepository sellerRepository;
 
-  AddProductPageBloc({required this.repository, required this.authService}) : super(const AddProductPageState()) {
+  AddProductPageBloc({
+    required this.repository,
+    required this.authService,
+    required this.sellerRepository,
+  }) : super(const AddProductPageState()) {
     on<LoadProductEvent>(_onLoadProduct);
     on<AddImageEvent>(_onAddImage);
     on<RemoveImageEvent>(_onRemoveImage);
@@ -31,14 +36,9 @@ class AddProductPageBloc
     final userId = authService.currentUserId;
     if (userId != null) {
       try {
-        final doc = await FirebaseFirestore.instance.collection('sellers').doc(userId).get();
-        if (doc.exists) {
-          final data = doc.data();
-          final gst = (data?['gstPercentage'] as num?)?.toDouble() ?? 0.0;
-          emit(state.copyWith(gstPercentage: gst));
-        }
+        final gst = await sellerRepository.getGstPercentage(userId);
+        emit(state.copyWith(gstPercentage: gst));
       } catch (_) {
-        // Ignore errors, use default 0.0
       }
     }
   }
@@ -173,6 +173,8 @@ class AddProductPageBloc
         id: initial?.id ?? '',
         name: event.name,
         price: event.price,
+        basePrice: event.basePrice,
+        gstPercentage: event.gstPercentage,
         discountPrice: event.discountPrice ?? 0.0,
         description: event.description,
         prepTime: int.tryParse(event.prepTime ?? '') ?? initial?.prepTime ?? 0,

@@ -102,6 +102,8 @@ class SellerAnalyticsPageUI extends StatelessWidget {
                 data: state.data,
                 selectedTimeRange: state.selectedTimeRange,
                 isEmpty: false,
+                favorites: state.favorites,
+                ratingAnalytics: state.ratingAnalytics,
               );
             }
             return const SizedBox.shrink();
@@ -116,11 +118,15 @@ class _AnalyticsContent extends StatelessWidget {
   final AnalyticsDataModel data;
   final String selectedTimeRange;
   final bool isEmpty;
+  final FavoritesAnalytics? favorites;
+  final RatingAnalytics? ratingAnalytics;
 
   const _AnalyticsContent({
     required this.data,
     required this.selectedTimeRange,
     this.isEmpty = false,
+    this.favorites,
+    this.ratingAnalytics,
   });
 
   @override
@@ -278,13 +284,374 @@ class _AnalyticsContent extends StatelessWidget {
                         return _BestSellerTile(product: product, index: index);
                       },
                     ),
+                    if (favorites != null) ...[
+                      const SizedBox(height: 32),
+                      Text(
+                        'Favorites Analytics',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: const Color(0xFF1E293B),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _FavoritesStatCard(
+                              title: 'Today',
+                              count: favorites!.todayCount,
+                              icon: Icons.today,
+                              color: Colors.indigo,
+                            ),
+                            const SizedBox(width: 12),
+                            _FavoritesStatCard(
+                              title: 'This Week',
+                              count: favorites!.thisWeekCount,
+                              icon: Icons.date_range,
+                              color: Colors.teal,
+                            ),
+                            const SizedBox(width: 12),
+                            _FavoritesStatCard(
+                              title: 'This Month',
+                              count: favorites!.thisMonthCount,
+                              icon: Icons.calendar_month,
+                              color: Colors.purple,
+                            ),
+                            const SizedBox(width: 12),
+                            _FavoritesStatCard(
+                              title: 'Total',
+                              count: favorites!.totalFavorites,
+                              icon: Icons.favorite,
+                              color: Colors.redAccent,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (favorites!.topProducts.isNotEmpty) ...[
+                        Text(
+                          'Top Favorited Products',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFF1E293B),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: favorites!.topProducts.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final product = favorites!.topProducts[index];
+                            return _FavoriteProductTile(
+                              product: product,
+                              index: index,
+                            );
+                          },
+                        ),
+                    ],
+                      ],
+                      if (ratingAnalytics != null) ...[
+                        const SizedBox(height: 32),
+                        Text(
+                          'Ratings & Reviews',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFF1E293B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _RatingAvgCard(rating: ratingAnalytics!.averageRating, total: ratingAnalytics!.totalReviews),
+                              const SizedBox(width: 12),
+                              _FavoritesStatCard(
+                                title: 'Today',
+                                count: ratingAnalytics!.todayCount,
+                                icon: Icons.today,
+                                color: Colors.amber,
+                              ),
+                              const SizedBox(width: 12),
+                              _FavoritesStatCard(
+                                title: 'This Week',
+                                count: ratingAnalytics!.thisWeekCount,
+                                icon: Icons.date_range,
+                                color: Colors.orange,
+                              ),
+                              const SizedBox(width: 12),
+                              _FavoritesStatCard(
+                                title: 'Total',
+                                count: ratingAnalytics!.totalReviews,
+                                icon: Icons.star,
+                                color: Colors.amber,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Rating Distribution
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFF1F5F9)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Rating Distribution',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: const Color(0xFF1E293B),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ...List.generate(5, (i) {
+                                final star = 5 - i;
+                                final count = ratingAnalytics!.ratingDistribution[star] ?? 0;
+                                final pct = ratingAnalytics!.totalReviews > 0
+                                    ? count / ratingAnalytics!.totalReviews
+                                    : 0.0;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 60,
+                                        child: Text(
+                                          '$star ${star == 1 ? 'star' : 'stars'}',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 12,
+                                            color: const Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: LinearProgressIndicator(
+                                            value: pct,
+                                            backgroundColor: const Color(0xFFF1F5F9),
+                                            color: star >= 4
+                                                ? Colors.green
+                                                : star >= 3
+                                                    ? Colors.orange
+                                                    : Colors.red,
+                                            minHeight: 8,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      SizedBox(
+                                        width: 30,
+                                        child: Text(
+                                          '$count',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF1E293B),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                        if (ratingAnalytics!.recentReviews.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            'Recent Reviews',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: const Color(0xFF1E293B),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: ratingAnalytics!.recentReviews.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final review = ratingAnalytics!.recentReviews[index];
+                              return _RecentReviewTile(review: review);
+                            },
+                          ),
+                        ],
+                      ],
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
         );
       },
+    );
+  }
+}
+
+class _RatingAvgCard extends StatelessWidget {
+  final double rating;
+  final int total;
+
+  const _RatingAvgCard({required this.rating, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 130,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFF3E0),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.star, color: Colors.amber, size: 18),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                rating.toStringAsFixed(1),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  '/ 5',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Average Rating',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentReviewTile extends StatelessWidget {
+  final RecentReview review;
+
+  const _RecentReviewTile({required this.review});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundImage: review.customerAvatarUrl != null && review.customerAvatarUrl!.isNotEmpty
+                    ? NetworkImage(review.customerAvatarUrl!)
+                    : null,
+                child: review.customerAvatarUrl == null || review.customerAvatarUrl!.isEmpty
+                    ? Text(
+                        review.customerName.isNotEmpty
+                            ? review.customerName[0].toUpperCase()
+                            : '?',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF64748B),
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  review.customerName,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+              ),
+              Row(
+                children: List.generate(5, (i) {
+                  return Icon(
+                    i < review.rating.round() ? Icons.star : Icons.star_border,
+                    size: 14,
+                    color: Colors.amber,
+                  );
+                }),
+              ),
+            ],
+          ),
+          if (review.content.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              review.content,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: const Color(0xFF64748B),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -696,6 +1063,144 @@ class _SkeletonLoader extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.grey[300],
         borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    );
+  }
+}
+
+class _FavoritesStatCard extends StatelessWidget {
+  final String title;
+  final int count;
+  final IconData icon;
+  final Color color;
+
+  const _FavoritesStatCard({
+    required this.title,
+    required this.count,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 130,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            count.toString(),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FavoriteProductTile extends StatelessWidget {
+  final FavoriteProductStats product;
+  final int index;
+
+  const _FavoriteProductTile({required this.product, required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: 300 + (index * 50)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(20 * (1 - value), 0),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '#${index + 1}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF64748B),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                product.productName,
+                style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFF1E293B),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${product.favoriteCount}',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

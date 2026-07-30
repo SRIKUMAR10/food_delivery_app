@@ -83,7 +83,9 @@ class FieldChangedEvent extends AddProductPageEvent {
 
 class SubmitProductEvent extends AddProductPageEvent {
   final String name;
-  final double price;
+  final double price; // GST-inclusive
+  final double basePrice;
+  final double gstPercentage;
   final double? discountPrice;
   final String description;
   final String? prepTime;
@@ -96,6 +98,8 @@ class SubmitProductEvent extends AddProductPageEvent {
   const SubmitProductEvent({
     required this.name,
     required this.price,
+    required this.basePrice,
+    required this.gstPercentage,
     this.discountPrice,
     required this.description,
     this.prepTime,
@@ -107,7 +111,7 @@ class SubmitProductEvent extends AddProductPageEvent {
   });
 
   @override
-  List<Object?> get props => [name, price, discountPrice, description, prepTime, portionSize, addons, calories, availableStock, minimumAlert];
+  List<Object?> get props => [name, price, basePrice, gstPercentage, discountPrice, description, prepTime, portionSize, addons, calories, availableStock, minimumAlert];
 }
 
 class ResetFormEvent extends AddProductPageEvent {}

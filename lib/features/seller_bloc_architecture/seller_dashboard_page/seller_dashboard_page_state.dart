@@ -24,6 +24,7 @@ class DashboardData extends Equatable {
   final double revenueToday;
   final double revenueChangePercentage;
   final int pendingOrdersCount;
+  final int newOrdersCount;
   final int todaysOrdersCount;
   final int lowStockCount;
   final int activeProductsCount;
@@ -34,6 +35,7 @@ class DashboardData extends Equatable {
     required this.revenueToday,
     required this.revenueChangePercentage,
     required this.pendingOrdersCount,
+    required this.newOrdersCount,
     required this.todaysOrdersCount,
     required this.lowStockCount,
     required this.activeProductsCount,
@@ -46,6 +48,7 @@ class DashboardData extends Equatable {
         revenueToday,
         revenueChangePercentage,
         pendingOrdersCount,
+        newOrdersCount,
         todaysOrdersCount,
         lowStockCount,
         activeProductsCount,

@@ -8,16 +8,18 @@ class NewOrderNotificationService {
   NewOrderNotificationService({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  Stream<OrderModel> streamNewOrders(String sellerId) {
+  Stream<List<OrderModel>> streamNewOrders(String sellerId) {
     return _firestore
         .collection('orders')
         .where('sellerId', isEqualTo: sellerId)
-        .where('status', isEqualTo: 'New')
-        .orderBy('timestamp', descending: true)
         .snapshots()
-        .expand((snapshot) {
-          return snapshot.docs.map((doc) =>
-              OrderModel.fromMap(doc.data(), doc.id));
+        .map((snapshot) {
+          final orders = snapshot.docs
+              .map((doc) => OrderModel.fromMap(doc.data(), doc.id))
+              .where((order) => order.status.value == 'New')
+              .toList();
+          orders.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          return orders;
         });
   }
 

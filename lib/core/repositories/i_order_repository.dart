@@ -6,4 +6,10 @@ abstract interface class IOrderRepository {
   Stream<List<OrderModel>> getSellerOrdersStream(String sellerId);
   Future<void> updateOrderStatus(String orderId, OrderStatus newStatus);
   Future<OrderModel?> getOrderById(String orderId);
+  Future<void> addOrderWalletTransaction({
+    required String customerId,
+    required String orderId,
+    required String sellerId,
+    required double amount,
+  });
 }

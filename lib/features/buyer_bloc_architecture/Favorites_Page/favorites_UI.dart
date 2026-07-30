@@ -62,7 +62,7 @@ class _FavoritesPageContent extends StatelessWidget {
             final currFmt = NumberFormat.currency(
               locale: 'en_IN',
               symbol: '₹',
-              decimalDigits: 2,
+              decimalDigits: 0,
             );
 
             return Center(

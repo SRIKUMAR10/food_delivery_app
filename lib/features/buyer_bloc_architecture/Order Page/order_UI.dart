@@ -216,13 +216,13 @@ class _OrderPageContentState extends State<_OrderPageContent> {
           if (_selectedTab == 'Ongoing') {
             orders = orders
                 .where(
-                  (o) => o.status != 'Delivered' && o.status != 'Cancelled',
+                  (o) => o.status.toLowerCase() != 'delivered' && o.status.toLowerCase() != 'cancelled' && o.status.toLowerCase() != 'rejected',
                 )
                 .toList();
           } else if (_selectedTab == 'Completed') {
-            orders = orders.where((o) => o.status == 'Delivered').toList();
+            orders = orders.where((o) => o.status.toLowerCase() == 'delivered').toList();
           } else if (_selectedTab == 'Cancelled') {
-            orders = orders.where((o) => o.status == 'Cancelled').toList();
+            orders = orders.where((o) => o.status.toLowerCase() == 'cancelled' || o.status.toLowerCase() == 'rejected').toList();
           }
 
           if (orders.isEmpty) {
@@ -308,7 +308,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
       statusBgColor = const Color(0xFF4CAF50).withValues(alpha: 0.05);
       statusBorderColor = const Color(0xFF4CAF50).withValues(alpha: 0.2);
       statusText = 'Delivered';
-    } else if (order.status.toLowerCase() == 'cancelled') {
+    } else if (order.status.toLowerCase() == 'cancelled' || order.status.toLowerCase() == 'rejected') {
       statusTextColor = const Color(0xFFE52121);
       statusBgColor = const Color(0xFFE52121).withValues(alpha: 0.05);
       statusBorderColor = const Color(0xFFE52121).withValues(alpha: 0.2);
@@ -432,7 +432,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                   ),
                 ),
                 Text(
-                  '₹${order.totalAmount.toStringAsFixed(2)}',
+                  '₹${order.totalAmount.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -478,7 +478,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                   isDesktop
                       ? (order.status.toLowerCase() == 'delivered'
                             ? 'Delivered'
-                            : (order.status.toLowerCase() == 'cancelled'
+                            : ((order.status.toLowerCase() == 'cancelled' || order.status.toLowerCase() == 'rejected')
                                   ? 'Cancelled'
                                   : 'Tracking'))
                       : statusText,

@@ -71,3 +71,89 @@ class ChartDataPoint extends Equatable {
   @override
   List<Object?> get props => [date, value];
 }
+
+class FavoriteProductStats extends Equatable {
+  final String productId;
+  final String productName;
+  final int favoriteCount;
+
+  const FavoriteProductStats({
+    required this.productId,
+    required this.productName,
+    required this.favoriteCount,
+  });
+
+  @override
+  List<Object?> get props => [productId, productName, favoriteCount];
+}
+
+class FavoritesAnalytics extends Equatable {
+  final int totalFavorites;
+  final int todayCount;
+  final int thisWeekCount;
+  final int thisMonthCount;
+  final List<FavoriteProductStats> topProducts;
+
+  const FavoritesAnalytics({
+    required this.totalFavorites,
+    required this.todayCount,
+    required this.thisWeekCount,
+    required this.thisMonthCount,
+    required this.topProducts,
+  });
+
+  @override
+  List<Object?> get props =>
+      [totalFavorites, todayCount, thisWeekCount, thisMonthCount, topProducts];
+}
+
+class RecentReview extends Equatable {
+  final String customerName;
+  final String? customerAvatarUrl;
+  final double rating;
+  final String content;
+  final DateTime createdAt;
+
+  const RecentReview({
+    required this.customerName,
+    this.customerAvatarUrl,
+    required this.rating,
+    required this.content,
+    required this.createdAt,
+  });
+
+  @override
+  List<Object?> get props =>
+      [customerName, customerAvatarUrl, rating, content, createdAt];
+}
+
+class RatingAnalytics extends Equatable {
+  final double averageRating;
+  final int totalReviews;
+  final int todayCount;
+  final int thisWeekCount;
+  final int thisMonthCount;
+  final Map<int, int> ratingDistribution;
+  final List<RecentReview> recentReviews;
+
+  const RatingAnalytics({
+    required this.averageRating,
+    required this.totalReviews,
+    required this.todayCount,
+    required this.thisWeekCount,
+    required this.thisMonthCount,
+    required this.ratingDistribution,
+    required this.recentReviews,
+  });
+
+  @override
+  List<Object?> get props => [
+    averageRating,
+    totalReviews,
+    todayCount,
+    thisWeekCount,
+    thisMonthCount,
+    ratingDistribution,
+    recentReviews,
+  ];
+}

@@ -3,4 +3,5 @@ import '../../features/buyer_bloc_architecture/user_profile_image/AppSettings_St
 abstract class IAppSettingsRepository {
   Future<AppSettingsState> loadSettings(String userId);
   Future<void> saveSettings(AppSettingsState state);
+  Future<void> deleteUserData(String userId);
 }

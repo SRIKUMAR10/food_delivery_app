@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_delivery_app/core/repositories/i_favorites_repository.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_bloc.dart'
     show FavoritesBloc;
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_event.dart';
@@ -13,14 +13,16 @@ import 'package:mocktail/mocktail.dart';
 
 class MockAuthService extends Mock implements IAuthService {}
 
+class MockFavoritesRepository extends Mock implements IFavoritesRepository {}
+
 void main() {
-  late FakeFirebaseFirestore fakeFirestore;
+  late MockFavoritesRepository mockRepository;
   late MockAuthService mockAuthService;
 
   const String testUid = 'test_uid_123';
 
   setUp(() {
-    fakeFirestore = FakeFirebaseFirestore();
+    mockRepository = MockFavoritesRepository();
     mockAuthService = MockAuthService();
 
     when(() => mockAuthService.currentUserId).thenReturn(testUid);
@@ -39,14 +41,24 @@ void main() {
     );
 
     test('initial state is FavoritesLoading', () {
-      final bloc = FavoritesBloc(firestore: fakeFirestore, authService: mockAuthService);
+      final bloc = FavoritesBloc(
+        favoritesRepository: mockRepository,
+        authService: mockAuthService,
+      );
       expect(bloc.state, const FavoritesLoading());
       bloc.close();
     });
 
     blocTest<FavoritesBloc, FavoritesState>(
       'LoadFavoritesStarted emits FavoritesLoaded with empty list initially',
-      build: () => FavoritesBloc(firestore: fakeFirestore, authService: mockAuthService),
+      build: () => FavoritesBloc(
+        favoritesRepository: mockRepository,
+        authService: mockAuthService,
+      ),
+      setUp: () {
+        when(() => mockRepository.getFavoritesStream(testUid))
+            .thenAnswer((_) => const Stream.empty());
+      },
       act: (bloc) => bloc.add(const LoadFavoritesStarted()),
       expect: () => [
         const FavoritesLoading(),
@@ -55,63 +67,28 @@ void main() {
     );
 
     blocTest<FavoritesBloc, FavoritesState>(
-      'FavoritesToggleRequested adds item to favorites',
-      build: () => FavoritesBloc(firestore: fakeFirestore, authService: mockAuthService),
+      'FavoritesToggleRequested calls toggleFavorite on repository',
+      build: () => FavoritesBloc(
+        favoritesRepository: mockRepository,
+        authService: mockAuthService,
+      ),
+      setUp: () {
+        when(() => mockRepository.getFavoritesStream(testUid))
+            .thenAnswer((_) => const Stream.empty());
+        when(() => mockRepository.toggleFavorite(testUid, item1))
+            .thenAnswer((_) async {});
+      },
       act: (bloc) async {
         bloc.add(const LoadFavoritesStarted());
-        await Future.delayed(
-          const Duration(milliseconds: 100),
-        );
+        await Future.delayed(const Duration(milliseconds: 50));
         bloc.add(const FavoritesToggleRequested(item1));
       },
       expect: () => [
         const FavoritesLoading(),
         const FavoritesLoaded(items: [], favoriteIds: {}),
-        const FavoritesLoaded(items: [item1], favoriteIds: {'item1'}),
       ],
-      verify: (_) async {
-        final doc = await fakeFirestore
-            .collection('users')
-            .doc(testUid)
-            .collection('favorites')
-            .doc('item1')
-            .get();
-        expect(doc.exists, isTrue);
-        expect(doc.data()?['name'], 'Burger');
-      },
-    );
-
-    blocTest<FavoritesBloc, FavoritesState>(
-      'FavoritesToggleRequested removes item from favorites if already exists',
-      setUp: () async {
-        await fakeFirestore
-            .collection('users')
-            .doc(testUid)
-            .collection('favorites')
-            .doc('item1')
-            .set(item1.toMap());
-      },
-      build: () => FavoritesBloc(firestore: fakeFirestore, authService: mockAuthService),
-      act: (bloc) async {
-        bloc.add(const LoadFavoritesStarted());
-        await Future.delayed(
-          const Duration(milliseconds: 100),
-        );
-        bloc.add(const FavoritesToggleRequested(item1));
-      },
-      expect: () => [
-        const FavoritesLoading(),
-        const FavoritesLoaded(items: [item1], favoriteIds: {'item1'}),
-        const FavoritesLoaded(items: [], favoriteIds: {}),
-      ],
-      verify: (_) async {
-        final doc = await fakeFirestore
-            .collection('users')
-            .doc(testUid)
-            .collection('favorites')
-            .doc('item1')
-            .get();
-        expect(doc.exists, isFalse);
+      verify: (_) {
+        verify(() => mockRepository.toggleFavorite(testUid, item1)).called(1);
       },
     );
   });

@@ -6,6 +6,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/repositories/i_user_profile_repository.dart';
 
 import 'user_profile_image_Bloc.dart';
 import 'user_profile_image_UI.dart';
@@ -24,7 +26,10 @@ class user_profile_image extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<UserProfileBloc>(
-      create: (context) => UserProfileBloc(),
+      create: (context) => UserProfileBloc(
+        authService: context.read<IAuthService>(),
+        profileRepository: context.read<IUserProfileRepository>(),
+      ),
       child: const UserProfileDrawer(),
     );
   }

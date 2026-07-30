@@ -15,7 +15,11 @@ import '../Order Page/order_view_model.dart';
 import '../user_profile_image/user_profile_image_Bloc.dart';
 import '../Chat_Page/buyer_chat_ui.dart';
 import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
-
+import '../../../core/repositories/i_order_repository.dart';
+import '../../../core/services/i_auth_service.dart';
+import '../../../core/repositories/i_user_profile_repository.dart';
+import '../Chat_Page/invoice_generator.dart';
+import 'package:printing/printing.dart';
 class TrackOrderPageUI extends StatelessWidget {
   final String orderId;
   final OrderViewModel? order;
@@ -42,6 +46,8 @@ class TrackOrderPageUI extends StatelessWidget {
                 repository: TrackOrderRepositoryImpl(
                   service: TrackOrderService(firestore: FirebaseFirestore.instance),
                 ),
+                orderRepository: context.read<IOrderRepository>(),
+                trackService: TrackOrderService(firestore: FirebaseFirestore.instance),
               )..add(
                 LoadTrackOrderDetails(
                   orderId: orderId,
@@ -51,7 +57,10 @@ class TrackOrderPageUI extends StatelessWidget {
         ),
         BlocProvider(
           create: (context) =>
-              UserProfileBloc()..add(const LoadProfileStarted()),
+              UserProfileBloc(
+                authService: context.read<IAuthService>(),
+                profileRepository: context.read<IUserProfileRepository>(),
+              )..add(const LoadProfileStarted()),
         ),
       ],
       child: _TrackOrderView(order: order, isEmbedded: isEmbedded, allowPopOnDesktop: allowPopOnDesktop),
@@ -117,6 +126,61 @@ class _TrackOrderView extends StatelessWidget {
     );
   }
 
+  Widget _buildCancelButton(BuildContext context, TrackOrderLoaded state) {
+    bool isCancelled = state.trackingSteps.any((step) => step.status == TrackingStatus.cancelled);
+    bool isDelivered = state.trackingSteps.isNotEmpty &&
+        state.trackingSteps.last.status == TrackingStatus.completed;
+
+    if (isCancelled || isDelivered) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Align(
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  context.read<TrackOrderBloc>().add(CancelOrderEvent(state.orderId));
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFF0F0),
+                  foregroundColor: const Color(0xFFE52121),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Cancel Order',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMobileLayout(BuildContext context) {
     return BlocBuilder<TrackOrderBloc, TrackOrderState>(
       builder: (context, state) {
@@ -125,27 +189,34 @@ class _TrackOrderView extends StatelessWidget {
         } else if (state is TrackOrderError) {
           return _buildErrorState(context, state.message);
         } else if (state is TrackOrderLoaded) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeaderInfo(state),
-                const SizedBox(height: 24),
-                _buildTimelineCard(state),
-                const SizedBox(height: 20),
-                _buildDeliveryPartnerCard(context, state),
-                const SizedBox(height: 20),
-                _buildUserInfo(context, state),
-                if (order != null) ...[
-                  const SizedBox(height: 24),
-                  const Divider(color: Color(0xFFF0F0F0), thickness: 1),
-                  const SizedBox(height: 24),
-                  _buildOrderSummaryMobile(),
-                ],
-              ],
-            ),
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeaderInfo(state),
+                      const SizedBox(height: 24),
+                      _buildTimelineCard(state),
+                      const SizedBox(height: 20),
+                      _buildDeliveryPartnerCard(context, state),
+                      const SizedBox(height: 20),
+                      _buildUserInfo(context, state),
+                      if (order != null) ...[
+                        const SizedBox(height: 24),
+                        const Divider(color: Color(0xFFF0F0F0), thickness: 1),
+                        const SizedBox(height: 24),
+                        _buildOrderSummaryMobile(context, state),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              _buildCancelButton(context, state),
+            ],
           );
         }
         return const SizedBox.shrink();
@@ -161,95 +232,104 @@ class _TrackOrderView extends StatelessWidget {
         } else if (state is TrackOrderError) {
           return _buildErrorState(context, state.message);
         } else if (state is TrackOrderLoaded) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(32.0),
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Left column: Order Details & Payment Summary
-                    Expanded(
-                      flex: 3,
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFF0F0F0)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Order Details',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1C1C1C),
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(32.0),
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left column: Order Details & Payment Summary
+                          Expanded(
+                            flex: 3,
+                            child: Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFF0F0F0)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Order Details',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1C1C1C),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildHeaderInfo(state),
+                                  const SizedBox(height: 24),
+                                  const Divider(color: Color(0xFFF0F0F0), thickness: 1),
+                                  const SizedBox(height: 24),
+                                  if (order != null) _buildOrderItemsList(),
+                                  if (order != null) ...[
+                                    const SizedBox(height: 24),
+                                    const Divider(color: Color(0xFFF0F0F0), thickness: 1),
+                                    const SizedBox(height: 16),
+                                    _buildPaymentSummary(),
+                                    const SizedBox(height: 16),
+                                    _buildDownloadInvoiceButton(context, state),
+                                  ],
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            _buildHeaderInfo(state),
-                            const SizedBox(height: 24),
-                            const Divider(color: Color(0xFFF0F0F0), thickness: 1),
-                            const SizedBox(height: 24),
-                            if (order != null) _buildOrderItemsList(),
-                            if (order != null) ...[
-                              const SizedBox(height: 24),
-                              const Divider(color: Color(0xFFF0F0F0), thickness: 1),
-                              const SizedBox(height: 16),
-                              _buildPaymentSummary(),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 32),
-                    // Right column: Tracking Timeline & Partner
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFF0F0F0)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Tracking Status',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1C1C1C),
+                          ),
+                          const SizedBox(width: 32),
+                          // Right column: Tracking Timeline & Partner
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFF0F0F0)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Tracking Status',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1C1C1C),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _buildTimeline(state.trackingSteps),
+                                  const SizedBox(height: 24),
+                                  _buildDesktopDeliveryPartnerCard(context, state),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 24),
-                            _buildTimeline(state.trackingSteps),
-                            const SizedBox(height: 24),
-                            _buildDesktopDeliveryPartnerCard(context, state),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+                      _buildDesktopUserInfo(context, state),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 24),
-                _buildDesktopUserInfo(context, state),
-              ],
-            ),
+              ),
+              _buildCancelButton(context, state),
+            ],
           );
         }
         return const SizedBox.shrink();
@@ -667,9 +747,12 @@ class _TrackOrderView extends StatelessWidget {
               children: [
                 Icon(Icons.hourglass_empty, color: Colors.grey, size: 20),
                 SizedBox(width: 12),
-                Text(
-                  'Assigning a delivery partner...',
-                  style: TextStyle(color: Colors.black54, fontSize: 14),
+                Expanded(
+                  child: Text(
+                    'Assigning a delivery partner...',
+                    style: TextStyle(color: Colors.black54, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             )
@@ -1276,7 +1359,7 @@ class _TrackOrderView extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderSummaryMobile() {
+  Widget _buildOrderSummaryMobile(BuildContext context, TrackOrderLoaded state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1294,6 +1377,8 @@ class _TrackOrderView extends StatelessWidget {
         const Divider(color: Color(0xFFF0F0F0), thickness: 1),
         const SizedBox(height: 16),
         _buildPaymentSummary(),
+        const SizedBox(height: 24),
+        _buildDownloadInvoiceButton(context, state),
       ],
     );
   }
@@ -1452,6 +1537,59 @@ class _TrackOrderView extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDownloadInvoiceButton(BuildContext context, TrackOrderLoaded state) {
+    if (order == null) return const SizedBox.shrink();
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () async {
+          try {
+            final pdfBytes = await InvoiceGenerator.generateInvoice(
+              orderId: order!.id,
+              buyerName: 'Customer', 
+              sellerName: state.sellerInfo?.name ?? 'Restaurant',
+              shopName: state.sellerInfo?.name ?? 'Restaurant',
+              totalAmount: order!.totalAmount,
+              date: order!.date,
+              items: order!.items.map((i) => {
+                'name': i.name,
+                'qty': i.quantity,
+                'price': i.price,
+              }).toList(),
+            );
+            
+            await Printing.sharePdf(
+              bytes: pdfBytes, 
+              filename: 'invoice_${order!.id.substring(0, 8)}.pdf'
+            );
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to generate invoice: $e'), 
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        },
+        icon: const Icon(Icons.receipt_long_outlined, size: 20),
+        label: const Text(
+          'Download Invoice',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF2563EB),
+          side: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
     );
   }
 

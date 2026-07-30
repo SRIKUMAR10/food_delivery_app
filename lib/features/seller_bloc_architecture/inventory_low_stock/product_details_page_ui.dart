@@ -135,6 +135,15 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                               color: const Color(0xFF64748B),
                             ),
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Current Stock: ${widget.item.quantity.toInt()} pcs',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF4F46E5),
+                            ),
+                          ),
                         ],
                       ),
                     ),

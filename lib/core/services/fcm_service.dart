@@ -1,10 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:logger/logger.dart';
 
 // Top-level function for background message handling
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('Handling a background message: ${message.messageId}');
+  debugPrint('Handling a background message: ${message.messageId}');
 }
 
 class FCMService {

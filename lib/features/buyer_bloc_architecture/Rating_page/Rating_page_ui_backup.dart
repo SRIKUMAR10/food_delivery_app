@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'Rating_page_bloc.dart';
 import 'Rating_page_event.dart';
 import 'Rating_page_state.dart';
+import '../../../core/services/i_auth_service.dart';
+import '../../../core/repositories/i_rating_repository.dart';
 
 class RatingPageUI extends StatelessWidget {
   final String foodId;
@@ -14,7 +16,10 @@ class RatingPageUI extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => RatingPageBloc()..add(LoadRating(foodId: foodId)),
+      create: (context) => RatingPageBloc(
+        ratingRepository: context.read<IRatingRepository>(),
+        authService: context.read<IAuthService>(),
+      )..add(LoadRating(foodId: foodId)),
       child: RatingPageView(foodId: foodId, foodName: foodName),
     );
   }

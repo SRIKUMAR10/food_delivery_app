@@ -8,6 +8,27 @@ class InventoryRepository {
   InventoryRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  double _parseDoubleSafely(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
+  }
+
+  int _parseIntSafely(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toInt();
+    if (value is String) {
+      final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+      if (digits.isNotEmpty) {
+        return int.tryParse(digits) ?? 0;
+      }
+    }
+    return 0;
+  }
+
   Stream<List<InventoryItemModel>> getInventoryStream(String sellerId) {
     return _firestore
         .collection('products')
@@ -16,13 +37,24 @@ class InventoryRepository {
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
+        
+        // Handle images safely
+        String? imagePath;
+        if (data['imageUrls'] != null && data['imageUrls'] is List && (data['imageUrls'] as List).isNotEmpty) {
+          imagePath = (data['imageUrls'] as List).first.toString();
+        } else if (data['imageUrl'] != null) {
+          imagePath = data['imageUrl'].toString();
+        }
+
         return InventoryItemModel(
           id: doc.id,
           name: data['name'] as String? ?? 'Unknown Product',
-          quantity: (data['quantity'] as num?)?.toDouble() ?? 0.0,
+          quantity: _parseDoubleSafely(data['availableStock']),
           unit: data['unit'] as String? ?? 'pcs',
-          lowStockThreshold: (data['lowStockThreshold'] as num?)?.toInt() ?? 5,
-          imagePath: data['imageUrl'] as String?,
+          lowStockThreshold: data.containsKey('minimumAlert') 
+              ? _parseIntSafely(data['minimumAlert']) 
+              : _parseIntSafely(data['lowStockThreshold'] ?? 5),
+          imagePath: imagePath,
           category: data['category'] as String? ?? 'General',
           sku: data['sku'] as String? ?? 'SKU-${doc.id.substring(0, 4)}',
           expiryDate: data['expiryDate'] != null 
@@ -56,7 +88,7 @@ class InventoryRepository {
         throw Exception('Unauthorized to update this product');
       }
 
-      final currentQuantity = (data['quantity'] as num?)?.toDouble() ?? 0.0;
+      final currentQuantity = (data['availableStock'] as num?)?.toDouble() ?? 0.0;
       final newQuantity = currentQuantity + quantityChange;
 
       if (newQuantity < 0) {
@@ -66,7 +98,7 @@ class InventoryRepository {
       final actionType = quantityChange > 0 ? 'Increase' : 'Decrease';
 
       // Update product
-      transaction.update(productRef, {'quantity': newQuantity});
+      transaction.update(productRef, {'availableStock': newQuantity.toInt()});
 
       // Create log
       transaction.set(logRef, {
@@ -110,7 +142,7 @@ class InventoryRepository {
       final data = snapshot.data()!;
       if (data['sellerId'] != sellerId) continue;
 
-      final currentQuantity = (data['quantity'] as num?)?.toDouble() ?? 0.0;
+      final currentQuantity = (data['availableStock'] as num?)?.toDouble() ?? 0.0;
       final newQuantity = currentQuantity + quantityChange;
       
       if (newQuantity < 0) {
@@ -122,7 +154,7 @@ class InventoryRepository {
       final productRef = snapshot.reference;
       final logRef = _firestore.collection('inventory_logs').doc();
 
-      batch.update(productRef, {'quantity': newQuantity});
+      batch.update(productRef, {'availableStock': newQuantity.toInt()});
       batch.set(logRef, {
         'productId': snapshot.id,
         'sellerId': sellerId,
@@ -151,7 +183,7 @@ class InventoryRepository {
       transaction.set(productRef, {
         'sellerId': sellerId,
         'name': item.name,
-        'quantity': item.quantity,
+        'availableStock': item.quantity.toInt(),
         'unit': item.unit,
         'category': item.category,
         'sku': item.sku,

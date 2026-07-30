@@ -2,9 +2,10 @@
 //
 // Displays the user's transaction history.
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/repositories/i_user_profile_repository.dart';
 
 class TransactionsPage extends StatelessWidget {
   const TransactionsPage({super.key});
@@ -13,7 +14,7 @@ class TransactionsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    final uid = context.read<IAuthService>().currentUserId;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -24,9 +25,9 @@ class TransactionsPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: user == null
+      body: uid == null
           ? _buildNotLoggedIn(context)
-          : _buildTransactionList(context, user.uid),
+          : _buildTransactionList(context, uid),
     );
   }
 
@@ -47,13 +48,8 @@ class TransactionsPage extends StatelessWidget {
   }
 
   Widget _buildTransactionList(BuildContext context, String uid) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('transactions')
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: context.read<IUserProfileRepository>().watchTransactions(uid),
       builder: (context, snapshot) {
         // Loading
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -71,11 +67,11 @@ class TransactionsPage extends StatelessWidget {
         }
 
         // Empty
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return _buildEmptyState();
         }
 
-        final docs = snapshot.data!.docs;
+        final docs = snapshot.data!;
 
         return Center(
           child: ConstrainedBox(
@@ -85,7 +81,7 @@ class TransactionsPage extends StatelessWidget {
               itemCount: docs.length,
               physics: const BouncingScrollPhysics(),
               itemBuilder: (context, index) {
-                final data = docs[index].data() as Map<String, dynamic>;
+                final data = docs[index];
                 return _buildTransactionCard(context, data, index);
               },
             ),
@@ -142,9 +138,8 @@ class TransactionsPage extends StatelessWidget {
     final String currency = data['currency'] ?? 'INR';
 
     // createdAt (new schema) or timestamp (legacy)
-    final Timestamp? ts =
-        data['createdAt'] as Timestamp? ?? data['timestamp'] as Timestamp?;
-    final DateTime? date = ts?.toDate();
+    final DateTime? date =
+        data['createdAt'] as DateTime? ?? data['timestamp'] as DateTime?;
     final String dateStr = date != null ? _formatDate(date) : 'N/A';
     final bool isSuccess = status == 'success';
 

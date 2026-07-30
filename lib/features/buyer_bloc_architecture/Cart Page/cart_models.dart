@@ -35,7 +35,7 @@ class CartItem extends Equatable {
     return CartItem(
       id: doc.id,
       name: data['name'] ?? 'Unknown Item',
-      price: (data['price'] as num?)?.toDouble() ?? 0.0,
+      price: ((data['price'] as num?)?.toDouble() ?? 0.0).roundToDouble(),
       image: (data['image'] as String?)?.trim(),
       sellerId: data['sellerId'] ?? '',
       quantity: (data['quantity'] as num?)?.toInt() ?? 1,

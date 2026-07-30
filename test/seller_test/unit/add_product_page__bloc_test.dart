@@ -8,9 +8,12 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/add_product_
 import 'package:food_delivery_app/features/seller_bloc_architecture/add_product_page_/add_product_page__event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/add_product_page_/add_product_page__state.dart';
 import 'package:food_delivery_app/core/repositories/i_product_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_seller_repository.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
 
 class MockProductRepository extends Mock implements IProductRepository {}
+
+class MockSellerRepository extends Mock implements ISellerRepository {}
 
 class MockAuthService extends Mock implements IAuthService {}
 
@@ -24,13 +27,19 @@ void main() {
   group('AddProductPageBloc', () {
     late AddProductPageBloc bloc;
     late MockProductRepository mockRepository;
+    late MockSellerRepository mockSellerRepository;
     late MockAuthService mockAuthService;
 
     setUp(() {
       mockRepository = MockProductRepository();
+      mockSellerRepository = MockSellerRepository();
       mockAuthService = MockAuthService();
       when(() => mockAuthService.currentUserId).thenReturn('test_seller');
-      bloc = AddProductPageBloc(repository: mockRepository, authService: mockAuthService);
+      bloc = AddProductPageBloc(
+        repository: mockRepository,
+        authService: mockAuthService,
+        sellerRepository: mockSellerRepository,
+      );
     });
 
     tearDown(() {
@@ -45,7 +54,7 @@ void main() {
 
     blocTest<AddProductPageBloc, AddProductPageState>(
       'emits new image when AddImageEvent is added',
-      build: () => AddProductPageBloc(repository: mockRepository, authService: mockAuthService),
+      build: () => AddProductPageBloc(repository: mockRepository, authService: mockAuthService, sellerRepository: mockSellerRepository),
       act: (bloc) => bloc.add(AddImageEvent(testImage)),
       expect: () => [
         isA<AddProductPageState>()
@@ -55,7 +64,7 @@ void main() {
 
     blocTest<AddProductPageBloc, AddProductPageState>(
       'emits category when CategoryChangedEvent is added',
-      build: () => AddProductPageBloc(repository: mockRepository, authService: mockAuthService),
+      build: () => AddProductPageBloc(repository: mockRepository, authService: mockAuthService, sellerRepository: mockSellerRepository),
       act: (bloc) => bloc.add(const CategoryChangedEvent('Pizza')),
       expect: () => [
         isA<AddProductPageState>()
@@ -65,9 +74,9 @@ void main() {
 
     blocTest<AddProductPageBloc, AddProductPageState>(
       'emits validation error if SubmitProductEvent is missing fields',
-      build: () => AddProductPageBloc(repository: mockRepository, authService: mockAuthService),
+      build: () => AddProductPageBloc(repository: mockRepository, authService: mockAuthService, sellerRepository: mockSellerRepository),
       act: (bloc) => bloc.add(
-        const SubmitProductEvent(name: '', price: 0, discountPrice: 0, description: '', prepTime: '', portionSize: '', addons: ''),
+        const SubmitProductEvent(name: '', price: 0, basePrice: 0, gstPercentage: 0, discountPrice: 0, description: '', prepTime: '', portionSize: '', addons: ''),
       ),
       expect: () => [
         isA<AddProductPageState>().having((s) => s.status, 'status', AddProductStatus.loading),
