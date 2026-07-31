@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_onboarding_page/Delivery_onboarding_page_bloc.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_onboarding_page/Delivery_onboarding_page_repository.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_onboarding_page/Delivery_onboarding_page_service.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_onboarding_page/Delivery_onboarding_page_ui.dart';
+import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_bloc.dart';
+import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_repository.dart';
+import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_service.dart';
+import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_ui.dart';
 
 void main() {
   setUpAll(() {
@@ -14,40 +14,46 @@ void main() {
   });
 
   group('Delivery Onboarding Page Flow Integration Tests', () {
-    testWidgets('Full onboarding page flow test from loading to loaded UI interaction',
-        (tester) async {
-      tester.view.physicalSize = const Size(1280, 1000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
+    testWidgets(
+      'Full onboarding page flow test from loading to loaded UI interaction',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
 
-      final repository = DeliveryOnboardingRepository();
-      final service = DeliveryOnboardingService();
-      final bloc = DeliveryOnboardingPageBloc(
-        repository: repository,
-        service: service,
-      );
+        final repository = DeliveryOnboardingRepository();
+        final service = DeliveryOnboardingService();
+        final bloc = DeliveryOnboardingPageBloc(
+          repository: repository,
+          service: service,
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider<DeliveryOnboardingPageBloc>.value(
-            value: bloc,
-            child: const DeliveryOnboardingPageUI(),
+        await tester.pumpWidget(
+          MaterialApp(
+            routes: {
+              '/deliverylogin': (context) =>
+                  const Scaffold(body: Center(child: Text('Delivery Login'))),
+            },
+            home: BlocProvider<DeliveryOnboardingPageBloc>.value(
+              value: bloc,
+              child: const DeliveryOnboardingPageUI(),
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
 
-      // Loaded state verified
-      expect(find.text('DeliverGo'), findsOneWidget);
-      expect(find.text('Fast Delivery'), findsOneWidget);
+        // Loaded state verified
+        expect(find.text('DeliverGo'), findsOneWidget);
+        expect(find.text('Fast Delivery'), findsOneWidget);
 
-      // Tap Get Started
-      await tester.tap(find.text('Get Started'), warnIfMissed: false);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
+        // Tap Get Started
+        await tester.tap(find.text('Get Started'), warnIfMissed: false);
+        await tester.pumpAndSettle();
 
-      expect(find.byType(SnackBar), findsOneWidget);
-    });
+        expect(bloc.state.isStarted, isTrue);
+        expect(find.text('Delivery Login'), findsOneWidget);
+      },
+    );
   });
 }

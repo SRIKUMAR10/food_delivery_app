@@ -19,7 +19,12 @@ import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Del
 import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_bloc.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_repository.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_service.dart';
-import 'features/Delivery Partner Bloc Architecture/Delivery_Login Page_page/Delivery_Login Page_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Login Page/Delivery_Login Page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Sign_Up_page/Delivery_Sign_Up_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_ui.dart';
 
 import 'core/services/i_auth_service.dart';
 import 'core/services/auth_service.dart';
@@ -240,6 +245,13 @@ class _AppThemeWrapperState extends State<_AppThemeWrapper> {
         '/sellerSignUp': (context) => const SellerSignUpPageUI(),
         '/sellerDashboard': (context) => const SellerNavigationBarViewPageUI(),
         '/deliverylogin': (context) => const DeliveryLoginPage(),
+        '/deliveryLogin': (context) => const DeliveryLoginPage(),
+        '/deliverySignUp': (context) => const DeliverySignUpPage(),
+        '/deliveryForgotPassword': (context) =>
+            const DeliveryForgotPasswordPage(),
+        '/deliveryNavigationBar': (context) => const DeliveryNavigationBarPage(),
+        '/deliveryOrderDetails': (context) => const DeliveryOrderDetailsPageUi(orderId: '#ORD12345'),
+        '/deliveryIncomingOrder': (context) => const DeliveryIncomingOrderPageUi(),
         '/deliveryonboard': (context) =>
             BlocProvider<DeliveryOnboardingPageBloc>(
               create: (context) => DeliveryOnboardingPageBloc(

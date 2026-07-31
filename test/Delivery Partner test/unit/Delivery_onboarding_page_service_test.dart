@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_onboarding_page/Delivery_onboarding_page_service.dart';
+import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_service.dart';
 
 void main() {
   late DeliveryOnboardingService service;
@@ -16,7 +16,9 @@ void main() {
 
     test('uploadVideoChunked streams upload progress from 0 to 1.0', () async {
       final progressList = <double>[];
-      await for (final progress in service.uploadVideoChunked('test_video.mp4')) {
+      await for (final progress in service.uploadVideoChunked(
+        'test_video.mp4',
+      )) {
         progressList.add(progress);
       }
       expect(progressList.isNotEmpty, true);

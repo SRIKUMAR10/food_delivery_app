@@ -3,13 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_onboarding_page/Delivery_onboarding_page_bloc.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_onboarding_page/Delivery_onboarding_page_event.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_onboarding_page/Delivery_onboarding_page_state.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_onboarding_page/Delivery_onboarding_page_ui.dart';
+import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_bloc.dart';
+import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_event.dart';
+import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_state.dart';
+import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_ui.dart';
 
-class MockDeliveryOnboardingPageBloc
-    extends Mock
+class MockDeliveryOnboardingPageBloc extends Mock
     implements DeliveryOnboardingPageBloc {}
 
 void main() {
@@ -74,9 +73,10 @@ void main() {
   }
 
   group('DeliveryOnboardingPageUI Widget Tests', () {
-    testWidgets('renders DeliverGo title, tagline, and Get Started button',
-        (tester) async {
-      tester.view.physicalSize = const Size(1280, 1000);
+    testWidgets('renders DeliverGo title, tagline, and Get Started button', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
@@ -88,9 +88,10 @@ void main() {
       expect(find.text('Fast Delivery'), findsOneWidget);
     });
 
-    testWidgets('triggers GetStartedClickedEvent on Get Started button tap',
-        (tester) async {
-      tester.view.physicalSize = const Size(1280, 1000);
+    testWidgets('triggers GetStartedClickedEvent on Get Started button tap', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
@@ -101,8 +102,9 @@ void main() {
       await tester.tap(btn, warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 200));
 
-      verify(() => mockBloc.add(const DeliveryOnboardingGetStartedClickedEvent()))
-          .called(1);
+      verify(
+        () => mockBloc.add(const DeliveryOnboardingGetStartedClickedEvent()),
+      ).called(1);
     });
   });
 }
