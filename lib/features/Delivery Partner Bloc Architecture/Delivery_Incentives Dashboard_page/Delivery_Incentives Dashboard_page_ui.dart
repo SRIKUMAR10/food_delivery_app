@@ -221,283 +221,73 @@ class _IncentivesDashboardShellState extends State<_IncentivesDashboardShell> {
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
-    final lang = state.localeCode;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 1024;
         final isTablet =
             constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
-        final isMobile = constraints.maxWidth < 600;
 
-        return Scaffold(
-          key: const Key('dp_incentives_scaffold'),
-          backgroundColor: const Color(0xFF0D1117),
-          drawer: isMobile
-              ? _IncentivesDrawer(lang: lang)
-              : null,
-          body: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (!isMobile) _IncentivesSideRail(lang: lang),
-              Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1240),
-                    child: SingleChildScrollView(
-                      key: const Key('dp_incentives_page'),
-                      padding: EdgeInsets.all(isDesktop ? 24 : 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _IncentivesHeader(
-                            state: state,
-                            isDesktop: isDesktop,
-                            showMenu: isMobile,
-                          ),
-                          const SizedBox(height: 20),
-                          _IncentivesSummaryGrid(
-                            state: state,
-                            isDesktop: isDesktop,
-                            isTablet: isTablet,
-                          ),
-                          const SizedBox(height: 20),
-                          if (isDesktop)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  flex: 3,
-                                  child: _IncentivesOverviewCard(
-                                    state: state,
-                                  ),
-                                ),
-                                const SizedBox(width: 20),
-                                Expanded(
-                                  flex: 2,
-                                  child: _BonusBreakdownCard(state: state),
-                                ),
-                              ],
-                            )
-                          else ...[
-                            _IncentivesOverviewCard(state: state),
-                            const SizedBox(height: 20),
-                            _BonusBreakdownCard(state: state),
-                          ],
-                          const SizedBox(height: 20),
-                          _AchievementsCarousel(
-                            state: state,
-                            isDesktop: isDesktop,
-                          ),
-                          const SizedBox(height: 20),
-                          _MilestonesStepperCard(state: state),
-                          const SizedBox(height: 20),
-                          _RewardHistoryCard(state: state),
-                        ],
-                      ),
-                    ),
+        return SingleChildScrollView(
+          key: const Key('dp_incentives_page'),
+          padding: EdgeInsets.all(isDesktop ? 24 : 16),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1240),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _IncentivesHeader(
+                    state: state,
+                    isDesktop: isDesktop,
+                    showMenu: false,
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  _IncentivesSummaryGrid(
+                    state: state,
+                    isDesktop: isDesktop,
+                    isTablet: isTablet,
+                  ),
+                  const SizedBox(height: 20),
+                  if (isDesktop)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: _IncentivesOverviewCard(
+                            state: state,
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          flex: 2,
+                          child: _BonusBreakdownCard(state: state),
+                        ),
+                      ],
+                    )
+                  else ...[
+                    _IncentivesOverviewCard(state: state),
+                    const SizedBox(height: 20),
+                    _BonusBreakdownCard(state: state),
+                  ],
+                  const SizedBox(height: 20),
+                  _AchievementsCarousel(
+                    state: state,
+                    isDesktop: isDesktop,
+                  ),
+                  const SizedBox(height: 20),
+                  _MilestonesStepperCard(state: state),
+                  const SizedBox(height: 20),
+                  _RewardHistoryCard(state: state),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
-}
-
-class _IncentivesDrawer extends StatelessWidget {
-  final String lang;
-
-  const _IncentivesDrawer({required this.lang});
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      key: const Key('dp_incentives_drawer'),
-      backgroundColor: const Color(0xFF161B22),
-      child: SafeArea(
-        child: ListView(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Text(
-                DeliveryIncentivesDashboardStrings.of('incentives', lang),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const Divider(color: Colors.white12),
-            ..._navItems(lang).map(
-              (item) => ListTile(
-                key: Key('dp_incentives_drawer_${item.key}'),
-                leading: Icon(item.icon,
-                    color: item.label ==
-                            DeliveryIncentivesDashboardStrings.of(
-                                'incentives', lang)
-                        ? const Color(0xFF00E676)
-                        : Colors.white60),
-                title: Text(
-                  item.label,
-                  style: TextStyle(
-                    color: item.label ==
-                            DeliveryIncentivesDashboardStrings.of(
-                                'incentives', lang)
-                        ? const Color(0xFF00E676)
-                        : Colors.white70,
-                  ),
-                ),
-                selected: item.label ==
-                    DeliveryIncentivesDashboardStrings.of('incentives', lang),
-                onTap: () => Navigator.of(context).maybePop(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _IncentivesSideRail extends StatelessWidget {
-  final String lang;
-
-  const _IncentivesSideRail({required this.lang});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      key: const Key('dp_incentives_side_rail'),
-      width: 220,
-      color: const Color(0xFF161B22),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF00E676), Color(0xFF10B981)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.emoji_events,
-                        color: Colors.black, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'FoodGo',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Divider(color: Colors.white12),
-            const SizedBox(height: 8),
-            ..._navItems(lang).map(
-              (item) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    key: Key('dp_incentives_nav_${item.key}'),
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {},
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: item.label ==
-                                DeliveryIncentivesDashboardStrings.of(
-                                    'incentives', lang)
-                            ? const Color(0xFF00E676).withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            item.icon,
-                            size: 20,
-                            color: item.label ==
-                                    DeliveryIncentivesDashboardStrings.of(
-                                        'incentives', lang)
-                                ? const Color(0xFF00E676)
-                                : Colors.white60,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              item.label,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: item.label ==
-                                        DeliveryIncentivesDashboardStrings.of(
-                                            'incentives', lang)
-                                    ? const Color(0xFF00E676)
-                                    : Colors.white70,
-                                fontSize: 14,
-                                fontWeight:
-                                    item.label ==
-                                            DeliveryIncentivesDashboardStrings.of(
-                                                'incentives', lang)
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  final String key;
-  final String label;
-  final IconData icon;
-
-  const _NavItem(this.key, this.label, this.icon);
-}
-
-List<_NavItem> _navItems(String lang) {
-  final s = DeliveryIncentivesDashboardStrings.of;
-  return [
-    _NavItem('dashboard', s('dashboard', lang), Icons.dashboard_outlined),
-    _NavItem('earnings', s('earnings', lang), Icons.payments_outlined),
-    _NavItem('incentives', s('incentives', lang), Icons.emoji_events_outlined),
-    _NavItem('orders', s('orders', lang), Icons.receipt_long_outlined),
-    _NavItem('wallet', s('wallet', lang), Icons.account_balance_wallet_outlined),
-    _NavItem('profile', s('profile', lang), Icons.person_outline),
-    _NavItem('settings', s('settings', lang), Icons.settings_outlined),
-    _NavItem('logout', s('logout', lang), Icons.logout),
-  ];
 }
 
 class _IncentivesHeader extends StatelessWidget {
