@@ -136,14 +136,14 @@ class DeliveryOrderHistoryStrings {
   }
 }
 
-const _kBackground = Color(0xFF0C1017);
-const _kPanel = Color(0xFF131922);
-const _kCard = Color(0xFF1C2533);
-const _kPrimary = Color(0xFF10B981);
+const _kBackground = Color(0xFF060B11); // Dark background
+const _kPanel = Color(0xFF0B1219);      // Dark panel background
+const _kCard = Color(0xFF0F1E26);       // Card background matching other pages
+const _kPrimary = Color(0xFF00E676);    // Accent green matching other pages
 const _kTextSecondary = Color(0xFF94A3B8);
-const _kPending = Color(0xFFF59E0B);
+const _kPending = Color(0xFFFFB74D);    // Warm orange/amber matching other pages
 const _kCancelled = Color(0xFFEF4444);
-const _kPurple = Color(0xFFA78BFA);
+const _kPurple = Color(0xFF7C4DFF);     // Purple accent matching other pages
 
 String _formatMoney(double amount) {
   final fixed = amount.toStringAsFixed(2);
@@ -355,50 +355,13 @@ class _LoadedView extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isDesktop = constraints.maxWidth >= 1024;
-
-        final Widget sidebar = _Sidebar(state: state);
-        final Widget content = _ContentColumn(
-          state: state,
-          isDesktop: isDesktop,
-        );
-
-        if (isDesktop) {
-          return Container(
-            key: const Key('dp_oh_page'),
-            color: _kBackground,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(width: 264, child: sidebar),
-                Expanded(child: content),
-              ],
-            ),
-          );
-        }
-
-        return Stack(
+        return Container(
           key: const Key('dp_oh_page'),
-          children: [
-            Container(color: _kBackground, child: content),
-            if (state.sidebarOpen)
-              Positioned.fill(
-                child: Row(
-                  children: [
-                    SizedBox(width: 280, child: sidebar),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => context
-                            .read<DeliveryOrderHistoryPageBloc>()
-                            .add(const DeliveryOrderHistoryToggleSidebarEvent()),
-                        child: Container(
-                          color: Colors.black.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
+          color: _kBackground,
+          child: _ContentColumn(
+            state: state,
+            isDesktop: isDesktop,
+          ),
         );
       },
     );
@@ -487,52 +450,7 @@ class _TopBar extends StatelessWidget {
         color: _kPanel,
         border: Border(bottom: BorderSide(color: Color(0x14FFFFFF))),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth >= 700) {
-            return Row(
-              children: [
-                Expanded(child: title),
-                const SizedBox(width: 12),
-                _WalletBadge(state: state),
-                const SizedBox(width: 8),
-                const _NotificationBadge(count: 3),
-                const SizedBox(width: 12),
-                _ProfileChip(state: state),
-              ],
-            );
-          }
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    key: const Key('dp_oh_sidebar_toggle'),
-                    onPressed: () => context
-                        .read<DeliveryOrderHistoryPageBloc>()
-                        .add(const DeliveryOrderHistoryToggleSidebarEvent()),
-                    icon: const Icon(Icons.menu, color: Colors.white),
-                    tooltip:
-                        DeliveryOrderHistoryStrings.of('navHistory', lang),
-                  ),
-                  Expanded(child: title),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  _WalletBadge(state: state),
-                  const _NotificationBadge(count: 3),
-                  _ProfileChip(state: state),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
+      child: title,
     );
   }
 }

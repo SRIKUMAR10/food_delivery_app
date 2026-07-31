@@ -133,8 +133,8 @@ void main() {
       await tester.pump();
 
       expect(find.text('My Wallet'), findsOneWidget);
-      expect(find.text('Ravi Kumar'), findsWidgets);
-      expect(find.byKey(const Key('dp_wallet_sidebar')), findsOneWidget);
+      expect(find.text('Ravi Kumar'), findsWidgets); // Still found in bank account holder name
+      expect(find.byKey(const Key('dp_wallet_sidebar')), findsNothing);
       expect(
         find.byKey(const Key('dp_wallet_summary_balance')),
         findsOneWidget,

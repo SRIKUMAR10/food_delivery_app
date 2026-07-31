@@ -55,6 +55,18 @@ class DeliveryNavigationBarRepository
       activeIcon: Icons.navigation,
     ),
     DeliveryNavigationBarItem(
+      id: 'wallet',
+      label: 'Wallet',
+      icon: Icons.account_balance_wallet_outlined,
+      activeIcon: Icons.account_balance_wallet,
+    ),
+    DeliveryNavigationBarItem(
+      id: 'history',
+      label: 'Order History',
+      icon: Icons.history,
+      activeIcon: Icons.history,
+    ),
+    DeliveryNavigationBarItem(
       id: 'documents',
       label: 'Documents',
       icon: Icons.folder_open_outlined,

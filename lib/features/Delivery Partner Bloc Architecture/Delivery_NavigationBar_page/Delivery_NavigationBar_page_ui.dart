@@ -10,6 +10,10 @@ import '../Delivery_Dashboard_page/Delivery_Dashboard_page_ui.dart';
 import '../Delivery_Orders_page/Delivery_Orders_page_ui.dart';
 import '../Delivery_Navigation Screen_page/Delivery_Navigation Screen_page_ui.dart';
 import '../Delivery_Earnings Dashboard_page/Delivery_Earnings Dashboard_page_ui.dart';
+import '../Delivery_Wallet_page/Delivery_Wallet_page_ui.dart';
+import '../Delivery_Order History_page/Delivery_Order History_page_ui.dart';
+import '../Delivery_Incentives Dashboard_page/Delivery_Incentives Dashboard_page_ui.dart';
+import '../Delivery_Settings_page/Delivery_Settings_page_ui.dart';
 import '../auto_hide_app_bar_wrapper.dart';
 
 class DeliveryNavigationBarStrings {
@@ -801,12 +805,20 @@ class _ContentArea extends StatelessWidget {
                   const DeliveryOrdersPage()
                 else if (state.navItems[i].id == 'earnings')
                   const DeliveryEarningsDashboardPage()
-                else if (state.navItems[i].id == 'profile')
-                  const DeliveryProfilePage()
+                else if (state.navItems[i].id == 'incentives')
+                  const DeliveryIncentivesDashboardPage()
                 else if (state.navItems[i].id == 'navigate')
                   _DeferredNavigationPage(
                     isActive: state.selectedIndex == i,
                   )
+                else if (state.navItems[i].id == 'wallet')
+                  const DeliveryWalletPage()
+                else if (state.navItems[i].id == 'history')
+                  const DeliveryOrderHistoryPage()
+                else if (state.navItems[i].id == 'settings')
+                  const DeliverySettingsPage()
+                else if (state.navItems[i].id == 'profile')
+                  const DeliveryProfilePage()
                 else
                   _OverviewPanel(
                     state: state,
@@ -824,7 +836,7 @@ class _ContentArea extends StatelessWidget {
         child: AutoHideAppBarWrapper(
           appBar: appBar,
           body: body,
-          appBarHeight: 64.0,
+          appBarHeight: 70.0,
           isMobile: isMobile,
         ),
       ),
@@ -959,7 +971,7 @@ class _ContentTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF060B11),
         border: Border(

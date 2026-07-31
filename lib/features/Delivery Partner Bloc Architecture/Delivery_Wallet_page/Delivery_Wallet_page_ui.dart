@@ -225,26 +225,10 @@ class DeliveryWalletPageView extends StatelessWidget {
               isTablet: isTablet,
             );
 
-            if (!isDesktop) {
-              return SingleChildScrollView(
-                key: const Key('dp_wallet_page'),
-                padding: const EdgeInsets.all(16),
-                child: content,
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _WalletSidebar(state: state),
-                Expanded(
-                  child: SingleChildScrollView(
-                    key: const Key('dp_wallet_page'),
-                    padding: const EdgeInsets.all(24),
-                    child: content,
-                  ),
-                ),
-              ],
+            return SingleChildScrollView(
+              key: const Key('dp_wallet_page'),
+              padding: EdgeInsets.all(isDesktop ? 24 : 16),
+              child: content,
             );
           },
         );
@@ -487,63 +471,7 @@ class _WalletHeader extends StatelessWidget {
               ),
             ),
           ),
-          if (isDesktop) ...[
-            const SizedBox(width: 10),
-            _HeaderIconButton(
-              key: const Key('dp_wallet_notifications_button'),
-              icon: Icons.notifications_none,
-              tooltip: DeliveryWalletStrings.of('notifications', lang),
-              badge: 3,
-            ),
-            const SizedBox(width: 10),
-            Row(
-              children: [
-                Container(
-                  key: const Key('dp_wallet_profile'),
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'RK',
-                      style: TextStyle(
-                        color: Color(0xFFB388FF),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Ravi Kumar',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      DeliveryWalletStrings.of('partnerProfile', lang),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
+          const SizedBox(width: 12),
         ],
       ),
     );

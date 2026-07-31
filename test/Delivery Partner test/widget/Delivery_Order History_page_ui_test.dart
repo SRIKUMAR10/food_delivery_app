@@ -193,7 +193,7 @@ void main() {
   }
 
   group('DeliveryOrderHistoryPage Widget Tests', () {
-    testWidgets('renders sidebar, top bar, KPI cards and search on desktop', (
+    testWidgets('renders top bar, KPI cards and search on desktop', (
       tester,
     ) async {
       setDesktopSize(tester);
@@ -201,24 +201,9 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(const Key('dp_oh_page')), findsOneWidget);
-      expect(find.byKey(const Key('dp_oh_sidebar')), findsOneWidget);
+      expect(find.byKey(const Key('dp_oh_sidebar')), findsNothing);
       expect(find.byKey(const Key('dp_oh_topbar')), findsOneWidget);
-      expect(find.text('DELIVERY PARTNER'), findsOneWidget);
-      expect(find.text('History'), findsOneWidget);
       expect(find.text('Order History'), findsOneWidget);
-      expect(find.byKey(const Key('dp_oh_wallet')), findsOneWidget);
-      expect(find.text('₹2,450.00'), findsOneWidget);
-      expect(find.byKey(const Key('dp_oh_notifications')), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('dp_oh_notifications')),
-          matching: find.text('3'),
-        ),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('dp_oh_profile')), findsOneWidget);
-      expect(find.text('Ravi Kumar'), findsOneWidget);
-      expect(find.text('TN 01 AB 1234'), findsOneWidget);
       expect(find.byKey(const Key('dp_oh_search_field')), findsOneWidget);
       expect(find.byKey(const Key('dp_oh_filters_button')), findsOneWidget);
     });
@@ -283,20 +268,17 @@ void main() {
       expect(find.byKey(const Key('dp_oh_card_ORD-1001')), findsOneWidget);
       expect(find.byKey(const Key('dp_oh_card_ORD-1002')), findsOneWidget);
       expect(find.byKey(const Key('dp_oh_table')), findsNothing);
-      expect(find.byKey(const Key('dp_oh_sidebar_toggle')), findsOneWidget);
       expect(find.byKey(const Key('dp_oh_pagination')), findsOneWidget);
     });
 
-    testWidgets('shows the sidebar overlay on mobile when sidebar is open', (
+    testWidgets('does not show sidebar overlay since sidebar is removed', (
       tester,
     ) async {
       setMobileSize(tester);
       await tester.pumpWidget(buildPage());
       await tester.pump();
 
-      expect(find.byKey(const Key('dp_oh_sidebar')), findsOneWidget);
-      expect(find.text('Deliver More Earn More'), findsOneWidget);
-      expect(find.text('View Incentives'), findsOneWidget);
+      expect(find.byKey(const Key('dp_oh_sidebar')), findsNothing);
     });
 
     testWidgets('dispatches search changed event when typing', (tester) async {
