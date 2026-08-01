@@ -110,16 +110,15 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
             listener: (context, state) {
               if (state.status == DeliverySignUpStatus.otpSent &&
                   state.verificationId != null) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (ctx) => DeliveryOtpVerificationPage(
-                      verificationId: state.verificationId!,
-                      name: state.name.trim(),
-                      phone: state.phone.trim(),
-                      email: state.email.trim(),
-                      password: state.password,
-                    ),
-                  ),
+                Navigator.of(context).pushNamed(
+                  '/deliveryOtpVerification',
+                  arguments: {
+                    'verificationId': state.verificationId!,
+                    'name': state.name.trim(),
+                    'phone': state.phone.trim(),
+                    'email': state.email.trim(),
+                    'password': state.password,
+                  },
                 );
               }
               if (state.status == DeliverySignUpStatus.success &&

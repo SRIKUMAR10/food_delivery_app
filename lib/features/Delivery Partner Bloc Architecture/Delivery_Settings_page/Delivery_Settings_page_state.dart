@@ -39,11 +39,26 @@ class DeliverySettingsItem extends Equatable {
       };
 
   factory DeliverySettingsItem.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as String? ?? '';
+    IconData iconData;
+    switch (id) {
+      case 'notifications':
+        iconData = Icons.notifications_outlined;
+        break;
+      case 'autoAccept':
+        iconData = Icons.bolt_outlined;
+        break;
+      case 'darkMode':
+        iconData = Icons.dark_mode_outlined;
+        break;
+      default:
+        iconData = Icons.tune;
+    }
     return DeliverySettingsItem(
-      id: json['id'] as String? ?? '',
+      id: id,
       titleKey: json['titleKey'] as String? ?? '',
       subtitleKey: json['subtitleKey'] as String? ?? '',
-      icon: IconData(json['icon'] as int? ?? Icons.tune.codePoint),
+      icon: iconData,
       value: json['value'] as bool? ?? false,
     );
   }

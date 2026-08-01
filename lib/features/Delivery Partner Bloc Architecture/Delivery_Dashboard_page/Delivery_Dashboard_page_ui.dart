@@ -1733,7 +1733,10 @@ class _TimelineRow extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        Navigator.of(context).pushNamed('/deliveryOrderDetails');
+        Navigator.of(context).pushNamed(
+          '/deliveryOrderDetails',
+          arguments: {'orderId': item.id},
+        );
       },
       child: IntrinsicHeight(
         child: Row(

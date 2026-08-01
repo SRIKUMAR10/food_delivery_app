@@ -25,6 +25,10 @@ import 'features/Delivery Partner Bloc Architecture/Delivery_Forgot_Password_pag
 import 'features/Delivery Partner Bloc Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_OTP_Verification_page/Delivery_OTP_Verification_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Pickup Confirmation_page/Delivery_Pickup Confirmation_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Delivery Completed_page/Delivery_Delivery Completed_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Navigation Screen_page/Delivery_Navigation Screen_page_ui.dart';
 
 import 'core/services/i_auth_service.dart';
 import 'core/services/auth_service.dart';
@@ -266,7 +270,31 @@ class _AppThemeWrapperState extends State<_AppThemeWrapper> {
               ),
               child: const DeliveryOnboardingPageUI(),
             ),
+        '/deliveryOtpVerification': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return DeliveryOtpVerificationPage(
+            verificationId: args?['verificationId'] as String? ?? '',
+            name: args?['name'] as String? ?? '',
+            phone: args?['phone'] as String? ?? '',
+            email: args?['email'] as String? ?? '',
+            password: args?['password'] as String? ?? '',
+          );
+        },
+        '/deliveryPickupConfirmation': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return DeliveryPickupConfirmationPage(
+            orderId: args?['orderId'] as String? ?? '#ORD98234',
+          );
+        },
+        '/deliveryCompleted': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return DeliveryCompletedPage(
+            orderId: args?['orderId'] as String? ?? '#ORD98234',
+          );
+        },
+        '/deliveryNavigationScreen': (context) => const DeliveryNavigationScreenPage(),
       },
+
     );
   }
 }
