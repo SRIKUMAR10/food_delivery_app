@@ -131,7 +131,16 @@ void main() {
       ).thenAnswer((_) async => credential);
       when(
         () => partnerRepo.getDeliveryPartner('uid123'),
-      ).thenAnswer((_) async => buildPartner(isActive: false));
+      ).thenAnswer((_) async => buildPartner(isActive: false, status: 'disabled'));
+      when(
+        () => partnerRepo.updateLastLogin(any()),
+      ).thenAnswer((_) async {});
+      when(
+        () => partnerRepo.saveSession(any(), any()),
+      ).thenAnswer((_) async {});
+      when(
+        () => partnerRepo.updateDeliveryPartner(any(), any()),
+      ).thenAnswer((_) async {});
 
       expect(
         () => repository.loginWithPhone('9876543210', 'password123'),

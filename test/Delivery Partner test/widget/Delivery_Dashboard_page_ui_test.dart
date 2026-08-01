@@ -55,6 +55,12 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
   }
 
+  void setMobileSize(WidgetTester tester) {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+  }
+
   Widget buildPage() {
     return MaterialApp(
       home: Scaffold(body: DeliveryDashboardPage(bloc: mockBloc)),
@@ -78,6 +84,22 @@ void main() {
       expect(find.text('05h 45m'), findsOneWidget);
       expect(find.text('92%'), findsOneWidget);
       expect(find.text('4.8 / 5.0'), findsOneWidget);
+    });
+
+    testWidgets('renders 2-column grid layout for metrics cards in mobile view', (
+      tester,
+    ) async {
+      setMobileSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      final gridViewFinder = find.byType(GridView);
+      expect(gridViewFinder, findsWidgets);
+
+      final gridView = tester.widget<GridView>(gridViewFinder.first);
+      final delegate =
+          gridView.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, equals(2));
     });
 
     testWidgets('renders recent activities and map preview cards', (

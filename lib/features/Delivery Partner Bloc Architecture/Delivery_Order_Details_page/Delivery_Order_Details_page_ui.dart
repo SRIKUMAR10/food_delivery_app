@@ -1,16 +1,22 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'Delivery_Order_Details_page_bloc.dart';
 import 'Delivery_Order_Details_page_event.dart';
 import 'Delivery_Order_Details_page_state.dart';
 import '../auto_hide_app_bar_wrapper.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_typography.dart';
+import '../../../core/theme/delivery_app_spacing.dart';
+import '../../../core/widgets/delivery_button.dart';
+import '../../../core/widgets/delivery_card.dart';
+import '../../../core/widgets/delivery_chip.dart';
 
 
 class DeliveryOrderDetailsPageUi extends StatelessWidget {
   final String orderId;
+  final DeliveryOrderDetailsPageBloc? bloc;
 
-  const DeliveryOrderDetailsPageUi({super.key, required this.orderId});
+  const DeliveryOrderDetailsPageUi({super.key, required this.orderId, this.bloc});
 
   @override
   Widget build(BuildContext context) {
@@ -18,97 +24,125 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
     final bool isMobile = screenWidth < 600;
 
     final appBar = AppBar(
-      backgroundColor: const Color(0xFF0C121E),
+      backgroundColor: DeliveryAppColors.background,
       elevation: 0,
       automaticallyImplyLeading: false,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        icon: const Icon(Icons.arrow_back, color: DeliveryAppColors.textPrimary),
         onPressed: () => Navigator.of(context).pop(),
       ),
-      title: const Text(
+      title: Text(
         'LOGISTICS ORDER PANEL',
-        style: TextStyle(
-          color: Colors.white,
+        style: DeliveryAppTypography.titleMedium.copyWith(
+          color: DeliveryAppColors.textPrimary,
           fontWeight: FontWeight.bold,
-          fontSize: 16,
           letterSpacing: 1.2,
         ),
       ),
       centerTitle: true,
     );
 
-    final Widget bodyContent = BlocBuilder<DeliveryOrderDetailsPageBloc, DeliveryOrderDetailsPageState>(
-      builder: (context, state) {
-        if (state.status == OrderDetailsStatus.loading) {
-          return const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
-            ),
-          );
-        } else if (state.status == OrderDetailsStatus.error) {
-          return Center(
-            child: Text(
-              state.errorMessage ?? 'An error occurred',
-              style: const TextStyle(color: Colors.redAccent, fontSize: 16),
-            ),
-          );
-        } else if (state.status == OrderDetailsStatus.success && state.order != null) {
-          final order = state.order!;
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 1024;
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Center(
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: isWide ? 1200 : 600,
-                    ),
-                    child: isWide
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: 5,
-                                child: _buildDetailsColumn(context, order),
-                              ),
-                              const SizedBox(width: 24),
-                              Expanded(
-                                flex: 7,
-                                child: _buildLiveMapPane(),
-                              ),
-                            ],
-                          )
-                        : Column(
-                            children: [
-                              _buildDetailsColumn(context, order),
-                              const SizedBox(height: 16),
-                              _buildLiveMapPane(),
-                            ],
-                          ),
-                  ),
+    Widget buildBody(BuildContext context, DeliveryOrderDetailsPageBloc bloc) {
+      return BlocBuilder<DeliveryOrderDetailsPageBloc, DeliveryOrderDetailsPageState>(
+        bloc: bloc,
+        builder: (context, state) {
+          if (state.status == OrderDetailsStatus.loading) {
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(DeliveryAppColors.primary),
+              ),
+            );
+          } else if (state.status == OrderDetailsStatus.error) {
+            return Center(
+              child: Text(
+                state.errorMessage ?? 'An error occurred',
+                style: DeliveryAppTypography.bodyLarge.copyWith(
+                  color: DeliveryAppColors.error,
                 ),
-              );
-            },
-          );
-        }
-        return const SizedBox.shrink();
-      },
-    );
+              ),
+            );
+          } else if (state.status == OrderDetailsStatus.success && state.order != null) {
+            final order = state.order!;
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 1024;
+                return SingleChildScrollView(
+                  padding: EdgeInsets.all(DeliveryAppSpacing.md),
+                  child: Center(
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: isWide ? 1200 : 600,
+                      ),
+                      child: isWide
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 5,
+                                  child: _buildDetailsColumn(context, order),
+                                ),
+                                const SizedBox(width: 24),
+                                Expanded(
+                                  flex: 7,
+                                  child: _buildLiveMapPane(),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              children: [
+                                _buildDetailsColumn(context, order),
+                                const SizedBox(height: 16),
+                                _buildLiveMapPane(),
+                              ],
+                            ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      );
+    }
 
-    return BlocProvider(
+    if (bloc != null) {
+      return BlocProvider<DeliveryOrderDetailsPageBloc>.value(
+        value: bloc!,
+        child: Scaffold(
+          backgroundColor: DeliveryAppColors.background,
+          appBar: isMobile ? null : appBar,
+          body: isMobile
+              ? AutoHideAppBarWrapper(
+                  appBar: appBar,
+                  body: Builder(
+                    builder: (context) => buildBody(context, bloc!),
+                  ),
+                  appBarHeight: kToolbarHeight,
+                  isMobile: true,
+                )
+              : buildBody(context, bloc!),
+        ),
+      );
+    }
+
+    return BlocProvider<DeliveryOrderDetailsPageBloc>(
       create: (context) => DeliveryOrderDetailsPageBloc()..add(FetchOrderDetailsEvent(orderId)),
       child: Scaffold(
-        backgroundColor: const Color(0xFF070B11),
+        backgroundColor: DeliveryAppColors.background,
         appBar: isMobile ? null : appBar,
         body: isMobile
             ? AutoHideAppBarWrapper(
                 appBar: appBar,
-                body: bodyContent,
+                body: Builder(
+                  builder: (context) => buildBody(context, context.read<DeliveryOrderDetailsPageBloc>()),
+                ),
                 appBarHeight: kToolbarHeight,
                 isMobile: true,
               )
-            : bodyContent,
+            : Builder(
+                builder: (context) => buildBody(context, context.read<DeliveryOrderDetailsPageBloc>()),
+              ),
       ),
     );
   }
@@ -118,55 +152,52 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Glassmorphic Customer & Status Card
-        _buildGlassCard(
+        // Customer & Status Card
+        DeliveryCard(
+          padding: EdgeInsets.all(DeliveryAppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 24,
-                    backgroundColor: Color(0xFF1B2533),
-                    child: Icon(Icons.person, color: Colors.white70, size: 28),
+                    backgroundColor: DeliveryAppColors.surfaceLight,
+                    child: const Icon(Icons.person, color: DeliveryAppColors.textSecondary, size: 28),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Customer Details',
-                          style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
+                          style: DeliveryAppTypography.caption.copyWith(
+                            color: DeliveryAppColors.textMuted,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
+                        Text(
                           'Mike Residence Client',
-                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          style: DeliveryAppTypography.titleMedium.copyWith(
+                            color: DeliveryAppColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           order.customerPhone,
-                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                          style: DeliveryAppTypography.bodySmall.copyWith(
+                            color: DeliveryAppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00E676).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFF00E676).withOpacity(0.35)),
-                    ),
-                    child: Text(
-                      order.status.toUpperCase(),
-                      style: const TextStyle(
-                        color: Color(0xFF00E676),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    ),
+                  DeliveryChip(
+                    variant: DeliveryChipVariant.success,
+                    label: order.status.toUpperCase(),
                   ),
                 ],
               ),
@@ -175,24 +206,25 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         // Pickup & Drop Details Card
-        _buildGlassCard(
+        DeliveryCard(
+          padding: EdgeInsets.all(DeliveryAppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildLocationRow(
                 icon: Icons.store,
-                iconColor: Colors.cyanAccent,
+                iconColor: DeliveryAppColors.info,
                 title: 'Pickup Details (Merchant)',
                 address: order.pickupAddress,
                 phone: order.merchantPhone,
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.0),
-                child: Divider(color: Colors.white10, height: 1),
+                child: Divider(color: DeliveryAppColors.border, height: 1),
               ),
               _buildLocationRow(
                 icon: Icons.location_on,
-                iconColor: Colors.redAccent,
+                iconColor: DeliveryAppColors.error,
                 title: 'Drop Details (Customer)',
                 address: order.dropoffAddress,
                 phone: order.customerPhone,
@@ -202,16 +234,16 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         // Order Items & Financial Summary Card
-        _buildGlassCard(
+        DeliveryCard(
+          padding: EdgeInsets.all(DeliveryAppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'ORDERED ITEMS',
-                style: TextStyle(
-                  color: Color(0xFF00E676),
+                style: DeliveryAppTypography.caption.copyWith(
+                  color: DeliveryAppColors.primary,
                   fontWeight: FontWeight.bold,
-                  fontSize: 11,
                   letterSpacing: 1.1,
                 ),
               ),
@@ -220,7 +252,7 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
               _buildItemRow('Premium Fruits Assortment', 'x2', '₹320.00'),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.0),
-                child: Divider(color: Colors.white10, height: 1),
+                child: Divider(color: DeliveryAppColors.border, height: 1),
               ),
               _buildSummaryRow('Distance', '${order.distance} km'),
               _buildSummaryRow('Order Value', '₹${order.orderValue.toStringAsFixed(2)}'),
@@ -233,67 +265,34 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: SizedBox(
-                height: 50,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.navigation, size: 18),
-                  label: const Text('NAVIGATE', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF00E676),
-                    side: const BorderSide(color: Color(0xFF00E676)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                  ),
-                  onPressed: () {
-                    // Navigate trigger
-                  },
-                ),
+              child: DeliveryButton(
+                label: 'NAVIGATE',
+                onPressed: () {
+                  // Navigate trigger
+                },
+                variant: DeliveryButtonVariant.outline,
+                icon: Icons.navigation,
+                height: DeliveryAppSpacing.minTouchTargetSize,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: SizedBox(
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00E676),
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                  ),
-                  onPressed: () {
-                    final nextStatus = _getNextStatus(order.status);
-                    if (nextStatus != null) {
-                      BlocProvider.of<DeliveryOrderDetailsPageBloc>(context)
-                          .add(UpdateOrderStatusEvent(order.id, nextStatus));
-                    }
-                  },
-                  child: Text(
-                    _getButtonText(order.status).toUpperCase(),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
+              child: DeliveryButton(
+                label: _getButtonText(order.status).toUpperCase(),
+                onPressed: () {
+                  final nextStatus = _getNextStatus(order.status);
+                  if (nextStatus != null) {
+                    BlocProvider.of<DeliveryOrderDetailsPageBloc>(context)
+                        .add(UpdateOrderStatusEvent(order.id, nextStatus));
+                  }
+                },
+                variant: DeliveryButtonVariant.primary,
+                height: DeliveryAppSpacing.minTouchTargetSize,
               ),
             ),
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildGlassCard({required Widget child}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D1424).withOpacity(0.7),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
-          ),
-          child: child,
-        ),
-      ),
     );
   }
 
@@ -309,7 +308,7 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 16,
-          backgroundColor: iconColor.withOpacity(0.12),
+          backgroundColor: iconColor.withValues(alpha: 0.12),
           child: Icon(icon, color: iconColor, size: 18),
         ),
         const SizedBox(width: 12),
@@ -319,17 +318,24 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+                style: DeliveryAppTypography.caption.copyWith(
+                  color: DeliveryAppColors.textMuted,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 address,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                style: DeliveryAppTypography.bodyMedium.copyWith(
+                  color: DeliveryAppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 'Contact: $phone',
-                style: const TextStyle(color: Colors.white38, fontSize: 11),
+                style: DeliveryAppTypography.caption.copyWith(
+                  color: DeliveryAppColors.textDisabled,
+                ),
               ),
             ],
           ),
@@ -343,11 +349,17 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
-          Text(name, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          Expanded(
+            child: Text(
+              name,
+              style: DeliveryAppTypography.bodyMedium.copyWith(color: DeliveryAppColors.textSecondary),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           const SizedBox(width: 8),
-          Text(quantity, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          const Spacer(),
-          Text(price, style: const TextStyle(color: Colors.white, fontSize: 13)),
+          Text(quantity, style: DeliveryAppTypography.bodySmall.copyWith(color: DeliveryAppColors.textMuted)),
+          const SizedBox(width: 8),
+          Text(price, style: DeliveryAppTypography.bodyMedium.copyWith(color: DeliveryAppColors.textPrimary)),
         ],
       ),
     );
@@ -358,12 +370,12 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          Text(label, style: DeliveryAppTypography.bodyMedium.copyWith(color: DeliveryAppColors.textMuted)),
           const Spacer(),
           Text(
             value,
-            style: TextStyle(
-              color: isHighlight ? const Color(0xFF00E676) : Colors.white,
+            style: DeliveryAppTypography.bodyMedium.copyWith(
+              color: isHighlight ? DeliveryAppColors.primary : DeliveryAppColors.textPrimary,
               fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal,
               fontSize: isHighlight ? 15 : 13,
             ),
@@ -374,34 +386,32 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
   }
 
   Widget _buildLiveMapPane() {
-    return Container(
-      height: 450,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0C121E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.near_me, color: Color(0xFF00E676), size: 56),
-            SizedBox(height: 16),
-            Text(
-              'LIVE ROUTE MAP PANEL',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.1,
+    return DeliveryCard(
+      padding: EdgeInsets.all(DeliveryAppSpacing.lg),
+      child: SizedBox(
+        height: 450,
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.near_me, color: DeliveryAppColors.primary, size: 56),
+              SizedBox(height: 16),
+              Text(
+                'LIVE ROUTE MAP PANEL',
+                style: TextStyle(
+                  color: DeliveryAppColors.textSecondary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.1,
+                ),
               ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Tracking current delivery status in real-time',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
+              SizedBox(height: 4),
+              Text(
+                'Tracking current delivery status in real-time',
+                style: TextStyle(color: DeliveryAppColors.textMuted, fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ),
     );

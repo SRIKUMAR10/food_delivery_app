@@ -14,7 +14,15 @@ import '../Delivery_Wallet_page/Delivery_Wallet_page_ui.dart';
 import '../Delivery_Order History_page/Delivery_Order History_page_ui.dart';
 import '../Delivery_Incentives Dashboard_page/Delivery_Incentives Dashboard_page_ui.dart';
 import '../Delivery_Settings_page/Delivery_Settings_page_ui.dart';
+import '../Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_ui.dart';
+import '../Delivery_Pickup Confirmation_page/Delivery_Pickup Confirmation_page_ui.dart';
+import '../Delivery_Delivery Completed_page/Delivery_Delivery Completed_page_ui.dart';
+import '../../../core/repositories/delivery_active_order_session_repository.dart';
+import '../../../core/theme/delivery_design_system.dart';
 import '../auto_hide_app_bar_wrapper.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryNavigationBarStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -145,7 +153,7 @@ class _DeliveryNavigationBarPageViewState
               .state
               .localeCode),
         ),
-        backgroundColor: const Color(0xFF00C853),
+        backgroundColor: DeliveryAppColors.primaryDark,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -161,7 +169,7 @@ class _DeliveryNavigationBarPageViewState
               content: Text(
                 state.errorMessage ?? 'Something went wrong. Please try again.',
               ),
-              backgroundColor: const Color(0xFFB3261E),
+              backgroundColor: DeliveryAppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -354,14 +362,14 @@ class _SidebarHeader extends StatelessWidget {
                 height: 46,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF00E676), Color(0xFF00C853)],
+                    colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: DeliveryAppSpacing.borderRadiusMd,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF00C853).withValues(alpha: 0.35),
+                      color: DeliveryAppColors.primaryDark.withValues(alpha: 0.3),
                       blurRadius: 14,
                       offset: const Offset(0, 4),
                     ),
@@ -369,7 +377,7 @@ class _SidebarHeader extends StatelessWidget {
                 ),
                 child: const Icon(
                   Icons.two_wheeler,
-                  color: Color(0xFF061208),
+                  color: DeliveryAppColors.buttonPrimaryText,
                   size: 28,
                 ),
               ),
@@ -439,7 +447,7 @@ class _SidebarHeader extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: isOffline
                                   ? const Color(0xFFEF4444)
-                                  : const Color(0xFF00E676),
+                                  : DeliveryAppColors.primary,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -525,7 +533,7 @@ class _SidebarMenuItemState extends State<_SidebarMenuItem> {
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF00C853).withValues(alpha: 0.12)
+                          ? DeliveryAppColors.primaryDark.withValues(alpha: 0.12)
                           : _hovered
                               ? Colors.white.withValues(alpha: 0.04)
                               : Colors.transparent,
@@ -533,7 +541,7 @@ class _SidebarMenuItemState extends State<_SidebarMenuItem> {
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: const Color(0xFF00C853).withValues(
+                                color: DeliveryAppColors.primaryDark.withValues(
                                   alpha: 0.25,
                                 ),
                                 blurRadius: 16,
@@ -543,7 +551,7 @@ class _SidebarMenuItemState extends State<_SidebarMenuItem> {
                           : _hovered
                               ? [
                                   BoxShadow(
-                                    color: const Color(0xFF00C853).withValues(
+                                    color: DeliveryAppColors.primaryDark.withValues(
                                       alpha: 0.12,
                                     ),
                                     blurRadius: 12,
@@ -561,9 +569,9 @@ class _SidebarMenuItemState extends State<_SidebarMenuItem> {
                           height: isSelected ? 28 : (_hovered ? 16 : 0),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFF00E676)
+                                ? DeliveryAppColors.primary
                                 : _hovered
-                                    ? const Color(0xFF00E676)
+                                    ? DeliveryAppColors.primary
                                         .withValues(alpha: 0.5)
                                     : Colors.transparent,
                             borderRadius: BorderRadius.circular(4),
@@ -573,9 +581,9 @@ class _SidebarMenuItemState extends State<_SidebarMenuItem> {
                         Icon(
                           isSelected ? item.activeIcon : item.icon,
                           color: isSelected
-                              ? const Color(0xFF00E676)
+                              ? DeliveryAppColors.primary
                               : _hovered
-                                  ? const Color(0xFF00E676)
+                                  ? DeliveryAppColors.primary
                                       .withValues(alpha: 0.8)
                                   : const Color(0xFF94A3B8),
                           size: 22,
@@ -603,7 +611,7 @@ class _SidebarMenuItemState extends State<_SidebarMenuItem> {
                             width: 8,
                             height: 8,
                             decoration: const BoxDecoration(
-                              color: Color(0xFF00E676),
+                              color: DeliveryAppColors.primary,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -642,7 +650,7 @@ class _HelpCard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: const Color(0xFF00C853).withValues(alpha: 0.25),
+          color: DeliveryAppColors.primaryDark.withValues(alpha: 0.25),
         ),
       ),
       child: Column(
@@ -654,12 +662,12 @@ class _HelpCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00C853).withValues(alpha: 0.15),
+                  color: DeliveryAppColors.primaryDark.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.headset_mic,
-                  color: Color(0xFF00E676),
+                  color: DeliveryAppColors.primary,
                   size: 22,
                 ),
               ),
@@ -699,7 +707,7 @@ class _HelpCard extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onContactSupport,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C853),
+                backgroundColor: DeliveryAppColors.primaryDark,
                 foregroundColor: const Color(0xFF06120B),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -739,7 +747,7 @@ class _UploadProgressIndicator extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.upload_file, color: Color(0xFF00E676), size: 18),
+              const Icon(Icons.upload_file, color: DeliveryAppColors.primary, size: 18),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
@@ -754,7 +762,7 @@ class _UploadProgressIndicator extends StatelessWidget {
               Text(
                 '${(progress * 100).toStringAsFixed(0)}%',
                 style: const TextStyle(
-                  color: Color(0xFF00E676),
+                  color: DeliveryAppColors.primary,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -768,7 +776,7 @@ class _UploadProgressIndicator extends StatelessWidget {
               value: progress,
               minHeight: 6,
               backgroundColor: const Color(0xFF1A2530),
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF00E676)),
+              valueColor: const AlwaysStoppedAnimation(DeliveryAppColors.primary),
             ),
           ),
         ],
@@ -891,18 +899,18 @@ class _OverviewPanel extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFF00C853).withValues(alpha: 0.12),
+                color: DeliveryAppColors.primaryDark.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF00C853).withValues(alpha: 0.18),
+                    color: DeliveryAppColors.primaryDark.withValues(alpha: 0.18),
                     blurRadius: 20,
                   ),
                 ],
               ),
               child: Icon(
                 item.activeIcon,
-                color: const Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
                 size: 34,
               ),
             ),
@@ -938,7 +946,7 @@ class _OverviewPanel extends StatelessWidget {
                     minHeight: 8,
                     backgroundColor: const Color(0xFF1A2530),
                     valueColor: const AlwaysStoppedAnimation(
-                      Color(0xFF00E676),
+                      DeliveryAppColors.primary,
                     ),
                   ),
                 ),
@@ -949,7 +957,7 @@ class _OverviewPanel extends StatelessWidget {
               const Text(
                 'Upload complete',
                 style: TextStyle(
-                  color: Color(0xFF00E676),
+                  color: DeliveryAppColors.primary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1018,7 +1026,7 @@ class _ContentTopBar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF00C853).withValues(alpha: 0.12),
+              color: DeliveryAppColors.primaryDark.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Row(
@@ -1029,7 +1037,7 @@ class _ContentTopBar extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: state.isOffline
                         ? const Color(0xFFEF4444)
-                        : const Color(0xFF00E676),
+                        : DeliveryAppColors.primary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1073,7 +1081,7 @@ class _ContentTopBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: const Color(0xFF00C853).withValues(alpha: 0.5),
+                    color: DeliveryAppColors.primaryDark.withValues(alpha: 0.5),
                     width: 1.5,
                   ),
                 ),
@@ -1082,7 +1090,7 @@ class _ContentTopBar extends StatelessWidget {
                   backgroundColor: Color(0xFF1A2530),
                   child: Icon(
                     Icons.person,
-                    color: Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     size: 20,
                   ),
                 ),
@@ -1241,51 +1249,54 @@ class _MobileBottomItem extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFF00C853).withValues(alpha: 0.14)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFF00C853).withValues(alpha: 0.3),
-                        blurRadius: 14,
-                      ),
-                    ]
-                  : const [],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? DeliveryAppColors.primaryDark.withValues(alpha: 0.14)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: DeliveryAppColors.primaryDark.withValues(alpha: 0.3),
+                            blurRadius: 14,
+                          ),
+                        ]
+                      : const [],
+                ),
+                child: Icon(
                   isSelected ? item.activeIcon : item.icon,
                   color: isSelected
-                      ? const Color(0xFF00E676)
+                      ? DeliveryAppColors.primary
                       : const Color(0xFF94A3B8),
                   size: 22,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                  style: TextStyle(
-                    color: isSelected
-                        ? const Color(0xFFE8FFF3)
-                        : const Color(0xFF9AA5B1),
-                    fontSize: 9,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : const Color(0xFF9AA5B1),
+                  fontSize: 9,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+        ),
       ),
     );
   }
@@ -1449,7 +1460,7 @@ class _ErrorShell extends StatelessWidget {
                   .read<DeliveryNavigationBarPageBloc>()
                   .add(const DeliveryNavigationBarRefreshEvent()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C853),
+                backgroundColor: DeliveryAppColors.primaryDark,
                 foregroundColor: const Color(0xFF06120B),
                 minimumSize: const Size(140, 48),
                 shape: RoundedRectangleBorder(
@@ -1516,7 +1527,7 @@ class _EmptyShell extends StatelessWidget {
                   .read<DeliveryNavigationBarPageBloc>()
                   .add(const DeliveryNavigationBarRefreshEvent()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C853),
+                backgroundColor: DeliveryAppColors.primaryDark,
                 foregroundColor: const Color(0xFF06120B),
                 minimumSize: const Size(140, 48),
                 shape: RoundedRectangleBorder(

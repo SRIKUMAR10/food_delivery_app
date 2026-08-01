@@ -1,0 +1,177 @@
+import 'dart:async';
+
+/// Enum representing the stages of the Active Delivery State Machine.
+enum ActiveDeliveryStage {
+  idle,
+  incomingOrder,
+  acceptedOrder,
+  pickupConfirmation,
+  navigatingToCustomer,
+  deliveryCompleted,
+}
+
+/// Data snapshot representing the current synchronized state of the Delivery Partner session.
+class DeliverySessionState {
+  final bool isOnline;
+  final double walletBalance;
+  final double pendingWithdrawal;
+  final double totalEarningsToday;
+  final int completedOrdersCount;
+  final ActiveDeliveryStage deliveryStage;
+  final String? activeOrderId;
+  final String? storeName;
+  final String? storeAddress;
+  final String? customerName;
+  final String? customerAddress;
+  final double? orderAmount;
+
+  const DeliverySessionState({
+    this.isOnline = true,
+    this.walletBalance = 2450.50,
+    this.pendingWithdrawal = 500.00,
+    this.totalEarningsToday = 1280.00,
+    this.completedOrdersCount = 14,
+    this.deliveryStage = ActiveDeliveryStage.idle,
+    this.activeOrderId,
+    this.storeName,
+    this.storeAddress,
+    this.customerName,
+    this.customerAddress,
+    this.orderAmount,
+  });
+
+  DeliverySessionState copyWith({
+    bool? isOnline,
+    double? walletBalance,
+    double? pendingWithdrawal,
+    double? totalEarningsToday,
+    int? completedOrdersCount,
+    ActiveDeliveryStage? deliveryStage,
+    String? activeOrderId,
+    String? storeName,
+    String? storeAddress,
+    String? customerName,
+    String? customerAddress,
+    double? orderAmount,
+  }) {
+    return DeliverySessionState(
+      isOnline: isOnline ?? this.isOnline,
+      walletBalance: walletBalance ?? this.walletBalance,
+      pendingWithdrawal: pendingWithdrawal ?? this.pendingWithdrawal,
+      totalEarningsToday: totalEarningsToday ?? this.totalEarningsToday,
+      completedOrdersCount: completedOrdersCount ?? this.completedOrdersCount,
+      deliveryStage: deliveryStage ?? this.deliveryStage,
+      activeOrderId: activeOrderId ?? this.activeOrderId,
+      storeName: storeName ?? this.storeName,
+      storeAddress: storeAddress ?? this.storeAddress,
+      customerName: customerName ?? this.customerName,
+      customerAddress: customerAddress ?? this.customerAddress,
+      orderAmount: orderAmount ?? this.orderAmount,
+    );
+  }
+}
+
+/// Centralized local broadcast stream repository for Cross-BLoC state synchronization.
+class DeliveryActiveOrderSessionRepository {
+  DeliverySessionState _currentState = const DeliverySessionState();
+  final StreamController<DeliverySessionState> _sessionController =
+      StreamController<DeliverySessionState>.broadcast();
+
+  DeliverySessionState get currentState => _currentState;
+
+  /// Stream emitting real-time session state changes to all subscribed BLoCs.
+  Stream<DeliverySessionState> get sessionStream => _sessionController.stream;
+
+  void dispose() {
+    _sessionController.close();
+  }
+
+  void _emitState(DeliverySessionState newState) {
+    _currentState = newState;
+    if (!_sessionController.isClosed) {
+      _sessionController.add(_currentState);
+    }
+  }
+
+  /// Toggle Online/Offline status across all BLoCs.
+  void toggleOnlineStatus() {
+    _emitState(_currentState.copyWith(isOnline: !_currentState.isOnline));
+  }
+
+  void setOnlineStatus(bool isOnline) {
+    _emitState(_currentState.copyWith(isOnline: isOnline));
+  }
+
+  /// Process withdrawal and update wallet balance synchronously across Wallet and Earnings BLoCs.
+  void processWithdrawal(double amount) {
+    if (amount > 0 && amount <= _currentState.walletBalance) {
+      final newBalance = _currentState.walletBalance - amount;
+      final newPending = _currentState.pendingWithdrawal + amount;
+      _emitState(_currentState.copyWith(
+        walletBalance: newBalance,
+        pendingWithdrawal: newPending,
+      ));
+    }
+  }
+
+  /// Trigger an incoming order event.
+  void triggerIncomingOrder({
+    String orderId = '#ORD98234',
+    String storeName = 'Tandoori Junction',
+    String storeAddress = '123 MG Road, Sector 4',
+    String customerName = 'Rahul Sharma',
+    String customerAddress = '458 Green Park, Block B',
+    double orderAmount = 450.00,
+  }) {
+    _emitState(_currentState.copyWith(
+      deliveryStage: ActiveDeliveryStage.incomingOrder,
+      activeOrderId: orderId,
+      storeName: storeName,
+      storeAddress: storeAddress,
+      customerName: customerName,
+      customerAddress: customerAddress,
+      orderAmount: orderAmount,
+    ));
+  }
+
+  /// Accept incoming order and transition to store pickup stage.
+  void acceptOrder() {
+    _emitState(_currentState.copyWith(
+      deliveryStage: ActiveDeliveryStage.acceptedOrder,
+    ));
+  }
+
+  /// Decline incoming order and revert to idle state.
+  void declineOrder() {
+    _emitState(_currentState.copyWith(
+      deliveryStage: ActiveDeliveryStage.idle,
+      activeOrderId: null,
+    ));
+  }
+
+  /// Confirm store pickup and transition to navigation to customer stage.
+  void confirmPickup() {
+    _emitState(_currentState.copyWith(
+      deliveryStage: ActiveDeliveryStage.navigatingToCustomer,
+    ));
+  }
+
+  /// Complete delivery and update earnings and completed orders count synchronously.
+  void completeDelivery() {
+    final earningsAdded = (_currentState.orderAmount ?? 50.0) * 0.15 + 40.0;
+    _emitState(_currentState.copyWith(
+      deliveryStage: ActiveDeliveryStage.deliveryCompleted,
+      walletBalance: _currentState.walletBalance + earningsAdded,
+      totalEarningsToday: _currentState.totalEarningsToday + earningsAdded,
+      completedOrdersCount: _currentState.completedOrdersCount + 1,
+    ));
+  }
+
+  /// Reset active order state machine back to idle.
+  void resetOrder() {
+    _emitState(_currentState.copyWith(
+      deliveryStage: ActiveDeliveryStage.idle,
+      activeOrderId: null,
+    ));
+  }
+}

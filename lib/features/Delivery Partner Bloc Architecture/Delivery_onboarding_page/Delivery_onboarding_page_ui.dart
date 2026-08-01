@@ -4,6 +4,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'Delivery_onboarding_page_bloc.dart';
 import 'Delivery_onboarding_page_event.dart';
 import 'Delivery_onboarding_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryOnboardingPageUI extends StatefulWidget {
   const DeliveryOnboardingPageUI({super.key});
@@ -53,10 +56,10 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
   @override
   Widget build(BuildContext context) {
     final themeData = ThemeData.dark(useMaterial3: true).copyWith(
-      scaffoldBackgroundColor: const Color(0xFF090D14),
+      scaffoldBackgroundColor: DeliveryAppColors.background,
       colorScheme: const ColorScheme.dark(
-        primary: Color(0xFF00E676),
-        surface: Color(0xFF121A24),
+        primary: DeliveryAppColors.primary,
+        surface: DeliveryAppColors.surface,
       ),
     );
 
@@ -71,7 +74,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
                 fit: BoxFit.cover,
               ),
             ),
-            Container(color: Colors.black.withOpacity(0.55)),
+            Container(color: Colors.black.withValues(alpha: 0.55)),
             SafeArea(
             child: BlocConsumer<DeliveryOnboardingPageBloc,
                 DeliveryOnboardingPageState>(
@@ -114,12 +117,12 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
                                 color: Colors.transparent,
                                 borderRadius: BorderRadius.circular(28),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.08),
+                                  color: Colors.white.withValues(alpha: 0.08),
                                   width: 1.5,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.5),
+                                    color: Colors.black.withValues(alpha: 0.5),
                                     blurRadius: 30,
                                     spreadRadius: 5,
                                   )
@@ -133,10 +136,10 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
                                     flex: 5,
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF0F1420).withOpacity(0.95),
+                                        color: DeliveryAppColors.surface.withValues(alpha: 0.95),
                                         border: Border(
                                           right: BorderSide(
-                                            color: Colors.white.withOpacity(0.08),
+                                            color: Colors.white.withValues(alpha: 0.08),
                                             width: 1.5,
                                           ),
                                         ),
@@ -172,7 +175,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
                                                   style: TextStyle(
                                                     fontSize: 32,
                                                     fontWeight: FontWeight.w800,
-                                                    color: Color(0xFF00E676),
+                                                    color: DeliveryAppColors.primary,
                                                     height: 1.2,
                                                   ),
                                                 ),
@@ -201,7 +204,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
                                     flex: 6,
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF0A0E17).withOpacity(0.80),
+                                        color: DeliveryAppColors.background.withValues(alpha: 0.80),
                                       ),
                                       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 32),
                                       child: Column(
@@ -290,15 +293,15 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFF00E676).withOpacity(0.12),
+            color: DeliveryAppColors.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: const Color(0xFF00E676).withOpacity(0.25),
+              color: DeliveryAppColors.primary.withValues(alpha: 0.25),
             ),
           ),
           child: const Icon(
             Icons.electric_scooter_rounded,
-            color: Color(0xFF00E676),
+            color: DeliveryAppColors.primary,
             size: 22,
           ),
         ),
@@ -336,7 +339,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
         borderRadius: BorderRadius.circular(14),
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF00E676),
+            DeliveryAppColors.primary,
             Color(0xFF09D261),
           ],
           begin: Alignment.centerLeft,
@@ -344,7 +347,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00E676).withOpacity(0.3),
+            color: DeliveryAppColors.primary.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           )
@@ -404,7 +407,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
               TextSpan(
                 text: 'Login',
                 style: TextStyle(
-                  color: Color(0xFF00E676),
+                  color: DeliveryAppColors.primary,
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                   decoration: TextDecoration.underline,
@@ -434,7 +437,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF00E676),
+              color: DeliveryAppColors.primary,
             ),
           ),
         ],
@@ -447,7 +450,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
       width: 40,
       height: 3,
       decoration: BoxDecoration(
-        color: const Color(0xFF00E676),
+        color: DeliveryAppColors.primary,
         borderRadius: BorderRadius.circular(1.5),
       ),
     );
@@ -460,14 +463,14 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFF121B26).withOpacity(0.6),
+        color: DeliveryAppColors.surface.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: state.selectedLanguage,
-          dropdownColor: const Color(0xFF0E1520),
+          dropdownColor: DeliveryAppColors.surface,
           icon: const Icon(
             Icons.keyboard_arrow_down_rounded,
             color: Colors.white70,
@@ -483,7 +486,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
                       const Icon(
                         Icons.language_rounded,
                         size: 14,
-                        color: Color(0xFF00E676),
+                        color: DeliveryAppColors.primary,
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -524,15 +527,15 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00E676).withOpacity(0.15),
+                  color: DeliveryAppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF00E676).withOpacity(0.3),
+                    color: DeliveryAppColors.primary.withValues(alpha: 0.3),
                   ),
                 ),
                 child: const Icon(
                   Icons.electric_scooter_rounded,
-                  color: Color(0xFF00E676),
+                  color: DeliveryAppColors.primary,
                   size: 26,
                 ),
               ),
@@ -599,7 +602,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF00E676),
+                  color: DeliveryAppColors.primary,
                   height: 1.2,
                 ),
               ),
@@ -628,13 +631,13 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
                   );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF00E676),
+              backgroundColor: DeliveryAppColors.primary,
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               elevation: 4,
-              shadowColor: const Color(0xFF00E676).withOpacity(0.4),
+              shadowColor: DeliveryAppColors.primary.withValues(alpha: 0.4),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -716,10 +719,10 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B121C).withOpacity(0.55),
+        color: const Color(0xFF0B121C).withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withOpacity(0.06),
+          color: Colors.white.withValues(alpha: 0.06),
         ),
       ),
       child: Column(
@@ -729,20 +732,20 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF00E676).withOpacity(0.08),
+              color: DeliveryAppColors.primary.withValues(alpha: 0.08),
               border: Border.all(
-                color: const Color(0xFF00E676).withOpacity(0.2),
+                color: DeliveryAppColors.primary.withValues(alpha: 0.2),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF00E676).withOpacity(0.1),
+                  color: DeliveryAppColors.primary.withValues(alpha: 0.1),
                   blurRadius: 8,
                 )
               ],
             ),
             child: Icon(
               getIcon(feature.iconKey),
-              color: const Color(0xFF00E676),
+              color: DeliveryAppColors.primary,
               size: 22,
             ),
           ),
@@ -792,9 +795,9 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B121C).withOpacity(0.6),
+        color: const Color(0xFF0B121C).withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -805,12 +808,12 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00E676).withOpacity(0.1),
+                  color: DeliveryAppColors.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   getStatIcon(stat.iconKey),
-                  color: const Color(0xFF00E676),
+                  color: DeliveryAppColors.primary,
                   size: 20,
                 ),
               ),
@@ -846,7 +849,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
   Widget _buildSkeletonLoading() {
     return const Center(
       child: CircularProgressIndicator(
-        color: Color(0xFF00E676),
+        color: DeliveryAppColors.primary,
       ),
     );
   }
@@ -885,7 +888,7 @@ class _MapRoutePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paintLine = Paint()
-      ..color = const Color(0xFF00E676).withOpacity(0.4)
+      ..color = DeliveryAppColors.primary.withValues(alpha: 0.4)
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
@@ -903,11 +906,11 @@ class _MapRoutePainter extends CustomPainter {
     canvas.drawPath(path, paintLine);
 
     final dotPaint = Paint()
-      ..color = const Color(0xFF00E676)
+      ..color = DeliveryAppColors.primary
       ..style = PaintingStyle.fill;
 
     final dotGlow = Paint()
-      ..color = const Color(0xFF00E676).withOpacity(0.3)
+      ..color = DeliveryAppColors.primary.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(Offset(20, size.height * 0.7), 10, dotGlow);

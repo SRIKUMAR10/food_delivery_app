@@ -7,6 +7,10 @@ import 'Delivery_Sign_Up_page_repository.dart';
 import 'Delivery_Sign_Up_page_service.dart';
 import 'Delivery_Sign_Up_page_state.dart';
 import '../Delivery_OTP_Verification_page/Delivery_OTP_Verification_page_ui.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
+import '../../../core/theme/delivery_design_system.dart';
 
 class DeliverySignUpPage extends StatelessWidget {
   final DeliverySignUpRepositoryBase? repository;
@@ -78,7 +82,7 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF091015),
+      backgroundColor: DeliveryAppColors.background,
       body: Stack(
         children: [
           Positioned.fill(
@@ -124,7 +128,7 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
                   const SnackBar(
                     content: Text(
                         'Account created successfully! Welcome Partner.'),
-                    backgroundColor: Color(0xFF00E676),
+                    backgroundColor: DeliveryAppColors.primary,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -181,20 +185,20 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
       constraints: const BoxConstraints(maxWidth: 480),
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: const Color(0xFF091413).withOpacity(0.84),
+        color: const Color(0xFF091413).withValues(alpha: 0.84),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFF00E676).withOpacity(0.28),
+          color: DeliveryAppColors.primary.withValues(alpha: 0.28),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 28,
             offset: const Offset(0, 10),
           ),
           BoxShadow(
-            color: const Color(0xFF00E676).withOpacity(0.08),
+            color: DeliveryAppColors.primary.withValues(alpha: 0.08),
             blurRadius: 40,
             spreadRadius: 2,
           ),
@@ -235,9 +239,9 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.12),
+                color: Colors.redAccent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
               ),
               child: Row(
                 children: [
@@ -340,12 +344,12 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
             children: [
               Checkbox(
                 value: state.termsAccepted,
-                activeColor: const Color(0xFF00E676),
+                activeColor: DeliveryAppColors.primary,
                 checkColor: Colors.black,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
                 side: BorderSide(
-                  color: const Color(0xFF00E676).withOpacity(0.6),
+                  color: DeliveryAppColors.primary.withValues(alpha: 0.6),
                   width: 1.5,
                 ),
                 shape: RoundedRectangleBorder(
@@ -357,7 +361,7 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
                 child: Text(
                   'I accept the Terms & Conditions',
                   style: GoogleFonts.inter(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 13,
                   ),
                 ),
@@ -375,10 +379,10 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
                   : () =>
                       bloc.add(const DeliverySignUpSubmitted()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
+                backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,
                 elevation: 6,
-                shadowColor: const Color(0xFF00E676).withOpacity(0.4),
+                shadowColor: DeliveryAppColors.primary.withValues(alpha: 0.4),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -430,7 +434,7 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
                   child: Text(
                     'Login',
                     style: GoogleFonts.inter(
-                      color: const Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                     ),
@@ -457,6 +461,7 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
 
   Widget _buildTextField({
     required String hint,
+    String? label,
     String? prefix,
     bool obscure = false,
     TextInputType? keyboardType,
@@ -464,68 +469,38 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
     ValueChanged<String>? onChanged,
     Widget? suffix,
   }) {
-    return TextField(
+    return DeliveryTextField(
+      hintText: hint,
+      label: label,
       obscureText: obscure,
-      keyboardType: keyboardType,
-      style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+      keyboardType: keyboardType ?? TextInputType.text,
+      errorText: errorText,
       onChanged: onChanged,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: const Color(0xFF081412),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-              BorderSide(color: const Color(0xFF00E676).withOpacity(0.25)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: Color(0xFF00E676), width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: Colors.redAccent, width: 1.5),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: Colors.redAccent, width: 1.5),
-        ),
-        errorText: errorText,
-        errorStyle: GoogleFonts.inter(
-          color: Colors.redAccent,
-          fontSize: 12,
-        ),
-        prefixIcon: prefix != null
-            ? Padding(
-                padding: const EdgeInsets.only(left: 14, right: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      prefix,
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
+      suffixIcon: suffix,
+      prefixIcon: prefix != null
+          ? Padding(
+              padding: const EdgeInsets.only(left: 14, right: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    prefix,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
-                    Container(
-                      height: 20,
-                      width: 1,
-                      margin: const EdgeInsets.symmetric(horizontal: 10),
-                      color: Colors.white24,
-                    ),
-                  ],
-                ),
-              )
-            : null,
-        suffixIcon: suffix,
-        hintText: hint,
-        hintStyle: GoogleFonts.inter(color: Colors.white30, fontSize: 14),
-        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-      ),
+                  ),
+                  Container(
+                    height: 20,
+                    width: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 10),
+                    color: Colors.white24,
+                  ),
+                ],
+              ),
+            )
+          : null,
     );
   }
 }

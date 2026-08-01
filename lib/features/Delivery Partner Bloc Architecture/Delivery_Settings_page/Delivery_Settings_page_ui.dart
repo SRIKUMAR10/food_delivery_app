@@ -6,6 +6,9 @@ import 'Delivery_Settings_page_event.dart';
 import 'Delivery_Settings_page_repository.dart';
 import 'Delivery_Settings_page_service.dart';
 import 'Delivery_Settings_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
 
 String formatDeliveryCurrency(num amount, String localeCode) {
   try {
@@ -146,7 +149,7 @@ class DeliverySettingsPageView extends StatelessWidget {
               content: Text(
                 DeliverySettingsStrings.of('saved', state.localeCode),
               ),
-              backgroundColor: const Color(0xFF00C853),
+              backgroundColor: DeliveryAppColors.primaryDark,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -155,7 +158,7 @@ class DeliverySettingsPageView extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.errorMessage!),
-              backgroundColor: const Color(0xFFB3261E),
+              backgroundColor: DeliveryAppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -359,7 +362,7 @@ class _PreferencesCard extends StatelessWidget {
       key: const Key('dp_settings_preferences_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
@@ -368,7 +371,7 @@ class _PreferencesCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.tune, color: Color(0xFF00E676), size: 20),
+              const Icon(Icons.tune, color: DeliveryAppColors.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -416,14 +419,14 @@ class _PreferencesCard extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00C853).withValues(alpha: 0.12),
+                  color: DeliveryAppColors.primaryDark.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   '${state.deliveryRadius.toStringAsFixed(1)} '
                   '${DeliverySettingsStrings.of('km', localeCode)}',
                   style: const TextStyle(
-                    color: Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
@@ -442,7 +445,7 @@ class _PreferencesCard extends StatelessWidget {
               min: 1.0,
               max: 20.0,
               divisions: 38,
-              activeColor: const Color(0xFF00E676),
+              activeColor: DeliveryAppColors.primary,
               inactiveColor: const Color(0xFF1A2530),
               onChanged: (value) => context
                   .read<DeliverySettingsBloc>()
@@ -469,7 +472,7 @@ class _PreferencesCard extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF00C853)),
+                borderSide: const BorderSide(color: DeliveryAppColors.primaryDark),
               ),
             ),
             onSubmitted: (value) {
@@ -487,7 +490,7 @@ class _PreferencesCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.language, color: Color(0xFF00E676), size: 20),
+              const Icon(Icons.language, color: DeliveryAppColors.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -529,7 +532,7 @@ class _PreferencesCard extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF00C853)),
+                borderSide: const BorderSide(color: DeliveryAppColors.primaryDark),
               ),
             ),
             items: [
@@ -572,7 +575,7 @@ class _ToggleCard extends StatelessWidget {
       key: const Key('dp_settings_toggle_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
@@ -582,7 +585,7 @@ class _ToggleCard extends StatelessWidget {
           Row(
             children: [
               const Icon(Icons.toggle_on_outlined,
-                  color: Color(0xFF00E676), size: 20),
+                  color: DeliveryAppColors.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -645,14 +648,14 @@ class _ToggleTile extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               color: item.value
-                  ? const Color(0xFF00C853).withValues(alpha: 0.12)
+                  ? DeliveryAppColors.primaryDark.withValues(alpha: 0.12)
                   : const Color(0xFF1A2530),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               item.icon,
               color: item.value
-                  ? const Color(0xFF00E676)
+                  ? DeliveryAppColors.primary
                   : const Color(0xFF64748B),
               size: 22,
             ),
@@ -686,7 +689,7 @@ class _ToggleTile extends StatelessWidget {
               key: Key('dp_settings_toggle_${item.id}'),
               value: item.value,
               activeThumbColor: const Color(0xFF06120B),
-              activeTrackColor: const Color(0xFF00C853),
+              activeTrackColor: DeliveryAppColors.primaryDark,
               inactiveThumbColor: const Color(0xFF64748B),
               inactiveTrackColor: const Color(0xFF1A2530),
               onChanged: (_) => _onChanged(context),
@@ -711,15 +714,15 @@ class _EarningsCard extends StatelessWidget {
       key: const Key('dp_settings_earnings_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF00C853).withValues(alpha: 0.2),
+          color: DeliveryAppColors.primaryDark.withValues(alpha: 0.2),
         ),
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF0D141C),
-            const Color(0xFF00C853).withValues(alpha: 0.08),
+            DeliveryAppColors.surface,
+            DeliveryAppColors.primaryDark.withValues(alpha: 0.08),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -730,7 +733,7 @@ class _EarningsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.trending_up, color: Color(0xFF00E676), size: 20),
+              const Icon(Icons.trending_up, color: DeliveryAppColors.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -754,7 +757,7 @@ class _EarningsCard extends StatelessWidget {
             formatDeliveryCurrency(estimate, localeCode),
             key: const Key('dp_settings_earnings_amount'),
             style: const TextStyle(
-              color: Color(0xFF00E676),
+              color: DeliveryAppColors.primary,
               fontSize: 28,
               fontWeight: FontWeight.w800,
             ),
@@ -782,7 +785,7 @@ class _HelpCard extends StatelessWidget {
       key: const Key('dp_settings_help_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
@@ -791,7 +794,7 @@ class _HelpCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.help_outline, color: Color(0xFF00E676), size: 20),
+              const Icon(Icons.help_outline, color: DeliveryAppColors.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -831,8 +834,8 @@ class _HelpCard extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF00E676),
-                side: const BorderSide(color: Color(0xFF00C853)),
+                foregroundColor: DeliveryAppColors.primary,
+                side: const BorderSide(color: DeliveryAppColors.primaryDark),
                 minimumSize: const Size(160, 46),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -880,7 +883,7 @@ class _SaveBar extends StatelessWidget {
                     .read<DeliverySettingsBloc>()
                     .add(const DeliverySettingsSaveEvent()),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF00C853),
+              backgroundColor: DeliveryAppColors.primaryDark,
               disabledBackgroundColor: const Color(0xFF1A2530),
               foregroundColor: const Color(0xFF06120B),
               disabledForegroundColor: const Color(0xFF64748B),
@@ -924,7 +927,7 @@ class _SettingsSkeleton extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
+        color: DeliveryAppColors.surface,
         borderRadius: radius,
       ),
     );
@@ -1009,7 +1012,7 @@ class _SettingsErrorView extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C853),
+                backgroundColor: DeliveryAppColors.primaryDark,
                 foregroundColor: const Color(0xFF06120B),
                 minimumSize: const Size(160, 48),
                 shape: RoundedRectangleBorder(
@@ -1082,7 +1085,7 @@ class _SettingsEmptyView extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C853),
+                backgroundColor: DeliveryAppColors.primaryDark,
                 foregroundColor: const Color(0xFF06120B),
                 minimumSize: const Size(160, 48),
                 shape: RoundedRectangleBorder(

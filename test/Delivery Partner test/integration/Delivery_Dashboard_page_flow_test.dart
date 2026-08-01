@@ -151,7 +151,7 @@ void main() {
 
       await tester.tap(find.text('Dashboard'), warnIfMissed: false);
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(seconds: 6));
 
       expect(find.byKey(const Key('dp_dashboard_online_card')), findsOneWidget);
       expect(find.text('ONLINE'), findsOneWidget);

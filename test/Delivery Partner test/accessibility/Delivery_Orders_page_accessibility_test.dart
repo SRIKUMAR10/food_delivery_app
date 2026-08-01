@@ -8,6 +8,7 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_ui.dart';
+import 'package:food_delivery_app/core/widgets/delivery_text_field.dart';
 
 class MockDeliveryOrdersPageBloc
     extends MockBloc<DeliveryOrdersPageEvent, DeliveryOrdersPageState>
@@ -151,10 +152,10 @@ void main() {
       await tester.pumpWidget(buildPage());
       await tester.pump();
 
-      final field = tester.widget<TextField>(
+      final field = tester.widget<DeliveryTextField>(
         find.byKey(const Key('dp_orders_search_field')),
       );
-      expect(field.decoration?.hintText, isNotNull);
+      expect(field.hintText, isNotNull);
 
       final semantics = tester.getSemantics(
         find.descendant(

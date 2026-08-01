@@ -5,6 +5,9 @@ import 'Delivery_Profile_page_event.dart';
 import 'Delivery_Profile_page_repository.dart';
 import 'Delivery_Profile_page_service.dart';
 import 'Delivery_Profile_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryProfileStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -171,7 +174,7 @@ class DeliveryProfilePageView extends StatelessWidget {
               content: Text(
                 DeliveryProfileStrings.of('saved', state.localeCode),
               ),
-              backgroundColor: const Color(0xFF00C853),
+              backgroundColor: DeliveryAppColors.primaryDark,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -180,7 +183,7 @@ class DeliveryProfilePageView extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.errorMessage!),
-              backgroundColor: const Color(0xFFB3261E),
+              backgroundColor: DeliveryAppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -343,7 +346,7 @@ class _ProfileImageSection extends StatelessWidget {
       key: const Key('dp_profile_image_section'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
@@ -359,13 +362,13 @@ class _ProfileImageSection extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF00E676), Color(0xFF00C853)],
+                  colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF00C853).withValues(alpha: 0.35),
+                    color: DeliveryAppColors.primaryDark.withValues(alpha: 0.35),
                     blurRadius: 18,
                     offset: const Offset(0, 6),
                   ),
@@ -407,13 +410,13 @@ class _ProfileImageSection extends StatelessWidget {
                         color: const Color(0xFF1A2530),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: const Color(0xFF00E676),
+                          color: DeliveryAppColors.primary,
                           width: 2,
                         ),
                       ),
                       child: const Icon(
                         Icons.photo_camera,
-                        color: Color(0xFF00E676),
+                        color: DeliveryAppColors.primary,
                         size: 14,
                       ),
                     ),
@@ -460,8 +463,8 @@ class _ProfileImageSection extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF00E676),
-                    side: const BorderSide(color: Color(0xFF00C853)),
+                    foregroundColor: DeliveryAppColors.primary,
+                    side: const BorderSide(color: DeliveryAppColors.primaryDark),
                     minimumSize: const Size(140, 48),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -516,7 +519,7 @@ class _PersonalInfoCard extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF00C853)),
+          borderSide: const BorderSide(color: DeliveryAppColors.primaryDark),
         ),
       ),
       onChanged: (value) => _dispatch(context, field, value),
@@ -548,7 +551,7 @@ class _PersonalInfoCard extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF00C853)),
+          borderSide: const BorderSide(color: DeliveryAppColors.primaryDark),
         ),
       ),
       items: [
@@ -574,7 +577,7 @@ class _PersonalInfoCard extends StatelessWidget {
       key: const Key('dp_profile_personal_info'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
@@ -584,7 +587,7 @@ class _PersonalInfoCard extends StatelessWidget {
           Row(
             children: [
               const Icon(Icons.person_outline,
-                  color: Color(0xFF00E676), size: 20),
+                  color: DeliveryAppColors.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -759,7 +762,7 @@ class _DocumentsCard extends StatelessWidget {
       key: const Key('dp_profile_documents'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
@@ -769,7 +772,7 @@ class _DocumentsCard extends StatelessWidget {
           Row(
             children: [
               const Icon(Icons.folder_open,
-                  color: Color(0xFF00E676), size: 20),
+                  color: DeliveryAppColors.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -822,7 +825,7 @@ class _DocumentTile extends StatelessWidget {
   Color get _statusColor {
     switch (document.status) {
       case DeliveryProfileDocumentStatus.verified:
-        return const Color(0xFF00E676);
+        return DeliveryAppColors.primary;
       case DeliveryProfileDocumentStatus.uploaded:
         return const Color(0xFF4FC3F7);
       case DeliveryProfileDocumentStatus.uploading:
@@ -899,7 +902,7 @@ class _DocumentTile extends StatelessWidget {
                 ),
               ),
               if (document.isVerified)
-                const Icon(Icons.verified, color: Color(0xFF00E676), size: 20)
+                const Icon(Icons.verified, color: DeliveryAppColors.primary, size: 20)
               else if (!isUploading)
                 OutlinedButton(
                   key: Key('dp_profile_upload_${document.id}'),
@@ -911,8 +914,8 @@ class _DocumentTile extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF00E676),
-                    side: const BorderSide(color: Color(0xFF00C853)),
+                    foregroundColor: DeliveryAppColors.primary,
+                    side: const BorderSide(color: DeliveryAppColors.primaryDark),
                     minimumSize: const Size(76, 48),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -925,7 +928,7 @@ class _DocumentTile extends StatelessWidget {
                   child: Text(
                     '${(document.progress * 100).round()}%',
                     style: const TextStyle(
-                      color: Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -941,8 +944,8 @@ class _DocumentTile extends StatelessWidget {
                 key: Key('dp_profile_doc_progress_${document.id}'),
                 value: document.progress,
                 minHeight: 6,
-                backgroundColor: const Color(0xFF1A2530),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF00E676)),
+                backgroundColor: DeliveryAppColors.surfaceLight,
+                valueColor: const AlwaysStoppedAnimation(DeliveryAppColors.primary),
               ),
             ),
           ],
@@ -968,7 +971,7 @@ class _CompletionCard extends StatelessWidget {
         color: const Color(0xFF0D141C),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF00C853).withValues(alpha: 0.2),
+          color: DeliveryAppColors.primaryDark.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -995,9 +998,9 @@ class _CompletionCard extends StatelessWidget {
                     value: value,
                     strokeWidth: 10,
                     strokeCap: StrokeCap.round,
-                    backgroundColor: const Color(0xFF1A2530),
+                    backgroundColor: DeliveryAppColors.surfaceLight,
                     valueColor:
-                        const AlwaysStoppedAnimation(Color(0xFF00E676)),
+                        const AlwaysStoppedAnimation(DeliveryAppColors.primary),
                   ),
                   Center(
                     child: Column(
@@ -1073,7 +1076,7 @@ class _VerificationCard extends StatelessWidget {
                   Icon(
                     verified ? Icons.check_circle : Icons.cancel,
                     color: verified
-                        ? const Color(0xFF00E676)
+                        ? DeliveryAppColors.primary
                         : const Color(0xFFEF4444),
                     size: 20,
                   ),
@@ -1098,8 +1101,8 @@ class _VerificationCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: verified
-                            ? const Color(0xFF00C853).withValues(alpha: 0.12)
-                            : const Color(0xFFB3261E).withValues(alpha: 0.12),
+                            ? DeliveryAppColors.primaryDark.withValues(alpha: 0.12)
+                            : DeliveryAppColors.error.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -1116,7 +1119,7 @@ class _VerificationCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: verified
-                              ? const Color(0xFF00E676)
+                              ? DeliveryAppColors.primary
                               : const Color(0xFFFCA5A5),
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -1178,7 +1181,7 @@ class _ChecklistCard extends StatelessWidget {
                           ? Icons.check_circle
                           : Icons.radio_button_unchecked,
                       color: item.isComplete
-                          ? const Color(0xFF00E676)
+                          ? DeliveryAppColors.primary
                           : const Color(0xFF64748B),
                       size: 20,
                     ),
@@ -1245,8 +1248,8 @@ class _SaveBar extends StatelessWidget {
                           const DeliveryProfileSaveEvent(),
                         ),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF00C853),
-              disabledBackgroundColor: const Color(0xFF1A2530),
+              backgroundColor: DeliveryAppColors.primaryDark,
+              disabledBackgroundColor: DeliveryAppColors.buttonSecondary,
               foregroundColor: const Color(0xFF06120B),
               disabledForegroundColor: const Color(0xFF64748B),
               minimumSize: const Size(180, 48),
@@ -1374,7 +1377,7 @@ class _ErrorView extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C853),
+                backgroundColor: DeliveryAppColors.primaryDark,
                 foregroundColor: const Color(0xFF06120B),
                 minimumSize: const Size(160, 48),
                 shape: RoundedRectangleBorder(
@@ -1444,7 +1447,7 @@ class _EmptyView extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C853),
+                backgroundColor: DeliveryAppColors.primaryDark,
                 foregroundColor: const Color(0xFF06120B),
                 minimumSize: const Size(160, 48),
                 shape: RoundedRectangleBorder(

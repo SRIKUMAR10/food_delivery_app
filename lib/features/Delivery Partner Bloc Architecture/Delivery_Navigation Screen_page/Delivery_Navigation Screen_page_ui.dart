@@ -5,6 +5,9 @@ import 'Delivery_Navigation Screen_page_event.dart';
 import 'Delivery_Navigation Screen_page_repository.dart';
 import 'Delivery_Navigation Screen_page_service.dart';
 import 'Delivery_Navigation Screen_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryNavigationStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -155,7 +158,7 @@ class DeliveryNavigationScreenPageView extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.errorMessage!),
-              backgroundColor: const Color(0xFFB3261E),
+              backgroundColor: DeliveryAppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -228,7 +231,7 @@ class _NavigationDashboard extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(DeliveryNavigationStrings.of('sosSent', localeCode)),
-        backgroundColor: const Color(0xFFB3261E),
+        backgroundColor: DeliveryAppColors.error,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -240,7 +243,7 @@ class _NavigationDashboard extends StatelessWidget {
         content: Text(
           DeliveryNavigationStrings.of('callingCustomer', localeCode),
         ),
-        backgroundColor: const Color(0xFF00C853),
+        backgroundColor: DeliveryAppColors.primaryDark,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -402,7 +405,7 @@ class _NavigationTopBar extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF00E676), Color(0xFF00C853)],
+                colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -477,7 +480,7 @@ class _NavigationTopBar extends StatelessWidget {
                       localeCode,
                     ),
                   ),
-                  backgroundColor: const Color(0xFF00C853),
+                  backgroundColor: DeliveryAppColors.primaryDark,
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -489,7 +492,7 @@ class _NavigationTopBar extends StatelessWidget {
             icon: Icon(
               state.showMap ? Icons.map_outlined : Icons.map,
               color: state.showMap
-                  ? const Color(0xFF00E676)
+                  ? DeliveryAppColors.primary
                   : const Color(0xFF94A3B8),
               size: 22,
             ),
@@ -507,7 +510,7 @@ class _NavigationTopBar extends StatelessWidget {
             icon: Icon(
               state.audioEnabled ? Icons.volume_up : Icons.volume_off,
               color: state.audioEnabled
-                  ? const Color(0xFF00E676)
+                  ? DeliveryAppColors.primary
                   : const Color(0xFF94A3B8),
               size: 22,
             ),
@@ -650,7 +653,7 @@ class _MapAreaState extends State<_MapArea> {
                   child: const _MapMarker(
                     key: Key('dp_navscreen_drop_marker'),
                     icon: Icons.sports_score,
-                    color: Color(0xFF00C853),
+                    color: DeliveryAppColors.primaryDark,
                     label: 'Drop',
                   ),
                 ),
@@ -736,7 +739,7 @@ class _NavigationMapCanvas extends CustomPainter {
     );
 
     final glow = Paint()
-      ..color = const Color(0xFF00E676).withValues(alpha: 0.3)
+      ..color = DeliveryAppColors.primary.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 12
       ..strokeCap = StrokeCap.round;
@@ -744,7 +747,7 @@ class _NavigationMapCanvas extends CustomPainter {
 
     final routePaint = Paint()
       ..shader = const LinearGradient(
-        colors: [Color(0xFF00E676), Color(0xFF69F0AE)],
+        colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryLight],
       ).createShader(Offset.zero & size)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 5
@@ -784,7 +787,7 @@ class _NavigationMapCanvas extends CustomPainter {
   }
 
   void _drawDropMarker(Canvas canvas, Offset center) {
-    final flag = Paint()..color = const Color(0xFF00C853);
+    final flag = Paint()..color = DeliveryAppColors.primaryDark;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(
@@ -808,7 +811,7 @@ class _NavigationMapCanvas extends CustomPainter {
       ..lineTo(center.dx + 10, center.dy - 10)
       ..lineTo(center.dx + 4, center.dy - 6)
       ..close();
-    canvas.drawPath(triangle, Paint()..color = const Color(0xFF69F0AE));
+    canvas.drawPath(triangle, Paint()..color = DeliveryAppColors.primaryLight);
   }
 
   void _drawCurrentLocation(Canvas canvas, Offset center) {
@@ -847,7 +850,7 @@ class _TurnByTurnCard extends StatelessWidget {
         color: const Color(0xF20D141C),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF00C853).withValues(alpha: 0.3),
+          color: DeliveryAppColors.primaryDark.withValues(alpha: 0.3),
         ),
         boxShadow: [
           BoxShadow(
@@ -863,10 +866,10 @@ class _TurnByTurnCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFF00C853).withValues(alpha: 0.15),
+              color: DeliveryAppColors.primaryDark.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(turnIcon, color: const Color(0xFF00E676), size: 24),
+            child: Icon(turnIcon, color: DeliveryAppColors.primary, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -877,7 +880,7 @@ class _TurnByTurnCard extends StatelessWidget {
                 Text(
                   '${state.turnDistanceMeters.toStringAsFixed(0)} m',
                   style: const TextStyle(
-                    color: Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                   ),
@@ -901,13 +904,13 @@ class _TurnByTurnCard extends StatelessWidget {
             key: const Key('dp_navscreen_live_badge'),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF00C853).withValues(alpha: 0.15),
+              color: DeliveryAppColors.primaryDark.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(999),
             ),
             child: const Text(
               'LIVE',
               style: TextStyle(
-                color: Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1,
@@ -1126,7 +1129,7 @@ class _OrderSummaryPanel extends StatelessWidget {
             const SizedBox(height: 10),
             _LocationRow(
               icon: Icons.location_on,
-              color: const Color(0xFF00C853),
+              color: DeliveryAppColors.primaryDark,
               title: state.order.dropLabel,
               subtitle: state.order.dropAddress,
             ),
@@ -1167,7 +1170,7 @@ class _OrderSummaryPanel extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF00C853),
+                  backgroundColor: DeliveryAppColors.primaryDark,
                   foregroundColor: const Color(0xFF06120B),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1194,7 +1197,7 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFF00C853).withValues(alpha: 0.15),
+        color: DeliveryAppColors.primaryDark.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -1204,7 +1207,7 @@ class _StatusChip extends StatelessWidget {
             width: 7,
             height: 7,
             decoration: const BoxDecoration(
-              color: Color(0xFF00E676),
+              color: DeliveryAppColors.primary,
               shape: BoxShape.circle,
             ),
           ),
@@ -1212,7 +1215,7 @@ class _StatusChip extends StatelessWidget {
           Text(
             status,
             style: const TextStyle(
-              color: Color(0xFF00E676),
+              color: DeliveryAppColors.primary,
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -1348,7 +1351,7 @@ class _LiveTrafficBar extends StatelessWidget {
         switch (state.trafficLevel) {
       DeliveryNavigationTrafficLevel.clear => (
         DeliveryNavigationStrings.of('trafficClear', localeCode),
-        const Color(0xFF00E676),
+        DeliveryAppColors.primary,
         const [10, 12, 10, 14, 10, 12, 16],
       ),
       DeliveryNavigationTrafficLevel.moderate => (
@@ -1522,7 +1525,7 @@ class _SosButton extends StatelessWidget {
       button: true,
       label: DeliveryNavigationStrings.of('emergencySos', localeCode),
       child: Material(
-        color: const Color(0xFFB3261E),
+        color: DeliveryAppColors.error,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           key: const Key('dp_navscreen_sos_button'),
@@ -1579,14 +1582,14 @@ class _PrimaryNavButton extends StatelessWidget {
         height: 48,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF00E676), Color(0xFF00C853)],
+            colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF00C853).withValues(alpha: 0.35),
+              color: DeliveryAppColors.primaryDark.withValues(alpha: 0.35),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -1697,7 +1700,7 @@ class _CurrentLocationBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.my_location, color: Color(0xFF00E676), size: 16),
+          const Icon(Icons.my_location, color: DeliveryAppColors.primary, size: 16),
           const SizedBox(width: 6),
           Flexible(
             child: Column(
@@ -1891,7 +1894,7 @@ class _NavigationErrorState extends StatelessWidget {
                   .read<DeliveryNavigationBloc>()
                   .add(const DeliveryNavigationRefreshEvent()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C853),
+                backgroundColor: DeliveryAppColors.primaryDark,
                 foregroundColor: const Color(0xFF06120B),
                 minimumSize: const Size(140, 48),
                 shape: RoundedRectangleBorder(
@@ -1959,7 +1962,7 @@ class _NavigationEmptyState extends StatelessWidget {
                   .read<DeliveryNavigationBloc>()
                   .add(const DeliveryNavigationRefreshEvent()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C853),
+                backgroundColor: DeliveryAppColors.primaryDark,
                 foregroundColor: const Color(0xFF06120B),
                 minimumSize: const Size(140, 48),
                 shape: RoundedRectangleBorder(

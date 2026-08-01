@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'Delivery_Forgot_Password_page_bloc.dart';
 import 'Delivery_Forgot_Password_page_event.dart';
 import 'Delivery_Forgot_Password_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryForgotPasswordPage extends StatelessWidget {
   const DeliveryForgotPasswordPage({super.key});
@@ -56,7 +59,7 @@ class _DeliveryForgotPasswordViewState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF091015),
+      backgroundColor: DeliveryAppColors.background,
       body: Stack(
         children: [
           Positioned.fill(
@@ -79,7 +82,7 @@ class _DeliveryForgotPasswordViewState
                   const SnackBar(
                     content:
                         Text('Password reset link sent to your email.'),
-                    backgroundColor: Color(0xFF00E676),
+                    backgroundColor: DeliveryAppColors.primary,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -135,20 +138,20 @@ class _DeliveryForgotPasswordViewState
       constraints: const BoxConstraints(maxWidth: 480),
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: const Color(0xFF091413).withOpacity(0.84),
+        color: const Color(0xFF091413).withValues(alpha: 0.84),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFF00E676).withOpacity(0.28),
+          color: DeliveryAppColors.primary.withValues(alpha: 0.28),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 28,
             offset: const Offset(0, 10),
           ),
           BoxShadow(
-            color: const Color(0xFF00E676).withOpacity(0.08),
+            color: DeliveryAppColors.primary.withValues(alpha: 0.08),
             blurRadius: 40,
             spreadRadius: 2,
           ),
@@ -168,15 +171,15 @@ class _DeliveryForgotPasswordViewState
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF00E676).withOpacity(0.12),
+                color: DeliveryAppColors.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: const Color(0xFF00E676).withOpacity(0.3),
+                  color: DeliveryAppColors.primary.withValues(alpha: 0.3),
                 ),
               ),
               child: const Icon(
                 Icons.lock_reset_rounded,
-                color: Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
                 size: 40,
               ),
             ),
@@ -224,12 +227,12 @@ class _DeliveryForgotPasswordViewState
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(
-                    color: const Color(0xFF00E676).withOpacity(0.25)),
+                    color: DeliveryAppColors.primary.withValues(alpha: 0.25)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide:
-                    const BorderSide(color: Color(0xFF00E676), width: 1.5),
+                    const BorderSide(color: DeliveryAppColors.primary, width: 1.5),
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 14),
             ),
@@ -244,10 +247,10 @@ class _DeliveryForgotPasswordViewState
                   : () =>
                       bloc.add(const DeliveryForgotPasswordSubmitted()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
+                backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,
                 elevation: 6,
-                shadowColor: const Color(0xFF00E676).withOpacity(0.4),
+                shadowColor: DeliveryAppColors.primary.withValues(alpha: 0.4),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),

@@ -5,6 +5,13 @@ import 'Delivery_Orders_page_event.dart';
 import 'Delivery_Orders_page_repository.dart';
 import 'Delivery_Orders_page_service.dart';
 import 'Delivery_Orders_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_typography.dart';
+import '../../../core/theme/delivery_app_spacing.dart';
+import '../../../core/widgets/delivery_button.dart';
+import '../../../core/widgets/delivery_card.dart';
+import '../../../core/widgets/delivery_chip.dart';
+import '../../../core/widgets/delivery_text_field.dart';
 
 class DeliveryOrdersStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -246,7 +253,7 @@ class DeliveryOrdersPageView extends StatelessWidget {
                       )
                     : state.errorMessage!,
               ),
-              backgroundColor: const Color(0xFFB3261E),
+              backgroundColor: DeliveryAppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -355,12 +362,12 @@ class _OrdersLoadedView extends StatelessWidget {
           children: [
             Container(
               key: const Key('dp_orders_page'),
-              color: const Color(0xFF0B1219),
+              color: DeliveryAppColors.background,
               child: bodyWidget,
             ),
             Positioned(
-              right: 24,
-              bottom: 24,
+              right: DeliveryAppSpacing.xl,
+              bottom: DeliveryAppSpacing.xl,
               child: _OrdersFab(state: state),
             ),
           ],
@@ -382,16 +389,18 @@ class _OrdersHeader extends StatelessWidget {
     return Container(
       key: const Key('dp_orders_header'),
       margin: EdgeInsets.fromLTRB(
-        isDesktop ? 24 : 16,
-        16,
-        isDesktop ? 24 : 16,
+        isDesktop ? DeliveryAppSpacing.xl : DeliveryAppSpacing.md,
+        DeliveryAppSpacing.md,
+        isDesktop ? DeliveryAppSpacing.xl : DeliveryAppSpacing.md,
         0,
       ),
-      padding: EdgeInsets.all(isDesktop ? 20 : 16),
+      padding: EdgeInsets.all(
+        isDesktop ? DeliveryAppSpacing.lg : DeliveryAppSpacing.md,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF0D141C),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        borderRadius: DeliveryAppSpacing.borderRadiusLg,
+        border: Border.all(color: DeliveryAppColors.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,14 +412,14 @@ class _OrdersHeader extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF00E676), Color(0xFF00C853)],
+                    colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: DeliveryAppSpacing.borderRadiusMd,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF00C853).withValues(alpha: 0.3),
+                      color: DeliveryAppColors.primaryDark.withValues(alpha: 0.3),
                       blurRadius: 14,
                       offset: const Offset(0, 4),
                     ),
@@ -418,7 +427,7 @@ class _OrdersHeader extends StatelessWidget {
                 ),
                 child: const Icon(
                   Icons.receipt_long,
-                  color: Color(0xFF06120B),
+                  color: DeliveryAppColors.buttonPrimaryText,
                   size: 24,
                 ),
               ),
@@ -429,19 +438,14 @@ class _OrdersHeader extends StatelessWidget {
                   children: [
                     Text(
                       DeliveryOrdersStrings.of('title', lang),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
+                      style: DeliveryAppTypography.h3.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       DeliveryOrdersStrings.of('subtitle', lang),
-                      style: const TextStyle(
-                        color: Color(0xFF94A3B8),
-                        fontSize: 12,
-                      ),
+                      style: DeliveryAppTypography.bodySmall,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -469,7 +473,7 @@ class _OrdersHeader extends StatelessWidget {
                 onTap: () => _showSnack(
                   context,
                   DeliveryOrdersStrings.of('noNewNotifications', lang),
-                  const Color(0xFF29B6F6),
+                  DeliveryAppColors.info,
                 ),
               ),
             ],
@@ -478,45 +482,16 @@ class _OrdersHeader extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: TextField(
+                child: DeliveryTextField(
                   key: const Key('dp_orders_search_field'),
                   onChanged: (value) => context
                       .read<DeliveryOrdersPageBloc>()
                       .add(DeliveryOrdersSearchQueryChangedEvent(value)),
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: DeliveryOrdersStrings.of('searchHint', lang),
-                    hintStyle: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 13,
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: Color(0xFF64748B),
-                      size: 20,
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFF0B1219),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.06),
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFF00E676)),
-                    ),
+                  hintText: DeliveryOrdersStrings.of('searchHint', lang),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: 20,
+                    color: DeliveryAppColors.textMuted,
                   ),
                 ),
               ),
@@ -600,7 +575,7 @@ class _SearchActionButton extends StatelessWidget {
                   entry.$1 == state.sortBy
                       ? Icons.check
                       : Icons.arrow_right_alt,
-                  color: const Color(0xFF00E676),
+                  color: DeliveryAppColors.primary,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
@@ -641,7 +616,7 @@ class _SearchActionButton extends StatelessWidget {
                   entry.$1 == state.paymentFilter
                       ? Icons.check
                       : Icons.payments_outlined,
-                  color: const Color(0xFF29B6F6),
+                  color: DeliveryAppColors.info,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
@@ -663,38 +638,37 @@ class _SearchActionButton extends StatelessWidget {
     _showSnack(
       context,
       DeliveryOrdersStrings.of('exportHint', state.localeCode),
-      const Color(0xFF00C853),
+      DeliveryAppColors.primaryDark,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF0B1219),
-      borderRadius: BorderRadius.circular(14),
+      color: DeliveryAppColors.background,
+      borderRadius: DeliveryAppSpacing.borderRadiusMd,
       child: InkWell(
         onTap: () => onPressed(context, state),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: DeliveryAppSpacing.borderRadiusMd,
         child: Container(
           padding: EdgeInsets.symmetric(
-            horizontal: showLabel ? 14 : 12,
-            vertical: 14,
+            horizontal: showLabel ? DeliveryAppSpacing.sm : DeliveryAppSpacing.xs,
+            vertical: DeliveryAppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            borderRadius: DeliveryAppSpacing.borderRadiusMd,
+            border: Border.all(color: DeliveryAppColors.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: const Color(0xFF94A3B8), size: 17),
+              Icon(icon, color: DeliveryAppColors.textMuted, size: 17),
               if (showLabel) ...[
                 const SizedBox(width: 6),
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Color(0xFFCBD5E1),
-                    fontSize: 12,
+                  style: DeliveryAppTypography.bodySmall.copyWith(
+                    color: DeliveryAppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -723,26 +697,28 @@ class _HeaderIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? const Color(0xFF00E676) : const Color(0xFF94A3B8);
+    final color = active
+        ? DeliveryAppColors.primary
+        : DeliveryAppColors.textMuted;
     return Tooltip(
       message: tooltip,
       child: Material(
         color: active
-            ? const Color(0xFF00C853).withValues(alpha: 0.16)
-            : const Color(0xFF0B1219),
-        borderRadius: BorderRadius.circular(12),
+            ? DeliveryAppColors.primaryDark.withValues(alpha: 0.16)
+            : DeliveryAppColors.background,
+        borderRadius: DeliveryAppSpacing.borderRadiusMd,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: DeliveryAppSpacing.borderRadiusMd,
           child: Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: DeliveryAppSpacing.borderRadiusMd,
               border: Border.all(
                 color: active
-                    ? const Color(0xFF00E676).withValues(alpha: 0.5)
-                    : Colors.white.withValues(alpha: 0.1),
+                    ? DeliveryAppColors.primary.withValues(alpha: 0.5)
+                    : DeliveryAppColors.border,
               ),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -767,7 +743,7 @@ class _OrdersStatsRow extends StatelessWidget {
         key: 'dp_orders_stat_total',
         labelKey: 'total',
         value: '${state.totalCount}',
-        color: const Color(0xFF00E676),
+        color: DeliveryAppColors.primary,
         icon: Icons.receipt_long,
         lang: lang,
       ),
@@ -783,7 +759,7 @@ class _OrdersStatsRow extends StatelessWidget {
         key: 'dp_orders_stat_active',
         labelKey: 'active',
         value: '${state.activeCount}',
-        color: const Color(0xFF29B6F6),
+        color: DeliveryAppColors.info,
         icon: Icons.local_shipping,
         lang: lang,
       ),
@@ -791,7 +767,7 @@ class _OrdersStatsRow extends StatelessWidget {
         key: 'dp_orders_stat_pending',
         labelKey: 'pending',
         value: '${state.pendingCount}',
-        color: const Color(0xFFFFB74D),
+        color: DeliveryAppColors.warning,
         icon: Icons.schedule,
         lang: lang,
       ),
@@ -799,7 +775,7 @@ class _OrdersStatsRow extends StatelessWidget {
         key: 'dp_orders_stat_completed',
         labelKey: 'completed',
         value: '${state.completedCount}',
-        color: const Color(0xFF00C853),
+        color: DeliveryAppColors.primaryDark,
         icon: Icons.check_circle_outline,
         lang: lang,
       ),
@@ -807,7 +783,7 @@ class _OrdersStatsRow extends StatelessWidget {
         key: 'dp_orders_stat_cancelled',
         labelKey: 'cancelled',
         value: '${state.cancelledCount}',
-        color: const Color(0xFFF87171),
+        color: DeliveryAppColors.error,
         icon: Icons.cancel_outlined,
         lang: lang,
       ),
@@ -831,7 +807,7 @@ class _OrdersStatsRow extends StatelessWidget {
         key: 'dp_orders_stat_rating',
         labelKey: 'rating',
         value: state.averageRating.toStringAsFixed(1),
-        color: const Color(0xFFFFD54F),
+        color: DeliveryAppColors.warning,
         icon: Icons.star_outline,
         lang: lang,
       ),
@@ -839,7 +815,7 @@ class _OrdersStatsRow extends StatelessWidget {
         key: 'dp_orders_stat_earnings',
         labelKey: 'earningsTotal',
         value: service.formatCurrency(state.totalEarnings, lang),
-        color: const Color(0xFF00E676),
+        color: DeliveryAppColors.primary,
         icon: Icons.account_balance_wallet_outlined,
         lang: lang,
       ),
@@ -921,14 +897,13 @@ class _StatChip extends StatelessWidget {
     return Semantics(
       label:
           '${DeliveryOrdersStrings.of(stat.labelKey, stat.lang)} ${stat.value}',
-      child: Container(
+      child: DeliveryCard(
         key: Key(stat.key),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0D141C),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        padding: const EdgeInsets.symmetric(
+          horizontal: DeliveryAppSpacing.sm,
+          vertical: DeliveryAppSpacing.sm,
         ),
+        borderRadius: DeliveryAppSpacing.radiusMd,
         child: Row(
           children: [
             Container(
@@ -936,7 +911,7 @@ class _StatChip extends StatelessWidget {
               height: 32,
               decoration: BoxDecoration(
                 color: stat.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: DeliveryAppSpacing.borderRadiusSm,
               ),
               child: Icon(stat.icon, color: stat.color, size: 16),
             ),
@@ -947,9 +922,7 @@ class _StatChip extends StatelessWidget {
                 children: [
                   Text(
                     DeliveryOrdersStrings.of(stat.labelKey, stat.lang),
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 10,
+                    style: DeliveryAppTypography.caption.copyWith(
                       fontWeight: FontWeight.w500,
                       height: 1.2,
                     ),
@@ -959,9 +932,8 @@ class _StatChip extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text(
                     stat.value,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
+                    style: DeliveryAppTypography.titleMedium.copyWith(
+                      color: DeliveryAppColors.textPrimary,
                       fontWeight: FontWeight.w800,
                       height: 1.2,
                     ),
@@ -1014,7 +986,7 @@ class _OrdersTabBar extends StatelessWidget {
     ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: DeliveryAppSpacing.md),
       child: Row(
         children: [
           for (final tab in tabs)
@@ -1064,7 +1036,7 @@ class _TabPill extends StatelessWidget {
             onTap: () => context
                 .read<DeliveryOrdersPageBloc>()
                 .add(DeliveryOrdersTabChangedEvent(tab.tab)),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: DeliveryAppSpacing.borderRadiusMd,
             child: AnimatedContainer(
               key: Key(tab.key),
               duration: const Duration(milliseconds: 250),
@@ -1072,13 +1044,13 @@ class _TabPill extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFF00C853).withValues(alpha: 0.14)
+                    ? DeliveryAppColors.primaryDark.withValues(alpha: 0.14)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: DeliveryAppSpacing.borderRadiusMd,
                 border: Border.all(
                   color: isSelected
-                      ? const Color(0xFF00E676).withValues(alpha: 0.4)
-                      : Colors.white.withValues(alpha: 0.06),
+                      ? DeliveryAppColors.primary.withValues(alpha: 0.4)
+                      : DeliveryAppColors.borderSubtle,
                 ),
               ),
               child: Row(
@@ -1090,10 +1062,10 @@ class _TabPill extends StatelessWidget {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: DeliveryAppTypography.bodyMedium.copyWith(
                         color: isSelected
-                            ? const Color(0xFFE8FFF3)
-                            : const Color(0xFF94A3B8),
+                            ? DeliveryAppColors.textPrimary
+                            : DeliveryAppColors.textMuted,
                         fontSize: 13,
                         fontWeight: isSelected
                             ? FontWeight.w700
@@ -1109,17 +1081,16 @@ class _TabPill extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF00C853)
-                          : const Color(0xFF1A2530),
-                      borderRadius: BorderRadius.circular(999),
+                          ? DeliveryAppColors.primaryDark
+                          : DeliveryAppColors.surface,
+                      borderRadius: DeliveryAppSpacing.borderRadiusPill,
                     ),
                     child: Text(
                       '${tab.count}',
-                      style: TextStyle(
+                      style: DeliveryAppTypography.caption.copyWith(
                         color: isSelected
-                            ? const Color(0xFF06120B)
-                            : const Color(0xFF94A3B8),
-                        fontSize: 10,
+                            ? DeliveryAppColors.buttonPrimaryText
+                            : DeliveryAppColors.textMuted,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1145,17 +1116,17 @@ class _ActiveOrderBanner extends StatelessWidget {
     final lang = state.localeCode;
     return Container(
       key: const Key('dp_orders_banner'),
-      margin: EdgeInsets.symmetric(horizontal: 24),
+      margin: EdgeInsets.symmetric(horizontal: DeliveryAppSpacing.xl),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF0E2A22), Color(0xFF0D141C)],
+          colors: [DeliveryAppColors.successBg, Color(0xFF0D141C)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: DeliveryAppSpacing.borderRadiusLg,
         border: Border.all(
-          color: const Color(0xFF00E676).withValues(alpha: 0.35),
+          color: DeliveryAppColors.primary.withValues(alpha: 0.35),
         ),
       ),
       child: LayoutBuilder(
@@ -1167,12 +1138,12 @@ class _ActiveOrderBanner extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00C853).withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(10),
+                  color: DeliveryAppColors.primaryDark.withValues(alpha: 0.16),
+                  borderRadius: DeliveryAppSpacing.borderRadiusSm,
                 ),
                 child: const Icon(
                   Icons.delivery_dining,
-                  color: Color(0xFF00E676),
+                  color: DeliveryAppColors.primary,
                   size: 18,
                 ),
               ),
@@ -1183,9 +1154,8 @@ class _ActiveOrderBanner extends StatelessWidget {
                   children: [
                     Text(
                       DeliveryOrdersStrings.of('currentDelivery', lang),
-                      style: const TextStyle(
-                        color: Color(0xFF00E676),
-                        fontSize: 10,
+                      style: DeliveryAppTypography.caption.copyWith(
+                        color: DeliveryAppColors.primary,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.8,
                       ),
@@ -1193,9 +1163,8 @@ class _ActiveOrderBanner extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       order.restaurantName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
+                      style: DeliveryAppTypography.titleMedium.copyWith(
+                        color: DeliveryAppColors.textPrimary,
                         fontWeight: FontWeight.w700,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -1204,9 +1173,8 @@ class _ActiveOrderBanner extends StatelessWidget {
                     Text(
                       '${DeliveryOrdersStrings.of('eta', lang)} '
                       '${order.etaMins > 0 ? '${order.etaMins} ${DeliveryOrdersStrings.of('min', lang)}' : '--'}',
-                      style: const TextStyle(
-                        color: Color(0xFF94A3B8),
-                        fontSize: 11,
+                      style: DeliveryAppTypography.caption.copyWith(
+                        color: DeliveryAppColors.textMuted,
                       ),
                     ),
                   ],
@@ -1223,11 +1191,11 @@ class _ActiveOrderBanner extends StatelessWidget {
                         context,
                         '${DeliveryOrdersStrings.of('directionsHint', lang)} '
                         '${order.deliveryAddress}',
-                        const Color(0xFF00C853),
+                        DeliveryAppColors.primaryDark,
                       ),
                       icon: const Icon(
                         Icons.navigation,
-                        color: Color(0xFF00E676),
+                        color: DeliveryAppColors.primary,
                         size: 18,
                       ),
                       tooltip: DeliveryOrdersStrings.of('navigate', lang),
@@ -1237,7 +1205,7 @@ class _ActiveOrderBanner extends StatelessWidget {
                       onPressed: () => _showCallSnack(context, order, lang),
                       icon: const Icon(
                         Icons.call,
-                        color: Color(0xFF29B6F6),
+                        color: DeliveryAppColors.info,
                         size: 18,
                       ),
                       tooltip: DeliveryOrdersStrings.of('call', lang),
@@ -1251,17 +1219,23 @@ class _ActiveOrderBanner extends StatelessWidget {
                     context,
                     '${DeliveryOrdersStrings.of('directionsHint', lang)} '
                     '${order.deliveryAddress}',
-                    const Color(0xFF00C853),
+                    DeliveryAppColors.primaryDark,
                   ),
                   icon: const Icon(Icons.navigation, size: 15),
                   label: Text(
                     DeliveryOrdersStrings.of('navigate', lang),
-                    style: const TextStyle(fontSize: 12),
+                    style: DeliveryAppTypography.bodyMedium.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF00E676),
-                    side: const BorderSide(color: Color(0xFF00E676)),
+                    foregroundColor: DeliveryAppColors.primary,
+                    side: const BorderSide(color: DeliveryAppColors.primary),
                     visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: DeliveryAppSpacing.borderRadiusMd,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1271,12 +1245,18 @@ class _ActiveOrderBanner extends StatelessWidget {
                   icon: const Icon(Icons.call, size: 15),
                   label: Text(
                     DeliveryOrdersStrings.of('call', lang),
-                    style: const TextStyle(fontSize: 12),
+                    style: DeliveryAppTypography.bodyMedium.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF29B6F6),
-                    side: const BorderSide(color: Color(0xFF29B6F6)),
+                    foregroundColor: DeliveryAppColors.info,
+                    side: const BorderSide(color: DeliveryAppColors.info),
                     visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: DeliveryAppSpacing.borderRadiusMd,
+                    ),
                   ),
                 ),
               ],
@@ -1297,14 +1277,17 @@ class _LiveMapPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final lang = state.localeCode;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 0, 24, 24),
+      padding: const EdgeInsets.only(
+        right: DeliveryAppSpacing.xl,
+        bottom: DeliveryAppSpacing.xl,
+      ),
       child: Container(
         key: const Key('dp_orders_map_panel'),
         width: 360,
         decoration: BoxDecoration(
           color: const Color(0xFF0D141C),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          borderRadius: DeliveryAppSpacing.borderRadiusLg,
+          border: Border.all(color: DeliveryAppColors.borderSubtle),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -1321,16 +1304,15 @@ class _LiveMapPanel extends StatelessWidget {
                     width: 8,
                     height: 8,
                     decoration: const BoxDecoration(
-                      color: Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     DeliveryOrdersStrings.of('liveMap', lang),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
+                    style: DeliveryAppTypography.titleMedium.copyWith(
+                      color: DeliveryAppColors.textPrimary,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -1342,26 +1324,9 @@ class _LiveMapPanel extends StatelessWidget {
               left: 16,
               right: 16,
               child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B1219).withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: const Color(0xFF00E676).withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Text(
-                    DeliveryOrdersStrings.of('liveTrackingSoon', lang),
-                    style: const TextStyle(
-                      color: Color(0xFF00E676),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                child: DeliveryChip(
+                  variant: DeliveryChipVariant.success,
+                  label: DeliveryOrdersStrings.of('liveTrackingSoon', lang),
                 ),
               ),
             ),
@@ -1389,7 +1354,7 @@ class _MapGridPainter extends CustomPainter {
     }
 
     final routePaint = Paint()
-      ..color = const Color(0xFF00E676).withValues(alpha: 0.55)
+      ..color = DeliveryAppColors.primary.withValues(alpha: 0.55)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
     final path = Path()
@@ -1412,13 +1377,13 @@ class _MapGridPainter extends CustomPainter {
       );
     canvas.drawPath(path, routePaint);
 
-    final pickupPaint = Paint()..color = const Color(0xFF00E676);
+    final pickupPaint = Paint()..color = DeliveryAppColors.primary;
     canvas.drawCircle(
       Offset(size.width * 0.16, size.height * 0.82),
       7,
       pickupPaint,
     );
-    final deliveryPaint = Paint()..color = const Color(0xFFF87171);
+    final deliveryPaint = Paint()..color = DeliveryAppColors.error;
     canvas.drawCircle(
       Offset(size.width * 0.84, size.height * 0.12),
       7,
@@ -1436,16 +1401,16 @@ class _OrderCard extends StatelessWidget {
 
   const _OrderCard({required this.order, required this.state});
 
-  Color _statusColor() {
+  DeliveryChipVariant _statusVariant() {
     switch (order.status) {
       case DeliveryOrderStatus.pending:
-        return const Color(0xFFFFB74D);
+        return DeliveryChipVariant.warning;
       case DeliveryOrderStatus.active:
-        return const Color(0xFF29B6F6);
+        return DeliveryChipVariant.info;
       case DeliveryOrderStatus.completed:
-        return const Color(0xFF00E676);
+        return DeliveryChipVariant.success;
       case DeliveryOrderStatus.cancelled:
-        return const Color(0xFFF87171);
+        return DeliveryChipVariant.error;
     }
   }
 
@@ -1481,7 +1446,6 @@ class _OrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final lang = state.localeCode;
     final service = DeliveryOrdersService();
-    final statusColor = _statusColor();
     final canUpdate = _nextStatus() != null;
     final earnings = service.calculateEarnings(order.amount);
     final priorityLabel = order.priority
@@ -1497,48 +1461,17 @@ class _OrderCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: statusColor.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: statusColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _statusLabel(lang),
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                DeliveryChip(
+                  variant: _statusVariant(),
+                  icon: Icons.circle,
+                  label: _statusLabel(lang),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     '#${order.orderId}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
+                    style: DeliveryAppTypography.titleMedium.copyWith(
+                      color: DeliveryAppColors.textPrimary,
                       fontWeight: FontWeight.w800,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -1546,17 +1479,16 @@ class _OrderCard extends StatelessWidget {
                 ),
                 if (order.priority) ...[
                   const SizedBox(width: 8),
-                  _PriorityChip(
+                  DeliveryChip(
+                    variant: DeliveryChipVariant.warning,
                     label: DeliveryOrdersStrings.of('priority', lang),
-                    lang: lang,
                   ),
                 ],
                 const SizedBox(width: 8),
                 Text(
                   order.time,
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 12,
+                  style: DeliveryAppTypography.bodySmall.copyWith(
+                    color: DeliveryAppColors.textMuted,
                   ),
                 ),
               ],
@@ -1564,7 +1496,7 @@ class _OrderCard extends StatelessWidget {
             const SizedBox(height: 14),
             _AddressRow(
               icon: Icons.store,
-              color: const Color(0xFF00E676),
+              color: DeliveryAppColors.primary,
               label: DeliveryOrdersStrings.of('pickup', lang),
               value: order.restaurantName,
               address: order.pickupAddress,
@@ -1572,7 +1504,7 @@ class _OrderCard extends StatelessWidget {
             const SizedBox(height: 12),
             _AddressRow(
               icon: Icons.location_on,
-              color: const Color(0xFFF87171),
+              color: DeliveryAppColors.error,
               label: DeliveryOrdersStrings.of('delivery', lang),
               value: order.customerName,
               address: order.deliveryAddress,
@@ -1591,13 +1523,13 @@ class _OrderCard extends StatelessWidget {
                   value: order.restaurantRating > 0
                       ? order.restaurantRating.toStringAsFixed(1)
                       : 'New',
-                  iconColor: const Color(0xFFFFD54F),
+                  iconColor: DeliveryAppColors.warning,
                 ),
               ],
             ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 14),
-              child: Divider(color: Colors.white10, height: 1),
+              child: Divider(color: DeliveryAppColors.border, height: 1),
             ),
             Wrap(
               spacing: 16,
@@ -1615,9 +1547,8 @@ class _OrderCard extends StatelessWidget {
                 ),
                 Text(
                   service.formatCurrency(order.amount, lang),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
+                  style: DeliveryAppTypography.h3.copyWith(
+                    color: DeliveryAppColors.textPrimary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1632,34 +1563,34 @@ class _OrderCard extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   if (order.preparationTimeMins > 0)
-                    _InfoChip(
+                    DeliveryChip(
+                      variant: DeliveryChipVariant.info,
                       icon: Icons.restaurant_outlined,
-                      color: const Color(0xFF4DD0E1),
-                      text:
+                      label:
                           '${DeliveryOrdersStrings.of('prep', lang)} ${order.preparationTimeMins} ${DeliveryOrdersStrings.of('min', lang)}',
                     ),
-                  _InfoChip(
+                  DeliveryChip(
+                    variant: order.priority
+                        ? DeliveryChipVariant.warning
+                        : DeliveryChipVariant.neutral,
                     icon: order.priority
                         ? Icons.flag
                         : Icons.flag_outlined,
-                    color: order.priority
-                        ? const Color(0xFFFFB74D)
-                        : const Color(0xFF94A3B8),
-                    text:
+                    label:
                         '${DeliveryOrdersStrings.of('priority', lang)}: $priorityLabel',
                   ),
                   if (order.expectedTip > 0)
-                    _InfoChip(
+                    DeliveryChip(
+                      variant: DeliveryChipVariant.warning,
                       icon: Icons.volunteer_activism_outlined,
-                      color: const Color(0xFFFFD54F),
-                      text:
+                      label:
                           '${DeliveryOrdersStrings.of('tip', lang)} ${service.formatCurrency(order.expectedTip, lang)}',
                     ),
                   if (order.deliveryBonus > 0)
-                    _InfoChip(
+                    DeliveryChip(
+                      variant: DeliveryChipVariant.success,
                       icon: Icons.card_giftcard,
-                      color: const Color(0xFF00E676),
-                      text:
+                      label:
                           '${DeliveryOrdersStrings.of('bonus', lang)} ${service.formatCurrency(order.deliveryBonus, lang)}',
                     ),
                 ],
@@ -1667,12 +1598,15 @@ class _OrderCard extends StatelessWidget {
             ],
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: DeliveryAppSpacing.sm,
+                vertical: 10,
+              ),
               decoration: BoxDecoration(
-                color: const Color(0xFF00C853).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
+                color: DeliveryAppColors.primaryDark.withValues(alpha: 0.08),
+                borderRadius: DeliveryAppSpacing.borderRadiusMd,
                 border: Border.all(
-                  color: const Color(0xFF00C853).withValues(alpha: 0.2),
+                  color: DeliveryAppColors.primaryDark.withValues(alpha: 0.2),
                 ),
               ),
               child: Wrap(
@@ -1682,23 +1616,21 @@ class _OrderCard extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.account_balance_wallet_outlined,
-                    color: Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     size: 18,
                   ),
                   Text(
                     '${DeliveryOrdersStrings.of('earnings', lang)}: '
                     '${service.formatCurrency(earnings, lang)}',
-                    style: const TextStyle(
-                      color: Color(0xFF00E676),
-                      fontSize: 13,
+                    style: DeliveryAppTypography.titleMedium.copyWith(
+                      color: DeliveryAppColors.primary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
                     '${DeliveryOrdersStrings.of('payment', lang)}: ${order.paymentType}',
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 11,
+                    style: DeliveryAppTypography.caption.copyWith(
+                      color: DeliveryAppColors.textMuted,
                     ),
                   ),
                 ],
@@ -1712,20 +1644,20 @@ class _OrderCard extends StatelessWidget {
                 _CardActionButton(
                   buttonKey: Key('dp_orders_navigate_${order.orderId}'),
                   outlined: true,
-                  foregroundColor: const Color(0xFF00E676),
+                  foregroundColor: DeliveryAppColors.primary,
                   icon: Icons.navigation,
                   label: DeliveryOrdersStrings.of('navigate', lang),
                   onTap: () => _showSnack(
                     context,
                     '${DeliveryOrdersStrings.of('directionsHint', lang)} '
                     '${order.deliveryAddress}',
-                    const Color(0xFF00C853),
+                    DeliveryAppColors.primaryDark,
                   ),
                 ),
                 _CardActionButton(
                   buttonKey: Key('dp_orders_call_${order.orderId}'),
                   outlined: true,
-                  foregroundColor: const Color(0xFF29B6F6),
+                  foregroundColor: DeliveryAppColors.info,
                   icon: Icons.call,
                   label: DeliveryOrdersStrings.of('call', lang),
                   onTap: () => _showCallSnack(context, order, lang),
@@ -1746,20 +1678,20 @@ class _OrderCard extends StatelessWidget {
                 _CardActionButton(
                   buttonKey: Key('dp_orders_details_${order.orderId}'),
                   outlined: true,
-                  foregroundColor: const Color(0xFF94A3B8),
+                  foregroundColor: DeliveryAppColors.textMuted,
                   icon: Icons.info_outline,
                   label: DeliveryOrdersStrings.of('viewDetails', lang),
                   onTap: () => _showSnack(
                     context,
                     '${DeliveryOrdersStrings.of('detailsHint', lang)} '
                     '#${order.orderId}',
-                    const Color(0xFF29B6F6),
+                    DeliveryAppColors.info,
                   ),
                 ),
                 _CardActionButton(
                   buttonKey: Key('dp_orders_update_${order.orderId}'),
                   outlined: false,
-                  foregroundColor: const Color(0xFF06120B),
+                  foregroundColor: DeliveryAppColors.buttonPrimaryText,
                   icon: canUpdate ? Icons.arrow_forward : Icons.check,
                   label: _updateLabel(lang),
                   enabled: canUpdate,
@@ -1783,35 +1715,6 @@ class _OrderCard extends StatelessWidget {
   }
 }
 
-class _PriorityChip extends StatelessWidget {
-  final String label;
-  final String lang;
-
-  const _PriorityChip({required this.label, required this.lang});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFB74D).withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: const Color(0xFFFFB74D).withValues(alpha: 0.4),
-        ),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFFFFB74D),
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
 class _EtaChip extends StatelessWidget {
   final DeliveryOrderCardModel order;
   final String lang;
@@ -1820,36 +1723,12 @@ class _EtaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DeliveryChip(
       key: Key('dp_orders_eta_${order.orderId}'),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF29B6F6).withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: const Color(0xFF29B6F6).withValues(alpha: 0.35),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.timer_outlined,
-            color: Color(0xFF29B6F6),
-            size: 14,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '${DeliveryOrdersStrings.of('eta', lang)} '
-            '${order.etaMins > 0 ? '${order.etaMins} ${DeliveryOrdersStrings.of('min', lang)}' : '--'}',
-            style: const TextStyle(
-              color: Color(0xFF29B6F6),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+      variant: DeliveryChipVariant.info,
+      icon: Icons.timer_outlined,
+      label: '${DeliveryOrdersStrings.of('eta', lang)} '
+          '${order.etaMins > 0 ? '${order.etaMins} ${DeliveryOrdersStrings.of('min', lang)}' : '--'}',
     );
   }
 }
@@ -1862,46 +1741,24 @@ class _EtaStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color;
+    final DeliveryChipVariant variant;
     final String text;
     if (order.lateMins > 0) {
-      color = const Color(0xFFF87171);
+      variant = DeliveryChipVariant.error;
       text = '${DeliveryOrdersStrings.of('lateBy', lang)} '
           '${order.lateMins} ${DeliveryOrdersStrings.of('min', lang)}';
     } else if (order.priority) {
-      color = const Color(0xFFFFB74D);
+      variant = DeliveryChipVariant.warning;
       text = DeliveryOrdersStrings.of('urgent', lang);
     } else {
-      color = const Color(0xFF00E676);
+      variant = DeliveryChipVariant.success;
       text = DeliveryOrdersStrings.of('onTime', lang);
     }
-    return Container(
+    return DeliveryChip(
       key: Key('dp_orders_eta_status_${order.orderId}'),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+      variant: variant,
+      icon: Icons.circle,
+      label: text,
     );
   }
 }
@@ -1952,8 +1809,8 @@ class _OrderTimeline extends StatelessWidget {
                     height: 2,
                     margin: const EdgeInsets.only(top: 3.5),
                     color: i <= progress
-                        ? const Color(0xFF00E676).withValues(alpha: 0.5)
-                        : Colors.white.withValues(alpha: 0.12),
+                        ? DeliveryAppColors.primary.withValues(alpha: 0.5)
+                        : DeliveryAppColors.border,
                   ),
                 ),
               Column(
@@ -1965,12 +1822,12 @@ class _OrderTimeline extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: i < progress
-                          ? const Color(0xFF00E676)
-                          : const Color(0xFF122030),
+                          ? DeliveryAppColors.primary
+                          : DeliveryAppColors.surface,
                       border: Border.all(
                         color: i <= progress
-                            ? const Color(0xFF00E676)
-                            : const Color(0xFF475569),
+                            ? DeliveryAppColors.primary
+                            : DeliveryAppColors.textDisabled,
                         width: 1.5,
                       ),
                     ),
@@ -1983,13 +1840,13 @@ class _OrderTimeline extends StatelessWidget {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: DeliveryAppTypography.caption.copyWith(
                         color: i < progress
-                            ? const Color(0xFFCBD5E1)
-                            : const Color(0xFF64748B),
-                        fontSize: 10,
-                        fontWeight:
-                            i == progress - 1 ? FontWeight.w700 : FontWeight.w500,
+                            ? DeliveryAppColors.textSecondary
+                            : DeliveryAppColors.textMuted,
+                        fontWeight: i == progress - 1
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                       ),
                     ),
                   ),
@@ -1998,45 +1855,6 @@ class _OrderTimeline extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String text;
-
-  const _InfoChip({
-    required this.icon,
-    required this.color,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 13),
-          const SizedBox(width: 5),
-          Text(
-            text,
-            style: const TextStyle(
-              color: Color(0xFFCBD5E1),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -2065,7 +1883,7 @@ class _CardActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 148,
-      height: 44,
+      height: DeliveryAppSpacing.minTouchTargetSize,
       child: outlined
           ? OutlinedButton.icon(
               key: buttonKey,
@@ -2081,7 +1899,7 @@ class _CardActionButton extends StatelessWidget {
                 foregroundColor: foregroundColor,
                 side: BorderSide(color: foregroundColor),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: DeliveryAppSpacing.borderRadiusMd,
                 ),
               ),
             )
@@ -2096,12 +1914,12 @@ class _CardActionButton extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C853),
-                foregroundColor: const Color(0xFF06120B),
-                disabledBackgroundColor: const Color(0xFF1A2530),
-                disabledForegroundColor: const Color(0xFF64748B),
+                backgroundColor: DeliveryAppColors.primaryDark,
+                foregroundColor: DeliveryAppColors.buttonPrimaryText,
+                disabledBackgroundColor: DeliveryAppColors.surfaceElevated,
+                disabledForegroundColor: DeliveryAppColors.textDisabled,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: DeliveryAppSpacing.borderRadiusMd,
                 ),
               ),
             ),
@@ -2136,17 +1954,17 @@ class _HoverCardState extends State<_HoverCard> {
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
-            color: const Color(0xFF0F1E26),
+            color: DeliveryAppColors.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: _hovered
-                  ? const Color(0xFF00E676).withValues(alpha: 0.55)
-                  : Colors.white.withValues(alpha: 0.06),
+                  ? DeliveryAppColors.primary.withValues(alpha: 0.55)
+                  : DeliveryAppColors.borderSubtle,
             ),
             boxShadow: [
               BoxShadow(
                 color: _hovered
-                    ? const Color(0xFF00C853).withValues(alpha: 0.28)
+                    ? DeliveryAppColors.primaryDark.withValues(alpha: 0.28)
                     : Colors.black.withValues(alpha: 0.25),
                 blurRadius: _hovered ? 28 : 16,
                 offset: Offset(0, _hovered ? 10 : 6),
@@ -2184,7 +2002,7 @@ class _OrdersFab extends StatelessWidget {
               _showSnack(
                 context,
                 DeliveryOrdersStrings.of('noPending', lang),
-                const Color(0xFFFFB74D),
+                DeliveryAppColors.warning,
               );
               return;
             }
@@ -2197,7 +2015,7 @@ class _OrdersFab extends StatelessWidget {
             _showSnack(
               context,
               '${DeliveryOrdersStrings.of('accepted', lang)} #${pending.orderId}',
-              const Color(0xFF00C853),
+              DeliveryAppColors.primaryDark,
             );
           },
         ),
@@ -2209,15 +2027,15 @@ class _OrdersFab extends StatelessWidget {
           onTap: () => _showSnack(
             context,
             DeliveryOrdersStrings.of('offlineHint', lang),
-            const Color(0xFFF87171),
+            DeliveryAppColors.error,
           ),
         ),
         const SizedBox(height: 10),
         Material(
-          color: const Color(0xFF00C853),
+          color: DeliveryAppColors.primaryDark,
           shape: const CircleBorder(),
           elevation: 8,
-          shadowColor: const Color(0xFF00C853).withValues(alpha: 0.5),
+          shadowColor: DeliveryAppColors.primaryDark.withValues(alpha: 0.5),
           child: InkWell(
             key: const Key('dp_orders_fab_refresh'),
             customBorder: const CircleBorder(),
@@ -2230,14 +2048,14 @@ class _OrdersFab extends StatelessWidget {
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [Color(0xFF00E676), Color(0xFF00C853)],
+                  colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
               child: const Icon(
                 Icons.refresh,
-                color: Color(0xFF06120B),
+                color: DeliveryAppColors.buttonPrimaryText,
                 size: 28,
               ),
             ),
@@ -2264,7 +2082,7 @@ class _FabMiniButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF0F1E26),
+      color: DeliveryAppColors.surface,
       borderRadius: BorderRadius.circular(999),
       elevation: 4,
       child: InkWell(
@@ -2276,19 +2094,18 @@ class _FabMiniButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: const Color(0xFF00C853).withValues(alpha: 0.35),
+              color: DeliveryAppColors.primaryDark.withValues(alpha: 0.35),
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: const Color(0xFF00E676), size: 16),
+              Icon(icon, color: DeliveryAppColors.primary, size: 16),
               const SizedBox(width: 7),
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
+                style: DeliveryAppTypography.bodySmall.copyWith(
+                  color: DeliveryAppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -2325,7 +2142,7 @@ class _AddressRow extends StatelessWidget {
           height: 34,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: DeliveryAppSpacing.borderRadiusSm,
           ),
           child: Icon(icon, color: color, size: 17),
         ),
@@ -2336,28 +2153,26 @@ class _AddressRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 11,
+                style: DeliveryAppTypography.caption.copyWith(
+                  color: DeliveryAppColors.textMuted,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
+                style: DeliveryAppTypography.bodyMedium.copyWith(
+                  color: DeliveryAppColors.textPrimary,
                   fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 1),
               Text(
                 address,
-                style: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 12,
+                style: DeliveryAppTypography.bodySmall.copyWith(
+                  color: DeliveryAppColors.textMuted,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -2378,7 +2193,7 @@ class _OrderMeta extends StatelessWidget {
   const _OrderMeta({
     required this.icon,
     required this.value,
-    this.iconColor = const Color(0xFF94A3B8),
+    this.iconColor = DeliveryAppColors.textMuted,
   });
 
   @override
@@ -2390,7 +2205,9 @@ class _OrderMeta extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           value,
-          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+          style: DeliveryAppTypography.bodySmall.copyWith(
+            color: DeliveryAppColors.textMuted,
+          ),
         ),
       ],
     );
@@ -2407,7 +2224,7 @@ class _OrdersNoResults extends StatelessWidget {
     final lang = state.localeCode;
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: DeliveryAppSpacing.paddingXl,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -2416,21 +2233,20 @@ class _OrdersNoResults extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFF0D141C),
+                color: DeliveryAppColors.surface,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.search_off,
-                color: Color(0xFF64748B),
+                color: DeliveryAppColors.textMuted,
                 size: 32,
               ),
             ),
             const SizedBox(height: 16),
             Text(
               DeliveryOrdersStrings.of('noResultsTitle', lang),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+              style: DeliveryAppTypography.titleLarge.copyWith(
+                color: DeliveryAppColors.textPrimary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -2440,7 +2256,9 @@ class _OrdersNoResults extends StatelessWidget {
               child: Text(
                 DeliveryOrdersStrings.of('noResultsSub', lang),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                style: DeliveryAppTypography.bodyMedium.copyWith(
+                  color: DeliveryAppColors.textMuted,
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -2460,22 +2278,15 @@ class _RefreshButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = state.localeCode;
-    return ElevatedButton.icon(
+    return DeliveryButton(
       key: const Key('dp_orders_refresh'),
+      label: DeliveryOrdersStrings.of('refresh', lang),
       onPressed: () => context
           .read<DeliveryOrdersPageBloc>()
           .add(const DeliveryOrdersRefreshEvent()),
-      icon: const Icon(Icons.refresh, size: 18),
-      label: Text(
-        DeliveryOrdersStrings.of('refresh', lang),
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF00C853),
-        foregroundColor: const Color(0xFF06120B),
-        minimumSize: const Size(140, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+      variant: DeliveryButtonVariant.primary,
+      icon: Icons.refresh,
+      isFullWidth: false,
     );
   }
 }
@@ -2487,9 +2298,9 @@ class _OrdersLoadingShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const Key('dp_orders_loading'),
-      color: const Color(0xFF0B1219),
+      color: DeliveryAppColors.background,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(DeliveryAppSpacing.md),
         children: [
           _skeletonBox(height: 130),
           const SizedBox(height: 16),
@@ -2510,9 +2321,9 @@ class _OrdersLoadingShell extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+        color: DeliveryAppColors.surface,
+        borderRadius: DeliveryAppSpacing.borderRadiusLg,
+        border: Border.all(color: DeliveryAppColors.borderSubtle),
       ),
     );
   }
@@ -2528,25 +2339,24 @@ class _OrdersErrorShell extends StatelessWidget {
     final lang = state.localeCode;
     return Container(
       key: const Key('dp_orders_error'),
-      color: const Color(0xFF0B1219),
+      color: DeliveryAppColors.background,
       child: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
+          padding: DeliveryAppSpacing.paddingXl,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
                 Icons.error_outline,
-                color: Color(0xFFF87171),
+                color: DeliveryAppColors.error,
                 size: 56,
               ),
               const SizedBox(height: 16),
               Text(
                 DeliveryOrdersStrings.of('somethingWentWrong', lang),
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+                style: DeliveryAppTypography.titleLarge.copyWith(
+                  color: DeliveryAppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -2556,31 +2366,21 @@ class _OrdersErrorShell extends StatelessWidget {
                 Text(
                   state.errorMessage!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 13,
+                  style: DeliveryAppTypography.bodyMedium.copyWith(
+                    color: DeliveryAppColors.textMuted,
                   ),
                 ),
               ],
               const SizedBox(height: 20),
-              ElevatedButton.icon(
+              DeliveryButton(
                 key: const Key('dp_orders_retry'),
+                label: DeliveryOrdersStrings.of('retry', lang),
                 onPressed: () => context
                     .read<DeliveryOrdersPageBloc>()
                     .add(const DeliveryOrdersInitEvent()),
-                icon: const Icon(Icons.refresh, size: 18),
-                label: Text(
-                  DeliveryOrdersStrings.of('retry', lang),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00C853),
-                  foregroundColor: const Color(0xFF06120B),
-                  minimumSize: const Size(140, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+                variant: DeliveryButtonVariant.primary,
+                icon: Icons.refresh,
+                isFullWidth: false,
               ),
             ],
           ),
@@ -2600,10 +2400,10 @@ class _OrdersEmptyShell extends StatelessWidget {
     final lang = state.localeCode;
     return Container(
       key: const Key('dp_orders_empty'),
-      color: const Color(0xFF0B1219),
+      color: DeliveryAppColors.background,
       child: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
+          padding: DeliveryAppSpacing.paddingXl,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2611,21 +2411,20 @@ class _OrdersEmptyShell extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0D141C),
+                  color: DeliveryAppColors.surface,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.inbox_outlined,
-                  color: Color(0xFF64748B),
+                  color: DeliveryAppColors.textMuted,
                   size: 32,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 DeliveryOrdersStrings.of('emptyTitle', lang),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+                style: DeliveryAppTypography.titleLarge.copyWith(
+                  color: DeliveryAppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -2635,33 +2434,23 @@ class _OrdersEmptyShell extends StatelessWidget {
                 child: Text(
                   DeliveryOrdersStrings.of('emptySub', lang),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 13,
+                  style: DeliveryAppTypography.bodyMedium.copyWith(
+                    color: DeliveryAppColors.textMuted,
                   ),
                 ),
               ),
               const SizedBox(height: 20),
-              ElevatedButton.icon(
+              DeliveryButton(
                 key: const Key('dp_orders_stay_online'),
+                label: DeliveryOrdersStrings.of('stayOnline', lang),
                 onPressed: () => _showSnack(
                   context,
                   DeliveryOrdersStrings.of('stayOnlineHint', lang),
-                  const Color(0xFF00C853),
+                  DeliveryAppColors.primaryDark,
                 ),
-                icon: const Icon(Icons.wifi, size: 18),
-                label: Text(
-                  DeliveryOrdersStrings.of('stayOnline', lang),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00C853),
-                  foregroundColor: const Color(0xFF06120B),
-                  minimumSize: const Size(140, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+                variant: DeliveryButtonVariant.primary,
+                icon: Icons.wifi,
+                isFullWidth: false,
               ),
               const SizedBox(height: 10),
               _RefreshButton(state: state),
@@ -2692,5 +2481,5 @@ void _showCallSnack(
       ? '${DeliveryOrdersStrings.of('noPhone', lang)} ${order.customerName}'
       : '${DeliveryOrdersStrings.of('calling', lang)} ${order.customerName} '
           'at ${order.phoneNumber}...';
-  _showSnack(context, message, const Color(0xFF29B6F6));
+  _showSnack(context, message, DeliveryAppColors.info);
 }

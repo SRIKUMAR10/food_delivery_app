@@ -54,6 +54,7 @@ import 'repositories/firebase_seller_profile_repository.dart';
 import 'repositories/firebase_user_profile_repository.dart';
 
 import 'repositories/firebase_app_settings_repository.dart';
+import 'core/repositories/delivery_active_order_session_repository.dart';
 
 import 'core/services/theme_manager.dart';
 import 'core/services/locale_manager.dart';
@@ -250,7 +251,12 @@ class _AppThemeWrapperState extends State<_AppThemeWrapper> {
         '/deliveryForgotPassword': (context) =>
             const DeliveryForgotPasswordPage(),
         '/deliveryNavigationBar': (context) => const DeliveryNavigationBarPage(),
-        '/deliveryOrderDetails': (context) => const DeliveryOrderDetailsPageUi(orderId: '#ORD12345'),
+        '/deliveryOrderDetails': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return DeliveryOrderDetailsPageUi(
+            orderId: args?['orderId'] as String? ?? '#ORD98234',
+          );
+        },
         '/deliveryIncomingOrder': (context) => const DeliveryIncomingOrderPageUi(),
         '/deliveryonboard': (context) =>
             BlocProvider<DeliveryOnboardingPageBloc>(
@@ -334,6 +340,9 @@ class MyApp extends StatelessWidget {
         ),
         RepositoryProvider<DeliveryOnboardingServiceBase>(
           create: (context) => DeliveryOnboardingService(),
+        ),
+        RepositoryProvider<DeliveryActiveOrderSessionRepository>(
+          create: (context) => DeliveryActiveOrderSessionRepository(),
         ),
         RepositoryProvider<ThemeManager>(create: (context) => themeManager),
         RepositoryProvider<LocaleManager>(create: (context) => localeManager),

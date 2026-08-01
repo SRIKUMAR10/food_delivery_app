@@ -6,6 +6,9 @@ import 'Delivery_Pickup Confirmation_page_event.dart';
 import 'Delivery_Pickup Confirmation_page_repository.dart';
 import 'Delivery_Pickup Confirmation_page_service.dart';
 import 'Delivery_Pickup Confirmation_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryPickupConfirmationStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -211,7 +214,7 @@ class _DeliveryPickupConfirmationPageViewState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.errorMessage!),
-              backgroundColor: const Color(0xFFB3261E),
+              backgroundColor: DeliveryAppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -225,7 +228,7 @@ class _DeliveryPickupConfirmationPageViewState
                     state.model == null);
 
         return Scaffold(
-          backgroundColor: const Color(0xFF0A0F1D),
+          backgroundColor: DeliveryAppColors.background,
           body: LayoutBuilder(
             builder: (context, constraints) {
               final isDesktop = constraints.maxWidth >= 1024;
@@ -352,7 +355,7 @@ class _HeaderBar extends StatelessWidget {
       key: const Key('dp_pickup_header'),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF121A2D),
+        color: DeliveryAppColors.surface,
         border: Border(
           bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
         ),
@@ -361,7 +364,7 @@ class _HeaderBar extends StatelessWidget {
         children: [
           Icon(
             Icons.local_shipping,
-            color: const Color(0xFF00E676),
+            color: DeliveryAppColors.primary,
             size: 24,
           ),
           const SizedBox(width: 10),
@@ -412,7 +415,7 @@ class _HeaderBar extends StatelessWidget {
                   Text(
                     orderId,
                     style: const TextStyle(
-                      color: Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -464,10 +467,10 @@ class _WalletChip extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 14, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B2533),
+        color: DeliveryAppColors.surfaceLight,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: const Color(0xFF00C853).withValues(alpha: 0.3),
+          color: DeliveryAppColors.primaryDark.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -475,7 +478,7 @@ class _WalletChip extends StatelessWidget {
         children: [
           const Icon(
             Icons.account_balance_wallet_outlined,
-            color: Color(0xFF00E676),
+            color: DeliveryAppColors.primary,
             size: 18,
           ),
           const SizedBox(width: 8),
@@ -532,7 +535,7 @@ class _NotificationBell extends StatelessWidget {
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: const Color(0xFF1B2533),
+        color: DeliveryAppColors.surfaceLight,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -556,7 +559,7 @@ class _NotificationBell extends StatelessWidget {
               width: 18,
               height: 18,
               decoration: const BoxDecoration(
-                color: Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -587,7 +590,7 @@ class _ProfileWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B2533),
+        color: DeliveryAppColors.surfaceLight,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -599,10 +602,10 @@ class _ProfileWidget extends StatelessWidget {
             height: 30,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF00E676).withValues(alpha: 0.15),
-              border: Border.all(color: const Color(0xFF00E676), width: 2),
+              color: DeliveryAppColors.primary.withValues(alpha: 0.15),
+              border: Border.all(color: DeliveryAppColors.primary, width: 2),
             ),
-            child: const Icon(Icons.person, color: Color(0xFF00E676), size: 16),
+            child: const Icon(Icons.person, color: DeliveryAppColors.primary, size: 16),
           ),
           const SizedBox(width: 8),
           Text(
@@ -653,7 +656,7 @@ class _Sidebar extends StatelessWidget {
     return Container(
       width: isTablet ? 220 : 260,
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1424),
+        color: DeliveryAppColors.background,
         border: Border(
           right: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
         ),
@@ -706,7 +709,7 @@ class _SidebarMenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: isSelected
-          ? const Color(0xFF00E676).withValues(alpha: 0.12)
+          ? DeliveryAppColors.primary.withValues(alpha: 0.12)
           : Colors.transparent,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
@@ -720,7 +723,7 @@ class _SidebarMenuItem extends StatelessWidget {
                 icon,
                 size: 20,
                 color: isSelected
-                    ? const Color(0xFF00E676)
+                    ? DeliveryAppColors.primary
                     : Colors.white.withValues(alpha: 0.6),
               ),
               const SizedBox(width: 12),
@@ -728,7 +731,7 @@ class _SidebarMenuItem extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: isSelected
-                      ? const Color(0xFF00E676)
+                      ? DeliveryAppColors.primary
                       : Colors.white.withValues(alpha: 0.75),
                   fontWeight:
                       isSelected ? FontWeight.bold : FontWeight.w500,
@@ -756,7 +759,7 @@ class _PromoBanner extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF00E676).withValues(alpha: 0.22),
+            DeliveryAppColors.primary.withValues(alpha: 0.22),
             const Color(0xFF00B0FF).withValues(alpha: 0.12),
           ],
           begin: Alignment.topLeft,
@@ -764,7 +767,7 @@ class _PromoBanner extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: const Color(0xFF00E676).withValues(alpha: 0.35),
+          color: DeliveryAppColors.primary.withValues(alpha: 0.35),
         ),
       ),
       child: Column(
@@ -774,7 +777,7 @@ class _PromoBanner extends StatelessWidget {
             children: [
               const Icon(
                 Icons.rocket_launch,
-                color: Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -824,18 +827,18 @@ class _HeroCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isStarted
-              ? [const Color(0xFF0D251A), const Color(0xFF0A1B12)]
+              ? [DeliveryAppColors.successBg, const Color(0xFF0A1B12)]
               : [const Color(0xFF123B2B), const Color(0xFF0A1B2E)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: const Color(0xFF00E676).withValues(alpha: 0.35),
+          color: DeliveryAppColors.primary.withValues(alpha: 0.35),
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00E676).withValues(alpha: 0.18),
+            color: DeliveryAppColors.primary.withValues(alpha: 0.18),
             blurRadius: 40,
             spreadRadius: 2,
           ),
@@ -855,14 +858,14 @@ class _HeroCard extends StatelessWidget {
                   height: 96,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                    color: DeliveryAppColors.primary.withValues(alpha: 0.12),
                     border: Border.all(
-                      color: const Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                        color: DeliveryAppColors.primary.withValues(alpha: 0.3),
                         blurRadius: 30,
                         spreadRadius: 2,
                       ),
@@ -874,7 +877,7 @@ class _HeroCard extends StatelessWidget {
                       Center(
                         child: Icon(
                           Icons.inventory_2_outlined,
-                          color: const Color(0xFF00E676),
+                          color: DeliveryAppColors.primary,
                           size: 44,
                         ),
                       ),
@@ -885,7 +888,7 @@ class _HeroCard extends StatelessWidget {
                           width: 28,
                           height: 28,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF00E676),
+                            color: DeliveryAppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -934,10 +937,10 @@ class _HeroCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF00E676).withValues(alpha: 0.14),
+                        color: DeliveryAppColors.primary.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: const Color(0xFF00E676).withValues(alpha: 0.4),
+                          color: DeliveryAppColors.primary.withValues(alpha: 0.4),
                         ),
                       ),
                       child: Row(
@@ -947,7 +950,7 @@ class _HeroCard extends StatelessWidget {
                             isStarted
                                 ? Icons.check_circle
                                 : Icons.play_arrow,
-                            color: const Color(0xFF00E676),
+                            color: DeliveryAppColors.primary,
                             size: 16,
                           ),
                           const SizedBox(width: 6),
@@ -961,7 +964,7 @@ class _HeroCard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Color(0xFF00E676),
+                                color: DeliveryAppColors.primary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
                               ),
@@ -1032,7 +1035,7 @@ class _StatPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: const Color(0xFF00E676), size: 16),
+          Icon(icon, color: DeliveryAppColors.primary, size: 16),
           const SizedBox(width: 8),
           Flexible(
             child: Column(
@@ -1149,7 +1152,7 @@ class _PickupInfoCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFF121A2D).withValues(alpha: 0.85),
+            color: DeliveryAppColors.surface.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
@@ -1189,14 +1192,14 @@ class _StepRow extends StatelessWidget {
                   height: 34,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF00E676).withValues(alpha: 0.14),
+                    color: DeliveryAppColors.primary.withValues(alpha: 0.14),
                     border: Border.all(
-                      color: const Color(0xFF00E676).withValues(alpha: 0.5),
+                      color: DeliveryAppColors.primary.withValues(alpha: 0.5),
                     ),
                   ),
                   child: Icon(
                     icon,
-                    color: const Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     size: 17,
                   ),
                 ),
@@ -1204,7 +1207,7 @@ class _StepRow extends StatelessWidget {
                   Expanded(
                     child: Container(
                       width: 2,
-                      color: const Color(0xFF00E676).withValues(alpha: 0.25),
+                      color: DeliveryAppColors.primary.withValues(alpha: 0.25),
                     ),
                   ),
                 ],
@@ -1263,7 +1266,7 @@ class _CustomerDetailsCard extends StatelessWidget {
       key: const Key('dp_pickup_customer_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF121A2D),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
@@ -1274,7 +1277,7 @@ class _CustomerDetailsCard extends StatelessWidget {
             children: [
               const Icon(
                 Icons.account_circle,
-                color: Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
                 size: 26,
               ),
               const SizedBox(width: 10),
@@ -1420,7 +1423,7 @@ class _QuickActionButton extends StatelessWidget {
     return Tooltip(
       message: hint,
       child: Material(
-        color: const Color(0xFF1B2533),
+        color: DeliveryAppColors.surfaceLight,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -1431,7 +1434,7 @@ class _QuickActionButton extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: const Color(0xFF00E676), size: 18),
+                Icon(icon, color: DeliveryAppColors.primary, size: 18),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
@@ -1474,7 +1477,7 @@ class _BottomActionBar extends StatelessWidget {
       key: const Key('dp_pickup_bottom_bar'),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1424),
+        color: DeliveryAppColors.background,
         border: Border(
           top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
         ),
@@ -1492,11 +1495,11 @@ class _BottomActionBar extends StatelessWidget {
                   height: 34,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF00E676).withValues(alpha: 0.14),
+                    color: DeliveryAppColors.primary.withValues(alpha: 0.14),
                   ),
                   child: const Icon(
                     Icons.verified_user_outlined,
-                    color: Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     size: 18,
                   ),
                 ),
@@ -1534,10 +1537,10 @@ class _BottomActionBar extends StatelessWidget {
                   ? Container(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF00E676).withValues(alpha: 0.14),
+                        color: DeliveryAppColors.primary.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(26),
                         border: Border.all(
-                          color: const Color(0xFF00E676).withValues(alpha: 0.5),
+                          color: DeliveryAppColors.primary.withValues(alpha: 0.5),
                         ),
                       ),
                       child: Row(
@@ -1545,7 +1548,7 @@ class _BottomActionBar extends StatelessWidget {
                         children: [
                           const Icon(
                             Icons.check_circle,
-                            color: Color(0xFF00E676),
+                            color: DeliveryAppColors.primary,
                             size: 20,
                           ),
                           const SizedBox(width: 10),
@@ -1553,7 +1556,7 @@ class _BottomActionBar extends StatelessWidget {
                             DeliveryPickupConfirmationStrings.of(
                                 'deliveryStarted', locale),
                             style: const TextStyle(
-                              color: Color(0xFF00E676),
+                              color: DeliveryAppColors.primary,
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                             ),
@@ -1565,10 +1568,10 @@ class _BottomActionBar extends StatelessWidget {
                       key: const Key('dp_pickup_start_delivery'),
                       onPressed: isLoading ? null : onStartDelivery,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00E676),
+                        backgroundColor: DeliveryAppColors.primary,
                         foregroundColor: Colors.black,
                         elevation: 0,
-                        disabledBackgroundColor: const Color(0xFF00E676)
+                        disabledBackgroundColor: DeliveryAppColors.primary
                             .withValues(alpha: 0.4),
                         disabledForegroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -1681,7 +1684,7 @@ class _ErrorShell extends StatelessWidget {
           children: [
             const Icon(
               Icons.error_outline,
-              color: Color(0xFFFF5252),
+              color: DeliveryAppColors.error,
               size: 56,
             ),
             const SizedBox(height: 16),
@@ -1712,7 +1715,7 @@ class _ErrorShell extends StatelessWidget {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
+                backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),

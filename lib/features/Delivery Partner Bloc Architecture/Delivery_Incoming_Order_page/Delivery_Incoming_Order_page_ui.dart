@@ -1,5 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryIncomingOrderPageUi extends StatefulWidget {
   const DeliveryIncomingOrderPageUi({super.key});
@@ -89,13 +92,13 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
       decoration: BoxDecoration(
         color: const Color(0xFF0C121E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.map, color: Color(0xFF00E676), size: 64),
+            Icon(Icons.map, color: DeliveryAppColors.primary, size: 64),
             SizedBox(height: 16),
             Text(
               'Interactive Route Preview Map',
@@ -117,9 +120,9 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF0D1424).withOpacity(0.75),
+              color: DeliveryAppColors.background.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,7 +130,7 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
                 const Text(
                   'DELIVERY PATHWAYS',
                   style: TextStyle(
-                    color: Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                     letterSpacing: 1.1,
@@ -173,7 +176,7 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
       children: [
         CircleAvatar(
           radius: 16,
-          backgroundColor: color.withOpacity(0.12),
+          backgroundColor: color.withValues(alpha: 0.12),
           child: Icon(icon, color: color, size: 18),
         ),
         const SizedBox(width: 12),
@@ -209,7 +212,7 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
           Text(
             value,
             style: TextStyle(
-              color: isGreen ? const Color(0xFF00E676) : Colors.white,
+              color: isGreen ? DeliveryAppColors.primary : Colors.white,
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
@@ -234,7 +237,7 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
                 children: [
                   CircularProgressIndicator(
                     value: _timerController.value,
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFF00E676)),
+                    valueColor: const AlwaysStoppedAnimation(DeliveryAppColors.primary),
                     backgroundColor: Colors.white10,
                   ),
                   Text(
@@ -275,7 +278,7 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
                       Navigator.of(context).pushNamed('/deliveryOrderDetails');
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00E676),
+                      backgroundColor: DeliveryAppColors.primary,
                       foregroundColor: Colors.black,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                     ),

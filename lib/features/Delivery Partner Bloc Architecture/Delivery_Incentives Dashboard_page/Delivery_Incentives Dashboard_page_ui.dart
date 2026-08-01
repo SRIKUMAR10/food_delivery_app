@@ -6,6 +6,10 @@ import 'Delivery_Incentives Dashboard_page_event.dart';
 import 'Delivery_Incentives Dashboard_page_repository.dart';
 import 'Delivery_Incentives Dashboard_page_service.dart';
 import 'Delivery_Incentives Dashboard_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_spacing.dart';
+import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryIncentivesDashboardStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -177,7 +181,7 @@ class DeliveryIncentivesDashboardPageView extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.errorMessage),
-              backgroundColor: const Color(0xFFB3261E),
+              backgroundColor: DeliveryAppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -309,7 +313,7 @@ class _IncentivesHeader extends StatelessWidget {
       key: const Key('dp_incentives_header'),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22).withValues(alpha: 0.85),
+        color: DeliveryAppColors.surface.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
@@ -328,21 +332,22 @@ class _IncentivesHeader extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF00E676), Color(0xFF10B981)],
+                colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: DeliveryAppSpacing.borderRadiusMd,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF00E676).withValues(alpha: 0.3),
-                  blurRadius: 16,
+                  color: DeliveryAppColors.primaryDark.withValues(alpha: 0.3),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: const Icon(
               Icons.emoji_events_outlined,
-              color: Colors.black,
+              color: DeliveryAppColors.buttonPrimaryText,
               size: 24,
             ),
           ),
@@ -375,10 +380,10 @@ class _IncentivesHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF00E676).withValues(alpha: 0.1),
+              color: DeliveryAppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                color: DeliveryAppColors.primary.withValues(alpha: 0.3),
               ),
             ),
             child: Column(
@@ -394,7 +399,7 @@ class _IncentivesHeader extends StatelessWidget {
                 Text(
                   '₹${state.walletBalance.toStringAsFixed(2)}',
                   style: const TextStyle(
-                    color: Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -416,11 +421,11 @@ class _IncentivesHeader extends StatelessWidget {
                 children: [
                   const CircleAvatar(
                     radius: 18,
-                    backgroundColor: Color(0xFF1E2631),
+                    backgroundColor: DeliveryAppColors.surfaceLight,
                     child: Text(
                       'RK',
                       style: TextStyle(
-                        color: Color(0xFF00E676),
+                        color: DeliveryAppColors.primary,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -469,7 +474,7 @@ class _NotificationBadge extends StatelessWidget {
     return Badge(
       key: const Key('dp_incentives_notification'),
       label: const Text('3'),
-      backgroundColor: const Color(0xFFFF5252),
+      backgroundColor: DeliveryAppColors.error,
       child: IconButton(
         icon: const Icon(Icons.notifications_outlined,
             color: Colors.white70),
@@ -501,7 +506,7 @@ class _IncentivesSummaryGrid extends StatelessWidget {
         value: '₹${state.todayBonus.toStringAsFixed(2)}',
         growthText:
             '+${state.todayBonusGrowth.toStringAsFixed(1)}% ${DeliveryIncentivesDashboardStrings.of('vsYesterday', lang)}',
-        color: const Color(0xFF00E676),
+        color: DeliveryAppColors.primary,
         points: state.rangePoints[IncentivesDateRange.today] ?? const [],
       ),
       _IncentivesMetricCard(
@@ -522,7 +527,7 @@ class _IncentivesSummaryGrid extends StatelessWidget {
         value: '₹${state.monthlyBonus.toStringAsFixed(2)}',
         growthText:
             '+${state.monthlyBonusGrowth.toStringAsFixed(1)}% ${DeliveryIncentivesDashboardStrings.of('vsLastMonth', lang)}',
-        color: const Color(0xFF29B6F6),
+        color: DeliveryAppColors.info,
         points: state.rangePoints[IncentivesDateRange.thisMonth] ?? const [],
       ),
       _TargetProgressCard(state: state),
@@ -563,7 +568,7 @@ class _IncentivesMetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -639,13 +644,13 @@ class _TargetProgressCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1E2631), Color(0xFF161B22)],
+          colors: [DeliveryAppColors.surfaceLight, DeliveryAppColors.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF00E676).withValues(alpha: 0.2),
+          color: DeliveryAppColors.primary.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -670,7 +675,7 @@ class _TargetProgressCard extends StatelessWidget {
               Text(
                 '${state.targetProgress.toStringAsFixed(0)}%',
                 style: const TextStyle(
-                  color: Color(0xFF00E676),
+                  color: DeliveryAppColors.primary,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -685,7 +690,7 @@ class _TargetProgressCard extends StatelessWidget {
               minHeight: 8,
               backgroundColor: Colors.white10,
               valueColor:
-                  const AlwaysStoppedAnimation(Color(0xFF00E676)),
+                  const AlwaysStoppedAnimation(DeliveryAppColors.primary),
             ),
           ),
           Text(
@@ -732,7 +737,7 @@ class _IncentivesOverviewCard extends StatelessWidget {
       key: const Key('dp_incentives_overview_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -756,7 +761,7 @@ class _IncentivesOverviewCard extends StatelessWidget {
                 ),
               ),
               const Icon(Icons.timeline,
-                  color: Color(0xFF00E676), size: 20),
+                  color: DeliveryAppColors.primary, size: 20),
             ],
           ),
           const SizedBox(height: 14),
@@ -825,12 +830,12 @@ class _RangeChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF00E676).withValues(alpha: 0.15)
+                  ? DeliveryAppColors.primaryDark.withValues(alpha: 0.14)
                   : Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFF00E676).withValues(alpha: 0.5)
+                    ? DeliveryAppColors.primary.withValues(alpha: 0.4)
                     : Colors.white.withValues(alpha: 0.08),
               ),
             ),
@@ -838,7 +843,7 @@ class _RangeChip extends StatelessWidget {
               label,
               style: TextStyle(
                 color: isSelected
-                    ? const Color(0xFF00E676)
+                    ? DeliveryAppColors.primary
                     : Colors.white.withValues(alpha: 0.7),
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -895,7 +900,7 @@ class _IncentivesOverviewChartState extends State<_IncentivesOverviewChart> {
             child: CustomPaint(
               painter: _GlowIncentivesPainter(
                 points: points,
-                color: const Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
               ),
             ),
           ),
@@ -911,13 +916,13 @@ class _IncentivesOverviewChartState extends State<_IncentivesOverviewChart> {
                   color: const Color(0xFF1E2631),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: const Color(0xFF00E676).withValues(alpha: 0.4),
+                    color: DeliveryAppColors.primary.withValues(alpha: 0.4),
                   ),
                 ),
                 child: Text(
                   '${points[_tooltipIndex!].label}: ₹${points[_tooltipIndex!].value.toStringAsFixed(2)}',
                   style: const TextStyle(
-                    color: Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -945,7 +950,7 @@ class _BonusBreakdownCard extends StatelessWidget {
       key: const Key('dp_incentives_donut_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1065,7 +1070,7 @@ class _AchievementsCarousel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1113,7 +1118,7 @@ class _AchievementCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final progress = (achievement.progress / achievement.target).clamp(0.0, 1.0);
     final color = achievement.completed
-        ? const Color(0xFF00E676)
+        ? DeliveryAppColors.primary
         : const Color(0xFF7C4DFF);
 
     return Container(
@@ -1209,7 +1214,7 @@ class _MilestonesStepperCard extends StatelessWidget {
       key: const Key('dp_incentives_milestones_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1239,7 +1244,7 @@ class _MilestonesStepperCard extends StatelessWidget {
                           height: 3,
                           color: state.milestones[i].status ==
                                   DeliveryIncentivesMilestoneStatus.completed
-                              ? const Color(0xFF00E676)
+                              ? DeliveryAppColors.primary
                               : Colors.white12,
                         ),
                       ),
@@ -1270,9 +1275,9 @@ class _MilestoneNode extends StatelessWidget {
     final inProgress = status == DeliveryIncentivesMilestoneStatus.inProgress;
 
     final Color color = completed
-        ? const Color(0xFF00E676)
+        ? DeliveryAppColors.primary
         : inProgress
-            ? const Color(0xFF00E676)
+            ? DeliveryAppColors.primary
             : const Color(0xFF3A4451);
 
     return Column(
@@ -1283,21 +1288,21 @@ class _MilestoneNode extends StatelessWidget {
           height: 44,
           decoration: BoxDecoration(
             color: inProgress
-                ? const Color(0xFF00E676).withValues(alpha: 0.15)
+                ? DeliveryAppColors.primary.withValues(alpha: 0.15)
                 : completed
-                    ? const Color(0xFF00E676)
+                    ? DeliveryAppColors.primary
                     : const Color(0xFF1E2631),
             shape: BoxShape.circle,
             border: Border.all(
               color: completed
-                  ? const Color(0xFF00E676)
+                  ? DeliveryAppColors.primary
                   : color.withValues(alpha: 0.4),
               width: 2,
             ),
             boxShadow: inProgress
                 ? [
                     BoxShadow(
-                      color: const Color(0xFF00E676).withValues(alpha: 0.5),
+                      color: DeliveryAppColors.primary.withValues(alpha: 0.5),
                       blurRadius: 14,
                       spreadRadius: 2,
                     ),
@@ -1314,7 +1319,7 @@ class _MilestoneNode extends StatelessWidget {
                       color: completed
                           ? Colors.black
                           : inProgress
-                              ? const Color(0xFF00E676)
+                              ? DeliveryAppColors.primary
                               : Colors.white54,
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -1359,7 +1364,7 @@ class _RewardHistoryCard extends StatelessWidget {
       key: const Key('dp_incentives_reward_history_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1502,12 +1507,12 @@ class _FilterChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                  ? DeliveryAppColors.primaryDark.withValues(alpha: 0.14)
                   : Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                    ? DeliveryAppColors.primary.withValues(alpha: 0.4)
                     : Colors.white.withValues(alpha: 0.08),
               ),
             ),
@@ -1515,7 +1520,7 @@ class _FilterChip extends StatelessWidget {
               label,
               style: TextStyle(
                 color: isSelected
-                    ? const Color(0xFF10B981)
+                    ? DeliveryAppColors.primary
                     : Colors.white.withValues(alpha: 0.7),
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -1679,15 +1684,15 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final (Color color, String label) = switch (status) {
       'completed' => (
-          const Color(0xFF00E676),
+          DeliveryAppColors.primary,
           DeliveryIncentivesDashboardStrings.of('completed', 'en'),
         ),
       'pending' => (
-          const Color(0xFFFFB74D),
+          DeliveryAppColors.warning,
           DeliveryIncentivesDashboardStrings.of('pending', 'en'),
         ),
       _ => (
-          const Color(0xFF29B6F6),
+          DeliveryAppColors.info,
           DeliveryIncentivesDashboardStrings.of('processing', 'en'),
         ),
     };
@@ -1813,7 +1818,7 @@ class _PaginationBar extends StatelessWidget {
                           height: 28,
                           decoration: BoxDecoration(
                             color: page == state.currentPage
-                                ? const Color(0xFF00E676)
+                                ? DeliveryAppColors.primary
                                     .withValues(alpha: 0.15)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
@@ -1823,7 +1828,7 @@ class _PaginationBar extends StatelessWidget {
                               '${page + 1}',
                               style: TextStyle(
                                 color: page == state.currentPage
-                                    ? const Color(0xFF00E676)
+                                    ? DeliveryAppColors.primary
                                     : Colors.white60,
                                 fontSize: 12,
                                 fontWeight: page == state.currentPage
@@ -1858,10 +1863,10 @@ class _PaginationBar extends StatelessWidget {
 
 Color _categoryColor(String category) {
   return switch (category) {
-    'performance' => const Color(0xFF00E676),
+    'performance' => DeliveryAppColors.primary,
     'peakHour' => const Color(0xFF7C4DFF),
-    'incentive' => const Color(0xFF29B6F6),
-    _ => const Color(0xFFFFB74D),
+    'incentive' => DeliveryAppColors.info,
+    _ => DeliveryAppColors.warning,
   };
 }
 
@@ -2131,7 +2136,7 @@ class _IncentivesErrorShell extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.error_outline,
-                color: Color(0xFFFF5252), size: 64),
+                color: DeliveryAppColors.error, size: 64),
             const SizedBox(height: 16),
             Text(
               DeliveryIncentivesDashboardStrings.of('somethingWentWrong', lang),
@@ -2151,7 +2156,7 @@ class _IncentivesErrorShell extends StatelessWidget {
             ElevatedButton(
               key: const Key('dp_incentives_retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
+                backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,
               ),
               onPressed: () {
@@ -2187,7 +2192,7 @@ class _IncentivesEmptyShell extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.emoji_events_outlined,
-                color: Color(0xFF00E676), size: 64),
+                color: DeliveryAppColors.primary, size: 64),
             const SizedBox(height: 16),
             Text(
               DeliveryIncentivesDashboardStrings.of('emptyTitle', lang),
@@ -2211,7 +2216,7 @@ class _IncentivesEmptyShell extends StatelessWidget {
             ElevatedButton(
               key: const Key('dp_incentives_empty_retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
+                backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,
               ),
               onPressed: () {

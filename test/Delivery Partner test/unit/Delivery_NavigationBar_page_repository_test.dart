@@ -18,19 +18,21 @@ void main() {
       () async {
         final items = await repository.getNavItems();
 
-        expect(items, hasLength(10));
+        expect(items, hasLength(12));
         final labels = items.map((e) => e.label).toList();
         expect(labels, [
           'Dashboard',
           'Orders',
           'Earnings',
           'Incentives',
-          'Profile',
+          'Navigate',
+          'Wallet',
+          'Order History',
           'Documents',
           'Bank Details',
           'Settings',
           'Help & Support',
-          'Navigate',
+          'Profile',
         ]);
       },
     );

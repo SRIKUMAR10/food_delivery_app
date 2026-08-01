@@ -25,6 +25,7 @@ void main() {
       'emits [loading, success] when FetchOrderDetailsEvent is added',
       build: () => bloc,
       act: (bloc) => bloc.add(const FetchOrderDetailsEvent('12345')),
+      wait: const Duration(milliseconds: 600),
       expect: () => [
         const DeliveryOrderDetailsPageState(status: OrderDetailsStatus.loading),
         isA<DeliveryOrderDetailsPageState>().having(
@@ -54,6 +55,7 @@ void main() {
       ),
       act: (bloc) =>
           bloc.add(const UpdateOrderStatusEvent('#ORD12345', 'Reached Pickup')),
+      wait: const Duration(milliseconds: 600),
       expect: () => [
         isA<DeliveryOrderDetailsPageState>().having(
           (s) => s.status,

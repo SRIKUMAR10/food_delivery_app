@@ -7,6 +7,10 @@ import 'Delivery_Order History_page_event.dart';
 import 'Delivery_Order History_page_repository.dart';
 import 'Delivery_Order History_page_service.dart';
 import 'Delivery_Order History_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
+import '../../../core/theme/delivery_design_system.dart';
 
 class DeliveryOrderHistoryStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -138,10 +142,10 @@ class DeliveryOrderHistoryStrings {
 
 const _kBackground = Color(0xFF060B11); // Dark background
 const _kPanel = Color(0xFF0B1219);      // Dark panel background
-const _kCard = Color(0xFF0F1E26);       // Card background matching other pages
-const _kPrimary = Color(0xFF00E676);    // Accent green matching other pages
+const _kCard = DeliveryAppColors.surface;       // Card background matching other pages
+const _kPrimary = DeliveryAppColors.primary;    // Accent green matching other pages
 const _kTextSecondary = Color(0xFF94A3B8);
-const _kPending = Color(0xFFFFB74D);    // Warm orange/amber matching other pages
+const _kPending = DeliveryAppColors.warning;    // Warm orange/amber matching other pages
 const _kCancelled = Color(0xFFEF4444);
 const _kPurple = Color(0xFF7C4DFF);     // Purple accent matching other pages
 
@@ -1121,33 +1125,14 @@ class _FilterBarState extends State<_FilterBar> {
           final bool narrow = constraints.maxWidth < 700;
           final Widget search = SizedBox(
             width: narrow ? double.infinity : 260,
-            child: TextField(
+            child: DeliveryTextField(
               key: const Key('dp_oh_search_field'),
               controller: _searchController,
+              hintText: DeliveryOrderHistoryStrings.of('searchHint', lang),
+              prefixIcon: const Icon(Icons.search, color: _kTextSecondary),
               onChanged: (value) => context
                   .read<DeliveryOrderHistoryPageBloc>()
                   .add(DeliveryOrderHistorySearchChangedEvent(value)),
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: DeliveryOrderHistoryStrings.of('searchHint', lang),
-                hintStyle: const TextStyle(color: _kTextSecondary, fontSize: 13),
-                prefixIcon: const Icon(Icons.search, color: _kTextSecondary),
-                filled: true,
-                fillColor: _kBackground,
-                isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.06),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: _kPrimary),
-                ),
-              ),
             ),
           );
 

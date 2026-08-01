@@ -6,6 +6,10 @@ import 'Delivery_Wallet_page_event.dart';
 import 'Delivery_Wallet_page_repository.dart';
 import 'Delivery_Wallet_page_service.dart';
 import 'Delivery_Wallet_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
+import '../../../core/theme/delivery_design_system.dart';
 
 class DeliveryWalletStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -197,7 +201,7 @@ class DeliveryWalletPageView extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.errorMessage!),
-              backgroundColor: const Color(0xFFB3261E),
+              backgroundColor: DeliveryAppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -264,7 +268,7 @@ class _WalletContent extends StatelessWidget {
         if (state.status == DeliveryWalletStatus.refreshing) ...[
           const LinearProgressIndicator(
             minHeight: 2,
-            color: Color(0xFF00E676),
+            color: DeliveryAppColors.primary,
             backgroundColor: Colors.white10,
           ),
           const SizedBox(height: 16),
@@ -346,13 +350,13 @@ class _WalletHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF0D1B22), Color(0xFF0F1E26)],
+          colors: [DeliveryAppColors.background, DeliveryAppColors.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF00E676).withValues(alpha: 0.2),
+          color: DeliveryAppColors.primary.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
@@ -362,14 +366,14 @@ class _WalletHeader extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF00E676), Color(0xFF10B981)],
+                colors: [DeliveryAppColors.primary, Color(0xFF10B981)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                  color: DeliveryAppColors.primary.withValues(alpha: 0.3),
                   blurRadius: 16,
                 ),
               ],
@@ -408,10 +412,10 @@ class _WalletHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF00E676).withValues(alpha: 0.1),
+                color: DeliveryAppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                  color: DeliveryAppColors.primary.withValues(alpha: 0.3),
                 ),
               ),
               child: Column(
@@ -427,7 +431,7 @@ class _WalletHeader extends StatelessWidget {
                   Text(
                     '₹${state.walletBalance.toStringAsFixed(2)}',
                     style: const TextStyle(
-                      color: Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -445,7 +449,7 @@ class _WalletHeader extends StatelessWidget {
                   ? null
                   : () => _showWalletWithdrawDialog(context, state),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
+                backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -513,7 +517,7 @@ class _HeaderIconButton extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(3),
                   decoration: const BoxDecoration(
-                    color: Color(0xFFFF5252),
+                    color: DeliveryAppColors.error,
                     shape: BoxShape.circle,
                   ),
                   constraints: const BoxConstraints(
@@ -569,7 +573,7 @@ class _WalletSidebar extends StatelessWidget {
       margin: const EdgeInsets.all(24),
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -616,12 +620,12 @@ class _SidebarItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: isActive
-                ? const Color(0xFF00E676).withValues(alpha: 0.12)
+                ? DeliveryAppColors.primary.withValues(alpha: 0.12)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isActive
-                  ? const Color(0xFF00E676).withValues(alpha: 0.35)
+                  ? DeliveryAppColors.primary.withValues(alpha: 0.35)
                   : Colors.transparent,
             ),
           ),
@@ -630,7 +634,7 @@ class _SidebarItem extends StatelessWidget {
               Icon(
                 icon,
                 color: isActive
-                    ? const Color(0xFF00E676)
+                    ? DeliveryAppColors.primary
                     : Colors.white.withValues(alpha: 0.55),
                 size: 19,
               ),
@@ -639,7 +643,7 @@ class _SidebarItem extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: isActive
-                      ? const Color(0xFF00E676)
+                      ? DeliveryAppColors.primary
                       : Colors.white.withValues(alpha: 0.7),
                   fontSize: 13,
                   fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
@@ -675,7 +679,7 @@ class _WalletSummaryGrid extends StatelessWidget {
         value: '₹${state.walletBalance.toStringAsFixed(2)}',
         subtext: DeliveryWalletStrings.of('withdrawFunds', lang),
         icon: Icons.account_balance_wallet,
-        color: const Color(0xFF00E676),
+        color: DeliveryAppColors.primary,
       ),
       _WalletMetricCard(
         key: const Key('dp_wallet_summary_earnings'),
@@ -683,7 +687,7 @@ class _WalletSummaryGrid extends StatelessWidget {
         value: '₹${state.totalEarnings.toStringAsFixed(2)}',
         subtext: DeliveryWalletStrings.of('earningsOverview', lang),
         icon: Icons.trending_up,
-        color: const Color(0xFF29B6F6),
+        color: DeliveryAppColors.info,
       ),
       _WalletMetricCard(
         key: const Key('dp_wallet_summary_withdrawn'),
@@ -699,7 +703,7 @@ class _WalletSummaryGrid extends StatelessWidget {
         value: '₹${state.bonusEarnings.toStringAsFixed(2)}',
         subtext: DeliveryWalletStrings.of('bonuses', lang),
         icon: Icons.emoji_events_outlined,
-        color: const Color(0xFFFFB74D),
+        color: DeliveryAppColors.warning,
       ),
     ];
 
@@ -742,7 +746,7 @@ class _WalletMetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -877,12 +881,12 @@ class _WalletPeriodChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF00E676).withValues(alpha: 0.15)
+                  ? DeliveryAppColors.primary.withValues(alpha: 0.15)
                   : Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFF00E676).withValues(alpha: 0.5)
+                    ? DeliveryAppColors.primary.withValues(alpha: 0.5)
                     : Colors.white.withValues(alpha: 0.08),
               ),
             ),
@@ -890,7 +894,7 @@ class _WalletPeriodChip extends StatelessWidget {
               label,
               style: TextStyle(
                 color: isSelected
-                    ? const Color(0xFF00E676)
+                    ? DeliveryAppColors.primary
                     : Colors.white.withValues(alpha: 0.7),
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -917,7 +921,7 @@ class _WalletChartCard extends StatelessWidget {
       key: const Key('dp_wallet_chart_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -941,7 +945,7 @@ class _WalletChartCard extends StatelessWidget {
               ),
               const Icon(
                 Icons.insert_chart_outlined,
-                color: Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
                 size: 20,
               ),
             ],
@@ -954,7 +958,7 @@ class _WalletChartCard extends StatelessWidget {
             child: CustomPaint(
               painter: _GlowWalletPainter(
                 points: points,
-                color: const Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
               ),
             ),
           ),
@@ -979,7 +983,7 @@ class _WalletBreakdownCard extends StatelessWidget {
       key: const Key('dp_wallet_breakdown_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1071,13 +1075,13 @@ class _WalletQuickActionsCard extends StatelessWidget {
         key: 'dp_wallet_quick_withdraw',
         label: 'withdrawFunds',
         icon: Icons.currency_rupee,
-        color: const Color(0xFF00E676),
+        color: DeliveryAppColors.primary,
       ),
       (
         key: 'dp_wallet_quick_add_payment',
         label: 'addPaymentMethod',
         icon: Icons.add_card,
-        color: const Color(0xFF29B6F6),
+        color: DeliveryAppColors.info,
       ),
       (
         key: 'dp_wallet_quick_statement',
@@ -1089,7 +1093,7 @@ class _WalletQuickActionsCard extends StatelessWidget {
         key: 'dp_wallet_quick_incentives',
         label: 'viewIncentives',
         icon: Icons.emoji_events_outlined,
-        color: const Color(0xFFFFB74D),
+        color: DeliveryAppColors.warning,
       ),
     ];
 
@@ -1097,7 +1101,7 @@ class _WalletQuickActionsCard extends StatelessWidget {
       key: const Key('dp_wallet_quick_actions'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1260,7 +1264,7 @@ class _WalletTransactionsPanelState extends State<_WalletTransactionsPanel> {
       key: const Key('dp_wallet_transactions_panel'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1433,12 +1437,12 @@ class _WalletTransactionFilterChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF00E676).withValues(alpha: 0.15)
+                  ? DeliveryAppColors.primary.withValues(alpha: 0.15)
                   : Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFF00E676).withValues(alpha: 0.5)
+                    ? DeliveryAppColors.primary.withValues(alpha: 0.5)
                     : Colors.white.withValues(alpha: 0.08),
               ),
             ),
@@ -1446,7 +1450,7 @@ class _WalletTransactionFilterChip extends StatelessWidget {
               label,
               style: TextStyle(
                 color: isSelected
-                    ? const Color(0xFF00E676)
+                    ? DeliveryAppColors.primary
                     : Colors.white.withValues(alpha: 0.7),
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -1512,9 +1516,9 @@ class _WalletTransactionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (IconData icon, Color color) = switch (transaction.type) {
-      'withdrawal' => (Icons.account_balance_outlined, const Color(0xFFFFB74D)),
+      'withdrawal' => (Icons.account_balance_outlined, DeliveryAppColors.warning),
       'bonus' => (Icons.emoji_events_outlined, const Color(0xFF7C4DFF)),
-      _ => (Icons.add_circle_outline, const Color(0xFF00E676)),
+      _ => (Icons.add_circle_outline, DeliveryAppColors.primary),
     };
 
     return Container(
@@ -1601,9 +1605,9 @@ class _WalletStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (Color color, String label) = switch (status) {
-      'completed' => (const Color(0xFF00E676), 'statusCompleted'),
-      'pending' => (const Color(0xFFFFB74D), 'statusPending'),
-      'scheduled' => (const Color(0xFF29B6F6), 'statusScheduled'),
+      'completed' => (DeliveryAppColors.primary, 'statusCompleted'),
+      'pending' => (DeliveryAppColors.warning, 'statusPending'),
+      'scheduled' => (DeliveryAppColors.info, 'statusScheduled'),
       _ => (const Color(0xFF7C4DFF), 'statusProcessing'),
     };
 
@@ -1645,11 +1649,11 @@ class _WalletPaginationButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: enabled ? onTap : null,
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF00E676),
+          foregroundColor: DeliveryAppColors.primary,
           disabledForegroundColor: Colors.white24,
           side: BorderSide(
             color: enabled
-                ? const Color(0xFF00E676).withValues(alpha: 0.4)
+                ? DeliveryAppColors.primary.withValues(alpha: 0.4)
                 : Colors.white.withValues(alpha: 0.08),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -1679,7 +1683,7 @@ class _WalletPaymentMethodsCard extends StatelessWidget {
       key: const Key('dp_wallet_payment_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1707,8 +1711,8 @@ class _WalletPaymentMethodsCard extends StatelessWidget {
                   key: const Key('dp_wallet_add_payment_button'),
                   onPressed: () => _dispatchAddPaymentMethod(context),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF29B6F6),
-                    side: const BorderSide(color: Color(0xFF29B6F6)),
+                    foregroundColor: DeliveryAppColors.info,
+                    side: const BorderSide(color: DeliveryAppColors.info),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -1738,7 +1742,7 @@ class _WalletPaymentMethodsCard extends StatelessWidget {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF29B6F6).withValues(alpha: 0.12),
+                        color: DeliveryAppColors.info.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -1747,7 +1751,7 @@ class _WalletPaymentMethodsCard extends StatelessWidget {
                           'Card' => Icons.credit_card,
                           _ => Icons.account_balance_outlined,
                         },
-                        color: const Color(0xFF29B6F6),
+                        color: DeliveryAppColors.info,
                         size: 19,
                       ),
                     ),
@@ -1788,7 +1792,7 @@ class _WalletPaymentMethodsCard extends StatelessWidget {
                                       lang,
                                     ),
                                     style: const TextStyle(
-                                      color: Color(0xFF00E676),
+                                      color: DeliveryAppColors.primary,
                                       fontSize: 9,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -1810,7 +1814,7 @@ class _WalletPaymentMethodsCard extends StatelessWidget {
                     ),
                     const Icon(
                       Icons.check_circle,
-                      color: Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       size: 16,
                     ),
                   ],
@@ -1836,7 +1840,7 @@ class _WalletBankAccountCard extends StatelessWidget {
       key: const Key('dp_wallet_bank_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1859,14 +1863,14 @@ class _WalletBankAccountCard extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.verified,
-                      color: Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       size: 16,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       DeliveryWalletStrings.of('verified', lang),
                       style: const TextStyle(
-                        color: Color(0xFF00E676),
+                        color: DeliveryAppColors.primary,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1996,7 +2000,7 @@ class _WalletSettlementCard extends StatelessWidget {
       key: const Key('dp_wallet_settlement_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -2017,7 +2021,7 @@ class _WalletSettlementCard extends StatelessWidget {
               ),
               const Icon(
                 Icons.event_note_outlined,
-                color: Color(0xFF29B6F6),
+                color: DeliveryAppColors.info,
                 size: 20,
               ),
             ],
@@ -2036,8 +2040,8 @@ class _WalletSettlementCard extends StatelessWidget {
                       height: 10,
                       decoration: BoxDecoration(
                         color: item.status == 'settled'
-                            ? const Color(0xFF00E676)
-                            : const Color(0xFFFFB74D),
+                            ? DeliveryAppColors.primary
+                            : DeliveryAppColors.warning,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -2086,8 +2090,8 @@ class _WalletSettlementCard extends StatelessWidget {
                           ),
                           style: TextStyle(
                             color: item.status == 'settled'
-                                ? const Color(0xFF00E676)
-                                : const Color(0xFFFFB74D),
+                                ? DeliveryAppColors.primary
+                                : DeliveryAppColors.warning,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
@@ -2110,152 +2114,19 @@ void _showWalletWithdrawDialog(
   final lang = state.localeCode;
   final bloc = context.read<DeliveryWalletPageBloc>();
 
-  showDialog<void>(
-    context: context,
-    builder: (dialogContext) => _WalletWithdrawDialog(
-      walletBalance: state.walletBalance,
-      title: DeliveryWalletStrings.of('withdrawDialogTitle', lang),
-      subtitle: DeliveryWalletStrings.of('withdrawDialogSub', lang),
-      amountLabel: DeliveryWalletStrings.of('withdrawAmountLabel', lang),
-      availableBalance: DeliveryWalletStrings.of('availableBalance', lang),
-      confirmText: DeliveryWalletStrings.of('confirm', lang),
-      cancelText: DeliveryWalletStrings.of('cancel', lang),
-      errorText: DeliveryWalletStrings.of('enterValidAmount', lang),
-      onConfirm: (amount) =>
-          bloc.add(DeliveryWalletWithdrawRequestedEvent(amount)),
-    ),
+  DeliveryWithdrawDialog.show(
+    context,
+    walletBalance: state.walletBalance,
+    title: DeliveryWalletStrings.of('withdrawDialogTitle', lang),
+    subtitle: DeliveryWalletStrings.of('withdrawDialogSub', lang),
+    amountLabel: DeliveryWalletStrings.of('withdrawAmountLabel', lang),
+    availableBalanceText: DeliveryWalletStrings.of('availableBalance', lang),
+    confirmText: DeliveryWalletStrings.of('confirm', lang),
+    cancelText: DeliveryWalletStrings.of('cancel', lang),
+    errorText: DeliveryWalletStrings.of('enterValidAmount', lang),
+    onConfirm: (amount) =>
+        bloc.add(DeliveryWalletWithdrawRequestedEvent(amount)),
   );
-}
-
-class _WalletWithdrawDialog extends StatefulWidget {
-  final double walletBalance;
-  final String title;
-  final String subtitle;
-  final String amountLabel;
-  final String availableBalance;
-  final String confirmText;
-  final String cancelText;
-  final String errorText;
-  final ValueChanged<double> onConfirm;
-
-  const _WalletWithdrawDialog({
-    required this.walletBalance,
-    required this.title,
-    required this.subtitle,
-    required this.amountLabel,
-    required this.availableBalance,
-    required this.confirmText,
-    required this.cancelText,
-    required this.errorText,
-    required this.onConfirm,
-  });
-
-  @override
-  State<_WalletWithdrawDialog> createState() => _WalletWithdrawDialogState();
-}
-
-class _WalletWithdrawDialogState extends State<_WalletWithdrawDialog> {
-  final TextEditingController _controller = TextEditingController();
-  String? _error;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final value = double.tryParse(_controller.text.trim());
-    if (value == null || value <= 0) {
-      setState(() => _error = widget.errorText);
-      return;
-    }
-    widget.onConfirm(value);
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF0F1E26),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text(
-        widget.title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.subtitle,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            key: const Key('dp_wallet_withdraw_amount'),
-            controller: _controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            autofocus: true,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: widget.amountLabel,
-              prefixText: '₹ ',
-              errorText: _error,
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.04),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '${widget.availableBalance}: ₹${widget.walletBalance.toStringAsFixed(2)}',
-            style: const TextStyle(color: Color(0xFF00E676), fontSize: 12),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          key: const Key('dp_wallet_withdraw_cancel'),
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            widget.cancelText,
-            style: const TextStyle(color: Color(0xFF94A3B8)),
-          ),
-        ),
-        ElevatedButton(
-          key: const Key('dp_wallet_withdraw_confirm'),
-          onPressed: _submit,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF00E676),
-            foregroundColor: Colors.black,
-          ),
-          child: Text(
-            widget.confirmText,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 void _dispatchAddPaymentMethod(BuildContext context) {
@@ -2315,7 +2186,7 @@ Color _colorFromHex(String hex) {
   var value = hex.replaceAll('#', '');
   if (value.length == 6) value = 'FF$value';
   final parsed = int.tryParse(value, radix: 16);
-  if (parsed == null) return const Color(0xFF00E676);
+  if (parsed == null) return DeliveryAppColors.primary;
   return Color(parsed);
 }
 
@@ -2530,7 +2401,7 @@ class _WalletErrorShell extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, color: Color(0xFFFF5252), size: 64),
+            const Icon(Icons.error_outline, color: DeliveryAppColors.error, size: 64),
             const SizedBox(height: 16),
             Text(
               DeliveryWalletStrings.of('somethingWentWrong', lang),
@@ -2552,7 +2423,7 @@ class _WalletErrorShell extends StatelessWidget {
             ElevatedButton(
               key: const Key('dp_wallet_retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
+                backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,
               ),
               onPressed: () {

@@ -6,6 +6,10 @@ import 'Delivery_Login Page_event.dart';
 import 'Delivery_Login Page_repository.dart';
 import 'Delivery_Login Page_service.dart';
 import 'Delivery_Login Page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
+import '../../../core/theme/delivery_design_system.dart';
 
 class DeliveryLoginPage extends StatelessWidget {
   final DeliveryLoginRepositoryBase? repository;
@@ -93,7 +97,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF091015),
+      backgroundColor: DeliveryAppColors.background,
       body: Stack(
         children: [
           Positioned.fill(
@@ -128,7 +132,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Login successful! Welcome Partner.'),
-                    backgroundColor: Color(0xFF00E676),
+                    backgroundColor: DeliveryAppColors.primary,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -138,7 +142,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Password reset link sent to your email.'),
-                    backgroundColor: Color(0xFF00E676),
+                    backgroundColor: DeliveryAppColors.primary,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -208,7 +212,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
               ),
             ),
@@ -217,7 +221,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
               width: 200,
               height: 24,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
@@ -226,13 +230,13 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
               width: 280,
               height: 16,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withValues(alpha: 0.03),
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
             const SizedBox(height: 32),
             const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
+              valueColor: AlwaysStoppedAnimation<Color>(DeliveryAppColors.primary),
             ),
           ],
         ),
@@ -247,20 +251,20 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
       constraints: const BoxConstraints(maxWidth: 480),
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: const Color(0xFF091413).withOpacity(0.84),
+        color: const Color(0xFF091413).withValues(alpha: 0.84),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFF00E676).withOpacity(0.28),
+          color: DeliveryAppColors.primary.withValues(alpha: 0.28),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 28,
             offset: const Offset(0, 10),
           ),
           BoxShadow(
-            color: const Color(0xFF00E676).withOpacity(0.08),
+            color: DeliveryAppColors.primary.withValues(alpha: 0.08),
             blurRadius: 40,
             spreadRadius: 2,
           ),
@@ -307,9 +311,9 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.12),
+                color: Colors.redAccent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
               ),
               child: Row(
                 children: [
@@ -334,159 +338,64 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
             const SizedBox(height: 18),
           ],
 
-          Text(
-            'Phone Number',
-            style: GoogleFonts.inter(
-              color: Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
+          DeliveryTextField(
             controller: _phoneController,
             focusNode: _phoneFocusNode,
+            label: 'Phone Number',
+            hintText: '98765 43210',
             keyboardType: TextInputType.phone,
-            style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: const Color(0xFF081412),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: const Color(0xFF00E676).withOpacity(0.25),
+            errorText: state.phoneError,
+            prefixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(width: 14),
+                const Icon(
+                  Icons.phone_outlined,
+                  color: Colors.white60,
+                  size: 20,
                 ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Color(0xFF00E676),
-                  width: 1.5,
-                ),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Colors.redAccent,
-                  width: 1.5,
-                ),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Colors.redAccent,
-                  width: 1.5,
-                ),
-              ),
-              errorText: state.phoneError,
-              errorStyle: GoogleFonts.inter(
-                color: Colors.redAccent,
-                fontSize: 12,
-              ),
-              prefixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(width: 14),
-                  const Icon(
-                    Icons.phone_outlined,
-                    color: Colors.white60,
-                    size: 20,
+                const SizedBox(width: 8),
+                Text(
+                  '+91',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '+91',
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Container(
-                    height: 20,
-                    width: 1,
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    color: Colors.white24,
-                  ),
-                ],
-              ),
-              hintText: '98765 43210',
-              hintStyle: GoogleFonts.inter(color: Colors.white30, fontSize: 14),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                Container(
+                  height: 20,
+                  width: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  color: Colors.white24,
+                ),
+              ],
             ),
             onChanged: (val) => bloc.add(DeliveryLoginPhoneChangedEvent(val)),
           ),
           const SizedBox(height: 18),
 
-          Text(
-            'Password',
-            style: GoogleFonts.inter(
-              color: Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
+          DeliveryTextField(
             controller: _passwordController,
             focusNode: _passwordFocusNode,
+            label: 'Password',
+            hintText: '••••••••',
             obscureText: !state.isPasswordVisible,
-            style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: const Color(0xFF081412),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: const Color(0xFF00E676).withOpacity(0.25),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Color(0xFF00E676),
-                  width: 1.5,
-                ),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Colors.redAccent,
-                  width: 1.5,
-                ),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Colors.redAccent,
-                  width: 1.5,
-                ),
-              ),
-              errorText: state.passwordError,
-              errorStyle: GoogleFonts.inter(
-                color: Colors.redAccent,
-                fontSize: 12,
-              ),
-              prefixIcon: const Icon(
-                Icons.lock_outline,
+            errorText: state.passwordError,
+            prefixIcon: const Icon(
+              Icons.lock_outline,
+              color: Colors.white60,
+              size: 20,
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(
+                state.isPasswordVisible
+                    ? Icons.visibility
+                    : Icons.visibility_off,
                 color: Colors.white60,
                 size: 20,
               ),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  state.isPasswordVisible
-                      ? Icons.visibility
-                      : Icons.visibility_off,
-                  color: Colors.white60,
-                  size: 20,
-                ),
-                onPressed: () => bloc.add(
-                  const DeliveryLoginTogglePasswordVisibilityEvent(),
-                ),
-              ),
-              hintText:
-                  '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022',
-              hintStyle: GoogleFonts.inter(color: Colors.white30, fontSize: 14),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              onPressed: () => bloc.add(DeliveryLoginTogglePasswordVisibilityEvent()),
             ),
             onChanged: (val) =>
                 bloc.add(DeliveryLoginPasswordChangedEvent(val)),
@@ -502,12 +411,12 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                   children: [
                     Checkbox(
                       value: state.isRememberMeChecked,
-                      activeColor: const Color(0xFF00E676),
+                      activeColor: DeliveryAppColors.primary,
                       checkColor: Colors.black,
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.compact,
                       side: BorderSide(
-                        color: const Color(0xFF00E676).withOpacity(0.6),
+                        color: DeliveryAppColors.primary.withValues(alpha: 0.6),
                         width: 1.5,
                       ),
                       shape: RoundedRectangleBorder(
@@ -521,7 +430,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                       child: Text(
                         'Remember Me',
                         style: GoogleFonts.inter(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 13,
                         ),
                       ),
@@ -534,7 +443,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                 child: Text(
                   'Forgot Password?',
                   style: GoogleFonts.inter(
-                    color: const Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -552,10 +461,10 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                   ? null
                   : () => bloc.add(const DeliveryLoginSubmittedEvent()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
+                backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,
                 elevation: 6,
-                shadowColor: const Color(0xFF00E676).withOpacity(0.4),
+                shadowColor: DeliveryAppColors.primary.withValues(alpha: 0.4),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -596,7 +505,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
             children: [
               Expanded(
                 child: Divider(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   thickness: 1,
                 ),
               ),
@@ -609,7 +518,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
               ),
               Expanded(
                 child: Divider(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   thickness: 1,
                 ),
               ),
@@ -659,7 +568,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                   child: Text(
                     'Sign Up',
                     style: GoogleFonts.inter(
-                      color: const Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                     ),
@@ -688,7 +597,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                   side: BorderSide(
-                    color: const Color(0xFF00E676).withOpacity(0.28),
+                    color: DeliveryAppColors.primary.withValues(alpha: 0.28),
                   ),
                 ),
                 title: Text(
@@ -727,13 +636,13 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide(
-                            color: const Color(0xFF00E676).withOpacity(0.25),
+                            color: DeliveryAppColors.primary.withValues(alpha: 0.25),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: const BorderSide(
-                            color: Color(0xFF00E676),
+                            color: DeliveryAppColors.primary,
                             width: 1.5,
                           ),
                         ),
@@ -765,7 +674,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                             Navigator.pop(ctx);
                           },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00E676),
+                      backgroundColor: DeliveryAppColors.primary,
                       foregroundColor: Colors.black,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -812,7 +721,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           backgroundColor: const Color(0xFF0D1B19),
-          side: BorderSide(color: Colors.white.withOpacity(0.15), width: 1),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.15), width: 1),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),

@@ -6,6 +6,10 @@ import 'Delivery_Earnings Dashboard_page_event.dart';
 import 'Delivery_Earnings Dashboard_page_repository.dart';
 import 'Delivery_Earnings Dashboard_page_service.dart';
 import 'Delivery_Earnings Dashboard_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
+import '../../../core/theme/delivery_design_system.dart';
 
 class DeliveryEarningsDashboardStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -152,7 +156,7 @@ class DeliveryEarningsDashboardPageView extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.errorMessage!),
-              backgroundColor: const Color(0xFFB3261E),
+              backgroundColor: DeliveryAppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -187,7 +191,7 @@ class DeliveryEarningsDashboardPageView extends StatelessWidget {
                   if (state.status == DeliveryEarningsStatus.refreshing) ...[
                     const LinearProgressIndicator(
                       minHeight: 2,
-                      color: Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       backgroundColor: Colors.white10,
                     ),
                     const SizedBox(height: 16),
@@ -256,7 +260,7 @@ class _EarningsHeader extends StatelessWidget {
       key: const Key('dp_earnings_greeting'),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D131E).withValues(alpha: 0.85),
+        color: DeliveryAppColors.background.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
@@ -267,21 +271,22 @@ class _EarningsHeader extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF00E676), Color(0xFF10B981)],
+                colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: DeliveryAppSpacing.borderRadiusMd,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF00E676).withValues(alpha: 0.3),
-                  blurRadius: 16,
+                  color: DeliveryAppColors.primaryDark.withValues(alpha: 0.3),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: const Icon(
               Icons.payments_outlined,
-              color: Colors.black,
+              color: DeliveryAppColors.buttonPrimaryText,
               size: 24,
             ),
           ),
@@ -316,10 +321,10 @@ class _EarningsHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF00E676).withValues(alpha: 0.1),
+                color: DeliveryAppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                  color: DeliveryAppColors.primary.withValues(alpha: 0.3),
                 ),
               ),
               child: Column(
@@ -335,7 +340,7 @@ class _EarningsHeader extends StatelessWidget {
                   Text(
                     '₹${state.walletBalance.toStringAsFixed(2)}',
                     style: const TextStyle(
-                      color: Color(0xFF00E676),
+                      color: DeliveryAppColors.primary,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -368,7 +373,7 @@ class _EarningsTabSelector extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -430,12 +435,12 @@ class _EarningsTabChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF00E676).withValues(alpha: 0.15)
+                  ? DeliveryAppColors.primaryDark.withValues(alpha: 0.14)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFF00E676).withValues(alpha: 0.4)
+                    ? DeliveryAppColors.primary.withValues(alpha: 0.4)
                     : Colors.transparent,
               ),
             ),
@@ -444,7 +449,7 @@ class _EarningsTabChip extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isSelected
-                    ? const Color(0xFF00E676)
+                    ? DeliveryAppColors.primary
                     : Colors.white.withValues(alpha: 0.6),
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -480,7 +485,7 @@ class _EarningsSummaryGrid extends StatelessWidget {
         subtext:
             '${DeliveryEarningsDashboardStrings.of('growthLabel', lang).replaceAll('{growth}', state.earningsGrowth.toStringAsFixed(1)).replaceAll('{vs}', DeliveryEarningsDashboardStrings.of('vsLastWeek', lang))}',
         icon: Icons.trending_up,
-        color: const Color(0xFF00E676),
+        color: DeliveryAppColors.primary,
       ),
       _EarningsMetricCard(
         key: const Key('dp_earnings_summary_today'),
@@ -488,7 +493,7 @@ class _EarningsSummaryGrid extends StatelessWidget {
         value: '₹${state.todayEarnings.toStringAsFixed(2)}',
         subtext: DeliveryEarningsDashboardStrings.of('today', lang),
         icon: Icons.account_balance_wallet,
-        color: const Color(0xFF29B6F6),
+        color: DeliveryAppColors.info,
       ),
       _EarningsMetricCard(
         key: const Key('dp_earnings_summary_week'),
@@ -547,7 +552,7 @@ class _EarningsMetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -628,7 +633,7 @@ class _EarningsChartCard extends StatelessWidget {
       key: const Key('dp_earnings_chart_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -654,7 +659,7 @@ class _EarningsChartCard extends StatelessWidget {
                 ),
               ),
               const Icon(Icons.insert_chart_outlined,
-                  color: Color(0xFF00E676), size: 20),
+                  color: DeliveryAppColors.primary, size: 20),
             ],
           ),
           const SizedBox(height: 14),
@@ -693,7 +698,7 @@ class _EarningsChartCard extends StatelessWidget {
             child: CustomPaint(
               painter: _GlowEarningsPainter(
                 points: points,
-                color: const Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
               ),
             ),
           ),
@@ -731,12 +736,12 @@ class _RangeChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF00E676).withValues(alpha: 0.15)
+                  ? DeliveryAppColors.primary.withValues(alpha: 0.15)
                   : Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFF00E676).withValues(alpha: 0.5)
+                    ? DeliveryAppColors.primary.withValues(alpha: 0.5)
                     : Colors.white.withValues(alpha: 0.08),
               ),
             ),
@@ -744,7 +749,7 @@ class _RangeChip extends StatelessWidget {
               label,
               style: TextStyle(
                 color: isSelected
-                    ? const Color(0xFF00E676)
+                    ? DeliveryAppColors.primary
                     : Colors.white.withValues(alpha: 0.7),
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -771,13 +776,13 @@ class _EarningsWalletCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF0D1B22), Color(0xFF0F1E26)],
+          colors: [DeliveryAppColors.background, DeliveryAppColors.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF00E676).withValues(alpha: 0.2),
+          color: DeliveryAppColors.primary.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -795,7 +800,7 @@ class _EarningsWalletCard extends StatelessWidget {
                 ),
               ),
               const Icon(Icons.account_balance_wallet,
-                  color: Color(0xFF00E676), size: 22),
+                  color: DeliveryAppColors.primary, size: 22),
             ],
           ),
           const SizedBox(height: 10),
@@ -817,7 +822,7 @@ class _EarningsWalletCard extends StatelessWidget {
                     lang,
                   ),
                   value: '₹${state.pendingWithdrawal.toStringAsFixed(2)}',
-                  color: const Color(0xFFFFB74D),
+                  color: DeliveryAppColors.warning,
                 ),
               ),
               const SizedBox(width: 12),
@@ -828,7 +833,7 @@ class _EarningsWalletCard extends StatelessWidget {
                     lang,
                   ),
                   value: '₹${state.totalWithdrawn.toStringAsFixed(2)}',
-                  color: const Color(0xFF29B6F6),
+                  color: DeliveryAppColors.info,
                 ),
               ),
             ],
@@ -843,7 +848,7 @@ class _EarningsWalletCard extends StatelessWidget {
                   ? null
                   : () => _showWithdrawDialog(context, state),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
+                backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -928,166 +933,18 @@ void _showWithdrawDialog(
   final lang = state.localeCode;
   final bloc = context.read<DeliveryEarningsDashboardPageBloc>();
 
-  showDialog<void>(
-    context: context,
-    builder: (dialogContext) => _WithdrawDialog(
-      walletBalance: state.walletBalance,
-      title: DeliveryEarningsDashboardStrings.of(
-        'withdrawDialogTitle',
-        lang,
-      ),
-      subtitle: DeliveryEarningsDashboardStrings.of(
-        'withdrawDialogSub',
-        lang,
-      ),
-      amountLabel: DeliveryEarningsDashboardStrings.of(
-        'withdrawAmountLabel',
-        lang,
-      ),
-      availableBalance: DeliveryEarningsDashboardStrings.of(
-        'availableBalance',
-        lang,
-      ),
-      confirmText: DeliveryEarningsDashboardStrings.of('confirm', lang),
-      cancelText: DeliveryEarningsDashboardStrings.of('cancel', lang),
-      errorText: DeliveryEarningsDashboardStrings.of(
-        'enterValidAmount',
-        lang,
-      ),
-      onConfirm: (amount) => bloc.add(DeliveryEarningsWithdrawEvent(amount)),
-    ),
+  DeliveryWithdrawDialog.show(
+    context,
+    walletBalance: state.walletBalance,
+    title: DeliveryEarningsDashboardStrings.of('withdrawDialogTitle', lang),
+    subtitle: DeliveryEarningsDashboardStrings.of('withdrawDialogSub', lang),
+    amountLabel: DeliveryEarningsDashboardStrings.of('withdrawAmountLabel', lang),
+    availableBalanceText: DeliveryEarningsDashboardStrings.of('availableBalance', lang),
+    confirmText: DeliveryEarningsDashboardStrings.of('confirm', lang),
+    cancelText: DeliveryEarningsDashboardStrings.of('cancel', lang),
+    errorText: DeliveryEarningsDashboardStrings.of('enterValidAmount', lang),
+    onConfirm: (amount) => bloc.add(DeliveryEarningsWithdrawEvent(amount)),
   );
-}
-
-class _WithdrawDialog extends StatefulWidget {
-  final double walletBalance;
-  final String title;
-  final String subtitle;
-  final String amountLabel;
-  final String availableBalance;
-  final String confirmText;
-  final String cancelText;
-  final String errorText;
-  final ValueChanged<double> onConfirm;
-
-  const _WithdrawDialog({
-    required this.walletBalance,
-    required this.title,
-    required this.subtitle,
-    required this.amountLabel,
-    required this.availableBalance,
-    required this.confirmText,
-    required this.cancelText,
-    required this.errorText,
-    required this.onConfirm,
-  });
-
-  @override
-  State<_WithdrawDialog> createState() => _WithdrawDialogState();
-}
-
-class _WithdrawDialogState extends State<_WithdrawDialog> {
-  final TextEditingController _controller = TextEditingController();
-  String? _error;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final value = double.tryParse(_controller.text.trim());
-    if (value == null || value <= 0) {
-      setState(() => _error = widget.errorText);
-      return;
-    }
-    widget.onConfirm(value);
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF0F1E26),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text(
-        widget.title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.subtitle,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            key: const Key('dp_earnings_withdraw_amount'),
-            controller: _controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            autofocus: true,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: widget.amountLabel,
-              prefixText: '₹ ',
-              errorText: _error,
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.04),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '${widget.availableBalance}: ₹${widget.walletBalance.toStringAsFixed(2)}',
-            style: const TextStyle(color: Color(0xFF00E676), fontSize: 12),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          key: const Key('dp_earnings_withdraw_cancel'),
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            widget.cancelText,
-            style: const TextStyle(color: Color(0xFF94A3B8)),
-          ),
-        ),
-        ElevatedButton(
-          key: const Key('dp_earnings_withdraw_confirm'),
-          onPressed: _submit,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF00E676),
-            foregroundColor: Colors.black,
-          ),
-          child: Text(
-            widget.confirmText,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _EarningsMediaUploadCard extends StatelessWidget {
@@ -1103,7 +960,7 @@ class _EarningsMediaUploadCard extends StatelessWidget {
       key: const Key('dp_earnings_media_upload_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1149,7 +1006,7 @@ class _EarningsMediaUploadCard extends StatelessWidget {
                 value: state.mediaUploadProgress,
                 minHeight: 8,
                 backgroundColor: Colors.white10,
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF00E676)),
+                valueColor: const AlwaysStoppedAnimation(DeliveryAppColors.primary),
               ),
             ),
             const SizedBox(height: 8),
@@ -1166,7 +1023,7 @@ class _EarningsMediaUploadCard extends StatelessWidget {
                 Text(
                   '${(state.mediaUploadProgress * 100).toStringAsFixed(0)}%',
                   style: const TextStyle(
-                    color: Color(0xFF00E676),
+                    color: DeliveryAppColors.primary,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1174,12 +1031,12 @@ class _EarningsMediaUploadCard extends StatelessWidget {
               ],
             ),
           ] else if (state.mediaUploadProgress >= 1.0) ...[
-            const Icon(Icons.check_circle, color: Color(0xFF00E676), size: 20),
+            const Icon(Icons.check_circle, color: DeliveryAppColors.primary, size: 20),
             const SizedBox(height: 6),
             Text(
               DeliveryEarningsDashboardStrings.of('uploadComplete', lang),
               style: const TextStyle(
-                color: Color(0xFF00E676),
+                color: DeliveryAppColors.primary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -1229,7 +1086,7 @@ class _EarningsTransactionsPanel extends StatelessWidget {
       key: const Key('dp_earnings_transactions_list'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1271,15 +1128,15 @@ class _TransactionRow extends StatelessWidget {
     final (IconData icon, Color color) = switch (transaction.type) {
       EarningsTransactionType.credit => (
         Icons.add_circle_outline,
-        const Color(0xFF00E676),
+        DeliveryAppColors.primary,
       ),
       EarningsTransactionType.debit => (
         Icons.remove_circle_outline,
-        const Color(0xFFFF5252),
+        DeliveryAppColors.error,
       ),
       EarningsTransactionType.withdrawal => (
         Icons.account_balance_outlined,
-        const Color(0xFFFFB74D),
+        DeliveryAppColors.warning,
       ),
     };
 
@@ -1355,7 +1212,7 @@ class _EarningsWithdrawalsPanel extends StatelessWidget {
       key: const Key('dp_earnings_withdrawals_list'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1E26),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
@@ -1395,8 +1252,8 @@ class _WithdrawalRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = record.status == 'completed'
-        ? const Color(0xFF00E676)
-        : const Color(0xFFFFB74D);
+        ? DeliveryAppColors.primary
+        : DeliveryAppColors.warning;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1647,7 +1504,7 @@ class _EarningsErrorShell extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.error_outline,
-                color: Color(0xFFFF5252), size: 64),
+                color: DeliveryAppColors.error, size: 64),
             const SizedBox(height: 16),
             Text(
               DeliveryEarningsDashboardStrings.of(
@@ -1672,7 +1529,7 @@ class _EarningsErrorShell extends StatelessWidget {
             ElevatedButton(
               key: const Key('dp_earnings_retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
+                backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,
               ),
               onPressed: () {

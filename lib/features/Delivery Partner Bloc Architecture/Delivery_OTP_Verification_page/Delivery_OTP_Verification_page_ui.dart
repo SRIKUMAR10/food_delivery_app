@@ -6,6 +6,9 @@ import 'Delivery_OTP_Verification_page_bloc.dart';
 import 'Delivery_OTP_Verification_page_event.dart';
 import 'Delivery_OTP_Verification_page_repository.dart';
 import 'Delivery_OTP_Verification_page_state.dart';
+import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/theme/delivery_app_theme.dart';
+import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryOtpVerificationPage extends StatelessWidget {
   final String verificationId;
@@ -110,7 +113,7 @@ class _DeliveryOtpVerificationPageViewState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF091015),
+      backgroundColor: DeliveryAppColors.background,
       body: Stack(
         children: [
           Positioned.fill(
@@ -119,7 +122,7 @@ class _DeliveryOtpVerificationPageViewState
               fit: BoxFit.cover,
               alignment: Alignment.center,
               errorBuilder: (context, error, stackTrace) =>
-                  Container(color: const Color(0xFF091015)),
+                  Container(color: DeliveryAppColors.background),
             ),
           ),
           Positioned.fill(
@@ -127,8 +130,8 @@ class _DeliveryOtpVerificationPageViewState
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.black.withOpacity(0.35),
-                    Colors.black.withOpacity(0.90),
+                    Colors.black.withValues(alpha: 0.35),
+                    Colors.black.withValues(alpha: 0.90),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -145,7 +148,7 @@ class _DeliveryOtpVerificationPageViewState
                     content: Text(
                       'Account Created Successfully! Please login to continue.',
                     ),
-                    backgroundColor: Color(0xFF00E676),
+                    backgroundColor: DeliveryAppColors.primary,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -167,20 +170,20 @@ class _DeliveryOtpVerificationPageViewState
                           constraints: const BoxConstraints(maxWidth: 460),
                           padding: const EdgeInsets.all(28),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF091413).withOpacity(0.92),
+                            color: const Color(0xFF091413).withValues(alpha: 0.92),
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: const Color(0xFF00E676).withOpacity(0.30),
+                              color: DeliveryAppColors.primary.withValues(alpha: 0.30),
                               width: 1.5,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.6),
+                                color: Colors.black.withValues(alpha: 0.6),
                                 blurRadius: 28,
                                 offset: const Offset(0, 10),
                               ),
                               BoxShadow(
-                                color: const Color(0xFF00E676).withOpacity(0.10),
+                                color: DeliveryAppColors.primary.withValues(alpha: 0.10),
                                 blurRadius: 40,
                                 spreadRadius: 2,
                               ),
@@ -230,7 +233,7 @@ class _DeliveryOtpVerificationPageViewState
                                           ? state.phone
                                           : '+91 ${state.phone}',
                                       style: GoogleFonts.inter(
-                                        color: const Color(0xFF00E676),
+                                        color: DeliveryAppColors.primary,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -245,7 +248,7 @@ class _DeliveryOtpVerificationPageViewState
                                 child: Text(
                                   'Change Phone Number?',
                                   style: GoogleFonts.inter(
-                                    color: const Color(0xFF00E676),
+                                    color: DeliveryAppColors.primary,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     decoration: TextDecoration.underline,
@@ -260,10 +263,10 @@ class _DeliveryOtpVerificationPageViewState
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 14, vertical: 10),
                                   decoration: BoxDecoration(
-                                    color: Colors.redAccent.withOpacity(0.12),
+                                    color: Colors.redAccent.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                        color: Colors.redAccent.withOpacity(0.4)),
+                                        color: Colors.redAccent.withValues(alpha: 0.4)),
                                   ),
                                   child: Row(
                                     children: [
@@ -322,15 +325,15 @@ class _DeliveryOtpVerificationPageViewState
                                             borderRadius:
                                                 BorderRadius.circular(12),
                                             borderSide: BorderSide(
-                                              color: const Color(0xFF00E676)
-                                                  .withOpacity(0.3),
+                                              color: DeliveryAppColors.primary
+                                                  .withValues(alpha: 0.3),
                                             ),
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius:
                                                 BorderRadius.circular(12),
                                             borderSide: const BorderSide(
-                                              color: Color(0xFF00E676),
+                                              color: DeliveryAppColors.primary,
                                               width: 2.0,
                                             ),
                                           ),
@@ -375,7 +378,7 @@ class _DeliveryOtpVerificationPageViewState
                                       'Resend OTP',
                                       style: GoogleFonts.inter(
                                         color: state.isResendEnabled
-                                            ? const Color(0xFF00E676)
+                                            ? DeliveryAppColors.primary
                                             : Colors.white30,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 13,
@@ -402,11 +405,11 @@ class _DeliveryOtpVerificationPageViewState
                                               );
                                         },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF00E676),
+                                    backgroundColor: DeliveryAppColors.primary,
                                     foregroundColor: Colors.black,
                                     elevation: 6,
-                                    shadowColor: const Color(0xFF00E676)
-                                        .withOpacity(0.4),
+                                    shadowColor: DeliveryAppColors.primary
+                                        .withValues(alpha: 0.4),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
                                     ),
