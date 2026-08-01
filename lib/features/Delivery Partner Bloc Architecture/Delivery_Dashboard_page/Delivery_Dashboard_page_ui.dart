@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'Delivery_Dashboard_page_bloc.dart';
 import 'Delivery_Dashboard_page_event.dart';
 import 'Delivery_Dashboard_page_repository.dart';
@@ -12,6 +13,7 @@ import '../../../core/theme/delivery_app_spacing.dart';
 import '../../../core/widgets/delivery_button.dart';
 import '../../../core/widgets/delivery_card.dart';
 import '../../../core/widgets/delivery_chip.dart';
+
 
 class DeliveryDashboardStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -353,6 +355,20 @@ class _DeliveryDashboardPageViewState extends State<DeliveryDashboardPageView>
                         Expanded(
                           flex: 2,
                           child: _EarningsChartCard(state: state),
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                         ),
                       ],
                     )
@@ -431,10 +447,10 @@ class _DashboardHeader extends StatelessWidget {
               border: Border.all(color: DeliveryAppColors.primary, width: 2),
             ),
             child: ClipOval(
-              child: Image.network(
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
+              child: CachedNetworkImage(
+                imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(
+                memCacheWidth: 84, memCacheHeight: 84, placeholder: (context, url) => const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: DeliveryAppColors.primary)), errorWidget: (context, url, error) => const Icon(
                   Icons.person,
                   color: DeliveryAppColors.primary,
                 ),
@@ -619,6 +635,7 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
 
     return Container(
       key: const Key('dp_dashboard_online_card'),
+      width: double.infinity,
       padding: const EdgeInsets.all(DeliveryAppSpacing.lg),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -752,27 +769,6 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
                     : DeliveryAppColors.error,
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: DeliveryButton(
-              label: isOnline
-                  ? DeliveryDashboardStrings.of('goOffline', lang)
-                  : DeliveryDashboardStrings.of('goOnline', lang),
-              onPressed: () {
-                context
-                    .read<DeliveryDashboardPageBloc>()
-                    .add(DeliveryDashboardToggleOnlineEvent(!isOnline));
-              },
-              variant: isOnline
-                  ? DeliveryButtonVariant.danger
-                  : DeliveryButtonVariant.primary,
-              icon: isOnline
-                  ? Icons.power_settings_new
-                  : Icons.wifi_tethering,
-              height: 46,
-            ),
           ),
         ],
       ),

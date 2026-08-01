@@ -163,6 +163,12 @@ class _DeliveryNavigationBarPageViewState
   Widget build(BuildContext context) {
     return BlocConsumer<DeliveryNavigationBarPageBloc, DeliveryNavigationBarState>(
       listener: (context, state) {
+        if (state.status == DeliveryNavigationBarStatus.loggedOut) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/deliveryLogin',
+            (route) => false,
+          );
+        }
         if (state.status == DeliveryNavigationBarStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -221,7 +227,7 @@ class _DeliveryNavigationBarPageViewState
             }
 
             return Scaffold(
-              backgroundColor: const Color(0xFF060B11),
+              backgroundColor: const Color(0xFF000000),
               drawer: drawer,
               bottomNavigationBar: bottomNavigationBar,
               body: body,
@@ -331,6 +337,7 @@ class _DeliverySidebar extends StatelessWidget {
             localeCode: state.localeCode,
             onContactSupport: onContactSupport,
           ),
+          const _LogoutButton(),
         ],
       ),
     );
@@ -1182,6 +1189,7 @@ class _MobileDrawer extends StatelessWidget {
                 onContactSupport();
               },
             ),
+            const _LogoutButton(),
           ],
         ),
       ),
@@ -1540,6 +1548,50 @@ class _EmptyShell extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LogoutButton extends StatelessWidget {
+  const _LogoutButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: InkWell(
+        onTap: () {
+          context.read<DeliveryNavigationBarPageBloc>().add(
+                const DeliveryNavigationBarLogoutRequestedEvent(),
+              );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFF5252).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFFFF5252).withValues(alpha: 0.25),
+            ),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.logout, color: Color(0xFFFF5252), size: 20),
+              SizedBox(width: 10),
+              Text(
+                'Logout',
+                style: TextStyle(
+                  color: Color(0xFFFF5252),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

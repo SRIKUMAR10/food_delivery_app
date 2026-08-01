@@ -48,3 +48,6 @@ class DeliveryNavigationBarLocaleChangedEvent
   @override
   List<Object?> get props => [localeCode];
 }
+class DeliveryNavigationBarLogoutRequestedEvent extends DeliveryNavigationBarEvent {
+  const DeliveryNavigationBarLogoutRequestedEvent();
+}

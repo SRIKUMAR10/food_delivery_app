@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
-enum DeliveryNavigationBarStatus { initial, loading, loaded, error, empty }
+enum DeliveryNavigationBarStatus { initial, loading, loaded, error, empty, loggedOut }
 
 class DeliveryNavigationBarItem extends Equatable {
   final String id;

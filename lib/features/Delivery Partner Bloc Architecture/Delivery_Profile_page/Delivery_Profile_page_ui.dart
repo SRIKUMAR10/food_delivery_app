@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'Delivery_Profile_page_bloc.dart';
 import 'Delivery_Profile_page_event.dart';
 import 'Delivery_Profile_page_repository.dart';
@@ -387,12 +388,12 @@ class _ProfileImageSection extends StatelessWidget {
                             ),
                           )
                         : ClipOval(
-                            child: Image.network(
-                              state.avatarPath!,
+                            child: CachedNetworkImage(
+                              imageUrl: state.avatarPath!,
                               fit: BoxFit.cover,
                               width: 92,
                               height: 92,
-                              errorBuilder: (_, __, ___) => const Icon(
+                              memCacheWidth: 184, memCacheHeight: 184, placeholder: (_, __) => const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: DeliveryAppColors.primary)), errorWidget: (_, __, ___) => const Icon(
                                 Icons.person,
                                 color: Color(0xFF061208),
                                 size: 40,

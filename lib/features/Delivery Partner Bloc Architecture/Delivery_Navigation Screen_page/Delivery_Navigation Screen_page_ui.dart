@@ -211,7 +211,7 @@ class DeliveryNavigationScreenPageView extends StatelessWidget {
   }
 }
 
-class _NavigationDashboard extends StatelessWidget {
+class _NavigationDashboard extends StatefulWidget {
   final DeliveryNavigationState state;
   final bool isMobile;
   final bool isTablet;
@@ -223,6 +223,13 @@ class _NavigationDashboard extends StatelessWidget {
     required this.isTablet,
     required this.isDesktop,
   });
+
+  @override
+  State<_NavigationDashboard> createState() => _NavigationDashboardState();
+}
+
+class _NavigationDashboardState extends State<_NavigationDashboard> {
+  bool _isMapFullScreen = false;
 
   void _handleSOS(BuildContext context, String localeCode) {
     context
@@ -251,126 +258,146 @@ class _NavigationDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final localeCode = state.localeCode;
-    return Column(
-      children: [
-        _NavigationTopBar(
-          state: state,
-          isMobile: isMobile,
-          onToggleAudio: () => context
-              .read<DeliveryNavigationBloc>()
-              .add(const DeliveryNavigationToggleAudioEvent()),
-        ),
-        Expanded(
-          child: isMobile
-              ? Column(
-                  children: [
-                    Visibility(
-                      visible: state.showMap,
-                      child: SizedBox(
-                        height: 320,
-                        child: _MapArea(state: state),
-                      ),
-                    ),
-                    if (state.showMap) const SizedBox(height: 8),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Column(
-                          children: [
-                            _OrderSummaryPanel(
-                              state: state,
-                              localeCode: localeCode,
-                              physics: const NeverScrollableScrollPhysics(),
-                              onContactCustomer: () =>
-                                  _showContactSnackBar(context, localeCode),
+    final localeCode = widget.state.localeCode;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Column(
+          children: [
+            _NavigationTopBar(
+              state: widget.state,
+              isMobile: widget.isMobile,
+              onToggleAudio: () => context
+                  .read<DeliveryNavigationBloc>()
+                  .add(const DeliveryNavigationToggleAudioEvent()),
+            ),
+            Expanded(
+              child: widget.isMobile
+                  ? Column(
+                      children: [
+                        if (widget.state.showMap)
+                          SizedBox(
+                            height: _isMapFullScreen
+                                ? (constraints.maxHeight - 80).clamp(320.0, double.infinity)
+                                : 320.0,
+                            child: _MapArea(
+                              state: widget.state,
+                              isFullScreen: _isMapFullScreen,
+                              onToggleFullScreen: () {
+                                setState(() {
+                                  _isMapFullScreen = !_isMapFullScreen;
+                                });
+                              },
                             ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: _PrimaryNavButton(
-                                isNavigating: state.isNavigating,
-                                localeCode: localeCode,
-                                onTap: () => context
-                                    .read<DeliveryNavigationBloc>()
-                                    .add(const DeliveryNavigationStartNavigationEvent()),
+                          ),
+                        if (!_isMapFullScreen) ...[
+                          if (widget.state.showMap) const SizedBox(height: 8),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              child: Column(
+                                children: [
+                                  _OrderSummaryPanel(
+                                    state: widget.state,
+                                    localeCode: localeCode,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    onContactCustomer: () =>
+                                        _showContactSnackBar(context, localeCode),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: _PrimaryNavButton(
+                                      isNavigating: widget.state.isNavigating,
+                                      localeCode: localeCode,
+                                      onTap: () => context
+                                          .read<DeliveryNavigationBloc>()
+                                          .add(const DeliveryNavigationStartNavigationEvent()),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _SosButton(
+                                          localeCode: localeCode,
+                                          onTap: () => _handleSOS(context, localeCode),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: _ExitButton(
+                                          localeCode: localeCode,
+                                          onTap: () => context
+                                              .read<DeliveryNavigationBloc>()
+                                              .add(const DeliveryNavigationExitNavigationEvent()),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: _CurrentLocationBadge(localeCode: localeCode),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _SosButton(
-                                    localeCode: localeCode,
-                                    onTap: () => _handleSOS(context, localeCode),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: _ExitButton(
-                                    localeCode: localeCode,
-                                    onTap: () => context
-                                        .read<DeliveryNavigationBloc>()
-                                        .add(const DeliveryNavigationExitNavigationEvent()),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: _CurrentLocationBadge(localeCode: localeCode),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      if (state.showMap) ...[
-                        Expanded(child: _MapArea(state: state)),
-                        const SizedBox(width: 12),
+                          ),
+                        ],
                       ],
-                      state.showMap
-                          ? SizedBox(
-                              width: 360,
-                              child: _OrderSummaryPanel(
-                                state: state,
-                                localeCode: localeCode,
-                                onContactCustomer: () =>
-                                    _showContactSnackBar(context, localeCode),
-                              ),
-                            )
-                          : Expanded(
-                              child: _OrderSummaryPanel(
-                                state: state,
-                                localeCode: localeCode,
-                                onContactCustomer: () =>
-                                    _showContactSnackBar(context, localeCode),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          if (widget.state.showMap) ...[
+                            Expanded(
+                              child: _MapArea(
+                                state: widget.state,
+                                isFullScreen: false,
+                                onToggleFullScreen: () {},
                               ),
                             ),
-                    ],
-                  ),
-                ),
-        ),
-        if (!isMobile)
-          _BottomControlBar(
-            state: state,
-            localeCode: localeCode,
-            onSOS: () => _handleSOS(context, localeCode),
-            onPrimaryAction: () => context
-                .read<DeliveryNavigationBloc>()
-                .add(const DeliveryNavigationStartNavigationEvent()),
-            onExit: () => context
-                .read<DeliveryNavigationBloc>()
-                .add(const DeliveryNavigationExitNavigationEvent()),
-          ),
-      ],
+                            const SizedBox(width: 12),
+                          ],
+                          widget.state.showMap
+                              ? SizedBox(
+                                  width: 360,
+                                  child: _OrderSummaryPanel(
+                                    state: widget.state,
+                                    localeCode: localeCode,
+                                    onContactCustomer: () =>
+                                        _showContactSnackBar(context, localeCode),
+                                  ),
+                                )
+                              : Expanded(
+                                  child: _OrderSummaryPanel(
+                                    state: widget.state,
+                                    localeCode: localeCode,
+                                    onContactCustomer: () =>
+                                        _showContactSnackBar(context, localeCode),
+                                  ),
+                                ),
+                        ],
+                      ),
+                    ),
+            ),
+            if (!widget.isMobile)
+              _BottomControlBar(
+                state: widget.state,
+                localeCode: localeCode,
+                onSOS: () => _handleSOS(context, localeCode),
+                onPrimaryAction: () => context
+                    .read<DeliveryNavigationBloc>()
+                    .add(const DeliveryNavigationStartNavigationEvent()),
+                onExit: () => context
+                    .read<DeliveryNavigationBloc>()
+                    .add(const DeliveryNavigationExitNavigationEvent()),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -586,8 +613,14 @@ class _PartnerBadge extends StatelessWidget {
 
 class _MapArea extends StatefulWidget {
   final DeliveryNavigationState state;
+  final bool isFullScreen;
+  final VoidCallback onToggleFullScreen;
 
-  const _MapArea({required this.state});
+  const _MapArea({
+    required this.state,
+    required this.isFullScreen,
+    required this.onToggleFullScreen,
+  });
 
   @override
   State<_MapArea> createState() => _MapAreaState();
@@ -628,13 +661,16 @@ class _MapAreaState extends State<_MapArea> {
               children: [
                 Positioned.fill(
                   child: CustomPaint(
-                    painter: _NavigationMapCanvas(state: widget.state),
+                    painter: _NavigationMapCanvas(
+                      state: widget.state,
+                      zoom: _zoom,
+                    ),
                   ),
                 ),
                 Positioned(
                   top: 14,
                   left: 14,
-                  right: 14,
+                  right: (widget.isFullScreen || constraints.maxWidth >= 600) ? 14 : 70,
                   child: _TurnByTurnCard(state: widget.state),
                 ),
                 Positioned(
@@ -674,6 +710,8 @@ class _MapAreaState extends State<_MapArea> {
                     onZoomIn: _zoomIn,
                     onZoomOut: _zoomOut,
                     onRecenter: () => _recenter(context),
+                    isFullScreen: widget.isFullScreen,
+                    onToggleFullScreen: widget.onToggleFullScreen,
                     onClose: () {
                       context
                           .read<DeliveryNavigationBloc>()
@@ -692,11 +730,18 @@ class _MapAreaState extends State<_MapArea> {
 
 class _NavigationMapCanvas extends CustomPainter {
   final DeliveryNavigationState state;
+  final double zoom;
 
-  _NavigationMapCanvas({required this.state});
+  _NavigationMapCanvas({required this.state, required this.zoom});
 
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.save();
+    final center = Offset(size.width / 2, size.height / 2);
+    canvas.translate(center.dx, center.dy);
+    canvas.scale(zoom / 15.0);
+    canvas.translate(-center.dx, -center.dy);
+
     final background = Paint()..color = const Color(0xFF0B1219);
     canvas.drawRect(Offset.zero & size, background);
 
@@ -769,6 +814,7 @@ class _NavigationMapCanvas extends CustomPainter {
         size.height * _MapCoords.currentY,
       ),
     );
+    canvas.restore();
   }
 
   void _drawPickupPin(Canvas canvas, Offset center) {
@@ -928,12 +974,16 @@ class _MapControls extends StatelessWidget {
   final VoidCallback onZoomOut;
   final VoidCallback onRecenter;
   final VoidCallback onClose;
+  final bool isFullScreen;
+  final VoidCallback onToggleFullScreen;
 
   const _MapControls({
     required this.onZoomIn,
     required this.onZoomOut,
     required this.onRecenter,
     required this.onClose,
+    required this.isFullScreen,
+    required this.onToggleFullScreen,
   });
 
   @override
@@ -941,6 +991,13 @@ class _MapControls extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _MapControlButton(
+          key: const Key('dp_navscreen_fullscreen_map'),
+          icon: isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen,
+          tooltip: isFullScreen ? 'Exit full screen' : 'Full screen',
+          onTap: onToggleFullScreen,
+        ),
+        const SizedBox(height: 8),
         _MapControlButton(
           key: const Key('dp_navscreen_close_map'),
           icon: Icons.close,

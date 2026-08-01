@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'Delivery_NavigationBar_page_event.dart';
 import 'Delivery_NavigationBar_page_state.dart';
 import 'Delivery_NavigationBar_page_repository.dart';
@@ -20,6 +21,7 @@ class DeliveryNavigationBarPageBloc
     on<DeliveryNavigationBarSimulateUploadEvent>(_onSimulateUpload);
     on<DeliveryNavigationBarPermissionRequestedEvent>(_onPermissionRequested);
     on<DeliveryNavigationBarLocaleChangedEvent>(_onLocaleChanged);
+    on<DeliveryNavigationBarLogoutRequestedEvent>(_onLogout);
   }
 
   Future<void> _onInit(
@@ -160,5 +162,21 @@ class DeliveryNavigationBarPageBloc
   ) async {
     await repository.saveLocaleCode(event.localeCode);
     emit(state.copyWith(localeCode: event.localeCode));
+  }
+
+  Future<void> _onLogout(
+    DeliveryNavigationBarLogoutRequestedEvent event,
+    Emitter<DeliveryNavigationBarState> emit,
+  ) async {
+    emit(state.copyWith(status: DeliveryNavigationBarStatus.loading));
+    try {
+      await FirebaseAuth.instance.signOut();
+      emit(state.copyWith(status: DeliveryNavigationBarStatus.loggedOut));
+    } catch (e) {
+      emit(state.copyWith(
+        status: DeliveryNavigationBarStatus.error,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      ));
+    }
   }
 }
