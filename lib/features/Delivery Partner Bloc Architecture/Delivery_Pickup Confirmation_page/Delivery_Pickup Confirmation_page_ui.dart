@@ -210,6 +210,11 @@ class _DeliveryPickupConfirmationPageViewState
     return BlocConsumer<DeliveryPickupConfirmationPageBloc,
         DeliveryPickupConfirmationPageState>(
       listener: (context, state) {
+        if (state.status == PickupConfirmationStatus.deliveryStarted) {
+          Navigator.of(context).pushReplacementNamed(
+            '/deliveryNavigationScreen',
+          );
+        }
         if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

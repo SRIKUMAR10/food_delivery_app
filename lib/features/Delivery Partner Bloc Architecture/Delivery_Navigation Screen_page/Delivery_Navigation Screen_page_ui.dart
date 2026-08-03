@@ -6,8 +6,6 @@ import 'Delivery_Navigation Screen_page_repository.dart';
 import 'Delivery_Navigation Screen_page_service.dart';
 import 'Delivery_Navigation Screen_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
-import '../../../core/theme/delivery_app_theme.dart';
-import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryNavigationStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -309,9 +307,17 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
                                     child: _PrimaryNavButton(
                                       isNavigating: widget.state.isNavigating,
                                       localeCode: localeCode,
-                                      onTap: () => context
-                                          .read<DeliveryNavigationBloc>()
-                                          .add(const DeliveryNavigationStartNavigationEvent()),
+                                      onTap: () {
+                                        if (widget.state.isNavigating) {
+                                          Navigator.of(context)
+                                              .pushReplacementNamed(
+                                                  '/deliveryCompleted');
+                                        } else {
+                                          context
+                                              .read<DeliveryNavigationBloc>()
+                                              .add(const DeliveryNavigationStartNavigationEvent());
+                                        }
+                                      },
                                     ),
                                   ),
                                   const SizedBox(height: 10),
@@ -388,9 +394,16 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
                 state: widget.state,
                 localeCode: localeCode,
                 onSOS: () => _handleSOS(context, localeCode),
-                onPrimaryAction: () => context
-                    .read<DeliveryNavigationBloc>()
-                    .add(const DeliveryNavigationStartNavigationEvent()),
+                onPrimaryAction: () {
+                  if (widget.state.isNavigating) {
+                    Navigator.of(context)
+                        .pushReplacementNamed('/deliveryCompleted');
+                  } else {
+                    context
+                        .read<DeliveryNavigationBloc>()
+                        .add(const DeliveryNavigationStartNavigationEvent());
+                  }
+                },
                 onExit: () => context
                     .read<DeliveryNavigationBloc>()
                     .add(const DeliveryNavigationExitNavigationEvent()),
@@ -1630,7 +1643,7 @@ class _PrimaryNavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = isNavigating
-        ? DeliveryNavigationStrings.of('followRoute', localeCode)
+        ? 'Complete Delivery'
         : DeliveryNavigationStrings.of('startNavigation', localeCode);
     return Semantics(
       button: true,

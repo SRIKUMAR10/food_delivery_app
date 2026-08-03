@@ -59,7 +59,7 @@ class DeliveryPartnerRepository {
   }
 
   Future<UserCredential> signInWithApple() async {
-    throw UnimplementedError('Apple Sign-In not yet implemented');
+    throw Exception('Apple Sign-In is not available on this platform. Please use phone or Google sign-in.');
   }
 
   Future<UserCredential> createUserWithEmailPassword(
@@ -157,9 +157,19 @@ class DeliveryPartnerRepository {
     await _auth.sendPasswordResetEmail(email: email);
   }
 
+  static const List<String> _scopedKeys = [
+    'dp_session_uid',
+    'dp_session_email',
+    'dp_saved_phone',
+  ];
+
   Future<void> signOut() async {
     await _auth.signOut();
-    await _secureStorage.deleteAll();
+    for (final key in _scopedKeys) {
+      try {
+        await _secureStorage.delete(key: key);
+      } catch (_) {}
+    }
   }
 
   Future<DeliveryPartnerModel?> getDeliveryPartner(String uid) async {
@@ -224,10 +234,10 @@ class DeliveryPartnerRepository {
   }
 
   Future<void> clearSession() async {
-    try {
-      await _secureStorage.deleteAll();
-    } catch (e) {
-      debugPrint('Secure storage clear session failed: $e');
+    for (final key in _scopedKeys) {
+      try {
+        await _secureStorage.delete(key: key);
+      } catch (_) {}
     }
   }
 

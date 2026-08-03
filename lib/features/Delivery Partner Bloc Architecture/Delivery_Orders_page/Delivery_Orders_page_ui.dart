@@ -1454,6 +1454,10 @@ class _OrderCard extends StatelessWidget {
 
     return _HoverCard(
       orderId: order.orderId,
+      onTap: () => Navigator.of(context).pushNamed(
+        '/deliveryOrderDetails',
+        arguments: {'orderId': order.orderId},
+      ),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -1681,11 +1685,9 @@ class _OrderCard extends StatelessWidget {
                   foregroundColor: DeliveryAppColors.textMuted,
                   icon: Icons.info_outline,
                   label: DeliveryOrdersStrings.of('viewDetails', lang),
-                  onTap: () => _showSnack(
-                    context,
-                    '${DeliveryOrdersStrings.of('detailsHint', lang)} '
-                    '#${order.orderId}',
-                    DeliveryAppColors.info,
+                  onTap: () => Navigator.of(context).pushNamed(
+                    '/deliveryOrderDetails',
+                    arguments: {'orderId': order.orderId},
                   ),
                 ),
                 _CardActionButton(
@@ -1930,8 +1932,9 @@ class _CardActionButton extends StatelessWidget {
 class _HoverCard extends StatefulWidget {
   final String orderId;
   final Widget child;
+  final VoidCallback? onTap;
 
-  const _HoverCard({required this.orderId, required this.child});
+  const _HoverCard({required this.orderId, required this.child, this.onTap});
 
   @override
   State<_HoverCard> createState() => _HoverCardState();
@@ -1945,7 +1948,9 @@ class _HoverCardState extends State<_HoverCard> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedScale(
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedScale(
         scale: _hovered ? 1.01 : 1.0,
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
@@ -1973,6 +1978,7 @@ class _HoverCardState extends State<_HoverCard> {
           ),
           child: widget.child,
         ),
+      ),
       ),
     );
   }

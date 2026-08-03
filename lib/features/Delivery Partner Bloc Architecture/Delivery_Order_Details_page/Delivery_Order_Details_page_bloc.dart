@@ -1,10 +1,16 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'Delivery_Order_Details_page_event.dart';
+import 'Delivery_Order_Details_page_repository.dart';
 import 'Delivery_Order_Details_page_state.dart';
 
 class DeliveryOrderDetailsPageBloc
     extends Bloc<DeliveryOrderDetailsPageEvent, DeliveryOrderDetailsPageState> {
-  DeliveryOrderDetailsPageBloc() : super(const DeliveryOrderDetailsPageState()) {
+  final DeliveryOrderDetailsRepositoryBase repository;
+
+  DeliveryOrderDetailsPageBloc({
+    DeliveryOrderDetailsRepositoryBase? repository,
+  })  : repository = repository ?? DeliveryOrderDetailsRepository(),
+        super(const DeliveryOrderDetailsPageState()) {
     on<FetchOrderDetailsEvent>(_onFetchOrderDetails);
     on<UpdateOrderStatusEvent>(_onUpdateOrderStatus);
     on<CallCustomerEvent>(_onCallCustomer);
@@ -17,24 +23,10 @@ class DeliveryOrderDetailsPageBloc
   ) async {
     emit(state.copyWith(status: OrderDetailsStatus.loading));
     try {
-      // Mock loading delay and fetch database logic
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      const mockOrder = OrderModel(
-        id: '#ORD12345',
-        pickupAddress: 'Green Mart, 24, Anna Salai, Chennai',
-        dropoffAddress: 'Mike Residence, 12, Beach Road, Chennai',
-        earnings: 120.0,
-        distance: 2.4,
-        status: 'Pending',
-        customerPhone: '+919876543210',
-        merchantPhone: '+919876543211',
-        orderValue: 620.0,
-      );
-
+      final order = await repository.fetchOrderDetails(event.orderId);
       emit(state.copyWith(
         status: OrderDetailsStatus.success,
-        order: mockOrder,
+        order: order,
       ));
     } catch (e) {
       emit(state.copyWith(
@@ -51,8 +43,8 @@ class DeliveryOrderDetailsPageBloc
     if (state.order == null) return;
     emit(state.copyWith(status: OrderDetailsStatus.loading));
     try {
-      await Future.delayed(const Duration(milliseconds: 300));
-      final updatedOrder = state.order!.copyWith(status: event.status);
+      final updatedOrder =
+          await repository.updateOrderStatus(event.orderId, event.status);
       emit(state.copyWith(
         status: OrderDetailsStatus.success,
         order: updatedOrder,

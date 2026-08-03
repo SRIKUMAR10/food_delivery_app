@@ -164,8 +164,11 @@ service cloud.firestore {
 
     // --- 13. Delivery Partners Collection ---
     match /delivery_partners/{partnerId} {
-      allow read: if true;
-      allow create: if true;
+      allow read: if isAuthenticated() && (
+        request.auth.uid == partnerId ||
+        resource.data.role == 'delivery_partner'
+      );
+      allow create: if isAuthenticated() && request.auth.uid == partnerId;
       allow update, delete: if isOwner(partnerId);
       
       match /{subcollection}/{document=**} {

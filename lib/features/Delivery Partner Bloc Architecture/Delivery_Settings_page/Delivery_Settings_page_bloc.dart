@@ -10,13 +10,17 @@ class DeliverySettingsBloc
   final DeliverySettingsServiceBase service;
 
   DeliverySettingsBloc({
-    required this.repository,
-    required this.service,
-  }) : super(const DeliverySettingsState()) {
+    DeliverySettingsRepositoryBase? repository,
+    DeliverySettingsServiceBase? service,
+  })  : repository = repository ?? DeliverySettingsRepository(),
+        service = service ?? DeliverySettingsService(),
+        super(const DeliverySettingsState()) {
     on<DeliverySettingsInitEvent>(_onInit);
     on<DeliverySettingsToggleNotificationEvent>(_onToggleNotification);
     on<DeliverySettingsToggleAutoAcceptEvent>(_onToggleAutoAccept);
     on<DeliverySettingsToggleDarkModeEvent>(_onToggleDarkMode);
+    on<DeliverySettingsToggleSunModeEvent>(_onToggleSunMode);
+    on<DeliverySettingsToggleOledModeEvent>(_onToggleOledMode);
     on<DeliverySettingsUpdateRadiusEvent>(_onUpdateRadius);
     on<DeliverySettingsChangeLanguageEvent>(_onChangeLanguage);
     on<DeliverySettingsSaveEvent>(_onSave);
@@ -99,6 +103,34 @@ class DeliverySettingsBloc
     )));
   }
 
+  void _onToggleSunMode(
+    DeliverySettingsToggleSunModeEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) {
+    final newSunMode = !state.sunModeEnabled;
+    emit(_syncItems(state.copyWith(
+      sunModeEnabled: newSunMode,
+      oledModeEnabled: newSunMode ? false : state.oledModeEnabled,
+      status: DeliverySettingsStatus.loaded,
+      saveStatus: DeliverySettingsSaveStatus.idle,
+      clearError: true,
+    )));
+  }
+
+  void _onToggleOledMode(
+    DeliverySettingsToggleOledModeEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) {
+    final newOledMode = !state.oledModeEnabled;
+    emit(_syncItems(state.copyWith(
+      oledModeEnabled: newOledMode,
+      sunModeEnabled: newOledMode ? false : state.sunModeEnabled,
+      status: DeliverySettingsStatus.loaded,
+      saveStatus: DeliverySettingsSaveStatus.idle,
+      clearError: true,
+    )));
+  }
+
   void _onUpdateRadius(
     DeliverySettingsUpdateRadiusEvent event,
     Emitter<DeliverySettingsState> emit,
@@ -162,6 +194,8 @@ class DeliverySettingsBloc
       notificationsEnabled: current.notificationsEnabled,
       autoAcceptEnabled: current.autoAcceptEnabled,
       darkModeEnabled: current.darkModeEnabled,
+      sunModeEnabled: current.sunModeEnabled,
+      oledModeEnabled: current.oledModeEnabled,
     );
     return current.copyWith(items: items);
   }

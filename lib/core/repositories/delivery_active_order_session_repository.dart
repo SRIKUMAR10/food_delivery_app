@@ -53,6 +53,7 @@ class DeliverySessionState {
     String? customerName,
     String? customerAddress,
     double? orderAmount,
+    bool clearActiveOrder = false,
   }) {
     return DeliverySessionState(
       isOnline: isOnline ?? this.isOnline,
@@ -61,12 +62,12 @@ class DeliverySessionState {
       totalEarningsToday: totalEarningsToday ?? this.totalEarningsToday,
       completedOrdersCount: completedOrdersCount ?? this.completedOrdersCount,
       deliveryStage: deliveryStage ?? this.deliveryStage,
-      activeOrderId: activeOrderId ?? this.activeOrderId,
-      storeName: storeName ?? this.storeName,
-      storeAddress: storeAddress ?? this.storeAddress,
-      customerName: customerName ?? this.customerName,
-      customerAddress: customerAddress ?? this.customerAddress,
-      orderAmount: orderAmount ?? this.orderAmount,
+      activeOrderId: clearActiveOrder ? null : (activeOrderId ?? this.activeOrderId),
+      storeName: clearActiveOrder ? null : (storeName ?? this.storeName),
+      storeAddress: clearActiveOrder ? null : (storeAddress ?? this.storeAddress),
+      customerName: clearActiveOrder ? null : (customerName ?? this.customerName),
+      customerAddress: clearActiveOrder ? null : (customerAddress ?? this.customerAddress),
+      orderAmount: clearActiveOrder ? null : (orderAmount ?? this.orderAmount),
     );
   }
 }
@@ -145,7 +146,7 @@ class DeliveryActiveOrderSessionRepository {
   void declineOrder() {
     _emitState(_currentState.copyWith(
       deliveryStage: ActiveDeliveryStage.idle,
-      activeOrderId: null,
+      clearActiveOrder: true,
     ));
   }
 
@@ -171,7 +172,7 @@ class DeliveryActiveOrderSessionRepository {
   void resetOrder() {
     _emitState(_currentState.copyWith(
       deliveryStage: ActiveDeliveryStage.idle,
-      activeOrderId: null,
+      clearActiveOrder: true,
     ));
   }
 }

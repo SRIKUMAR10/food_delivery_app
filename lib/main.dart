@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -24,6 +25,9 @@ import 'features/Delivery Partner Bloc Architecture/Delivery_Sign_Up_page/Delive
 import 'features/Delivery Partner Bloc Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_bloc.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_event.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_repository.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_OTP_Verification_page/Delivery_OTP_Verification_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_Pickup Confirmation_page/Delivery_Pickup Confirmation_page_ui.dart';
@@ -97,16 +101,18 @@ enum AppMode { buyer, seller, delivery }
 const AppMode activeAppMode = AppMode.delivery;
 
 /// Backward compatibility flag for legacy checks
-const bool isBuyerApp = activeAppMode == AppMode.delivery;
+const bool isBuyerApp = activeAppMode == AppMode.buyer;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await FirebaseFirestore.instance.clearPersistence();
+  if (kDebugMode) {
+    await FirebaseFirestore.instance.clearPersistence();
+  }
 
   await FirebaseAppCheck.instance.activate(
     providerWeb: ReCaptchaV3Provider(
-      '6Le3Ei8tAAAAAJbDz5qr_vLKa0iZ9wm3lNTaCi3K',
+      dotenv.env['RECAPTCHA_SITE_KEY'] ?? '',
     ),
     providerAndroid: AndroidPlayIntegrityProvider(),
     providerApple: AppleAppAttestProvider(),
@@ -161,17 +167,35 @@ class _AppThemeWrapper extends StatefulWidget {
 }
 
 class _AppThemeWrapperState extends State<_AppThemeWrapper> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  StreamSubscription<User?>? _authSub;
+  String? _lastRoute;
+
   @override
   void initState() {
     super.initState();
     widget.themeManager.themeModeNotifier.addListener(_onChanged);
     widget.localeManager.localeNotifier.addListener(_onChanged);
+
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      final currentRoute =
+          _navigatorKey.currentState?.widget.initialRoute ?? '';
+      if (user == null) {
+        _navigatorKey.currentState
+            ?.pushNamedAndRemoveUntil('/deliveryonboard', (_) => false);
+      } else if (currentRoute.startsWith('/deliveryonboard') ||
+          currentRoute.startsWith('/deliverylogin')) {
+        _navigatorKey.currentState
+            ?.pushReplacementNamed('/deliveryNavigationBar');
+      }
+    });
   }
 
   @override
   void dispose() {
     widget.themeManager.themeModeNotifier.removeListener(_onChanged);
     widget.localeManager.localeNotifier.removeListener(_onChanged);
+    _authSub?.cancel();
     super.dispose();
   }
 
@@ -222,6 +246,7 @@ class _AppThemeWrapperState extends State<_AppThemeWrapper> {
     );
 
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
@@ -249,7 +274,6 @@ class _AppThemeWrapperState extends State<_AppThemeWrapper> {
         '/selleronboard': (context) => const SellerOnboardPageUI(),
         '/sellerSignUp': (context) => const SellerSignUpPageUI(),
         '/sellerDashboard': (context) => const SellerNavigationBarViewPageUI(),
-        '/deliverylogin': (context) => const DeliveryLoginPage(),
         '/deliveryLogin': (context) => const DeliveryLoginPage(),
         '/deliverySignUp': (context) => const DeliverySignUpPage(),
         '/deliveryForgotPassword': (context) =>
@@ -257,8 +281,12 @@ class _AppThemeWrapperState extends State<_AppThemeWrapper> {
         '/deliveryNavigationBar': (context) => const DeliveryNavigationBarPage(),
         '/deliveryOrderDetails': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-          return DeliveryOrderDetailsPageUi(
-            orderId: args?['orderId'] as String? ?? '#ORD98234',
+          final orderId = args?['orderId'] as String? ?? '#ORD98234';
+          return BlocProvider<DeliveryOrderDetailsPageBloc>(
+            create: (_) => DeliveryOrderDetailsPageBloc(
+              repository: DeliveryOrderDetailsRepository(),
+            )..add(FetchOrderDetailsEvent(orderId)),
+            child: DeliveryOrderDetailsPageUi(orderId: orderId),
           );
         },
         '/deliveryIncomingOrder': (context) => const DeliveryIncomingOrderPageUi(),

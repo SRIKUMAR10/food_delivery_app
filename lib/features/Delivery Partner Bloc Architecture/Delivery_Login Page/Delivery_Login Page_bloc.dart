@@ -10,9 +10,11 @@ class DeliveryLoginPageBloc
   final DeliveryLoginServiceBase service;
 
   DeliveryLoginPageBloc({
-    required this.repository,
-    required this.service,
-  }) : super(const DeliveryLoginPageState()) {
+    DeliveryLoginRepositoryBase? repository,
+    DeliveryLoginServiceBase? service,
+  })  : repository = repository ?? DeliveryLoginRepository(),
+        service = service ?? DeliveryLoginService(),
+        super(const DeliveryLoginPageState()) {
     on<DeliveryLoginInitEvent>(_onInit);
     on<DeliveryLoginPhoneChangedEvent>(_onPhoneChanged);
     on<DeliveryLoginPasswordChangedEvent>(_onPasswordChanged);

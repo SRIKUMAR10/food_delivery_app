@@ -77,6 +77,7 @@ dependencies:
   firebase_messaging: ^16.4.1
   audioplayers: ^6.4.0
   just_audio: ^0.10.6
+  video_player: ^2.10.0
   csv: ^6.0.0
   google_sign_in: ^6.2.1
   zego_uikit_prebuilt_call: ^4.24.2
@@ -128,6 +129,7 @@ flutter:
     - assets/images/Delivery_onboarding.png
     - assets/images/Delivery_scooter.png
     - assets/images/Delivery_Login_scooter.png
+    - assets/videos/
     - assets/images/seller_curved_ImgID1.svg
     - .env
 

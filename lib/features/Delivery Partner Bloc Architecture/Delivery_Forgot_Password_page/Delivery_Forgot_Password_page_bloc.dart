@@ -1,14 +1,19 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:food_delivery_app/repositories/delivery_partner_repository.dart';
 import 'Delivery_Forgot_Password_page_event.dart';
+import 'Delivery_Forgot_Password_page_repository.dart';
+import 'Delivery_Forgot_Password_page_service.dart';
 import 'Delivery_Forgot_Password_page_state.dart';
 
 class DeliveryForgotPasswordBloc
     extends Bloc<DeliveryForgotPasswordEvent, DeliveryForgotPasswordState> {
-  final DeliveryPartnerRepository _partnerRepo;
+  final DeliveryForgotPasswordRepositoryBase repository;
+  final DeliveryForgotPasswordServiceBase service;
 
-  DeliveryForgotPasswordBloc({DeliveryPartnerRepository? partnerRepo})
-      : _partnerRepo = partnerRepo ?? DeliveryPartnerRepository(),
+  DeliveryForgotPasswordBloc({
+    DeliveryForgotPasswordRepositoryBase? repository,
+    DeliveryForgotPasswordServiceBase? service,
+  })  : repository = repository ?? DeliveryForgotPasswordRepository(),
+        service = service ?? DeliveryForgotPasswordService(),
         super(const DeliveryForgotPasswordState()) {
     on<DeliveryForgotPasswordEmailChanged>(_onEmailChanged);
     on<DeliveryForgotPasswordSubmitted>(_onSubmitted);
@@ -25,19 +30,11 @@ class DeliveryForgotPasswordBloc
     DeliveryForgotPasswordSubmitted event,
     Emitter<DeliveryForgotPasswordState> emit,
   ) async {
-    if (state.email.trim().isEmpty) {
+    final validationError = service.validateEmail(state.email);
+    if (validationError != null) {
       emit(state.copyWith(
         status: DeliveryForgotPasswordStatus.failure,
-        errorMessage: 'Please enter your email address',
-      ));
-      return;
-    }
-
-    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    if (!emailRegex.hasMatch(state.email.trim())) {
-      emit(state.copyWith(
-        status: DeliveryForgotPasswordStatus.failure,
-        errorMessage: 'Please enter a valid email address',
+        errorMessage: validationError,
       ));
       return;
     }
@@ -48,7 +45,7 @@ class DeliveryForgotPasswordBloc
     ));
 
     try {
-      await _partnerRepo.sendPasswordResetEmail(state.email.trim());
+      await repository.sendPasswordResetEmail(state.email.trim());
       emit(state.copyWith(status: DeliveryForgotPasswordStatus.success));
     } catch (e) {
       emit(state.copyWith(

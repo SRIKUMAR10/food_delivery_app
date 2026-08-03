@@ -10,9 +10,11 @@ class DeliveryProfileBloc
   final DeliveryProfileServiceBase service;
 
   DeliveryProfileBloc({
-    required this.repository,
-    required this.service,
-  }) : super(const DeliveryProfileState()) {
+    DeliveryProfileRepositoryBase? repository,
+    DeliveryProfileServiceBase? service,
+  })  : repository = repository ?? DeliveryProfileRepository(),
+        service = service ?? DeliveryProfileService(),
+        super(const DeliveryProfileState()) {
     on<DeliveryProfileInitEvent>(_onInit);
     on<DeliveryProfileUpdateFieldEvent>(_onUpdateField);
     on<DeliveryProfilePickImageEvent>(_onPickImage);

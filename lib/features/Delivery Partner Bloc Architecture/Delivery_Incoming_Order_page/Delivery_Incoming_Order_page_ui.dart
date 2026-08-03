@@ -1,88 +1,97 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'Delivery_Incoming_Order_page_bloc.dart';
+import 'Delivery_Incoming_Order_page_event.dart';
+import 'Delivery_Incoming_Order_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/theme/delivery_app_theme.dart';
 import '../../../core/theme/delivery_app_typography.dart';
 
-class DeliveryIncomingOrderPageUi extends StatefulWidget {
+class DeliveryIncomingOrderPageUi extends StatelessWidget {
   const DeliveryIncomingOrderPageUi({super.key});
 
   @override
-  State<DeliveryIncomingOrderPageUi> createState() => _DeliveryIncomingOrderPageUiState();
+  Widget build(BuildContext context) {
+    return BlocProvider<DeliveryIncomingOrderBloc>(
+      create: (_) => DeliveryIncomingOrderBloc()
+        ..add(const DeliveryIncomingOrderLoadEvent()),
+      child: const _IncomingOrderView(),
+    );
+  }
 }
 
-class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageUi>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _timerController;
-
-  @override
-  void initState() {
-    super.initState();
-    // 15 seconds countdown timer
-    _timerController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 15),
-    )..reverse(from: 1.0).then((_) {
-        // Automatically decline on timeout
-        if (mounted) Navigator.of(context).pop();
-      });
-  }
-
-  @override
-  void dispose() {
-    _timerController.dispose();
-    super.dispose();
-  }
+class _IncomingOrderView extends StatelessWidget {
+  const _IncomingOrderView();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF070B11),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0C121E),
-        title: const Text(
-          'INCOMING ORDER REQUEST',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
-        ),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth >= 1024;
-          return Column(
-            children: [
-              Expanded(
-                child: isWide
-                    ? Row(
-                        children: [
-                          Expanded(
-                            flex: 6,
-                            child: _buildMapPane(),
-                          ),
-                          Expanded(
-                            flex: 4,
-                            child: _buildDetailsPane(),
-                          ),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          Expanded(child: _buildMapPane()),
-                          _buildDetailsPane(),
-                        ],
-                      ),
-              ),
-              _buildBottomActionBar(),
-            ],
+    return BlocConsumer<DeliveryIncomingOrderBloc, DeliveryIncomingOrderState>(
+      listener: (context, state) {
+        if (state.status == IncomingOrderStatus.accepted) {
+          Navigator.of(context).pushReplacementNamed(
+            '/deliveryPickupConfirmation',
+            arguments: {'orderId': state.orderId},
           );
-        },
-      ),
+        } else if (state.status == IncomingOrderStatus.declined ||
+            state.status == IncomingOrderStatus.expired) {
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else {
+            Navigator.of(context).pushReplacementNamed('/deliveryNavigationBar');
+          }
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: const Color(0xFF070B11),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF0C121E),
+            title: const Text(
+              'INCOMING ORDER REQUEST',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            centerTitle: true,
+            automaticallyImplyLeading: false,
+          ),
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 1024;
+              return Column(
+                children: [
+                  Expanded(
+                    child: isWide
+                        ? Row(
+                            children: [
+                              Expanded(
+                                flex: 6,
+                                child: _buildMapPane(),
+                              ),
+                              Expanded(
+                                flex: 4,
+                                child: _buildDetailsPane(state),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            children: [
+                              Expanded(child: _buildMapPane()),
+                              _buildDetailsPane(state),
+                            ],
+                          ),
+                  ),
+                  _buildBottomActionBar(context, state),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -110,7 +119,7 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
     );
   }
 
-  Widget _buildDetailsPane() {
+  Widget _buildDetailsPane(DeliveryIncomingOrderState state) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: ClipRRect(
@@ -141,14 +150,14 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
                   icon: Icons.store,
                   color: Colors.cyanAccent,
                   title: 'Pickup Store',
-                  address: 'Green Mart, 24, Anna Salai, Chennai',
+                  address: state.storeAddress,
                 ),
                 const SizedBox(height: 16),
                 _buildRouteNode(
                   icon: Icons.location_on,
                   color: Colors.redAccent,
                   title: 'Drop Address',
-                  address: 'Mike Residence, 12, Beach Road, Chennai',
+                  address: state.customerAddress,
                 ),
                 const Spacer(),
                 const Divider(color: Colors.white10),
@@ -156,7 +165,7 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
                 _buildStatRow(Icons.route, 'Distance', '2.4 km'),
                 _buildStatRow(Icons.timer, 'Estimated Time', '12 min'),
                 _buildStatRow(Icons.payment, 'COD Status', 'COD Available', isGreen: true),
-                _buildStatRow(Icons.currency_rupee, 'Order Value', '₹620.00'),
+                _buildStatRow(Icons.currency_rupee, 'Order Value', '₹${state.orderAmount.toStringAsFixed(2)}'),
               ],
             ),
           ),
@@ -222,31 +231,30 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
     );
   }
 
-  Widget _buildBottomActionBar() {
+  Widget _buildBottomActionBar(BuildContext context, DeliveryIncomingOrderState state) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       color: const Color(0xFF0C121E),
       child: Row(
         children: [
           // Timer Widget
-          AnimatedBuilder(
-            animation: _timerController,
-            builder: (context, child) {
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    value: _timerController.value,
-                    valueColor: const AlwaysStoppedAnimation(DeliveryAppColors.primary),
-                    backgroundColor: Colors.white10,
-                  ),
-                  Text(
-                    '${(_timerController.value * 15).ceil()}s',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              );
-            },
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  value: state.remainingSeconds / 15,
+                  valueColor: const AlwaysStoppedAnimation(DeliveryAppColors.primary),
+                  backgroundColor: Colors.white10,
+                ),
+              ),
+              Text(
+                '${state.remainingSeconds}s',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
           const SizedBox(width: 24),
           // Action Buttons
@@ -258,7 +266,9 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
                   width: 160,
                   height: 48,
                   child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => context
+                        .read<DeliveryIncomingOrderBloc>()
+                        .add(const DeliveryIncomingOrderDeclineEvent()),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.redAccent,
                       side: const BorderSide(color: Colors.redAccent),
@@ -272,11 +282,9 @@ class _DeliveryIncomingOrderPageUiState extends State<DeliveryIncomingOrderPageU
                   width: 200,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      // Open Details directly to simulate acceptance flow
-                      Navigator.of(context).pushNamed('/deliveryOrderDetails');
-                    },
+                    onPressed: () => context
+                        .read<DeliveryIncomingOrderBloc>()
+                        .add(const DeliveryIncomingOrderAcceptEvent()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: DeliveryAppColors.primary,
                       foregroundColor: Colors.black,

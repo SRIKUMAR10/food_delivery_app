@@ -3,18 +3,22 @@ import 'Delivery_Pickup Confirmation_page_event.dart';
 import 'Delivery_Pickup Confirmation_page_repository.dart';
 import 'Delivery_Pickup Confirmation_page_service.dart';
 import 'Delivery_Pickup Confirmation_page_state.dart';
+import '../../../core/repositories/delivery_active_order_session_repository.dart';
 
 class DeliveryPickupConfirmationPageBloc
     extends Bloc<DeliveryPickupConfirmationPageEvent,
         DeliveryPickupConfirmationPageState> {
   final DeliveryPickupConfirmationRepositoryBase repository;
   final DeliveryPickupConfirmationServiceBase service;
+  final DeliveryActiveOrderSessionRepository? _sessionRepo;
 
   DeliveryPickupConfirmationPageBloc({
     DeliveryPickupConfirmationRepositoryBase? repository,
     DeliveryPickupConfirmationServiceBase? service,
+    DeliveryActiveOrderSessionRepository? sessionRepo,
   })  : repository = repository ?? DeliveryPickupConfirmationRepository(),
         service = service ?? DeliveryPickupConfirmationService(),
+        _sessionRepo = sessionRepo,
         super(const DeliveryPickupConfirmationPageState()) {
     on<FetchPickupConfirmationDetailsEvent>(_onFetchDetails);
     on<StartDeliveryEvent>(_onStartDelivery);
@@ -51,6 +55,7 @@ class DeliveryPickupConfirmationPageBloc
     emit(state.copyWith(status: PickupConfirmationStatus.loading));
     try {
       final model = await repository.startDelivery(event.orderId);
+      _sessionRepo?.confirmPickup();
       emit(state.copyWith(
         status: PickupConfirmationStatus.deliveryStarted,
         model: model,

@@ -7,8 +7,6 @@ import 'Delivery_Settings_page_repository.dart';
 import 'Delivery_Settings_page_service.dart';
 import 'Delivery_Settings_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
-import '../../../core/theme/delivery_app_theme.dart';
-import '../../../core/theme/delivery_app_typography.dart';
 
 String formatDeliveryCurrency(num amount, String localeCode) {
   try {
@@ -44,6 +42,10 @@ class DeliverySettingsStrings {
       'autoAcceptSub': 'Automatically accept matching orders in your area.',
       'darkMode': 'Dark Mode',
       'darkModeSub': 'Use a dark theme for better visibility at night.',
+      'sunMode': 'Outdoor / Sun Mode',
+      'sunModeSub': 'High-contrast light theme for direct sunlight visibility.',
+      'oledMode': 'OLED Battery Saver',
+      'oledModeSub': 'True black theme. Saves 15-30% battery on OLED screens.',
       'earningsPreview': 'Estimated Daily Earnings',
       'earningsPreviewSub':
           'Based on your delivery radius and demand in your area.',
@@ -81,6 +83,10 @@ class DeliverySettingsStrings {
       'autoAcceptSub': 'உங்கள் பகுதியில் உள்ள பொருந்தும் ஆர்டர்களை தானாக ஏற்கவும்.',
       'darkMode': 'டார்க் மோட்',
       'darkModeSub': 'இரவில் சிறந்த பார்வைக்காக இருண்ட தீம் பயன்படுத்தவும்.',
+      'sunMode': 'வெளிப்புற / சூரிய மோட்',
+      'sunModeSub': 'நேரடி சூரிய ஒளியில் தெளிவான பார்வைக்கு அதிக மாறுபாடு கொண்ட தீம்.',
+      'oledMode': 'OLED பேட்டரி சேமிப்பு',
+      'oledModeSub': 'OLED திரைகளில் 15-30% பேட்டரியை சேமிக்கும் உண்மையான கருப்பு தீம்.',
       'earningsPreview': 'மதிப்பிடப்பட்ட தினசரி வருவாய்',
       'earningsPreviewSub': 'உங்கள் டெலிவரி ஆரம் மற்றும் உங்கள் பகுதியில் உள்ள தேவையின் அடிப்படையில்.',
       'perDay': 'ஒரு நாளுக்கு',
@@ -628,6 +634,12 @@ class _ToggleTile extends StatelessWidget {
         break;
       case 'darkMode':
         bloc.add(const DeliverySettingsToggleDarkModeEvent());
+        break;
+      case 'sunMode':
+        bloc.add(const DeliverySettingsToggleSunModeEvent());
+        break;
+      case 'oledMode':
+        bloc.add(const DeliverySettingsToggleOledModeEvent());
         break;
     }
   }

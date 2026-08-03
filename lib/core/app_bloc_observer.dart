@@ -6,25 +6,24 @@ class AppBlocObserver extends BlocObserver {
   @override
   void onChange(BlocBase bloc, Change change) {
     super.onChange(bloc, change);
-    debugPrint('${bloc.runtimeType} $change');
+    debugPrint('${bloc.runtimeType}: state changed');
   }
 
   @override
   void onTransition(Bloc bloc, Transition transition) {
     super.onTransition(bloc, transition);
-    debugPrint('${bloc.runtimeType} $transition');
+    debugPrint('${bloc.runtimeType}: ${transition.event.runtimeType} -> ${transition.nextState.runtimeType}');
   }
 
   @override
   void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
     debugPrint('${bloc.runtimeType} $error');
 
-    // Log the error to Crashlytics
     FirebaseCrashlytics.instance.recordError(
       error,
       stackTrace,
       reason: 'Exception in ${bloc.runtimeType}',
-      fatal: false, // BLoC errors usually don't crash the app entirely
+      fatal: false,
     );
 
     super.onError(bloc, error, stackTrace);

@@ -208,6 +208,10 @@ class _DeliveryCompletedPageViewState extends State<DeliveryCompletedPageView>
 
   void _onReturnHome() {
     context.read<DeliveryCompletedBloc>().add(const ReturnHomeRequestedEvent());
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/deliveryNavigationBar',
+      (route) => false,
+    );
   }
 
   void _onCompleteOrder(DeliveryCompletedPageState state) {

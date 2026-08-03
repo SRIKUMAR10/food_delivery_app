@@ -51,6 +51,12 @@ class DeliverySettingsItem extends Equatable {
       case 'darkMode':
         iconData = Icons.dark_mode_outlined;
         break;
+      case 'sunMode':
+        iconData = Icons.wb_sunny_outlined;
+        break;
+      case 'oledMode':
+        iconData = Icons.battery_saver;
+        break;
       default:
         iconData = Icons.tune;
     }
@@ -74,6 +80,8 @@ class DeliverySettingsState extends Equatable {
   final bool notificationsEnabled;
   final bool autoAcceptEnabled;
   final bool darkModeEnabled;
+  final bool sunModeEnabled;
+  final bool oledModeEnabled;
   final double deliveryRadius;
   final String languageCode;
   final String localeCode;
@@ -86,6 +94,8 @@ class DeliverySettingsState extends Equatable {
     this.notificationsEnabled = true,
     this.autoAcceptEnabled = true,
     this.darkModeEnabled = false,
+    this.sunModeEnabled = false,
+    this.oledModeEnabled = false,
     this.deliveryRadius = 5.0,
     this.languageCode = 'en',
     this.localeCode = 'en',
@@ -100,6 +110,8 @@ class DeliverySettingsState extends Equatable {
     bool? notificationsEnabled,
     bool? autoAcceptEnabled,
     bool? darkModeEnabled,
+    bool? sunModeEnabled,
+    bool? oledModeEnabled,
     double? deliveryRadius,
     String? languageCode,
     String? localeCode,
@@ -112,6 +124,8 @@ class DeliverySettingsState extends Equatable {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       autoAcceptEnabled: autoAcceptEnabled ?? this.autoAcceptEnabled,
       darkModeEnabled: darkModeEnabled ?? this.darkModeEnabled,
+      sunModeEnabled: sunModeEnabled ?? this.sunModeEnabled,
+      oledModeEnabled: oledModeEnabled ?? this.oledModeEnabled,
       deliveryRadius: deliveryRadius ?? this.deliveryRadius,
       languageCode: languageCode ?? this.languageCode,
       localeCode: localeCode ?? this.localeCode,
@@ -126,6 +140,8 @@ class DeliverySettingsState extends Equatable {
         'notificationsEnabled': notificationsEnabled,
         'autoAcceptEnabled': autoAcceptEnabled,
         'darkModeEnabled': darkModeEnabled,
+        'sunModeEnabled': sunModeEnabled,
+        'oledModeEnabled': oledModeEnabled,
         'deliveryRadius': deliveryRadius,
         'languageCode': languageCode,
         'localeCode': localeCode,
@@ -148,6 +164,8 @@ class DeliverySettingsState extends Equatable {
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
       autoAcceptEnabled: json['autoAcceptEnabled'] as bool? ?? true,
       darkModeEnabled: json['darkModeEnabled'] as bool? ?? false,
+      sunModeEnabled: json['sunModeEnabled'] as bool? ?? false,
+      oledModeEnabled: json['oledModeEnabled'] as bool? ?? false,
       deliveryRadius: (json['deliveryRadius'] as num?)?.toDouble() ?? 5.0,
       languageCode: json['languageCode'] as String? ?? 'en',
       localeCode: json['localeCode'] as String? ?? 'en',
@@ -166,6 +184,8 @@ class DeliverySettingsState extends Equatable {
         notificationsEnabled,
         autoAcceptEnabled,
         darkModeEnabled,
+        sunModeEnabled,
+        oledModeEnabled,
         deliveryRadius,
         languageCode,
         localeCode,

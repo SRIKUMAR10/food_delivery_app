@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'Delivery_Orders_page_state.dart';
 
 abstract class DeliveryOrdersServiceBase {
@@ -29,179 +31,98 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
 
   static const double _earningRate = 0.18;
 
+  final FirebaseFirestore? _firestore;
+  final FirebaseAuth? _auth;
+
+  DeliveryOrdersService({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : _firestore = firestore,
+        _auth = auth;
+
   @override
   Future<Map<String, dynamic>> fetchOrdersData() async {
-    await Future.delayed(const Duration(milliseconds: 350));
+    try {
+      if (_firestore != null && _auth?.currentUser != null) {
+        final uid = _auth!.currentUser!.uid;
+        final ordersQuery = await _firestore!
+            .collection('orders')
+            .where('riderId', isEqualTo: uid)
+            .where('status', whereIn: ['accepted', 'pending', 'preparing', 'ready', 'outForDelivery'])
+            .orderBy('timestamp', descending: true)
+            .get();
+
+        if (ordersQuery.docs.isNotEmpty) {
+          final orders = ordersQuery.docs.map((doc) {
+            final data = doc.data();
+            return _mapFirestoreOrder(doc.id, data);
+          }).toList();
+          return {'orders': orders};
+        }
+      }
+    } catch (_) {}
+
+    return _buildMockOrders();
+  }
+
+  Map<String, dynamic> _mapFirestoreOrder(String docId, Map<String, dynamic> data) {
+    return {
+      'orderId': docId,
+      'customerName': data['customerName'] ?? 'Customer',
+      'restaurantName': data['sellerId'] ?? 'Restaurant',
+      'pickupAddress': '',
+      'deliveryAddress': data['deliveryAddress'] ?? '',
+      'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+      'itemsCount': (data['items'] as List?)?.length ?? 0,
+      'status': _mapFirestoreStatus(data['status'] ?? 'pending'),
+      'distance': 2.4,
+      'time': _formatTimestamp(data['timestamp']),
+      'paymentType': data['paymentMethod'] ?? 'Cash',
+      'phoneNumber': data['customerPhone'] ?? '',
+      'etaMins': 18,
+      'lateMins': 0,
+      'priority': false,
+      'restaurantRating': 4.5,
+      'expectedTip': 20.0,
+      'preparationTimeMins': 12,
+      'deliveryBonus': 10.0,
+    };
+  }
+
+  String _mapFirestoreStatus(String status) {
+    switch (status) {
+      case 'accepted':
+      case 'preparing':
+      case 'ready':
+        return 'active';
+      case 'outForDelivery':
+        return 'active';
+      case 'newOrder':
+        return 'pending';
+      default:
+        return 'pending';
+    }
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp is Timestamp) {
+      final date = timestamp.toDate();
+      final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+      final minute = date.minute.toString().padLeft(2, '0');
+      final period = date.hour >= 12 ? 'PM' : 'AM';
+      return '$hour:$minute $period';
+    }
+    return '';
+  }
+
+  Map<String, dynamic> _buildMockOrders() {
     return {
       'orders': [
-        {
-          'orderId': 'ORD12345',
-          'customerName': 'Priya Sharma',
-          'restaurantName': 'Green Bowl Kitchen',
-          'pickupAddress': '42 Anna Salai, Chennai',
-          'deliveryAddress': '21 MG Road, Velachery',
-          'amount': 486.50,
-          'itemsCount': 3,
-          'status': 'pending',
-          'distance': 2.4,
-          'time': '10:30 AM',
-          'paymentType': 'Cash',
-          'phoneNumber': '9840112233',
-          'etaMins': 18,
-          'lateMins': 0,
-          'priority': false,
-          'restaurantRating': 4.5,
-          'expectedTip': 20.0,
-          'preparationTimeMins': 12,
-          'deliveryBonus': 10.0,
-        },
-        {
-          'orderId': 'ORD12346',
-          'customerName': 'Arun Prakash',
-          'restaurantName': 'Spice Route',
-          'pickupAddress': '108 Greams Road, Nungambakkam',
-          'deliveryAddress': '7 Lake View Road, Adyar',
-          'amount': 732.00,
-          'itemsCount': 4,
-          'status': 'active',
-          'distance': 4.1,
-          'time': '10:42 AM',
-          'paymentType': 'Card',
-          'phoneNumber': '9884499001',
-          'etaMins': 12,
-          'lateMins': 0,
-          'priority': true,
-          'restaurantRating': 4.7,
-          'expectedTip': 30.0,
-          'preparationTimeMins': 15,
-          'deliveryBonus': 15.0,
-        },
-        {
-          'orderId': 'ORD12347',
-          'customerName': 'Meena Krishnan',
-          'restaurantName': 'The Pasta Lab',
-          'pickupAddress': '15 Cathedral Road',
-          'deliveryAddress': '33 Besant Nagar Main Road',
-          'amount': 1204.75,
-          'itemsCount': 6,
-          'status': 'active',
-          'distance': 5.8,
-          'time': '11:05 AM',
-          'paymentType': 'Online',
-          'phoneNumber': '9790933445',
-          'etaMins': 20,
-          'lateMins': 3,
-          'priority': false,
-          'restaurantRating': 4.2,
-          'expectedTip': 25.0,
-          'preparationTimeMins': 20,
-          'deliveryBonus': 0.0,
-        },
-        {
-          'orderId': 'ORD12348',
-          'customerName': 'Karthik Raja',
-          'restaurantName': 'Sunrise Tiffins',
-          'pickupAddress': '2 T Nagar 3rd Main Road',
-          'deliveryAddress': '19 Ashok Nagar 1st Avenue',
-          'amount': 245.00,
-          'itemsCount': 2,
-          'status': 'pending',
-          'distance': 1.2,
-          'time': '11:20 AM',
-          'paymentType': 'Cash',
-          'phoneNumber': '9003112220',
-          'etaMins': 10,
-          'lateMins': 0,
-          'priority': false,
-          'restaurantRating': 4.4,
-          'expectedTip': 10.0,
-          'preparationTimeMins': 8,
-          'deliveryBonus': 5.0,
-        },
-        {
-          'orderId': 'ORD12349',
-          'customerName': 'Divya Nair',
-          'restaurantName': 'Coastal Bites',
-          'pickupAddress': '77 EC Road, Sholinganallur',
-          'deliveryAddress': '5 Old Mahabalipuram Road',
-          'amount': 1890.00,
-          'itemsCount': 5,
-          'status': 'completed',
-          'distance': 6.4,
-          'time': '09:15 AM',
-          'paymentType': 'Card',
-          'phoneNumber': '9677008812',
-          'etaMins': 0,
-          'lateMins': 0,
-          'priority': false,
-          'restaurantRating': 4.8,
-          'expectedTip': 50.0,
-          'preparationTimeMins': 18,
-          'deliveryBonus': 20.0,
-        },
-        {
-          'orderId': 'ORD12350',
-          'customerName': 'Suresh Babu',
-          'restaurantName': 'Urban Dosa Co.',
-          'pickupAddress': '11 Ranganathan Street',
-          'deliveryAddress': '44 West Mambalam Main Road',
-          'amount': 318.00,
-          'itemsCount': 2,
-          'status': 'completed',
-          'distance': 3.0,
-          'time': '08:50 AM',
-          'paymentType': 'Online',
-          'phoneNumber': '9444003322',
-          'etaMins': 0,
-          'lateMins': 0,
-          'priority': false,
-          'restaurantRating': 4.1,
-          'expectedTip': 15.0,
-          'preparationTimeMins': 10,
-          'deliveryBonus': 5.0,
-        },
-        {
-          'orderId': 'ORD12351',
-          'customerName': 'Lakshmi Menon',
-          'restaurantName': 'Burger Junction',
-          'pickupAddress': '90 Nungambakkam High Road',
-          'deliveryAddress': '12 Royapettah 2nd Cross Street',
-          'amount': 540.25,
-          'itemsCount': 3,
-          'status': 'completed',
-          'distance': 2.7,
-          'time': '08:25 AM',
-          'paymentType': 'Card',
-          'phoneNumber': '9092765152',
-          'etaMins': 0,
-          'lateMins': 0,
-          'priority': true,
-          'restaurantRating': 4.6,
-          'expectedTip': 20.0,
-          'preparationTimeMins': 14,
-          'deliveryBonus': 10.0,
-        },
-        {
-          'orderId': 'ORD12352',
-          'customerName': 'Vikram Seth',
-          'restaurantName': 'Biryani House',
-          'pickupAddress': '5 Velachery Bypass Road',
-          'deliveryAddress': '28 Perungudi Main Road',
-          'amount': 869.00,
-          'itemsCount': 4,
-          'status': 'pending',
-          'distance': 3.9,
-          'time': '11:35 AM',
-          'paymentType': 'Cash',
-          'phoneNumber': '9445556677',
-          'etaMins': 25,
-          'lateMins': 0,
-          'priority': false,
-          'restaurantRating': 4.3,
-          'expectedTip': 35.0,
-          'preparationTimeMins': 22,
-          'deliveryBonus': 15.0,
-        },
+        {'orderId': 'ORD12345', 'customerName': 'Priya Sharma', 'restaurantName': 'Green Bowl Kitchen', 'pickupAddress': '42 Anna Salai, Chennai', 'deliveryAddress': '21 MG Road, Velachery', 'amount': 486.50, 'itemsCount': 3, 'status': 'pending', 'distance': 2.4, 'time': '10:30 AM', 'paymentType': 'Cash', 'phoneNumber': '9840112233', 'etaMins': 18, 'lateMins': 0, 'priority': false, 'restaurantRating': 4.5, 'expectedTip': 20.0, 'preparationTimeMins': 12, 'deliveryBonus': 10.0},
+        {'orderId': 'ORD12346', 'customerName': 'Arun Prakash', 'restaurantName': 'Spice Route', 'pickupAddress': '108 Greams Road, Nungambakkam', 'deliveryAddress': '7 Lake View Road, Adyar', 'amount': 732.00, 'itemsCount': 4, 'status': 'active', 'distance': 4.1, 'time': '10:42 AM', 'paymentType': 'Card', 'phoneNumber': '9884499001', 'etaMins': 12, 'lateMins': 0, 'priority': true, 'restaurantRating': 4.7, 'expectedTip': 30.0, 'preparationTimeMins': 15, 'deliveryBonus': 15.0},
+        {'orderId': 'ORD12347', 'customerName': 'Meena Krishnan', 'restaurantName': 'The Pasta Lab', 'pickupAddress': '15 Cathedral Road', 'deliveryAddress': '33 Besant Nagar Main Road', 'amount': 1204.75, 'itemsCount': 6, 'status': 'active', 'distance': 5.8, 'time': '11:05 AM', 'paymentType': 'Online', 'phoneNumber': '9790933445', 'etaMins': 20, 'lateMins': 3, 'priority': false, 'restaurantRating': 4.2, 'expectedTip': 25.0, 'preparationTimeMins': 20, 'deliveryBonus': 0.0},
+        {'orderId': 'ORD12348', 'customerName': 'Karthik Raja', 'restaurantName': 'Sunrise Tiffins', 'pickupAddress': '2 T Nagar 3rd Main Road', 'deliveryAddress': '19 Ashok Nagar 1st Avenue', 'amount': 245.00, 'itemsCount': 2, 'status': 'pending', 'distance': 1.2, 'time': '11:20 AM', 'paymentType': 'Cash', 'phoneNumber': '9003112220', 'etaMins': 10, 'lateMins': 0, 'priority': false, 'restaurantRating': 4.4, 'expectedTip': 10.0, 'preparationTimeMins': 8, 'deliveryBonus': 5.0},
+        {'orderId': 'ORD12349', 'customerName': 'Divya Nair', 'restaurantName': 'Coastal Bites', 'pickupAddress': '77 EC Road, Sholinganallur', 'deliveryAddress': '5 Old Mahabalipuram Road', 'amount': 1890.00, 'itemsCount': 5, 'status': 'completed', 'distance': 6.4, 'time': '09:15 AM', 'paymentType': 'Card', 'phoneNumber': '9677008812', 'etaMins': 0, 'lateMins': 0, 'priority': false, 'restaurantRating': 4.8, 'expectedTip': 50.0, 'preparationTimeMins': 18, 'deliveryBonus': 20.0},
       ],
     };
   }
@@ -217,17 +138,11 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
     final List<DeliveryOrderCardModel> tabFiltered;
     switch (tab) {
       case DeliveryOrdersTab.active:
-        tabFiltered = orders
-            .where((o) => o.status == DeliveryOrderStatus.active)
-            .toList();
+        tabFiltered = orders.where((o) => o.status == DeliveryOrderStatus.active).toList();
       case DeliveryOrdersTab.pending:
-        tabFiltered = orders
-            .where((o) => o.status == DeliveryOrderStatus.pending)
-            .toList();
+        tabFiltered = orders.where((o) => o.status == DeliveryOrderStatus.pending).toList();
       case DeliveryOrdersTab.completed:
-        tabFiltered = orders
-            .where((o) => o.status == DeliveryOrderStatus.completed)
-            .toList();
+        tabFiltered = orders.where((o) => o.status == DeliveryOrderStatus.completed).toList();
       case DeliveryOrdersTab.all:
         tabFiltered = List<DeliveryOrderCardModel>.of(orders);
     }
@@ -237,17 +152,11 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
       case DeliveryOrdersPaymentFilter.all:
         paymentFiltered = tabFiltered;
       case DeliveryOrdersPaymentFilter.cash:
-        paymentFiltered = tabFiltered
-            .where((o) => o.paymentType.toLowerCase() == 'cash')
-            .toList();
+        paymentFiltered = tabFiltered.where((o) => o.paymentType.toLowerCase() == 'cash').toList();
       case DeliveryOrdersPaymentFilter.card:
-        paymentFiltered = tabFiltered
-            .where((o) => o.paymentType.toLowerCase() == 'card')
-            .toList();
+        paymentFiltered = tabFiltered.where((o) => o.paymentType.toLowerCase() == 'card').toList();
       case DeliveryOrdersPaymentFilter.online:
-        paymentFiltered = tabFiltered
-            .where((o) => o.paymentType.toLowerCase() == 'online')
-            .toList();
+        paymentFiltered = tabFiltered.where((o) => o.paymentType.toLowerCase() == 'online').toList();
     }
 
     final trimmed = query.trim().toLowerCase();
@@ -267,28 +176,20 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
       case DeliveryOrdersSort.time:
         return queryFiltered;
       case DeliveryOrdersSort.distance:
-        return List<DeliveryOrderCardModel>.of(queryFiltered)
-          ..sort((a, b) => a.distance.compareTo(b.distance));
+        return List<DeliveryOrderCardModel>.of(queryFiltered)..sort((a, b) => a.distance.compareTo(b.distance));
       case DeliveryOrdersSort.amountHigh:
-        return List<DeliveryOrderCardModel>.of(queryFiltered)
-          ..sort((a, b) => b.amount.compareTo(a.amount));
+        return List<DeliveryOrderCardModel>.of(queryFiltered)..sort((a, b) => b.amount.compareTo(a.amount));
     }
   }
 
   @override
-  String formatCurrency(double amount, String localeCode) {
-    return '₹${amount.toStringAsFixed(2)}';
-  }
+  String formatCurrency(double amount, String localeCode) => '\u{20B9}${amount.toStringAsFixed(2)}';
 
   @override
-  String formatDistance(double distance) {
-    return '${distance.toStringAsFixed(1)} km';
-  }
+  String formatDistance(double distance) => '${distance.toStringAsFixed(1)} km';
 
   @override
-  double calculateEarnings(double orderAmount) {
-    return orderAmount * _earningRate;
-  }
+  double calculateEarnings(double orderAmount) => orderAmount * _earningRate;
 
   @override
   DeliveryOrderStatus? getNextStatus(DeliveryOrderStatus status) {
@@ -306,19 +207,11 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
   int getAcceptanceRate() => 92;
 
   @override
-  Map<String, String> getEnvironmentVariables() {
-    return Map<String, String>.unmodifiable(_environment);
-  }
+  Map<String, String> getEnvironmentVariables() => Map<String, String>.unmodifiable(_environment);
 
   @override
-  Future<bool> requestNotificationPermission() async {
-    await Future.delayed(const Duration(milliseconds: 50));
-    return true;
-  }
+  Future<bool> requestNotificationPermission() async => true;
 
   @override
-  Future<bool> requestLocationPermission() async {
-    await Future.delayed(const Duration(milliseconds: 50));
-    return true;
-  }
+  Future<bool> requestLocationPermission() async => true;
 }

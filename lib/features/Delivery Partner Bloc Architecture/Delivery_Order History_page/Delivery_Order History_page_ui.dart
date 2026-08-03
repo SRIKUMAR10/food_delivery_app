@@ -1480,13 +1480,9 @@ class _OrdersTable extends StatelessWidget {
                     child: TextButton(
                       key: Key('dp_oh_view_details_${order.orderId}'),
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              '${DeliveryOrderHistoryStrings.of('detailsHint', lang)} ${order.orderId}',
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                          ),
+                        Navigator.of(context).pushNamed(
+                          '/deliveryOrderDetails',
+                          arguments: {'orderId': order.orderId},
                         );
                       },
                       child: const Text(

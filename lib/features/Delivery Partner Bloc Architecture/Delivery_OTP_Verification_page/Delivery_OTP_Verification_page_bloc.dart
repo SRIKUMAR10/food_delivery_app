@@ -10,13 +10,14 @@ class DeliveryOtpVerificationBloc
   Timer? _timer;
 
   DeliveryOtpVerificationBloc({
-    required this.repository,
+    DeliveryOtpVerificationRepositoryBase? repository,
     required String verificationId,
     required String name,
     required String phone,
     required String email,
     required String password,
-  }) : super(DeliveryOtpVerificationState(
+  })  : repository = repository ?? DeliveryOtpVerificationRepository(),
+        super(DeliveryOtpVerificationState(
           verificationId: verificationId,
           name: name,
           phone: phone,
@@ -99,6 +100,8 @@ class DeliveryOtpVerificationBloc
       emit(state.copyWith(
         status: DeliveryOtpStatus.success,
         errorMessage: null,
+        clearPassword: true,
+        clearOtp: true,
       ));
     } catch (e) {
       emit(state.copyWith(

@@ -814,31 +814,36 @@ class _ContentArea extends StatelessWidget {
             index: hasSelection ? state.selectedIndex : 0,
             children: [
               for (var i = 0; i < state.navItems.length; i++)
-                if (state.navItems[i].id == 'dashboard')
-                  const DeliveryDashboardPage()
-                else if (state.navItems[i].id == 'orders')
-                  const DeliveryOrdersPage()
-                else if (state.navItems[i].id == 'earnings')
-                  const DeliveryEarningsDashboardPage()
-                else if (state.navItems[i].id == 'incentives')
-                  const DeliveryIncentivesDashboardPage()
-                else if (state.navItems[i].id == 'navigate')
-                  _DeferredNavigationPage(
-                    isActive: state.selectedIndex == i,
-                  )
-                else if (state.navItems[i].id == 'wallet')
-                  const DeliveryWalletPage()
-                else if (state.navItems[i].id == 'history')
-                  const DeliveryOrderHistoryPage()
-                else if (state.navItems[i].id == 'settings')
-                  const DeliverySettingsPage()
-                else if (state.navItems[i].id == 'profile')
-                  const DeliveryProfilePage()
-                else
-                  _OverviewPanel(
-                    state: state,
-                    item: state.navItems[i],
-                  ),
+                _DeferredNavigationPage(
+                  isActive: state.selectedIndex == i,
+                  builder: () {
+                    switch (state.navItems[i].id) {
+                      case 'dashboard':
+                        return const DeliveryDashboardPage();
+                      case 'orders':
+                        return const DeliveryOrdersPage();
+                      case 'earnings':
+                        return const DeliveryEarningsDashboardPage();
+                      case 'incentives':
+                        return const DeliveryIncentivesDashboardPage();
+                      case 'navigate':
+                        return const DeliveryNavigationScreenPage();
+                      case 'wallet':
+                        return const DeliveryWalletPage();
+                      case 'history':
+                        return const DeliveryOrderHistoryPage();
+                      case 'settings':
+                        return const DeliverySettingsPage();
+                      case 'profile':
+                        return const DeliveryProfilePage();
+                      default:
+                        return _OverviewPanel(
+                          state: state,
+                          item: state.navItems[i],
+                        );
+                    }
+                  },
+                ),
             ],
           ),
         ),
@@ -862,8 +867,12 @@ class _ContentArea extends StatelessWidget {
 
 class _DeferredNavigationPage extends StatefulWidget {
   final bool isActive;
+  final Widget Function() builder;
 
-  const _DeferredNavigationPage({required this.isActive});
+  const _DeferredNavigationPage({
+    required this.isActive,
+    required this.builder,
+  });
 
   @override
   State<_DeferredNavigationPage> createState() =>
@@ -881,7 +890,7 @@ class _DeferredNavigationPageState extends State<_DeferredNavigationPage> {
     if (!_built) {
       return const SizedBox.shrink();
     }
-    return const DeliveryNavigationScreenPage();
+    return widget.builder();
   }
 }
 
@@ -1033,8 +1042,15 @@ class _ContentTopBar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: DeliveryAppColors.primaryDark.withValues(alpha: 0.12),
+              color: state.isOffline
+                  ? const Color(0xFFEF4444).withValues(alpha: 0.12)
+                  : DeliveryAppColors.primaryDark.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: state.isOffline
+                    ? const Color(0xFFEF4444).withValues(alpha: 0.3)
+                    : DeliveryAppColors.primary.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: [
@@ -1059,8 +1075,10 @@ class _ContentTopBar extends StatelessWidget {
                           'online',
                           state.localeCode,
                         ),
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                  style: TextStyle(
+                    color: state.isOffline
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFF94A3B8),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),

@@ -10,9 +10,11 @@ class DeliverySignUpPageBloc
   final DeliverySignUpServiceBase service;
 
   DeliverySignUpPageBloc({
-    required this.repository,
-    required this.service,
-  }) : super(const DeliverySignUpPageState()) {
+    DeliverySignUpRepositoryBase? repository,
+    DeliverySignUpServiceBase? service,
+  })  : repository = repository ?? DeliverySignUpRepository(),
+        service = service ?? DeliverySignUpService(),
+        super(const DeliverySignUpPageState()) {
     on<DeliverySignUpInitEvent>(_onInit);
     on<DeliverySignUpNameChanged>(_onNameChanged);
     on<DeliverySignUpPhoneChanged>(_onPhoneChanged);

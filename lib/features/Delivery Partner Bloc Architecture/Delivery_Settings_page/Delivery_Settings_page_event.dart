@@ -23,6 +23,14 @@ class DeliverySettingsToggleDarkModeEvent extends DeliverySettingsEvent {
   const DeliverySettingsToggleDarkModeEvent();
 }
 
+class DeliverySettingsToggleSunModeEvent extends DeliverySettingsEvent {
+  const DeliverySettingsToggleSunModeEvent();
+}
+
+class DeliverySettingsToggleOledModeEvent extends DeliverySettingsEvent {
+  const DeliverySettingsToggleOledModeEvent();
+}
+
 class DeliverySettingsUpdateRadiusEvent extends DeliverySettingsEvent {
   final double radius;
 

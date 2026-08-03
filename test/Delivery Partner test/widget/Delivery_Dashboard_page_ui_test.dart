@@ -115,5 +115,19 @@ void main() {
       expect(find.text('Quick Actions'), findsOneWidget);
       expect(find.text('Today Incentive Goal'), findsOneWidget);
     });
+
+    testWidgets('hides floating online pill when isOnline is false in mobile view', (
+      tester,
+    ) async {
+      setMobileSize(tester);
+      when(() => mockBloc.state).thenReturn(
+        loadedState.copyWith(isOnline: false),
+      );
+
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('floating_pill_visible')), findsNothing);
+    });
   });
 }

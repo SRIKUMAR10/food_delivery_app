@@ -13,7 +13,7 @@ import '../../../core/theme/delivery_app_spacing.dart';
 import '../../../core/widgets/delivery_button.dart';
 import '../../../core/widgets/delivery_card.dart';
 import '../../../core/widgets/delivery_chip.dart';
-
+import '../../../core/widgets/delivery_floating_online_pill.dart';
 
 class DeliveryDashboardStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -66,7 +66,8 @@ class DeliveryDashboardStrings {
       'incentiveTarget': 'Target',
       'withdraw': 'Withdraw',
       'retry': 'Retry',
-      'somethingWentWrong': 'Something went wrong while loading dashboard data.',
+      'somethingWentWrong':
+          'Something went wrong while loading dashboard data.',
       'emptyTitle': 'No Dashboard Metrics Available',
       'emptySub': 'Please check back later or refresh your session.',
       'notifications': 'Notifications',
@@ -119,7 +120,8 @@ class DeliveryDashboardStrings {
       'offlineStatus': 'ஆஃப்லைன்',
       'onlineSub': 'புதிய டெலிவரி கோரிக்கைகளைப் பெற நீங்கள் தயாராக உள்ளீர்கள்',
       'offlineSub': 'புதிய ஆர்டர் கோரிக்கைகள் எதுவும் உங்களுக்கு வராது',
-      'goOfflineHint': 'புதிய ஆர்டர்களைப் பெறுவதை நிறுத்த ஆஃப்லைனுக்குச் செல்லவும்',
+      'goOfflineHint':
+          'புதிய ஆர்டர்களைப் பெறுவதை நிறுத்த ஆஃப்லைனுக்குச் செல்லவும்',
       'goOnlineHint': 'டெலிவரி கோரிக்கைகளைப் பெற ஆன்லைனுக்குச் செல்லவும்',
       'goOffline': 'ஆஃப்லைனுக்குச் செல்',
       'goOnline': 'ஆன்லைனுக்குச் செல்',
@@ -307,10 +309,16 @@ class _DeliveryDashboardPageViewState extends State<DeliveryDashboardPageView>
             final isDesktop = constraints.maxWidth >= 1024;
             final isTablet =
                 constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
+            final isMobile = !isDesktop && !isTablet;
 
-            return SingleChildScrollView(
+            final Widget scrollBody = SingleChildScrollView(
               key: const Key('dp_dashboard_page'),
-              padding: EdgeInsets.all(isDesktop ? 24 : 16),
+              padding: EdgeInsets.only(
+                left: isDesktop ? 24 : 16,
+                right: isDesktop ? 24 : 16,
+                top: isDesktop ? 24 : 16,
+                bottom: isMobile ? 100 : 24,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -332,11 +340,8 @@ class _DeliveryDashboardPageViewState extends State<DeliveryDashboardPageView>
                       ],
                     )
                   else ...[
-                    _OnlineStatusCenterpiece(
-                      state: state,
-                      pulseAnim: _pulseAnim,
-                    ),
-                    const SizedBox(height: 20),
+                    _OnlineStatusMini(state: state, pulseAnim: _pulseAnim),
+                    const SizedBox(height: 16),
                     _LiveMapCard(state: state),
                   ],
                   const SizedBox(height: 24),
@@ -350,30 +355,20 @@ class _DeliveryDashboardPageViewState extends State<DeliveryDashboardPageView>
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(flex: 3, child: _ActiveOrderCard(state: state)),
+                        Expanded(
+                          flex: 3,
+                          child: _ActiveOrderCard(state: state),
+                        ),
                         const SizedBox(width: 24),
                         Expanded(
                           flex: 2,
                           child: _EarningsChartCard(state: state),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                         ),
                       ],
                     )
                   else ...[
                     _ActiveOrderCard(state: state),
+
                     const SizedBox(height: 20),
                     _EarningsChartCard(state: state),
                   ],
@@ -411,6 +406,33 @@ class _DeliveryDashboardPageViewState extends State<DeliveryDashboardPageView>
                 ],
               ),
             );
+
+            if (isMobile) {
+              return Stack(
+                children: [
+                  scrollBody,
+                  if (state.isOnline)
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 16,
+                      child: Center(
+                        child: DeliveryFloatingOnlinePill(
+                          isOnline: state.isOnline,
+                          localeCode: state.localeCode,
+                          onToggle: (val) {
+                            context.read<DeliveryDashboardPageBloc>().add(
+                              DeliveryDashboardToggleOnlineEvent(val),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            }
+
+            return scrollBody;
           },
         );
       },
@@ -448,12 +470,21 @@ class _DashboardHeader extends StatelessWidget {
             ),
             child: ClipOval(
               child: CachedNetworkImage(
-                imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
+                imageUrl:
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
                 fit: BoxFit.cover,
-                memCacheWidth: 84, memCacheHeight: 84, placeholder: (context, url) => const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: DeliveryAppColors.primary)), errorWidget: (context, url, error) => const Icon(
-                  Icons.person,
-                  color: DeliveryAppColors.primary,
+                memCacheWidth: 84,
+                memCacheHeight: 84,
+                placeholder: (context, url) => const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: DeliveryAppColors.primary,
+                  ),
                 ),
+                errorWidget: (context, url, error) =>
+                    const Icon(Icons.person, color: DeliveryAppColors.primary),
               ),
             ),
           ),
@@ -498,8 +529,11 @@ class _DashboardHeader extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.account_balance_wallet_outlined,
-                      color: DeliveryAppColors.primary, size: 20),
+                  const Icon(
+                    Icons.account_balance_wallet_outlined,
+                    color: DeliveryAppColors.primary,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,10 +558,7 @@ class _DashboardHeader extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
-          _NotificationBell(
-            count: 3,
-            onTap: () {},
-          ),
+          _NotificationBell(count: 3, onTap: () {}),
         ],
       ),
     );
@@ -588,8 +619,11 @@ class _NotificationBell extends StatelessWidget {
           IconButton(
             padding: EdgeInsets.zero,
             onPressed: onTap,
-            icon: const Icon(Icons.notifications_outlined,
-                color: Colors.white, size: 22),
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           Positioned(
             right: 2,
@@ -698,8 +732,14 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           isOnline
-                              ? DeliveryDashboardStrings.of('onlineStatus', lang)
-                              : DeliveryDashboardStrings.of('offlineStatus', lang),
+                              ? DeliveryDashboardStrings.of(
+                                  'onlineStatus',
+                                  lang,
+                                )
+                              : DeliveryDashboardStrings.of(
+                                  'offlineStatus',
+                                  lang,
+                                ),
                           style: DeliveryAppTypography.h2.copyWith(
                             color: isOnline
                                 ? DeliveryAppColors.primary
@@ -725,9 +765,9 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
                       inactiveThumbColor: DeliveryAppColors.textMuted,
                       inactiveTrackColor: DeliveryAppColors.surfaceLight,
                       onChanged: (val) {
-                        context
-                            .read<DeliveryDashboardPageBloc>()
-                            .add(DeliveryDashboardToggleOnlineEvent(val));
+                        context.read<DeliveryDashboardPageBloc>().add(
+                          DeliveryDashboardToggleOnlineEvent(val),
+                        );
                       },
                     ),
                   ),
@@ -752,6 +792,15 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
             runSpacing: 10,
             alignment: WrapAlignment.center,
             children: [
+              Center(
+                child: Icon(
+                  isOnline ? Icons.sensors : Icons.sensors_off,
+                  color: isOnline
+                      ? DeliveryAppColors.primary
+                      : DeliveryAppColors.error,
+                  size: 24,
+                ),
+              ),
               _StatusChip(
                 icon: Icons.schedule,
                 label: DeliveryDashboardStrings.of('onlineSince', lang),
@@ -769,6 +818,115 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
                     : DeliveryAppColors.error,
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OnlineStatusMini extends StatelessWidget {
+  final DeliveryDashboardState state;
+  final Animation<double> pulseAnim;
+
+  const _OnlineStatusMini({required this.state, required this.pulseAnim});
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = state.localeCode;
+    final isOnline = state.isOnline;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isOnline
+              ? [DeliveryAppColors.successBg, const Color(0xFF07140E)]
+              : [DeliveryAppColors.errorBg, const Color(0xFF140B0D)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(DeliveryAppSpacing.radiusXl),
+        border: Border.all(
+          color: isOnline
+              ? DeliveryAppColors.primary.withValues(alpha: 0.3)
+              : DeliveryAppColors.error.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          ScaleTransition(
+            scale: isOnline ? pulseAnim : const AlwaysStoppedAnimation(1.0),
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isOnline
+                    ? DeliveryAppColors.primary.withValues(alpha: 0.1)
+                    : DeliveryAppColors.error.withValues(alpha: 0.1),
+                border: Border.all(
+                  color: isOnline
+                      ? DeliveryAppColors.primary
+                      : DeliveryAppColors.error,
+                  width: 2,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  isOnline ? Icons.sensors : Icons.sensors_off,
+                  color: isOnline
+                      ? DeliveryAppColors.primary
+                      : DeliveryAppColors.error,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isOnline
+                      ? DeliveryDashboardStrings.of('youAreOnline', lang)
+                      : DeliveryDashboardStrings.of('youAreOffline', lang),
+                  style: DeliveryAppTypography.titleMedium.copyWith(
+                    color: DeliveryAppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isOnline
+                      ? DeliveryDashboardStrings.of('onlineSub', lang)
+                      : DeliveryDashboardStrings.of('offlineSub', lang),
+                  style: DeliveryAppTypography.caption.copyWith(
+                    color: DeliveryAppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Semantics(
+            label: isOnline ? 'Go offline' : 'Go online',
+            button: true,
+            child: Switch(
+              value: isOnline,
+              activeThumbColor: DeliveryAppColors.buttonPrimaryText,
+              activeTrackColor: DeliveryAppColors.primary,
+              inactiveThumbColor: DeliveryAppColors.textMuted,
+              inactiveTrackColor: DeliveryAppColors.surfaceLight,
+              onChanged: (val) {
+                context.read<DeliveryDashboardPageBloc>().add(
+                  DeliveryDashboardToggleOnlineEvent(val),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -874,8 +1032,9 @@ class _LiveMapCard extends StatelessWidget {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: DeliveryAppColors.primary
-                            .withValues(alpha: 0.15),
+                        color: DeliveryAppColors.primary.withValues(
+                          alpha: 0.15,
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -916,7 +1075,9 @@ class _LiveMapCard extends StatelessWidget {
                     left: 12,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(10),
@@ -1134,7 +1295,12 @@ class _ActiveOrderCard extends StatelessWidget {
     final lang = state.localeCode;
     final isOnline = state.isOnline;
 
-return Container(
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pushNamed(
+        '/deliveryOrderDetails',
+        arguments: {'orderId': '#ORD12345'},
+      ),
+      child: Container(
       key: const Key('dp_dashboard_active_order_card'),
       padding: const EdgeInsets.all(DeliveryAppSpacing.lg),
       decoration: BoxDecoration(
@@ -1170,7 +1336,10 @@ return Container(
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: isOnline
                       ? DeliveryAppColors.primary.withValues(alpha: 0.12)
@@ -1195,8 +1364,11 @@ return Container(
           if (isOnline) ...[
             Row(
               children: [
-                const Icon(Icons.confirmation_number_outlined,
-                    color: DeliveryAppColors.warning, size: 18),
+                const Icon(
+                  Icons.confirmation_number_outlined,
+                  color: DeliveryAppColors.warning,
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   DeliveryDashboardStrings.of('orderNo', lang),
@@ -1287,6 +1459,7 @@ return Container(
             ),
           ],
         ],
+      ),
       ),
     );
   }
@@ -1386,9 +1559,7 @@ class _EarningsChartCardState extends State<_EarningsChartCard> {
     'Today': [12, 18, 14, 22, 26, 20, 28, 24, 32, 26, 30, 36],
     '7 Days': [8, 12, 10, 16, 14, 20, 18],
     'Weekly': [5, 8, 12, 10, 15, 13, 18, 22, 20, 26, 24, 28],
-    'Monthly': [
-      4, 6, 9, 7, 12, 14, 11, 16, 18, 15, 20, 24, 22, 27, 25, 30,
-    ],
+    'Monthly': [4, 6, 9, 7, 12, 14, 11, 16, 18, 15, 20, 24, 22, 27, 25, 30],
   };
 
   static const Map<String, String> _totals = {
@@ -1401,7 +1572,9 @@ class _EarningsChartCardState extends State<_EarningsChartCard> {
   @override
   Widget build(BuildContext context) {
     final lang = widget.state.localeCode;
-    final values = _data[_selected] ?? const [12, 18, 14, 22, 26, 20, 28, 24, 32, 26, 30, 36];
+    final values =
+        _data[_selected] ??
+        const [12, 18, 14, 22, 26, 20, 28, 24, 32, 26, 30, 36];
 
     return Container(
       key: const Key('dp_dashboard_earnings_chart_card'),
@@ -1424,8 +1597,11 @@ class _EarningsChartCardState extends State<_EarningsChartCard> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const Icon(Icons.insert_chart_outlined,
-                  color: DeliveryAppColors.primary, size: 20),
+              const Icon(
+                Icons.insert_chart_outlined,
+                color: DeliveryAppColors.primary,
+                size: 20,
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -1435,15 +1611,12 @@ class _EarningsChartCardState extends State<_EarningsChartCard> {
             children: [
               for (final key in const ['Today', '7 Days', 'Weekly', 'Monthly'])
                 _FilterChip(
-                  label: DeliveryDashboardStrings.of(
-                    switch (key) {
-                      'Today' => 'today',
-                      '7 Days' => 'last7Days',
-                      'Weekly' => 'weekly',
-                      _ => 'monthly',
-                    },
-                    lang,
-                  ),
+                  label: DeliveryDashboardStrings.of(switch (key) {
+                    'Today' => 'today',
+                    '7 Days' => 'last7Days',
+                    'Weekly' => 'weekly',
+                    _ => 'monthly',
+                  }, lang),
                   isSelected: _selected == key,
                   onTap: () => setState(() => _selected = key),
                 ),
@@ -1464,7 +1637,10 @@ class _EarningsChartCardState extends State<_EarningsChartCard> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: DeliveryAppColors.primary.withValues(alpha: 0.12),
                     borderRadius: DeliveryAppSpacing.borderRadiusPill,
@@ -1607,10 +1783,7 @@ class _SparklinePainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            color.withValues(alpha: 0.25),
-            color.withValues(alpha: 0.0),
-          ],
+          colors: [color.withValues(alpha: 0.25), color.withValues(alpha: 0.0)],
         ).createShader(Offset.zero & size),
     );
 
@@ -1624,11 +1797,7 @@ class _SparklinePainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round,
     );
 
-    canvas.drawCircle(
-      points.last,
-      4,
-      Paint()..color = color,
-    );
+    canvas.drawCircle(points.last, 4, Paint()..color = color);
     canvas.drawCircle(
       points.last,
       9,
@@ -1673,8 +1842,11 @@ class _RecentActivityCard extends StatelessWidget {
               ),
               TextButton.icon(
                 onPressed: () {},
-                icon: const Icon(Icons.keyboard_arrow_down,
-                    color: DeliveryAppColors.primary, size: 18),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down,
+                  color: DeliveryAppColors.primary,
+                  size: 18,
+                ),
                 label: Text(
                   DeliveryDashboardStrings.of('viewAll', lang),
                   style: DeliveryAppTypography.bodySmall.copyWith(
@@ -1721,18 +1893,19 @@ class _TimelineRow extends StatelessWidget {
       'delivered' => (Icons.check_circle_outline, DeliveryAppColors.primary),
       'picked_up' => (Icons.shopping_bag_outlined, DeliveryAppColors.info),
       'new_order' => (Icons.near_me_outlined, DeliveryAppColors.warning),
-      'reached_restaurant' =>
-        (Icons.location_on_outlined, const Color(0xFFAB47BC)),
+      'reached_restaurant' => (
+        Icons.location_on_outlined,
+        const Color(0xFFAB47BC),
+      ),
       _ => (Icons.power_settings_new, DeliveryAppColors.warning),
     };
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        Navigator.of(context).pushNamed(
-          '/deliveryOrderDetails',
-          arguments: {'orderId': item.id},
-        );
+        Navigator.of(
+          context,
+        ).pushNamed('/deliveryOrderDetails', arguments: {'orderId': item.id});
       },
       child: IntrinsicHeight(
         child: Row(
@@ -1915,7 +2088,8 @@ class _NotificationRow extends StatelessWidget {
     String subtitle,
     String time,
     bool unread,
-  }) item;
+  })
+  item;
 
   const _NotificationRow({required this.item});
 
@@ -1947,8 +2121,9 @@ class _NotificationRow extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 13,
-                          fontWeight:
-                              item.unread ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: item.unread
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -2000,8 +2175,10 @@ class _IncentivesGoalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = state.localeCode;
-    final progress =
-        (state.incentiveEarned / state.incentiveTarget).clamp(0.0, 1.0);
+    final progress = (state.incentiveEarned / state.incentiveTarget).clamp(
+      0.0,
+      1.0,
+    );
 
     return DeliveryCard(
       key: const Key('dp_dashboard_earn_banner'),
@@ -2024,7 +2201,11 @@ class _IncentivesGoalCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(Icons.stars, color: DeliveryAppColors.warning, size: 20),
+              const Icon(
+                Icons.stars,
+                color: DeliveryAppColors.warning,
+                size: 20,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -2062,7 +2243,9 @@ class _IncentivesGoalCard extends StatelessWidget {
               value: progress,
               minHeight: 10,
               backgroundColor: Colors.white10,
-              valueColor: const AlwaysStoppedAnimation(DeliveryAppColors.primary),
+              valueColor: const AlwaysStoppedAnimation(
+                DeliveryAppColors.primary,
+              ),
             ),
           ),
         ],
@@ -2130,8 +2313,7 @@ class _QuickActionsCard extends StatelessWidget {
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
-              final itemWidth =
-                  (constraints.maxWidth / 6).clamp(96.0, 140.0);
+              final itemWidth = (constraints.maxWidth / 6).clamp(96.0, 140.0);
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -2262,7 +2444,11 @@ class _DashboardErrorShell extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, color: DeliveryAppColors.error, size: 64),
+            const Icon(
+              Icons.error_outline,
+              color: DeliveryAppColors.error,
+              size: 64,
+            ),
             const SizedBox(height: 16),
             Text(
               DeliveryDashboardStrings.of('somethingWentWrong', lang),
@@ -2285,10 +2471,10 @@ class _DashboardErrorShell extends StatelessWidget {
             DeliveryButton(
               key: const Key('dp_dashboard_retry'),
               label: DeliveryDashboardStrings.of('retry', lang),
-onPressed: () {
-                context
-                    .read<DeliveryDashboardPageBloc>()
-                    .add(const DeliveryDashboardInitEvent());
+              onPressed: () {
+                context.read<DeliveryDashboardPageBloc>().add(
+                  const DeliveryDashboardInitEvent(),
+                );
               },
               variant: DeliveryButtonVariant.primary,
             ),
@@ -2315,7 +2501,11 @@ class _DashboardEmptyShell extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.inbox, color: DeliveryAppColors.textMuted, size: 64),
+            const Icon(
+              Icons.inbox,
+              color: DeliveryAppColors.textMuted,
+              size: 64,
+            ),
             const SizedBox(height: 16),
             Text(
               DeliveryDashboardStrings.of('emptyTitle', lang),
@@ -2336,11 +2526,11 @@ class _DashboardEmptyShell extends StatelessWidget {
               key: const Key('dp_dashboard_refresh'),
               label: DeliveryDashboardStrings.of('retry', lang),
               onPressed: () {
-                context
-                    .read<DeliveryDashboardPageBloc>()
-                    .add(const DeliveryDashboardRefreshEvent());
+                context.read<DeliveryDashboardPageBloc>().add(
+                  const DeliveryDashboardRefreshEvent(),
+                );
               },
-variant: DeliveryButtonVariant.primary,
+              variant: DeliveryButtonVariant.primary,
               icon: Icons.refresh,
             ),
           ],

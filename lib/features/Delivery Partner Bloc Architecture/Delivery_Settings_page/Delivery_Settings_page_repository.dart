@@ -21,6 +21,8 @@ class DeliverySettingsRepository implements DeliverySettingsRepositoryBase {
     required bool notificationsEnabled,
     required bool autoAcceptEnabled,
     required bool darkModeEnabled,
+    required bool sunModeEnabled,
+    required bool oledModeEnabled,
   }) {
     return [
       DeliverySettingsItem(
@@ -44,6 +46,20 @@ class DeliverySettingsRepository implements DeliverySettingsRepositoryBase {
         icon: Icons.dark_mode_outlined,
         value: darkModeEnabled,
       ),
+      DeliverySettingsItem(
+        id: 'sunMode',
+        titleKey: 'sunMode',
+        subtitleKey: 'sunModeSub',
+        icon: Icons.wb_sunny_outlined,
+        value: sunModeEnabled,
+      ),
+      DeliverySettingsItem(
+        id: 'oledMode',
+        titleKey: 'oledMode',
+        subtitleKey: 'oledModeSub',
+        icon: Icons.battery_saver,
+        value: oledModeEnabled,
+      ),
     ];
   }
 
@@ -53,6 +69,8 @@ class DeliverySettingsRepository implements DeliverySettingsRepositoryBase {
       notificationsEnabled: true,
       autoAcceptEnabled: true,
       darkModeEnabled: false,
+      sunModeEnabled: false,
+      oledModeEnabled: false,
       deliveryRadius: 5.0,
       languageCode: 'en',
       localeCode: 'en',
@@ -60,6 +78,8 @@ class DeliverySettingsRepository implements DeliverySettingsRepositoryBase {
         notificationsEnabled: true,
         autoAcceptEnabled: true,
         darkModeEnabled: false,
+        sunModeEnabled: false,
+        oledModeEnabled: false,
       ),
     );
   }

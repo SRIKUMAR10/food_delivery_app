@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'onboarding_video_player.dart';
 import 'Delivery_onboarding_page_bloc.dart';
 import 'Delivery_onboarding_page_event.dart';
 import 'Delivery_onboarding_page_state.dart';
@@ -21,6 +22,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
+  final ValueNotifier<bool> _unmuteNotifier = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -50,7 +52,16 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
   @override
   void dispose() {
     _animController.dispose();
+    _unmuteNotifier.dispose();
     super.dispose();
+  }
+
+  Widget _buildVideoPlayer(double height) {
+    return Image.asset(
+      'assets/images/Delivery_scooter.png',
+      height: height,
+      fit: BoxFit.contain,
+    );
   }
 
   @override
@@ -66,21 +77,28 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
     return Theme(
       data: themeData,
       child: Scaffold(
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/Delivery_onboarding.png',
-                fit: BoxFit.cover,
+        body: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) {
+            if (!_unmuteNotifier.value) {
+              _unmuteNotifier.value = true;
+            }
+          },
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/Delivery_onboarding.png',
+                  fit: BoxFit.cover,
+                ),
               ),
-            ),
-            Container(color: Colors.black.withValues(alpha: 0.55)),
-            SafeArea(
-            child: BlocConsumer<DeliveryOnboardingPageBloc,
-                DeliveryOnboardingPageState>(
+              Container(color: Colors.black.withValues(alpha: 0.55)),
+              SafeArea(
+              child: BlocConsumer<DeliveryOnboardingPageBloc,
+                  DeliveryOnboardingPageState>(
               listener: (context, state) {
                 if (state.isStarted) {
-                  Navigator.of(context).pushReplacementNamed('/deliverylogin');
+                  Navigator.of(context).pushReplacementNamed('/deliveryLogin');
                 } else if (state.isNavigatingToLogin) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -151,11 +169,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
                                           _buildLogoHeader(),
                                           const Spacer(),
                                           Center(
-                                            child: Image.asset(
-                                              'assets/images/Delivery_scooter.png',
-                                              height: 250,
-                                              fit: BoxFit.contain,
-                                            ),
+                                            child: _buildVideoPlayer(250),
                                           ),
                                           const Spacer(),
                                           RichText(
@@ -282,6 +296,7 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
             ),
           ),
           ],
+        ),
         ),
       ),
     );
@@ -576,12 +591,8 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Delivery Scooter Illustration
-        Image.asset(
-          'assets/images/Delivery_scooter.png',
-          height: 260,
-          width: double.infinity,
-          fit: BoxFit.contain,
+        Center(
+          child: _buildVideoPlayer(260),
         ),
         const SizedBox(height: 32),
 
