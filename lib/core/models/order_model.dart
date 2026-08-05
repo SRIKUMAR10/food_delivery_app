@@ -52,17 +52,21 @@ class OrderModel extends Equatable {
     switch (status) {
       case OrderStatus.newOrder:
         return newStatus == OrderStatus.accepted ||
-            newStatus == OrderStatus.preparing ||
-            newStatus == OrderStatus.rejected;
+            newStatus == OrderStatus.rejected ||
+            newStatus == OrderStatus.cancelled;
       case OrderStatus.accepted:
         return newStatus == OrderStatus.preparing ||
-            newStatus == OrderStatus.rejected;
+            newStatus == OrderStatus.rejected ||
+            newStatus == OrderStatus.cancelled;
       case OrderStatus.preparing:
-        return newStatus == OrderStatus.ready;
+        return newStatus == OrderStatus.ready ||
+            newStatus == OrderStatus.cancelled;
       case OrderStatus.ready:
-        return newStatus == OrderStatus.outForDelivery;
+        return newStatus == OrderStatus.outForDelivery ||
+            newStatus == OrderStatus.cancelled;
       case OrderStatus.outForDelivery:
-        return newStatus == OrderStatus.delivered;
+        return newStatus == OrderStatus.delivered ||
+            newStatus == OrderStatus.cancelled;
       case OrderStatus.delivered:
       case OrderStatus.rejected:
       case OrderStatus.cancelled:

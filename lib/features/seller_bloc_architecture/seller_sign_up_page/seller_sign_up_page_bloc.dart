@@ -21,6 +21,7 @@ class SellerSignUpPageBloc
   final SellerRepository _repo;
 
   Timer? _otpTimer;
+  String? _verificationId;
 
   SellerSignUpPageBloc({SellerRepository? authRepository})
     : _repo = authRepository ?? SellerRepository(),
@@ -349,6 +350,7 @@ class SellerSignUpPageBloc
         password: state.password,
       );
 
+      _verificationId = await _repo.sendOtp(state.phone.trim());
       _startOtpTimer();
 
       emit(
@@ -401,12 +403,24 @@ class SellerSignUpPageBloc
       return;
     }
 
+    final verificationId = _verificationId;
+    if (verificationId == null || verificationId.isEmpty) {
+      emit(
+        state.copyWith(
+          otpError: 'Please request a new OTP before verifying.',
+          errorMessage: 'Please request a new OTP before verifying.',
+        ),
+      );
+      return;
+    }
+
     emit(state.copyWith(status: SellerSignUpStatus.loading, clearError: true));
 
     try {
       final success = await _repo.confirmSignUpOtp(
         otpCode: state.otpCode,
         phoneNumber: state.phone.trim(),
+        verificationId: verificationId,
         name: state.name.trim(),
         shopName: state.shopName.trim(),
         businessDetails: state.businessDetails.trim(),
@@ -463,7 +477,7 @@ class SellerSignUpPageBloc
     emit(state.copyWith(status: SellerSignUpStatus.loading, clearError: true));
 
     try {
-      await _repo.sendOtp(state.phone.trim());
+      _verificationId = await _repo.sendOtp(state.phone.trim());
       _startOtpTimer();
 
       emit(
@@ -574,28 +588,26 @@ class SellerSignUpPageBloc
     SellerSignUpAppLifecycleResumed event,
     Emitter<SellerSignUpPageState> emit,
   ) async {
-    final user = _repo.currentUser;
-    if (user != null && state.step == SellerSignUpStep.emailVerification) {
-      final isVerified = await _repo.checkEmailVerified();
-      if (isVerified) {
-        emit(
-          state.copyWith(
-            step: SellerSignUpStep.signUpSuccess,
-            status: SellerSignUpStatus.success,
-          ),
-        );
+    try {
+      final user = _repo.currentUser;
+      if (user != null && state.step == SellerSignUpStep.emailVerification) {
+        final isVerified = await _repo.checkEmailVerified();
+        if (isVerified) {
+          emit(
+            state.copyWith(
+              step: SellerSignUpStep.signUpSuccess,
+              status: SellerSignUpStatus.success,
+            ),
+          );
+        }
       }
-    } else if (user != null && state.step != SellerSignUpStep.signUpSuccess) {
-      // Social sign-ins typically verified implicitly or don't need this, but we'll leave as is.
-      // Or maybe if email verified is true, jump to success.
-      if (user.emailVerified) {
-        emit(
-          state.copyWith(
-            step: SellerSignUpStep.signUpSuccess,
-            status: SellerSignUpStatus.success,
-          ),
-        );
-      }
+    } catch (e) {
+      emit(
+        state.copyWith(
+          status: SellerSignUpStatus.failure,
+          errorMessage: _friendlyError(e),
+        ),
+      );
     }
   }
 
@@ -617,12 +629,25 @@ class SellerSignUpPageBloc
         ),
       );
     } catch (e) {
-      emit(
-        state.copyWith(
-          status: SellerSignUpStatus.failure,
-          errorMessage: _friendlyError(e),
-        ),
-      );
+      final str = e.toString();
+      if (str.contains('Google Sign-In was cancelled') ||
+          str.contains('popup-closed-by-user') ||
+          str.contains('aborted by user') ||
+          str.contains('user-cancelled')) {
+        emit(
+          state.copyWith(
+            status: SellerSignUpStatus.initial,
+            clearError: true,
+          ),
+        );
+      } else {
+        emit(
+          state.copyWith(
+            status: SellerSignUpStatus.failure,
+            errorMessage: _friendlyError(e),
+          ),
+        );
+      }
     }
   }
 

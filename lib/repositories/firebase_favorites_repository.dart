@@ -16,7 +16,7 @@ class FirebaseFavoritesRepository implements IFavoritesRepository {
         .doc(userId)
         .collection('favorites')
         .orderBy('addedAt', descending: true)
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .map((snapshot) =>
             snapshot.docs.map((doc) => FavoriteItem.fromFirestore(doc)).toList());
   }

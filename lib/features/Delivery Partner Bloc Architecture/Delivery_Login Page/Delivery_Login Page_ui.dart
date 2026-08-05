@@ -123,9 +123,11 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
           ),
           BlocConsumer<DeliveryLoginPageBloc, DeliveryLoginPageState>(
             listener: (context, state) {
-              if (state.phone != _phoneController.text &&
-                  state.phone.isNotEmpty) {
+              if (state.phone != _phoneController.text) {
                 _phoneController.text = state.phone;
+              }
+              if (state.password != _passwordController.text) {
+                _passwordController.text = state.password;
               }
               if (state.status == DeliveryLoginStatus.success &&
                   state.isLoggedIn) {
@@ -439,7 +441,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
                 ),
               ),
               GestureDetector(
-                onTap: () => _showForgotPasswordDialog(context),
+                onTap: () => Navigator.of(context).pushNamed('/deliveryForgotPassword'),
                 child: Text(
                   'Forgot Password?',
                   style: GoogleFonts.inter(

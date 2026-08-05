@@ -27,11 +27,27 @@ class AssignDeliveryService {
 
   Future<bool> assignDelivery(String orderId, String riderId, String instructions) async {
     try {
-      await _firestore.collection('orders').doc(orderId).update({
-        'status': 'OutForDelivery',
-        'riderId': riderId,
-        'deliveryInstructions': instructions,
-        'outForDeliveryAt': FieldValue.serverTimestamp(),
+      final orderRef = _firestore.collection('orders').doc(orderId);
+
+      await _firestore.runTransaction((transaction) async {
+        final orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists) {
+          throw Exception('Order not found');
+        }
+        final currentStatus = orderSnap.data()?['status'] as String?;
+        if (currentStatus != 'Ready') {
+          throw Exception(
+            'Order must be in "Ready" status before assigning a delivery partner. '
+            'Current status: $currentStatus',
+          );
+        }
+
+        transaction.update(orderRef, {
+          'status': 'OutForDelivery',
+          'riderId': riderId,
+          'deliveryInstructions': instructions,
+          'outForDeliveryAt': FieldValue.serverTimestamp(),
+        });
       });
       return true;
     } catch (e) {

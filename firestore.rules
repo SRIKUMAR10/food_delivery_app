@@ -63,12 +63,14 @@ service cloud.firestore {
     }
 
     // --- 4. Orders Collection ---
-    // Orders link a buyer and a seller.
+    // Orders link a buyer, seller, and optionally a delivery partner.
     match /orders/{orderId} {
-      // A buyer can read/update their orders.
-      allow read, update: if isAuthenticated() && resource.data.customerId == request.auth.uid;
-      // A seller can read/update their assigned orders.
-      allow read, update: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+      // Buyer, seller, or delivery partner can read/update their assigned orders.
+      allow read, update: if isAuthenticated() && (
+        resource.data.customerId == request.auth.uid ||
+        resource.data.sellerId == request.auth.uid ||
+        resource.data.riderId == request.auth.uid
+      );
       
       // Only backend (Cloud Functions) can create an order to ensure secure pricing and inventory.
       allow create: if false;
@@ -164,16 +166,20 @@ service cloud.firestore {
 
     // --- 13. Delivery Partners Collection ---
     match /delivery_partners/{partnerId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid == partnerId ||
-        resource.data.role == 'delivery_partner'
-      );
+      allow read: if true;
       allow create: if isAuthenticated() && request.auth.uid == partnerId;
       allow update, delete: if isOwner(partnerId);
       
       match /{subcollection}/{document=**} {
         allow read, write: if isOwner(partnerId);
       }
+    }
+
+    // --- 14. Global Categories Collection ---
+    // Categories are read-only for all authenticated users. Only admins (backend) can create/update.
+    match /global_categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
     }
   }
 }

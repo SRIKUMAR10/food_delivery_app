@@ -71,7 +71,6 @@ class DeliveryOtpVerificationState extends Equatable {
         name,
         phone,
         email,
-        password,
         resendSeconds,
         isResendEnabled,
         errorMessage,

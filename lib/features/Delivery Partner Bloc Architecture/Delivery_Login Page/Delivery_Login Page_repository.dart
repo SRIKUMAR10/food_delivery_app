@@ -1,4 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:food_delivery_app/core/models/delivery_partner_model.dart';
 import 'package:food_delivery_app/repositories/delivery_partner_repository.dart';
 
@@ -20,27 +22,60 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
   @override
   Future<DeliveryPartnerModel> loginWithPhone(
       String phone, String password) async {
-    final email = '$phone@delivery.app';
+    final cleaned = phone.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
+    final fullPhone = cleaned.startsWith('+') ? cleaned : '+91$cleaned';
+    final rawPhone = cleaned.startsWith('+91') ? cleaned.substring(3) : cleaned;
 
-    UserCredential credential;
+    // 1. Look up delivery partner by phone to find their real email
+    String? foundEmail;
     try {
-      credential =
-          await _partnerRepo.signInWithEmailPassword(email, password);
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') {
-        throw Exception('Account not found. Please sign up.');
+      final partnerData = await _partnerRepo.getDeliveryPartnerByPhone(fullPhone);
+      if (partnerData != null && partnerData.email != null && partnerData.email!.isNotEmpty) {
+        foundEmail = partnerData.email!;
       }
-      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        throw Exception('Incorrect password. Please try again.');
+    } catch (e) {
+      debugPrint('Firestore lookup failed during login: $e');
+    }
+
+    // List of emails to try in order of priority
+    final List<String> emailsToTry = [
+      if (foundEmail != null) foundEmail,
+      '$fullPhone@delivery.app',
+      '$rawPhone@delivery.app',
+    ];
+
+    UserCredential? credential;
+    dynamic lastError;
+
+    for (final email in emailsToTry) {
+      try {
+        credential = await _partnerRepo.signInWithEmailPassword(email, password);
+        break; // Successfully signed in!
+      } catch (e) {
+        lastError = e;
       }
-      if (e.code == 'too-many-requests') {
-        throw Exception(
-            'Too many failed attempts. Try again after a few minutes.');
+    }
+
+    if (credential == null) {
+      if (lastError is FirebaseAuthException) {
+        final code = lastError.code;
+        if (code == 'user-not-found') {
+          throw Exception('Account not found. Please sign up.');
+        }
+        if (code == 'wrong-password' || code == 'invalid-credential') {
+          throw Exception('Incorrect password. Please try again.');
+        }
+        if (code == 'too-many-requests') {
+          throw Exception(
+              'Too many failed attempts. Try again after a few minutes.');
+        }
+        if (code == 'invalid-email') {
+          throw Exception('Invalid phone number format.');
+        }
+        throw Exception(lastError.message ?? 'Authentication failed');
+      } else {
+        throw Exception(lastError?.toString() ?? 'Authentication failed');
       }
-      if (e.code == 'invalid-email') {
-        throw Exception('Invalid phone number format.');
-      }
-      throw Exception(e.message ?? 'Authentication failed');
     }
 
     final uid = credential.user!.uid;
@@ -77,7 +112,7 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
     }
 
     await _partnerRepo.updateLastLogin(uid);
-    await _partnerRepo.saveSession(uid, email);
+    await _partnerRepo.saveSession(uid, credential.user!.email ?? emailsToTry.first);
 
     return partner;
   }
@@ -108,6 +143,7 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
           updatedAt: DateTime.now(),
           isPhoneVerified: true,
           isVerified: true,
+          isActive: true,
         ),
       );
       partner = await _partnerRepo.getDeliveryPartner(uid);
@@ -117,13 +153,33 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
       throw Exception('Failed to load partner profile.');
     }
 
+    if (partner.role != 'delivery_partner') {
+      await _partnerRepo.signOut();
+      throw Exception('Unauthorized access. Not a delivery partner account.');
+    }
+
     if (!partner.isActive) {
+      await _partnerRepo.updateDeliveryPartner(uid, {'isActive': true});
+      partner = partner.copyWith(isActive: true);
+    }
+
+    if (partner.status == 'blocked') {
+      await _partnerRepo.signOut();
+      throw Exception('Account is blocked. Contact support.');
+    }
+
+    if (partner.status == 'disabled') {
       await _partnerRepo.signOut();
       throw Exception('Account is disabled. Contact support.');
     }
 
     await _partnerRepo.updateLastLogin(uid);
     await _partnerRepo.saveSession(uid, credential.user!.email ?? '');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('dp_nav_selected_index', 11);
+    } catch (_) {}
 
     return partner;
   }

@@ -55,7 +55,11 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
               Exception(e.message ?? 'Phone verification failed'));
         }
       },
-      onVerificationCompleted: (credential) {},
+      onVerificationCompleted: (credential) {
+        if (!completer.isCompleted) {
+          completer.complete(verificationIdResult);
+        }
+      },
       onCodeAutoRetrievalTimeout: (verificationId) {
         if (!completer.isCompleted) {
           completer.complete(verificationId);
@@ -78,7 +82,9 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
     final fullPhone =
         formattedPhone.startsWith('+') ? formattedPhone : '+91$formattedPhone';
 
-    final authEmail = '$fullPhone@delivery.app';
+    final authEmail = (email != null && email.trim().isNotEmpty)
+        ? email.trim()
+        : '$fullPhone@delivery.app';
 
     UserCredential credential;
     try {

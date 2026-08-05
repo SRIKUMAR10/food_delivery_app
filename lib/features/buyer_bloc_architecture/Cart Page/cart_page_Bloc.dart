@@ -318,8 +318,10 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         return;
       }
 
+      final displayName = _authService.currentUserDisplayName ?? 'Customer';
+      final deliveryAddress = 'Primary Address';
       await _cartRepository.checkoutCart(
-        uid, selectedItems, 'Customer',
+        uid, selectedItems, displayName, deliveryAddress,
         appliedCoupon: currentState.appliedCoupon,
       );
 

@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:food_delivery_app/core/models/delivery_partner_model.dart';
+import 'package:food_delivery_app/repositories/delivery_partner_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_state.dart';
@@ -14,33 +17,70 @@ class MockDeliveryNavigationBarRepository extends Mock
 class MockDeliveryNavigationBarService extends Mock
     implements DeliveryNavigationBarServiceBase {}
 
+class MockDeliveryPartnerRepository extends Mock
+    implements DeliveryPartnerRepository {}
+
+class MockUser extends Mock implements User {}
+
 void main() {
   late MockDeliveryNavigationBarRepository mockRepository;
   late MockDeliveryNavigationBarService mockService;
+  late MockDeliveryPartnerRepository mockPartnerRepo;
+  late MockUser mockUser;
   late DeliveryNavigationBarPageBloc bloc;
 
   const List<DeliveryNavigationBarItem> navItems =
       DeliveryNavigationBarRepository.defaultNavItems;
 
-  void stubSuccessfulInit() {
+  DeliveryPartnerModel buildPartner({
+    String displayName = 'Ravi Kumar',
+    String phoneNumber = '9876543210',
+    String? vehicleType = 'Motorcycle',
+    String? vehicleNumber = 'TN-01-AB-1234',
+    String? drivingLicense = 'DL-1234567890',
+    bool isActive = true,
+  }) {
+    return DeliveryPartnerModel(
+      id: 'uid123',
+      displayName: displayName,
+      phoneNumber: phoneNumber,
+      vehicleType: vehicleType,
+      vehicleNumber: vehicleNumber,
+      drivingLicense: drivingLicense,
+      isActive: isActive,
+      createdAt: DateTime(2024),
+      updatedAt: DateTime(2024),
+    );
+  }
+
+  void stubSuccessfulInit({int savedIndex = -1, DeliveryPartnerModel? partner}) {
     when(() => mockService.checkConnectivity()).thenAnswer((_) async => true);
     when(() => mockRepository.getNavItems()).thenAnswer((_) async => navItems);
     when(
       () => mockRepository.getSavedSelectedIndex(),
-    ).thenAnswer((_) async => -1);
+    ).thenAnswer((_) async => savedIndex);
     when(() => mockRepository.getLocaleCode()).thenAnswer((_) async => 'en');
     when(
       () => mockRepository.getPartnerName(),
     ).thenAnswer((_) async => 'Ravi Kumar');
     when(() => mockService.checkPermission()).thenAnswer((_) async => true);
+
+    when(() => mockUser.uid).thenReturn('uid123');
+    when(() => mockPartnerRepo.currentUser).thenReturn(mockUser);
+    when(() => mockPartnerRepo.getDeliveryPartner('uid123'))
+        .thenAnswer((_) async => partner ?? buildPartner());
   }
 
   setUp(() {
     mockRepository = MockDeliveryNavigationBarRepository();
     mockService = MockDeliveryNavigationBarService();
+    mockPartnerRepo = MockDeliveryPartnerRepository();
+    mockUser = MockUser();
+
     bloc = DeliveryNavigationBarPageBloc(
       repository: mockRepository,
       service: mockService,
+      partnerRepo: mockPartnerRepo,
     );
   });
 
@@ -65,6 +105,7 @@ void main() {
         return DeliveryNavigationBarPageBloc(
           repository: mockRepository,
           service: mockService,
+          partnerRepo: mockPartnerRepo,
         );
       },
       act: (b) => b.add(const DeliveryNavigationBarInitEvent()),
@@ -75,7 +116,7 @@ void main() {
         ),
         const DeliveryNavigationBarState(
           status: DeliveryNavigationBarStatus.loaded,
-          selectedIndex: 4,
+          selectedIndex: 0,
           navItems: navItems,
           localeCode: 'en',
           partnerName: 'Ravi Kumar',
@@ -91,9 +132,14 @@ void main() {
         when(
           () => mockRepository.saveSelectedIndex(2),
         ).thenAnswer((_) async {});
+        when(() => mockService.checkConnectivity()).thenAnswer((_) async => true);
+        when(() => mockPartnerRepo.currentUser).thenReturn(mockUser);
+        when(() => mockPartnerRepo.getDeliveryPartner('uid123'))
+            .thenAnswer((_) async => buildPartner());
         return DeliveryNavigationBarPageBloc(
           repository: mockRepository,
           service: mockService,
+          partnerRepo: mockPartnerRepo,
         );
       },
       seed: () => const DeliveryNavigationBarState(
@@ -120,6 +166,7 @@ void main() {
         return DeliveryNavigationBarPageBloc(
           repository: mockRepository,
           service: mockService,
+          partnerRepo: mockPartnerRepo,
         );
       },
       seed: () => const DeliveryNavigationBarState(
@@ -147,6 +194,7 @@ void main() {
         return DeliveryNavigationBarPageBloc(
           repository: mockRepository,
           service: mockService,
+          partnerRepo: mockPartnerRepo,
         );
       },
       seed: () => const DeliveryNavigationBarState(
@@ -175,6 +223,7 @@ void main() {
         return DeliveryNavigationBarPageBloc(
           repository: mockRepository,
           service: mockService,
+          partnerRepo: mockPartnerRepo,
         );
       },
       seed: () => const DeliveryNavigationBarState(
@@ -202,6 +251,7 @@ void main() {
         return DeliveryNavigationBarPageBloc(
           repository: mockRepository,
           service: mockService,
+          partnerRepo: mockPartnerRepo,
         );
       },
       seed: () => const DeliveryNavigationBarState(
@@ -224,6 +274,7 @@ void main() {
         return DeliveryNavigationBarPageBloc(
           repository: mockRepository,
           service: mockService,
+          partnerRepo: mockPartnerRepo,
         );
       },
       seed: () => const DeliveryNavigationBarState(

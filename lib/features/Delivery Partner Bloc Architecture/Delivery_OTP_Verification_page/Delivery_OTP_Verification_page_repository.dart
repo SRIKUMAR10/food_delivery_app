@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:food_delivery_app/core/models/delivery_partner_model.dart';
 import 'package:food_delivery_app/repositories/delivery_partner_repository.dart';
 
@@ -47,20 +49,37 @@ class DeliveryOtpVerificationRepository
     final fullPhone =
         formattedPhone.startsWith('+') ? formattedPhone : '+91$formattedPhone';
 
-    String newVerificationId = '';
+    final existingPartner =
+        await _partnerRepo.getDeliveryPartnerByPhone(fullPhone);
+    if (existingPartner != null) {
+      throw Exception('This phone number is already registered. Please login.');
+    }
+
+    final completer = Completer<String>();
     await _partnerRepo.sendPhoneOtp(
       phoneNumber: fullPhone,
       onCodeSent: (vId, token) {
-        newVerificationId = vId;
+        if (!completer.isCompleted) {
+          completer.complete(vId);
+        }
       },
       onVerificationFailed: (e) {
-        throw Exception(e.message ?? 'Failed to resend OTP');
+        if (!completer.isCompleted) {
+          completer.completeError(
+              Exception(e.message ?? 'Failed to resend OTP'));
+        }
       },
-      onVerificationCompleted: (credential) {},
+      onVerificationCompleted: (credential) {
+        if (!completer.isCompleted) {
+          completer.complete('');
+        }
+      },
       onCodeAutoRetrievalTimeout: (vId) {
-        newVerificationId = vId;
+        if (!completer.isCompleted) {
+          completer.complete(vId);
+        }
       },
     );
-    return newVerificationId;
+    return completer.future;
   }
 }

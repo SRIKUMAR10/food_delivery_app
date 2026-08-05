@@ -45,6 +45,7 @@ void main() {
       when(() => repository.confirmSignUpOtp(
             otpCode: any(named: 'otpCode'),
             phoneNumber: any(named: 'phoneNumber'),
+            verificationId: any(named: 'verificationId'),
             name: any(named: 'name'),
             shopName: any(named: 'shopName'),
             businessDetails: any(named: 'businessDetails'),
@@ -55,6 +56,7 @@ void main() {
       final result = await repository.confirmSignUpOtp(
         otpCode: '123456',
         phoneNumber: '+919876543210',
+        verificationId: 'test-verification-id',
         name: 'Test',
         shopName: 'Shop',
         businessDetails: 'Food',
@@ -66,6 +68,7 @@ void main() {
       verify(() => repository.confirmSignUpOtp(
             otpCode: '123456',
             phoneNumber: '+919876543210',
+            verificationId: 'test-verification-id',
             name: 'Test',
             shopName: 'Shop',
             businessDetails: 'Food',

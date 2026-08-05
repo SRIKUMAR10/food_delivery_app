@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'Delivery_Profile_page_service.dart';
 import 'Delivery_Profile_page_state.dart';
 
 abstract class DeliveryProfileRepositoryBase {
@@ -16,8 +17,13 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
   static const String _avatarKey = 'dp_profile_avatar';
 
   final SharedPreferences? _prefs;
+  final DeliveryProfileServiceBase _service;
 
-  DeliveryProfileRepository({SharedPreferences? prefs}) : _prefs = prefs;
+  DeliveryProfileRepository({
+    SharedPreferences? prefs,
+    DeliveryProfileServiceBase? service,
+  })  : _prefs = prefs,
+        _service = service ?? DeliveryProfileService();
 
   static const List<DeliveryProfileDocument> defaultDocuments = [
     DeliveryProfileDocument(
@@ -118,18 +124,36 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
   @override
   Future<DeliveryProfileState> fetchProfile() async {
     final prefs = await _getPrefs();
+    final String? avatarPath = prefs?.getString(_avatarKey);
+    final defaultProfile = buildDefaultProfile(avatarPath: avatarPath);
+    try {
+      final data = await _service.fetchProfileData();
+      final String displayName = data['displayName'] ?? '';
+      if (displayName.isNotEmpty) {
+        final profile = defaultProfile.copyWith(
+          fullName: displayName,
+          phone: data['phoneNumber'] ?? defaultProfile.phone,
+          email: data['email'] ?? defaultProfile.email,
+          vehicleType: data['vehicleType'] ?? defaultProfile.vehicleType,
+          vehicleNumber: data['vehicleNumber'] ?? defaultProfile.vehicleNumber,
+          licenseNumber: data['drivingLicense'] ?? defaultProfile.licenseNumber,
+          avatarPath: (data['photoUrl'] as String?)?.isNotEmpty == true ? data['photoUrl'] : defaultProfile.avatarPath,
+        );
+        final checklist = buildDefaultChecklist(profile: profile);
+        return profile.copyWith(checklist: checklist);
+      }
+    } catch (_) {}
+
     if (prefs == null) {
-      return buildDefaultProfile();
+      return defaultProfile;
     }
     final raw = prefs.getString(_profileKey);
     if (raw == null) {
-      return buildDefaultProfile(avatarPath: prefs.getString(_avatarKey));
+      return defaultProfile;
     }
     try {
       final map = jsonDecode(raw) as Map<String, dynamic>;
-      return buildDefaultProfile(
-        avatarPath: prefs.getString(_avatarKey),
-      ).copyWith(
+      final profile = defaultProfile.copyWith(
         fullName: map['fullName'] as String? ?? 'Ravi Kumar',
         phone: map['phone'] as String? ?? '+91 98765 43210',
         email: map['email'] as String? ?? 'ravi.kumar@example.com',
@@ -140,8 +164,10 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
         licenseNumber: map['licenseNumber'] as String? ?? 'TN07 20010012345',
         licenseValidTill: map['licenseValidTill'] as String? ?? '',
       );
+      final checklist = buildDefaultChecklist(profile: profile);
+      return profile.copyWith(checklist: checklist);
     } catch (_) {
-      return buildDefaultProfile(avatarPath: prefs.getString(_avatarKey));
+      return defaultProfile;
     }
   }
 
@@ -160,22 +186,36 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
   @override
   Future<void> saveProfile(DeliveryProfileState profile) async {
     final prefs = await _getPrefs();
-    if (prefs == null) return;
-    final map = <String, String>{
-      'fullName': profile.fullName,
-      'phone': profile.phone,
-      'email': profile.email,
-      'dob': profile.dob,
-      'gender': profile.gender,
-      'vehicleType': profile.vehicleType,
-      'vehicleNumber': profile.vehicleNumber,
-      'licenseNumber': profile.licenseNumber,
-      'licenseValidTill': profile.licenseValidTill,
-    };
-    await prefs.setString(_profileKey, jsonEncode(map));
-    if (profile.avatarPath != null) {
-      await prefs.setString(_avatarKey, profile.avatarPath!);
+    if (prefs != null) {
+      final map = <String, String>{
+        'fullName': profile.fullName,
+        'phone': profile.phone,
+        'email': profile.email,
+        'dob': profile.dob,
+        'gender': profile.gender,
+        'vehicleType': profile.vehicleType,
+        'vehicleNumber': profile.vehicleNumber,
+        'licenseNumber': profile.licenseNumber,
+        'licenseValidTill': profile.licenseValidTill,
+      };
+      await prefs.setString(_profileKey, jsonEncode(map));
+      if (profile.avatarPath != null) {
+        await prefs.setString(_avatarKey, profile.avatarPath!);
+      } else {
+        await prefs.remove(_avatarKey);
+      }
     }
+
+    try {
+      await _service.updateProfile({
+        'displayName': profile.fullName,
+        'phoneNumber': profile.phone,
+        'email': profile.email,
+        'vehicleType': profile.vehicleType,
+        'vehicleNumber': profile.vehicleNumber,
+        'drivingLicense': profile.licenseNumber,
+      });
+    } catch (_) {}
   }
 
   @override

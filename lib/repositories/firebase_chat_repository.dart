@@ -88,7 +88,7 @@ class FirebaseChatRepository implements IChatRepository {
 
         return messages;
       },
-    );
+    ).onErrorReturn(<ChatMessageModel>[]);
   }
 
   @override

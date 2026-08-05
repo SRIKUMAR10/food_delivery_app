@@ -52,6 +52,44 @@ class RazorpayApiService {
     _razorpay.open(options);
   }
 
+  /// Creates a secure Razorpay Payment Link via Firebase Cloud Functions.
+  /// Returns the short URL that the user can open to complete payment.
+  Future<String> createPaymentLink({
+    required double amount,
+    String currency = 'INR',
+    required String email,
+    String description = 'Wallet Top-up',
+  }) async {
+    const String cloudFunctionUrl =
+        'https://us-central1-food-delivery-app-cd4ca.cloudfunctions.net/createPaymentLink';
+
+    final user = FirebaseAuth.instance.currentUser;
+    final idToken = await user?.getIdToken();
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    if (idToken != null) {
+      headers['Authorization'] = 'Bearer $idToken';
+    }
+
+    final response = await http.post(
+      Uri.parse(cloudFunctionUrl),
+      headers: headers,
+      body: jsonEncode({
+        'amount': (amount * 100).toInt(),
+        'currency': currency,
+        'email': email,
+        'description': description,
+      }),
+    );
+
+    final data = _handleResponse(response);
+    if (data['paymentLink'] != null) {
+      return data['paymentLink'] as String;
+    }
+    throw Exception('Payment link creation failed: no link returned');
+  }
+
   /// Method to release resources
   void dispose() {
     _razorpay.clear();

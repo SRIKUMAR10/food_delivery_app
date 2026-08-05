@@ -393,10 +393,21 @@ class SellerLoginPageBloc
         step: SellerLoginStep.loginSuccess,
       ));
     } catch (e) {
-      emit(state.copyWith(
-        status: SellerLoginStatus.failure,
-        errorMessage: _friendlyError(e.toString()),
-      ));
+      final str = e.toString();
+      if (str.contains('Google Sign-In was cancelled') ||
+          str.contains('popup-closed-by-user') ||
+          str.contains('aborted by user') ||
+          str.contains('user-cancelled')) {
+        emit(state.copyWith(
+          status: SellerLoginStatus.initial,
+          clearError: true,
+        ));
+      } else {
+        emit(state.copyWith(
+          status: SellerLoginStatus.failure,
+          errorMessage: _friendlyError(str),
+        ));
+      }
     }
   }
 
@@ -547,8 +558,9 @@ class SellerLoginPageBloc
     if (raw.contains('invalid-recaptcha-token')) {
       return 'reCAPTCHA verification failed. Please refresh and try again.';
     }
-    // Strip "Exception:" prefix
-    return raw.replaceAll(RegExp(r'^Exception:\s*'), '');
+    // Clean up raw Firebase codes like [firebase_auth/popup-closed-by-user]
+    String cleaned = raw.replaceAll(RegExp(r'\[firebase_auth\/[a-zA-Z0-9_-]+\]\s*'), '');
+    return cleaned.replaceAll(RegExp(r'^Exception:\s*'), '').trim();
   }
 
   // ──────────────────────────────────────────────────────────────────────────

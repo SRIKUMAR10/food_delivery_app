@@ -138,5 +138,65 @@ void main() {
         ),
       ],
     );
+
+    blocTest<DeliveryLoginPageBloc, DeliveryLoginPageState>(
+      'emits success state on DeliveryLoginGoogleSubmittedEvent success',
+      build: () {
+        when(() => mockRepository.loginWithGoogle()).thenAnswer(
+          (_) async => DeliveryPartnerModel(
+            id: 'google-partner-1',
+            phoneNumber: '9876543210',
+            createdAt: DateTime(2024),
+            updatedAt: DateTime(2024),
+          ),
+        );
+        return bloc;
+      },
+      act: (b) => b.add(const DeliveryLoginGoogleSubmittedEvent()),
+      expect: () => [
+        const DeliveryLoginPageState(status: DeliveryLoginStatus.loading),
+        const DeliveryLoginPageState(
+          status: DeliveryLoginStatus.success,
+          isLoggedIn: true,
+          errorMessage: null,
+        ),
+      ],
+    );
+
+    blocTest<DeliveryLoginPageBloc, DeliveryLoginPageState>(
+      'resets status to initial without showing error when Google Sign-In is cancelled by user',
+      build: () {
+        when(() => mockRepository.loginWithGoogle()).thenThrow(
+          Exception('Google Sign-In was cancelled.'),
+        );
+        return bloc;
+      },
+      act: (b) => b.add(const DeliveryLoginGoogleSubmittedEvent()),
+      expect: () => [
+        const DeliveryLoginPageState(status: DeliveryLoginStatus.loading),
+        const DeliveryLoginPageState(
+          status: DeliveryLoginStatus.initial,
+          errorMessage: null,
+        ),
+      ],
+    );
+
+    blocTest<DeliveryLoginPageBloc, DeliveryLoginPageState>(
+      'emits clean error state without raw firebase code when Google Sign-In fails',
+      build: () {
+        when(() => mockRepository.loginWithGoogle()).thenThrow(
+          Exception('[firebase_auth/network-request-failed] A network error occurred.'),
+        );
+        return bloc;
+      },
+      act: (b) => b.add(const DeliveryLoginGoogleSubmittedEvent()),
+      expect: () => [
+        const DeliveryLoginPageState(status: DeliveryLoginStatus.loading),
+        const DeliveryLoginPageState(
+          status: DeliveryLoginStatus.error,
+          errorMessage: 'A network error occurred.',
+        ),
+      ],
+    );
   });
 }

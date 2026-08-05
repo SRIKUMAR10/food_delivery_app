@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -38,13 +39,24 @@ class DeliveryPartnerRepository {
   Future<UserCredential> signInWithGoogle() async {
     try {
       if (kIsWeb) {
-        final provider = GoogleAuthProvider();
-        return await _auth.signInWithPopup(provider);
+        final googleSignIn = GoogleSignIn(
+          clientId: '318384112771-psfipm61tk7m64smr99j59pe28djds08.apps.googleusercontent.com',
+        );
+        final googleUser = await googleSignIn.signIn();
+        if (googleUser == null) {
+          throw Exception('Google Sign-In was cancelled.');
+        }
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        return await _auth.signInWithCredential(credential);
       } else {
         final googleSignIn = GoogleSignIn();
         final googleUser = await googleSignIn.signIn();
         if (googleUser == null) {
-          throw Exception('Google Sign-In aborted by user');
+          throw Exception('Google Sign-In was cancelled.');
         }
         final googleAuth = await googleUser.authentication;
         final credential = GoogleAuthProvider.credential(
@@ -53,7 +65,25 @@ class DeliveryPartnerRepository {
         );
         return await _auth.signInWithCredential(credential);
       }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'popup-closed-by-user' ||
+          e.code == 'user-cancelled' ||
+          e.code == 'cancelled') {
+        throw Exception('Google Sign-In was cancelled.');
+      }
+      if (e.code == 'popup-blocked-by-browser') {
+        throw Exception(
+            'Popup blocked by browser. Please allow popups and try again.');
+      }
+      throw Exception(e.message ?? e.code);
     } catch (e) {
+      final str = e.toString();
+      if (str.contains('popup-closed-by-user') ||
+          str.contains('user-cancelled') ||
+          str.contains('aborted by user') ||
+          str.contains('Google Sign-In was cancelled')) {
+        throw Exception('Google Sign-In was cancelled.');
+      }
       throw Exception('Google Sign-In failed: $e');
     }
   }
@@ -93,39 +123,58 @@ class DeliveryPartnerRepository {
     required String email,
     required String password,
   }) async {
-    final credential = PhoneAuthProvider.credential(
+    final phoneCredential = PhoneAuthProvider.credential(
       verificationId: verificationId,
       smsCode: smsCode,
     );
 
-    // Validate OTP by signing in or validating credential (throws if invalid)
+    late UserCredential phoneUserCredential;
     try {
-      await _auth.signInWithCredential(credential);
+      phoneUserCredential = await _auth.signInWithCredential(phoneCredential);
     } catch (e) {
       throw Exception('Invalid or expired OTP. Please try again.');
+    }
+
+    final phoneUser = phoneUserCredential.user;
+    if (phoneUser == null) {
+      throw Exception('Failed to authenticate with OTP.');
     }
 
     final formattedPhone =
         phone.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
     final fullPhone =
         formattedPhone.startsWith('+') ? formattedPhone : '+91$formattedPhone';
-    final authEmail = '$fullPhone@delivery.app';
 
-    UserCredential userCredential;
+    final existingPartner = await getDeliveryPartnerByPhone(fullPhone);
+    if (existingPartner != null) {
+      await signOut();
+      throw Exception(
+          'This phone number is already registered. Please login.');
+    }
+
+    final authEmail = (email != null && email.trim().isNotEmpty)
+        ? email.trim()
+        : '$fullPhone@delivery.app';
+
+    final emailCredential = EmailAuthProvider.credential(
+      email: authEmail,
+      password: password,
+    );
+
     try {
-      userCredential = await _auth.createUserWithEmailAndPassword(
-        email: authEmail,
-        password: password,
-      );
+      await phoneUser.linkWithCredential(emailCredential);
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
+      await signOut();
+      if (e.code == 'email-already-in-use' ||
+          e.code == 'credential-already-in-use' ||
+          e.code == 'account-exists-with-different-credential') {
         throw Exception(
             'This phone number is already registered. Please login.');
       }
       throw Exception(e.message ?? 'Account creation failed');
     }
 
-    final uid = userCredential.user!.uid;
+    final uid = phoneUser.uid;
     final now = DateTime.now();
 
     final partner = DeliveryPartnerModel(
@@ -164,6 +213,19 @@ class DeliveryPartnerRepository {
   ];
 
   Future<void> signOut() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) {
+      try {
+        await _firestore.collection('delivery_partners').doc(uid).update({
+          'isOnline': false,
+          'lastLogout': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }).catchError((_) {});
+        await _firestore.collection('riders').doc(uid).update({
+          'isOnline': false,
+        }).catchError((_) {});
+      } catch (_) {}
+    }
     await _auth.signOut();
     for (final key in _scopedKeys) {
       try {
@@ -182,15 +244,116 @@ class DeliveryPartnerRepository {
 
   Future<DeliveryPartnerModel?> getDeliveryPartnerByPhone(
       String phoneNumber) async {
-    final query = await _firestore
-        .collection('delivery_partners')
-        .where('phoneNumber', isEqualTo: phoneNumber)
-        .limit(1)
-        .get();
-    if (query.docs.isNotEmpty) {
-      return DeliveryPartnerModel.fromFirestore(query.docs.first);
+    try {
+      final cleaned = phoneNumber.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
+      final withPrefix = cleaned.startsWith('+') ? cleaned : '+91$cleaned';
+      final withoutPrefix = cleaned.startsWith('+91')
+          ? cleaned.substring(3)
+          : (cleaned.startsWith('+') ? cleaned.substring(1) : cleaned);
+
+      final List<String> priorityNumbers = [
+        withPrefix,
+        withoutPrefix,
+        cleaned,
+        if (withoutPrefix.length == 10) ...[
+          '+91 ${withoutPrefix.substring(0, 5)} ${withoutPrefix.substring(5)}',
+          '${withoutPrefix.substring(0, 5)} ${withoutPrefix.substring(5)}',
+        ],
+        phoneNumber.trim(),
+        '+91 $withoutPrefix',
+        '+91-$withoutPrefix',
+        '0$withoutPrefix',
+      ];
+
+      final searchNumbers = <String>{};
+      for (final num in priorityNumbers) {
+        final str = num.toString().trim();
+        if (str.isNotEmpty) {
+          searchNumbers.add(str);
+          if (searchNumbers.length >= 10) break;
+        }
+      }
+
+      final limitedSearchNumbers = searchNumbers.toList();
+
+      final collectionsToSearch = [
+        'delivery_partners',
+        'riders',
+        'users',
+      ];
+      final fieldsToSearch = [
+        'phoneNumber',
+        'phone',
+        'mobile',
+        'mobileNumber',
+        'phone_number',
+      ];
+
+      for (final collection in collectionsToSearch) {
+        for (final field in fieldsToSearch) {
+          try {
+            final query = await _firestore
+                .collection(collection)
+                .where(field, whereIn: limitedSearchNumbers)
+                .limit(1)
+                .get();
+
+            if (query.docs.isNotEmpty) {
+              return DeliveryPartnerModel.fromFirestore(query.docs.first);
+            }
+          } on FirebaseException catch (e) {
+            debugPrint(
+                'getDeliveryPartnerByPhone query denied: '
+                'collection=$collection field=$field '
+                'code=${e.code} message=${e.message}');
+          } catch (e, stack) {
+            debugPrint('getDeliveryPartnerByPhone query error: '
+                'collection=$collection field=$field '
+                'error=$e\n$stack');
+          }
+        }
+      }
+
+      final targetDigits = withoutPrefix.length >= 10
+          ? withoutPrefix.substring(withoutPrefix.length - 10)
+          : withoutPrefix;
+
+      if (targetDigits.isNotEmpty) {
+        for (final collection in collectionsToSearch) {
+          try {
+            final snapshot =
+                await _firestore.collection(collection).limit(100).get();
+            for (final doc in snapshot.docs) {
+              final data = doc.data();
+              for (final entry in data.entries) {
+                final val = entry.value;
+                if (val != null) {
+                  final valStr = val.toString();
+                  final valDigits = valStr.replaceAll(RegExp(r'\D'), '');
+                  if (valDigits.length >= 10 &&
+                      valDigits.endsWith(targetDigits)) {
+                    return DeliveryPartnerModel.fromFirestore(doc);
+                  }
+                }
+              }
+            }
+          } on FirebaseException catch (e) {
+            debugPrint(
+                'getDeliveryPartnerByPhone fallback denied: '
+                'collection=$collection code=${e.code} message=${e.message}');
+          } catch (e, stack) {
+            debugPrint(
+                'getDeliveryPartnerByPhone fallback error: '
+                'collection=$collection error=$e\n$stack');
+          }
+        }
+      }
+
+      return null;
+    } catch (e, stack) {
+      debugPrint('Error in getDeliveryPartnerByPhone: $e\n$stack');
+      return null;
     }
-    return null;
   }
 
   Future<void> createDeliveryPartner(
@@ -199,12 +362,32 @@ class DeliveryPartnerRepository {
         .collection('delivery_partners')
         .doc(uid)
         .set(partner.toMap());
+    await _firestore.collection('riders').doc(uid).set({
+      'name': partner.displayName,
+      'phone': partner.phoneNumber,
+      'imageUrl': partner.photoUrl ?? '',
+      'rating': partner.rating,
+      'distance': '1.2 km',
+      'currentLocation': {
+        'lat': 13.0827,
+        'lng': 80.2707,
+      },
+    });
   }
 
   Future<void> updateDeliveryPartner(
       String uid, Map<String, dynamic> data) async {
     data['updatedAt'] = FieldValue.serverTimestamp();
     await _firestore.collection('delivery_partners').doc(uid).update(data);
+
+    final Map<String, dynamic> riderUpdates = {};
+    if (data.containsKey('displayName')) riderUpdates['name'] = data['displayName'];
+    if (data.containsKey('phoneNumber')) riderUpdates['phone'] = data['phoneNumber'];
+    if (data.containsKey('photoUrl')) riderUpdates['imageUrl'] = data['photoUrl'];
+    if (data.containsKey('rating')) riderUpdates['rating'] = data['rating'];
+    if (riderUpdates.isNotEmpty) {
+      await _firestore.collection('riders').doc(uid).update(riderUpdates).catchError((_) {});
+    }
   }
 
   Future<void> updateLastLogin(String uid) async {
@@ -213,6 +396,9 @@ class DeliveryPartnerRepository {
       'isOnline': true,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await _firestore.collection('riders').doc(uid).update({
+      'isOnline': true,
+    }).catchError((_) {});
   }
 
   Future<void> updateOnlineStatus(String uid, bool isOnline) async {
@@ -220,6 +406,9 @@ class DeliveryPartnerRepository {
       'isOnline': isOnline,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await _firestore.collection('riders').doc(uid).update({
+      'isOnline': isOnline,
+    }).catchError((_) {});
   }
 
   Future<void> saveSession(String uid, String email) async {

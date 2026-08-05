@@ -62,7 +62,7 @@ class SellerRepository {
         final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
         
         if (googleUser == null) {
-          throw Exception('Google Sign-In aborted by user');
+          throw Exception('Google Sign-In was cancelled.');
         }
         
         final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -73,7 +73,25 @@ class SellerRepository {
         
         return await _auth.signInWithCredential(credential);
       }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'popup-closed-by-user' ||
+          e.code == 'user-cancelled' ||
+          e.code == 'cancelled') {
+        throw Exception('Google Sign-In was cancelled.');
+      }
+      if (e.code == 'popup-blocked-by-browser') {
+        throw Exception(
+            'Popup blocked by browser. Please allow popups and try again.');
+      }
+      throw Exception(e.message ?? e.code);
     } catch (e) {
+      final str = e.toString();
+      if (str.contains('popup-closed-by-user') ||
+          str.contains('user-cancelled') ||
+          str.contains('aborted by user') ||
+          str.contains('Google Sign-In was cancelled')) {
+        throw Exception('Google Sign-In was cancelled.');
+      }
       throw Exception('Google Sign-In failed: $e');
     }
   }
@@ -171,18 +189,61 @@ class SellerRepository {
   Future<bool> confirmSignUpOtp({
     required String otpCode,
     required String phoneNumber,
+    required String verificationId,
     required String name,
     required String shopName,
     required String businessDetails,
     required String email,
     required String password,
   }) async {
-    // Placeholder for OTP confirmation during sign up
-    return true;
+    final credential = PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: otpCode,
+    );
+
+    try {
+      await _auth.signInWithCredential(credential);
+      return true;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'invalid-verification-code' ||
+          e.code == 'invalid-verification-id') {
+        return false;
+      }
+      rethrow;
+    }
   }
 
-  Future<void> sendOtp(String phoneNumber) async {
-    // Placeholder for sending OTP
+  Future<String> sendOtp(String phoneNumber) async {
+    final formattedPhone = phoneNumber
+        .replaceAll(RegExp(r'\s+'), '')
+        .replaceAll('-', '');
+    final fullPhone =
+        formattedPhone.startsWith('+') ? formattedPhone : '+91$formattedPhone';
+
+    final completer = Completer<String>();
+
+    await _auth.verifyPhoneNumber(
+      phoneNumber: fullPhone,
+      verificationCompleted: (credential) {},
+      verificationFailed: (e) {
+        if (!completer.isCompleted) {
+          completer.completeError(
+              Exception(e.message ?? 'Phone verification failed'));
+        }
+      },
+      codeSent: (verificationId, resendToken) {
+        if (!completer.isCompleted) {
+          completer.complete(verificationId);
+        }
+      },
+      codeAutoRetrievalTimeout: (verificationId) {
+        if (!completer.isCompleted) {
+          completer.complete(verificationId);
+        }
+      },
+    );
+
+    return completer.future;
   }
 
   Future<bool> checkEmailVerified() async {

@@ -118,6 +118,7 @@ void main() async {
     providerApple: AppleAppAttestProvider(),
   );
 
+
   if (!kIsWeb) {
     // Pass all uncaught "fatal" errors from the framework to Crashlytics
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
@@ -398,7 +399,10 @@ class MyApp extends StatelessWidget {
           create: (context) => DeliveryOnboardingService(),
         ),
         RepositoryProvider<DeliveryActiveOrderSessionRepository>(
-          create: (context) => DeliveryActiveOrderSessionRepository(),
+          create: (context) => DeliveryActiveOrderSessionRepository(
+            firestore: FirebaseFirestore.instance,
+            auth: FirebaseAuth.instance,
+          ),
         ),
         RepositoryProvider<ThemeManager>(create: (context) => themeManager),
         RepositoryProvider<LocaleManager>(create: (context) => localeManager),

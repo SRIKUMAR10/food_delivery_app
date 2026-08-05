@@ -1,16 +1,29 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 abstract class DeliveryIncomingOrderServiceBase {
   Future<bool> checkNetworkConnectivity();
   Future<bool> requestLocationPermission();
   double calculateDistance(double lat1, double lon1, double lat2, double lon2);
   String formatCurrency(double amount);
+  Future<Map<String, dynamic>?> fetchIncomingOrderData();
+  Future<bool> acceptIncomingOrder(String orderId);
+  Future<bool> declineIncomingOrder(String orderId);
 }
 
 class DeliveryIncomingOrderService
     implements DeliveryIncomingOrderServiceBase {
+  final FirebaseFirestore? _firestore;
+  final FirebaseAuth? _auth;
+
+  DeliveryIncomingOrderService({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
   @override
   Future<bool> checkNetworkConnectivity() async {
     if (kIsWeb) {
@@ -110,5 +123,76 @@ class DeliveryIncomingOrderService
   @override
   String formatCurrency(double amount) {
     return '\u{20B9}${amount.toStringAsFixed(2)}';
+  }
+
+  @override
+  Future<Map<String, dynamic>?> fetchIncomingOrderData() async {
+    try {
+      if (_firestore != null && _auth?.currentUser != null) {
+        final uid = _auth!.currentUser!.uid;
+        final query = await _firestore!
+            .collection('orders')
+            .where('riderId', isEqualTo: uid)
+            .where('status', isEqualTo: 'Ready')
+            .limit(1)
+            .get();
+
+        if (query.docs.isNotEmpty) {
+          final doc = query.docs.first;
+          final data = doc.data();
+          final sellerId = data['sellerId'] as String? ?? '';
+
+          String shopName = 'Restaurant';
+          String shopAddress = '';
+          if (sellerId.isNotEmpty) {
+            final sellerDoc = await _firestore!.collection('sellers').doc(sellerId).get();
+            if (sellerDoc.exists) {
+              final sData = sellerDoc.data()!;
+              shopName = sData['shopName'] as String? ?? sData['name'] as String? ?? 'Restaurant';
+              shopAddress = sData['address'] as String? ?? '';
+            }
+          }
+
+          return {
+            'orderId': doc.id,
+            'storeName': shopName,
+            'storeAddress': shopAddress,
+            'customerName': data['customerName'] ?? 'Customer',
+            'customerAddress': data['deliveryAddress'] ?? '',
+            'orderAmount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+            'remainingSeconds': 15,
+          };
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  @override
+  Future<bool> acceptIncomingOrder(String orderId) async {
+    try {
+      if (_firestore != null) {
+        await _firestore!.collection('orders').doc(orderId).update({
+          'status': 'Accepted',
+          'acceptedAt': FieldValue.serverTimestamp(),
+        });
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  @override
+  Future<bool> declineIncomingOrder(String orderId) async {
+    try {
+      if (_firestore != null) {
+        await _firestore!.collection('orders').doc(orderId).update({
+          'status': 'Ready',
+          'riderId': FieldValue.delete(),
+        });
+        return true;
+      }
+    } catch (_) {}
+    return false;
   }
 }

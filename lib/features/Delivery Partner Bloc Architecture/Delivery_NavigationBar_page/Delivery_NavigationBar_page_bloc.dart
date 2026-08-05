@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:food_delivery_app/repositories/delivery_partner_repository.dart';
 import 'Delivery_NavigationBar_page_event.dart';
 import 'Delivery_NavigationBar_page_state.dart';
 import 'Delivery_NavigationBar_page_repository.dart';
@@ -9,11 +9,14 @@ class DeliveryNavigationBarPageBloc
     extends Bloc<DeliveryNavigationBarEvent, DeliveryNavigationBarState> {
   final DeliveryNavigationBarRepositoryBase repository;
   final DeliveryNavigationBarServiceBase service;
+  final DeliveryPartnerRepository _partnerRepo;
 
   DeliveryNavigationBarPageBloc({
     required this.repository,
     required this.service,
-  }) : super(const DeliveryNavigationBarState()) {
+    DeliveryPartnerRepository? partnerRepo,
+  })  : _partnerRepo = partnerRepo ?? DeliveryPartnerRepository(),
+        super(const DeliveryNavigationBarState()) {
     on<DeliveryNavigationBarInitEvent>(_onInit);
     on<DeliveryNavigationBarTabChangedEvent>(_onTabChanged);
     on<DeliveryNavigationBarContactSupportClickedEvent>(_onContactSupport);
@@ -48,13 +51,36 @@ class DeliveryNavigationBarPageBloc
         return;
       }
 
+      int indexToUse = savedIndex >= 0 && savedIndex < navItems.length
+          ? savedIndex
+          : 0;
+
+      if (isOnline) {
+        final uid = _partnerRepo.currentUser?.uid;
+        if (uid != null) {
+          final partner = await _partnerRepo.getDeliveryPartner(uid);
+          if (partner != null) {
+            final isProfileComplete = partner.displayName.trim().isNotEmpty &&
+                partner.phoneNumber.trim().isNotEmpty &&
+                partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
+                partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
+                partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
+                
+            if (!isProfileComplete) {
+              indexToUse = 11;
+            }
+          } else {
+            indexToUse = 11;
+          }
+        } else {
+          indexToUse = 11;
+        }
+      }
+
       emit(state.copyWith(
         status: DeliveryNavigationBarStatus.loaded,
         navItems: navItems,
-        selectedIndex:
-            savedIndex >= 0 && savedIndex < navItems.length
-                ? savedIndex
-                : state.selectedIndex,
+        selectedIndex: indexToUse,
         localeCode: localeCode,
         partnerName: partnerName,
         hasPermission: hasPermission,
@@ -77,6 +103,30 @@ class DeliveryNavigationBarPageBloc
     if (event.index < 0 || event.index >= state.navItems.length) {
       return;
     }
+
+    final isOnline = await service.checkConnectivity();
+    if (isOnline && event.index != 11) {
+      final uid = _partnerRepo.currentUser?.uid;
+      if (uid != null) {
+        final partner = await _partnerRepo.getDeliveryPartner(uid);
+        if (partner != null) {
+          final isProfileComplete = partner.displayName.trim().isNotEmpty &&
+              partner.phoneNumber.trim().isNotEmpty &&
+              partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
+              partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
+              partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
+
+          if (!isProfileComplete) {
+            emit(state.copyWith(
+              selectedIndex: 11,
+              errorMessage: 'Please fill in and save your profile details first.',
+            ));
+            return;
+          }
+        }
+      }
+    }
+
     await repository.saveSelectedIndex(event.index);
     emit(state.copyWith(
       selectedIndex: event.index,
@@ -102,11 +152,33 @@ class DeliveryNavigationBarPageBloc
       final navItems = await repository.getNavItems();
       final hasPermission = await service.checkPermission();
 
+      int indexToUse = state.selectedIndex;
+      if (isOnline) {
+        final uid = _partnerRepo.currentUser?.uid;
+        if (uid != null) {
+          final partner = await _partnerRepo.getDeliveryPartner(uid);
+          if (partner != null) {
+            final isProfileComplete = partner.displayName.trim().isNotEmpty &&
+                partner.phoneNumber.trim().isNotEmpty &&
+                partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
+                partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
+                partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
+
+            if (!isProfileComplete) {
+              indexToUse = 11;
+            }
+          } else {
+            indexToUse = 11;
+          }
+        }
+      }
+
       emit(state.copyWith(
         status: navItems.isEmpty
             ? DeliveryNavigationBarStatus.empty
             : DeliveryNavigationBarStatus.loaded,
         navItems: navItems,
+        selectedIndex: indexToUse,
         hasPermission: hasPermission,
         isOffline: !isOnline,
         errorMessage: null,
@@ -170,7 +242,7 @@ class DeliveryNavigationBarPageBloc
   ) async {
     emit(state.copyWith(status: DeliveryNavigationBarStatus.loading));
     try {
-      await FirebaseAuth.instance.signOut();
+      await _partnerRepo.signOut();
       emit(state.copyWith(status: DeliveryNavigationBarStatus.loggedOut));
     } catch (e) {
       emit(state.copyWith(

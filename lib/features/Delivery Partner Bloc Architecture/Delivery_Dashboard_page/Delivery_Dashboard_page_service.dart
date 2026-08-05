@@ -20,25 +20,27 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
   @override
   Future<Map<String, dynamic>> fetchDashboardMetrics() async {
     try {
-      if (_firestore != null && _auth?.currentUser != null) {
-        final uid = _auth!.currentUser!.uid;
-        final partnerDoc = await _firestore!
+      final currentFirestore = _firestore ?? FirebaseFirestore.instance;
+      final currentAuth = _auth ?? FirebaseAuth.instance;
+      if (currentAuth.currentUser != null) {
+        final uid = currentAuth.currentUser!.uid;
+        final partnerDoc = await currentFirestore
             .collection('delivery_partners')
             .doc(uid)
             .get();
 
         if (partnerDoc.exists) {
           final data = partnerDoc.data()!;
-          final ordersQuery = await _firestore!
+          final ordersQuery = await currentFirestore
               .collection('orders')
               .where('riderId', isEqualTo: uid)
-              .where('status', whereIn: ['outForDelivery', 'accepted'])
+              .where('status', whereIn: ['OutForDelivery', 'Accepted'])
               .get();
 
-          final completedToday = await _firestore!
+          final completedToday = await currentFirestore
               .collection('orders')
               .where('riderId', isEqualTo: uid)
-              .where('status', isEqualTo: 'delivered')
+              .where('status', isEqualTo: 'Delivered')
               .get();
 
           final todayEarnings = completedToday.docs.fold<double>(
@@ -121,11 +123,19 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
   @override
   Future<bool> updateOnlineStatus(bool isOnline) async {
     try {
-      if (_auth?.currentUser != null && _firestore != null) {
-        await _firestore!
+      final currentAuth = _auth ?? FirebaseAuth.instance;
+      final currentFirestore = _firestore ?? FirebaseFirestore.instance;
+      if (currentAuth.currentUser != null) {
+        await currentFirestore
             .collection('delivery_partners')
-            .doc(_auth!.currentUser!.uid)
+            .doc(currentAuth.currentUser!.uid)
             .update({'isOnline': isOnline, 'updatedAt': FieldValue.serverTimestamp()});
+        
+        // sync to riders collection
+        await currentFirestore
+            .collection('riders')
+            .doc(currentAuth.currentUser!.uid)
+            .update({'isOnline': isOnline}).catchError((_) {});
       }
     } catch (_) {
       await Future.delayed(const Duration(milliseconds: 200));

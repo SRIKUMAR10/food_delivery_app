@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'Delivery_Orders_page_service.dart';
 import 'Delivery_Orders_page_state.dart';
 
@@ -14,7 +16,10 @@ class DeliveryOrdersRepository implements DeliveryOrdersRepositoryBase {
   final DeliveryOrdersServiceBase _service;
 
   DeliveryOrdersRepository({DeliveryOrdersServiceBase? service})
-      : _service = service ?? DeliveryOrdersService();
+      : _service = service ?? DeliveryOrdersService(
+          firestore: FirebaseFirestore.instance,
+          auth: FirebaseAuth.instance,
+        );
 
   List<DeliveryOrderCardModel> _mapOrders(Map<String, dynamic> raw) {
     final rawOrders = raw['orders'] as List? ?? [];
@@ -71,8 +76,37 @@ class DeliveryOrdersRepository implements DeliveryOrdersRepositoryBase {
     String orderId,
     DeliveryOrderStatus status,
   ) async {
+    final String firestoreStatus = switch (status) {
+      DeliveryOrderStatus.pending => 'Accepted',
+      DeliveryOrderStatus.active => 'OutForDelivery',
+      DeliveryOrderStatus.completed => 'Delivered',
+      DeliveryOrderStatus.cancelled => 'Cancelled',
+    };
+
+    try {
+      await FirebaseFirestore.instance.collection('orders').doc(orderId).update({
+        'status': firestoreStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+
     final orders = await fetchOrders();
-    final order = orders.firstWhere((o) => o.orderId == orderId);
+    final order = orders.firstWhere(
+      (o) => o.orderId == orderId,
+      orElse: () => DeliveryOrderCardModel(
+        orderId: orderId,
+        customerName: '',
+        restaurantName: '',
+        pickupAddress: '',
+        deliveryAddress: '',
+        amount: 0.0,
+        itemsCount: 0,
+        status: status,
+        distance: 0.0,
+        time: '',
+        paymentType: '',
+      ),
+    );
     return order.copyWith(status: status);
   }
 

@@ -274,6 +274,7 @@ void main() {
           () => mockRepo.confirmSignUpOtp(
             otpCode: any(named: 'otpCode'),
             phoneNumber: any(named: 'phoneNumber'),
+            verificationId: any(named: 'verificationId'),
             name: any(named: 'name'),
             shopName: any(named: 'shopName'),
             businessDetails: any(named: 'businessDetails'),

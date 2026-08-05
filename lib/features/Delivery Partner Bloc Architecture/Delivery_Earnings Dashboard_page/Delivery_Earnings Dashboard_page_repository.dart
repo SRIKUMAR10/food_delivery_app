@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Delivery_Earnings Dashboard_page_service.dart';
 import 'Delivery_Earnings Dashboard_page_state.dart';
@@ -22,7 +24,10 @@ class DeliveryEarningsDashboardRepository
   DeliveryEarningsDashboardRepository({
     DeliveryEarningsDashboardServiceBase? service,
     SharedPreferences? prefs,
-  })  : _service = service ?? DeliveryEarningsDashboardService(),
+  })  : _service = service ?? DeliveryEarningsDashboardService(
+            firestore: FirebaseFirestore.instance,
+            auth: FirebaseAuth.instance,
+        ),
         _prefs = prefs;
 
   Future<SharedPreferences> _getPrefs() async =>

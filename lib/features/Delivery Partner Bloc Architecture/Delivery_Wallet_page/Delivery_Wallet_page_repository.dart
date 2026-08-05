@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Delivery_Wallet_page_service.dart';
 import 'Delivery_Wallet_page_state.dart';
@@ -26,7 +28,10 @@ class DeliveryWalletPageRepository implements DeliveryWalletPageRepositoryBase {
   DeliveryWalletPageRepository({
     DeliveryWalletPageServiceBase? service,
     SharedPreferences? prefs,
-  }) : _service = service ?? DeliveryWalletPageService(),
+  }) : _service = service ?? DeliveryWalletPageService(
+            firestore: FirebaseFirestore.instance,
+            auth: FirebaseAuth.instance,
+        ),
        _prefs = prefs;
 
   Future<SharedPreferences> _getPrefs() async =>

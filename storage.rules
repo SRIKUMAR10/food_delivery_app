@@ -40,16 +40,22 @@ service firebase.storage {
       allow create, update: if isAuthenticated() && 
                       isImage() && 
                       isUnder5MB();
-      allow delete: if isAuthenticated();
+      allow delete: if isAuthenticated() &&
+                      filename.matches('^' + request.auth.uid + '.*');
       allow read: if true;
     }
 
     match /chat_attachments/{conversationId}/{filename} {
-      // For chat attachments, any authenticated user can upload. 
-      // Ideal security would check if the user is part of the conversation via firestore, 
+      // For chat attachments, any authenticated user can upload.
+      // Ideal security would check if the user is part of the conversation via firestore,
       // but since storage rules can't easily cross-check complex firestore documents without custom claims,
-      // we restrict to authenticated users only.
-      allow write: if isAuthenticated();
+      // we restrict to authenticated users only with content type allowlist.
+      allow write: if isAuthenticated() &&
+        request.resource.size < 25 * 1024 * 1024 &&
+        (request.resource.contentType.matches('image/.*') ||
+         request.resource.contentType.matches('audio/.*') ||
+         request.resource.contentType.matches('video/.*') ||
+         request.resource.contentType == 'application/pdf');
       allow read: if true;
     }
   }

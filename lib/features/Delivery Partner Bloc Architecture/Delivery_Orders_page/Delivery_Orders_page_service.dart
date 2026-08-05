@@ -43,22 +43,22 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
   @override
   Future<Map<String, dynamic>> fetchOrdersData() async {
     try {
-      if (_firestore != null && _auth?.currentUser != null) {
-        final uid = _auth!.currentUser!.uid;
-        final ordersQuery = await _firestore!
+      final currentFirestore = _firestore ?? FirebaseFirestore.instance;
+      final currentAuth = _auth ?? FirebaseAuth.instance;
+      if (currentAuth.currentUser != null) {
+        final uid = currentAuth.currentUser!.uid;
+        final ordersQuery = await currentFirestore
             .collection('orders')
             .where('riderId', isEqualTo: uid)
-            .where('status', whereIn: ['accepted', 'pending', 'preparing', 'ready', 'outForDelivery'])
+            .where('status', whereIn: ['Accepted', 'Preparing', 'Ready', 'OutForDelivery'])
             .orderBy('timestamp', descending: true)
             .get();
 
-        if (ordersQuery.docs.isNotEmpty) {
-          final orders = ordersQuery.docs.map((doc) {
-            final data = doc.data();
-            return _mapFirestoreOrder(doc.id, data);
-          }).toList();
-          return {'orders': orders};
-        }
+        final orders = ordersQuery.docs.map((doc) {
+          final data = doc.data();
+          return _mapFirestoreOrder(doc.id, data);
+        }).toList();
+        return {'orders': orders};
       }
     } catch (_) {}
 
@@ -90,14 +90,14 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
   }
 
   String _mapFirestoreStatus(String status) {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'accepted':
       case 'preparing':
       case 'ready':
+      case 'outfordelivery':
         return 'active';
-      case 'outForDelivery':
-        return 'active';
-      case 'newOrder':
+      case 'new':
+      case 'neworder':
         return 'pending';
       default:
         return 'pending';

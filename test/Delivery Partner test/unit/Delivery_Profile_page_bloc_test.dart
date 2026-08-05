@@ -258,9 +258,6 @@ void main() {
         when(
           () => mockRepository.pickProfileImage(),
         ).thenAnswer((_) async => '/tmp/avatar.png');
-        when(
-          () => mockRepository.saveAvatarPath('/tmp/avatar.png'),
-        ).thenAnswer((_) async {});
         return DeliveryProfileBloc(
           repository: mockRepository,
           service: mockService,

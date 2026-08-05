@@ -7,6 +7,11 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_ui.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_ui.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_ui.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Pickup%20Confirmation_page/Delivery_Pickup%20Confirmation_page_ui.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Delivery%20Completed_page/Delivery_Delivery%20Completed_page_ui.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_ui.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_state.dart';
@@ -229,27 +234,27 @@ void main() {
     test('initial state has default values', () {
       final bloc = DeliveryForgotPasswordBloc();
       expect(bloc.state.status, equals(DeliveryForgotPasswordStatus.initial));
-      expect(bloc.state.email, isEmpty);
+      expect(bloc.state.phoneNumber, isEmpty);
       bloc.close();
     });
 
-    test('email validation rejects empty email', () async {
+    test('phone validation rejects empty phone', () async {
       final bloc = DeliveryForgotPasswordBloc();
-      bloc.add(const DeliveryForgotPasswordSubmitted());
+      bloc.add(const DeliveryForgotPasswordSendOtpRequested());
       await Future.delayed(const Duration(milliseconds: 100));
 
-      expect(bloc.state.status, equals(DeliveryForgotPasswordStatus.failure));
+      expect(bloc.state.status, equals(DeliveryForgotPasswordStatus.otpSendFailure));
       expect(bloc.state.errorMessage, isNotNull);
       bloc.close();
     });
 
-    test('email validation rejects invalid email', () async {
+    test('phone validation rejects invalid phone', () async {
       final bloc = DeliveryForgotPasswordBloc();
-      bloc.add(DeliveryForgotPasswordEmailChanged('not-an-email'));
-      bloc.add(const DeliveryForgotPasswordSubmitted());
+      bloc.add(const DeliveryForgotPasswordPhoneChanged('123'));
+      bloc.add(const DeliveryForgotPasswordSendOtpRequested());
       await Future.delayed(const Duration(milliseconds: 100));
 
-      expect(bloc.state.status, equals(DeliveryForgotPasswordStatus.failure));
+      expect(bloc.state.status, equals(DeliveryForgotPasswordStatus.otpSendFailure));
       bloc.close();
     });
   });

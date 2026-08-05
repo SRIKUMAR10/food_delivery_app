@@ -5,8 +5,6 @@ import 'Delivery_Forgot_Password_page_bloc.dart';
 import 'Delivery_Forgot_Password_page_event.dart';
 import 'Delivery_Forgot_Password_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
-import '../../../core/theme/delivery_app_theme.dart';
-import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryForgotPasswordPage extends StatelessWidget {
   const DeliveryForgotPasswordPage({super.key});
@@ -67,6 +65,8 @@ class _DeliveryForgotPasswordViewState
               'assets/images/Delivery_Login_scooter.png',
               fit: BoxFit.cover,
               alignment: Alignment.center,
+              errorBuilder: (context, error, stackTrace) =>
+                  Container(color: DeliveryAppColors.background),
             ),
           ),
           Positioned.fill(
@@ -80,15 +80,22 @@ class _DeliveryForgotPasswordViewState
               if (state.status == DeliveryForgotPasswordStatus.success) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content:
-                        Text('Password reset link sent to your email.'),
+                    content: Text('Password updated successfully! Please login.'),
                     backgroundColor: DeliveryAppColors.primary,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
                 Navigator.pop(context);
-              } else if (state.status ==
-                      DeliveryForgotPasswordStatus.failure &&
+              } else if (state.status == DeliveryForgotPasswordStatus.otpSent) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('OTP sent successfully to your phone.'),
+                    backgroundColor: DeliveryAppColors.primary,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } else if ((state.status == DeliveryForgotPasswordStatus.failure ||
+                      state.status == DeliveryForgotPasswordStatus.otpSendFailure) &&
                   state.errorMessage != null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -195,7 +202,7 @@ class _DeliveryForgotPasswordViewState
           ),
           const SizedBox(height: 8),
           Text(
-            'Enter your email address and we will send you a link to reset your password.',
+            'Verify your phone number and reset your account password.',
             style: GoogleFonts.inter(
               color: Colors.white60,
               fontSize: 14,
@@ -203,7 +210,7 @@ class _DeliveryForgotPasswordViewState
           ),
           const SizedBox(height: 24),
           Text(
-            'Email Address',
+            'Phone Number',
             style: GoogleFonts.inter(
               color: Colors.white70,
               fontSize: 13,
@@ -211,73 +218,292 @@ class _DeliveryForgotPasswordViewState
             ),
           ),
           const SizedBox(height: 8),
-          TextField(
-            onChanged: (v) =>
-                bloc.add(DeliveryForgotPasswordEmailChanged(v)),
-            keyboardType: TextInputType.emailAddress,
-            style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: const Color(0xFF081412),
-              hintText: 'your@email.com',
-              hintStyle:
-                  GoogleFonts.inter(color: Colors.white30, fontSize: 14),
-              prefixIcon: const Icon(Icons.email_outlined,
-                  color: Colors.white60),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                    color: DeliveryAppColors.primary.withValues(alpha: 0.25)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide:
-                    const BorderSide(color: DeliveryAppColors.primary, width: 1.5),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: state.status == DeliveryForgotPasswordStatus.loading
-                  ? null
-                  : () =>
-                      bloc.add(const DeliveryForgotPasswordSubmitted()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DeliveryAppColors.primary,
-                foregroundColor: Colors.black,
-                elevation: 6,
-                shadowColor: DeliveryAppColors.primary.withValues(alpha: 0.4),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  onChanged: (v) =>
+                      bloc.add(DeliveryForgotPasswordPhoneChanged(v)),
+                  keyboardType: TextInputType.phone,
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: const Color(0xFF081412),
+                    hintText: '98765 43210',
+                    hintStyle:
+                        GoogleFonts.inter(color: Colors.white30, fontSize: 14),
+                    prefixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 12),
+                        const Icon(Icons.phone_outlined,
+                            color: Colors.white60, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          '+91',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Container(
+                          height: 20,
+                          width: 1,
+                          margin: const EdgeInsets.symmetric(horizontal: 10),
+                          color: Colors.white24,
+                        ),
+                      ],
+                    ),
+                    errorText: state.phoneError,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                          color: DeliveryAppColors.primary.withValues(alpha: 0.25)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide:
+                          const BorderSide(color: DeliveryAppColors.primary, width: 1.5),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
                 ),
               ),
-              child:
-                  state.status == DeliveryForgotPasswordStatus.loading
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: (state.status == DeliveryForgotPasswordStatus.otpSending ||
+                          state.status == DeliveryForgotPasswordStatus.submitting)
+                      ? null
+                      : () => bloc.add(const DeliveryForgotPasswordSendOtpRequested()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: DeliveryAppColors.primary,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: state.status == DeliveryForgotPasswordStatus.otpSending
                       ? const SizedBox(
-                          width: 24,
-                          height: 24,
+                          width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.black),
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                           ),
                         )
                       : Text(
-                          'Send Reset Link',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
+                          state.verificationId != null ? 'Resend' : 'Get OTP',
+                          style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold, fontSize: 13),
                         ),
-            ),
+                ),
+              ),
+            ],
           ),
+          if (state.verificationId != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              'OTP Code',
+              style: GoogleFonts.inter(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              onChanged: (v) => bloc.add(DeliveryForgotPasswordOtpChanged(v)),
+              keyboardType: TextInputType.number,
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF081412),
+                hintText: 'Enter 6-digit OTP',
+                hintStyle:
+                    GoogleFonts.inter(color: Colors.white30, fontSize: 14),
+                prefixIcon: const Icon(Icons.pin_outlined, color: Colors.white60),
+                errorText: state.otpError,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                      color: DeliveryAppColors.primary.withValues(alpha: 0.25)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                      const BorderSide(color: DeliveryAppColors.primary, width: 1.5),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'New Password',
+              style: GoogleFonts.inter(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              onChanged: (v) => bloc.add(DeliveryForgotPasswordPasswordChanged(v)),
+              obscureText: !state.isPasswordVisible,
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF081412),
+                hintText: '••••••••',
+                hintStyle:
+                    GoogleFonts.inter(color: Colors.white30, fontSize: 14),
+                prefixIcon: const Icon(Icons.lock_outline, color: Colors.white60),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    state.isPasswordVisible
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                    color: Colors.white60,
+                    size: 20,
+                  ),
+                  onPressed: () =>
+                      bloc.add(const DeliveryForgotPasswordTogglePasswordVisibility()),
+                ),
+                errorText: state.passwordError,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                      color: DeliveryAppColors.primary.withValues(alpha: 0.25)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                      const BorderSide(color: DeliveryAppColors.primary, width: 1.5),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Confirm New Password',
+              style: GoogleFonts.inter(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              onChanged: (v) => bloc.add(DeliveryForgotPasswordConfirmPasswordChanged(v)),
+              obscureText: !state.isConfirmPasswordVisible,
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF081412),
+                hintText: '••••••••',
+                hintStyle:
+                    GoogleFonts.inter(color: Colors.white30, fontSize: 14),
+                prefixIcon: const Icon(Icons.lock_outline, color: Colors.white60),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    state.isConfirmPasswordVisible
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                    color: Colors.white60,
+                    size: 20,
+                  ),
+                  onPressed: () =>
+                      bloc.add(const DeliveryForgotPasswordToggleConfirmPasswordVisibility()),
+                ),
+                errorText: state.confirmPasswordError,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                      color: DeliveryAppColors.primary.withValues(alpha: 0.25)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                      const BorderSide(color: DeliveryAppColors.primary, width: 1.5),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: state.status == DeliveryForgotPasswordStatus.submitting
+                    ? null
+                    : () => bloc.add(const DeliveryForgotPasswordSubmitted()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DeliveryAppColors.primary,
+                  foregroundColor: Colors.black,
+                  elevation: 6,
+                  shadowColor: DeliveryAppColors.primary.withValues(alpha: 0.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: state.status == DeliveryForgotPasswordStatus.submitting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                        ),
+                      )
+                    : Text(
+                        'Reset Password',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
+

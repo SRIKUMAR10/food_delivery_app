@@ -2,13 +2,16 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:csv/csv.dart';
-import 'package:food_delivery_app/main.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-
+import 'package:logger/logger.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb; // Import kIsWeb
 import 'package:food_delivery_app/core/models/product_model.dart';
 import '../core/repositories/i_product_repository.dart';
+
+final Logger _repoLogger = Logger(
+  printer: PrettyPrinter(methodCount: 0, lineLength: 80),
+);
 
 class FirebaseProductRepository implements IProductRepository {
   final FirebaseFirestore _firestore;
@@ -82,9 +85,9 @@ class FirebaseProductRepository implements IProductRepository {
           try {
             final ref = _storage.refFromURL(removedUrl);
             await ref.delete();
-            appLogger.i('Deleted orphaned product image from Storage: $removedUrl');
+            _repoLogger.i('Deleted orphaned product image from Storage: $removedUrl');
           } catch (e) {
-            appLogger.w('Warning: Failed to delete orphaned product image: $e. URL: $removedUrl');
+            _repoLogger.w('Warning: Failed to delete orphaned product image: $e. URL: $removedUrl');
           }
         }
       }
@@ -175,7 +178,7 @@ class FirebaseProductRepository implements IProductRepository {
               final ref = _storage.refFromURL(url);
               await ref.delete();
             } catch (e) {
-              appLogger.w(
+              _repoLogger.w(
                 'Warning: Failed to delete image from storage: $e. URL: $url',
               );
             }
@@ -220,13 +223,13 @@ class FirebaseProductRepository implements IProductRepository {
     String? categoryFilter,
   }) {
 
-    Query query = _firestore
+    final query = _firestore
         .collection('products')
         .where('sellerId', isEqualTo: sellerId);
 
     return query.snapshots().map((snapshot) {
       List<Product> products = snapshot.docs.map((doc) {
-        return Product.fromMap(doc.id, doc.data() as Map<String, dynamic>);
+        return Product.fromMap(doc.id, doc.data());
       }).toList();
 
       return products;

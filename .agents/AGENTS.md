@@ -11,7 +11,7 @@ You MUST strictly follow this 8-step continuous workflow for every development t
 4. **Existing Code Audit:** Review existing code patterns, architecture, and dependencies relevant to the task.
 5. **Implementation:** Write the code, strictly adhering to the Architecture and Code Modification rules.
 6. **Test Sync (Continuous Maintenance):** Whenever possible, identify and synchronize all affected test files. Ensure continuous test maintenance across all three timeframes: **Past** (audit existing code and generate missing tests), **Present** (synchronize affected tests immediately), and **Future** (generate all applicable test categories upfront for new features).
-7. **Verification:** Autonomously run the tests in the terminal (e.g., using `flutter test`) whenever execution capability is available. Verify that the tests pass before reporting completion. If the environment does not permit test execution, clearly report that the tests could not be executed instead of claiming they passed. Ensure the folder structure remains unchanged, naming conventions are maintained, and imports are valid.
+7. **Verification:** Autonomously run the tests in the terminal (e.g., using `flutter test --verbose > error_verbose.txt 2>&1`) whenever execution capability is available. Verify that the tests pass before reporting completion. If the environment does not permit test execution, clearly report that the tests could not be executed instead of claiming they passed. Ensure the folder structure remains unchanged, naming conventions are maintained, and imports are valid.
 8. **Report:** Output a detailed final report of the work done.
 
 ## 2. Architecture & Project Protection
@@ -68,3 +68,8 @@ At the end of every task, you must provide a detailed report including:
 - Cross-Module Impact Analysis
 - Reason for each change
 - Any manual steps or checks required
+
+## 8. Real-Time Firestore Integration Requirements
+- Completely remove any hardcoded or static placeholder data present in every UI screen.
+- As soon as each user logs in, ensure that they are presented only with the latest, real-time data.
+- Modernize and configure all database queries on all pages to fetch directly from real-time Firestore fields without any local fallback defaults or hardcoded values.

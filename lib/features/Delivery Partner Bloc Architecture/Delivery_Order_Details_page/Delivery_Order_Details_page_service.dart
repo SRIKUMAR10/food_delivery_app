@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:food_delivery_app/core/models/order_status.dart';
 import 'package:food_delivery_app/repositories/firebase_order_repository.dart';
 
 abstract class DeliveryOrderDetailsServiceBase {
@@ -11,7 +12,7 @@ class DeliveryOrderDetailsService
   final FirebaseOrderRepository? _orderRepo;
 
   DeliveryOrderDetailsService({FirebaseOrderRepository? orderRepo})
-      : _orderRepo = orderRepo;
+      : _orderRepo = orderRepo ?? FirebaseOrderRepository();
 
   static Map<String, dynamic> _mockOrderData(String orderId) {
     return {
@@ -57,11 +58,9 @@ class DeliveryOrderDetailsService
   Future<bool> updateOrderStatusRemote(String orderId, String status) async {
     if (_orderRepo != null) {
       try {
-        final order = await _orderRepo!.getOrderById(orderId);
-        if (order != null) {
-          await _orderRepo!.updateOrderStatus(orderId, order.status);
-          return true;
-        }
+        final newStatus = OrderStatus.fromString(status);
+        await _orderRepo!.updateOrderStatus(orderId, newStatus);
+        return true;
       } catch (_) {
         return false;
       }

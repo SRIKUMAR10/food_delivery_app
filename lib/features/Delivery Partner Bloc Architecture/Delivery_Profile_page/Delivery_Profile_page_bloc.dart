@@ -118,7 +118,6 @@ class DeliveryProfileBloc
   ) async {
     try {
       final path = await repository.pickProfileImage();
-      await repository.saveAvatarPath(path);
       emit(state.copyWith(
         avatarPath: path,
         clearAvatar: path == null,

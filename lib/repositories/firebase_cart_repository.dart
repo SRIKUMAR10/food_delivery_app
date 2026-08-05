@@ -17,7 +17,7 @@ class FirebaseCartRepository implements ICartRepository {
   Stream<List<CartItem>> getCartItemsStream(String buyerId) {
     if (buyerId.isEmpty) return Stream.value([]);
     
-    return _getCartCollection(buyerId).snapshots().map((snapshot) {
+    return _getCartCollection(buyerId).snapshots(includeMetadataChanges: true).map((snapshot) {
       return snapshot.docs.map((doc) => CartItem.fromFirestore(doc)).toList();
     });
   }
@@ -97,7 +97,7 @@ class FirebaseCartRepository implements ICartRepository {
   }
 
   @override
-  Future<void> checkoutCart(String buyerId, List<CartItem> selectedItems, String customerName, {AppliedCoupon? appliedCoupon}) async {
+  Future<void> checkoutCart(String buyerId, List<CartItem> selectedItems, String customerName, String deliveryAddress, {AppliedCoupon? appliedCoupon}) async {
     if (buyerId.isEmpty || selectedItems.isEmpty) return;
 
     final selectedCartItemsPayload = selectedItems.map((item) => {
@@ -109,7 +109,7 @@ class FirebaseCartRepository implements ICartRepository {
     final payload = <String, dynamic>{
       'selectedCartItems': selectedCartItemsPayload,
       'customerName': customerName,
-      'deliveryAddress': 'Default Address',
+      'deliveryAddress': deliveryAddress,
       'paymentMethod': 'Wallet',
     };
 

@@ -1,12 +1,31 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class AuthLinkingService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-
+  /// Calls the `checkAuthExists` Cloud Function to verify if an email or phone
+  /// is already registered in the sellers collection. Returns a map with
+  /// `exists` (bool) and `provider` (String?).
+  Future<Map<String, dynamic>> checkAuthExists({
+    String? email,
+    String? phoneNumber,
+  }) async {
+    final callable =
+        FirebaseFunctions.instance.httpsCallable('checkAuthExists');
+    final result = await callable.call({
+      if (email != null) 'email': email,
+      if (phoneNumber != null) 'phoneNumber': phoneNumber,
+    });
+    final data = result.data as Map<String, dynamic>;
+    return {
+      'exists': data['exists'] as bool? ?? false,
+      'provider': data['provider'] as String?,
+    };
+  }
 
   /// Checks if a user or seller with the given phone number exists in Firestore.
   /// Returns true if it exists, otherwise false.

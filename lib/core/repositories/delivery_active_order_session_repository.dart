@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// Enum representing the stages of the Active Delivery State Machine.
 enum ActiveDeliveryStage {
@@ -73,10 +75,19 @@ class DeliverySessionState {
 }
 
 /// Centralized local broadcast stream repository for Cross-BLoC state synchronization.
+/// Syncs online status and earnings to Firestore `delivery_partners/{uid}` for persistence.
 class DeliveryActiveOrderSessionRepository {
+  final FirebaseFirestore? _firestore;
+  final FirebaseAuth? _auth;
   DeliverySessionState _currentState = const DeliverySessionState();
   final StreamController<DeliverySessionState> _sessionController =
       StreamController<DeliverySessionState>.broadcast();
+
+  DeliveryActiveOrderSessionRepository({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : _firestore = firestore,
+        _auth = auth;
 
   DeliverySessionState get currentState => _currentState;
 
@@ -94,13 +105,48 @@ class DeliveryActiveOrderSessionRepository {
     }
   }
 
+  Future<void> _syncOnlineStatusToFirestore(bool isOnline) async {
+    try {
+      final uid = _auth?.currentUser?.uid;
+      if (uid != null && _firestore != null) {
+        await _firestore.collection('delivery_partners').doc(uid).update({
+          'isOnline': isOnline,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _syncEarningsToFirestore(double earnings) async {
+    try {
+      final uid = _auth?.currentUser?.uid;
+      if (uid != null && _firestore != null) {
+        final docRef = _firestore.collection('delivery_partners').doc(uid);
+        await _firestore.runTransaction((transaction) async {
+          final snap = await transaction.get(docRef);
+          if (!snap.exists) return;
+          final currentEarnings = (snap.data()?['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+          final currentDeliveries = (snap.data()?['totalDeliveries'] as num?)?.toInt() ?? 0;
+          transaction.update(docRef, {
+            'totalEarnings': currentEarnings + earnings,
+            'totalDeliveries': currentDeliveries + 1,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        });
+      }
+    } catch (_) {}
+  }
+
   /// Toggle Online/Offline status across all BLoCs.
   void toggleOnlineStatus() {
-    _emitState(_currentState.copyWith(isOnline: !_currentState.isOnline));
+    final newState = _currentState.copyWith(isOnline: !_currentState.isOnline);
+    _emitState(newState);
+    _syncOnlineStatusToFirestore(newState.isOnline);
   }
 
   void setOnlineStatus(bool isOnline) {
     _emitState(_currentState.copyWith(isOnline: isOnline));
+    _syncOnlineStatusToFirestore(isOnline);
   }
 
   /// Process withdrawal and update wallet balance synchronously across Wallet and Earnings BLoCs.
@@ -166,6 +212,7 @@ class DeliveryActiveOrderSessionRepository {
       totalEarningsToday: _currentState.totalEarningsToday + earningsAdded,
       completedOrdersCount: _currentState.completedOrdersCount + 1,
     ));
+    _syncEarningsToFirestore(earningsAdded);
   }
 
   /// Reset active order state machine back to idle.

@@ -9,6 +9,8 @@ import 'Delivery_Profile_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/theme/delivery_app_theme.dart';
 import '../../../core/theme/delivery_app_typography.dart';
+import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_bloc.dart';
+import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_event.dart';
 
 class DeliveryProfileStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -179,6 +181,20 @@ class DeliveryProfilePageView extends StatelessWidget {
               behavior: SnackBarBehavior.floating,
             ),
           );
+
+          final isProfileComplete = state.fullName.trim().isNotEmpty &&
+              state.phone.trim().isNotEmpty &&
+              state.vehicleType.trim().isNotEmpty &&
+              state.vehicleNumber.trim().isNotEmpty &&
+              state.licenseNumber.trim().isNotEmpty;
+
+          if (isProfileComplete) {
+            try {
+              context
+                  .read<DeliveryNavigationBarPageBloc>()
+                  .add(const DeliveryNavigationBarTabChangedEvent(0));
+            } catch (_) {}
+          }
         } else if (state.errorMessage != null &&
             state.status != DeliveryProfileStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -536,9 +552,16 @@ class _PersonalInfoCard extends StatelessWidget {
     required List<String> options,
   }) {
     final String localeCode = state.localeCode;
+    final String? normalizedValue = value.isEmpty
+        ? null
+        : options.firstWhere(
+            (opt) => opt.toLowerCase() == value.toLowerCase(),
+            orElse: () => options.first,
+          );
+
     return DropdownButtonFormField<String>(
       key: Key(key),
-      initialValue: value.isEmpty ? null : value,
+      initialValue: normalizedValue,
       dropdownColor: const Color(0xFF0D141C),
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(

@@ -1,31 +1,93 @@
 import 'package:equatable/equatable.dart';
 
-enum DeliveryForgotPasswordStatus { initial, loading, success, failure }
+enum DeliveryForgotPasswordStatus {
+  initial,
+  otpSending,
+  otpSent,
+  otpSendFailure,
+  submitting,
+  success,
+  failure
+}
 
 class DeliveryForgotPasswordState extends Equatable {
   final DeliveryForgotPasswordStatus status;
-  final String email;
+  final String phoneNumber;
+  final String otp;
+  final String password;
+  final String confirmPassword;
+  final String? verificationId;
+  final String? phoneError;
+  final String? otpError;
+  final String? passwordError;
+  final String? confirmPasswordError;
   final String? errorMessage;
+  final bool isPasswordVisible;
+  final bool isConfirmPasswordVisible;
 
   const DeliveryForgotPasswordState({
     this.status = DeliveryForgotPasswordStatus.initial,
-    this.email = '',
+    this.phoneNumber = '',
+    this.otp = '',
+    this.password = '',
+    this.confirmPassword = '',
+    this.verificationId,
+    this.phoneError,
+    this.otpError,
+    this.passwordError,
+    this.confirmPasswordError,
     this.errorMessage,
+    this.isPasswordVisible = false,
+    this.isConfirmPasswordVisible = false,
   });
 
   DeliveryForgotPasswordState copyWith({
     DeliveryForgotPasswordStatus? status,
-    String? email,
+    String? phoneNumber,
+    String? otp,
+    String? password,
+    String? confirmPassword,
+    String? verificationId,
+    String? phoneError,
+    String? otpError,
+    String? passwordError,
+    String? confirmPasswordError,
     String? errorMessage,
-    bool clearError = false,
+    bool? isPasswordVisible,
+    bool? isConfirmPasswordVisible,
+    bool clearErrors = false,
   }) {
     return DeliveryForgotPasswordState(
       status: status ?? this.status,
-      email: email ?? this.email,
-      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      otp: otp ?? this.otp,
+      password: password ?? this.password,
+      confirmPassword: confirmPassword ?? this.confirmPassword,
+      verificationId: verificationId ?? this.verificationId,
+      phoneError: clearErrors ? null : (phoneError ?? this.phoneError),
+      otpError: clearErrors ? null : (otpError ?? this.otpError),
+      passwordError: clearErrors ? null : (passwordError ?? this.passwordError),
+      confirmPasswordError: clearErrors ? null : (confirmPasswordError ?? this.confirmPasswordError),
+      errorMessage: clearErrors ? null : (errorMessage ?? this.errorMessage),
+      isPasswordVisible: isPasswordVisible ?? this.isPasswordVisible,
+      isConfirmPasswordVisible: isConfirmPasswordVisible ?? this.isConfirmPasswordVisible,
     );
   }
 
   @override
-  List<Object?> get props => [status, email, errorMessage];
+  List<Object?> get props => [
+        status,
+        phoneNumber,
+        otp,
+        password,
+        confirmPassword,
+        verificationId,
+        phoneError,
+        otpError,
+        passwordError,
+        confirmPasswordError,
+        errorMessage,
+        isPasswordVisible,
+        isConfirmPasswordVisible,
+      ];
 }

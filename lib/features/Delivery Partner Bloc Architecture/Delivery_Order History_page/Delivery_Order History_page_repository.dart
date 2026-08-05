@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'Delivery_Order History_page_service.dart';
 import 'Delivery_Order History_page_state.dart';
 
@@ -12,7 +14,10 @@ class DeliveryOrderHistoryRepository
   final DeliveryOrderHistoryServiceBase _service;
 
   DeliveryOrderHistoryRepository({DeliveryOrderHistoryServiceBase? service})
-      : _service = service ?? DeliveryOrderHistoryService();
+      : _service = service ?? DeliveryOrderHistoryService(
+            firestore: FirebaseFirestore.instance,
+            auth: FirebaseAuth.instance,
+        );
 
   DeliveryOrderHistoryStatus _parseStatus(String raw) {
     switch (raw.toLowerCase()) {

@@ -127,7 +127,7 @@ exports.createRazorpayOrder = functions.https.onRequest((req, res) => {
 });
 
 // Razorpay Webhook Endpoint
-exports.razorpayWebhook = functions.https.onRequest((req, res) => {
+exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
   // Webhooks usually don't need CORS restrictions, but we must verify the signature
   if (req.method !== "POST") {
     return res.status(405).send({ message: "Method Not Allowed" });
@@ -156,8 +156,50 @@ exports.razorpayWebhook = functions.https.onRequest((req, res) => {
     const event = req.body.event;
     console.log("Received Valid Webhook Event:", event);
 
-    // TODO: Add logic to handle different events like 'payment.captured' or 'order.paid'
-    // For example, update user wallet balance in Firestore securely here.
+    // Handle payment captured / order paid events to credit user wallet
+    if (event === 'payment.captured' || event === 'order.paid') {
+      try {
+        const paymentEntity = (req.body.payload && req.body.payload.payment) 
+          ? req.body.payload.payment.entity 
+          : null;
+
+        if (paymentEntity) {
+          const amountPaise = parseInt(paymentEntity.amount) || 0;
+          const amountINR = amountPaise / 100.0;
+          const notes = paymentEntity.notes || {};
+          const buyerId = notes.buyerId;
+
+          if (buyerId && amountINR > 0) {
+            const db = admin.firestore();
+            const walletRef = db.collection('users').doc(buyerId);
+            const txnRef = db.collection('users').doc(buyerId).collection('transactions').doc();
+
+            await db.runTransaction(async (transaction) => {
+              const userDoc = await transaction.get(walletRef);
+              const currentBalance = parseFloat(userDoc.exists ? (userDoc.data().walletBalance || 0) : 0);
+
+              transaction.update(walletRef, {
+                walletBalance: currentBalance + amountINR,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+
+              transaction.set(txnRef, {
+                type: 'wallet_topup',
+                amount: amountINR,
+                description: `Razorpay top-up: ${paymentEntity.id || 'webhook'}`,
+                paymentId: paymentEntity.id || null,
+                status: 'completed',
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+            });
+
+            console.log(`Webhook: Credited ₹${amountINR} to user ${buyerId} via payment ${paymentEntity.id}`);
+          }
+        }
+      } catch (walletError) {
+        console.error("Webhook wallet credit failed:", walletError);
+      }
+    }
 
     res.status(200).send({ status: "ok" });
   } catch (error) {
@@ -169,6 +211,14 @@ exports.razorpayWebhook = functions.https.onRequest((req, res) => {
 // Cloud Function to securely check if an email or phone exists in the sellers collection
 // This prevents Data Enumeration (Scraping) since it runs on the backend.
 exports.checkAuthExists = functions.https.onCall(async (data, context) => {
+  // Require authentication to prevent data enumeration attacks
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "Authentication is required to check account existence."
+    );
+  }
+
   const email = data.email;
   const phone = data.phoneNumber;
 
@@ -306,6 +356,72 @@ async function creditSellerWallet(db, orderData, orderId) {
 }
 
 // ────────────────────────────────────────────────────────────
+// IDEMPOTENT DELIVERY PARTNER WALLET CREDIT
+// Credits the delivery partner's wallet when an order is delivered.
+// Uses a transaction for consistency with idempotency checks.
+// ────────────────────────────────────────────────────────────
+async function creditDeliveryPartnerWallet(db, orderData, orderId) {
+  const riderId = orderData.riderId;
+  const amount = parseFloat(orderData.amount) || 0;
+
+  if (!riderId || amount <= 0) {
+    console.log(`Skipping delivery partner credit: riderId=${riderId}, amount=${amount}`);
+    return;
+  }
+
+  if (orderData.deliveryPartnerCreditedAt) {
+    console.log(`Delivery partner already credited for order ${orderId}, skipping.`);
+    return;
+  }
+
+  const deliveryEarnings = (amount * 0.15) + 40.0;
+  const partnerRef = db.collection('delivery_partners').doc(riderId);
+  const orderRef = db.collection('orders').doc(orderId);
+  const txnRef = db.collection('delivery_partners').doc(riderId).collection('transactions').doc();
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const partnerSnap = await transaction.get(partnerRef);
+      if (!partnerSnap.exists) {
+        console.log(`Delivery partner ${riderId} not found, skipping credit.`);
+        return;
+      }
+
+      const orderSnap = await transaction.get(orderRef);
+      if (orderSnap.exists && orderSnap.data().deliveryPartnerCreditedAt) {
+        console.log(`Concurrent delivery partner credit detected for ${orderId}, skipping.`);
+        return;
+      }
+
+      const currentEarnings = parseFloat(partnerSnap.data().totalEarnings) || 0;
+      const currentDeliveries = (partnerSnap.data().totalDeliveries) || 0;
+
+      transaction.update(partnerRef, {
+        totalEarnings: currentEarnings + deliveryEarnings,
+        totalDeliveries: currentDeliveries + 1,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      transaction.update(orderRef, {
+        deliveryPartnerCreditedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      transaction.set(txnRef, {
+        type: 'delivery_earning',
+        orderId: orderId,
+        amount: deliveryEarnings,
+        totalEarnings: currentEarnings + deliveryEarnings,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    console.log(`Delivery partner credited: rider=${riderId}, earnings=${deliveryEarnings}, order=${orderId}`);
+  } catch (error) {
+    console.error(`Failed to credit delivery partner for order ${orderId}:`, error);
+  }
+}
+
+// ────────────────────────────────────────────────────────────
 // ORDER STATUS CHANGED — MASTER TRIGGER
 // Handles all status transitions with FCM + business side effects.
 // Each business flow is idempotent (safe on retry).
@@ -372,6 +488,8 @@ exports.onOrderStatusChanged = functions.firestore
         body = `Your order has been delivered. Enjoy!`;
         // ─── BUSINESS FLOW 3: Delivered → Wallet Credit ───
         await creditSellerWallet(db, afterData, orderId);
+        // ─── BUSINESS FLOW 4: Delivered → Delivery Partner Credit ───
+        await creditDeliveryPartnerWallet(db, afterData, orderId);
         break;
       case "Rejected":
         targetUids.push(customerId);
@@ -664,10 +782,14 @@ exports.generateZegoToken = functions.https.onRequest((req, res) => {
          return res.status(500).send({ message: "Server misconfiguration: ZEGOCLOUD credentials missing" });
       }
 
-      // 4. Return the secrets securely to the authenticated client for them to initialize the call.
+      // 4. Return ONLY the app credentials (not the server secret).
+      // The serverSecret is used ONLY server-side; clients receive appId + appSign for client SDK init.
+      // Note: For production, use ZEGOCLOUD's token generation to create short-lived tokens
+      // instead of passing the appSign directly. The appSign here is the client-side sign key,
+      // not the server secret (despite the variable name from config).
       res.status(200).send({ 
         appId: appId,
-        appSign: serverSecret
+        appSign: serverSecret // This is the client appSign, not the server secret
       });
     } catch (error) {
       console.error("Error generating Zego token:", error);

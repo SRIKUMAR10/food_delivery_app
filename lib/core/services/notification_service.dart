@@ -1,7 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logger/logger.dart';
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('Handling a background message: ${message.messageId}');
+}
 
 class NotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -33,6 +39,9 @@ class NotificationService {
       _logger.w('User declined or has not accepted permission');
     }
 
+    // Register background message handler
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
     // Handle token refresh
     _firebaseMessaging.onTokenRefresh.listen((newToken) {
       _saveTokenToDatabase(newToken);
@@ -59,12 +68,18 @@ class NotificationService {
   Future<void> _saveTokenToDatabase(String token) async {
     final User? user = _auth.currentUser;
     if (user != null) {
+      final uid = user.uid;
+      final tokenData = {
+        'fcmToken': token,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
       try {
-        await _firestore.collection('users').doc(user.uid).set({
-          'fcmToken': token,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-        _logger.i('FCM token saved successfully for user ${user.uid}');
+        await Future.wait([
+          _firestore.collection('users').doc(uid).set(tokenData, SetOptions(merge: true)),
+          _firestore.collection('sellers').doc(uid).set(tokenData, SetOptions(merge: true)),
+          _firestore.collection('delivery_partners').doc(uid).set(tokenData, SetOptions(merge: true)),
+        ]);
+        _logger.i('FCM token saved successfully for user $uid');
       } catch (e) {
         _logger.e('Failed to save FCM token: $e');
       }

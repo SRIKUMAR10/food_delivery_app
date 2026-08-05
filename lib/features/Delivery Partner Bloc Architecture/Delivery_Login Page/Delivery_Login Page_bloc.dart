@@ -49,6 +49,7 @@ class DeliveryLoginPageBloc
       emit(state.copyWith(
         status: DeliveryLoginStatus.initial,
         phone: savedPhone ?? '',
+        password: '',
         isRememberMeChecked: savedPhone != null && savedPhone.isNotEmpty,
         errorMessage: null,
       ));
@@ -158,6 +159,7 @@ class DeliveryLoginPageBloc
       emit(state.copyWith(
         status: DeliveryLoginStatus.success,
         isLoggedIn: true,
+        password: '',
         errorMessage: null,
       ));
     } catch (e) {
@@ -184,10 +186,25 @@ class DeliveryLoginPageBloc
         errorMessage: null,
       ));
     } catch (e) {
-      emit(state.copyWith(
-        status: DeliveryLoginStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
-      ));
+      final str = e.toString();
+      if (str.contains('Google Sign-In was cancelled') ||
+          str.contains('popup-closed-by-user') ||
+          str.contains('aborted by user') ||
+          str.contains('user-cancelled')) {
+        emit(state.copyWith(
+          status: DeliveryLoginStatus.initial,
+          clearError: true,
+        ));
+      } else {
+        String cleanMessage = str
+            .replaceAll('Exception: ', '')
+            .replaceAll(RegExp(r'\[firebase_auth\/[a-zA-Z0-9_-]+\]\s*'), '')
+            .trim();
+        emit(state.copyWith(
+          status: DeliveryLoginStatus.error,
+          errorMessage: cleanMessage.isEmpty ? 'Google Sign-In failed.' : cleanMessage,
+        ));
+      }
     }
   }
 

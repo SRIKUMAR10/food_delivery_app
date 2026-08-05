@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Delivery_Dashboard_page_service.dart';
 import 'Delivery_Dashboard_page_state.dart';
@@ -16,7 +18,10 @@ class DeliveryDashboardRepository implements DeliveryDashboardRepositoryBase {
   DeliveryDashboardRepository({
     DeliveryDashboardServiceBase? service,
     SharedPreferences? prefs,
-  })  : _service = service ?? DeliveryDashboardService(),
+  })  : _service = service ?? DeliveryDashboardService(
+          firestore: FirebaseFirestore.instance,
+          auth: FirebaseAuth.instance,
+        ),
         _prefs = prefs;
 
   Future<SharedPreferences> _getPrefs() async =>

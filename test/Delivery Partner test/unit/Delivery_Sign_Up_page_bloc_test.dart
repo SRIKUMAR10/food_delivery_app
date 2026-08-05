@@ -9,15 +9,20 @@ import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/De
 
 class MockDeliverySignUpRepository implements DeliverySignUpRepositoryBase {
   final bool shouldFail;
+  final bool duplicatePhone;
   final String verificationId;
 
   MockDeliverySignUpRepository({
     this.shouldFail = false,
+    this.duplicatePhone = false,
     this.verificationId = 'mock_v_id_123',
   });
 
   @override
   Future<String> sendPhoneOtp({required String phone}) async {
+    if (duplicatePhone) {
+      throw Exception('This phone number is already registered. Please login.');
+    }
     if (shouldFail) {
       throw Exception('Phone verification failed');
     }
@@ -131,6 +136,28 @@ void main() {
       verify: (bloc) {
         expect(bloc.state.status, DeliverySignUpStatus.failure);
         expect(bloc.state.errorMessage, contains('No internet connection'));
+      },
+    );
+
+    blocTest<DeliverySignUpPageBloc, DeliverySignUpPageState>(
+      'emits failure when phone number is already registered',
+      build: () => DeliverySignUpPageBloc(
+        repository: MockDeliverySignUpRepository(duplicatePhone: true),
+        service: service,
+      ),
+      act: (bloc) {
+        bloc.add(const DeliverySignUpNameChanged('John Partner'));
+        bloc.add(const DeliverySignUpPhoneChanged('9876543210'));
+        bloc.add(const DeliverySignUpEmailChanged('john@example.com'));
+        bloc.add(const DeliverySignUpPasswordChanged('password123'));
+        bloc.add(const DeliverySignUpConfirmPasswordChanged('password123'));
+        bloc.add(const DeliverySignUpTermsToggled());
+        bloc.add(const DeliverySignUpSubmitted());
+      },
+      verify: (bloc) {
+        expect(bloc.state.status, DeliverySignUpStatus.failure);
+        expect(bloc.state.errorMessage,
+            contains('This phone number is already registered. Please login.'));
       },
     );
   });

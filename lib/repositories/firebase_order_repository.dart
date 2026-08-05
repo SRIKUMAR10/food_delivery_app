@@ -23,7 +23,7 @@ class FirebaseOrderRepository implements IOrderRepository {
         .collection('orders')
         .where('customerId', isEqualTo: buyerId)
         .orderBy('timestamp', descending: true)
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final order = OrderModel.fromMap(doc.data(), doc.id);
@@ -43,7 +43,7 @@ class FirebaseOrderRepository implements IOrderRepository {
         .collection('orders')
         .where('sellerId', isEqualTo: sellerId)
         .orderBy('timestamp', descending: true)
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final order = OrderModel.fromMap(doc.data(), doc.id);

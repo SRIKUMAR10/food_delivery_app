@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:food_delivery_app/core/models/delivery_partner_model.dart';
 import 'package:food_delivery_app/repositories/delivery_partner_repository.dart';
@@ -18,10 +19,12 @@ DeliveryPartnerModel buildPartner({
   String status = 'active',
   bool isActive = true,
   bool isPhoneVerified = true,
+  String? email,
 }) {
   return DeliveryPartnerModel(
     id: 'uid123',
     phoneNumber: '9876543210',
+    email: email,
     role: role,
     status: status,
     isActive: isActive,
@@ -38,6 +41,7 @@ void main() {
   late MockUser user;
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     partnerRepo = MockDeliveryPartnerRepository();
     repository = DeliveryLoginRepository(partnerRepo: partnerRepo);
     credential = MockUserCredential();
@@ -46,13 +50,16 @@ void main() {
     when(() => user.uid).thenReturn('uid123');
     when(() => credential.user).thenReturn(user);
     when(() => partnerRepo.signOut()).thenAnswer((_) async {});
+    when(() => partnerRepo.saveSession(any(), any())).thenAnswer((_) async {});
+    when(() => partnerRepo.updateLastLogin(any())).thenAnswer((_) async {});
+    when(() => partnerRepo.getDeliveryPartnerByPhone(any())).thenAnswer((_) async => null);
   });
 
   group('DeliveryLoginRepository Unit Tests', () {
     test('loginWithPhone returns partner for valid credentials', () async {
       when(
         () => partnerRepo.signInWithEmailPassword(
-          '9876543210@delivery.app',
+          '+919876543210@delivery.app',
           'password123',
         ),
       ).thenAnswer((_) async => credential);
@@ -63,7 +70,7 @@ void main() {
         () => partnerRepo.updateLastLogin('uid123'),
       ).thenAnswer((_) async {});
       when(
-        () => partnerRepo.saveSession('uid123', '9876543210@delivery.app'),
+        () => partnerRepo.saveSession('uid123', '+919876543210@delivery.app'),
       ).thenAnswer((_) async {});
 
       final result = await repository.loginWithPhone(
@@ -74,12 +81,12 @@ void main() {
       expect(result.id, 'uid123');
       verify(
         () => partnerRepo.signInWithEmailPassword(
-          '9876543210@delivery.app',
+          '+919876543210@delivery.app',
           'password123',
         ),
       ).called(1);
       verify(
-        () => partnerRepo.saveSession('uid123', '9876543210@delivery.app'),
+        () => partnerRepo.saveSession('uid123', '+919876543210@delivery.app'),
       ).called(1);
     });
 
@@ -125,7 +132,7 @@ void main() {
     test('loginWithPhone throws for disabled account', () async {
       when(
         () => partnerRepo.signInWithEmailPassword(
-          '9876543210@delivery.app',
+          '+919876543210@delivery.app',
           'password123',
         ),
       ).thenAnswer((_) async => credential);
@@ -153,7 +160,7 @@ void main() {
       );
     });
 
-    test('loginWithGoogle returns partner on success', () async {
+    test('loginWithGoogle returns partner on success and sets selected navigation index to 11', () async {
       when(
         () => partnerRepo.signInWithGoogle(),
       ).thenAnswer((_) async => credential);
@@ -171,6 +178,142 @@ void main() {
 
       expect(result.id, 'uid123');
       verify(() => partnerRepo.signInWithGoogle()).called(1);
+      
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('dp_nav_selected_index'), 11);
+    });
+
+    test('loginWithPhone uses real email from partner profile when present', () async {
+      final partnerWithRealEmail = buildPartner(email: 'srikumar@gmail.com');
+      when(
+        () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
+      ).thenAnswer((_) async => partnerWithRealEmail);
+      when(
+        () => partnerRepo.signInWithEmailPassword(
+          'srikumar@gmail.com',
+          'password123',
+        ),
+      ).thenAnswer((_) async => credential);
+      when(
+        () => partnerRepo.getDeliveryPartner('uid123'),
+      ).thenAnswer((_) async => partnerWithRealEmail);
+      when(
+        () => partnerRepo.updateLastLogin('uid123'),
+      ).thenAnswer((_) async {});
+      when(
+        () => partnerRepo.saveSession('uid123', 'srikumar@gmail.com'),
+      ).thenAnswer((_) async {});
+
+      final result = await repository.loginWithPhone(
+        '9876543210',
+        'password123',
+      );
+
+      expect(result.id, 'uid123');
+      verify(
+        () => partnerRepo.signInWithEmailPassword(
+          'srikumar@gmail.com',
+          'password123',
+        ),
+      ).called(1);
+    });
+
+    test('loginWithPhone falls back to dummy email when real email fails with user-not-found', () async {
+      final partnerWithRealEmail = buildPartner(email: 'srikumar@gmail.com');
+      when(
+        () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
+      ).thenAnswer((_) async => partnerWithRealEmail);
+      
+      // First attempt with real email fails with user-not-found
+      when(
+        () => partnerRepo.signInWithEmailPassword(
+          'srikumar@gmail.com',
+          'password123',
+        ),
+      ).thenThrow(FirebaseAuthException(code: 'user-not-found'));
+      
+      // Fallback attempt with dummy email succeeds
+      when(
+        () => partnerRepo.signInWithEmailPassword(
+          '+919876543210@delivery.app',
+          'password123',
+        ),
+      ).thenAnswer((_) async => credential);
+      
+      when(
+        () => partnerRepo.getDeliveryPartner('uid123'),
+      ).thenAnswer((_) async => partnerWithRealEmail);
+      when(
+        () => partnerRepo.updateLastLogin('uid123'),
+      ).thenAnswer((_) async {});
+      when(
+        () => partnerRepo.saveSession('uid123', '+919876543210@delivery.app'),
+      ).thenAnswer((_) async {});
+
+      final result = await repository.loginWithPhone(
+        '9876543210',
+        'password123',
+      );
+
+      expect(result.id, 'uid123');
+      verify(
+        () => partnerRepo.signInWithEmailPassword(
+          'srikumar@gmail.com',
+          'password123',
+        ),
+      ).called(1);
+      verify(
+        () => partnerRepo.signInWithEmailPassword(
+          '+919876543210@delivery.app',
+          'password123',
+        ),
+      ).called(1);
+    });
+
+    test('loginWithPhone handles Firestore permission-denied gracefully, trying default email credentials', () async {
+      when(
+        () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
+      ).thenThrow(
+        FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'permission-denied',
+          message: 'Missing or insufficient permissions.',
+        ),
+      );
+
+      // Default email attempt succeeds
+      when(
+        () => partnerRepo.signInWithEmailPassword(
+          '+919876543210@delivery.app',
+          'password123',
+        ),
+      ).thenAnswer((_) async => credential);
+
+      when(
+        () => partnerRepo.getDeliveryPartner('uid123'),
+      ).thenAnswer((_) async => buildPartner());
+      when(
+        () => partnerRepo.updateLastLogin('uid123'),
+      ).thenAnswer((_) async {});
+      when(
+        () => partnerRepo.saveSession('uid123', '+919876543210@delivery.app'),
+      ).thenAnswer((_) async {});
+
+      final result = await repository.loginWithPhone(
+        '9876543210',
+        'password123',
+      );
+
+      expect(result.id, 'uid123');
+      verify(
+        () => partnerRepo.signInWithEmailPassword(
+          '+919876543210@delivery.app',
+          'password123',
+        ),
+      ).called(1);
+      verify(
+        () => partnerRepo.saveSession('uid123', '+919876543210@delivery.app'),
+      ).called(1);
     });
 
     test('loginWithApple throws unimplemented error', () async {
