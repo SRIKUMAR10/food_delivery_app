@@ -76,6 +76,9 @@ class _DeliveryForgotPasswordViewState
           ),
           BlocConsumer<DeliveryForgotPasswordBloc,
               DeliveryForgotPasswordState>(
+            listenWhen: (previous, current) =>
+                previous.status != current.status ||
+                previous.errorMessage != current.errorMessage,
             listener: (context, state) {
               if (state.status == DeliveryForgotPasswordStatus.success) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -85,7 +88,7 @@ class _DeliveryForgotPasswordViewState
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
-                Navigator.pop(context);
+                if (Navigator.canPop(context)) Navigator.pop(context);
               } else if (state.status == DeliveryForgotPasswordStatus.otpSent) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -169,7 +172,9 @@ class _DeliveryForgotPasswordViewState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              if (Navigator.canPop(context)) Navigator.pop(context);
+            },
             child: const Icon(Icons.arrow_back,
                 color: Colors.white70, size: 24),
           ),

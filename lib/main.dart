@@ -179,15 +179,11 @@ class _AppThemeWrapperState extends State<_AppThemeWrapper> {
     widget.localeManager.localeNotifier.addListener(_onChanged);
 
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
-      final currentRoute =
-          _navigatorKey.currentState?.widget.initialRoute ?? '';
       if (user == null) {
-        _navigatorKey.currentState
-            ?.pushNamedAndRemoveUntil('/deliveryonboard', (_) => false);
-      } else if (currentRoute.startsWith('/deliveryonboard') ||
-          currentRoute.startsWith('/deliverylogin')) {
-        _navigatorKey.currentState
-            ?.pushReplacementNamed('/deliveryNavigationBar');
+        final state = _navigatorKey.currentState;
+        if (state != null && state.canPop()) {
+          state.pushNamedAndRemoveUntil('/deliveryonboard', (_) => false);
+        }
       }
     });
   }

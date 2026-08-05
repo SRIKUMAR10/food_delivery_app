@@ -1,65 +1,74 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:food_delivery_app/api_service/seller_review_service.dart';
 
-class FakeUri extends Fake implements Uri {}
-
-// Assuming an implementation of the service that uses http
-class OverallRatingServiceImpl implements OverallRatingService {
-  final http.Client client;
-
-  OverallRatingServiceImpl({required this.client});
-
-  @override
-  Future<Map<String, dynamic>> fetchRatingsAndReviews() async {
-    final response = await client.get(Uri.parse('https://api.example.com/ratings'));
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Server Exception');
-    }
-  }
-}
-
-class MockHttpClient extends Mock implements http.Client {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockUser extends Mock implements User {}
 
 void main() {
-  setUpAll(() {
-    registerFallbackValue(FakeUri());
-  });
-
-  late OverallRatingServiceImpl service;
-  late MockHttpClient mockHttpClient;
+  late FakeFirebaseFirestore fakeFirestore;
+  late MockFirebaseAuth mockAuth;
+  late MockUser mockUser;
+  late SellerReviewService service;
 
   setUp(() {
-    mockHttpClient = MockHttpClient();
-    service = OverallRatingServiceImpl(client: mockHttpClient);
+    fakeFirestore = FakeFirebaseFirestore();
+    mockAuth = MockFirebaseAuth();
+    mockUser = MockUser();
+    when(() => mockAuth.currentUser).thenReturn(mockUser);
+    when(() => mockUser.uid).thenReturn('seller_1');
+    service = SellerReviewService(firestore: fakeFirestore, auth: mockAuth);
   });
 
-  group('OverallRatingService', () {
-    test('should return data map when the response code is 200', () async {
-      // arrange
-      const responsePayload = '{"overallRating": 4.8, "totalReviews": 248, "reviews": []}';
-      when(() => mockHttpClient.get(any()))
-          .thenAnswer((_) async => http.Response(responsePayload, 200));
-
-      // act
-      final result = await service.fetchRatingsAndReviews();
-
-      // assert
-      expect(result, isA<Map<String, dynamic>>());
-      expect(result['overallRating'], 4.8);
+  group('SellerReviewService', () {
+    test('throws when user is not logged in', () async {
+      when(() => mockAuth.currentUser).thenReturn(null);
+      expect(
+        () => SellerReviewService(firestore: fakeFirestore, auth: mockAuth)
+            .fetchRatingsAndReviews(),
+        throwsA(isA<Exception>()),
+      );
     });
 
-    test('should throw an exception when the response code is 404 or other', () async {
-      // arrange
-      when(() => mockHttpClient.get(any()))
-          .thenAnswer((_) async => http.Response('Not Found', 404));
+    test('returns aggregated payload when reviews exist', () async {
+      await fakeFirestore.collection('reviews').add({
+        'sellerId': 'seller_1',
+        'customerName': 'Mike Ross',
+        'customerAvatarUrl': 'url',
+        'rating': 5.0,
+        'content': 'Great!',
+        'createdAt': DateTime(2024, 5, 1),
+      });
+      await fakeFirestore.collection('reviews').add({
+        'sellerId': 'seller_1',
+        'customerName': 'Harvey',
+        'customerAvatarUrl': 'url',
+        'rating': 4.0,
+        'content': 'Good',
+        'createdAt': DateTime(2024, 5, 2),
+      });
 
-      // act & assert
-      expect(() => service.fetchRatingsAndReviews(), throwsException);
+      final result = await service.fetchRatingsAndReviews();
+
+      expect(result, isA<Map<String, dynamic>>());
+      expect(result['overallRating'], 4.5);
+      expect(result['totalReviews'], 2);
+      final reviews = result['reviews'] as List;
+      expect(reviews.length, 2);
+      final authors = reviews
+          .map((r) => (r as Map)['authorName'] as String)
+          .toSet();
+      expect(authors, containsAll(['Mike Ross', 'Harvey']));
+    });
+
+    test('returns zero aggregate when there are no reviews', () async {
+      final result = await service.fetchRatingsAndReviews();
+
+      expect(result['overallRating'], 0.0);
+      expect(result['totalReviews'], 0);
+      expect(result['reviews'], isEmpty);
     });
   });
 }

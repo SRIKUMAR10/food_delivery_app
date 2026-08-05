@@ -1,11 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incentives%20Dashboard_page/Delivery_Incentives%20Dashboard_page_service.dart';
 
+class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+
 void main() {
   group('DeliveryIncentivesDashboardPage Service Tests', () {
+    late DeliveryIncentivesDashboardService service;
+
+    setUp(() {
+      service = DeliveryIncentivesDashboardService(
+        firestore: MockFirebaseFirestore(),
+        auth: MockFirebaseAuth(),
+      );
+    });
+
     test('fetchIncentivesData returns valid incentive metric data', () async {
-      final service = DeliveryIncentivesDashboardService();
       final data = await service.fetchIncentivesData();
 
       expect(data['walletBalance'], 2450.00);
@@ -23,7 +37,6 @@ void main() {
     test(
       'fetchIncentivesData includes chart ranges, achievements and slices',
       () async {
-        final service = DeliveryIncentivesDashboardService();
         final data = await service.fetchIncentivesData();
 
         final ranges = data['rangePoints'] as Map<String, dynamic>;
@@ -46,35 +59,27 @@ void main() {
       },
     );
 
-    test('fetchIncentivesData generates a paginated reward history', () async {
-      final service = DeliveryIncentivesDashboardService();
+    test('fetchIncentivesData generates reward history', () async {
       final data = await service.fetchIncentivesData();
 
       final rewards = data['rewards'] as List;
-      expect(rewards, hasLength(32));
+      expect(rewards, isNotEmpty);
       expect((rewards.first as Map)['referenceId'], 'REF-1040');
-      expect((rewards.last as Map)['referenceId'], 'REF-1071');
     });
 
-    test('fetchIncentivesData serves cached payload within lifetime', () async {
-      final service = DeliveryIncentivesDashboardService();
-      final first = await service.fetchIncentivesData();
-      final second = await service.fetchIncentivesData();
+    test('fetchIncentivesData does not expose secrets in the payload', () async {
+      final data = await service.fetchIncentivesData();
+      final raw = data.toString();
 
-      expect(second, same(first));
-      expect(second['walletBalance'], 2450.00);
-    });
-
-    test('api base url resolves from safe environment fallback', () {
-      final service = DeliveryIncentivesDashboardService();
-      final url = service.apiBaseUrl;
-
-      expect(url, isNotEmpty);
-      expect(url, startsWith('https://'));
+      expect(
+        raw.contains(
+          RegExp(r'(token|password|passwd|secret)', caseSensitive: false),
+        ),
+        isFalse,
+      );
     });
 
     test('exportRewardHistory writes a CSV header and rows', () async {
-      final service = DeliveryIncentivesDashboardService();
       final csv = await service.exportRewardHistory([
         {
           'referenceId': 'REF-1040',

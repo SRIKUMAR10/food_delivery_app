@@ -46,7 +46,7 @@ void main() {
     });
 
     blocTest<OrderBloc, OrderState>(
-      'emits OrderError when user is not logged in',
+      'gracefully emits empty OrderLoaded when user is not logged in',
       build: () {
         when(() => mockAuthService.currentUserId).thenReturn(null);
         return OrderBloc(
@@ -56,7 +56,7 @@ void main() {
       },
       act: (bloc) => bloc.add(LoadOrdersRequested()),
       expect: () => [
-        isA<OrderError>().having((s) => s.message, 'message', 'User not logged in'),
+        isA<OrderLoaded>().having((s) => s.orders, 'orders', isEmpty),
       ],
     );
 

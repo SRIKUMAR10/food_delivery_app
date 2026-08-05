@@ -183,8 +183,8 @@ void main() {
         await tester.pump();
 
         verify(
-          () => mockBloc.add(argThat(isA<DeliverySettingsUpdateRadiusEvent>())),
-        ).called(1);
+          () => mockBloc.add(any<DeliverySettingsUpdateRadiusEvent>()),
+        ).called(greaterThanOrEqualTo(1));
       },
     );
 

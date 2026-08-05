@@ -46,6 +46,7 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
 
     UserCredential? credential;
     dynamic lastError;
+    bool hadWrongPasswordError = false;
 
     for (final email in emailsToTry) {
       try {
@@ -53,10 +54,17 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
         break; // Successfully signed in!
       } catch (e) {
         lastError = e;
+        if (e is FirebaseAuthException &&
+            (e.code == 'wrong-password' || e.code == 'invalid-credential')) {
+          hadWrongPasswordError = true;
+        }
       }
     }
 
     if (credential == null) {
+      if (hadWrongPasswordError) {
+        throw Exception('Incorrect password. Please try again.');
+      }
       if (lastError is FirebaseAuthException) {
         final code = lastError.code;
         if (code == 'user-not-found') {

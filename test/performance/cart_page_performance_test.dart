@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/core/repositories/i_cart_repository.dart';
 import 'package:food_delivery_app/core/repositories/i_coupon_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_product_repository.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/services/seller_status_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_models.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockCartRepository extends Mock implements ICartRepository {}
 class MockCouponRepository extends Mock implements ICouponRepository {}
+class MockProductRepository extends Mock implements IProductRepository {}
 class MockAuthService extends Mock implements IAuthService {}
+class MockSellerStatusService extends Mock implements SellerStatusService {}
 
 void main() {
   group('Cart Page Performance Test', () {
@@ -19,7 +23,9 @@ void main() {
     ) async {
       final mockCartRepository = MockCartRepository();
       final mockCouponRepository = MockCouponRepository();
+      final mockProductRepository = MockProductRepository();
       final mockAuthService = MockAuthService();
+      final mockSellerStatusService = MockSellerStatusService();
 
       when(() => mockAuthService.currentUserId).thenReturn('test_uid');
       when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value('test_uid'));
@@ -42,7 +48,7 @@ void main() {
         MaterialApp(
           home: BlocProvider(
             create: (_) =>
-                CartBloc(cartRepository: mockCartRepository, couponRepository: mockCouponRepository, authService: mockAuthService)
+                CartBloc(cartRepository: mockCartRepository, couponRepository: mockCouponRepository, productRepository: mockProductRepository, authService: mockAuthService, sellerStatusService: mockSellerStatusService)
                   ..add(const LoadCartStarted()),
             child: const CartPageUI(),
           ),

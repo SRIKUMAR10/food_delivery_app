@@ -96,7 +96,10 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
               SafeArea(
               child: BlocConsumer<DeliveryOnboardingPageBloc,
                   DeliveryOnboardingPageState>(
-              listener: (context, state) {
+                listenWhen: (previous, current) =>
+                    previous.isStarted != current.isStarted ||
+                    previous.isNavigatingToLogin != current.isNavigatingToLogin,
+                listener: (context, state) {
                 if (state.isStarted) {
                   Navigator.of(context).pushReplacementNamed('/deliveryLogin');
                 } else if (state.isNavigatingToLogin) {

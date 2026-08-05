@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/core/models/order_model.dart';
+import 'package:food_delivery_app/core/models/order_status.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/new_order_notification/new_order_notification_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/new_order_notification/new_order_notification_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/new_order_notification/new_order_notification_state.dart';
@@ -10,11 +12,19 @@ class MockNewOrderNotificationRepository extends Mock
     implements NewOrderNotificationRepository {}
 
 void main() {
-  return; // SKIP ALL TESTS IN THIS FILE due to missing DI for Firebase
-
   group('NewOrderNotificationBloc', () {
     late NewOrderNotificationBloc bloc;
     late MockNewOrderNotificationRepository mockRepository;
+
+    final testOrder = OrderModel(
+      id: '1025',
+      customerId: 'c1',
+      customerName: 'Mike Ross',
+      sellerId: 'seller_1',
+      status: OrderStatus.newOrder,
+      amount: 780.0,
+      timestamp: DateTime(2026, 8, 5, 10, 30),
+    );
 
     setUp(() {
       mockRepository = MockNewOrderNotificationRepository();
@@ -30,49 +40,68 @@ void main() {
     });
 
     blocTest<NewOrderNotificationBloc, NewOrderNotificationState>(
-      'emits [Loading, Loaded] when LoadOrderDetails succeeds',
+      'emits [Loading, NewOrderLoaded] when StartListening receives orders',
       build: () {
-        when(() => mockRepository.getOrderDetails(any())).thenAnswer(
-          (_) async => {
-            'orderId': '1025',
-            'customer': 'Mike Ross',
-            'itemsCount': 2,
-            'amount': 780.0,
-            'orderType': 'Delivery',
-          },
-        );
+        when(() => mockRepository.streamNewOrders('seller_1'))
+            .thenAnswer((_) => Stream.value([testOrder]));
         return bloc;
       },
-      act: (bloc) => bloc.add(const LoadOrderDetails('1025')),
+      act: (bloc) => bloc.add(const StartListening(sellerId: 'seller_1')),
       expect: () => [
         isA<NewOrderNotificationLoading>(),
-        isA<NewOrderNotificationLoaded>(),
+        isA<NewOrderLoaded>(),
       ],
     );
 
     blocTest<NewOrderNotificationBloc, NewOrderNotificationState>(
-      'emits [Loading, OrderAcceptedState] when AcceptOrderEvent succeeds',
+      'emits [Loading, NoNewOrders] when StartListening receives no orders',
       build: () {
-        when(() => mockRepository.acceptOrder(any())).thenAnswer((_) async {});
+        when(() => mockRepository.streamNewOrders('seller_1'))
+            .thenAnswer((_) => Stream.value([]));
         return bloc;
       },
-      act: (bloc) => bloc.add(const AcceptOrderEvent('1025')),
+      act: (bloc) => bloc.add(const StartListening(sellerId: 'seller_1')),
       expect: () => [
         isA<NewOrderNotificationLoading>(),
-        isA<OrderAcceptedState>(),
+        isA<NoNewOrders>(),
       ],
     );
 
     blocTest<NewOrderNotificationBloc, NewOrderNotificationState>(
-      'emits [Loading, OrderRejectedState] when RejectOrderEvent succeeds',
+      'emits OrderAcceptedState when AcceptOrderEvent succeeds',
       build: () {
-        when(() => mockRepository.rejectOrder(any())).thenAnswer((_) async {});
+        when(() => mockRepository.streamNewOrders('seller_1'))
+            .thenAnswer((_) => Stream.value([testOrder]));
+        when(() => mockRepository.acceptOrder('1025'))
+            .thenAnswer((_) async {});
         return bloc;
       },
-      act: (bloc) => bloc.add(const RejectOrderEvent('1025')),
+      seed: () => NewOrderLoaded(order: testOrder, pendingCount: 1),
+      act: (bloc) async {
+        bloc.add(const AcceptOrderEvent('1025'));
+        await Future<void>.delayed(Duration.zero);
+      },
       expect: () => [
-        isA<NewOrderNotificationLoading>(),
-        isA<OrderRejectedState>(),
+        const OrderAcceptedState('1025'),
+        isA<NoNewOrders>(),
+      ],
+    );
+
+    blocTest<NewOrderNotificationBloc, NewOrderNotificationState>(
+      'emits OrderRejectedState when RejectOrderEvent succeeds',
+      build: () {
+        when(() => mockRepository.rejectOrder('1025'))
+            .thenAnswer((_) async {});
+        return bloc;
+      },
+      seed: () => NewOrderLoaded(order: testOrder, pendingCount: 1),
+      act: (bloc) async {
+        bloc.add(const RejectOrderEvent('1025'));
+        await Future<void>.delayed(Duration.zero);
+      },
+      expect: () => [
+        const OrderRejectedState('1025'),
+        isA<NoNewOrders>(),
       ],
     );
   });

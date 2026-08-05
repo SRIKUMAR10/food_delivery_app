@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Track_Order_page/Track_Order_page_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 
 void main() {
   group('TrackOrderService', () {
     late TrackOrderService service;
 
     setUp(() {
-      service = TrackOrderService(firestore: FirebaseFirestore.instance);
+      service = TrackOrderService(firestore: FakeFirebaseFirestore());
     });
 
     group('getOrderDetails', () {

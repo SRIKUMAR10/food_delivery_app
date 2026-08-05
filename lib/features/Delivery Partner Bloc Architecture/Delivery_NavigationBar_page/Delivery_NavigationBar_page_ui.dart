@@ -162,6 +162,10 @@ class _DeliveryNavigationBarPageViewState
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<DeliveryNavigationBarPageBloc, DeliveryNavigationBarState>(
+      listenWhen: (previous, current) =>
+          previous.status != current.status ||
+          (previous.errorMessage != current.errorMessage &&
+              current.errorMessage != null),
       listener: (context, state) {
         if (state.status == DeliveryNavigationBarStatus.loggedOut) {
           Navigator.of(context).pushNamedAndRemoveUntil(
@@ -1193,7 +1197,9 @@ class _MobileDrawer extends StatelessWidget {
                         item: state.navItems[i],
                         isSelected: state.selectedIndex == i,
                         onTap: () {
-                          Navigator.pop(context);
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          }
                           onItemTap(i);
                         },
                       ),
@@ -1203,7 +1209,9 @@ class _MobileDrawer extends StatelessWidget {
             _HelpCard(
               localeCode: state.localeCode,
               onContactSupport: () {
-                Navigator.pop(context);
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
                 onContactSupport();
               },
             ),

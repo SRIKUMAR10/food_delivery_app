@@ -65,11 +65,14 @@ service cloud.firestore {
     // --- 4. Orders Collection ---
     // Orders link a buyer, seller, and optionally a delivery partner.
     match /orders/{orderId} {
-      // Buyer, seller, or delivery partner can read/update their assigned orders.
+      // Buyer, seller, or delivery partner can read/update their assigned orders or claim available orders.
       allow read, update: if isAuthenticated() && (
         resource.data.customerId == request.auth.uid ||
         resource.data.sellerId == request.auth.uid ||
-        resource.data.riderId == request.auth.uid
+        resource.data.riderId == request.auth.uid ||
+        resource.data.deliveryPartnerId == request.auth.uid ||
+        (request.resource.data.riderId == request.auth.uid) ||
+        (request.resource.data.deliveryPartnerId == request.auth.uid)
       );
       
       // Only backend (Cloud Functions) can create an order to ensure secure pricing and inventory.

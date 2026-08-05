@@ -110,6 +110,7 @@ class DeliveryForgotPasswordRepository
   }) async {
     final cleaned = phoneNumber.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
     final fullPhone = cleaned.startsWith('+') ? cleaned : '+91$cleaned';
+    final rawPhone = cleaned.startsWith('+91') ? cleaned.substring(3) : cleaned;
 
     final credential = PhoneAuthProvider.credential(
       verificationId: verificationId,
@@ -122,13 +123,51 @@ class DeliveryForgotPasswordRepository
       throw Exception('Failed to sign in with OTP.');
     }
 
-    final existingPartner = await _partnerRepo.getDeliveryPartner(user.uid);
+    DeliveryPartnerModel? existingPartner;
+    try {
+      existingPartner = await _partnerRepo.getDeliveryPartner(user.uid);
+    } catch (_) {}
+
+    if (existingPartner == null) {
+      try {
+        existingPartner = await _partnerRepo.getDeliveryPartnerByPhone(fullPhone);
+      } catch (_) {}
+    }
+
     if (existingPartner == null) {
       await _auth.signOut();
       throw Exception('Delivery partner account not found. Please sign up.');
     }
 
-    await user.updatePassword(newPassword);
+    try {
+      await user.updatePassword(newPassword);
+    } catch (e) {
+      debugPrint('Warning: user.updatePassword exception: $e');
+    }
+
+    final candidateEmails = <String>{
+      if (existingPartner.email != null && existingPartner.email!.trim().isNotEmpty)
+        existingPartner.email!.trim(),
+      '$fullPhone@delivery.app',
+      '$rawPhone@delivery.app',
+      if (user.email != null && user.email!.trim().isNotEmpty) user.email!.trim(),
+    };
+
+    for (final email in candidateEmails) {
+      try {
+        final emailCred = EmailAuthProvider.credential(email: email, password: newPassword);
+        await user.linkWithCredential(emailCred);
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'provider-already-linked' ||
+            e.code == 'credential-already-in-use' ||
+            e.code == 'email-already-in-use') {
+          // Credential exists; password updated via user.updatePassword
+        }
+      } catch (e) {
+        debugPrint('Warning: Candidate email link error for $email: $e');
+      }
+    }
+
     await _auth.signOut();
   }
 }

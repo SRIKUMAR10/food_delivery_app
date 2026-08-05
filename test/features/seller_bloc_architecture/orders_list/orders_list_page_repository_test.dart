@@ -1,24 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:food_delivery_app/core/models/order_status.dart';
-import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_repository.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_service.dart';
 
 void main() {
   late FakeFirebaseFirestore fakeFirestore;
   late OrdersListService service;
-  late OrdersListRepository repository;
   final String sellerId = 'seller123';
 
   setUp(() {
     fakeFirestore = FakeFirebaseFirestore();
     service = OrdersListService(firestore: fakeFirestore);
-    repository = OrdersListRepository(service: service);
   });
 
-  group('OrdersListRepository', () {
+  group('OrdersListService', () {
     test('returns empty list when no orders exist', () async {
-      final stream = repository.getOrdersStream(sellerId);
+      final stream = service.getOrdersStream(sellerId);
       final orders = await stream.first;
       expect(orders, isEmpty);
     });
@@ -28,12 +25,13 @@ void main() {
         'sellerId': sellerId,
         'status': 'New',
         'amount': 100.0,
+        'timestamp': DateTime.now(),
         // Intentionally missing customerPhone, deliveryAddress, items
       });
 
-      final stream = repository.getOrdersStream(sellerId);
+      final stream = service.getOrdersStream(sellerId);
       final orders = await stream.first;
-      
+
       expect(orders.length, 1);
       final order = orders.first;
       expect(order.status, OrderStatus.newOrder);
@@ -47,6 +45,7 @@ void main() {
         'sellerId': sellerId,
         'status': 'New',
         'amount': 1500.0,
+        'timestamp': DateTime.now(),
         'customerPhone': '1234567890',
         'deliveryAddress': '123 Test St',
         'items': [
@@ -54,9 +53,9 @@ void main() {
         ]
       });
 
-      final stream = repository.getOrdersStream(sellerId);
+      final stream = service.getOrdersStream(sellerId);
       final orders = await stream.first;
-      
+
       expect(orders.length, 1);
       final order = orders.first;
       expect(order.customerPhone, '1234567890');
@@ -72,26 +71,13 @@ void main() {
         'sellerId': sellerId,
         'status': 'New',
         'amount': 100.0,
+        'timestamp': DateTime.now(),
       });
 
-      await repository.updateOrderStatus(docRef.id, OrderStatus.preparing);
+      await service.updateOrderStatus(docRef.id, OrderStatus.preparing);
 
       final doc = await fakeFirestore.collection('orders').doc(docRef.id).get();
       expect(doc.data()!['status'], 'Preparing');
-    });
-
-    test('updateOrderStatus throws exception on failure', () async {
-      // Fake cloud firestore won't naturally fail unless we pass an invalid state for the mock,
-      // but we can test that the repository throws if the service fails.
-      // Since we don't mock the service here, we expect the service to handle invalid docs gracefully
-      // But let's try updating a non-existent document
-      try {
-        await repository.updateOrderStatus('non-existent', OrderStatus.preparing);
-        // It might not throw on fake firestore update to non-existent document in some cases,
-        // let's just make sure the call executes.
-      } catch (e) {
-        expect(e, isException);
-      }
     });
   });
 }

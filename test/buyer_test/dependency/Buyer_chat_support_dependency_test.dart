@@ -1,28 +1,51 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bloc_test/bloc_test.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/CurvedNavigationBarView/Buyer_chat_support_bloc.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/CurvedNavigationBarView/Buyer_chat_support_event.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/CurvedNavigationBarView/Buyer_chat_support_state.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/core/repositories/i_chat_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buyer_chat_bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buyer_chat_event.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buyer_chat_state.dart';
+
+class MockIChatRepository extends Mock implements IChatRepository {}
+class MockIAuthService extends Mock implements IAuthService {}
 
 void main() {
-  group('BuyerChatSupportBloc Dependency Tests', () {
-    // This test simulates a failure in a dependency (e.g., repository)
-    // and ensures the BLoC handles it gracefully.
+  group('BuyerChatBloc Dependency Tests', () {
+    late MockIChatRepository mockRepository;
+    late MockIAuthService mockAuthService;
 
-    // A mock repository that throws an error would be needed.
-    // class MockErrorChatRepository extends Mock implements ChatRepository {
-    //   @override
-    //   Future<List<ChatMessage>> getHistory() => throw Exception('Network Error');
-    // }
+    setUp(() {
+      mockRepository = MockIChatRepository();
+      mockAuthService = MockIAuthService();
+      when(() => mockAuthService.authStateChanges)
+          .thenAnswer((_) => const Stream.empty());
+    });
 
-    blocTest<BuyerChatSupportBloc, BuyerChatSupportState>(
-      'emits [loading, error] when repository throws an error',
-      // build: () => BuyerChatSupportBloc(repository: MockErrorChatRepository()),
-      build: () => BuyerChatSupportBloc(), // Using existing BLoC for structure
-      act: (bloc) => bloc.add(const LoadChatHistory()),
-      // This test will currently pass because the mock BLoC doesn't have error handling.
-      // A real implementation would check for the error state.
-      // expect: () => [ isA<BuyerChatSupportState>()..having((s) => s.status, 'status', ChatStatus.loading), isA<BuyerChatSupportState>()..having((s) => s.status, 'status', ChatStatus.error) ],
-    );
+    test('is constructed with repository and authService dependencies', () {
+      final bloc = BuyerChatBloc(
+        repository: mockRepository,
+        authService: mockAuthService,
+      );
+      expect(bloc.state, isA<BuyerChatInitial>());
+      expect(bloc.repository, mockRepository);
+      expect(bloc.authService, mockAuthService);
+      bloc.close();
+    });
+
+    test('emits error when the user is not logged in', () async {
+      when(() => mockAuthService.currentUserId).thenReturn(null);
+      final bloc = BuyerChatBloc(
+        repository: mockRepository,
+        authService: mockAuthService,
+      );
+      final states = <BuyerChatState>[];
+      bloc.stream.listen(states.add);
+      bloc.add(LoadBuyerConversations());
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(states.last, isA<BuyerChatError>());
+      expect((states.last as BuyerChatError).message, 'User not logged in');
+      await bloc.close();
+    });
   });
 }

@@ -1,24 +1,41 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/CurvedNavigationBarView/Buyer_chat_support_state.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/core/repositories/i_chat_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buyer_chat_bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buyer_chat_state.dart';
+
+class MockIChatRepository extends Mock implements IChatRepository {}
+class MockIAuthService extends Mock implements IAuthService {}
 
 void main() {
-  group('BuyerChatSupportState Snapshot Tests', () {
+  group('BuyerChatState Snapshot Tests', () {
     test('Initial state matches snapshot', () {
-      const initialState = BuyerChatSupportState();
-      // In a real scenario, you might serialize the state to JSON and compare.
-      expect(initialState.status, ChatStatus.initial);
-      expect(initialState.messages, isEmpty);
+      final authService = MockIAuthService();
+      when(() => authService.authStateChanges)
+          .thenAnswer((_) => const Stream.empty());
+      final bloc = BuyerChatBloc(
+        repository: MockIChatRepository(),
+        authService: authService,
+      );
+      expect(bloc.state, isA<BuyerChatInitial>());
+      bloc.close();
     });
 
-    test('Success state matches snapshot', () {
-      final successState = const BuyerChatSupportState().copyWith(
-        status: ChatStatus.success,
-        messages: [
-          {'sender': 'user', 'text': 'hi'},
-        ],
+    test('Loaded state matches snapshot', () {
+      const loaded = BuyerChatLoaded(
+        currentUserId: 'buyer_1',
+        conversations: [],
       );
-      expect(successState.status, ChatStatus.success);
-      expect(successState.messages.first['text'], 'hi');
+      expect(loaded.currentUserId, 'buyer_1');
+      expect(loaded.conversations, isEmpty);
+      expect(loaded.searchQuery, '');
+      expect(loaded.selectedConversationId, isNull);
+    });
+
+    test('Error state matches snapshot', () {
+      const error = BuyerChatError('Connection failed');
+      expect(error.message, 'Connection failed');
     });
   });
 }

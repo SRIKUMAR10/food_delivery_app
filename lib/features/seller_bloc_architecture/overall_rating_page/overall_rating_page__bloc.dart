@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'overall_rating_page__event.dart';
 import 'overall_rating_page__state.dart';
-import '../../../api_service/seller_review_service.dart';
+import 'package:food_delivery_app/api_service/seller_review_service.dart';
 
 class OverallRatingBloc extends Bloc<OverallRatingEvent, OverallRatingState> {
   final SellerReviewService service;

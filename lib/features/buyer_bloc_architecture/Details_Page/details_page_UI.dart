@@ -256,7 +256,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
       ),
     );
 
-    Navigator.pop(context, true);
+    if (Navigator.canPop(context)) Navigator.pop(context, true);
   }
 
   @override
@@ -341,7 +341,9 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
               leading: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
+                  onTap: () {
+                    if (Navigator.canPop(context)) Navigator.pop(context);
+                  },
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.95),
@@ -458,7 +460,9 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                     top: 20,
                     left: 20,
                     child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () {
+                        if (Navigator.canPop(context)) Navigator.pop(context);
+                      },
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(

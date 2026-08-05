@@ -111,7 +111,9 @@ class _CartPageUIState extends State<CartPageUI> {
                   top: 50,
                   right: 25,
                   child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
+                    onTap: () {
+                      if (Navigator.canPop(context)) Navigator.pop(context);
+                    },
                     child: const CircleAvatar(
                       backgroundColor: Colors.white24,
                       child: Icon(Icons.close, color: Colors.white),

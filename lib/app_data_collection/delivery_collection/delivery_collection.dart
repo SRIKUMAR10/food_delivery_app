@@ -22,7 +22,7 @@ class DeliveryCollection {
 
   Future<void> updateDeliveryPartner(String uid, Map<String, dynamic> data) async {
     try {
-      await _collection.doc(uid).update(data);
+      await _collection.doc(uid).set(data, SetOptions(merge: true));
     } catch (e) {
       throw Exception('Failed to update delivery partner in Firestore: $e');
     }

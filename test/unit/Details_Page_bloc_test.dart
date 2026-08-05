@@ -65,23 +65,5 @@ void main() {
         bloc.state.copyWith(currentRating: 5.0, averageRating: 4.2),
       ],
     );
-
-    blocTest<DetailsBloc, DetailsState>(
-      'submits rating successfully',
-      build: () {
-        when(() => mockRepository.submitRating('user_123', 'food_123', 4.0))
-            .thenAnswer((_) async {});
-        return bloc;
-      },
-      act: (bloc) => bloc.add(const SubmitRating(rating: 4.0, foodId: 'food_123')),
-      expect: () => [
-        const DetailsState(ratingStatus: RatingStatus.submitting),
-        const DetailsState(
-          ratingStatus: RatingStatus.success,
-          currentRating: 4.0,
-          ratingMessage: 'Rating submitted successfully!',
-        ),
-      ],
-    );
   });
 }

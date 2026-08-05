@@ -107,6 +107,9 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
             ),
           ),
           BlocConsumer<DeliverySignUpPageBloc, DeliverySignUpPageState>(
+            listenWhen: (previous, current) =>
+                previous.status != current.status ||
+                previous.isSignedUp != current.isSignedUp,
             listener: (context, state) {
               if (state.status == DeliverySignUpStatus.otpSent &&
                   state.verificationId != null) {
@@ -131,7 +134,7 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
-                Navigator.pop(context);
+                if (Navigator.canPop(context)) Navigator.pop(context);
               }
             },
             builder: (context, state) {
@@ -208,7 +211,9 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              if (Navigator.canPop(context)) Navigator.pop(context);
+            },
             child: const Icon(Icons.arrow_back,
                 color: Colors.white70, size: 24),
           ),
@@ -429,7 +434,9 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => Navigator.pop(context),
+                  onTap: () {
+                    if (Navigator.canPop(context)) Navigator.pop(context);
+                  },
                   child: Text(
                     'Login',
                     style: GoogleFonts.inter(

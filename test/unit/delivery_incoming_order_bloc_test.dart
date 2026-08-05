@@ -1,16 +1,25 @@
 import 'dart:async';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_event.dart';
+import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_repository.dart';
 import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_state.dart';
+
+class MockDeliveryIncomingOrderRepository extends Mock
+    implements DeliveryIncomingOrderRepositoryBase {}
 
 void main() {
   group('DeliveryIncomingOrderBloc', () {
     late DeliveryIncomingOrderBloc bloc;
+    late MockDeliveryIncomingOrderRepository mockRepository;
 
     setUp(() {
-      bloc = DeliveryIncomingOrderBloc();
+      mockRepository = MockDeliveryIncomingOrderRepository();
+      when(() => mockRepository.acceptOrder(any())).thenAnswer((_) async => true);
+      when(() => mockRepository.declineOrder(any())).thenAnswer((_) async => true);
+      bloc = DeliveryIncomingOrderBloc(repository: mockRepository);
     });
 
     tearDown(() {
@@ -25,7 +34,17 @@ void main() {
 
     blocTest<DeliveryIncomingOrderBloc, DeliveryIncomingOrderState>(
       'emits [loaded] with timer started on LoadEvent',
-      build: () => DeliveryIncomingOrderBloc(),
+      build: () {
+        when(() => mockRepository.fetchIncomingOrder()).thenAnswer(
+          (_) async => const DeliveryIncomingOrderState(
+            status: IncomingOrderStatus.loaded,
+            orderId: '#ORD98234',
+            storeName: 'Green Mart',
+            remainingSeconds: 15,
+          ),
+        );
+        return DeliveryIncomingOrderBloc(repository: mockRepository);
+      },
       act: (bloc) => bloc.add(const DeliveryIncomingOrderLoadEvent()),
       expect: () => [
         isA<DeliveryIncomingOrderState>()
@@ -36,7 +55,7 @@ void main() {
 
     blocTest<DeliveryIncomingOrderBloc, DeliveryIncomingOrderState>(
       'emits [accepted] on AcceptEvent and stops timer',
-      build: () => DeliveryIncomingOrderBloc(),
+      build: () => DeliveryIncomingOrderBloc(repository: mockRepository),
       seed: () => const DeliveryIncomingOrderState(
         status: IncomingOrderStatus.loaded,
         remainingSeconds: 10,
@@ -50,7 +69,7 @@ void main() {
 
     blocTest<DeliveryIncomingOrderBloc, DeliveryIncomingOrderState>(
       'emits [declined] on DeclineEvent and stops timer',
-      build: () => DeliveryIncomingOrderBloc(),
+      build: () => DeliveryIncomingOrderBloc(repository: mockRepository),
       seed: () => const DeliveryIncomingOrderState(
         status: IncomingOrderStatus.loaded,
         remainingSeconds: 5,
@@ -64,7 +83,7 @@ void main() {
 
     blocTest<DeliveryIncomingOrderBloc, DeliveryIncomingOrderState>(
       'emits [expired] on TimerExpiredEvent',
-      build: () => DeliveryIncomingOrderBloc(),
+      build: () => DeliveryIncomingOrderBloc(repository: mockRepository),
       seed: () => const DeliveryIncomingOrderState(
         status: IncomingOrderStatus.loaded,
         remainingSeconds: 1,
@@ -79,7 +98,7 @@ void main() {
 
     blocTest<DeliveryIncomingOrderBloc, DeliveryIncomingOrderState>(
       'emits decremented seconds on TimerTickEvent',
-      build: () => DeliveryIncomingOrderBloc(),
+      build: () => DeliveryIncomingOrderBloc(repository: mockRepository),
       seed: () => const DeliveryIncomingOrderState(
         status: IncomingOrderStatus.loaded,
         remainingSeconds: 15,

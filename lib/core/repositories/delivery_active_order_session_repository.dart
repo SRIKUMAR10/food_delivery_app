@@ -109,10 +109,10 @@ class DeliveryActiveOrderSessionRepository {
     try {
       final uid = _auth?.currentUser?.uid;
       if (uid != null && _firestore != null) {
-        await _firestore.collection('delivery_partners').doc(uid).update({
+        await _firestore.collection('delivery_partners').doc(uid).set({
           'isOnline': isOnline,
           'updatedAt': FieldValue.serverTimestamp(),
-        });
+        }, SetOptions(merge: true));
       }
     } catch (_) {}
   }

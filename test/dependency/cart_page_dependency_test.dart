@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/core/repositories/i_cart_repository.dart';
 import 'package:food_delivery_app/core/repositories/i_coupon_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_product_repository.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/services/seller_status_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page_Bloc.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -28,7 +30,9 @@ class GetIt {
 
 class MockCartRepository extends Mock implements ICartRepository {}
 class MockCouponRepository extends Mock implements ICouponRepository {}
+class MockProductRepository extends Mock implements IProductRepository {}
 class MockAuthService extends Mock implements IAuthService {}
+class MockSellerStatusService extends Mock implements SellerStatusService {}
 
 void main() {
   group('Cart Dependency Injection Tests (Blueprint)', () {
@@ -37,19 +41,24 @@ void main() {
     setUp(() {
       final mockCartRepository = MockCartRepository();
       final mockCouponRepository = MockCouponRepository();
+      final mockProductRepository = MockProductRepository();
       final mockAuthService = MockAuthService();
+      final mockSellerStatusService = MockSellerStatusService();
 
       when(() => mockAuthService.currentUserId).thenReturn('test_uid');
       when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value(null));
 
       getIt.registerSingleton<ICartRepository>(mockCartRepository);
       getIt.registerSingleton<ICouponRepository>(mockCouponRepository);
+      getIt.registerSingleton<IProductRepository>(mockProductRepository);
       getIt.registerSingleton<IAuthService>(mockAuthService);
       getIt.registerFactory<CartBloc>(
         () => CartBloc(
           cartRepository: getIt<ICartRepository>(),
           couponRepository: getIt<ICouponRepository>(),
+          productRepository: getIt<IProductRepository>(),
           authService: getIt<IAuthService>(),
+          sellerStatusService: mockSellerStatusService,
         ),
       );
     });

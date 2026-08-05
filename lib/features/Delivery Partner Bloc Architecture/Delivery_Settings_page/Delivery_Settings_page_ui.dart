@@ -148,6 +148,10 @@ class DeliverySettingsPageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<DeliverySettingsBloc, DeliverySettingsState>(
+      listenWhen: (previous, current) =>
+          previous.saveStatus != current.saveStatus ||
+          (previous.errorMessage != current.errorMessage &&
+              current.errorMessage != null),
       listener: (context, state) {
         if (state.saveStatus == DeliverySettingsSaveStatus.saved) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -216,14 +216,14 @@ class DeliveryPartnerRepository {
     final uid = _auth.currentUser?.uid;
     if (uid != null) {
       try {
-        await _firestore.collection('delivery_partners').doc(uid).update({
+        await _firestore.collection('delivery_partners').doc(uid).set({
           'isOnline': false,
           'lastLogout': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
-        }).catchError((_) {});
-        await _firestore.collection('riders').doc(uid).update({
+        }, SetOptions(merge: true)).catchError((_) {});
+        await _firestore.collection('riders').doc(uid).set({
           'isOnline': false,
-        }).catchError((_) {});
+        }, SetOptions(merge: true)).catchError((_) {});
       } catch (_) {}
     }
     await _auth.signOut();
@@ -235,9 +235,43 @@ class DeliveryPartnerRepository {
   }
 
   Future<DeliveryPartnerModel?> getDeliveryPartner(String uid) async {
-    final doc = await _firestore.collection('delivery_partners').doc(uid).get();
-    if (doc.exists) {
-      return DeliveryPartnerModel.fromFirestore(doc);
+    try {
+      final doc = await _firestore.collection('delivery_partners').doc(uid).get();
+      if (doc.exists) {
+        return DeliveryPartnerModel.fromFirestore(doc);
+      } else {
+        final user = _auth.currentUser;
+        if (user != null && user.uid == uid) {
+          final now = DateTime.now();
+          final partner = DeliveryPartnerModel(
+            id: uid,
+            phoneNumber: user.phoneNumber ?? '',
+            countryCode: '+91',
+            displayName: user.displayName ?? 'Delivery Partner',
+            email: user.email ?? '',
+            role: 'delivery_partner',
+            status: 'pending',
+            isActive: true,
+            isVerified: false,
+            isPhoneVerified: true,
+            isEmailVerified: false,
+            profileCompletion: 0,
+            isOnline: false,
+            kycStatus: 'pending',
+            createdAt: now,
+            updatedAt: now,
+          );
+          await createDeliveryPartner(uid, partner);
+          return partner;
+        }
+      }
+    } catch (e) {
+      debugPrint('getDeliveryPartner by uid error: $e');
+    }
+
+    final phone = _auth.currentUser?.phoneNumber;
+    if (phone != null && phone.isNotEmpty) {
+      return await getDeliveryPartnerByPhone(phone);
     }
     return null;
   }
@@ -378,7 +412,10 @@ class DeliveryPartnerRepository {
   Future<void> updateDeliveryPartner(
       String uid, Map<String, dynamic> data) async {
     data['updatedAt'] = FieldValue.serverTimestamp();
-    await _firestore.collection('delivery_partners').doc(uid).update(data);
+    await _firestore
+        .collection('delivery_partners')
+        .doc(uid)
+        .set(data, SetOptions(merge: true));
 
     final Map<String, dynamic> riderUpdates = {};
     if (data.containsKey('displayName')) riderUpdates['name'] = data['displayName'];
@@ -386,29 +423,33 @@ class DeliveryPartnerRepository {
     if (data.containsKey('photoUrl')) riderUpdates['imageUrl'] = data['photoUrl'];
     if (data.containsKey('rating')) riderUpdates['rating'] = data['rating'];
     if (riderUpdates.isNotEmpty) {
-      await _firestore.collection('riders').doc(uid).update(riderUpdates).catchError((_) {});
+      await _firestore
+          .collection('riders')
+          .doc(uid)
+          .set(riderUpdates, SetOptions(merge: true))
+          .catchError((_) {});
     }
   }
 
   Future<void> updateLastLogin(String uid) async {
-    await _firestore.collection('delivery_partners').doc(uid).update({
+    await _firestore.collection('delivery_partners').doc(uid).set({
       'lastLogin': FieldValue.serverTimestamp(),
       'isOnline': true,
       'updatedAt': FieldValue.serverTimestamp(),
-    });
-    await _firestore.collection('riders').doc(uid).update({
+    }, SetOptions(merge: true));
+    await _firestore.collection('riders').doc(uid).set({
       'isOnline': true,
-    }).catchError((_) {});
+    }, SetOptions(merge: true)).catchError((_) {});
   }
 
   Future<void> updateOnlineStatus(String uid, bool isOnline) async {
-    await _firestore.collection('delivery_partners').doc(uid).update({
+    await _firestore.collection('delivery_partners').doc(uid).set({
       'isOnline': isOnline,
       'updatedAt': FieldValue.serverTimestamp(),
-    });
-    await _firestore.collection('riders').doc(uid).update({
+    }, SetOptions(merge: true));
+    await _firestore.collection('riders').doc(uid).set({
       'isOnline': isOnline,
-    }).catchError((_) {});
+    }, SetOptions(merge: true)).catchError((_) {});
   }
 
   Future<void> saveSession(String uid, String email) async {

@@ -1,19 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/CurvedNavigationBarView/Buyer_chat_support_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/core/models/conversation_model.dart';
+import 'package:food_delivery_app/core/repositories/i_chat_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buyer_chat_ui.dart';
+
+class MockIChatRepository extends Mock implements IChatRepository {}
+class MockIAuthService extends Mock implements IAuthService {}
 
 void main() {
-  group('BuyerChatSupportPage Performance Tests', () {
-    testWidgets('Scrolling performance with many messages', (
+  group('BuyerChatPage Performance Tests', () {
+    late MockIChatRepository mockRepository;
+    late MockIAuthService mockAuthService;
+
+    setUp(() {
+      mockRepository = MockIChatRepository();
+      mockAuthService = MockIAuthService();
+      when(() => mockAuthService.authStateChanges)
+          .thenAnswer((_) => const Stream.empty());
+      when(() => mockAuthService.currentUserId).thenReturn('buyer_1');
+    });
+
+    testWidgets('Renders a large list of conversations efficiently', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: BuyerChatSupportPage()));
-      await tester.pumpAndSettle();
+      final conversations = List.generate(
+        100,
+        (index) => ConversationModel(
+          id: 'conv_$index',
+          buyerId: 'buyer_1',
+          sellerId: 'seller_$index',
+          buyerName: 'John',
+          sellerName: 'Seller $index',
+          shopName: 'Shop $index',
+          lastMessage: 'Message $index',
+          lastMessageTimestamp: DateTime(2026, 7, 20),
+          createdAt: DateTime(2026, 7, 20),
+          updatedAt: DateTime(2026, 7, 20),
+        ),
+      );
+      when(() => mockRepository.getConversationsForUser(any(),
+              isSeller: any(named: 'isSeller')))
+          .thenAnswer((_) => Stream.value(conversations));
 
-      // The BLoC would need to be mocked or seeded with hundreds of messages here.
+      await tester.pumpWidget(
+        MultiRepositoryProvider(
+          providers: [
+            RepositoryProvider<IChatRepository>(create: (_) => mockRepository),
+            RepositoryProvider<IAuthService>(create: (_) => mockAuthService),
+          ],
+          child: const MaterialApp(home: BuyerChatPage()),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
-      await tester.fling(find.byType(ListView), const Offset(0, -500), 10000);
-      await tester.pumpAndSettle();
+      expect(find.byType(BuyerChatPage), findsOneWidget);
+
+      final listFinder = find.descendant(
+        of: find.byType(BuyerChatPage),
+        matching: find.byType(ListView),
+      );
+      expect(listFinder, findsWidgets);
     });
   });
 }

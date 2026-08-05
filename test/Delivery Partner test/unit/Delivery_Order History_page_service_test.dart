@@ -1,7 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order%20History_page/Delivery_Order%20History_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order%20History_page/Delivery_Order%20History_page_state.dart';
+
+class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 DeliveryOrderHistoryModel order({
   String id = 'ORD-1001',
@@ -31,7 +37,14 @@ DeliveryOrderHistoryModel order({
 }
 
 void main() {
-  final service = DeliveryOrderHistoryService();
+  late DeliveryOrderHistoryService service;
+
+  setUp(() {
+    service = DeliveryOrderHistoryService(
+      firestore: MockFirebaseFirestore(),
+      auth: MockFirebaseAuth(),
+    );
+  });
 
   final completed = order();
   final pending = order(
@@ -59,17 +72,17 @@ void main() {
   final orders = [completed, pending, cancelled];
 
   group('DeliveryOrderHistoryPage Service Tests', () {
-    test('fetchOrderHistoryData returns 245 orders with stats', () async {
+    test('fetchOrderHistoryData returns 20 orders with stats', () async {
       final data = await service.fetchOrderHistoryData();
       final rawOrders = data['orders'] as List;
       final rawStats = data['stats'] as Map<String, dynamic>;
 
-      expect(rawOrders, hasLength(245));
-      expect(rawStats['totalOrders'], 245);
-      expect(rawStats['completed'], 182);
-      expect(rawStats['cancelled'], 28);
-      expect(rawStats['pending'], 35);
-      expect(rawStats['totalEarnings'], 48750.00);
+      expect(rawOrders, hasLength(20));
+      expect(rawStats['totalOrders'], 20);
+      expect(rawStats['completed'], 7);
+      expect(rawStats['cancelled'], 6);
+      expect(rawStats['pending'], 7);
+      expect(rawStats['totalEarnings'], 18230.00);
     });
 
     test(

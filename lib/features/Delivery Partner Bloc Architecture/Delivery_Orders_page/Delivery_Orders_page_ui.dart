@@ -240,6 +240,10 @@ class DeliveryOrdersPageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
+      listenWhen: (previous, current) =>
+          previous.errorMessage != current.errorMessage &&
+          current.errorMessage != null &&
+          current.errorMessage!.isNotEmpty,
       listener: (context, state) {
         if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(

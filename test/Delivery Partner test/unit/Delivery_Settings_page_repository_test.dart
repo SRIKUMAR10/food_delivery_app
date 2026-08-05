@@ -15,18 +15,22 @@ void main() {
   });
 
   group('DeliverySettingsPage Repository Tests', () {
-    test('buildDefaultItems contains the three toggle items in order', () {
+    test('buildDefaultItems contains the five toggle items in order', () {
       final items = DeliverySettingsRepository.buildDefaultItems(
         notificationsEnabled: true,
         autoAcceptEnabled: true,
         darkModeEnabled: false,
+        sunModeEnabled: false,
+        oledModeEnabled: false,
       );
 
-      expect(items, hasLength(3));
+      expect(items, hasLength(5));
       expect(items.map((i) => i.id).toList(), [
         'notifications',
         'autoAccept',
         'darkMode',
+        'sunMode',
+        'oledMode',
       ]);
     });
 
@@ -43,7 +47,7 @@ void main() {
       expect(settings.darkModeEnabled, isFalse);
       expect(settings.deliveryRadius, 5.0);
       expect(settings.languageCode, 'en');
-      expect(settings.items, hasLength(3));
+      expect(settings.items, hasLength(5));
     });
 
     test('saveSettings persists changes that fetchSettings restores', () async {
@@ -64,7 +68,7 @@ void main() {
       expect(restored.languageCode, 'ta');
       expect(restored.localeCode, 'ta');
       expect(restored.autoAcceptEnabled, isTrue);
-      expect(restored.items, hasLength(3));
+      expect(restored.items, hasLength(5));
     });
 
     test(
@@ -89,7 +93,7 @@ void main() {
       final settings = await repository.fetchSettings();
       expect(settings.status, DeliverySettingsStatus.loaded);
       expect(settings.notificationsEnabled, isTrue);
-      expect(settings.items, hasLength(3));
+      expect(settings.items, hasLength(5));
     });
   });
 }

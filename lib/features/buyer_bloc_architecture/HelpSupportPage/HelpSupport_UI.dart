@@ -154,12 +154,16 @@ class _HelpSupportContentState extends State<HelpSupportContent> {
         content: const Text('How would you like to reach us?'),
         actions: [
           TextButton.icon(
-            onPressed: () => Navigator.pop(ctx, 'email'),
+            onPressed: () {
+              if (Navigator.canPop(ctx)) Navigator.pop(ctx, 'email');
+            },
             icon: const Icon(Icons.email_outlined, size: 18),
             label: const Text('Email'),
           ),
           TextButton.icon(
-            onPressed: () => Navigator.pop(ctx, 'phone'),
+            onPressed: () {
+              if (Navigator.canPop(ctx)) Navigator.pop(ctx, 'phone');
+            },
             icon: const Icon(Icons.phone_outlined, size: 18),
             label: const Text('Phone'),
           ),
@@ -209,7 +213,9 @@ class _FaqPage extends StatelessWidget {
         title: const Text('FAQ'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) Navigator.pop(context);
+          },
         ),
       ),
       body: ListView(
@@ -327,7 +333,7 @@ class _IssueFormPageState extends State<_IssueFormPage> {
           ? null
           : _orderIdController.text.trim(),
     ));
-    Navigator.pop(context);
+    if (Navigator.canPop(context)) Navigator.pop(context);
   }
 
   @override
@@ -337,7 +343,9 @@ class _IssueFormPageState extends State<_IssueFormPage> {
         title: Text(_typeLabel),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) Navigator.pop(context);
+          },
         ),
       ),
       body: SingleChildScrollView(
@@ -436,7 +444,7 @@ class _FeedbackFormPageState extends State<_FeedbackFormPage> {
       rating: _rating,
       comments: _commentsController.text.trim(),
     ));
-    Navigator.pop(context);
+    if (Navigator.canPop(context)) Navigator.pop(context);
   }
 
   void _showSnack(String message) {
@@ -457,7 +465,9 @@ class _FeedbackFormPageState extends State<_FeedbackFormPage> {
         title: const Text('App Feedback'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) Navigator.pop(context);
+          },
         ),
       ),
       body: SingleChildScrollView(

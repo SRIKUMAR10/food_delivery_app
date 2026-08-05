@@ -53,12 +53,12 @@ App.Start
 │ /deliverylogin │  │/deliverySignUp│  │/deliveryForgotPwd │
 │ LoginPage      │  │SignUpPage    │  │ForgotPwdPage      │
 │ ─────────────  │  ─────────────  │ ────────────────    │
-│ Phone/Pwd/     │  │ Name/Phone/  │  │ Email → Firebase  │
-│ Google/Apple   │  │ Email/Pwd/   │  │ SendResetLink     │
-│                │  │ Terms        │  │                   │
-│ Success →      │  │ Submitted →  │  │ Success → pop     │
-│ /deliveryNav   │  │ OTP Verify   │  │ back to Login     │
-│ SignUp →       │  │ (pushNamed)  │  │                   │
+│ Phone/Pwd/     │  │ Name/Phone/  │  │ Phone → OTP →     │
+│ Google/Apple   │  │ Email/Pwd/   │  │ Verify OTP →      │
+│                │  │ Terms        │  │ New Pwd/Confirm   │
+│ Success →      │  │ Submitted →  │  │ ────────────────  │
+│ /deliveryNav   │  │ OTP Verify   │  │ Reset Success →   │
+│ SignUp →       │  │ (pushNamed)  │  │ pop back to Login │
 │ /deliverySignUp│  │ LoginBtn →   │  └───────────────────┘
 │ ForgotPwd →    │  │ /deliverylogin│
 │ /delForgotPwd  │  └──────┬───────┘
@@ -287,19 +287,23 @@ Cross-BLoC State Machine:
 |-------|--------|
 | **BLoC** | `DeliveryForgotPasswordBloc` |
 | **Dependencies** | `DeliveryPartnerRepository` (shared, not injected) |
-| **Status Enum** | `initial, loading, success, failure` |
-| **State Fields** | `status`, `email`, `message` |
+| **Status Enum** | `initial, loading, otpSent, otpVerified, success, failure` |
+| **State Fields** | `status`, `phone`, `otp`, `newPassword`, `confirmPassword`, `verificationId`, `message` |
 
 | Event | Handler | Repo Call | State |
 |-------|---------|-----------|-------|
-| `EmailChanged(email)` | `_onEmailChanged` | — | `copyWith(email)` |
-| `Submitted` | `_onSubmitted` | `_repo.sendPasswordResetEmail(email)` | `loading → success/failure` |
+| `PhoneChanged(phone)` | `_onPhoneChanged` | — | `copyWith(phone)` |
+| `SendOtpSubmitted` | `_onSendOtpSubmitted` | `_repo.sendResetPhoneOtp(phone)` | `loading → otpSent` |
+| `OtpChanged(otp)` | `_onOtpChanged` | — | `copyWith(otp)` |
+| `VerifyOtpSubmitted` | `_onVerifyOtpSubmitted` | `_repo.verifyResetOtp(otp)` | `loading → otpVerified` |
+| `PasswordChanged(pwd)` | `_onPasswordChanged` | — | `copyWith(newPassword)` |
+| `ConfirmPasswordChanged(pwd)` | `_onConfirmPasswordChanged` | — | `copyWith(confirmPassword)` |
+| `ResetPasswordSubmitted` | `_onResetPasswordSubmitted` | `_repo.resetPasswordWithOtp(...)` | `loading → success/failure` |
 
 | Gaps |
 |------|
-| No email validation before submit |
+| Phone number and password strength validation required before submission |
 | BLoC creates its own `DeliveryPartnerRepository()` — not mockable |
-| No `isEmailValid` field in state |
 
 ---
 

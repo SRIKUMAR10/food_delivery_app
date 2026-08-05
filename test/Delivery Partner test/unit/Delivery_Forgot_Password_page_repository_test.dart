@@ -24,6 +24,10 @@ class MockQuerySnapshot extends Mock
 class MockQueryDocumentSnapshot extends Mock
     implements QueryDocumentSnapshot<Map<String, dynamic>> {}
 
+class MockUser extends Mock implements User {}
+
+class MockUserCredential extends Mock implements UserCredential {}
+
 void main() {
   late MockDeliveryPartnerRepository mockPartnerRepo;
   late MockFirebaseAuth mockAuth;
@@ -48,6 +52,14 @@ void main() {
     );
 
     registerFallbackValue(FirebaseAuthException(code: 'dummy'));
+    registerFallbackValue(PhoneAuthProvider.credential(
+      verificationId: 'v123',
+      smsCode: '123456',
+    ));
+    registerFallbackValue(EmailAuthProvider.credential(
+      email: 'test@example.com',
+      password: 'pass',
+    ));
   });
 
   group('DeliveryForgotPasswordRepository sendOtp Tests', () {
@@ -241,6 +253,47 @@ void main() {
           onCodeAutoRetrievalTimeout: any(named: 'onCodeAutoRetrievalTimeout'),
         ),
       ).called(1);
+    });
+  });
+
+  group('DeliveryForgotPasswordRepository verifyOtpAndUpdatePassword Tests', () {
+    const phone = '9876543210';
+    const fullPhone = '+919876543210';
+    const newPass = 'newPassword123';
+
+    test('successfully updates password and links candidate email credentials',
+        () async {
+      final mockUser = MockUser();
+      final mockUserCred = MockUserCredential();
+      final mockPartner = DeliveryPartnerModel(
+        id: 'uid123',
+        phoneNumber: fullPhone,
+        email: 'test@example.com',
+        createdAt: DateTime(2024),
+        updatedAt: DateTime(2024),
+      );
+
+      when(() => mockAuth.signInWithCredential(any()))
+          .thenAnswer((_) async => mockUserCred);
+      when(() => mockUserCred.user).thenReturn(mockUser);
+      when(() => mockUser.uid).thenReturn('uid123');
+      when(() => mockUser.email).thenReturn('test@example.com');
+      when(() => mockUser.updatePassword(newPass)).thenAnswer((_) async {});
+      when(() => mockUser.linkWithCredential(any()))
+          .thenAnswer((_) async => mockUserCred);
+      when(() => mockPartnerRepo.getDeliveryPartner('uid123'))
+          .thenAnswer((_) async => mockPartner);
+      when(() => mockAuth.signOut()).thenAnswer((_) async {});
+
+      await repository.verifyOtpAndUpdatePassword(
+        verificationId: 'v123',
+        smsCode: '123456',
+        phoneNumber: phone,
+        newPassword: newPass,
+      );
+
+      verify(() => mockUser.updatePassword(newPass)).called(1);
+      verify(() => mockAuth.signOut()).called(1);
     });
   });
 }

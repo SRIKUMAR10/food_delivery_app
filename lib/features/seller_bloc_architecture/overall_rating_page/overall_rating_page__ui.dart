@@ -9,13 +9,14 @@ import 'overall_rating_page__event.dart';
 import 'overall_rating_page__state.dart';
 
 class OverallRatingPage extends StatelessWidget {
-  const OverallRatingPage({Key? key}) : super(key: key);
+  final SellerReviewService? service;
+  const OverallRatingPage({Key? key, this.service}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => OverallRatingBloc(
-        service: SellerReviewService(),
+        service: service ?? SellerReviewService(),
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFFF8FAFC), // Premium light background
@@ -34,7 +35,11 @@ class OverallRatingPage extends StatelessWidget {
                   color: Color(0xFF1E293B),
                   size: 20,
                 ),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.of(context).pop();
+                  }
+                },
               );
             },
           ),

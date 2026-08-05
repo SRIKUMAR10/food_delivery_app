@@ -29,7 +29,9 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
       automaticallyImplyLeading: false,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: DeliveryAppColors.textPrimary),
-        onPressed: () => Navigator.of(context).pop(),
+        onPressed: () {
+          if (Navigator.canPop(context)) Navigator.of(context).pop();
+        },
       ),
       title: Text(
         'LOGISTICS ORDER PANEL',

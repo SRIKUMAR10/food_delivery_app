@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incentives%20Dashboard_page/Delivery_Incentives%20Dashboard_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incentives%20Dashboard_page/Delivery_Incentives%20Dashboard_page_event.dart';
@@ -11,6 +13,9 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incentives%20Dashboard_page/Delivery_Incentives%20Dashboard_page_ui.dart';
 
 import '../../font_loader_helper.dart';
+
+class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 class MockDeliveryIncentivesDashboardPageBloc
     extends
@@ -66,29 +71,16 @@ void main() {
     test(
       'service incentives payload does not expose raw environment secrets',
       () async {
-        final service = DeliveryIncentivesDashboardService();
+        final service = DeliveryIncentivesDashboardService(
+          firestore: MockFirebaseFirestore(),
+          auth: MockFirebaseAuth(),
+        );
         final data = await service.fetchIncentivesData();
         final raw = data.toString();
 
         expect(
           raw.contains(
             RegExp(r'(token|password|passwd|secret)', caseSensitive: false),
-          ),
-          isFalse,
-        );
-      },
-    );
-
-    test(
-      'service API base URL falls back without leaking credentials',
-      () async {
-        final service = DeliveryIncentivesDashboardService();
-        final url = service.apiBaseUrl;
-
-        expect(url, isNotEmpty);
-        expect(
-          url.contains(
-            RegExp(r'(token|password|secret)', caseSensitive: false),
           ),
           isFalse,
         );

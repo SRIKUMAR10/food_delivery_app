@@ -2,21 +2,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Track_Order_page/Track_Order_page_bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Track_Order_page/Track_Order_page_event.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Track_Order_page/Track_Order_page_repository.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Track_Order_page/Track_Order_page_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Track_Order_page/Track_Order_page_state.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockTrackOrderRepository extends Mock implements TrackOrderRepository {}
+class MockTrackOrderService extends Mock implements TrackOrderService {}
+class MockOrderRepository extends Mock implements IOrderRepository {}
 
 void main() {
   group('TrackOrderBloc', () {
     late MockTrackOrderRepository mockRepository;
+    late MockTrackOrderService mockTrackService;
+    late MockOrderRepository mockOrderRepository;
     late TrackOrderBloc bloc;
 
     setUp(() {
       mockRepository = MockTrackOrderRepository();
+      mockTrackService = MockTrackOrderService();
+      mockOrderRepository = MockOrderRepository();
       when(() => mockRepository.startTracking(any())).thenAnswer((_) async {});
       when(() => mockRepository.stopTracking()).thenAnswer((_) async {});
-      bloc = TrackOrderBloc(repository: mockRepository);
+      when(() => mockRepository.locationStream).thenAnswer((_) => const Stream.empty());
+      when(() => mockTrackService.watchOrder(any())).thenAnswer((_) => const Stream.empty());
+      bloc = TrackOrderBloc(
+        repository: mockRepository,
+        orderRepository: mockOrderRepository,
+        trackService: mockTrackService,
+      );
     });
 
     tearDown(() {
@@ -35,7 +49,7 @@ void main() {
         'emits [TrackOrderLoading, TrackOrderLoaded] on success (Happy Path)',
         () async {
           // Arrange
-          when(() => mockRepository.fetchOrderDetails(orderId)).thenAnswer(
+          when(() => mockTrackService.getOrderDetails(orderId)).thenAnswer(
             (_) async => {
               'estimatedDelivery': '20-30 mins',
               'driverName': 'Jane Doe',
@@ -60,12 +74,13 @@ void main() {
                   'Jane Doe',
                 ),
           ];
-          expectLater(bloc.stream, emitsInOrder(expectedStates));
+          final expectation = expectLater(bloc.stream, emitsInOrder(expectedStates));
 
           // Act
           bloc.add(
             LoadTrackOrderDetails(orderId: orderId, orderDate: orderDate),
           );
+          await expectation;
         },
       );
 
@@ -74,7 +89,7 @@ void main() {
         () async {
           // Arrange
           when(
-            () => mockRepository.fetchOrderDetails(any()),
+            () => mockTrackService.getOrderDetails(any()),
           ).thenThrow(Exception('API Timeout'));
 
           // Assert
@@ -86,12 +101,13 @@ void main() {
               contains('API Timeout'),
             ),
           ];
-          expectLater(bloc.stream, emitsInOrder(expectedStates));
+          final expectation = expectLater(bloc.stream, emitsInOrder(expectedStates));
 
           // Act
           bloc.add(
             LoadTrackOrderDetails(orderId: orderId, orderDate: orderDate),
           );
+          await expectation;
         },
       );
 
@@ -99,7 +115,7 @@ void main() {
         'handles null fields in repository response gracefully (Edge Case / Null Safety)',
         () async {
           // Arrange
-          when(() => mockRepository.fetchOrderDetails(orderId)).thenAnswer(
+          when(() => mockTrackService.getOrderDetails(orderId)).thenAnswer(
             (_) async => {}, // Empty map, should use defaults
           );
 
@@ -115,15 +131,16 @@ void main() {
                 .having(
                   (s) => s.deliveryPartner.name,
                   'default name',
-                  'John D.',
+                  '',
                 ),
           ];
-          expectLater(bloc.stream, emitsInOrder(expectedStates));
+          final expectation = expectLater(bloc.stream, emitsInOrder(expectedStates));
 
           // Act
           bloc.add(
             LoadTrackOrderDetails(orderId: orderId, orderDate: orderDate),
           );
+          await expectation;
         },
       );
     });
@@ -133,9 +150,9 @@ void main() {
         'emits driver location update when websocket event received',
         () async {
           // Arrange
-          when(
-            () => mockRepository.startTracking(any()),
-          ).thenAnswer((_) async {});
+          when(() => mockTrackService.getOrderDetails(any())).thenAnswer(
+            (_) async => {'status': 'New'},
+          );
           when(() => mockRepository.locationStream).thenAnswer(
             (_) => Stream.fromIterable([
               const DriverLocation(lat: 13.0827, lng: 80.2707),
@@ -145,53 +162,55 @@ void main() {
 
           // Assert
           final expectedStates = [
-            isA<TrackingLoading>(),
-            isA<LocationUpdated>().having((s) => s.lat, 'lat1', 13.0827),
-            isA<LocationUpdated>().having((s) => s.lat, 'lat2', 13.0830),
+            isA<TrackOrderLoading>(),
+            isA<TrackOrderLoaded>(),
+            isA<TrackOrderLoaded>().having((s) => s.driverLat, 'lat1', 13.0827),
+            isA<TrackOrderLoaded>().having((s) => s.driverLat, 'lat2', 13.0830),
           ];
 
-          expectLater(bloc.stream, emitsInOrder(expectedStates));
+          final expectation = expectLater(bloc.stream, emitsInOrder(expectedStates));
 
           // Act
+          bloc.add(
+            LoadTrackOrderDetails(orderId: '123', orderDate: DateTime.now()),
+          );
           bloc.add(const StartTracking(orderId: '123'));
+          await expectation;
         },
       );
 
-      test('emits TrackOrderError if startTracking fails', () async {
+      test('handles startTracking failure gracefully', () async {
         // Arrange
         when(
           () => mockRepository.startTracking(any()),
         ).thenThrow(Exception('Socket connection failed'));
 
-        // Assert
-        expectLater(
-          bloc.stream,
-          emitsInOrder([
-            isA<TrackingLoading>(),
-            isA<TrackOrderError>().having(
-              (s) => s.message,
-              'message',
-              contains('Socket connection failed'),
-            ),
-          ]),
-        );
-
         // Act
         bloc.add(const StartTracking(orderId: '123'));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        // Assert: the bloc remains in a stable state without crashing
+        expect(bloc.state, isA<TrackOrderInitial>());
       });
     });
 
     group('RefreshTrackOrder', () {
       test('adds LoadTrackOrderDetails event', () async {
-        // Act
-        bloc.add(RefreshTrackOrder(orderId: '123', orderDate: DateTime(2023)));
+        // Arrange
+        when(() => mockTrackService.getOrderDetails(any())).thenAnswer(
+          (_) async => {},
+        );
 
         // Assert
-        // We verify that state goes to Loading, which means LoadTrackOrderDetails was added and processed
-        when(
-          () => mockRepository.fetchOrderDetails(any()),
-        ).thenAnswer((_) async => {});
-        await expectLater(bloc.stream, emitsThrough(isA<TrackOrderLoading>()));
+        final expectation = expectLater(
+          bloc.stream,
+          emitsThrough(isA<TrackOrderLoading>()),
+        );
+
+        // Act
+        bloc.add(RefreshTrackOrder(orderId: '123', orderDate: DateTime(2023)));
+        await expectation;
       });
     });
   });

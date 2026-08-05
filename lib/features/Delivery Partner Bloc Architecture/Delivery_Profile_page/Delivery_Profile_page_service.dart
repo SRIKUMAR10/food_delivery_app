@@ -34,8 +34,39 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
             .doc(uid)
             .get();
 
-        if (doc.exists) {
-          final data = doc.data()!;
+        if (!doc.exists) {
+          final currentUser = _auth?.currentUser;
+          final initialData = {
+            'displayName': currentUser?.displayName ?? 'Delivery Partner',
+            'phoneNumber': currentUser?.phoneNumber ?? '',
+            'email': currentUser?.email ?? '',
+            'photoUrl': currentUser?.photoURL ?? '',
+            'vehicleType': 'Bike',
+            'vehicleNumber': '',
+            'drivingLicense': '',
+            'aadhaarNumber': '',
+            'kycStatus': 'pending',
+            'totalEarnings': 0.0,
+            'totalDeliveries': 0,
+            'rating': 5.0,
+            'isOnline': false,
+            'profileCompletion': 10,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          };
+          await _firestore!
+              .collection('delivery_partners')
+              .doc(uid)
+              .set(initialData, SetOptions(merge: true));
+        }
+
+        final updatedDoc = await _firestore!
+            .collection('delivery_partners')
+            .doc(uid)
+            .get();
+
+        if (updatedDoc.exists) {
+          final data = updatedDoc.data()!;
           return {
             'id': uid,
             'displayName': data['displayName'] ?? 'Delivery Partner',
@@ -66,10 +97,10 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
     try {
       final uid = _auth?.currentUser?.uid;
       if (uid != null && _firestore != null) {
-        await _firestore!.collection('delivery_partners').doc(uid).update({
+        await _firestore!.collection('delivery_partners').doc(uid).set({
           ...data,
           'updatedAt': FieldValue.serverTimestamp(),
-        });
+        }, SetOptions(merge: true));
         return true;
       }
     } catch (_) {}
@@ -87,10 +118,10 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
             : type == 'aadhaar'
                 ? 'aadhaarNumber'
                 : 'documentUrl';
-        await _firestore!.collection('delivery_partners').doc(uid).update({
+        await _firestore!.collection('delivery_partners').doc(uid).set({
           docField: filePath,
           'updatedAt': FieldValue.serverTimestamp(),
-        });
+        }, SetOptions(merge: true));
         return true;
       }
     } catch (_) {}

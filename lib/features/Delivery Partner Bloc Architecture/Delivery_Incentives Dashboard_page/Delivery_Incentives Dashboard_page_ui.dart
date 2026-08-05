@@ -175,6 +175,9 @@ class DeliveryIncentivesDashboardPageView extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocConsumer<DeliveryIncentivesDashboardPageBloc,
         DeliveryIncentivesDashboardState>(
+      listenWhen: (previous, current) =>
+          previous.runtimeType != current.runtimeType &&
+          current is DeliveryIncentivesDashboardErrorState,
       listener: (context, state) {
         if (state is DeliveryIncentivesDashboardErrorState &&
             state.errorMessage.isNotEmpty) {

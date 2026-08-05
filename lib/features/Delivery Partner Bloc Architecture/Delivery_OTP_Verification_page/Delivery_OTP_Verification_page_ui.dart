@@ -141,6 +141,9 @@ class _DeliveryOtpVerificationPageViewState
           ),
           BlocConsumer<DeliveryOtpVerificationBloc,
               DeliveryOtpVerificationState>(
+            listenWhen: (previous, current) =>
+                previous.status != current.status ||
+                previous.errorMessage != current.errorMessage,
             listener: (context, state) {
               if (state.status == DeliveryOtpStatus.success) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -196,7 +199,11 @@ class _DeliveryOtpVerificationPageViewState
                               Row(
                                 children: [
                                   GestureDetector(
-                                    onTap: () => Navigator.pop(context),
+                                    onTap: () {
+                                      if (Navigator.canPop(context)) {
+                                        Navigator.pop(context);
+                                      }
+                                    },
                                     child: const Icon(
                                       Icons.arrow_back,
                                       color: Colors.white70,
@@ -244,7 +251,11 @@ class _DeliveryOtpVerificationPageViewState
                               const SizedBox(height: 8),
 
                               GestureDetector(
-                                onTap: () => Navigator.pop(context),
+                                onTap: () {
+                                  if (Navigator.canPop(context)) {
+                                    Navigator.pop(context);
+                                  }
+                                },
                                 child: Text(
                                   'Change Phone Number?',
                                   style: GoogleFonts.inter(

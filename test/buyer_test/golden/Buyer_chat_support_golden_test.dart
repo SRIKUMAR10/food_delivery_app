@@ -1,41 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/CurvedNavigationBarView/Buyer_chat_support_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/core/models/conversation_model.dart';
+import 'package:food_delivery_app/core/repositories/i_chat_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buyer_chat_ui.dart';
+
+class MockIChatRepository extends Mock implements IChatRepository {}
+class MockIAuthService extends Mock implements IAuthService {}
 
 void main() {
-  group('BuyerChatSupportPage Golden Tests', () {
-    // Note: Golden tests require a 'flutter_test_config.dart' file in the root of the test directory
-    // to load fonts and assets correctly.
+  group('BuyerChatPage Golden Tests', () {
+    late MockIChatRepository mockRepository;
+    late MockIAuthService mockAuthService;
 
-    testWidgets('Initial loading state matches golden file', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(const MaterialApp(home: BuyerChatSupportPage()));
-
-      await expectLater(
-        find.byType(BuyerChatSupportPage),
-        matchesGoldenFile('goldens/buyer_chat_support_loading.png'),
-      );
+    setUp(() {
+      mockRepository = MockIChatRepository();
+      mockAuthService = MockIAuthService();
+      when(() => mockAuthService.authStateChanges)
+          .thenAnswer((_) => const Stream.empty());
+      when(() => mockAuthService.currentUserId).thenReturn('buyer_1');
     });
 
-    testWidgets('Loaded state with messages matches golden file', (
+    Widget buildPage(List<ConversationModel> conversations) {
+      when(() => mockRepository.getConversationsForUser(any(),
+              isSeller: any(named: 'isSeller')))
+          .thenAnswer((_) => Stream.value(conversations));
+      return MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<IChatRepository>(create: (_) => mockRepository),
+          RepositoryProvider<IAuthService>(create: (_) => mockAuthService),
+        ],
+        child: const MaterialApp(home: BuyerChatPage()),
+      );
+    }
+
+    testWidgets('Renders conversation list when conversations are loaded', (
       WidgetTester tester,
     ) async {
-      // We pump the widget and then wait for the simulated load to complete.
-      await tester.pumpWidget(const MaterialApp(home: BuyerChatSupportPage()));
-      await tester.pumpAndSettle(
-        const Duration(seconds: 2),
-      ); // Wait for BLoC to load
-
-      // Enter a message to test the UI with user and support messages
-      await tester.enterText(find.byType(TextField), 'Test message');
-      await tester.tap(find.byType(FloatingActionButton));
-      await tester.pumpAndSettle(const Duration(seconds: 3)); // Wait for reply
-
-      await expectLater(
-        find.byType(BuyerChatSupportPage),
-        matchesGoldenFile('goldens/buyer_chat_support_loaded.png'),
+      final conversation = ConversationModel(
+        id: 'conv_1',
+        buyerId: 'buyer_1',
+        sellerId: 'seller_1',
+        buyerName: 'John',
+        sellerName: 'Sarah',
+        shopName: 'Pizza Palace',
+        lastMessage: 'Hello',
+        lastMessageTimestamp: DateTime(2026, 7, 20),
+        createdAt: DateTime(2026, 7, 20),
+        updatedAt: DateTime(2026, 7, 20),
       );
+
+      await tester.pumpWidget(buildPage([conversation]));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byType(BuyerChatPage), findsOneWidget);
+      expect(find.text('Pizza Palace'), findsOneWidget);
     });
   });
 }

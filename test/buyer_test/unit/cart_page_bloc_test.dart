@@ -94,7 +94,7 @@ void main() {
 
       when(() => mockCartRepository.getCartItemsStream('test_uid'))
           .thenAnswer((_) => Stream.value([item1, item2]));
-      when(() => mockCartRepository.checkoutCart(any(), any(), any()))
+      when(() => mockCartRepository.checkoutCart(any(), any(), any(), any()))
           .thenAnswer((_) async => {});
 
       when(() => mockSellerStatusService.checkAvailability(any())).thenAnswer(
@@ -148,7 +148,7 @@ void main() {
 
       await Future.delayed(const Duration(milliseconds: 100));
 
-      verify(() => mockCartRepository.checkoutCart('test_uid', any(), any())).called(1);
+      verify(() => mockCartRepository.checkoutCart('test_uid', any(), any(), any())).called(1);
       expect(successCalled, true);
     });
   });

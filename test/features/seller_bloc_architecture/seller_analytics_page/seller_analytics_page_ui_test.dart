@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:firebase_core/firebase_core.dart';
+import '../../../mock_firebase.dart';
 import 'package:food_delivery_app/core/models/analytics_data_model.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_analytics_page/seller_analytics_page__bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_analytics_page/seller_analytics_page__state.dart';
@@ -11,6 +13,11 @@ class MockSellerAnalyticsBloc extends Mock implements SellerAnalyticsBloc {}
 
 void main() {
   late MockSellerAnalyticsBloc mockBloc;
+
+  setUpAll(() async {
+    setupFirebaseAuthMocks();
+    await Firebase.initializeApp();
+  });
 
   setUp(() {
     mockBloc = MockSellerAnalyticsBloc();

@@ -283,20 +283,20 @@ void main() {
         service: DeliveryForgotPasswordService(),
       );
       expect(bloc.state.status, equals(DeliveryForgotPasswordStatus.initial));
-      expect(bloc.state.email, isEmpty);
+      expect(bloc.state.phoneNumber, isEmpty);
       bloc.close();
     }, skip: 'Requires Firebase mock for DeliveryPartnerRepository');
 
-    test('emailChanged updates email', () {
+    test('phoneChanged updates phone', () {
       final bloc = DeliveryForgotPasswordBloc(
         service: DeliveryForgotPasswordService(),
       );
-      bloc.add(const DeliveryForgotPasswordEmailChanged('test@example.com'));
-      expect(bloc.state.email, equals('test@example.com'));
+      bloc.add(const DeliveryForgotPasswordPhoneChanged('9876543210'));
+      expect(bloc.state.phoneNumber, equals('9876543210'));
       bloc.close();
     }, skip: 'Requires Firebase mock for DeliveryPartnerRepository');
 
-    test('submit empty email fails', () async {
+    test('submit empty phone fails', () async {
       final bloc = DeliveryForgotPasswordBloc(
         service: DeliveryForgotPasswordService(),
       );
@@ -308,11 +308,11 @@ void main() {
       bloc.close();
     }, skip: 'Requires Firebase mock for DeliveryPartnerRepository');
 
-    test('submit invalid email fails', () async {
+    test('submit invalid phone fails', () async {
       final bloc = DeliveryForgotPasswordBloc(
         service: DeliveryForgotPasswordService(),
       );
-      bloc.add(const DeliveryForgotPasswordEmailChanged('not-valid'));
+      bloc.add(const DeliveryForgotPasswordPhoneChanged('12'));
       bloc.add(const DeliveryForgotPasswordSubmitted());
       await Future.delayed(const Duration(milliseconds: 50));
 

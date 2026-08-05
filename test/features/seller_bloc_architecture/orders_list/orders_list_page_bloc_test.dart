@@ -8,11 +8,14 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_state.dart';
 import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_chat_repository.dart';
 
 class MockOrdersListRepository extends Mock implements IOrderRepository {}
+class MockChatRepository extends Mock implements IChatRepository {}
 
 void main() {
   late MockOrdersListRepository mockRepository;
+  late MockChatRepository mockChatRepository;
   late OrdersListBloc bloc;
 
   final order1 = OrderModel(
@@ -41,7 +44,11 @@ void main() {
 
   setUp(() {
     mockRepository = MockOrdersListRepository();
-    bloc = OrdersListBloc(repository: mockRepository);
+    mockChatRepository = MockChatRepository();
+    bloc = OrdersListBloc(
+      repository: mockRepository,
+      chatRepository: mockChatRepository,
+    );
   });
 
   tearDown(() {
@@ -131,15 +138,23 @@ void main() {
         when(() => mockRepository.getSellerOrdersStream('s1')).thenAnswer(
           (_) => Stream.value([order1]), // Status is New
         );
-        when(() => mockRepository.updateOrderStatus('1', OrderStatus.preparing))
+        when(() => mockRepository.updateOrderStatus('1', OrderStatus.accepted))
             .thenAnswer((_) async {}); // Success
+        when(() => mockChatRepository.createConversation(
+              buyerId: any(named: 'buyerId'),
+              buyerName: any(named: 'buyerName'),
+              sellerId: any(named: 'sellerId'),
+              sellerName: any(named: 'sellerName'),
+              orderId: any(named: 'orderId'),
+              initialMessage: any(named: 'initialMessage'),
+            )).thenAnswer((_) async => 'conv_1');
         return bloc;
       },
       act: (bloc) async {
         bloc.add(const LoadOrdersStream('s1'));
         await Future.delayed(const Duration(milliseconds: 10));
-        // New -> Preparing is valid
-        bloc.add(const UpdateOrderStatusEvent('1', OrderStatus.preparing));
+        // New -> Accepted is valid
+        bloc.add(const UpdateOrderStatusEvent('1', OrderStatus.accepted));
       },
       skip: 2,
       expect: () => [
@@ -150,7 +165,7 @@ void main() {
                                .having((s) => s.successMessage, 'success', 'Order status updated successfully.'),
       ],
       verify: (_) {
-        verify(() => mockRepository.updateOrderStatus('1', OrderStatus.preparing)).called(1);
+        verify(() => mockRepository.updateOrderStatus('1', OrderStatus.accepted)).called(1);
       },
     );
   });

@@ -23,22 +23,22 @@ void main() {
       onboardingPageBloc.close();
     });
 
-    test('Initial state is OnboardingInitial', () {
-      expect(onboardingPageBloc.state, isA<OnboardingInitial>());
+    test('Initial state is OnboardingAuthWaiting', () {
+      expect(onboardingPageBloc.state, isA<OnboardingAuthWaiting>());
     });
 
     blocTest<OnboardingPageBloc, OnboardingPageState>(
-      'emits OnboardingNavigateToCurvedNav when OnboardingGetStartedPressed(isWebLayout: true) is added',
+      'emits OnboardingNavigateToHome when OnboardingGetStartedPressed(isWebLayout: true) is added',
       build: () => onboardingPageBloc,
       act: (bloc) => bloc.add(OnboardingGetStartedPressed(isWebLayout: true)),
-      expect: () => [isA<OnboardingNavigateToCurvedNav>()],
+      expect: () => [isA<OnboardingNavigateToHome>()],
     );
 
     blocTest<OnboardingPageBloc, OnboardingPageState>(
-      'emits OnboardingNavigateToCurvedNav when OnboardingGetStartedPressed(isWebLayout: false) is added',
+      'emits OnboardingNavigateToHome when OnboardingGetStartedPressed(isWebLayout: false) is added',
       build: () => onboardingPageBloc,
       act: (bloc) => bloc.add(OnboardingGetStartedPressed(isWebLayout: false)),
-      expect: () => [isA<OnboardingNavigateToCurvedNav>()],
+      expect: () => [isA<OnboardingNavigateToHome>()],
     );
   });
 }

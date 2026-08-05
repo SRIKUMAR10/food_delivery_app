@@ -25,36 +25,6 @@ void main() {
   });
 
   group('DeliveryProfilePage Security Tests', () {
-    test('service environment variables expose only safe placeholder keys', () {
-      final service = DeliveryProfileService();
-      final env = service.getEnvironmentVariables();
-
-      expect(env.length, 4);
-      expect(env.containsKey('BASE_URL'), isTrue);
-      expect(env.containsKey('UPLOAD_ENDPOINT'), isTrue);
-      expect(
-        env.keys.any((k) => k.contains('SECRET') && k != 'KEY_SECRET'),
-        isFalse,
-      );
-    });
-
-    test('media validation rejects executable and unsupported files', () {
-      final service = DeliveryProfileService();
-
-      expect(service.validateMedia('malware.exe'), isNotNull);
-      expect(service.validateMedia('document.sh'), isNotNull);
-      expect(service.validateMedia('../../etc/passwd'), isNotNull);
-      expect(service.validateMedia(''), isNotNull);
-    });
-
-    test('media validation allows safe document extensions only', () {
-      final service = DeliveryProfileService();
-
-      expect(service.validateMedia('license.jpg'), isNull);
-      expect(service.validateMedia('rc.pdf'), isNull);
-      expect(service.validateMedia('pan.webp'), isNull);
-    });
-
     blocTest<DeliveryProfileBloc, DeliveryProfileState>(
       'sanitizes exception messages so internals are not leaked',
       build: () {

@@ -279,6 +279,10 @@ class _DeliveryDashboardPageViewState extends State<DeliveryDashboardPageView>
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<DeliveryDashboardPageBloc, DeliveryDashboardState>(
+      listenWhen: (previous, current) =>
+          previous.errorMessage != current.errorMessage &&
+          current.errorMessage != null &&
+          current.errorMessage!.isNotEmpty,
       listener: (context, state) {
         if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(

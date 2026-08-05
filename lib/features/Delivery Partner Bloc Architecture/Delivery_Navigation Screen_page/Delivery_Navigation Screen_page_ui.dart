@@ -150,6 +150,10 @@ class DeliveryNavigationScreenPageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<DeliveryNavigationBloc, DeliveryNavigationState>(
+      listenWhen: (previous, current) =>
+          previous.status != current.status ||
+          (previous.errorMessage != current.errorMessage &&
+              current.errorMessage != null),
       listener: (context, state) {
         if (state.status == DeliveryNavigationStatus.error &&
             state.errorMessage != null) {

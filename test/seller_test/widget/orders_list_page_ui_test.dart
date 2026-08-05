@@ -8,8 +8,10 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_event.dart';
 import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_chat_repository.dart';
 
 class MockOrdersListRepository extends Mock implements IOrderRepository {}
+class MockChatRepository extends Mock implements IChatRepository {}
 
 void main() {
   setUpAll(() async {
@@ -28,8 +30,10 @@ void main() {
     Widget createWidgetUnderTest() {
       return MaterialApp(
         home: BlocProvider<OrdersListBloc>(
-          create: (_) => OrdersListBloc(repository: mockRepository)
-            ..add(const LoadOrdersStream('seller_id')),
+          create: (_) => OrdersListBloc(
+            repository: mockRepository,
+            chatRepository: MockChatRepository(),
+          )..add(const LoadOrdersStream('seller_id')),
           child: const OrdersListView(),
         ),
       );

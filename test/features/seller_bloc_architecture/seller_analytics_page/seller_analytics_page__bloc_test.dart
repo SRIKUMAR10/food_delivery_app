@@ -40,6 +40,10 @@ void main() {
 
   setUp(() {
     mockRepository = MockSellerAnalyticsRepository();
+    when(() => mockRepository.streamFavoritesAnalytics(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.streamRatingAnalytics(any()))
+        .thenAnswer((_) => const Stream.empty());
     bloc = SellerAnalyticsBloc(repository: mockRepository);
   });
 

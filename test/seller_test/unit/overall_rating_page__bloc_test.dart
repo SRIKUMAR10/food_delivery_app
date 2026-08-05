@@ -1,22 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/api_service/seller_review_service.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__event.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__state.dart';
 
-// Since we are not in a full project structure, we use relative imports
-// In a real project you might use package:your_app/...
-import '../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
-import '../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__event.dart';
-import '../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__state.dart';
-
-class MockOverallRatingRepository extends Mock implements OverallRatingRepository {}
+class MockSellerReviewService extends Mock implements SellerReviewService {}
 
 void main() {
   late OverallRatingBloc bloc;
-  late MockOverallRatingRepository mockRepository;
+  late MockSellerReviewService mockService;
 
   setUp(() {
-    mockRepository = MockOverallRatingRepository();
-    bloc = OverallRatingBloc(repository: mockRepository);
+    mockService = MockSellerReviewService();
+    bloc = OverallRatingBloc(service: mockService);
   });
 
   tearDown(() {
@@ -38,6 +36,23 @@ void main() {
     reviews: [tReview],
   );
 
+  Map<String, dynamic> buildPayload() {
+    return {
+      'overallRating': 4.8,
+      'totalReviews': 1,
+      'reviews': [
+        {
+          'id': '1',
+          'authorName': 'John',
+          'authorAvatarUrl': 'url',
+          'rating': 5.0,
+          'content': 'Great',
+          'date': '2024-01-01T00:00:00.000',
+        },
+      ],
+    };
+  }
+
   group('OverallRatingBloc', () {
     test('initial state should be OverallRatingInitial', () {
       expect(bloc.state, isA<OverallRatingInitial>());
@@ -46,8 +61,8 @@ void main() {
     blocTest<OverallRatingBloc, OverallRatingState>(
       'emits [OverallRatingLoading, OverallRatingLoaded] when LoadOverallRatingEvent is added and succeeds',
       build: () {
-        when(() => mockRepository.getOverallRatingData())
-            .thenAnswer((_) async => tLoadedState);
+        when(() => mockService.fetchRatingsAndReviews())
+            .thenAnswer((_) async => buildPayload());
         return bloc;
       },
       act: (bloc) => bloc.add(LoadOverallRatingEvent()),
@@ -56,14 +71,14 @@ void main() {
         tLoadedState,
       ],
       verify: (_) {
-        verify(() => mockRepository.getOverallRatingData()).called(1);
+        verify(() => mockService.fetchRatingsAndReviews()).called(1);
       },
     );
 
     blocTest<OverallRatingBloc, OverallRatingState>(
       'emits [OverallRatingLoading, OverallRatingError] when LoadOverallRatingEvent fails',
       build: () {
-        when(() => mockRepository.getOverallRatingData())
+        when(() => mockService.fetchRatingsAndReviews())
             .thenThrow(Exception('Failed'));
         return bloc;
       },

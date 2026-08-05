@@ -57,7 +57,7 @@ void main() {
       ),
       setUp: () {
         when(() => mockRepository.getFavoritesStream(testUid))
-            .thenAnswer((_) => const Stream.empty());
+            .thenAnswer((_) => Stream.value(const []));
       },
       act: (bloc) => bloc.add(const LoadFavoritesStarted()),
       expect: () => [
@@ -74,7 +74,7 @@ void main() {
       ),
       setUp: () {
         when(() => mockRepository.getFavoritesStream(testUid))
-            .thenAnswer((_) => const Stream.empty());
+            .thenAnswer((_) => Stream.value(const []));
         when(() => mockRepository.toggleFavorite(testUid, item1))
             .thenAnswer((_) async {});
       },

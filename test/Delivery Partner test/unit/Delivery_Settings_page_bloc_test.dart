@@ -49,6 +49,20 @@ void main() {
         icon: Icons.dark_mode_outlined,
         value: false,
       ),
+      DeliverySettingsItem(
+        id: 'sunMode',
+        titleKey: 'sunMode',
+        subtitleKey: 'sunModeSub',
+        icon: Icons.wb_sunny_outlined,
+        value: false,
+      ),
+      DeliverySettingsItem(
+        id: 'oledMode',
+        titleKey: 'oledMode',
+        subtitleKey: 'oledModeSub',
+        icon: Icons.battery_saver,
+        value: false,
+      ),
     ],
   );
 
@@ -61,6 +75,8 @@ void main() {
       notificationsEnabled: notifications,
       autoAcceptEnabled: autoAccept,
       darkModeEnabled: darkMode,
+      sunModeEnabled: false,
+      oledModeEnabled: false,
     );
   }
 

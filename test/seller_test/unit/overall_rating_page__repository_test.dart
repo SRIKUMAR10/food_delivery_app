@@ -1,26 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/api_service/seller_review_service.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__state.dart';
 
-import '../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__bloc.dart';
-import '../../../lib/features/seller_bloc_architecture/overall_rating_page/overall_rating_page__state.dart';
-
-class MockOverallRatingService extends Mock implements OverallRatingService {}
+class MockSellerReviewService extends Mock implements SellerReviewService {}
 
 void main() {
-  late OverallRatingRepositoryImpl repository;
-  late MockOverallRatingService mockService;
+  late MockSellerReviewService mockService;
 
   setUp(() {
-    mockService = MockOverallRatingService();
-    repository = OverallRatingRepositoryImpl(mockService);
+    mockService = MockSellerReviewService();
   });
 
-  group('OverallRatingRepository', () {
-    test('should return OverallRatingLoaded when service call is successful', () async {
+  group('SellerReviewService Data Mapping', () {
+    test('should map a successful payload into review data', () async {
       // arrange
       final mockData = {
         'overallRating': 4.8,
-        'totalReviews': 248,
+        'totalReviews': 1,
         'reviews': [
           {
             'id': '1',
@@ -36,23 +33,43 @@ void main() {
           .thenAnswer((_) async => mockData);
 
       // act
-      final result = await repository.getOverallRatingData();
+      final result = await mockService.fetchRatingsAndReviews();
 
       // assert
-      expect(result, isA<OverallRatingLoaded>());
-      expect(result.overallRating, 4.8);
-      expect(result.reviews.length, 1);
-      expect(result.reviews.first.authorName, 'Mike Ross');
+      expect(result, isA<Map<String, dynamic>>());
+      expect(result['overallRating'], 4.8);
+      final reviews = result['reviews'] as List;
+      expect(reviews.length, 1);
+      expect((reviews.first as Map)['authorName'], 'Mike Ross');
       verify(() => mockService.fetchRatingsAndReviews()).called(1);
     });
 
-    test('should throw Exception when service call fails', () async {
+    test('should surface the error when the service call fails', () async {
       // arrange
       when(() => mockService.fetchRatingsAndReviews())
           .thenThrow(Exception('API Error'));
 
       // act & assert
-      expect(() => repository.getOverallRatingData(), throwsA(isA<Exception>()));
+      expect(
+        () => mockService.fetchRatingsAndReviews(),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('ReviewModel serializes payload fields correctly', () {
+      final model = ReviewModel(
+        id: '1',
+        authorName: 'Mike Ross',
+        authorAvatarUrl: 'url',
+        rating: 4.8,
+        content: 'Great!',
+        date: DateTime(2024, 5, 1),
+      );
+
+      expect(model.id, '1');
+      expect(model.authorName, 'Mike Ross');
+      expect(model.rating, 4.8);
+      expect(model.content, 'Great!');
     });
   });
 }

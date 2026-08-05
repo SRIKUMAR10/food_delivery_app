@@ -77,7 +77,7 @@ class _DeliveryWithdrawDialogState extends State<DeliveryWithdrawDialog> {
       return;
     }
     widget.onConfirm(value);
-    Navigator.of(context).pop();
+    if (Navigator.canPop(context)) Navigator.of(context).pop();
   }
 
   @override
@@ -131,7 +131,9 @@ class _DeliveryWithdrawDialogState extends State<DeliveryWithdrawDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (Navigator.canPop(context)) Navigator.of(context).pop();
+          },
           child: Text(
             widget.cancelText,
             style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),

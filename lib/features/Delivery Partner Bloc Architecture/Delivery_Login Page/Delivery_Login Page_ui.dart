@@ -122,6 +122,12 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
             ),
           ),
           BlocConsumer<DeliveryLoginPageBloc, DeliveryLoginPageState>(
+            listenWhen: (previous, current) =>
+                previous.status != current.status ||
+                previous.isLoggedIn != current.isLoggedIn ||
+                previous.isForgotPasswordSuccess != current.isForgotPasswordSuccess ||
+                previous.phone != current.phone ||
+                previous.password != current.password,
             listener: (context, state) {
               if (state.phone != _phoneController.text) {
                 _phoneController.text = state.phone;

@@ -17,6 +17,7 @@ void main() {
       revenueToday: 500.0,
       revenueChangePercentage: 10.0,
       pendingOrdersCount: 5,
+      newOrdersCount: 2,
       todaysOrdersCount: 10,
       lowStockCount: 2,
       activeProductsCount: 20,

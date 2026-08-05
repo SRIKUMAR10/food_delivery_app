@@ -129,13 +129,13 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
         await currentFirestore
             .collection('delivery_partners')
             .doc(currentAuth.currentUser!.uid)
-            .update({'isOnline': isOnline, 'updatedAt': FieldValue.serverTimestamp()});
+            .set({'isOnline': isOnline, 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
         
         // sync to riders collection
         await currentFirestore
             .collection('riders')
             .doc(currentAuth.currentUser!.uid)
-            .update({'isOnline': isOnline}).catchError((_) {});
+            .set({'isOnline': isOnline}, SetOptions(merge: true)).catchError((_) {});
       }
     } catch (_) {
       await Future.delayed(const Duration(milliseconds: 200));

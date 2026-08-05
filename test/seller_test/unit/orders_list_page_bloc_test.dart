@@ -7,8 +7,10 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_state.dart';
 import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_chat_repository.dart';
 
 class MockOrdersListRepository extends Mock implements IOrderRepository {}
+class MockChatRepository extends Mock implements IChatRepository {}
 
 void main() {
   return; // SKIP ALL TESTS IN THIS FILE due to missing DI for Firebase
@@ -20,7 +22,10 @@ void main() {
 
     setUp(() {
       mockRepository = MockOrdersListRepository();
-      bloc = OrdersListBloc(repository: mockRepository);
+      bloc = OrdersListBloc(
+        repository: mockRepository,
+        chatRepository: MockChatRepository(),
+      );
     });
 
     tearDown(() {

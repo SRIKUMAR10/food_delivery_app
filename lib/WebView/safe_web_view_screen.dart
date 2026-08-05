@@ -158,7 +158,9 @@ class _SafeWebViewScreenState extends State<SafeWebViewScreen> {
       _resultPopped = true;
       // Defer pop to avoid calling Navigator during a build/callback.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.of(context).pop(result);
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.of(context).pop(result);
+        }
       });
       return true;
     }
@@ -190,7 +192,7 @@ class _SafeWebViewScreenState extends State<SafeWebViewScreen> {
     }
 
     // URL opened successfully – pop the route if the widget is still mounted.
-    if (mounted) {
+    if (mounted && Navigator.canPop(context)) {
       Navigator.of(context).pop();
     }
   }

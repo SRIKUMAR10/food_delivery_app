@@ -65,9 +65,11 @@ void main() {
   // ──────────────────────────────────────────────────────────────────────────
   group('SellerLoginService – OTP Service', () {
     test('sendOtp is called with formatted phone number', () async {
-      when(() => service.sendOtp(any())).thenAnswer((_) async {});
+      when(() => service.sendOtp(any()))
+          .thenAnswer((_) async => 'verification-id');
 
-      await service.sendOtp('+919876543210');
+      final result = await service.sendOtp('+919876543210');
+      expect(result, isA<String>());
       verify(() => service.sendOtp('+919876543210')).called(1);
     });
 
@@ -164,10 +166,12 @@ void main() {
       verify(() => service.signIn(any(), any())).called(2);
     });
 
-    test('repository is a singleton — same instance returned', () {
-      final repo1 = SellerRepository();
-      final repo2 = SellerRepository();
-      expect(identical(repo1, repo2), isTrue);
+    test('sendOtp returns a verification id on success', () async {
+      when(() => service.sendOtp(any()))
+          .thenAnswer((_) async => 'verification-id');
+
+      final result = await service.sendOtp('+919876543210');
+      expect(result, 'verification-id');
     });
   });
 
