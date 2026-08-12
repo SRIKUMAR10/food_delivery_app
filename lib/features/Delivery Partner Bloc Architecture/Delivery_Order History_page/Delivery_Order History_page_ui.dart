@@ -458,7 +458,23 @@ class _TopBar extends StatelessWidget {
         color: _kPanel,
         border: Border(bottom: BorderSide(color: Color(0x14FFFFFF))),
       ),
-      child: title,
+      child: Row(
+        children: [
+          if (!isDesktop) ...[
+            IconButton(
+              key: const Key('dp_oh_sidebar_toggle'),
+              icon: const Icon(Icons.menu, color: Colors.white),
+              onPressed: () {
+                context
+                    .read<DeliveryOrderHistoryPageBloc>()
+                    .add(const DeliveryOrderHistoryToggleSidebarEvent());
+              },
+            ),
+            const SizedBox(width: 8),
+          ],
+          Expanded(child: title),
+        ],
+      ),
     );
   }
 }
@@ -484,9 +500,9 @@ class _WalletBadge extends StatelessWidget {
           const Icon(Icons.account_balance_wallet_outlined,
               color: _kPrimary, size: 20),
           const SizedBox(width: 8),
-          const Text(
-            '₹2,450.00',
-            style: TextStyle(
+          Text(
+            '₹${_formatMoney(state.stats.totalEarnings)}',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -566,7 +582,7 @@ class _ProfileChip extends StatelessWidget {
             radius: 18,
             backgroundColor: _kPrimary,
             child: Text(
-              'RK',
+              'DP',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -579,7 +595,7 @@ class _ProfileChip extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                DeliveryOrderHistoryStrings.of('profileName', state.localeCode),
+                DeliveryOrderHistoryStrings.of('brand', state.localeCode),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 13,
@@ -587,10 +603,7 @@ class _ProfileChip extends StatelessWidget {
                 ),
               ),
               Text(
-                DeliveryOrderHistoryStrings.of(
-                  'vehicleNumber',
-                  state.localeCode,
-                ),
+                DeliveryOrderHistoryStrings.of('navProfile', state.localeCode),
                 style: const TextStyle(color: _kTextSecondary, fontSize: 11),
               ),
             ],
@@ -870,6 +883,22 @@ class _StatsRow extends StatelessWidget {
         final lang = state.localeCode;
         final stats = state.stats;
 
+        final List<double> amountSeries = state.orders
+            .map((o) => o.amount > 0 ? o.amount : 0.0)
+            .toList();
+        final List<double> completedSeries = state.orders
+            .where((o) => o.status == DeliveryOrderHistoryStatus.completed)
+            .map((o) => o.amount > 0 ? o.amount : 0.0)
+            .toList();
+        final List<double> cancelledSeries = state.orders
+            .where((o) => o.status == DeliveryOrderHistoryStatus.cancelled)
+            .map((o) => o.amount > 0 ? o.amount : 0.0)
+            .toList();
+        final List<double> pendingSeries = state.orders
+            .where((o) => o.status == DeliveryOrderHistoryStatus.pending)
+            .map((o) => o.amount > 0 ? o.amount : 0.0)
+            .toList();
+
         final List<Widget> cards = [
           _StatCard(
             cardKey: const Key('dp_oh_stat_total'),
@@ -878,7 +907,7 @@ class _StatsRow extends StatelessWidget {
             delta: '+${stats.totalOrdersDelta}%',
             deltaLabel: DeliveryOrderHistoryStrings.of('vsLastMonth', lang),
             color: _kPrimary,
-            sparkline: const [2.0, 3.0, 4.0, 3.0, 5.0, 4.0, 6.0],
+            sparkline: amountSeries,
           ),
           _StatCard(
             cardKey: const Key('dp_oh_stat_completed'),
@@ -886,7 +915,7 @@ class _StatsRow extends StatelessWidget {
             value: '${stats.completedCount}',
             subValue: '${stats.completedPercent.toStringAsFixed(1)}% of Total',
             color: _kPrimary,
-            sparkline: const [1.0, 2.0, 3.0, 3.0, 4.0, 5.0, 6.0],
+            sparkline: completedSeries,
           ),
           _StatCard(
             cardKey: const Key('dp_oh_stat_cancelled'),
@@ -894,7 +923,7 @@ class _StatsRow extends StatelessWidget {
             value: '${stats.cancelledCount}',
             subValue: '${stats.cancelledPercent.toStringAsFixed(1)}% of Total',
             color: _kCancelled,
-            sparkline: const [3.0, 2.0, 1.0, 2.0, 1.0, 0.0, 1.0],
+            sparkline: cancelledSeries,
           ),
           _StatCard(
             cardKey: const Key('dp_oh_stat_pending'),
@@ -902,7 +931,7 @@ class _StatsRow extends StatelessWidget {
             value: '${stats.pendingCount}',
             subValue: '${stats.pendingPercent.toStringAsFixed(1)}% of Total',
             color: _kPending,
-            sparkline: const [1.0, 2.0, 1.0, 3.0, 2.0, 4.0, 3.0],
+            sparkline: pendingSeries,
           ),
           _StatCard(
             cardKey: const Key('dp_oh_stat_earnings'),
@@ -911,7 +940,7 @@ class _StatsRow extends StatelessWidget {
             delta: '+${stats.earningsDelta}%',
             deltaLabel: DeliveryOrderHistoryStrings.of('vsLastMonth', lang),
             color: _kPurple,
-            sparkline: const [10.0, 14.0, 12.0, 18.0, 16.0, 22.0, 26.0],
+            sparkline: amountSeries,
           ),
         ];
 
@@ -1174,7 +1203,9 @@ class _FilterBarState extends State<_FilterBar> {
           final Widget date = _FilterDropdown<String>(
             dropdownKey: const Key('dp_oh_date_filter'),
             expanded: narrow,
-            value: state.dateLabel,
+            value: state.dateLabel.isEmpty
+                ? DeliveryOrderHistoryStrings.of('dateAll', lang)
+                : state.dateLabel,
             items: [
               DropdownMenuItem(
                 value: DeliveryOrderHistoryStrings.of('dateAll', lang),
@@ -1184,27 +1215,33 @@ class _FilterBarState extends State<_FilterBar> {
                 value: 'May 18, 2025 - May 24, 2025',
                 child: Text('May 18, 2025 - May 24, 2025'),
               ),
+              if (state.dateLabel.isNotEmpty &&
+                  state.dateLabel != DeliveryOrderHistoryStrings.of('dateAll', lang) &&
+                  state.dateLabel != 'May 18, 2025 - May 24, 2025')
+                DropdownMenuItem(
+                  value: state.dateLabel,
+                  child: Text(state.dateLabel),
+                ),
             ],
             onChanged: (value) {
               if (value == null) return;
-              final int? startEpoch;
-              final int? endEpoch;
-              if (value == DeliveryOrderHistoryStrings.of('dateAll', lang)) {
-                startEpoch = null;
-                endEpoch = null;
-              } else {
-                startEpoch =
-                    DateTime.utc(2025, 5, 18).millisecondsSinceEpoch ~/ 1000;
-                endEpoch = DateTime.utc(2025, 5, 24, 23, 59)
-                    .millisecondsSinceEpoch ~/ 1000;
+              if (value == 'May 18, 2025 - May 24, 2025') {
+                context
+                    .read<DeliveryOrderHistoryPageBloc>()
+                    .add(const DeliveryOrderHistoryDateRangeChangedEvent(
+                      startEpoch: 1747526400,
+                      endEpoch: 1748131140,
+                      dateLabel: 'May 18, 2025 - May 24, 2025',
+                    ));
+              } else if (value == DeliveryOrderHistoryStrings.of('dateAll', lang)) {
+                context
+                    .read<DeliveryOrderHistoryPageBloc>()
+                    .add(const DeliveryOrderHistoryDateRangeChangedEvent(
+                      startEpoch: null,
+                      endEpoch: null,
+                      dateLabel: '',
+                    ));
               }
-              context
-                  .read<DeliveryOrderHistoryPageBloc>()
-                  .add(DeliveryOrderHistoryDateRangeChangedEvent(
-                    startEpoch: startEpoch,
-                    endEpoch: endEpoch,
-                    dateLabel: value,
-                  ));
             },
           );
 
@@ -1484,10 +1521,20 @@ class _OrdersTable extends StatelessWidget {
                     child: TextButton(
                       key: Key('dp_oh_view_details_${order.orderId}'),
                       onPressed: () {
-                        Navigator.of(context).pushNamed(
-                          '/deliveryOrderDetails',
-                          arguments: {'orderId': order.orderId},
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '${DeliveryOrderHistoryStrings.of('detailsHint', lang)} ${order.orderId}',
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                          ),
                         );
+                        try {
+                          Navigator.of(context).pushNamed(
+                            '/deliveryOrderDetails',
+                            arguments: {'orderId': order.orderId},
+                          );
+                        } catch (_) {}
                       },
                       child: const Text(
                         'View Details',

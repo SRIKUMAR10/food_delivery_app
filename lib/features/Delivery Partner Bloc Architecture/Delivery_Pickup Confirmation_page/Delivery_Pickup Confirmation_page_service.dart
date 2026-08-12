@@ -31,25 +31,6 @@ class DeliveryPickupConfirmationService
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
         _auth = auth ?? FirebaseAuth.instance;
 
-  static Map<String, dynamic> _basePickupData(String orderId) {
-    return {
-      'orderId': orderId.isEmpty ? '#ORD12345' : orderId,
-      'pickupLocationName': 'Green Mart',
-      'pickupAddress': '24, Anna Salai, Chennai - 600002',
-      'pickupContactName': 'Priya Sharma',
-      'pickupContactPhone': '+919876543210',
-      'pickupInstructions':
-          'Show the order code at the counter and collect sealed bags.',
-      'customerName': 'Mike Johnson',
-      'customerAddress': '12, Beach Road, Chennai - 600001',
-      'customerPhone': '+919876543211',
-      'pickupTime': '12:05 PM',
-      'paymentType': 'Cash on Delivery',
-      'orderAmount': 486.50,
-      'walletBalance': 2450.00,
-    };
-  }
-
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp is Timestamp) {
       final date = timestamp.toDate();
@@ -66,8 +47,9 @@ class DeliveryPickupConfirmationService
     String orderId,
   ) async {
     try {
-      if (_firestore != null) {
-        final orderDoc = await _firestore!.collection('orders').doc(orderId).get();
+      final fs = _firestore;
+      if (fs != null) {
+        final orderDoc = await fs.collection('orders').doc(orderId).get();
         if (orderDoc.exists) {
           final data = orderDoc.data()!;
           final sellerId = data['sellerId'] as String? ?? '';
@@ -77,7 +59,7 @@ class DeliveryPickupConfirmationService
           String shopPhone = '';
           
           if (sellerId.isNotEmpty) {
-            final sellerDoc = await _firestore!.collection('sellers').doc(sellerId).get();
+            final sellerDoc = await fs.collection('sellers').doc(sellerId).get();
             if (sellerDoc.exists) {
               final sData = sellerDoc.data()!;
               shopName = sData['shopName'] as String? ?? sData['name'] as String? ?? 'Restaurant';
@@ -87,15 +69,53 @@ class DeliveryPickupConfirmationService
           }
           
           double walletBalance = 0.0;
-          if (_auth?.currentUser != null) {
-            final partnerDoc = await _firestore!
+          final user = _auth?.currentUser;
+          if (user != null) {
+            final partnerDoc = await fs
                 .collection('delivery_partners')
-                .doc(_auth!.currentUser!.uid)
+                .doc(user.uid)
                 .get();
             if (partnerDoc.exists) {
               walletBalance = (partnerDoc.data()?['totalEarnings'] as num?)?.toDouble() ?? 0.0;
             }
           }
+
+          String customerName = data['customerName'] as String? ?? '';
+          String customerAddress = data['deliveryAddress'] as String? ?? data['address'] as String? ?? '';
+          String customerPhone = data['customerPhone'] as String? ?? data['phone'] as String? ?? data['userPhone'] as String? ?? '';
+
+          final customerId = (data['customerId'] ?? data['customer_id'] ?? data['userId'] ?? data['user_id'] ?? data['buyerId'] ?? data['buyer_id'] ?? data['customerUid'] ?? data['buyerUid'] ?? data['uid'])?.toString();
+
+          if ((customerName.isEmpty || customerName == 'Customer' || customerAddress.isEmpty || customerPhone.isEmpty) && customerId != null && customerId.isNotEmpty) {
+            try {
+              final uDoc = await fs.collection('buyer_user').doc(customerId).get();
+              if (uDoc.exists && uDoc.data() != null) {
+                final uData = uDoc.data()!;
+                final uName = uData['name'] ?? uData['displayName'] ?? uData['fullName'] ?? uData['userName'] ?? uData['buyerName'] ?? uData['customerName'] ?? '';
+                final uPhone = uData['phone'] ?? uData['phoneNumber'] ?? uData['mobile'] ?? uData['userPhone'] ?? uData['contactNumber'] ?? '';
+
+                if (customerName.isEmpty || customerName == 'Customer') {
+                  if (uName.toString().trim().isNotEmpty) {
+                    customerName = uName.toString().trim();
+                  }
+                }
+                if (customerPhone.isEmpty && uPhone.toString().trim().isNotEmpty) {
+                  customerPhone = uPhone.toString().trim();
+                }
+                if (customerAddress.isEmpty) {
+                  for (final k in ['address', 'primaryAddress', 'homeAddress', 'workAddress', 'deliveryAddress', 'shippingAddress']) {
+                    final val = uData[k];
+                    if (val != null && val is String && val.trim().isNotEmpty && val.trim() != 'Primary Address') {
+                      customerAddress = val.trim();
+                      break;
+                    }
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (customerName.isEmpty) customerName = 'Customer';
 
           return {
             'orderId': orderId,
@@ -104,9 +124,9 @@ class DeliveryPickupConfirmationService
             'pickupContactName': shopName,
             'pickupContactPhone': shopPhone,
             'pickupInstructions': data['deliveryInstructions'] ?? 'Collect sealed bags.',
-            'customerName': data['customerName'] ?? 'Customer',
-            'customerAddress': data['deliveryAddress'] ?? '',
-            'customerPhone': data['customerPhone'] ?? '',
+            'customerName': customerName,
+            'customerAddress': customerAddress,
+            'customerPhone': customerPhone,
             'pickupTime': _formatTimestamp(data['timestamp']),
             'paymentType': data['paymentMethod'] ?? 'Cash on Delivery',
             'orderAmount': (data['amount'] as num?)?.toDouble() ?? 0.0,
@@ -115,17 +135,21 @@ class DeliveryPickupConfirmationService
         }
       }
     } catch (_) {}
-    await Future.delayed(const Duration(milliseconds: 500));
-    return _basePickupData(orderId);
+    return {};
   }
 
   @override
   Future<Map<String, dynamic>> startDeliveryData(String orderId) async {
     try {
-      if (_firestore != null) {
-        await _firestore!.collection('orders').doc(orderId).update({
+      final fs = _firestore;
+      if (fs != null) {
+        await fs.collection('orders').doc(orderId).update({
           'status': 'OutForDelivery',
+          'deliveryPartnerStatus': 'picked_up',
+          'deliveryStatus': 'picked_up',
           'outForDeliveryAt': FieldValue.serverTimestamp(),
+          'pickedUpAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
         });
       }
     } catch (_) {}

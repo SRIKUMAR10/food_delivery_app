@@ -97,10 +97,10 @@ void main() {
       expect(model.pickupLocationName, isEmpty);
       expect(model.orderAmount, 0.0);
       expect(model.walletBalance, 0.0);
-      expect(model.paymentType, 'Cash on Delivery');
+      expect(model.paymentType, isEmpty);
     });
 
-    test('uses default order id when raw payload omits it', () async {
+    test('uses an empty order id when raw payload omits it', () async {
       when(
         () => mockService.fetchPickupConfirmationData(any()),
       ).thenAnswer((_) async => <String, dynamic>{});
@@ -110,7 +110,7 @@ void main() {
       );
       final model = await repository.fetchPickupConfirmationDetails('');
 
-      expect(model.orderId, '#ORD12345');
+      expect(model.orderId, isEmpty);
     });
   });
 }

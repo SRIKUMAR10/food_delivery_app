@@ -393,7 +393,7 @@ void main() {
       expect(find.text('Live Map'), findsOneWidget);
     });
 
-    testWidgets('shows a calling fallback snackbar when call is tapped', (
+    testWidgets('shows a calling fallback bottom sheet with warning badge when phone is missing', (
       tester,
     ) async {
       setDesktopSize(tester);
@@ -401,12 +401,18 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.byKey(const Key('dp_orders_call_ORD12345')));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(
         find.text('No phone number available for Priya Sharma'),
-        findsOneWidget,
+        findsAtLeastNWidgets(1),
       );
+      expect(find.byIcon(Icons.phone_disabled), findsAtLeastNWidgets(1));
+
+      final callButton = tester.widget<ElevatedButton>(
+        find.widgetWithText(ElevatedButton, 'No phone number available for Priya Sharma'),
+      );
+      expect(callButton.onPressed, isNull);
     });
 
     testWidgets('dispatches sort changed event from the sort menu', (
@@ -536,5 +542,30 @@ void main() {
 
       expect(find.byKey(const Key('dp_orders_loading')), findsOneWidget);
     });
+
+    testWidgets(
+      'renders notification bell badge and opens notification bottom sheet on tap',
+      (tester) async {
+        setDesktopSize(tester);
+        when(() => mockBloc.state).thenReturn(loadedState);
+        await tester.pumpWidget(buildPage());
+        await tester.pump();
+
+        expect(find.byKey(const Key('dp_orders_notification')), findsOneWidget);
+        expect(
+          find.byKey(const Key('dp_orders_notification_badge')),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.byKey(const Key('dp_orders_notification')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Notifications'), findsWidgets);
+        expect(
+          find.text('1 pending order requests available'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

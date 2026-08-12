@@ -2134,16 +2134,10 @@ void _showWalletWithdrawDialog(
 }
 
 void _dispatchAddPaymentMethod(BuildContext context) {
-  final now = DateTime.now();
-  context.read<DeliveryWalletPageBloc>().add(
-    DeliveryWalletAddPaymentMethodEvent(
-      DeliveryPaymentMethod(
-        id: 'pm_${now.millisecondsSinceEpoch}',
-        type: 'UPI',
-        label: 'PhonePe',
-        maskedIdentifier: 'partner@okicici',
-        isDefault: false,
-      ),
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Add your bank account / UPI details to continue.'),
+      behavior: SnackBarBehavior.floating,
     ),
   );
 }

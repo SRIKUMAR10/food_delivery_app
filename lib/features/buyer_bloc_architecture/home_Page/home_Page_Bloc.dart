@@ -7,6 +7,7 @@
 import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/models/product_model.dart';
 import '../../../core/repositories/i_product_repository.dart';
 import '../../../core/services/seller_status_service.dart';
 import '../../../repositories/category_repository.dart';
@@ -30,8 +31,10 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
   String _searchQuery = '';
 
   StreamSubscription<List<FoodCategory>>? _categorySubscription;
+  StreamSubscription<List<Product>>? _productSubscription;
   final Map<String, StreamSubscription<SellerAvailability>> _sellerStatusSubscriptions = {};
   Timer? _batchTimer;
+  Timer? _loadingTimeoutTimer;
 
   HomePageBloc({
     required IProductRepository productRepository,
@@ -46,14 +49,18 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     on<SearchQueryChanged>(_onSearchQueryChanged);
     on<SearchCleared>(_onSearchCleared);
     on<CategoriesUpdated>(_onCategoriesUpdated);
+    on<_ProductsReceived>(_onProductsReceived);
+    on<_ProductErrorReceived>(_onProductErrorReceived);
     on<_SellerAvailabilitiesUpdated>(_onSellerAvailabilitiesUpdated);
   }
 
   @override
   Future<void> close() {
     _categorySubscription?.cancel();
+    _productSubscription?.cancel();
     _cancelSellerStatusSubscriptions();
     _batchTimer?.cancel();
+    _loadingTimeoutTimer?.cancel();
     return super.close();
   }
 
@@ -127,20 +134,34 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     HomePageStarted event,
     Emitter<HomePageState> emit,
   ) async {
+    if (_categories.isEmpty) {
+      _categories = CategoryRepository.defaultCategories;
+    }
+    if (_selectedCategoryId.isEmpty) {
+      _selectedCategoryId = _categories.first.id;
+    }
+
     if (state is! HomePageLoaded &&
         state is! HomePageEmpty &&
         state is! HomePageSearchEmpty) {
       emit(HomePageLoading(_selectedCategoryId, _categories));
     }
 
-    // Subscribe to categories
+    // Immediately trigger fetching default category products
+    add(CategorySelected(_selectedCategoryId));
+
+    // Subscribe to categories safely
     _categorySubscription?.cancel();
     _categorySubscription = _categoryRepository.getCategories().listen(
       (categories) {
-        add(CategoriesUpdated(categories));
+        if (!isClosed) {
+          add(CategoriesUpdated(categories));
+        }
       },
       onError: (error) {
-        add(CategoriesUpdated(kDefaultCategories));
+        if (!isClosed) {
+          add(CategoriesUpdated(CategoryRepository.defaultCategories));
+        }
       },
     );
   }
@@ -149,11 +170,13 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     CategoriesUpdated event,
     Emitter<HomePageState> emit,
   ) async {
-    _categories = event.categories;
+    if (event.categories.isNotEmpty) {
+      _categories = event.categories;
+    }
 
-    // Fallback if empty
     if (_categories.isEmpty) {
-      _categories = kDefaultCategories;
+      emit(HomePageEmpty('', '', []));
+      return;
     }
 
     // Initialize or fix selected category id
@@ -165,18 +188,13 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
       _searchQuery = '';
       _allItems = [];
 
-      // Since category changed, we need to fetch products.
-      // But we can't emit.forEach here easily without cancelling previous.
-      // Instead, we just trigger CategorySelected to let it handle product fetching.
       add(CategorySelected(_selectedCategoryId));
       return;
     }
 
-    // If category didn't change, just emit current state with new categories
+    // If category didn't change, update state with new categories
     if (state is HomePageLoaded) {
       emit((state as HomePageLoaded).copyWith(categories: _categories));
-    } else if (state is HomePageLoading) {
-      add(CategorySelected(_selectedCategoryId));
     } else if (state is HomePageEmpty) {
       emit(
         HomePageEmpty(_selectedCategoryName, _selectedCategoryId, _categories),
@@ -195,38 +213,32 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
 
     emit(HomePageLoading(_selectedCategoryId, _categories));
 
-    await emit.forEach<List<FoodItem>>(
-      _productRepository
-          .getProductsByCategory(_selectedCategoryName)
-          .map((products) => products.map(FoodItemMapper.toViewModel).toList()),
-      onData: (items) {
-        _allItems = items;
-        final sellerIds = items.map((i) => i.sellerId).toSet().toList();
-        _subscribeToSellerStatuses(sellerIds);
+    _loadingTimeoutTimer?.cancel();
+    _loadingTimeoutTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (!isClosed && state is HomePageLoading) {
+        add(const _ProductsReceived([], isSearch: false));
+      }
+    });
 
-        if (_allItems.isEmpty) {
-          _cancelSellerStatusSubscriptions();
-          return HomePageEmpty(
-            _selectedCategoryName,
-            _selectedCategoryId,
-            _categories,
-          );
+    _productSubscription?.cancel();
+    _productSubscription = _productRepository
+        .getProductsByCategory(_selectedCategoryName)
+        .listen(
+      (products) {
+        if (!isClosed) {
+          try {
+            final items = products.map((p) => FoodItemMapper.toViewModel(p)).toList();
+            add(_ProductsReceived(items, isSearch: false));
+          } catch (e) {
+            add(_ProductsReceived(const [], isSearch: false));
+          }
         }
-
-        return HomePageLoaded(
-          allItems: _allItems,
-          filteredItems: _allItems,
-          selectedCategoryId: _selectedCategoryId,
-          categories: _categories,
-          searchQuery: '',
-          sellerAvailabilities: Map.from(_sellerAvailabilities),
-        );
       },
-      onError: (e, _) => HomePageError(
-        'Failed to load products: $e',
-        _selectedCategoryId,
-        _categories,
-      ),
+      onError: (e) {
+        if (!isClosed) {
+          add(_ProductErrorReceived('Failed to load products: $e'));
+        }
+      },
     );
   }
 
@@ -243,29 +255,104 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
 
     emit(HomePageLoading(_selectedCategoryId, _categories));
 
-    await emit.forEach<List<FoodItem>>(
-      _productRepository
-          .searchProducts(_searchQuery, _selectedCategoryName)
-          .map((products) => products.map(FoodItemMapper.toViewModel).toList()),
-      onData: (items) {
-        if (items.isEmpty)
-          return HomePageSearchEmpty(
-            _searchQuery,
+    _loadingTimeoutTimer?.cancel();
+    _loadingTimeoutTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (!isClosed && state is HomePageLoading) {
+        add(const _ProductsReceived([], isSearch: true, query: ''));
+      }
+    });
+
+    _productSubscription?.cancel();
+    _productSubscription = _productRepository
+        .searchProducts(_searchQuery, _selectedCategoryName)
+        .listen(
+      (products) {
+        if (!isClosed) {
+          try {
+            final items = products.map((p) => FoodItemMapper.toViewModel(p)).toList();
+            add(_ProductsReceived(items, isSearch: true, query: _searchQuery));
+          } catch (e) {
+            add(_ProductsReceived(const [], isSearch: true, query: _searchQuery));
+          }
+        }
+      },
+      onError: (e) {
+        if (!isClosed) {
+          add(_ProductErrorReceived('Search failed: $e'));
+        }
+      },
+    );
+  }
+
+  void _onProductsReceived(
+    _ProductsReceived event,
+    Emitter<HomePageState> emit,
+  ) {
+    _loadingTimeoutTimer?.cancel();
+
+    if (event.isSearch) {
+      if (event.items.isEmpty) {
+        emit(
+          HomePageSearchEmpty(
+            event.query,
             _selectedCategoryId,
             _categories,
-          );
-
-        return HomePageLoaded(
-          allItems: _allItems, // keep original all items
-          filteredItems: items,
+          ),
+        );
+        return;
+      }
+      emit(
+        HomePageLoaded(
+          allItems: _allItems,
+          filteredItems: event.items,
           selectedCategoryId: _selectedCategoryId,
           categories: _categories,
-          searchQuery: _searchQuery,
+          searchQuery: event.query,
           sellerAvailabilities: Map.from(_sellerAvailabilities),
-        );
-      },
-      onError: (e, _) =>
-          HomePageError('Search failed: $e', _selectedCategoryId, _categories),
+        ),
+      );
+      return;
+    }
+
+    _allItems = event.items;
+    final sellerIds = event.items.map((i) => i.sellerId).toSet().toList();
+    _subscribeToSellerStatuses(sellerIds);
+
+    if (_allItems.isEmpty) {
+      _cancelSellerStatusSubscriptions();
+      emit(
+        HomePageEmpty(
+          _selectedCategoryName,
+          _selectedCategoryId,
+          _categories,
+        ),
+      );
+      return;
+    }
+
+    emit(
+      HomePageLoaded(
+        allItems: _allItems,
+        filteredItems: _allItems,
+        selectedCategoryId: _selectedCategoryId,
+        categories: _categories,
+        searchQuery: '',
+        sellerAvailabilities: Map.from(_sellerAvailabilities),
+      ),
+    );
+  }
+
+  void _onProductErrorReceived(
+    _ProductErrorReceived event,
+    Emitter<HomePageState> emit,
+  ) {
+    _loadingTimeoutTimer?.cancel();
+    emit(
+      HomePageError(
+        event.message,
+        _selectedCategoryId,
+        _categories,
+      ),
     );
   }
 

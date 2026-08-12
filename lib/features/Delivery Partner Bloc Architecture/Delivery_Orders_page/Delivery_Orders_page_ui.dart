@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'Delivery_Orders_page_bloc.dart';
 import 'Delivery_Orders_page_event.dart';
 import 'Delivery_Orders_page_repository.dart';
@@ -80,7 +81,8 @@ class DeliveryOrdersStrings {
       'stayOnline': 'Stay Online',
       'stayOnlineHint': 'You are online. New orders will appear automatically.',
       'calling': 'Calling',
-      'noPhone': 'No phone number available for',
+      'callCustomer': 'Call Customer',
+      'noPhone': 'No phone number available for ',
       'chatHint': 'Opening chat with',
       'detailsHint': 'Opening details for',
       'tlPickup': 'Pickup',
@@ -171,7 +173,8 @@ class DeliveryOrdersStrings {
       'stayOnline': 'ஆன்லைனில் இருங்கள்',
       'stayOnlineHint': 'நீங்கள் ஆன்லைனில் உள்ளீர்கள். புதிய ஆர்டர்கள் தானாகத் தோன்றும்.',
       'calling': 'அழைக்கிறது',
-      'noPhone': 'எந்த தொலைபேசி எண்ணும் கிடைக்கவில்லை',
+      'callCustomer': 'வாடிக்கையாளரை அழைக்கவும்',
+      'noPhone': 'எந்த தொலைபேசி எண்ணும் கிடைக்கவில்லை ',
       'chatHint': 'அரட்டையைத் திறக்கிறது',
       'detailsHint': 'விவரங்களைத் திறக்கிறது',
       'tlPickup': 'பிக்கப்',
@@ -473,12 +476,9 @@ class _OrdersHeader extends StatelessWidget {
               _HeaderIconButton(
                 key: const Key('dp_orders_notification'),
                 icon: Icons.notifications_none,
+                badgeCount: state.pendingCount,
                 tooltip: DeliveryOrdersStrings.of('notifications', lang),
-                onTap: () => _showSnack(
-                  context,
-                  DeliveryOrdersStrings.of('noNewNotifications', lang),
-                  DeliveryAppColors.info,
-                ),
+                onTap: () => _showOrdersNotificationSheet(context, state),
               ),
             ],
           ),
@@ -688,6 +688,7 @@ class _SearchActionButton extends StatelessWidget {
 class _HeaderIconButton extends StatelessWidget {
   final IconData icon;
   final bool active;
+  final int badgeCount;
   final String tooltip;
   final VoidCallback onTap;
 
@@ -695,6 +696,7 @@ class _HeaderIconButton extends StatelessWidget {
     super.key,
     required this.icon,
     this.active = false,
+    this.badgeCount = 0,
     required this.tooltip,
     required this.onTap,
   });
@@ -714,18 +716,54 @@ class _HeaderIconButton extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: DeliveryAppSpacing.borderRadiusMd,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              borderRadius: DeliveryAppSpacing.borderRadiusMd,
-              border: Border.all(
-                color: active
-                    ? DeliveryAppColors.primary.withValues(alpha: 0.5)
-                    : DeliveryAppColors.border,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  borderRadius: DeliveryAppSpacing.borderRadiusMd,
+                  border: Border.all(
+                    color: active
+                        ? DeliveryAppColors.primary.withValues(alpha: 0.5)
+                        : DeliveryAppColors.border,
+                  ),
+                ),
+                child: Icon(icon, color: color, size: 20),
               ),
-            ),
-            child: Icon(icon, color: color, size: 20),
+              if (badgeCount > 0)
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: Container(
+                    key: const Key('dp_orders_notification_badge'),
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    decoration: BoxDecoration(
+                      color: DeliveryAppColors.primary,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: DeliveryAppColors.primary.withValues(alpha: 0.4),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        badgeCount > 99 ? '99+' : '$badgeCount',
+                        style: DeliveryAppTypography.caption.copyWith(
+                          color: DeliveryAppColors.buttonPrimaryText,
+                          fontWeight: FontWeight.bold,
+                          fontSize: badgeCount > 99 ? 8 : 10,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -794,7 +832,7 @@ class _OrdersStatsRow extends StatelessWidget {
       _StatData(
         key: 'dp_orders_stat_acceptance',
         labelKey: 'acceptance',
-        value: '${service.getAcceptanceRate()}%',
+        value: '${state.acceptanceRate}%',
         color: const Color(0xFFBA68C8),
         icon: Icons.thumb_up_outlined,
         lang: lang,
@@ -1206,7 +1244,7 @@ class _ActiveOrderBanner extends StatelessWidget {
                     ),
                     IconButton(
                       key: const Key('dp_orders_banner_call'),
-                      onPressed: () => _showCallSnack(context, order, lang),
+                      onPressed: () => _showCallBottomSheet(context, order, lang),
                       icon: const Icon(
                         Icons.call,
                         color: DeliveryAppColors.info,
@@ -1219,11 +1257,8 @@ class _ActiveOrderBanner extends StatelessWidget {
               else ...[
                 OutlinedButton.icon(
                   key: const Key('dp_orders_banner_navigate'),
-                  onPressed: () => _showSnack(
-                    context,
-                    '${DeliveryOrdersStrings.of('directionsHint', lang)} '
-                    '${order.deliveryAddress}',
-                    DeliveryAppColors.primaryDark,
+                  onPressed: () => Navigator.of(context).pushNamed(
+                    '/deliveryNavigationScreen',
                   ),
                   icon: const Icon(Icons.navigation, size: 15),
                   label: Text(
@@ -1245,7 +1280,7 @@ class _ActiveOrderBanner extends StatelessWidget {
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
                   key: const Key('dp_orders_banner_call'),
-                  onPressed: () => _showCallSnack(context, order, lang),
+                  onPressed: () => _showCallBottomSheet(context, order, lang),
                   icon: const Icon(Icons.call, size: 15),
                   label: Text(
                     DeliveryOrdersStrings.of('call', lang),
@@ -1477,7 +1512,11 @@ class _OrderCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    '#${order.orderId}',
+                    order.orderId.startsWith('#')
+                        ? order.orderId
+                        : (order.orderId.length > 10 && !order.orderId.contains(' ')
+                            ? '#${order.orderId.substring(0, 10).toUpperCase()}'
+                            : '#${order.orderId}'),
                     style: DeliveryAppTypography.titleMedium.copyWith(
                       color: DeliveryAppColors.textPrimary,
                       fontWeight: FontWeight.w800,
@@ -1655,11 +1694,8 @@ class _OrderCard extends StatelessWidget {
                   foregroundColor: DeliveryAppColors.primary,
                   icon: Icons.navigation,
                   label: DeliveryOrdersStrings.of('navigate', lang),
-                  onTap: () => _showSnack(
-                    context,
-                    '${DeliveryOrdersStrings.of('directionsHint', lang)} '
-                    '${order.deliveryAddress}',
-                    DeliveryAppColors.primaryDark,
+                  onTap: () => Navigator.of(context).pushNamed(
+                    '/deliveryNavigationScreen',
                   ),
                 ),
                 _CardActionButton(
@@ -1668,7 +1704,7 @@ class _OrderCard extends StatelessWidget {
                   foregroundColor: DeliveryAppColors.info,
                   icon: Icons.call,
                   label: DeliveryOrdersStrings.of('call', lang),
-                  onTap: () => _showCallSnack(context, order, lang),
+                  onTap: () => _showCallBottomSheet(context, order, lang),
                 ),
                 _CardActionButton(
                   buttonKey: Key('dp_orders_chat_${order.orderId}'),
@@ -1676,11 +1712,16 @@ class _OrderCard extends StatelessWidget {
                   foregroundColor: const Color(0xFFBA68C8),
                   icon: Icons.chat_outlined,
                   label: DeliveryOrdersStrings.of('chat', lang),
-                  onTap: () => _showSnack(
-                    context,
-                    '${DeliveryOrdersStrings.of('chatHint', lang)} '
-                    '${order.customerName}',
-                    const Color(0xFFBA68C8),
+                  onTap: () => Navigator.of(context).pushNamed(
+                    '/deliveryChat',
+                    arguments: {
+                      'orderId': order.orderId,
+                      'customerId': order.orderId,
+                      'customerName': order.customerName,
+                      'customerPhone': order.phoneNumber,
+                      'orderTitle': order.restaurantName,
+                      'orderTotal': order.amount,
+                    },
                   ),
                 ),
                 _CardActionButton(
@@ -2482,14 +2523,377 @@ void _showSnack(BuildContext context, String message, Color color) {
   );
 }
 
-void _showCallSnack(
+void _showOrdersNotificationSheet(
+  BuildContext context,
+  DeliveryOrdersPageState state,
+) {
+  final lang = state.localeCode;
+  final pendingOrders =
+      state.orders.where((o) => o.status == DeliveryOrderStatus.pending).toList();
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: DeliveryAppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    isScrollControlled: true,
+    builder: (ctx) {
+      return Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: DeliveryAppColors.textDisabled,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: DeliveryAppColors.primaryDark.withValues(alpha: 0.16),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.notifications_active,
+                    color: DeliveryAppColors.primary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        DeliveryOrdersStrings.of('notifications', lang),
+                        style: DeliveryAppTypography.h4.copyWith(
+                          color: DeliveryAppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        pendingOrders.isNotEmpty
+                            ? '${pendingOrders.length} pending order requests available'
+                            : DeliveryOrdersStrings.of('noNewNotifications', lang),
+                        style: DeliveryAppTypography.bodySmall.copyWith(
+                          color: DeliveryAppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(color: DeliveryAppColors.border),
+            const SizedBox(height: 8),
+            if (pendingOrders.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.notifications_off_outlined,
+                        color: DeliveryAppColors.textMuted,
+                        size: 40,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        DeliveryOrdersStrings.of('noNewNotifications', lang),
+                        style: DeliveryAppTypography.bodyMedium.copyWith(
+                          color: DeliveryAppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: pendingOrders.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final order = pendingOrders[index];
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: DeliveryAppColors.background,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: DeliveryAppColors.primary.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                order.orderId,
+                                style: DeliveryAppTypography.titleSmall.copyWith(
+                                  color: DeliveryAppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: DeliveryAppColors.warningBg,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '₹${order.amount.toStringAsFixed(2)}',
+                                  style: DeliveryAppTypography.caption.copyWith(
+                                    color: DeliveryAppColors.warning,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${order.restaurantName} → ${order.customerName}',
+                            style: DeliveryAppTypography.bodySmall.copyWith(
+                              color: DeliveryAppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${order.pickupAddress} (${order.distance} km)',
+                            style: DeliveryAppTypography.caption.copyWith(
+                              color: DeliveryAppColors.textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: DeliveryAppColors.primary,
+                                  foregroundColor:
+                                      DeliveryAppColors.buttonPrimaryText,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.of(ctx).pop();
+                                  context.read<DeliveryOrdersPageBloc>().add(
+                                        DeliveryOrdersUpdateStatusEvent(
+                                          orderId: order.orderId,
+                                          status: DeliveryOrderStatus.active,
+                                        ),
+                                      );
+                                },
+                                child: Text(
+                                  DeliveryOrdersStrings.of('acceptOrder', lang),
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+void _showCallBottomSheet(
   BuildContext context,
   DeliveryOrderCardModel order,
   String lang,
 ) {
-  final message = order.phoneNumber.isEmpty
-      ? '${DeliveryOrdersStrings.of('noPhone', lang)} ${order.customerName}'
-      : '${DeliveryOrdersStrings.of('calling', lang)} ${order.customerName} '
-          'at ${order.phoneNumber}...';
-  _showSnack(context, message, DeliveryAppColors.info);
+  final hasPhone = order.phoneNumber.isNotEmpty;
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: DeliveryAppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: DeliveryAppColors.textDisabled,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: hasPhone
+                    ? DeliveryAppColors.infoBg
+                    : DeliveryAppColors.warningBg,
+                border: Border.all(
+                  color: hasPhone
+                      ? DeliveryAppColors.infoBorder
+                      : DeliveryAppColors.warning,
+                ),
+              ),
+              child: Icon(
+                hasPhone ? Icons.person : Icons.phone_disabled,
+                color: hasPhone
+                    ? DeliveryAppColors.info
+                    : DeliveryAppColors.warning,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              order.customerName,
+              style: const TextStyle(
+                color: DeliveryAppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (hasPhone) ...[
+              const SizedBox(height: 6),
+              Text(
+                order.phoneNumber,
+                style: const TextStyle(
+                  color: DeliveryAppColors.textMuted,
+                  fontSize: 16,
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: DeliveryAppColors.warningBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: DeliveryAppColors.warning.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.phone_disabled,
+                      color: DeliveryAppColors.warning,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '${DeliveryOrdersStrings.of('noPhone', lang)}${order.customerName}',
+                        style: const TextStyle(
+                          color: DeliveryAppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: hasPhone
+                    ? () {
+                        Navigator.of(ctx).pop();
+                        _launchDialer(order.phoneNumber);
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DeliveryAppColors.info,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor:
+                      DeliveryAppColors.info.withValues(alpha: 0.25),
+                  disabledForegroundColor: DeliveryAppColors.textPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.call, size: 20),
+                label: Text(
+                  hasPhone
+                      ? DeliveryOrdersStrings.of('callCustomer', lang)
+                      : '${DeliveryOrdersStrings.of('noPhone', lang)}${order.customerName}',
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: DeliveryAppColors.textMuted,
+                  side: const BorderSide(color: DeliveryAppColors.border),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text('Cancel'),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Future<void> _launchDialer(String phoneNumber) async {
+  final uri = Uri.parse('tel:$phoneNumber');
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+  }
 }

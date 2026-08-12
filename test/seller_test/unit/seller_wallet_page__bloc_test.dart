@@ -25,6 +25,8 @@ void main() {
 
     setUp(() {
       repository = MockSellerWalletRepository();
+      when(() => repository.streamWalletBalance()).thenAnswer((_) => const Stream.empty());
+      when(() => repository.streamPayoutHistory()).thenAnswer((_) => const Stream.empty());
       bloc = SellerWalletBloc(repository: repository);
     });
 

@@ -31,10 +31,10 @@ class AuthLinkingService {
   /// Returns true if it exists, otherwise false.
   Future<bool> checkPhoneExists(String phoneNumber) async {
     try {
-      // Check in users collection
+      // Check in buyer_user collection
       final userQuery = await _firestore
-          .collection('users')
-          .where('phoneNumber', isEqualTo: phoneNumber)
+          .collection('buyer_user')
+          .where('phone', isEqualTo: phoneNumber)
           .limit(1)
           .get();
 

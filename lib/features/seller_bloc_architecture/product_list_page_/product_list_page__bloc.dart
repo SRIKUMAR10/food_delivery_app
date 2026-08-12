@@ -1,3 +1,4 @@
+// Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'product_list_page__event.dart';
@@ -50,13 +51,23 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
     emit(ProductListLoading());
     try {
       if (_sellerId.isEmpty) {
-        emit(ProductListError('User not logged in'));
+        _allProducts = [];
+        _emitFilteredState(emit, 'All Products');
         return;
       }
       await _subscription?.cancel();
-      _subscription = repository.getProductsStream(_sellerId).listen((products) {
-        add(_ProductsUpdated(products));
-      });
+      _subscription = repository.getProductsStream(_sellerId).listen(
+        (products) {
+          if (!isClosed) {
+            add(_ProductsUpdated(products));
+          }
+        },
+        onError: (error) {
+          if (!isClosed) {
+            emit(ProductListError(error.toString()));
+          }
+        },
+      );
     } catch (e) {
       emit(ProductListError(e.toString()));
     }

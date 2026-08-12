@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
-import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
 
+import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
+import '../buyer_login_page/buyer_login_page_ui.dart';
 import 'onboarding_page_Bloc.dart';
 import 'onboarding_page_Event.dart';
 import 'onboarding_page_State.dart';
@@ -36,16 +35,15 @@ class OnboardingPageView extends StatelessWidget {
     return BlocListener<OnboardingPageBloc, OnboardingPageState>(
       listener: (context, state) {
         if (state is OnboardingNavigateToLogin) {
-          Navigator.push(
-            context,
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (context) => const FoodGoLoginScreenUI(),
+              builder: (context) => const BuyerLoginPageUI(),
             ),
+            (route) => false,
           );
         } else if (state is OnboardingNavigateToHome ||
             state is OnboardingAuthenticated) {
-          Navigator.pushAndRemoveUntil(
-            context,
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (context) => const CurvedNavigationBarView(),
             ),
@@ -54,7 +52,8 @@ class OnboardingPageView extends StatelessWidget {
         }
       },
       child: BlocBuilder<OnboardingPageBloc, OnboardingPageState>(
-        builder: (context, state) {
+        buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
           if (state is OnboardingAuthWaiting) {
             return const Scaffold(
               backgroundColor: Color(0xFFFBF5F5),

@@ -16,6 +16,8 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
   final IUserProfileRepository profileRepository;
   final ImagePicker _imagePicker;
 
+  StreamSubscription<UserProfile?>? _profileSubscription;
+
   UserProfileBloc({
     required this.authService,
     required this.profileRepository,
@@ -23,10 +25,17 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
   }) : _imagePicker = imagePicker ?? ImagePicker(),
        super(const ProfileInitial()) {
     on<LoadProfileStarted>(_onLoadProfileStarted);
+    on<_ProfileUpdatedInternal>(_onProfileUpdatedInternal);
     on<ProfileImagePicked>(_onProfileImagePicked);
     on<ProfileImageUploadProgress>(_onProfileImageUploadProgress);
     on<ProfileSaved>(_onProfileSaved);
     on<SignOutRequested>(_onSignOutRequested);
+  }
+
+  @override
+  Future<void> close() {
+    _profileSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onLoadProfileStarted(
@@ -47,16 +56,29 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
         return;
       }
 
-      final profile = await profileRepository.loadProfile(uid);
-      if (profile != null) {
-        emit(ProfileLoaded(profile: profile));
-      } else {
-        emit(
-          ProfileLoaded(
-            profile: UserProfile.empty().copyWith(email: authService.currentUserEmail),
-          ),
-        );
-      }
+      await _profileSubscription?.cancel();
+      _profileSubscription = profileRepository.watchProfile(uid).listen(
+        (profile) {
+          if (profile != null) {
+            final updatedProfile = profile.copyWith(
+              name: profile.name.isEmpty ? (authService.currentUserDisplayName ?? '') : profile.name,
+              email: profile.email.isEmpty ? (authService.currentUserEmail ?? '') : profile.email,
+              imageUrl: profile.imageUrl ?? authService.currentUserPhotoUrl,
+            );
+            add(_ProfileUpdatedInternal(updatedProfile));
+          } else {
+            final fallbackProfile = UserProfile.empty().copyWith(
+              name: authService.currentUserDisplayName ?? '',
+              email: authService.currentUserEmail ?? '',
+              imageUrl: authService.currentUserPhotoUrl,
+            );
+            add(_ProfileUpdatedInternal(fallbackProfile));
+          }
+        },
+        onError: (e) {
+          debugPrint('Error in real-time profile stream: $e');
+        },
+      );
     } catch (e) {
       emit(
         ProfileError(
@@ -64,6 +86,18 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
           previousState: const ProfileInitial(),
         ),
       );
+    }
+  }
+
+  void _onProfileUpdatedInternal(
+    _ProfileUpdatedInternal event,
+    Emitter<UserProfileState> emit,
+  ) {
+    if (state is ProfileLoaded) {
+      final current = state as ProfileLoaded;
+      emit(current.copyWith(profile: event.profile));
+    } else {
+      emit(ProfileLoaded(profile: event.profile));
     }
   }
 

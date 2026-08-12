@@ -1276,5 +1276,19 @@ void main() {
       expect(auditFindings.where((f) => f.startsWith('[FAIL]')).length, 0,
           reason: 'All audit stages must pass without failures.');
     });
+
+    test('Security Invariant: DeliveryPartnerModel.toMap() never serializes password field', () {
+      final model = DeliveryPartnerModel(
+        id: 'test_sec_id',
+        phoneNumber: '+919876543210',
+        password: 'SecretPassword123!',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      final map = model.toMap();
+      expect(map.containsKey('password'), isFalse,
+          reason: 'Plaintext password must NEVER be serialized in Firestore toMap() payload');
+    });
   });
 }

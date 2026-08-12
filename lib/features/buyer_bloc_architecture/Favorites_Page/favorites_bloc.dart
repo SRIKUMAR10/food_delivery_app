@@ -42,6 +42,7 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     }
 
     emit(const FavoritesLoading());
+    await _authService.ensureTokenReady();
 
     await emit.forEach<List<FavoriteItem>>(
       _favoritesRepository.getFavoritesStream(uid),

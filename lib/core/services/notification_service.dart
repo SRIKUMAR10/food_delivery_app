@@ -75,7 +75,7 @@ class NotificationService {
       };
       try {
         await Future.wait([
-          _firestore.collection('users').doc(uid).set(tokenData, SetOptions(merge: true)),
+          _firestore.collection('buyer_user').doc(uid).set(tokenData, SetOptions(merge: true)),
           _firestore.collection('sellers').doc(uid).set(tokenData, SetOptions(merge: true)),
           _firestore.collection('delivery_partners').doc(uid).set(tokenData, SetOptions(merge: true)),
         ]);
@@ -86,5 +86,47 @@ class NotificationService {
     } else {
       _logger.w('Cannot save FCM token: User is not logged in.');
     }
+  }
+
+  Future<void> sendOrderStatusNotification({
+    required String targetUserId,
+    required String orderId,
+    required String status,
+    required String title,
+    required String body,
+  }) async {
+    if (targetUserId.isEmpty) return;
+    final notificationData = {
+      'orderId': orderId,
+      'status': status,
+      'title': title,
+      'body': body,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isRead': false,
+    };
+
+    try {
+      await _firestore
+          .collection('buyer_user')
+          .doc(targetUserId)
+          .collection('notifications')
+          .add(notificationData);
+    } catch (_) {}
+
+    try {
+      await _firestore
+          .collection('sellers')
+          .doc(targetUserId)
+          .collection('notifications')
+          .add(notificationData);
+    } catch (_) {}
+
+    try {
+      await _firestore
+          .collection('delivery_partners')
+          .doc(targetUserId)
+          .collection('notifications')
+          .add(notificationData);
+    } catch (_) {}
   }
 }

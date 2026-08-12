@@ -25,6 +25,15 @@ class DeliveryWalletFilterTransactionsEvent extends DeliveryWalletPageEvent {
   List<Object?> get props => [filter];
 }
 
+class DeliveryWalletTransactionsUpdatedEvent extends DeliveryWalletPageEvent {
+  final List<DeliveryWalletTransaction> transactions;
+
+  const DeliveryWalletTransactionsUpdatedEvent(this.transactions);
+
+  @override
+  List<Object?> get props => [transactions];
+}
+
 class DeliveryWalletWithdrawRequestedEvent extends DeliveryWalletPageEvent {
   final double amount;
 

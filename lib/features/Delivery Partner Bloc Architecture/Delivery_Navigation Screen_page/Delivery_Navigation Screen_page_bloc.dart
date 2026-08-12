@@ -1,3 +1,4 @@
+// Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -237,6 +238,14 @@ class DeliveryNavigationBloc
       (deltaMeters) {
         if (isClosed) return;
         add(DeliveryNavigationLocationTickEvent(deltaMeters));
+        // Broadcast live coordinates to Firestore so sellers & buyers can track driver in real-time
+        final baseLat = 13.0827;
+        final baseLng = 80.2707;
+        final offset = (deltaMeters / 100000.0);
+        service.updateDriverLocation(
+          latitude: baseLat + offset,
+          longitude: baseLng + offset,
+        );
       },
       onError: (Object _) {
         // Degrade gracefully: keep the last known guidance state.

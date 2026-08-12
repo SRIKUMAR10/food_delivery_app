@@ -1,3 +1,4 @@
+// Real-Time Firestore Stream Provider Standardized
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,9 +8,13 @@ import 'Delivery_Wallet_page_state.dart';
 
 abstract class DeliveryWalletPageRepositoryBase {
   Future<DeliveryWalletPageState> loadWalletData();
+  Stream<DeliveryWalletPageState> watchWalletData();
   Future<DeliveryWalletPageState?> loadCachedWallet();
   Future<DeliveryWalletPageState> withdraw(double amount);
   Future<List<DeliveryWalletTransaction>> filterTransactions(
+    DeliveryWalletTransactionFilter filter,
+  );
+  Stream<List<DeliveryWalletTransaction>> watchTransactions(
     DeliveryWalletTransactionFilter filter,
   );
   Future<DeliveryWalletPageState> addPaymentMethod(
@@ -49,6 +54,17 @@ class DeliveryWalletPageRepository implements DeliveryWalletPageRepositoryBase {
       if (cached != null) return cached;
       rethrow;
     }
+  }
+
+  @override
+  Stream<DeliveryWalletPageState> watchWalletData() {
+    return _service.watchWalletData().map((raw) {
+      if (raw.isNotEmpty) {
+        _lastRaw = raw;
+        _saveCache(raw);
+      }
+      return _buildState(raw);
+    });
   }
 
   Future<void> _saveCache(Map<String, dynamic> raw) async {
@@ -97,6 +113,26 @@ class DeliveryWalletPageRepository implements DeliveryWalletPageRepositoryBase {
           ),
         )
         .toList();
+  }
+
+  @override
+  Stream<List<DeliveryWalletTransaction>> watchTransactions(
+    DeliveryWalletTransactionFilter filter,
+  ) {
+    return _service.watchTransactions(filter).map(
+          (rawList) => rawList
+              .map(
+                (e) => DeliveryWalletTransaction(
+                  id: e['id'] ?? '',
+                  title: e['title'] ?? '',
+                  date: DateTime.tryParse(e['date'] ?? '') ?? DateTime.now(),
+                  amount: (e['amount'] as num?)?.toDouble() ?? 0.0,
+                  type: e['type'] ?? 'income',
+                  status: e['status'] ?? 'completed',
+                ),
+              )
+              .toList(),
+        );
   }
 
   @override
@@ -222,10 +258,10 @@ class DeliveryWalletPageRepository implements DeliveryWalletPageRepositoryBase {
 
     return DeliveryWalletPageState(
       status: DeliveryWalletStatus.loaded,
-      walletBalance: (raw['walletBalance'] as num?)?.toDouble() ?? 24580.50,
-      totalEarnings: (raw['totalEarnings'] as num?)?.toDouble() ?? 128450.00,
-      totalWithdrawn: (raw['totalWithdrawn'] as num?)?.toDouble() ?? 89450.00,
-      bonusEarnings: (raw['bonusEarnings'] as num?)?.toDouble() ?? 12500.00,
+      walletBalance: (raw['walletBalance'] as num?)?.toDouble() ?? 0.0,
+      totalEarnings: (raw['totalEarnings'] as num?)?.toDouble() ?? 0.0,
+      totalWithdrawn: (raw['totalWithdrawn'] as num?)?.toDouble() ?? 0.0,
+      bonusEarnings: (raw['bonusEarnings'] as num?)?.toDouble() ?? 0.0,
       transactions: transactions,
       paymentMethods: paymentMethods,
       bankAccount: bankAccount,

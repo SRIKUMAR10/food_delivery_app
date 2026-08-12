@@ -8,7 +8,9 @@ import 'buyer_chat_bloc.dart';
 import 'buyer_chat_event.dart';
 import 'buyer_chat_state.dart';
 import '../../../core/repositories/i_chat_repository.dart';
+import '../../../repositories/firebase_chat_repository.dart';
 import '../../../core/services/i_auth_service.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/models/conversation_model.dart';
 import '../../../core/models/chat_message_model.dart';
 import '../../../core/models/order_model.dart';
@@ -21,10 +23,8 @@ import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/services.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:camera/camera.dart';
 import 'audio_widgets.dart';
 import 'invoice_generator.dart';
 import 'video_call_page.dart';
@@ -35,7 +35,6 @@ import '../Cart Page/cart_page_Bloc.dart';
 import '../Order Page/order_view_model.dart';
 import '../Cart Page/cart_models.dart';
 import '../Cart Page/cart_page_UI.dart';
-import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import '../home_Page/home_page_models.dart';
 
 class _AppTheme {
@@ -233,9 +232,23 @@ class BuyerChatPage extends StatelessWidget {
         pendingOrderData != null || (orderId != null && sellerId != null) || foodItem != null;
     return BlocProvider(
       create: (context) {
+        IChatRepository chatRepo;
+        try {
+          chatRepo = context.read<IChatRepository>();
+        } catch (_) {
+          chatRepo = FirebaseChatRepository();
+        }
+
+        IAuthService authServ;
+        try {
+          authServ = context.read<IAuthService>();
+        } catch (_) {
+          authServ = FirebaseAuthService();
+        }
+
         final bloc = BuyerChatBloc(
-          repository: context.read<IChatRepository>(),
-          authService: context.read<IAuthService>(),
+          repository: chatRepo,
+          authService: authServ,
         );
         final data = pendingOrderData;
         if (data != null) {
@@ -342,31 +355,6 @@ class BuyerChatView extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const FoodGoLoginScreenUI(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.login_rounded),
-                            label: const Text('Log In'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _AppTheme.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  _AppTheme.buttonRadius,
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     )
@@ -1081,7 +1069,13 @@ class _ConversationTileState extends State<_ConversationTile> {
                       children: [
                         Expanded(
                           child: Text(
-                            conversation.lastMessage ?? 'No messages yet',
+                            (conversation.lastMessage != null &&
+                                    (conversation.lastMessage!.toLowerCase().contains('.pdf') ||
+                                     conversation.lastMessage!.toLowerCase().startsWith('invoice_') ||
+                                     conversation.lastMessage!.toLowerCase() == 'pdf' ||
+                                     conversation.lastMessage!.toLowerCase() == 'document'))
+                                ? '📄 Invoice.pdf'
+                                : (conversation.lastMessage ?? 'No messages yet'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -1382,6 +1376,7 @@ class _ChatPanelState extends State<_ChatPanel> {
             ),
           ),
           BlocBuilder<BuyerChatBloc, BuyerChatState>(
+            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
             builder: (context, state) {
               if (state is BuyerChatLoaded && state.selectedProduct != null) {
                 return _ProductInfoBar(
@@ -1412,6 +1407,7 @@ class _ChatPanelState extends State<_ChatPanel> {
             },
           ),
           BlocBuilder<BuyerChatBloc, BuyerChatState>(
+            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
             builder: (context, state) {
               if (state is BuyerChatLoaded && state.showEmojiPicker) {
                 return SizedBox(
@@ -2398,11 +2394,21 @@ class _BuyerChatBubbleState extends State<_BuyerChatBubble> {
                                   isMe: widget.isMe,
                                 ),
                               )
-                            else if (widget.message.messageType == 'document' &&
-                                widget.message.mediaUrl != null)
+                            else if (widget.message.messageType == 'document' ||
+                                widget.message.messageType == 'pdf' ||
+                                widget.message.messageType == 'invoice' ||
+                                (widget.message.mediaUrl != null && widget.message.mediaUrl!.toLowerCase().contains('.pdf')) ||
+                                widget.message.text.toLowerCase().contains('.pdf') ||
+                                widget.message.text.toLowerCase().startsWith('invoice_'))
                               _PremiumDocumentMessage(
-                                fileUrl: widget.message.mediaUrl!,
-                                fileName: 'Invoice.pdf', // Or fetch from message if available
+                                fileUrl: (widget.message.mediaUrl != null && widget.message.mediaUrl!.isNotEmpty)
+                                    ? widget.message.mediaUrl!
+                                    : widget.message.text,
+                                fileName: widget.message.fileName != null && widget.message.fileName!.isNotEmpty
+                                    ? widget.message.fileName!
+                                    : (widget.message.text.toLowerCase().contains('.pdf')
+                                        ? widget.message.text
+                                        : 'Invoice.pdf'),
                                 isMe: widget.isMe,
                               )
                             else if (widget.message.text.isNotEmpty)
@@ -4302,7 +4308,7 @@ class _PremiumDocumentMessage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    fileName,
+                    (fileName.isEmpty || fileName.startsWith('Invoice_')) ? 'Invoice.pdf' : fileName,
                     style: TextStyle(
                       color: isMe ? Colors.white : _AppTheme.textPrimary,
                       fontWeight: FontWeight.w600,

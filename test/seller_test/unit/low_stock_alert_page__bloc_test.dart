@@ -24,15 +24,12 @@ void main() {
       'emits [LowStockAlertLoading, LowStockAlertLoaded] when LoadLowStockData is added',
       build: () => lowStockAlertBloc,
       act: (bloc) => bloc.add(LoadLowStockData()),
-      wait: const Duration(
-        seconds: 1,
-      ), // Based on the simulated delay in the bloc
       expect: () => [
         isA<LowStockAlertLoading>(),
         isA<LowStockAlertLoaded>().having(
           (state) => state.items.length,
           'items length',
-          5, // Matches the mock data count
+          0,
         ),
       ],
     );
@@ -41,7 +38,6 @@ void main() {
       'emits Loading and then Loaded when RefreshLowStockData is added',
       build: () => lowStockAlertBloc,
       act: (bloc) => bloc.add(RefreshLowStockData()),
-      wait: const Duration(seconds: 1),
       expect: () => [isA<LowStockAlertLoading>(), isA<LowStockAlertLoaded>()],
     );
   });

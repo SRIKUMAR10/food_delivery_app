@@ -30,6 +30,7 @@ void main() {
       'emits [Loading, Loaded] when LoadMenuCategoriesEvent is added',
       build: () {
         when(() => mockRepository.getMenuCategories(any())).thenAnswer((_) async => []);
+        when(() => mockRepository.streamMenuCategories(any())).thenAnswer((_) => const Stream.empty());
         return bloc;
       },
       act: (bloc) => bloc.add(LoadMenuCategoriesEvent('seller1')),

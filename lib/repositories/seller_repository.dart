@@ -108,17 +108,29 @@ class SellerRepository {
   Future<void> requestPhoneLoginOtp(String phoneNumber) async {
     if (kIsWeb) {
       try {
-        _recaptchaVerifier?.clear();
+        try {
+          _recaptchaVerifier?.clear();
+        } catch (_) {}
         _recaptchaVerifier = RecaptchaVerifier(
           auth: FirebaseAuthPlatform.instance,
+          container: 'recaptcha-container',
+          size: RecaptchaVerifierSize.compact,
         );
         _confirmationResult = await _auth.signInWithPhoneNumber(
           phoneNumber,
           _recaptchaVerifier!,
         ).timeout(const Duration(seconds: 30), onTimeout: () {
+          try {
+            _recaptchaVerifier?.clear();
+          } catch (_) {}
+          _recaptchaVerifier = null;
           throw Exception('OTP Request Timed Out.');
         });
       } catch (e) {
+        try {
+          _recaptchaVerifier?.clear();
+        } catch (_) {}
+        _recaptchaVerifier = null;
         throw Exception('Failed to send OTP: $e');
       }
     } else {

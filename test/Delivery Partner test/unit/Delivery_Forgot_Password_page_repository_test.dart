@@ -60,6 +60,12 @@ void main() {
       email: 'test@example.com',
       password: 'pass',
     ));
+    registerFallbackValue(DeliveryPartnerModel(
+      id: 'dummy',
+      phoneNumber: '+910000000000',
+      createdAt: DateTime(2024),
+      updatedAt: DateTime(2024),
+    ));
   });
 
   group('DeliveryForgotPasswordRepository sendOtp Tests', () {
@@ -120,10 +126,11 @@ void main() {
         updatedAt: DateTime(2024),
       );
 
-      // first call returns null
+      int callCount = 0;
       when(() => mockPartnerRepo.getDeliveryPartnerByPhone(fullPhone))
-          .thenAnswer((invocation) async {
-        return null;
+          .thenAnswer((_) async {
+        callCount++;
+        return callCount == 1 ? null : mockPartner;
       });
 
       when(() => mockFirestore.collection('delivery_partners'))
@@ -133,10 +140,6 @@ void main() {
       when(() => mockQuery.limit(1)).thenReturn(mockQuery);
       when(() => mockQuery.get()).thenAnswer((_) async => mockSnapshot);
       when(() => mockSnapshot.docs).thenReturn([MockQueryDocumentSnapshot()]);
-
-      // mock the second call
-      when(() => mockPartnerRepo.getDeliveryPartnerByPhone(fullPhone))
-          .thenAnswer((_) async => mockPartner);
 
       when(
         () => mockPartnerRepo.sendPhoneOtp(
@@ -283,6 +286,8 @@ void main() {
           .thenAnswer((_) async => mockUserCred);
       when(() => mockPartnerRepo.getDeliveryPartner('uid123'))
           .thenAnswer((_) async => mockPartner);
+      when(() => mockUser.displayName).thenReturn('Delivery Partner');
+      when(() => mockPartnerRepo.createDeliveryPartner(any(), any())).thenAnswer((_) async {});
       when(() => mockAuth.signOut()).thenAnswer((_) async {});
 
       await repository.verifyOtpAndUpdatePassword(

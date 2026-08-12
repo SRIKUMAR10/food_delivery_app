@@ -82,9 +82,21 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
     final fullPhone =
         formattedPhone.startsWith('+') ? formattedPhone : '+91$formattedPhone';
 
-    final authEmail = (email != null && email.trim().isNotEmpty)
-        ? email.trim()
-        : '$fullPhone@delivery.app';
+    final authEmail = email.trim();
+    if (authEmail.isEmpty) {
+      throw Exception('A valid email address is required for registration.');
+    }
+
+    // Check if email or phone is ALREADY registered specifically in Delivery Partner collection
+    final existingByEmail = await _partnerRepo.getDeliveryPartnerByEmail(authEmail);
+    if (existingByEmail != null) {
+      throw Exception('This email address is already registered in Delivery Partner. Please login.');
+    }
+
+    final existingByPhone = await _partnerRepo.getDeliveryPartnerByPhone(fullPhone);
+    if (existingByPhone != null) {
+      throw Exception('This phone number is already registered in Delivery Partner. Please login.');
+    }
 
     UserCredential credential;
     try {
@@ -92,10 +104,17 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
           await _partnerRepo.createUserWithEmailPassword(authEmail, password);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
-        throw Exception(
-            'This phone number is already registered. Please login.');
+        // Email exists in FirebaseAuth under another role (e.g. Buyer/Seller).
+        // Try authenticating with that credential to get UID for Delivery Partner creation.
+        try {
+          credential = await _partnerRepo.signInWithEmailPassword(authEmail, password);
+        } catch (_) {
+          throw Exception(
+              'This email is registered under another account. Password verification failed.');
+        }
+      } else {
+        throw Exception(e.message ?? 'Registration failed');
       }
-      throw Exception(e.message ?? 'Registration failed');
     }
 
     final uid = credential.user!.uid;
@@ -106,16 +125,17 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
       phoneNumber: fullPhone,
       countryCode: '+91',
       displayName: name,
-      email: email,
+      email: authEmail,
+      password: password,
       role: 'delivery_partner',
-      status: 'pending',
+      status: 'approved',
       isActive: true,
-      isVerified: false,
+      isVerified: true,
       isPhoneVerified: true,
       isEmailVerified: false,
-      profileCompletion: 0,
+      profileCompletion: 100,
       isOnline: false,
-      kycStatus: 'pending',
+      kycStatus: 'approved',
       createdAt: now,
       updatedAt: now,
     );

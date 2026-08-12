@@ -11,18 +11,24 @@ class DeliveryIncomingOrderState extends Equatable {
   final String customerName;
   final String customerAddress;
   final double orderAmount;
+  final double distanceKm;
+  final int etaMins;
+  final String paymentMethod;
   final String localeCode;
   final String? errorMessage;
 
   const DeliveryIncomingOrderState({
     this.status = IncomingOrderStatus.initial,
     this.remainingSeconds = 15,
-    this.orderId = '#ORD98234',
-    this.storeName = 'Green Mart',
-    this.storeAddress = '24, Anna Salai, Chennai',
-    this.customerName = 'Mike Anderson',
-    this.customerAddress = '12, Beach Road, Chennai',
-    this.orderAmount = 620.00,
+    this.orderId = '',
+    this.storeName = '',
+    this.storeAddress = '',
+    this.customerName = '',
+    this.customerAddress = '',
+    this.orderAmount = 0.0,
+    this.distanceKm = 0.0,
+    this.etaMins = 0,
+    this.paymentMethod = '',
     this.localeCode = 'en',
     this.errorMessage,
   });
@@ -38,6 +44,9 @@ class DeliveryIncomingOrderState extends Equatable {
     String? customerName,
     String? customerAddress,
     double? orderAmount,
+    double? distanceKm,
+    int? etaMins,
+    String? paymentMethod,
     String? localeCode,
     String? errorMessage,
     bool clearError = false,
@@ -51,6 +60,9 @@ class DeliveryIncomingOrderState extends Equatable {
       customerName: customerName ?? this.customerName,
       customerAddress: customerAddress ?? this.customerAddress,
       orderAmount: orderAmount ?? this.orderAmount,
+      distanceKm: distanceKm ?? this.distanceKm,
+      etaMins: etaMins ?? this.etaMins,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
       localeCode: localeCode ?? this.localeCode,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );
@@ -66,6 +78,9 @@ class DeliveryIncomingOrderState extends Equatable {
         customerName,
         customerAddress,
         orderAmount,
+        distanceKm,
+        etaMins,
+        paymentMethod,
         localeCode,
         errorMessage,
       ];

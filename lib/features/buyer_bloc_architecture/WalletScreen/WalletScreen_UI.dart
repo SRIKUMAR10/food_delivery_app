@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/api_service/RazorpayApiService.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
-import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import 'WalletScreen_Bloc.dart';
 import 'WalletScreen_Event.dart';
 import 'WalletScreen_State.dart';
@@ -47,12 +46,6 @@ class _WalletAuthGate extends StatelessWidget {
               child: CircularProgressIndicator(color: Color(0xFFE52121)),
             ),
           );
-        }
-
-        final uid = snapshot.data;
-
-        if (uid == null) {
-          return const FoodGoLoginScreenUI();
         }
 
         return const WalletView();
@@ -314,7 +307,8 @@ class _WalletViewState extends State<WalletView> {
             child: RefreshIndicator(
               onRefresh: () async => _loadInitialData(),
               child: BlocBuilder<WalletBloc, WalletState>(
-                builder: (context, state) {
+                buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                   return Stack(
                     children: [
                       // ── Main content ──────────────────────────────────────

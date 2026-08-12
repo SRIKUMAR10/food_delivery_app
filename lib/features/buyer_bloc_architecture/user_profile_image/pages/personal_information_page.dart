@@ -16,6 +16,12 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
+  final _formKey = GlobalKey<FormState>();
+  bool _profileLoaded = false;
+
+  String? _nameError;
+  String? _emailError;
+  String? _phoneError;
 
   @override
   void initState() {
@@ -24,7 +30,6 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     _emailController = TextEditingController();
     _phoneController = TextEditingController();
 
-    // Trigger fetch if needed, though profile should already be loaded.
     context.read<UserProfileBloc>().add(const LoadProfileStarted());
   }
 
@@ -33,20 +38,83 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-
     super.dispose();
   }
 
   void _populateControllers(UserProfile profile) {
-    if (_nameController.text != profile.name) {
+    if (!_profileLoaded) {
       _nameController.text = profile.name;
-    }
-    if (_emailController.text != profile.email) {
       _emailController.text = profile.email;
-    }
-    if (_phoneController.text != profile.phone) {
       _phoneController.text = profile.phone;
+      _profileLoaded = true;
+    } else {
+      if (_nameController.text.isEmpty && profile.name.isNotEmpty) {
+        _nameController.text = profile.name;
+      }
+      if (_emailController.text.isEmpty && profile.email.isNotEmpty) {
+        _emailController.text = profile.email;
+      }
+      if (_phoneController.text.isEmpty && profile.phone.isNotEmpty) {
+        _phoneController.text = profile.phone;
+      }
     }
+  }
+
+  String? _validateName(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Full name is required';
+    }
+    if (value.trim().length < 2) {
+      return 'Name must be at least 2 characters';
+    }
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Email address is required';
+    }
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Phone number is required';
+    }
+    final digits = value.trim().replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 10) {
+      return 'Phone number must be at least 10 digits';
+    }
+    return null;
+  }
+
+  void _onSave(UserProfile? currentProfile) {
+    setState(() {
+      _nameError = _validateName(_nameController.text);
+      _emailError = _validateEmail(_emailController.text);
+      _phoneError = _validatePhone(_phoneController.text);
+    });
+
+    if (_nameError != null || _emailError != null || _phoneError != null) {
+      return;
+    }
+
+    final profileToSave = UserProfile(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      address: currentProfile?.address ?? '',
+      homeAddress: currentProfile?.homeAddress ?? '',
+      workAddress: currentProfile?.workAddress ?? '',
+      otherAddress: currentProfile?.otherAddress ?? '',
+      selectedAddressType: currentProfile?.selectedAddressType ?? 'Home',
+      imageUrl: currentProfile?.imageUrl,
+    );
+    context.read<UserProfileBloc>().add(ProfileSaved(profileToSave));
   }
 
   void _showSnack(
@@ -54,6 +122,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     String message, {
     bool isError = false,
   }) {
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -86,19 +155,24 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
       backgroundColor: const Color(0xFFF3F4F6),
       body: Stack(
         children: [
-          Positioned(
-            top: 0, left: 0, right: 0, height: 200,
-            child: Container(
-              decoration: const BoxDecoration(
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 200,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFFEF2A39), Color(0xFFFF5E6B)],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
             ),
           ),
           Positioned(
-            top: 24, left: 24,
+            top: 24,
+            left: 24,
             child: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
               onPressed: () => Navigator.pop(context),
@@ -106,18 +180,28 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
           ),
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 550, maxHeight: 650),
+              constraints:
+                  const BoxConstraints(maxWidth: 550, maxHeight: 650),
               child: Card(
                 elevation: 12,
                 shadowColor: Colors.black26,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24),
                   child: Scaffold(
                     appBar: AppBar(
                       backgroundColor: Colors.white,
-                      elevation: 0, centerTitle: true,
-                      title: const Text('Personal Information', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                      elevation: 0,
+                      centerTitle: true,
+                      title: const Text(
+                        'Personal Information',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       automaticallyImplyLeading: false,
                     ),
                     body: _buildFormBody(context),
@@ -150,13 +234,17 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
       listener: (context, state) {
         if (state is ProfileError) {
           _showSnack(context, state.message, isError: true);
-        } else if (state is ProfileSuccessAction) {
-          _showSnack(context, state.message, isError: false);
-          if (state.message.contains('Profile saved')) {
-            Navigator.pop(context);
-          }
         } else if (state is ProfileLoaded) {
           _populateControllers(state.profile);
+          if (state.successMessage != null) {
+            _showSnack(context, state.successMessage!);
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted) Navigator.pop(context);
+            });
+          }
+          if (state.errorMessage != null) {
+            _showSnack(context, state.errorMessage!, isError: true);
+          }
         }
       },
       builder: (context, state) {
@@ -169,84 +257,88 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
           isSaving = state.isSaving;
         }
 
-        if (isLoading) {
+        if (isLoading && !_profileLoaded) {
           return const Center(child: CircularProgressIndicator());
         }
 
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
-            child: ListView(
-              padding: const EdgeInsets.all(24),
-              physics: const BouncingScrollPhysics(),
-              children: [
-                _buildModernField(
-                  "Full Name",
-                  _nameController,
-                  Icons.person_outline,
-                  key: const ValueKey('fullNameField'),
-                ),
-                _buildModernField(
-                  "Email Address",
-                  _emailController,
-                  Icons.mail_outline,
-                  key: const ValueKey('emailField'),
-                ),
-                _buildModernField(
-                  "Phone Number",
-                  _phoneController,
-                  Icons.phone_android_outlined,
-                  key: const ValueKey('phoneField'),
-                ),
-
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    key: const ValueKey('savePersonalInformationButton'),
-                    onPressed: isSaving
-                        ? null
-                        : () {
-                            final profileToSave = UserProfile(
-                              name: _nameController.text,
-                              email: _emailController.text,
-                              phone: _phoneController.text,
-                              address: profile?.address ?? '',
-                              imageUrl: profile?.imageUrl,
-                            );
-                            context.read<UserProfileBloc>().add(
-                              ProfileSaved(profileToSave),
-                            );
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE52121),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: isSaving
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : const Text(
-                            "Save Changes",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  _buildModernField(
+                    label: 'Account User ID (UID)',
+                    controller: TextEditingController(text: context.read<UserProfileBloc>().authService.currentUserId ?? ''),
+                    icon: Icons.fingerprint_rounded,
+                    enabled: false,
+                    key: const ValueKey('uidField'),
                   ),
-                ),
-              ],
+                  _buildModernField(
+                    label: 'Full Name',
+                    controller: _nameController,
+                    icon: Icons.person_outline,
+                    errorText: _nameError,
+                    key: const ValueKey('fullNameField'),
+                  ),
+                  _buildModernField(
+                    label: 'Email Address',
+                    controller: _emailController,
+                    icon: Icons.mail_outline,
+                    errorText: _emailError,
+                    keyboardType: TextInputType.emailAddress,
+                    key: const ValueKey('emailField'),
+                  ),
+                  _buildModernField(
+                    label: 'Phone Number',
+                    controller: _phoneController,
+                    icon: Icons.phone_android_outlined,
+                    errorText: _phoneError,
+                    keyboardType: TextInputType.phone,
+                    key: const ValueKey('phoneField'),
+                  ),
+
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      key: const ValueKey('savePersonalInformationButton'),
+                      onPressed: isSaving
+                          ? null
+                          : () => _onSave(profile),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE52121),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: isSaving
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : const Text(
+                              'Save Changes',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -254,23 +346,27 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     );
   }
 
-  Widget _buildModernField(
-    String label,
-    TextEditingController controller,
-    IconData icon, {
+  Widget _buildModernField({
+    required String label,
+    required TextEditingController controller,
+    required IconData icon,
+    String? errorText,
     Key? key,
     bool enabled = true,
     int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
   }) {
+    final showError = errorText != null && errorText.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Colors.black54,
+            color: showError ? const Color(0xFFE52121) : Colors.black54,
           ),
         ),
         const SizedBox(height: 8),
@@ -279,9 +375,11 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
           controller: controller,
           enabled: enabled,
           maxLines: maxLines,
+          keyboardType: keyboardType,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 20, color: const Color(0xFFEF2A39)),
+            prefixIcon:
+                Icon(icon, size: 20, color: const Color(0xFFEF2A39)),
             filled: true,
             fillColor: enabled ? Colors.white : Colors.grey[100],
             contentPadding: const EdgeInsets.symmetric(
@@ -294,11 +392,52 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+              borderSide: BorderSide(
+                color: showError
+                    ? const Color(0xFFE52121)
+                    : Colors.grey.withValues(alpha: 0.1),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: showError
+                    ? const Color(0xFFE52121)
+                    : const Color(0xFFEF2A39),
+                width: 1.5,
+              ),
             ),
           ),
+          onChanged: (_) {
+            if (showError) {
+              setState(() {
+                if (key == const ValueKey('fullNameField')) {
+                  _nameError = null;
+                } else if (key == const ValueKey('emailField')) {
+                  _emailError = null;
+                } else if (key == const ValueKey('phoneField')) {
+                  _phoneError = null;
+                }
+              });
+            }
+          },
         ),
-        const SizedBox(height: 24),
+        if (errorText != null && errorText.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              errorText,
+              style: const TextStyle(
+                color: Color(0xFFE52121),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ] else
+          const SizedBox(height: 24),
       ],
     );
   }

@@ -16,8 +16,8 @@ class VoiceCallPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int appID = int.tryParse(dotenv.env['ZEGO_APP_ID'] ?? '0') ?? 0;
-    final String token = dotenv.env['ZEGO_TOKEN'] ?? '';
+    final int appID = int.tryParse(dotenv.maybeGet('ZEGO_APP_ID') ?? '0') ?? 0;
+    final String token = dotenv.maybeGet('ZEGO_TOKEN') ?? '';
 
     final bool missingCredentials = appID == 0 || token.isEmpty;
 

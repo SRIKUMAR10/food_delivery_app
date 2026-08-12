@@ -70,5 +70,28 @@ void main() {
       expect(result['totalReviews'], 0);
       expect(result['reviews'], isEmpty);
     });
+
+    test('sorts reviews descending by date correctly', () async {
+      await fakeFirestore.collection('reviews').add({
+        'sellerId': 'seller_1',
+        'customerName': 'Older Reviewer',
+        'rating': 3.0,
+        'content': 'Older',
+        'createdAt': '2024-01-01T00:00:00.000',
+      });
+      await fakeFirestore.collection('reviews').add({
+        'sellerId': 'seller_1',
+        'customerName': 'Newer Reviewer',
+        'rating': 5.0,
+        'content': 'Newer',
+        'createdAt': '2024-06-01T00:00:00.000',
+      });
+
+      final result = await service.fetchRatingsAndReviews();
+      final reviews = result['reviews'] as List;
+
+      expect(reviews[0]['authorName'], 'Newer Reviewer');
+      expect(reviews[1]['authorName'], 'Older Reviewer');
+    });
   });
 }

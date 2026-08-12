@@ -202,6 +202,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
 
   Widget _buildOrdersList({required bool isDesktop}) {
     return BlocBuilder<OrderBloc, OrderState>(
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
       builder: (context, state) {
         if (state is OrderInitial || state is OrderLoading) {
           return const Center(

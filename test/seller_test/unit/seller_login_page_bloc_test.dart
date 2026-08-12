@@ -437,7 +437,7 @@ void main() {
         isA<SellerLoginPageState>().having(
           (s) => s.step,
           'step',
-          SellerLoginStep.loginForm,
+          SellerLoginStep.enterEmailPhone,
         ),
       ],
     );

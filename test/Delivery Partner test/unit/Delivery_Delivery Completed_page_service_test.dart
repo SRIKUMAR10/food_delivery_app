@@ -1,46 +1,44 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Delivery%20Completed_page/Delivery_Delivery%20Completed_page_service.dart';
+
+class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 void main() {
   group('DeliveryCompletedService Tests', () {
     late DeliveryCompletedService service;
 
     setUp(() {
-      service = DeliveryCompletedService();
+      service = DeliveryCompletedService(
+        firestore: MockFirebaseFirestore(),
+        auth: MockFirebaseAuth(),
+      );
     });
 
     test(
-      'fetchCompletedOrderData returns a valid completed order payload',
+      'fetchCompletedOrderData returns an empty payload when order is missing',
       () async {
         final data = await service.fetchCompletedOrderData('#ORD12345');
 
-        expect(data['orderId'], '#ORD12345');
-        expect(data['walletBalance'], 2450.00);
-        expect(data['partnerName'], 'Ravi Kumar');
-        expect(data['partnerVehicleNo'], 'TN 01 AB 1234');
-        expect(data['customerName'], 'Arun Kumar');
-        expect(data['deliveryAddress'], '12, Beach Road, Chennai - 600001');
-        expect(data['timeTaken'], '32 min');
-        expect(data['distanceCovered'], 5.6);
-        expect(data['paymentStatus'], 'Paid Successfully');
-        expect(data['paymentMethod'], 'UPI • Google Pay');
-        expect(data['customerRating'], 5.0);
-        expect(data['deliveryEarnings'], 120.00);
+        expect(data, isEmpty);
       },
     );
 
-    test('fetchCompletedOrderData falls back to default order id', () async {
+    test('fetchCompletedOrderData never fabricates placeholder records', () async {
       final data = await service.fetchCompletedOrderData('');
 
-      expect(data['orderId'], '#ORD12345');
+      expect(data, isEmpty);
+      expect(data['orderId'], isNull);
+      expect(data['partnerName'], isNull);
     });
 
-    test('completeOrderData returns a valid completed order payload', () async {
+    test('completeOrderData returns an empty payload when order is missing', () async {
       final data = await service.completeOrderData('#ORD12345');
 
-      expect(data['orderId'], '#ORD12345');
-      expect(data['customerName'], 'Arun Kumar');
-      expect(data['paymentStatus'], 'Paid Successfully');
+      expect(data, isEmpty);
     });
 
     test('chunkedMediaUpload yields progress reaching 1.0', () async {

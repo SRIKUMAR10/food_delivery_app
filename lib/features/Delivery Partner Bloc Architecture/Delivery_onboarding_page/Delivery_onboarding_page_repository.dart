@@ -17,14 +17,11 @@ class DeliveryOnboardingRepository implements DeliveryOnboardingRepositoryBase {
 
   @override
   Map<String, String> getSecureEnvironmentConfigs() {
-    final bool isInitialized = dotenv.isInitialized;
+    if (!dotenv.isInitialized) return const {};
     return {
-      'BASE_URL':
-          (isInitialized ? dotenv.env['BASE_URL'] : null) ?? 'https://api.delivergo.com',
-      'API_KEY': (isInitialized ? dotenv.env['API_KEY'] : null) ??
-          'delivergo_prod_api_key_default',
-      'KEY_SECRET': (isInitialized ? dotenv.env['KEY_SECRET'] : null) ??
-          'delivergo_secret_key_default',
+      'BASE_URL': dotenv.env['BASE_URL'] ?? '',
+      'API_KEY': dotenv.env['API_KEY'] ?? '',
+      'KEY_SECRET': dotenv.env['KEY_SECRET'] ?? '',
     };
   }
 

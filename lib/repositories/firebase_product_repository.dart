@@ -131,15 +131,22 @@ class FirebaseProductRepository implements IProductRepository {
     }
   }
 
-  /// Fetches products by category as a stream.
   Stream<List<Product>> getProductsByCategory(String categoryName) {
+    final trimmedCategory = categoryName.trim().toLowerCase();
     return _firestore
         .collection('products')
-        .where('category', isEqualTo: categoryName)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Product.fromMap(doc.id, doc.data()))
-            .toList());
+        .map((snapshot) {
+          final allProducts = snapshot.docs
+              .map((doc) => Product.fromMap(doc.id, doc.data()))
+              .toList();
+
+          if (trimmedCategory.isEmpty || trimmedCategory == 'all') {
+            return allProducts;
+          }
+
+          return allProducts.where((p) => p.category.trim().toLowerCase() == trimmedCategory).toList();
+        }).handleError((_) => <Product>[]);
   }
 
   /// Searches products using a backend query (e.g., via Algolia or simple prefix matching).
@@ -155,7 +162,8 @@ class FirebaseProductRepository implements IProductRepository {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => Product.fromMap(doc.id, doc.data()))
-            .toList());
+            .toList())
+        .handleError((_) => <Product>[]);
   }
 
   Future<void> deleteProduct(String productId, String sellerId) async {

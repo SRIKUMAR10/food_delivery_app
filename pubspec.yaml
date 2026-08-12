@@ -131,6 +131,7 @@ flutter:
     - assets/images/Delivery_Login_scooter.png
     - assets/videos/
     - assets/images/seller_curved_ImgID1.svg
+    - assets/audio/
     - .env
 
 

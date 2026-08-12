@@ -1,3 +1,4 @@
+// Real-Time Firestore Stream Provider Standardized
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +8,7 @@ import 'Delivery_Earnings Dashboard_page_state.dart';
 
 abstract class DeliveryEarningsDashboardRepositoryBase {
   Future<DeliveryEarningsDashboardState> loadEarningsData();
+  Stream<DeliveryEarningsDashboardState> watchEarningsData();
   Future<DeliveryEarningsDashboardState?> loadCachedEarnings();
   Future<DeliveryEarningsDashboardState> withdraw(double amount);
   Future<void> clearCache();
@@ -74,6 +76,14 @@ class DeliveryEarningsDashboardRepository
   Future<void> clearCache() async {
     final prefs = await _getPrefs();
     await prefs.remove(_cacheKey);
+  }
+
+  @override
+  Stream<DeliveryEarningsDashboardState> watchEarningsData() {
+    return _service.watchEarningsData().map((raw) {
+      _lastRaw = raw;
+      return _buildState(raw);
+    });
   }
 
   @override
@@ -155,15 +165,15 @@ class DeliveryEarningsDashboardRepository
 
     return DeliveryEarningsDashboardState(
       status: DeliveryEarningsStatus.loaded,
-      totalEarnings: (raw['totalEarnings'] as num?)?.toDouble() ?? 12850.00,
-      todayEarnings: (raw['todayEarnings'] as num?)?.toDouble() ?? 2450.00,
-      weeklyEarnings: (raw['weeklyEarnings'] as num?)?.toDouble() ?? 12850.00,
-      monthlyEarnings: (raw['monthlyEarnings'] as num?)?.toDouble() ?? 48900.00,
-      earningsGrowth: (raw['earningsGrowth'] as num?)?.toDouble() ?? 18.5,
-      walletBalance: (raw['walletBalance'] as num?)?.toDouble() ?? 12850.00,
+      totalEarnings: (raw['totalEarnings'] as num?)?.toDouble() ?? 0.0,
+      todayEarnings: (raw['todayEarnings'] as num?)?.toDouble() ?? 0.0,
+      weeklyEarnings: (raw['weeklyEarnings'] as num?)?.toDouble() ?? 0.0,
+      monthlyEarnings: (raw['monthlyEarnings'] as num?)?.toDouble() ?? 0.0,
+      earningsGrowth: (raw['earningsGrowth'] as num?)?.toDouble() ?? 0.0,
+      walletBalance: (raw['walletBalance'] as num?)?.toDouble() ?? 0.0,
       pendingWithdrawal:
-          (raw['pendingWithdrawal'] as num?)?.toDouble() ?? 1200.00,
-      totalWithdrawn: (raw['totalWithdrawn'] as num?)?.toDouble() ?? 48250.00,
+          (raw['pendingWithdrawal'] as num?)?.toDouble() ?? 0.0,
+      totalWithdrawn: (raw['totalWithdrawn'] as num?)?.toDouble() ?? 0.0,
       rangeEarnings: rangeMap,
       transactions: transactions,
       withdrawalHistory: withdrawals,

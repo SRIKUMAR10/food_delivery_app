@@ -49,3 +49,15 @@ final class CategoriesUpdated extends HomePageEvent {
   final List<FoodCategory> categories;
   const CategoriesUpdated(this.categories);
 }
+
+final class _ProductsReceived extends HomePageEvent {
+  final List<FoodItem> items;
+  final bool isSearch;
+  final String query;
+  const _ProductsReceived(this.items, {this.isSearch = false, this.query = ''});
+}
+
+final class _ProductErrorReceived extends HomePageEvent {
+  final String message;
+  const _ProductErrorReceived(this.message);
+}

@@ -21,6 +21,22 @@ class FirebaseAuthService implements IAuthService {
   @override
   Stream<String?> get authStateChanges => _auth.authStateChanges().map((user) => user?.uid);
 
+  /// Forces the Firebase ID token to be refreshed and awaited so that
+  /// Firestore's WebChannel is guaranteed to have a valid auth credential
+  /// before any real-time listener is opened. Without this, a race condition
+  /// between the auth state change callback and Firestore's internal token
+  /// propagation causes [cloud_firestore/permission-denied].
+  @override
+  Future<void> ensureTokenReady() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      // forceRefresh: false reuses the cached token if still valid,
+      // but guarantees the token object exists and is applied to the
+      // Firestore WebChannel before we return.
+      await user.getIdToken(false);
+    }
+  }
+
   @override
   Future<void> signOut() async {
     await _auth.signOut();

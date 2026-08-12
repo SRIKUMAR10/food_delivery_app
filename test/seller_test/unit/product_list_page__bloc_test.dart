@@ -110,7 +110,7 @@ void main() {
             .having((s) => s.vegCount, 'vegCount', 2)
             .having((s) => s.nonVegCount, 'nonVegCount', 1)
             .having((s) => s.totalRevenue, 'totalRevenue', 2500.0)
-            .having((s) => s.averageRating, 'averageRating', (8.5 / 3)),
+            .having((s) => s.averageRating, 'averageRating', 4.25),
       ],
       verify: (_) {
         verify(() => mockRepository.getProductsStream(any())).called(1);
@@ -121,15 +121,15 @@ void main() {
   group('ProductListBloc - Filtering and Searching', () {
     blocTest<ProductListBloc, ProductListPageState>(
       'filters by Active status',
-      build: () {
-        // mock to return only active
-        when(() => mockRepository.getProductsStream(any()))
-            .thenAnswer((_) => Stream.value([tProducts[0], tProducts[1]]));
-        return bloc;
+      build: () => ProductListBloc(repository: mockRepository, authService: mockAuthService),
+      act: (bloc) async {
+        bloc.add(LoadProductsEvent());
+        await Future.delayed(Duration.zero);
+        bloc.add(const FilterProductsEvent('Active'));
       },
-      act: (bloc) => bloc.add(const FilterProductsEvent('Active')),
       expect: () => [
         isA<ProductListLoading>(),
+        isA<ProductListLoaded>(),
         isA<ProductListLoaded>()
             .having((s) => s.activeFilter, 'activeFilter', 'Active')
             .having((s) => s.products.length, 'filtered length', 2)
@@ -138,18 +138,19 @@ void main() {
 
     blocTest<ProductListBloc, ProductListPageState>(
       'searches products by name (case insensitive)',
-      build: () {
-        when(() => mockRepository.getProductsStream(any()))
-            .thenAnswer((_) => Stream.value([tProducts[1]]));
-        return bloc;
+      build: () => ProductListBloc(repository: mockRepository, authService: mockAuthService),
+      act: (bloc) async {
+        bloc.add(LoadProductsEvent());
+        await Future.delayed(Duration.zero);
+        bloc.add(const SearchProductsEvent('burger'));
       },
-      act: (bloc) => bloc.add(const SearchProductsEvent('burger')),
       expect: () => [
         isA<ProductListLoading>(),
+        isA<ProductListLoaded>(),
         isA<ProductListLoaded>()
             .having((s) => s.searchQuery, 'searchQuery', 'burger')
             .having((s) => s.products.length, 'filtered length', 1)
-            .having((s) => s.products.first.name, 'matched product', 'Chicken Burger'),
+            .having((s) => s.products.first.name, 'matched product', 'Chicken Burger')
       ],
     );
   });

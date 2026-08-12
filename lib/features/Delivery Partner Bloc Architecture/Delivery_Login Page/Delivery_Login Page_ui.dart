@@ -599,6 +599,7 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
         return BlocProvider<DeliveryLoginPageBloc>.value(
           value: bloc,
           child: BlocBuilder<DeliveryLoginPageBloc, DeliveryLoginPageState>(
+            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
             builder: (context, state) {
               return AlertDialog(
                 backgroundColor: const Color(0xFF0E1C1A),

@@ -1,3 +1,4 @@
+// Real-Time Firestore Stream Provider Standardized
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'Delivery_Order History_page_service.dart';
@@ -90,7 +91,7 @@ class DeliveryOrderHistoryRepository
   }
 
   @override
-  Stream<List<DeliveryOrderHistoryModel>> watchOrderHistory() async* {
-    yield await fetchOrderHistory();
+  Stream<List<DeliveryOrderHistoryModel>> watchOrderHistory() {
+    return _service.watchOrderHistoryData().map(_mapOrders);
   }
 }

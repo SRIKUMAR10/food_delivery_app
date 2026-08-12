@@ -10,7 +10,6 @@ import '../Favorites_Page/favorites_bloc.dart';
 import '../Favorites_Page/favorites_event.dart';
 import '../Favorites_Page/favorites_state.dart';
 import '../Favorites_Page/favorites_models.dart';
-import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import '../home_Page/home_page_models.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../Rating_page/reviews_list_screen.dart';
@@ -20,6 +19,7 @@ import 'package:food_delivery_app/core/services/seller_status_service.dart';
 import 'details_page_Bloc.dart';
 import 'details_page_Event.dart';
 import 'details_page_State.dart';
+import '../buyer_login_page/buyer_login_page_ui.dart';
 
 // ─── Details Page UI ─────────────────────────────────────────────────────────
 
@@ -205,6 +205,13 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
 
   void _addToCart(int quantity) {
     if (!_isActive) return;
+    final isLoggedIn = context.read<IAuthService>().currentUserId != null;
+    if (!isLoggedIn) {
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute(builder: (_) => const BuyerLoginPageUI()),
+      );
+      return;
+    }
     HapticFeedback.mediumImpact();
     context.read<CartBloc>().add(
       CartItemAdded(
@@ -960,7 +967,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
 
         // Quantity Selector
         BlocBuilder<DetailsBloc, DetailsState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF5F5F5),
@@ -1023,7 +1031,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: BlocBuilder<FavoritesBloc, FavoritesState>(
-        builder: (context, state) {
+        buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
           bool isFav = false;
           if (state is FavoritesLoaded) {
             isFav = state.favoriteIds.contains(widget.id);
@@ -1034,24 +1043,9 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             onTap: () {
               HapticFeedback.lightImpact();
               final isLoggedIn = context.read<IAuthService>().currentUserId != null;
-
               if (!isLoggedIn) {
-                final foodItem = FoodItem(
-                  id: widget.id,
-                  name: widget.name,
-                  price: widget.price,
-                  description: widget.description,
-                  sellerId: widget.sellerId,
-                  image: _primaryImage,
-                  category:
-                      'Unknown', // Details page doesn't have category directly
-                );
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        FoodGoLoginScreenUI(foodItemToAccess: foodItem),
-                  ),
+                Navigator.of(context, rootNavigator: true).push(
+                  MaterialPageRoute(builder: (_) => const BuyerLoginPageUI()),
                 );
                 return;
               }
@@ -1206,7 +1200,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
         _showReviewsBottomSheet();
       },
       child: BlocBuilder<DetailsBloc, DetailsState>(
-        builder: (context, state) {
+        buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
           final averageRating = state.averageRating;
           final hasReviews = averageRating > 0;
 
@@ -1342,7 +1337,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
 
   Widget _buildStickyBottom() {
     return BlocBuilder<DetailsBloc, DetailsState>(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         final totalPrice = _effectivePrice * state.quantity;
 
         return Container(
@@ -1435,7 +1431,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
 
   Widget _buildDesktopStickyBottom() {
     return BlocBuilder<DetailsBloc, DetailsState>(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         final totalPrice = _effectivePrice * state.quantity;
 
         return Row(

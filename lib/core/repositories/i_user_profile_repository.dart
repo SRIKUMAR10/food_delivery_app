@@ -11,6 +11,7 @@ abstract interface class IUserProfileRepository {
     required String contentType,
   });
   Future<void> updateProfileImageUrl(String userId, String imageUrl);
+  Stream<UserProfile?> watchProfile(String userId);
   Stream<String?> watchProfileImageUrl(String userId);
   Stream<List<Map<String, dynamic>>> watchTransactions(String userId);
 }

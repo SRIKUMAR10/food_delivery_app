@@ -31,24 +31,6 @@ class DeliveryCompletedService implements DeliveryCompletedServiceBase {
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
         _auth = auth ?? FirebaseAuth.instance;
 
-  static Map<String, dynamic> _baseCompletedData(String orderId) {
-    return {
-      'orderId': orderId.isEmpty ? '#ORD12345' : orderId,
-      'walletBalance': 2450.00,
-      'partnerName': 'Ravi Kumar',
-      'partnerVehicleNo': 'TN 01 AB 1234',
-      'customerName': 'Arun Kumar',
-      'deliveryAddress': '12, Beach Road, Chennai - 600001',
-      'timeTaken': '32 min',
-      'distanceCovered': 5.6,
-      'paymentStatus': 'Paid Successfully',
-      'paymentMethod': 'UPI • Google Pay',
-      'customerRating': 5.0,
-      'deliveryEarnings': 120.00,
-      'completedAt': 'Today, 4:15 PM',
-    };
-  }
-
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp is Timestamp) {
       final date = timestamp.toDate();
@@ -65,26 +47,65 @@ class DeliveryCompletedService implements DeliveryCompletedServiceBase {
     String orderId,
   ) async {
     try {
-      if (_firestore != null) {
-        final orderDoc = await _firestore!.collection('orders').doc(orderId).get();
+      final fs = _firestore;
+      if (fs != null) {
+        final orderDoc = await fs.collection('orders').doc(orderId).get();
         if (orderDoc.exists) {
           final data = orderDoc.data()!;
-          
+
           double walletBalance = 0.0;
-          String partnerName = 'Delivery Partner';
+          String partnerName = '';
           String partnerVehicleNo = '';
-          if (_auth?.currentUser != null) {
-            final partnerDoc = await _firestore!
+          final user = _auth?.currentUser;
+          if (user != null) {
+            final partnerDoc = await fs
                 .collection('delivery_partners')
-                .doc(_auth!.currentUser!.uid)
+                .doc(user.uid)
                 .get();
             if (partnerDoc.exists) {
               final pData = partnerDoc.data()!;
               walletBalance = (pData['totalEarnings'] as num?)?.toDouble() ?? 0.0;
-              partnerName = pData['displayName'] ?? 'Delivery Partner';
+              partnerName = pData['displayName'] ?? '';
               partnerVehicleNo = pData['vehicleNumber'] ?? '';
             }
           }
+
+          String customerName = data['customerName'] as String? ?? '';
+          String deliveryAddress = data['deliveryAddress'] as String? ?? data['address'] as String? ?? '';
+          String customerPhone = data['customerPhone'] as String? ?? data['phone'] as String? ?? data['userPhone'] as String? ?? '';
+
+          final customerId = (data['customerId'] ?? data['customer_id'] ?? data['userId'] ?? data['user_id'] ?? data['buyerId'] ?? data['buyer_id'] ?? data['customerUid'] ?? data['buyerUid'] ?? data['uid'])?.toString();
+
+          if ((customerName.isEmpty || customerName == 'Customer' || deliveryAddress.isEmpty || customerPhone.isEmpty) && customerId != null && customerId.isNotEmpty) {
+            try {
+              final uDoc = await fs.collection('buyer_user').doc(customerId).get();
+              if (uDoc.exists && uDoc.data() != null) {
+                final uData = uDoc.data()!;
+                final uName = uData['name'] ?? uData['displayName'] ?? uData['fullName'] ?? uData['userName'] ?? uData['buyerName'] ?? uData['customerName'] ?? '';
+                final uPhone = uData['phone'] ?? uData['phoneNumber'] ?? uData['mobile'] ?? uData['userPhone'] ?? uData['contactNumber'] ?? '';
+
+                if (customerName.isEmpty || customerName == 'Customer') {
+                  if (uName.toString().trim().isNotEmpty) {
+                    customerName = uName.toString().trim();
+                  }
+                }
+                if (customerPhone.isEmpty && uPhone.toString().trim().isNotEmpty) {
+                  customerPhone = uPhone.toString().trim();
+                }
+                if (deliveryAddress.isEmpty) {
+                  for (final k in ['address', 'primaryAddress', 'homeAddress', 'workAddress', 'deliveryAddress', 'shippingAddress']) {
+                    final val = uData[k];
+                    if (val != null && val is String && val.trim().isNotEmpty && val.trim() != 'Primary Address') {
+                      deliveryAddress = val.trim();
+                      break;
+                    }
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (customerName.isEmpty) customerName = 'Customer';
 
           final double earnings = ((data['amount'] as num?)?.toDouble() ?? 0.0) * 0.15;
 
@@ -93,33 +114,51 @@ class DeliveryCompletedService implements DeliveryCompletedServiceBase {
             'walletBalance': walletBalance,
             'partnerName': partnerName,
             'partnerVehicleNo': partnerVehicleNo,
-            'customerName': data['customerName'] ?? 'Customer',
-            'deliveryAddress': data['deliveryAddress'] ?? '',
-            'timeTaken': '32 min',
-            'distanceCovered': 2.4,
-            'paymentStatus': 'Paid Successfully',
-            'paymentMethod': data['paymentMethod'] ?? 'UPI • Google Pay',
-            'customerRating': 5.0,
+            'customerName': customerName,
+            'deliveryAddress': deliveryAddress,
+            'customerPhone': customerPhone,
+            'timeTaken': data['timeTaken'] ?? '',
+            'distanceCovered': (data['distance'] as num?)?.toDouble() ?? 0.0,
+            'paymentStatus': data['paymentStatus'] ?? '',
+            'paymentMethod': data['paymentMethod'] ?? '',
+            'customerRating': (data['customerRating'] as num?)?.toDouble() ?? 0.0,
             'deliveryEarnings': earnings,
-            'completedAt': data['deliveredAt'] != null 
-                ? _formatTimestamp(data['deliveredAt']) 
-                : 'Today, 4:15 PM',
+            'completedAt': data['deliveredAt'] != null
+                ? _formatTimestamp(data['deliveredAt'])
+                : '',
           };
         }
       }
     } catch (_) {}
-    await Future.delayed(const Duration(milliseconds: 500));
-    return _baseCompletedData(orderId);
+    return {};
   }
 
   @override
   Future<Map<String, dynamic>> completeOrderData(String orderId) async {
     try {
-      if (_firestore != null) {
-        await _firestore!.collection('orders').doc(orderId).update({
+      final fs = _firestore;
+      if (fs != null) {
+        final orderDoc = await fs.collection('orders').doc(orderId).get();
+        final orderData = orderDoc.data() ?? {};
+        final amount = (orderData['amount'] as num?)?.toDouble() ?? 0.0;
+        final deliveryFee = (amount * 0.15) > 30.0 ? (amount * 0.15) : 35.0;
+
+        await fs.collection('orders').doc(orderId).update({
           'status': 'Delivered',
+          'deliveryPartnerStatus': 'completed',
+          'deliveryStatus': 'delivered',
           'deliveredAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
         });
+
+        final user = _auth?.currentUser;
+        if (user != null) {
+          await fs.collection('delivery_partners').doc(user.uid).set({
+            'totalEarnings': FieldValue.increment(deliveryFee),
+            'completedTrips': FieldValue.increment(1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
       }
     } catch (_) {}
     return fetchCompletedOrderData(orderId);

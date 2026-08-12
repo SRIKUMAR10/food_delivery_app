@@ -19,9 +19,7 @@ class AudioNotificationService {
   Future<void> playNewOrderSound() async {
     try {
       if (_audioPlayer == null) return;
-      // Assuming an audio file exists in assets/audio/new_order.mp3
-      // Make sure to add this path to pubspec.yaml assets section when the file is added.
-      await _audioPlayer!.play(AssetSource('audio/new_order.mp3'));
+      await _audioPlayer!.play(AssetSource('audio/new_order.wav'));
       _logger.i('Played new order sound');
     } catch (e) {
       _logger.e('Error playing new order sound: $e');

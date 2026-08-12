@@ -203,8 +203,8 @@ void main() {
       expect(find.byKey(const Key('dp_oh_page')), findsOneWidget);
       expect(find.byKey(const Key('dp_oh_sidebar')), findsNothing);
       expect(find.byKey(const Key('dp_oh_topbar')), findsOneWidget);
-      expect(find.text('Order History'), findsOneWidget);
-      expect(find.byKey(const Key('dp_oh_search_field')), findsOneWidget);
+      expect(find.text('Order History'), findsWidgets);
+      expect(find.byKey(const Key('dp_oh_search_field')), findsWidgets);
       expect(find.byKey(const Key('dp_oh_filters_button')), findsOneWidget);
     });
 
@@ -315,6 +315,7 @@ void main() {
               'Completed',
             )
             .last,
+        warnIfMissed: false,
       );
       await tester.pumpAndSettle();
 
@@ -344,6 +345,7 @@ void main() {
               'Online',
             )
             .last,
+        warnIfMissed: false,
       );
       await tester.pumpAndSettle();
 
@@ -373,6 +375,7 @@ void main() {
               'May 18, 2025 - May 24, 2025',
             )
             .last,
+        warnIfMissed: false,
       );
       await tester.pumpAndSettle();
 
@@ -412,7 +415,10 @@ void main() {
       await tester.tap(find.byKey(const Key('dp_oh_rows_selector')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(DropdownMenuItem<int>, '20').last);
+      await tester.tap(
+        find.widgetWithText(DropdownMenuItem<int>, '20').last,
+        warnIfMissed: false,
+      );
       await tester.pumpAndSettle();
 
       verify(

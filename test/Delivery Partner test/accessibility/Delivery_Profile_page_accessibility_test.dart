@@ -43,6 +43,7 @@ void main() {
 
   const DeliveryProfileState loadedState = DeliveryProfileState(
     status: DeliveryProfileStatus.loaded,
+    fullName: 'Ravi Kumar',
     completionPercentage: 75,
     verificationStatuses: DeliveryProfileRepository.defaultVerificationStatuses,
     documents: DeliveryProfileRepository.defaultDocuments,
@@ -100,6 +101,7 @@ void main() {
   setUp(() {
     mockBloc = MockDeliveryProfileBloc();
     when(() => mockBloc.state).thenReturn(loadedState);
+    when(() => mockBloc.stream).thenAnswer((_) => Stream.value(loadedState));
   });
 
   void setDesktopSize(WidgetTester tester) {

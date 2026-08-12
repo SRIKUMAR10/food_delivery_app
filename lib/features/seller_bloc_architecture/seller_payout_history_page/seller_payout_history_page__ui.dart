@@ -108,6 +108,7 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
             );
           },
           child: BlocBuilder<SellerPayoutHistoryBloc, SellerPayoutHistoryState>(
+            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
             builder: (context, state) {
               return AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),

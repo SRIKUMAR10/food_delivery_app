@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../app_data_collection/seller_collections/seller_collection.dart';
+import '../core/models/seller_model.dart';
 import '../core/repositories/i_seller_profile_repository.dart';
 
 class FirebaseSellerProfileRepository implements ISellerProfileRepository {
@@ -24,6 +25,21 @@ class FirebaseSellerProfileRepository implements ISellerProfileRepository {
       };
     }
     return {};
+  }
+
+  @override
+  Stream<Map<String, dynamic>> watchProfile(String sellerId) {
+    return FirebaseFirestore.instance
+        .collection('sellers')
+        .doc(sellerId)
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists) return {};
+      final seller = SellerModel.fromFirestore(snapshot);
+      return {
+        'seller': seller,
+      };
+    });
   }
 
   @override

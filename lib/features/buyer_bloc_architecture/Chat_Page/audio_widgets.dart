@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 
 class AudioPlayerWidget extends StatefulWidget {
   final String audioUrl;
@@ -271,4 +275,167 @@ class _WaveformPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WaveformPainter oldDelegate) => true;
+}
+
+class AudioRecorderWidget extends StatefulWidget {
+  final VoidCallback onCancel;
+  final void Function(String filePath, Duration duration) onSend;
+
+  const AudioRecorderWidget({
+    Key? key,
+    required this.onCancel,
+    required this.onSend,
+  }) : super(key: key);
+
+  @override
+  State<AudioRecorderWidget> createState() => _AudioRecorderWidgetState();
+}
+
+class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
+    with SingleTickerProviderStateMixin {
+  final AudioRecorder _recorder = AudioRecorder();
+  bool _isRecording = false;
+  Duration _elapsed = Duration.zero;
+  Timer? _timer;
+  late AnimationController _waveController;
+
+  @override
+  void initState() {
+    super.initState();
+    _waveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+    _startRecording();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _waveController.dispose();
+    _recorder.dispose();
+    super.dispose();
+  }
+
+  Future<void> _startRecording() async {
+    if (await _recorder.hasPermission()) {
+      String path;
+      if (kIsWeb) {
+        path = '';
+      } else {
+        final dir = await getApplicationDocumentsDirectory();
+        path =
+            '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      }
+      await _recorder.start(
+        const RecordConfig(encoder: AudioEncoder.aacLc),
+        path: path,
+      );
+      setState(() => _isRecording = true);
+      _elapsed = Duration.zero;
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() => _elapsed += const Duration(seconds: 1));
+      });
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    _timer?.cancel();
+    final path = await _recorder.stop();
+    if (path != null && mounted) {
+      widget.onSend(path, _elapsed);
+    }
+  }
+
+  void _cancelRecording() {
+    _timer?.cancel();
+    _recorder.stop();
+    widget.onCancel();
+  }
+
+  String _formatDuration(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF8F9FB),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+            onPressed: _cancelRecording,
+          ),
+          const SizedBox(width: 8),
+          AnimatedBuilder(
+            animation: _waveController,
+            builder: (context, _) {
+              final amplitude = _isRecording ? _waveController.value : 0.0;
+              return CustomPaint(
+                size: const Size(32, 24),
+                painter: _RecordingWavePainter(amplitude: amplitude),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          Text(
+            _formatDuration(_elapsed),
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1C1C1C),
+            ),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: _stopRecording,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE52121),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.stop_rounded, color: Colors.white, size: 26),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecordingWavePainter extends CustomPainter {
+  final double amplitude;
+  _RecordingWavePainter({required this.amplitude});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFE52121)
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    final centerY = size.height / 2;
+    final barCount = 5;
+    final spacing = size.width / (barCount + 1);
+
+    for (int i = 0; i < barCount; i++) {
+      final x = spacing * (i + 1);
+      final halfHeight = (3.0 + amplitude * 6.0 * (1 - (i - 2).abs() / 2))
+          .clamp(2.0, size.height / 2 - 1);
+      canvas.drawLine(
+        Offset(x, centerY - halfHeight),
+        Offset(x, centerY + halfHeight),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RecordingWavePainter old) => old.amplitude != amplitude;
 }

@@ -1,16 +1,16 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
-import 'package:food_delivery_app/main.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:logger/logger.dart';
 
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/foundation.dart' show kIsWeb; // Import kIsWeb
 import 'package:food_delivery_app/core/models/product_model.dart';
 
 class ProductRepository {
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
+  final Logger _logger = Logger();
+
   ProductRepository({FirebaseFirestore? firestore, FirebaseStorage? storage})
     : _firestore = firestore ?? FirebaseFirestore.instance,
       _storage = storage ?? FirebaseStorage.instance;
@@ -108,6 +108,14 @@ class ProductRepository {
 
   /// Fetches products by category as a stream.
   Stream<List<Product>> getProductsByCategory(String categoryName) {
+    if (categoryName.trim().isEmpty || categoryName.trim().toLowerCase() == 'all') {
+      return _firestore
+          .collection('products')
+          .snapshots()
+          .map((snapshot) => snapshot.docs
+              .map((doc) => Product.fromMap(doc.id, doc.data()))
+              .toList());
+    }
     return _firestore
         .collection('products')
         .where('category', isEqualTo: categoryName)
@@ -153,7 +161,7 @@ class ProductRepository {
               final ref = _storage.refFromURL(url);
               await ref.delete();
             } catch (e) {
-              appLogger.w(
+              _logger.w(
                 'Warning: Failed to delete image from storage: $e. URL: $url',
               );
             }

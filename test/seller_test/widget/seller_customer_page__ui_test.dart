@@ -79,7 +79,7 @@ void main() {
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 500));
 
-          expect(find.text('Customers'), findsOneWidget);
+          expect(find.text('Total Customers'), findsOneWidget);
           expect(find.text('1245'), findsOneWidget);
           expect(find.text('320'), findsOneWidget);
           expect(find.text('Top Customers'), findsOneWidget);

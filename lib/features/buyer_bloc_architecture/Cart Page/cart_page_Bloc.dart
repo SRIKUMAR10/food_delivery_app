@@ -8,6 +8,7 @@ import '../../../core/services/seller_status_service.dart';
 import '../../../core/repositories/i_cart_repository.dart';
 import '../../../core/repositories/i_coupon_repository.dart';
 import '../../../core/repositories/i_product_repository.dart';
+import '../../../repositories/firebase_user_profile_repository.dart';
 import 'cart_models.dart';
 
 part 'cart_page_Event.dart';
@@ -98,6 +99,13 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     }
 
     emit(const CartLoading());
+
+    // Wait for the Firebase ID token to be fully propagated to Firestore's
+    // WebChannel before opening the real-time listener. This prevents the
+    // [cloud_firestore/permission-denied] race condition that occurs when the
+    // auth state change fires but the token has not yet reached the Firestore
+    // backend connection.
+    await _authService.ensureTokenReady();
 
     try {
       await emit.forEach<List<CartItem>>(
@@ -318,10 +326,41 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         return;
       }
 
-      final displayName = _authService.currentUserDisplayName ?? 'Customer';
-      final deliveryAddress = 'Primary Address';
+      final userProfileRepo = FirebaseUserProfileRepository();
+      final profile = await userProfileRepo.loadProfile(uid);
+
+      String displayName = profile?.name.trim() ?? '';
+      if (displayName.isEmpty || displayName == 'Customer') {
+        displayName = _authService.currentUserDisplayName ?? 'Customer';
+      }
+
+      final customerPhone = profile?.phone.trim() ?? '';
+
+      String deliveryAddress = '';
+      if (profile != null) {
+        final selectedType = profile.selectedAddressType.toLowerCase().trim();
+        if (selectedType == 'home' && profile.homeAddress.trim().isNotEmpty) {
+          deliveryAddress = profile.homeAddress.trim();
+        } else if (selectedType == 'work' && profile.workAddress.trim().isNotEmpty) {
+          deliveryAddress = profile.workAddress.trim();
+        } else if (selectedType == 'other' && profile.otherAddress.trim().isNotEmpty) {
+          deliveryAddress = profile.otherAddress.trim();
+        } else if (profile.address.trim().isNotEmpty) {
+          deliveryAddress = profile.address.trim();
+        }
+      }
+      if (deliveryAddress.isEmpty) {
+        deliveryAddress = (profile?.address.trim().isNotEmpty == true)
+            ? profile!.address.trim()
+            : 'Primary Address';
+      }
+
       await _cartRepository.checkoutCart(
-        uid, selectedItems, displayName, deliveryAddress,
+        uid,
+        selectedItems,
+        displayName,
+        deliveryAddress,
+        customerPhone: customerPhone,
         appliedCoupon: currentState.appliedCoupon,
       );
 

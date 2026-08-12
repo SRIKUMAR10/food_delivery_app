@@ -1,15 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/core/repositories/delivery_active_order_session_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_repository.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Pickup%20Confirmation_page/Delivery_Pickup%20Confirmation_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Pickup%20Confirmation_page/Delivery_Pickup%20Confirmation_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Pickup%20Confirmation_page/Delivery_Pickup%20Confirmation_page_state.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Pickup%20Confirmation_page/Delivery_Pickup%20Confirmation_page_repository.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Pickup%20Confirmation_page/Delivery_Pickup%20Confirmation_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Delivery%20Completed_page/Delivery_Delivery%20Completed_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Delivery%20Completed_page/Delivery_Delivery%20Completed_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Delivery%20Completed_page/Delivery_Delivery%20Completed_page_state.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Delivery%20Completed_page/Delivery_Delivery%20Completed_page_repository.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Delivery%20Completed_page/Delivery_Delivery%20Completed_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_state.dart';
@@ -17,12 +23,42 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_state.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_repository.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Settings_page/Delivery_Settings_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Settings_page/Delivery_Settings_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Settings_page/Delivery_Settings_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_state.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_repository.dart';
+
+class MockIncomingOrderRepository extends Mock
+    implements DeliveryIncomingOrderRepositoryBase {}
+
+class MockIncomingOrderService extends Mock
+    implements DeliveryIncomingOrderServiceBase {}
+
+class MockPickupConfirmationRepository extends Mock
+    implements DeliveryPickupConfirmationRepositoryBase {}
+
+class MockPickupConfirmationService extends Mock
+    implements DeliveryPickupConfirmationServiceBase {}
+
+class MockDeliveryCompletedRepository extends Mock
+    implements DeliveryCompletedRepositoryBase {}
+
+class MockDeliveryCompletedService extends Mock
+    implements DeliveryCompletedServiceBase {}
+
+class MockDeliveryDashboardRepository extends Mock
+    implements DeliveryDashboardRepositoryBase {}
+
+class MockDeliveryDashboardService extends Mock
+    implements DeliveryDashboardServiceBase {}
+
+class MockOrderDetailsRepository extends Mock
+    implements DeliveryOrderDetailsRepositoryBase {}
 
 void main() {
   group('Session State Machine', () {
@@ -38,12 +74,12 @@ void main() {
 
     test('initial state has correct defaults', () {
       expect(sessionRepo.currentState.isOnline, isTrue);
-      expect(sessionRepo.currentState.walletBalance, equals(2450.50));
-      expect(sessionRepo.currentState.pendingWithdrawal, equals(500.00));
+      expect(sessionRepo.currentState.walletBalance, equals(0.0));
+      expect(sessionRepo.currentState.pendingWithdrawal, equals(0.0));
       expect(sessionRepo.currentState.deliveryStage, equals(ActiveDeliveryStage.idle));
       expect(sessionRepo.currentState.activeOrderId, isNull);
-      expect(sessionRepo.currentState.completedOrdersCount, equals(14));
-      expect(sessionRepo.currentState.totalEarningsToday, equals(1280.00));
+      expect(sessionRepo.currentState.completedOrdersCount, equals(0));
+      expect(sessionRepo.currentState.totalEarningsToday, equals(0.0));
     });
 
     test('full delivery flow: idle → incoming → accepted → pickup → navigating → completed', () {
@@ -72,11 +108,11 @@ void main() {
       final prevEarnings = sessionRepo.currentState.totalEarningsToday;
       final prevCompleted = sessionRepo.currentState.completedOrdersCount;
 
-      sessionRepo.completeDelivery();
+      sessionRepo.completeDelivery(deliveryFee: 40.0);
       expect(sessionRepo.currentState.deliveryStage, equals(ActiveDeliveryStage.deliveryCompleted));
       expect(sessionRepo.currentState.totalEarningsToday, greaterThan(prevEarnings));
       expect(sessionRepo.currentState.completedOrdersCount, equals(prevCompleted + 1));
-      expect(sessionRepo.currentState.walletBalance, greaterThan(2450.50));
+      expect(sessionRepo.currentState.walletBalance, greaterThan(0.0));
     });
 
     test('declineOrder returns to idle and clears active order', () {
@@ -110,10 +146,12 @@ void main() {
     });
 
     test('processWithdrawal updates balances correctly', () {
+      sessionRepo.completeDelivery(deliveryFee: 1000.0);
+
       final initial = sessionRepo.currentState.walletBalance;
       sessionRepo.processWithdrawal(500.0);
       expect(sessionRepo.currentState.walletBalance, equals(initial - 500.0));
-      expect(sessionRepo.currentState.pendingWithdrawal, equals(500.0 + 500.0));
+      expect(sessionRepo.currentState.pendingWithdrawal, equals(500.0));
     });
 
     test('toggleOnlineStatus and setOnlineStatus work', () {
@@ -150,43 +188,81 @@ void main() {
   });
 
   group('Incoming Order BLoC', () {
-    test('initial state has correct defaults', () {
-      final bloc = DeliveryIncomingOrderBloc();
+    late MockIncomingOrderRepository mockRepository;
+    late MockIncomingOrderService mockService;
+
+    setUp(() {
+      mockRepository = MockIncomingOrderRepository();
+      mockService = MockIncomingOrderService();
+    });
+
+    test('initial state has empty defaults', () {
+      final bloc = DeliveryIncomingOrderBloc(
+        repository: mockRepository,
+        service: mockService,
+      );
       expect(bloc.state.status, equals(IncomingOrderStatus.initial));
       expect(bloc.state.remainingSeconds, equals(15));
-      expect(bloc.state.orderId, equals('#ORD98234'));
+      expect(bloc.state.orderId, equals(''));
+      expect(bloc.state.storeName, equals(''));
       bloc.close();
     });
 
     test('load fetches from repository and transitions to loaded', () async {
+      when(
+        () => mockRepository.fetchIncomingOrder(),
+      ).thenAnswer((_) async => const DeliveryIncomingOrderState(
+            status: IncomingOrderStatus.loaded,
+            orderId: '#ORD-IN-001',
+            storeName: 'Green Mart',
+            storeAddress: '24, Anna Salai, Chennai',
+            customerName: 'Arun Kumar',
+            customerAddress: '12, Beach Road, Chennai',
+            orderAmount: 620.00,
+            remainingSeconds: 15,
+          ));
+
       final bloc = DeliveryIncomingOrderBloc(
-        repository: DeliveryIncomingOrderRepository(),
+        repository: mockRepository,
+        service: mockService,
       );
       bloc.add(const DeliveryIncomingOrderLoadEvent());
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 200));
 
       expect(bloc.state.status, equals(IncomingOrderStatus.loaded));
-      expect(bloc.state.orderId, equals('#ORD98234'));
+      expect(bloc.state.orderId, equals('#ORD-IN-001'));
       expect(bloc.state.storeName, equals('Green Mart'));
 
-      bloc.add(const DeliveryIncomingOrderDeclineEvent());
-      await Future.delayed(const Duration(milliseconds: 300));
       bloc.close();
     });
 
     test('accept transitions to accepted', () async {
-      final bloc = DeliveryIncomingOrderBloc();
+      when(
+        () => mockRepository.acceptOrder(any()),
+      ).thenAnswer((_) async => true);
+
+      final bloc = DeliveryIncomingOrderBloc(
+        repository: mockRepository,
+        service: mockService,
+      );
       bloc.add(const DeliveryIncomingOrderAcceptEvent());
-      await Future.delayed(const Duration(milliseconds: 400));
+      await Future.delayed(const Duration(milliseconds: 200));
 
       expect(bloc.state.status, equals(IncomingOrderStatus.accepted));
       bloc.close();
     });
 
     test('decline transitions to declined', () async {
-      final bloc = DeliveryIncomingOrderBloc();
+      when(
+        () => mockRepository.declineOrder(any()),
+      ).thenAnswer((_) async => true);
+
+      final bloc = DeliveryIncomingOrderBloc(
+        repository: mockRepository,
+        service: mockService,
+      );
       bloc.add(const DeliveryIncomingOrderDeclineEvent());
-      await Future.delayed(const Duration(milliseconds: 400));
+      await Future.delayed(const Duration(milliseconds: 200));
 
       expect(bloc.state.status, equals(IncomingOrderStatus.declined));
       bloc.close();
@@ -194,8 +270,35 @@ void main() {
   });
 
   group('Pickup Confirmation BLoC', () {
+    late MockPickupConfirmationRepository mockRepository;
+    late MockPickupConfirmationService mockService;
+
+    setUp(() {
+      mockRepository = MockPickupConfirmationRepository();
+      mockService = MockPickupConfirmationService();
+    });
+
+    const pickupModel = PickupConfirmationModel(
+      orderId: '#ORD-PU-001',
+      pickupLocationName: 'Green Mart',
+      pickupAddress: '24, Anna Salai, Chennai',
+      pickupContactName: 'Priya Sharma',
+      pickupContactPhone: '+919876543210',
+      pickupInstructions: 'Collect sealed bags.',
+      customerName: 'Mike Johnson',
+      customerAddress: '12, Beach Road, Chennai',
+      customerPhone: '+919876543211',
+      pickupTime: '12:05 PM',
+      paymentType: 'Cash on Delivery',
+      orderAmount: 486.50,
+      walletBalance: 2450.00,
+    );
+
     test('initial state has defaults', () {
-      final bloc = DeliveryPickupConfirmationPageBloc();
+      final bloc = DeliveryPickupConfirmationPageBloc(
+        repository: mockRepository,
+        service: mockService,
+      );
       expect(bloc.state.status, equals(PickupConfirmationStatus.initial));
       expect(bloc.state.model, isNull);
       expect(bloc.state.localeCode, equals('en'));
@@ -203,9 +306,16 @@ void main() {
     });
 
     test('fetch details loads model', () async {
-      final bloc = DeliveryPickupConfirmationPageBloc();
+      when(
+        () => mockRepository.fetchPickupConfirmationDetails('#ORD-PU-001'),
+      ).thenAnswer((_) async => pickupModel);
+
+      final bloc = DeliveryPickupConfirmationPageBloc(
+        repository: mockRepository,
+        service: mockService,
+      );
       bloc.add(const FetchPickupConfirmationDetailsEvent('#ORD-PU-001'));
-      await Future.delayed(const Duration(milliseconds: 700));
+      await Future.delayed(const Duration(milliseconds: 100));
 
       expect(bloc.state.status, equals(PickupConfirmationStatus.success));
       expect(bloc.state.model, isNotNull);
@@ -217,13 +327,23 @@ void main() {
     });
 
     test('startDelivery transitions to deliveryStarted', () async {
-      final bloc = DeliveryPickupConfirmationPageBloc();
+      when(
+        () => mockRepository.fetchPickupConfirmationDetails('#ORD-PU-002'),
+      ).thenAnswer((_) async => pickupModel);
+      when(
+        () => mockRepository.startDelivery('#ORD-PU-002'),
+      ).thenAnswer((_) async => pickupModel);
+
+      final bloc = DeliveryPickupConfirmationPageBloc(
+        repository: mockRepository,
+        service: mockService,
+      );
       bloc.add(const FetchPickupConfirmationDetailsEvent('#ORD-PU-002'));
-      await Future.delayed(const Duration(milliseconds: 700));
+      await Future.delayed(const Duration(milliseconds: 100));
       expect(bloc.state.status, equals(PickupConfirmationStatus.success));
 
       bloc.add(const StartDeliveryEvent('#ORD-PU-002'));
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 100));
       expect(bloc.state.status, equals(PickupConfirmationStatus.deliveryStarted));
 
       bloc.close();
@@ -231,8 +351,32 @@ void main() {
   });
 
   group('Delivery Completed BLoC', () {
+    late MockDeliveryCompletedRepository mockRepository;
+    late MockDeliveryCompletedService mockService;
+
+    setUp(() {
+      mockRepository = MockDeliveryCompletedRepository();
+      mockService = MockDeliveryCompletedService();
+    });
+
+    const completedModel = DeliveryCompletedModel(
+      orderId: '#ORD-CO-001',
+      walletBalance: 2450.00,
+      partnerName: 'Kavitha',
+      partnerVehicleNo: 'TN 01 AB 1234',
+      customerName: 'Arun Kumar',
+      deliveryAddress: '12, Beach Road, Chennai',
+      timeTaken: '32 min',
+      distanceCovered: 5.6,
+      paymentStatus: 'Paid',
+      paymentMethod: 'UPI',
+      customerRating: 5.0,
+      deliveryEarnings: 120.00,
+      completedAt: 'Today, 4:15 PM',
+    );
+
     test('initial state has defaults', () {
-      final bloc = DeliveryCompletedBloc();
+      final bloc = DeliveryCompletedBloc(repository: mockRepository, service: mockService);
       expect(bloc.state.status, equals(DeliveryCompletedStatus.initial));
       expect(bloc.state.model, isNull);
       expect(bloc.state.isCompleting, isFalse);
@@ -240,9 +384,13 @@ void main() {
     });
 
     test('fetch details loads model', () async {
-      final bloc = DeliveryCompletedBloc();
+      when(
+        () => mockRepository.fetchCompletedOrderDetails('#ORD-CO-001'),
+      ).thenAnswer((_) async => completedModel);
+
+      final bloc = DeliveryCompletedBloc(repository: mockRepository, service: mockService);
       bloc.add(const FetchCompletedOrderDetailsEvent('#ORD-CO-001'));
-      await Future.delayed(const Duration(milliseconds: 700));
+      await Future.delayed(const Duration(milliseconds: 100));
 
       expect(bloc.state.status, equals(DeliveryCompletedStatus.success));
       expect(bloc.state.model, isNotNull);
@@ -252,21 +400,32 @@ void main() {
     });
 
     test('completeOrder transitions to completed', () async {
-      final bloc = DeliveryCompletedBloc();
+      when(
+        () => mockRepository.fetchCompletedOrderDetails('#ORD-CO-002'),
+      ).thenAnswer((_) async => completedModel);
+      when(
+        () => mockRepository.completeOrder('#ORD-CO-002'),
+      ).thenAnswer((_) async => completedModel);
+
+      final bloc = DeliveryCompletedBloc(repository: mockRepository, service: mockService);
       bloc.add(const FetchCompletedOrderDetailsEvent('#ORD-CO-002'));
-      await Future.delayed(const Duration(milliseconds: 700));
+      await Future.delayed(const Duration(milliseconds: 100));
 
       bloc.add(const CompleteOrderSubmittedEvent('#ORD-CO-002'));
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 100));
       expect(bloc.state.status, equals(DeliveryCompletedStatus.completed));
 
       bloc.close();
     });
 
     test('rateCustomer stores rating', () async {
-      final bloc = DeliveryCompletedBloc();
+      when(
+        () => mockRepository.fetchCompletedOrderDetails('#ORD-CO-003'),
+      ).thenAnswer((_) async => completedModel);
+
+      final bloc = DeliveryCompletedBloc(repository: mockRepository, service: mockService);
       bloc.add(const FetchCompletedOrderDetailsEvent('#ORD-CO-003'));
-      await Future.delayed(const Duration(milliseconds: 700));
+      await Future.delayed(const Duration(milliseconds: 100));
 
       bloc.add(const RateCustomerEvent(4));
       await Future.delayed(const Duration(milliseconds: 50));
@@ -383,16 +542,34 @@ void main() {
   });
 
   group('Dashboard BLoC', () {
-    test('initial state has defaults', () {
-      final bloc = DeliveryDashboardPageBloc();
+    late MockDeliveryDashboardRepository mockRepository;
+    late MockDeliveryDashboardService mockService;
+
+    setUp(() {
+      mockRepository = MockDeliveryDashboardRepository();
+      mockService = MockDeliveryDashboardService();
+    });
+
+    test('initial state has empty defaults', () {
+      final bloc = DeliveryDashboardPageBloc(
+        repository: mockRepository,
+        service: mockService,
+      );
       expect(bloc.state.status, equals(DeliveryDashboardStatus.initial));
-      expect(bloc.state.isOnline, isTrue);
-      expect(bloc.state.partnerName, equals('Ravi Kumar'));
+      expect(bloc.state.isOnline, isFalse);
+      expect(bloc.state.partnerName, equals(''));
       bloc.close();
     });
 
     test('toggleOnline updates status', () async {
-      final bloc = DeliveryDashboardPageBloc();
+      when(
+        () => mockRepository.saveOnlineStatus(false),
+      ).thenAnswer((_) async => false);
+
+      final bloc = DeliveryDashboardPageBloc(
+        repository: mockRepository,
+        service: mockService,
+      );
       bloc.add(const DeliveryDashboardToggleOnlineEvent(false));
       await Future.delayed(const Duration(milliseconds: 50));
       expect(bloc.state.isOnline, isFalse);
@@ -400,7 +577,10 @@ void main() {
     });
 
     test('filterActivity updates selected filter', () async {
-      final bloc = DeliveryDashboardPageBloc();
+      final bloc = DeliveryDashboardPageBloc(
+        repository: mockRepository,
+        service: mockService,
+      );
       bloc.add(const DeliveryDashboardFilterActivityEvent('delivered'));
       await Future.delayed(const Duration(milliseconds: 50));
       expect(bloc.state.selectedFilter, equals('delivered'));
@@ -409,17 +589,39 @@ void main() {
   });
 
   group('Order Details BLoC', () {
+    late MockOrderDetailsRepository mockRepository;
+
+    setUp(() {
+      mockRepository = MockOrderDetailsRepository();
+    });
+
+    const sampleOrder = OrderModel(
+      id: '#ORD12345',
+      pickupAddress: 'Green Mart, Anna Salai',
+      dropoffAddress: 'Mike Residence, Beach Road',
+      earnings: 120,
+      distance: 2.4,
+      status: 'Accepted',
+      customerPhone: '+919876543210',
+      merchantPhone: 'seller_1',
+      orderValue: 620,
+    );
+
     test('initial state has defaults', () {
-      final bloc = DeliveryOrderDetailsPageBloc();
+      final bloc = DeliveryOrderDetailsPageBloc(repository: mockRepository);
       expect(bloc.state.status, equals(OrderDetailsStatus.initial));
       expect(bloc.state.order, isNull);
       bloc.close();
     });
 
     test('fetchOrderDetails loads order data', () async {
-      final bloc = DeliveryOrderDetailsPageBloc();
+      when(
+        () => mockRepository.fetchOrderDetails('#ORD12345'),
+      ).thenAnswer((_) async => sampleOrder);
+
+      final bloc = DeliveryOrderDetailsPageBloc(repository: mockRepository);
       bloc.add(const FetchOrderDetailsEvent('#ORD12345'));
-      await Future.delayed(const Duration(milliseconds: 700));
+      await Future.delayed(const Duration(milliseconds: 100));
 
       expect(bloc.state.status, equals(OrderDetailsStatus.success));
       expect(bloc.state.order, isNotNull);

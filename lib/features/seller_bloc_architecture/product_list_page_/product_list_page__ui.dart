@@ -1207,7 +1207,8 @@ class _ProductListViewState extends State<ProductListView>
 
   Widget _buildKPISection({bool isDesktop = false}) {
     return BlocBuilder<ProductListBloc, ProductListPageState>(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         if (state is! ProductListLoaded) return const SizedBox.shrink();
 
         final allCount = state.allCount;
@@ -1346,7 +1347,8 @@ class _ProductListViewState extends State<ProductListView>
 
   Widget _buildFilterSection({bool isDesktop = false}) {
     return BlocBuilder<ProductListBloc, ProductListPageState>(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         if (state is! ProductListLoaded) return const SizedBox.shrink();
 
         return Padding(
@@ -1808,7 +1810,8 @@ class _ProductListViewState extends State<ProductListView>
 
   Widget _buildProductList({required bool isDesktop}) {
     return BlocBuilder<ProductListBloc, ProductListPageState>(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         if (state is ProductListLoading || state is ProductListInitial) {
           return Padding(
             padding: EdgeInsets.symmetric(horizontal: isDesktop ? 32.0 : 20.0),

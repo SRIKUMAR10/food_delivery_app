@@ -6,18 +6,61 @@ class AssignDeliveryService {
   AssignDeliveryService({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  Stream<List<Map<String, dynamic>>> watchAvailableRiders(String orderId) {
+    return _firestore.collection('delivery_partners').snapshots().asyncExpand(
+      (dpSnapshot) {
+        if (dpSnapshot.docs.isNotEmpty) {
+          return Stream.value(dpSnapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              'name': data['displayName'] ?? data['name'],
+              'rating': (data['rating'] as num?)?.toDouble(),
+              'distance': data['distance'],
+              'imageUrl': data['photoUrl'] ?? data['imageUrl'],
+            };
+          }).toList());
+        }
+        return _firestore.collection('riders').snapshots().map((snapshot) {
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              'name': data['name'],
+              'rating': (data['rating'] as num?)?.toDouble(),
+              'distance': data['distance'],
+              'imageUrl': data['imageUrl'],
+            };
+          }).toList();
+        });
+      },
+    );
+  }
+
   Future<List<Map<String, dynamic>>> fetchAvailableRiders(String orderId) async {
     try {
+      final dpSnapshot = await _firestore.collection('delivery_partners').get();
+      if (dpSnapshot.docs.isNotEmpty) {
+        return dpSnapshot.docs.map((doc) {
+          final data = doc.data();
+          return {
+            'id': doc.id,
+            'name': data['displayName'] ?? data['name'],
+            'rating': (data['rating'] as num?)?.toDouble(),
+            'distance': data['distance'],
+            'imageUrl': data['photoUrl'] ?? data['imageUrl'],
+          };
+        }).toList();
+      }
       final snapshot = await _firestore.collection('riders').get();
-
       return snapshot.docs.map((doc) {
         final data = doc.data();
         return {
           'id': doc.id,
-          'name': data['name'] as String? ?? 'Unknown Rider',
-          'rating': (data['rating'] as num?)?.toDouble() ?? 4.5,
-          'distance': data['distance'] as String? ?? 'N/A',
-          'imageUrl': data['imageUrl'] as String? ?? '',
+          'name': data['name'],
+          'rating': (data['rating'] as num?)?.toDouble(),
+          'distance': data['distance'],
+          'imageUrl': data['imageUrl'],
         };
       }).toList();
     } catch (e) {
@@ -25,7 +68,11 @@ class AssignDeliveryService {
     }
   }
 
-  Future<bool> assignDelivery(String orderId, String riderId, String instructions) async {
+  Future<bool> assignDelivery(
+    String orderId,
+    String riderId,
+    String instructions,
+  ) async {
     try {
       final orderRef = _firestore.collection('orders').doc(orderId);
 
@@ -41,12 +88,14 @@ class AssignDeliveryService {
             'Current status: $currentStatus',
           );
         }
-
         transaction.update(orderRef, {
           'status': 'OutForDelivery',
           'riderId': riderId,
+          'deliveryPartnerId': riderId,
+          'driverId': riderId,
           'deliveryInstructions': instructions,
           'outForDeliveryAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
         });
       });
       return true;

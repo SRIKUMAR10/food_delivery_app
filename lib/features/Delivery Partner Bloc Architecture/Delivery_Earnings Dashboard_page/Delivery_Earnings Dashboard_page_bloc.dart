@@ -33,6 +33,23 @@ class DeliveryEarningsDashboardPageBloc
   ) async {
     emit(state.copyWith(status: DeliveryEarningsStatus.loading));
     try {
+      final stream = repository.watchEarningsData();
+      if (stream != null) {
+        await emit.forEach<DeliveryEarningsDashboardState>(
+          stream,
+          onData: (dataState) => dataState,
+          onError: (error, stackTrace) {
+            return state.copyWith(
+              status: DeliveryEarningsStatus.error,
+              errorMessage: error.toString(),
+            );
+          },
+        );
+        return;
+      }
+    } catch (_) {}
+
+    try {
       final dataState = await repository.loadEarningsData();
       emit(dataState);
     } catch (e) {

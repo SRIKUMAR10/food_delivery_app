@@ -9,21 +9,36 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Pag
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_state.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page_Bloc.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/repositories/i_user_profile_repository.dart';
 
-// Mock BLoCs
+// Mock BLoCs & Services
 class MockHomePageBloc extends Mock implements HomePageBloc {}
 class MockCartBloc extends Mock implements CartBloc {}
 class MockFavoritesBloc extends Mock implements FavoritesBloc {}
+class MockIAuthService extends Mock implements IAuthService {}
+class MockIUserProfileRepository extends Mock implements IUserProfileRepository {}
 
 void main() {
   late MockHomePageBloc mockHomePageBloc;
   late MockCartBloc mockCartBloc;
   late MockFavoritesBloc mockFavoritesBloc;
+  late MockIAuthService mockAuthService;
+  late MockIUserProfileRepository mockUserProfileRepository;
 
   setUp(() {
     mockHomePageBloc = MockHomePageBloc();
     mockCartBloc = MockCartBloc();
     mockFavoritesBloc = MockFavoritesBloc();
+    mockAuthService = MockIAuthService();
+    mockUserProfileRepository = MockIUserProfileRepository();
+
+    // Default Auth Service Mock
+    when(() => mockAuthService.currentUserId).thenReturn(null);
+    when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream.value(null));
+
+    // Default User Profile Repository Mock
+    when(() => mockUserProfileRepository.watchProfileImageUrl(any())).thenAnswer((_) => Stream.value(null));
 
     // Default Home Page Bloc State
     when(() => mockHomePageBloc.state).thenReturn(const HomePageLoading('', []));
@@ -44,14 +59,20 @@ void main() {
   });
 
   Widget buildTestableWidget({required Widget child}) {
-    return MultiBlocProvider(
+    return MultiRepositoryProvider(
       providers: [
-        BlocProvider<HomePageBloc>.value(value: mockHomePageBloc),
-        BlocProvider<CartBloc>.value(value: mockCartBloc),
-        BlocProvider<FavoritesBloc>.value(value: mockFavoritesBloc),
+        RepositoryProvider<IAuthService>.value(value: mockAuthService),
+        RepositoryProvider<IUserProfileRepository>.value(value: mockUserProfileRepository),
       ],
-      child: MaterialApp(
-        home: Scaffold(body: child),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<HomePageBloc>.value(value: mockHomePageBloc),
+          BlocProvider<CartBloc>.value(value: mockCartBloc),
+          BlocProvider<FavoritesBloc>.value(value: mockFavoritesBloc),
+        ],
+        child: MaterialApp(
+          home: Scaffold(body: child),
+        ),
       ),
     );
   }
@@ -105,7 +126,7 @@ void main() {
 
         // Product
         expect(find.text('Cheese Burger'), findsOneWidget);
-        expect(find.text('₹150.00'), findsOneWidget);
+        expect(find.text('₹150'), findsOneWidget);
       });
     });
 
@@ -140,7 +161,6 @@ void main() {
       expect(searchField, findsOneWidget);
 
       await tester.enterText(searchField, 'Pizza');
-      // await tester.pumpAndSettle(); // Can time out if infinite animations exist
 
       verify(() => mockHomePageBloc.add(any(that: isA<SearchQueryChanged>()))).called(1);
     });

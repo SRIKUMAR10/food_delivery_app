@@ -7,8 +7,14 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order%20History_page/Delivery_Order%20History_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order%20History_page/Delivery_Order%20History_page_ui.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 class MockDeliveryOrderHistoryRepository extends Mock
     implements DeliveryOrderHistoryRepositoryBase {}
+
+class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 const order1 = DeliveryOrderHistoryModel(
   orderId: 'ORD-1001',
@@ -72,7 +78,10 @@ void main() {
       home: Scaffold(
         body: DeliveryOrderHistoryPage(
           repository: mockRepository,
-          service: DeliveryOrderHistoryService(),
+          service: DeliveryOrderHistoryService(
+            firestore: MockFirebaseFirestore(),
+            auth: MockFirebaseAuth(),
+          ),
         ),
       ),
     );
@@ -82,8 +91,11 @@ void main() {
     testWidgets('shows fallback error UI when initialization fails',
         (tester) async {
       setDesktopSize(tester);
+      when(() => mockRepository.watchOrderHistory())
+          .thenAnswer((_) => Stream.error(Exception('Server unreachable')));
       when(() => mockRepository.fetchOrderHistory())
           .thenThrow(Exception('Server unreachable'));
+      when(() => mockRepository.fetchStats()).thenAnswer((_) async => sampleStats);
 
       await tester.pumpWidget(buildPage());
       await tester.pump();
@@ -103,13 +115,14 @@ void main() {
     testWidgets('retry recovers and loads the orders', (tester) async {
       setDesktopSize(tester);
       var calls = 0;
-      when(() => mockRepository.fetchOrderHistory()).thenAnswer((_) async {
+      when(() => mockRepository.watchOrderHistory()).thenAnswer((_) {
         calls++;
         if (calls == 1) {
-          throw Exception('Temporary failure');
+          return Stream.error(Exception('Temporary failure'));
         }
-        return sampleOrders;
+        return Stream.value(sampleOrders);
       });
+      when(() => mockRepository.fetchOrderHistory()).thenAnswer((_) async => sampleOrders);
       when(() => mockRepository.fetchStats()).thenAnswer(
         (_) async => sampleStats,
       );
@@ -133,11 +146,12 @@ void main() {
         (tester) async {
       setDesktopSize(tester);
       var calls = 0;
-      when(() => mockRepository.fetchOrderHistory()).thenAnswer((_) async {
+      when(() => mockRepository.watchOrderHistory()).thenAnswer((_) {
         calls++;
-        if (calls == 1) return const <DeliveryOrderHistoryModel>[];
-        return sampleOrders;
+        if (calls == 1) return Stream.value(const <DeliveryOrderHistoryModel>[]);
+        return Stream.value(sampleOrders);
       });
+      when(() => mockRepository.fetchOrderHistory()).thenAnswer((_) async => sampleOrders);
       when(() => mockRepository.fetchStats()).thenAnswer(
         (_) async => const DeliveryOrderHistoryStats(
           totalOrders: 0,
@@ -168,13 +182,14 @@ void main() {
         (tester) async {
       setDesktopSize(tester);
       var calls = 0;
-      when(() => mockRepository.fetchOrderHistory()).thenAnswer((_) async {
+      when(() => mockRepository.watchOrderHistory()).thenAnswer((_) {
         calls++;
         if (calls == 1) {
-          throw Exception('Initial failure');
+          return Stream.error(Exception('Initial failure'));
         }
-        return sampleOrders;
+        return Stream.value(sampleOrders);
       });
+      when(() => mockRepository.fetchOrderHistory()).thenAnswer((_) async => sampleOrders);
       when(() => mockRepository.fetchStats()).thenAnswer(
         (_) async => sampleStats,
       );
@@ -190,10 +205,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byKey(const Key('dp_oh_page')), findsOneWidget);
-      expect(find.byKey(const Key('dp_oh_search_field')), findsOneWidget);
+      expect(find.byKey(const Key('dp_oh_search_field')), findsWidgets);
 
       await tester.enterText(
-        find.byKey(const Key('dp_oh_search_field')),
+        find.byKey(const Key('dp_oh_search_field')).first,
         'Priya',
       );
       await tester.pump();
@@ -202,13 +217,14 @@ void main() {
     testWidgets('filters button works after error recovery', (tester) async {
       setDesktopSize(tester);
       var calls = 0;
-      when(() => mockRepository.fetchOrderHistory()).thenAnswer((_) async {
+      when(() => mockRepository.watchOrderHistory()).thenAnswer((_) {
         calls++;
         if (calls == 1) {
-          throw Exception('Initial failure');
+          return Stream.error(Exception('Initial failure'));
         }
-        return sampleOrders;
+        return Stream.value(sampleOrders);
       });
+      when(() => mockRepository.fetchOrderHistory()).thenAnswer((_) async => sampleOrders);
       when(() => mockRepository.fetchStats()).thenAnswer(
         (_) async => sampleStats,
       );

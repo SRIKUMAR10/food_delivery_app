@@ -1,3 +1,4 @@
+// Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/models/order_model.dart';

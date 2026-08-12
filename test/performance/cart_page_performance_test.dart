@@ -29,6 +29,7 @@ void main() {
 
       when(() => mockAuthService.currentUserId).thenReturn('test_uid');
       when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value('test_uid'));
+      when(() => mockAuthService.ensureTokenReady()).thenAnswer((_) async {});
 
       final items = List.generate(20, (i) => CartItem(
         id: 'item$i',

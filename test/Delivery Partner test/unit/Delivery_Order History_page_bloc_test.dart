@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order%20History_page/Delivery_Order%20History_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order%20History_page/Delivery_Order%20History_page_event.dart';
@@ -10,6 +12,9 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 
 class MockDeliveryOrderHistoryRepository extends Mock
     implements DeliveryOrderHistoryRepositoryBase {}
+
+class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 const completedOrder = DeliveryOrderHistoryModel(
   orderId: 'ORD-1001',
@@ -75,7 +80,10 @@ void main() {
   DeliveryOrderHistoryPageBloc buildBloc() {
     return DeliveryOrderHistoryPageBloc(
       repository: mockRepository,
-      service: DeliveryOrderHistoryService(),
+      service: DeliveryOrderHistoryService(
+        firestore: MockFirebaseFirestore(),
+        auth: MockFirebaseAuth(),
+      ),
     );
   }
 
@@ -98,11 +106,8 @@ void main() {
       'emits [loading, loaded] on init success with paginated page',
       build: () {
         when(
-          () => mockRepository.fetchOrderHistory(),
-        ).thenAnswer((_) async => sampleOrders);
-        when(
-          () => mockRepository.fetchStats(),
-        ).thenAnswer((_) async => sampleStats);
+          () => mockRepository.watchOrderHistory(),
+        ).thenAnswer((_) => Stream.value(sampleOrders));
         return buildBloc();
       },
       act: (bloc) => bloc.add(const DeliveryOrderHistoryInitEvent()),
@@ -115,12 +120,19 @@ void main() {
           orders: sampleOrders,
           filteredOrders: sampleOrders,
           pageOrders: sampleOrders,
-          stats: sampleStats,
+          stats: DeliveryOrderHistoryStats(
+            totalOrders: 3,
+            completedCount: 1,
+            cancelledCount: 1,
+            pendingCount: 1,
+            totalEarnings: 1463.50,
+            totalOrdersDelta: 0.0,
+            earningsDelta: 0.0,
+          ),
         ),
       ],
       verify: (_) {
-        verify(() => mockRepository.fetchOrderHistory()).called(1);
-        verify(() => mockRepository.fetchStats()).called(1);
+        verify(() => mockRepository.watchOrderHistory()).called(1);
       },
     );
 
@@ -128,11 +140,8 @@ void main() {
       'emits [loading, empty] when there are no orders',
       build: () {
         when(
-          () => mockRepository.fetchOrderHistory(),
-        ).thenAnswer((_) async => const <DeliveryOrderHistoryModel>[]);
-        when(
-          () => mockRepository.fetchStats(),
-        ).thenAnswer((_) async => sampleStats);
+          () => mockRepository.watchOrderHistory(),
+        ).thenAnswer((_) => Stream.value(const <DeliveryOrderHistoryModel>[]));
         return buildBloc();
       },
       act: (bloc) => bloc.add(const DeliveryOrderHistoryInitEvent()),
@@ -142,7 +151,15 @@ void main() {
         ),
         const DeliveryOrderHistoryPageState(
           status: DeliveryOrderHistoryPageStatus.empty,
-          stats: sampleStats,
+          stats: DeliveryOrderHistoryStats(
+            totalOrders: 0,
+            completedCount: 0,
+            cancelledCount: 0,
+            pendingCount: 0,
+            totalEarnings: 0.0,
+            totalOrdersDelta: 0.0,
+            earningsDelta: 0.0,
+          ),
         ),
       ],
     );
@@ -151,8 +168,8 @@ void main() {
       'emits [loading, error] when initialization fails',
       build: () {
         when(
-          () => mockRepository.fetchOrderHistory(),
-        ).thenThrow(Exception('Database offline'));
+          () => mockRepository.watchOrderHistory(),
+        ).thenAnswer((_) => Stream.error(Exception('Database offline')));
         return buildBloc();
       },
       act: (bloc) => bloc.add(const DeliveryOrderHistoryInitEvent()),
@@ -334,9 +351,6 @@ void main() {
         when(
           () => mockRepository.fetchOrderHistory(),
         ).thenAnswer((_) async => sampleOrders);
-        when(
-          () => mockRepository.fetchStats(),
-        ).thenAnswer((_) async => sampleStats);
         return buildBloc();
       },
       seed: () => const DeliveryOrderHistoryPageState(
@@ -360,7 +374,15 @@ void main() {
           orders: sampleOrders,
           filteredOrders: sampleOrders,
           pageOrders: sampleOrders,
-          stats: sampleStats,
+          stats: DeliveryOrderHistoryStats(
+            totalOrders: 3,
+            completedCount: 1,
+            cancelledCount: 1,
+            pendingCount: 1,
+            totalEarnings: 1463.50,
+            totalOrdersDelta: 0.0,
+            earningsDelta: 0.0,
+          ),
         ),
       ],
     );

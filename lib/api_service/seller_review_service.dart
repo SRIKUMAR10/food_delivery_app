@@ -15,11 +15,19 @@ class SellerReviewService {
     }
 
     try {
-      final snapshot = await _firestore
-          .collection('reviews')
-          .where('sellerId', isEqualTo: sellerId)
-          .orderBy('createdAt', descending: true)
-          .get();
+      QuerySnapshot<Map<String, dynamic>> snapshot;
+      try {
+        snapshot = await _firestore
+            .collection('reviews')
+            .where('sellerId', isEqualTo: sellerId)
+            .orderBy('createdAt', descending: true)
+            .get();
+      } catch (e) {
+        snapshot = await _firestore
+            .collection('reviews')
+            .where('sellerId', isEqualTo: sellerId)
+            .get();
+      }
 
       final reviews = snapshot.docs.map((doc) {
         final data = doc.data();
@@ -42,6 +50,12 @@ class SellerReviewService {
           'date': date.toIso8601String(),
         };
       }).toList();
+
+      reviews.sort((a, b) {
+        final dateA = DateTime.tryParse(a['date'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dateB = DateTime.tryParse(b['date'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return dateB.compareTo(dateA);
+      });
 
       double overallRating = 0;
       if (reviews.isNotEmpty) {

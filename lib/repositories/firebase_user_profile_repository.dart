@@ -17,7 +17,7 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
   @override
   Future<UserProfile?> loadProfile(String userId) async {
     try {
-      final doc = await firestore.collection('users').doc(userId).get();
+      final doc = await firestore.collection('buyer_user').doc(userId).get();
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
         return UserProfile(
@@ -42,7 +42,7 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
   @override
   Future<void> saveProfile(String userId, UserProfile profile) async {
     try {
-      await firestore.collection('users').doc(userId).set({
+      await firestore.collection('buyer_user').doc(userId).set({
         'name': profile.name.trim(),
         'email': profile.email.trim(),
         'phone': profile.phone.trim(),
@@ -79,7 +79,7 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
   @override
   Future<void> updateProfileImageUrl(String userId, String imageUrl) async {
     try {
-      await firestore.collection('users').doc(userId).set({
+      await firestore.collection('buyer_user').doc(userId).set({
         'imageUrl': imageUrl,
       }, SetOptions(merge: true));
     } catch (e) {
@@ -89,9 +89,33 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
   }
 
   @override
+  Stream<UserProfile?> watchProfile(String userId) {
+    return firestore
+        .collection('buyer_user')
+        .doc(userId)
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists) return null;
+      final data = snapshot.data();
+      if (data == null) return null;
+      return UserProfile(
+        name: data['name'] ?? '',
+        email: data['email'] ?? '',
+        phone: data['phone'] ?? '',
+        address: data['address'] ?? '',
+        homeAddress: data['homeAddress'] ?? '',
+        workAddress: data['workAddress'] ?? '',
+        otherAddress: data['otherAddress'] ?? '',
+        selectedAddressType: data['selectedAddressType'] ?? 'Home',
+        imageUrl: data['imageUrl'],
+      );
+    });
+  }
+
+  @override
   Stream<String?> watchProfileImageUrl(String userId) {
     return firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(userId)
         .snapshots()
         .map((snapshot) {
@@ -104,7 +128,7 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
   @override
   Stream<List<Map<String, dynamic>>> watchTransactions(String userId) {
     return firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(userId)
         .collection('transactions')
         .orderBy('createdAt', descending: true)

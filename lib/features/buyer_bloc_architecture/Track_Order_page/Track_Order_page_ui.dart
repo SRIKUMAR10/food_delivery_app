@@ -183,7 +183,8 @@ class _TrackOrderView extends StatelessWidget {
 
   Widget _buildMobileLayout(BuildContext context) {
     return BlocBuilder<TrackOrderBloc, TrackOrderState>(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         if (state is TrackOrderLoading || state is TrackOrderInitial) {
           return _buildSkeletonLoader();
         } else if (state is TrackOrderError) {
@@ -193,7 +194,7 @@ class _TrackOrderView extends StatelessWidget {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 96.0),
                   physics: const BouncingScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,7 +227,8 @@ class _TrackOrderView extends StatelessWidget {
 
   Widget _buildDesktopLayout(BuildContext context) {
     return BlocBuilder<TrackOrderBloc, TrackOrderState>(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         if (state is TrackOrderLoading || state is TrackOrderInitial) {
           return _buildSkeletonLoader();
         } else if (state is TrackOrderError) {
@@ -236,7 +238,7 @@ class _TrackOrderView extends StatelessWidget {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(32.0),
+                  padding: const EdgeInsets.fromLTRB(32.0, 32.0, 32.0, 96.0),
                   physics: const BouncingScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -750,7 +752,8 @@ class _TrackOrderView extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Assigning a delivery partner...',
-                    style: TextStyle(color: Colors.black54, fontSize: 14),
+                    style: TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w500),
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -1594,26 +1597,42 @@ class _TrackOrderView extends StatelessWidget {
   }
 
   Widget _buildErrorState(BuildContext context, String message) {
+    final displayMessage = message.contains('permission-denied')
+        ? 'Unable to load live tracking details due to permission limits. Please retry.'
+        : message;
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 48),
-          const SizedBox(height: 16),
-          Text(message, style: const TextStyle(color: Colors.red)),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              context.read<TrackOrderBloc>().add(
-                RefreshTrackOrder(
-                  orderId: order?.id ?? 'FG125678',
-                  orderDate: order?.date ?? DateTime.now(),
-                ),
-              );
-            },
-            child: const Text('Retry'),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Color(0xFFE52121), size: 48),
+            const SizedBox(height: 16),
+            Text(
+              displayMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFE52121), fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFF0F0),
+                foregroundColor: const Color(0xFFE52121),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () {
+                context.read<TrackOrderBloc>().add(
+                  RefreshTrackOrder(
+                    orderId: order?.id ?? 'FG125678',
+                    orderDate: order?.date ?? DateTime.now(),
+                  ),
+                );
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }

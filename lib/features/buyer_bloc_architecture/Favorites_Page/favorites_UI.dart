@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'favorites_bloc.dart';
 import 'favorites_state.dart';
 import '../Details_Page/details_page_UI.dart';
+import '../buyer_login_page/buyer_login_page_ui.dart';
 
 class FavoritesPageUI extends StatelessWidget {
   const FavoritesPageUI({super.key});
@@ -31,12 +32,55 @@ class _FavoritesPageContent extends StatelessWidget {
         ),
       ),
       body: BlocBuilder<FavoritesBloc, FavoritesState>(
-        builder: (context, state) {
+        buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
           if (state is FavoritesLoading) {
             return const Center(
               child: CircularProgressIndicator(color: Color(0xFFEF2A39)),
             );
           } else if (state is FavoritesError) {
+            final isPermissionDenied = state.message.contains('permission-denied');
+            if (isPermissionDenied) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 60,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Please log in to view your favorites!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEF2A39),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context, rootNavigator: true).push(
+                          MaterialPageRoute(
+                            builder: (_) => const BuyerLoginPageUI(),
+                          ),
+                        );
+                      },
+                      child: const Text('Log In'),
+                    ),
+                  ],
+                ),
+              );
+            }
             return Center(child: Text(state.message));
           } else if (state is FavoritesLoaded) {
             if (state.items.isEmpty) {

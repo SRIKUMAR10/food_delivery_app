@@ -29,6 +29,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     }
 
     emit(OrderLoading());
+    await _authService.ensureTokenReady();
 
     await emit.forEach<List<dynamic>>(
       _repository.getBuyerOrdersStream(buyerId),

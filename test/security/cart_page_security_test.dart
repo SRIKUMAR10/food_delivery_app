@@ -35,6 +35,7 @@ void main() {
       build: () {
         when(() => mockAuthService.currentUserId).thenReturn(null);
         when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.empty());
+        when(() => mockAuthService.ensureTokenReady()).thenAnswer((_) async {});
         return CartBloc(cartRepository: mockCartRepository, couponRepository: mockCouponRepository, productRepository: mockProductRepository, authService: mockAuthService, sellerStatusService: mockSellerStatusService);
       },
       act: (bloc) => bloc.add(const LoadCartStarted()),

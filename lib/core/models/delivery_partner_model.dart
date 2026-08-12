@@ -25,6 +25,7 @@ class DeliveryPartnerModel {
   final String? appVersion;
   final bool isEmailVerified;
   final int profileCompletion;
+  final String? password;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? lastLogin;
@@ -37,6 +38,7 @@ class DeliveryPartnerModel {
     this.displayName = '',
     this.email,
     this.photoUrl,
+    this.password,
     this.role = 'delivery_partner',
     this.status = 'pending',
     this.isActive = false,
@@ -61,6 +63,20 @@ class DeliveryPartnerModel {
     this.lastLogout,
   });
 
+  /// Safely parses Firestore `Timestamp`, ISO-8601 `String`, or `int`
+  /// (milliseconds since epoch) values into [DateTime] without runtime casts.
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    if (value is num) {
+      final milliseconds = value.toInt();
+      if (milliseconds > 0) {
+        return DateTime.fromMillisecondsSinceEpoch(milliseconds);
+      }
+    }
+    return null;
+  }
+
   factory DeliveryPartnerModel.fromFirestore(DocumentSnapshot snapshot) {
     final data = snapshot.data() as Map<String, dynamic>?;
     return DeliveryPartnerModel(
@@ -70,13 +86,14 @@ class DeliveryPartnerModel {
       displayName: data?['displayName'] ?? '',
       email: data?['email'],
       photoUrl: data?['photoUrl'],
+      password: data?['password'],
       role: data?['role'] ?? 'delivery_partner',
       status: data?['status'] ?? 'pending',
       isActive: data?['isActive'] ?? false,
       isVerified: data?['isVerified'] ?? false,
       isPhoneVerified: data?['isPhoneVerified'] ?? true,
       isEmailVerified: data?['isEmailVerified'] ?? false,
-      profileCompletion: data?['profileCompletion'] ?? 0,
+      profileCompletion: (data?['profileCompletion'] as num?)?.toInt() ?? 0,
       isOnline: data?['isOnline'] ?? false,
       vehicleType: data?['vehicleType'],
       vehicleNumber: data?['vehicleNumber'],
@@ -84,22 +101,14 @@ class DeliveryPartnerModel {
       aadhaarNumber: data?['aadhaarNumber'],
       kycStatus: data?['kycStatus'] ?? 'pending',
       totalEarnings: (data?['totalEarnings'] as num?)?.toDouble() ?? 0.0,
-      totalDeliveries: data?['totalDeliveries'] ?? 0,
+      totalDeliveries: (data?['totalDeliveries'] as num?)?.toInt() ?? 0,
       rating: (data?['rating'] as num?)?.toDouble() ?? 0.0,
       deviceToken: data?['deviceToken'],
       appVersion: data?['appVersion'],
-      createdAt: data?['createdAt'] != null
-          ? (data!['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
-      updatedAt: data?['updatedAt'] != null
-          ? (data!['updatedAt'] as Timestamp).toDate()
-          : DateTime.now(),
-      lastLogin: data?['lastLogin'] != null
-          ? (data!['lastLogin'] as Timestamp).toDate()
-          : null,
-      lastLogout: data?['lastLogout'] != null
-          ? (data!['lastLogout'] as Timestamp).toDate()
-          : null,
+      createdAt: _parseDateTime(data?['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(data?['updatedAt']) ?? DateTime.now(),
+      lastLogin: _parseDateTime(data?['lastLogin']),
+      lastLogout: _parseDateTime(data?['lastLogout']),
     );
   }
 
@@ -142,6 +151,7 @@ class DeliveryPartnerModel {
     String? displayName,
     String? email,
     String? photoUrl,
+    String? password,
     String? role,
     String? status,
     bool? isActive,
@@ -172,6 +182,7 @@ class DeliveryPartnerModel {
       displayName: displayName ?? this.displayName,
       email: email ?? this.email,
       photoUrl: photoUrl ?? this.photoUrl,
+      password: password ?? this.password,
       role: role ?? this.role,
       status: status ?? this.status,
       isActive: isActive ?? this.isActive,

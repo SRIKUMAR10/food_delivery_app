@@ -148,10 +148,28 @@ class AssignDeliveryPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                ...state.riders.map(
-                  (rider) =>
-                      _buildRiderCard(context, rider, state.selectedRiderId),
-                ),
+                if (state.riders.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'No delivery partners available',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ...state.riders.map(
+                    (rider) =>
+                        _buildRiderCard(context, rider, state.selectedRiderId),
+                  ),
                 const SizedBox(height: 24),
                 const Text(
                   'Delivery Instructions',
@@ -232,8 +250,13 @@ class AssignDeliveryPage extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundImage: NetworkImage(rider.imageUrl),
               backgroundColor: const Color(0xFFF1F5F9),
+              backgroundImage: rider.imageUrl.isNotEmpty
+                  ? NetworkImage(rider.imageUrl)
+                  : null,
+              child: rider.imageUrl.isEmpty
+                  ? const Icon(Icons.person, color: Color(0xFF94A3B8))
+                  : null,
             ),
             const SizedBox(width: 16),
             Expanded(

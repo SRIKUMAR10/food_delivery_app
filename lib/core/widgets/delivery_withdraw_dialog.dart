@@ -14,6 +14,8 @@ class DeliveryWithdrawDialog extends StatefulWidget {
   final String cancelText;
   final String errorText;
   final ValueChanged<double> onConfirm;
+  final Key? textFieldKey;
+  final Key? confirmButtonKey;
 
   const DeliveryWithdrawDialog({
     super.key,
@@ -26,6 +28,8 @@ class DeliveryWithdrawDialog extends StatefulWidget {
     this.cancelText = 'Cancel',
     this.errorText = 'Please enter a valid amount within available balance',
     required this.onConfirm,
+    this.textFieldKey,
+    this.confirmButtonKey,
   });
 
   static Future<void> show(
@@ -115,6 +119,7 @@ class _DeliveryWithdrawDialogState extends State<DeliveryWithdrawDialog> {
           ),
           const SizedBox(height: 12),
           DeliveryTextField(
+            key: widget.textFieldKey ?? const Key('dp_earnings_withdraw_amount'),
             controller: _controller,
             label: widget.amountLabel,
             hintText: 'e.g. 500',
@@ -140,6 +145,7 @@ class _DeliveryWithdrawDialogState extends State<DeliveryWithdrawDialog> {
           ),
         ),
         DeliveryButton(
+          key: widget.confirmButtonKey ?? const Key('dp_earnings_withdraw_confirm'),
           label: widget.confirmText,
           onPressed: _submit,
           variant: DeliveryButtonVariant.primary,

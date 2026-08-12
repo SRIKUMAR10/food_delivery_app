@@ -7,31 +7,53 @@ class CategoryRepository {
   CategoryRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  /// Default fallback categories when Firestore global_categories is unpopulated.
+  static final List<FoodCategory> defaultCategories = [
+    const FoodCategory(id: 'cat_all', name: 'All', emoji: '🔥', isSelected: true, size: 35),
+    const FoodCategory(id: 'cat_burgers', name: 'Burgers', emoji: '🍔', isSelected: false, size: 35),
+    const FoodCategory(id: 'cat_pizza', name: 'Pizza', emoji: '🍕', isSelected: false, size: 35),
+    const FoodCategory(id: 'cat_drinks', name: 'Drinks', emoji: '🥤', isSelected: false, size: 35),
+    const FoodCategory(id: 'cat_desserts', name: 'Desserts', emoji: '🍰', isSelected: false, size: 35),
+    const FoodCategory(id: 'cat_starters', name: 'Starters', emoji: '🥟', isSelected: false, size: 35),
+    const FoodCategory(id: 'cat_main', name: 'Main Course', emoji: '🍛', isSelected: false, size: 35),
+  ];
+
   /// Fetches global categories from Firestore.
-  /// If it fails or is empty, returns the default categories.
   Stream<List<FoodCategory>> getCategories() {
     return _firestore.collection('global_categories').snapshots().map((snapshot) {
       if (snapshot.docs.isEmpty) {
-        // TODO: Remove this fallback once Firestore categories are fully populated and stable
-        return kDefaultCategories;
+        return defaultCategories;
       }
-      
-      return snapshot.docs.map((doc) {
+
+      final categories = snapshot.docs.map((doc) {
         final data = doc.data();
+        final name = data['name'] ?? 'Unknown';
         return FoodCategory(
           id: doc.id,
-          name: data['name'] ?? 'Unknown',
-          emoji: _getEmojiForCategory(data['name'] ?? ''),
+          name: name,
+          emoji: _getEmojiForCategory(name),
           isSelected: false,
           size: 35,
         );
       }).toList();
-    });
+
+      final hasAll = categories.any((c) => c.name.toLowerCase() == 'all');
+      if (!hasAll) {
+        categories.insert(
+          0,
+          const FoodCategory(id: 'cat_all', name: 'All', emoji: '🔥', isSelected: true, size: 35),
+        );
+      }
+
+      return categories;
+    }).handleError((_) => defaultCategories);
   }
 
   /// Maps a category name to an emoji (since emojis might not be in Firestore)
   String _getEmojiForCategory(String name) {
     switch (name.toLowerCase()) {
+      case 'all':
+        return '🔥';
       case 'pizza':
         return '🍕';
       case 'burger':

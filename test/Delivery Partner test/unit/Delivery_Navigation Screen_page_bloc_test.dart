@@ -48,10 +48,12 @@ void main() {
       () => mockRepository.fetchDrop(),
     ).thenAnswer((_) async => DeliveryNavigationRepository.defaultDrop);
     when(() => mockRepository.getAudioEnabled()).thenAnswer((_) async => false);
-    when(
-      () => mockRepository.getEmergencyMode(),
-    ).thenAnswer((_) async => false);
+    when(() => mockRepository.getEmergencyMode()).thenAnswer((_) async => false);
     when(() => mockRepository.getLocaleCode()).thenAnswer((_) async => 'en');
+    when(() => mockService.updateDriverLocation(
+      latitude: any(named: 'latitude'),
+      longitude: any(named: 'longitude'),
+    )).thenAnswer((_) async {});
   }
 
   setUp(() {
@@ -317,6 +319,10 @@ void main() {
         when(
           () => mockRepository.saveAudioEnabled(true),
         ).thenAnswer((_) async {});
+        when(() => mockService.updateDriverLocation(
+          latitude: any(named: 'latitude'),
+          longitude: any(named: 'longitude'),
+        )).thenAnswer((_) async {});
         return DeliveryNavigationBloc(
           repository: mockRepository,
           service: mockService,

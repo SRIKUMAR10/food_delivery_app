@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -22,10 +23,13 @@ class SellerCustomerService {
           .get();
 
       final customerCounts = <String, int>{};
-      
+
       for (var doc in snapshot.docs) {
         final data = doc.data();
-        final customerId = data['customerId'] as String? ?? 'unknown';
+        final rawCustomerId = data['customerId'] ?? data['buyerId'] ?? data['userId'] ?? data['uid'];
+        final customerId = (rawCustomerId != null && rawCustomerId.toString().isNotEmpty)
+            ? rawCustomerId.toString()
+            : 'unknown';
         customerCounts[customerId] = (customerCounts[customerId] ?? 0) + 1;
       }
 
@@ -37,10 +41,10 @@ class SellerCustomerService {
         'repeatCustomers': repeatCustomers,
       };
     } catch (e) {
-      // Return simulated mock stats corresponding to screenshot
+      debugPrint('SellerCustomerService.fetchCustomerStats error: $e');
       return {
-        'totalCustomers': 1245,
-        'repeatCustomers': 320,
+        'totalCustomers': 0,
+        'repeatCustomers': 0,
       };
     }
   }
@@ -58,37 +62,111 @@ class SellerCustomerService {
           .get();
 
       final customerDataMap = <String, Map<String, dynamic>>{};
-      
+      final customerLatestOrderMap = <String, Map<String, dynamic>>{};
+
       for (var doc in snapshot.docs) {
         final data = doc.data();
-        final customerId = data['customerId'] as String?;
-        if (customerId == null || customerId.isEmpty) continue;
-        
+        final rawCustomerId = data['customerId'] ?? data['buyerId'] ?? data['userId'] ?? data['uid'];
+        final customerId = (rawCustomerId != null && rawCustomerId.toString().isNotEmpty)
+            ? rawCustomerId.toString()
+            : 'customer_${doc.id}';
+
+        final orderTime = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+
         if (!customerDataMap.containsKey(customerId)) {
           customerDataMap[customerId] = {
             'id': customerId,
-            'name': data['customerName'] ?? 'Unknown',
+            'name': '',
             'orderCount': 0,
-            'avatarUrl': 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150', // placeholder or fetch from user profile
-            'lastOrderTime': (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0),
+            'avatarUrl': '',
+            'lastOrderTime': orderTime,
           };
+          customerLatestOrderMap[customerId] = data;
+        } else {
+          final currentLastOrder = customerDataMap[customerId]!['lastOrderTime'] as DateTime;
+          if (orderTime.isAfter(currentLastOrder)) {
+            customerDataMap[customerId]!['lastOrderTime'] = orderTime;
+            customerLatestOrderMap[customerId] = data;
+          }
         }
         customerDataMap[customerId]!['orderCount'] = (customerDataMap[customerId]!['orderCount'] as int) + 1;
-        
-        final currentLastOrder = customerDataMap[customerId]!['lastOrderTime'] as DateTime;
-        final orderTime = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
-        if (orderTime.isAfter(currentLastOrder)) {
-           customerDataMap[customerId]!['lastOrderTime'] = orderTime;
-           customerDataMap[customerId]!['name'] = data['customerName'] ?? 'Unknown';
+      }
+
+      final userIdsToFetch = customerDataMap.keys.toList();
+
+      final nameFutures = userIdsToFetch.map((customerId) async {
+        String? resolvedName;
+        String? resolvedAvatar;
+
+        // 1. Try name from the latest order document for this customer
+        final latestOrderData = customerLatestOrderMap[customerId];
+        if (latestOrderData != null) {
+          final candidateName = latestOrderData['customerName'] ??
+              latestOrderData['buyerName'] ??
+              latestOrderData['userName'] ??
+              latestOrderData['name'] ??
+              (latestOrderData['address'] is Map ? latestOrderData['address']['name'] : null) ??
+              (latestOrderData['deliveryAddress'] is Map ? latestOrderData['deliveryAddress']['name'] : null) ??
+              (latestOrderData['shippingAddress'] is Map ? latestOrderData['shippingAddress']['name'] : null);
+
+          if (candidateName != null && _isValidName(candidateName.toString())) {
+            resolvedName = candidateName.toString().trim();
+          }
+
+          final candidateAvatar = latestOrderData['customerImage'] ??
+              latestOrderData['buyerImage'] ??
+              latestOrderData['avatarUrl'] ??
+              latestOrderData['photoUrl'];
+          if (candidateAvatar != null && candidateAvatar.toString().trim().isNotEmpty) {
+            resolvedAvatar = candidateAvatar.toString().trim();
+          }
         }
+
+        // 2. Query users collection by customerId (Firebase Auth UID)
+        if (resolvedName == null || resolvedAvatar == null) {
+          try {
+            final userDoc = await _firestore.collection('buyer_user').doc(customerId).get();
+            if (userDoc.exists && userDoc.data() != null) {
+              final userData = userDoc.data()!;
+              if (resolvedName == null) {
+                final uName = userData['name'] ??
+                    userData['displayName'] ??
+                    userData['fullName'] ??
+                    userData['userName'];
+                if (uName != null && _isValidName(uName.toString())) {
+                  resolvedName = uName.toString().trim();
+                }
+              }
+              if (resolvedAvatar == null) {
+                final uAvatar = userData['imageUrl'] ??
+                    userData['photoUrl'] ??
+                    userData['avatarUrl'] ??
+                    userData['profileImage'] ??
+                    userData['profilePic'];
+                if (uAvatar != null && uAvatar.toString().trim().isNotEmpty) {
+                  resolvedAvatar = uAvatar.toString().trim();
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('SellerCustomerService: failed to resolve buyer name for $customerId: $e');
+          }
+        }
+
+        return (customerId, resolvedName ?? 'Customer', resolvedAvatar ?? '');
+      });
+
+      final resolvedProfiles = await Future.wait(nameFutures);
+
+      for (final (customerId, name, avatarUrl) in resolvedProfiles) {
+        customerDataMap[customerId]!['name'] = name;
+        customerDataMap[customerId]!['avatarUrl'] = avatarUrl;
       }
 
       final allCustomers = customerDataMap.values.toList();
       allCustomers.sort((a, b) {
-        // Sort by order count descending
         final countComparison = (b['orderCount'] as int).compareTo(a['orderCount'] as int);
         if (countComparison != 0) return countComparison;
-        // Then by last order time
         final timeA = a['lastOrderTime'] as DateTime;
         final timeB = b['lastOrderTime'] as DateTime;
         return timeB.compareTo(timeA);
@@ -100,27 +178,18 @@ class SellerCustomerService {
       final end = (offset + limit) > allCustomers.length ? allCustomers.length : (offset + limit);
       return allCustomers.sublist(offset, end);
     } catch (e) {
-      // High-fidelity Mock historical data from the user screenshot
-      final allMockCustomers = [
-        {
-          'id': 'cust_1',
-          'name': 'Mike Ross',
-          'orderCount': 12,
-          'avatarUrl': 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
-        },
-        {
-          'id': 'cust_2',
-          'name': 'John Doe',
-          'orderCount': 10,
-          'avatarUrl': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-        },
-      ];
-
-      if (offset >= allMockCustomers.length) {
-        return [];
-      }
-      final end = (offset + limit) > allMockCustomers.length ? allMockCustomers.length : (offset + limit);
-      return allMockCustomers.sublist(offset, end);
+      debugPrint('SellerCustomerService.fetchCustomerList error: $e');
+      return [];
     }
+  }
+
+  bool _isValidName(String name) {
+    final trimmed = name.trim();
+    return trimmed.isNotEmpty &&
+        trimmed != 'Customer' &&
+        trimmed != 'Buyer' &&
+        trimmed != 'Unknown' &&
+        trimmed != 'Unknown Customer' &&
+        trimmed != 'null';
   }
 }

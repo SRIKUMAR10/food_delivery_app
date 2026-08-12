@@ -73,7 +73,8 @@ class _SellerNavigationBarViewContent extends StatelessWidget {
       SellerNavigationBarViewPageBloc,
       SellerNavigationBarViewPageState
     >(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         int currentIndex = 0;
         if (state is SellerNavigationBarViewPageInitial) {
           currentIndex = state.tabIndex;
@@ -172,6 +173,7 @@ class _MobileFloatingNavigationBar extends StatelessWidget {
             'Dashboard',
           ),
           BlocBuilder<OrdersListBloc, OrdersListState>(
+            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
             builder: (context, state) {
               String? badgeText;
               if (state is OrdersListLoaded) {
@@ -190,6 +192,7 @@ class _MobileFloatingNavigationBar extends StatelessWidget {
             },
           ),
           BlocBuilder<ProductListBloc, ProductListPageState>(
+            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
             builder: (context, state) {
               String? badgeText;
               if (state is ProductListLoaded && state.allCount > 0) {
@@ -395,7 +398,8 @@ class _DesktopSideMenuState extends State<_DesktopSideMenu> {
                             onTap: () => widget.onTap(0),
                           ),
                           BlocBuilder<OrdersListBloc, OrdersListState>(
-                            builder: (context, state) {
+                            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                               String? badgeText;
                               if (state is OrdersListLoaded) {
                                 int newCount = state.allOrders.where((o) => o.status == OrderStatus.newOrder).length;
@@ -416,7 +420,8 @@ class _DesktopSideMenuState extends State<_DesktopSideMenu> {
                             },
                           ),
                           BlocBuilder<ProductListBloc, ProductListPageState>(
-                            builder: (context, state) {
+                            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                               String? badgeText;
                               if (state is ProductListLoaded &&
                                   state.allCount > 0) {

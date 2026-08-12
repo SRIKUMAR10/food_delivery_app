@@ -31,6 +31,7 @@ void main() {
 
       when(() => mockAuthService.currentUserId).thenReturn('user123');
       when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.empty());
+      when(() => mockAuthService.ensureTokenReady()).thenAnswer((_) async {});
       when(() => mockCouponRepository.getActiveCouponsBySellers(any()))
           .thenAnswer((_) => const Stream.empty());
     });

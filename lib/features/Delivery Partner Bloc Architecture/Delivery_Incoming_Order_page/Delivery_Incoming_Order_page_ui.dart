@@ -146,12 +146,7 @@ class _IncomingOrderView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildRouteNode(
-                  icon: Icons.store,
-                  color: Colors.cyanAccent,
-                  title: 'Pickup Store',
-                  address: state.storeAddress,
-                ),
+                _buildStatRow(Icons.store, 'Pickup Store', state.storeName),
                 const SizedBox(height: 16),
                 _buildRouteNode(
                   icon: Icons.location_on,
@@ -159,12 +154,33 @@ class _IncomingOrderView extends StatelessWidget {
                   title: 'Drop Address',
                   address: state.customerAddress,
                 ),
+                const SizedBox(height: 4),
+                _buildRouteNode(
+                  icon: Icons.person,
+                  color: Colors.amberAccent,
+                  title: 'Customer',
+                  address: state.customerName,
+                ),
                 const Spacer(),
                 const Divider(color: Colors.white10),
                 const SizedBox(height: 16),
-                _buildStatRow(Icons.route, 'Distance', '2.4 km'),
-                _buildStatRow(Icons.timer, 'Estimated Time', '12 min'),
-                _buildStatRow(Icons.payment, 'COD Status', 'COD Available', isGreen: true),
+                _buildStatRow(
+                  Icons.route,
+                  'Distance',
+                  state.distanceKm > 0
+                      ? '${state.distanceKm.toStringAsFixed(1)} km'
+                      : '-',
+                ),
+                _buildStatRow(
+                  Icons.timer,
+                  'Estimated Time',
+                  state.etaMins > 0 ? '${state.etaMins} min' : '-',
+                ),
+                _buildStatRow(
+                  Icons.payment,
+                  'Payment',
+                  state.paymentMethod.isEmpty ? '-' : state.paymentMethod,
+                ),
                 _buildStatRow(Icons.currency_rupee, 'Order Value', '₹${state.orderAmount.toStringAsFixed(2)}'),
               ],
             ),

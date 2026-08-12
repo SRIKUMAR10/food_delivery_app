@@ -140,22 +140,24 @@ void main() {
 
       final prevEarnings = sessionRepo.currentState.totalEarningsToday;
 
-      sessionRepo.completeDelivery();
+      sessionRepo.completeDelivery(deliveryFee: 40.0);
       expect(sessionRepo.currentState.deliveryStage, equals(ActiveDeliveryStage.deliveryCompleted));
       expect(sessionRepo.currentState.totalEarningsToday, greaterThan(prevEarnings));
-      expect(sessionRepo.currentState.completedOrdersCount, equals(15));
+      expect(sessionRepo.currentState.completedOrdersCount, equals(1));
     });
 
     test('Withdrawal flow within session', () {
+      sessionRepo.completeDelivery(deliveryFee: 500.0);
+
       final initialBalance = sessionRepo.currentState.walletBalance;
-      expect(initialBalance, equals(2450.50));
+      expect(initialBalance, equals(500.0));
 
       sessionRepo.processWithdrawal(500.0);
-      expect(sessionRepo.currentState.walletBalance, equals(1950.50));
-      expect(sessionRepo.currentState.pendingWithdrawal, equals(1000.00));
+      expect(sessionRepo.currentState.walletBalance, equals(0.0));
+      expect(sessionRepo.currentState.pendingWithdrawal, equals(500.0));
 
       sessionRepo.processWithdrawal(2000.0);
-      expect(sessionRepo.currentState.walletBalance, equals(1950.50));
+      expect(sessionRepo.currentState.walletBalance, equals(0.0));
     });
 
     test('Online/Offline toggle and stream', () async {

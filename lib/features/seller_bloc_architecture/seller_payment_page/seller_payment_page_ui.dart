@@ -53,7 +53,8 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
                     ),
                 child:
                     BlocBuilder<SellerPaymentPageBloc, SellerPaymentPageState>(
-                      builder: (context, state) {
+                      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                         return AnimatedSwitcher(
                           duration: const Duration(milliseconds: 400),
                           switchInCurve: Curves.easeOutCubic,

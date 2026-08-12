@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:rxdart/rxdart.dart';
 
 abstract class DeliveryEarningsDashboardServiceBase {
   Future<Map<String, dynamic>> fetchEarningsData();
+  Stream<Map<String, dynamic>> watchEarningsData();
   Future<Map<String, dynamic>> withdraw(double amount);
   Stream<double> simulateMediaUpload();
 }
@@ -23,98 +25,174 @@ class DeliveryEarningsDashboardService
   Future<Map<String, dynamic>> fetchEarningsData() async {
     try {
       final uid = _auth?.currentUser?.uid;
-      if (uid != null && _firestore != null) {
-        final partnerDoc = await _firestore!
+      final fs = _firestore;
+      if (uid != null && fs != null) {
+        final partnerDoc = await fs
             .collection('delivery_partners')
             .doc(uid)
             .get();
 
         if (partnerDoc.exists) {
-          final data = partnerDoc.data()!;
-          final totalEarnings =
-              (data['totalEarnings'] as num?)?.toDouble() ?? 0.0;
-          final totalDeliveries = (data['totalDeliveries'] as num?)?.toInt() ?? 0;
-
-          final completedQuery = await _firestore!
+          final q1Docs = await fs
               .collection('orders')
               .where('riderId', isEqualTo: uid)
               .where('status', isEqualTo: 'Delivered')
-              .get();
+              .get()
+              .then((q) => q.docs)
+              .catchError((_) => <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
 
-          final todayStart = DateTime(
-            DateTime.now().year,
-            DateTime.now().month,
-            DateTime.now().day,
-          );
-          final todayOrders = completedQuery.docs.where((doc) {
-            final ts = doc.data()['timestamp'] as Timestamp?;
-            return ts != null && ts.toDate().isAfter(todayStart);
-          }).length;
+          final q2Docs = await fs
+              .collection('orders')
+              .where('deliveryPartnerId', isEqualTo: uid)
+              .where('status', isEqualTo: 'Delivered')
+              .get()
+              .then((q) => q.docs)
+              .catchError((_) => <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
 
-          final todayEarnings = completedQuery.docs
-              .where((doc) {
-                final ts = doc.data()['timestamp'] as Timestamp?;
-                return ts != null && ts.toDate().isAfter(todayStart);
-              })
-              .fold<double>(0.0, (sum, doc) =>
-                  sum + ((doc.data()['amount'] as num?)?.toDouble() ?? 0.0) * 0.15 + 40.0);
+          final docMap = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+          for (final doc in q1Docs) {
+            docMap[doc.id] = doc;
+          }
+          for (final doc in q2Docs) {
+            docMap[doc.id] = doc;
+          }
 
-          final yesterdayStart = todayStart.subtract(const Duration(days: 1));
-          final yesterdayEarnings = completedQuery.docs
-              .where((doc) {
-                final ts = doc.data()['timestamp'] as Timestamp?;
-                return ts != null &&
-                    ts.toDate().isAfter(yesterdayStart) &&
-                    ts.toDate().isBefore(todayStart);
-              })
-              .fold<double>(0.0, (sum, doc) =>
-                  sum + ((doc.data()['amount'] as num?)?.toDouble() ?? 0.0) * 0.15 + 40.0);
-
-          final earningsGrowth = yesterdayEarnings > 0
-              ? ((todayEarnings - yesterdayEarnings) / yesterdayEarnings) * 100
-              : 0.0;
-
-          final weeklyStart = todayStart.subtract(const Duration(days: 7));
-          final weeklyOrders = completedQuery.docs.where((doc) {
-            final ts = doc.data()['timestamp'] as Timestamp?;
-            return ts != null && ts.toDate().isAfter(weeklyStart);
-          }).length;
-
-          final weeklyEarnings = completedQuery.docs
-              .where((doc) {
-                final ts = doc.data()['timestamp'] as Timestamp?;
-                return ts != null && ts.toDate().isAfter(weeklyStart);
-              })
-              .fold<double>(0.0, (sum, doc) =>
-                  sum + ((doc.data()['amount'] as num?)?.toDouble() ?? 0.0) * 0.15 + 40.0);
-
-          return {
-            'totalEarnings': totalEarnings,
-            'totalDeliveries': totalDeliveries,
-            'todayEarnings': todayEarnings,
-            'todayDeliveries': todayOrders,
-            'earningsGrowth': earningsGrowth,
-            'weeklyEarnings': weeklyEarnings,
-            'weeklyDeliveries': weeklyOrders,
-            'monthlyEarnings': totalEarnings,
-            'monthlyDeliveries': totalDeliveries,
-            'averagePerOrder': totalDeliveries > 0 ? totalEarnings / totalDeliveries : 0.0,
-            'rating': (data['rating'] as num?)?.toDouble() ?? 4.8,
-          };
+          return _mapEarningsData(partnerDoc, docMap.values.toList());
         }
       }
     } catch (_) {}
 
-    return _buildMockData();
+    return {};
+  }
+
+  @override
+  Stream<Map<String, dynamic>> watchEarningsData() {
+    final uid = _auth?.currentUser?.uid;
+    final fs = _firestore;
+    if (uid == null || fs == null) {
+      return Stream.value({});
+    }
+    final partnerStream = fs
+        .collection('delivery_partners')
+        .doc(uid)
+        .snapshots();
+
+    final riderOrdersStream = fs
+        .collection('orders')
+        .where('riderId', isEqualTo: uid)
+        .where('status', isEqualTo: 'Delivered')
+        .snapshots();
+
+    final partnerOrdersStream = fs
+        .collection('orders')
+        .where('deliveryPartnerId', isEqualTo: uid)
+        .where('status', isEqualTo: 'Delivered')
+        .snapshots();
+
+    return Rx.combineLatest3<
+        DocumentSnapshot<Map<String, dynamic>>,
+        QuerySnapshot<Map<String, dynamic>>,
+        QuerySnapshot<Map<String, dynamic>>,
+        Map<String, dynamic>>(
+      partnerStream,
+      riderOrdersStream,
+      partnerOrdersStream,
+      (partnerDoc, q1, q2) {
+        final docMap = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+        for (final doc in q1.docs) {
+          docMap[doc.id] = doc;
+        }
+        for (final doc in q2.docs) {
+          docMap[doc.id] = doc;
+        }
+        return _mapEarningsData(partnerDoc, docMap.values.toList());
+      },
+    );
+  }
+
+  double _orderEarnings(Map<String, dynamic> data) {
+    final deliveryFee = (data['deliveryFee'] as num?)?.toDouble();
+    if (deliveryFee != null && deliveryFee > 0) return deliveryFee;
+    final deliveryCharge = (data['deliveryCharge'] as num?)?.toDouble();
+    if (deliveryCharge != null && deliveryCharge > 0) return deliveryCharge;
+    return (data['amount'] as num?)?.toDouble() ?? 0.0;
+  }
+
+  Map<String, dynamic> _mapEarningsData(
+    DocumentSnapshot<Map<String, dynamic>> partnerDoc,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> completedDocs,
+  ) {
+    final data = partnerDoc.exists ? partnerDoc.data() ?? {} : {};
+    final totalEarnings = (data['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+    final totalDeliveries = (data['totalDeliveries'] as num?)?.toInt() ?? 0;
+
+    final todayStart = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    final todayOrders = completedDocs.where((doc) {
+      final ts = doc.data()['timestamp'] as Timestamp?;
+      return ts != null && ts.toDate().isAfter(todayStart);
+    }).length;
+
+    final todayEarnings = completedDocs
+        .where((doc) {
+          final ts = doc.data()['timestamp'] as Timestamp?;
+          return ts != null && ts.toDate().isAfter(todayStart);
+        })
+        .fold<double>(0.0, (sum, doc) => sum + _orderEarnings(doc.data()));
+
+    final yesterdayStart = todayStart.subtract(const Duration(days: 1));
+    final yesterdayEarnings = completedDocs
+        .where((doc) {
+          final ts = doc.data()['timestamp'] as Timestamp?;
+          return ts != null &&
+              ts.toDate().isAfter(yesterdayStart) &&
+              ts.toDate().isBefore(todayStart);
+        })
+        .fold<double>(0.0, (sum, doc) => sum + _orderEarnings(doc.data()));
+
+    final earningsGrowth = yesterdayEarnings > 0
+        ? ((todayEarnings - yesterdayEarnings) / yesterdayEarnings) * 100
+        : 0.0;
+
+    final weeklyStart = todayStart.subtract(const Duration(days: 7));
+    final weeklyOrders = completedDocs.where((doc) {
+      final ts = doc.data()['timestamp'] as Timestamp?;
+      return ts != null && ts.toDate().isAfter(weeklyStart);
+    }).length;
+
+    final weeklyEarnings = completedDocs
+        .where((doc) {
+          final ts = doc.data()['timestamp'] as Timestamp?;
+          return ts != null && ts.toDate().isAfter(weeklyStart);
+        })
+        .fold<double>(0.0, (sum, doc) => sum + _orderEarnings(doc.data()));
+
+    return {
+      'totalEarnings': totalEarnings,
+      'totalDeliveries': totalDeliveries,
+      'todayEarnings': todayEarnings,
+      'todayDeliveries': todayOrders,
+      'earningsGrowth': earningsGrowth,
+      'weeklyEarnings': weeklyEarnings,
+      'weeklyDeliveries': weeklyOrders,
+      'monthlyEarnings': totalEarnings,
+      'monthlyDeliveries': totalDeliveries,
+      'averagePerOrder': totalDeliveries > 0 ? totalEarnings / totalDeliveries : 0.0,
+      'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
+    };
   }
 
   @override
   Future<Map<String, dynamic>> withdraw(double amount) async {
     try {
       final uid = _auth?.currentUser?.uid;
-      if (uid != null && _firestore != null) {
-        final docRef = _firestore!.collection('delivery_partners').doc(uid);
-        await _firestore!.runTransaction((transaction) async {
+      final fs = _firestore;
+      if (uid != null && fs != null) {
+        final docRef = fs.collection('delivery_partners').doc(uid);
+        await fs.runTransaction((transaction) async {
           final snap = await transaction.get(docRef);
           if (!snap.exists) return;
           final currentEarnings =
@@ -139,8 +217,7 @@ class DeliveryEarningsDashboardService
       return {'success': false, 'message': e.toString()};
     }
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    return {'success': true, 'message': 'Withdrawal of \u{20B9}${amount.toStringAsFixed(2)} initiated.'};
+    return {'success': false, 'message': 'Authentication required to withdraw.'};
   }
 
   @override
@@ -150,36 +227,5 @@ class DeliveryEarningsDashboardService
       await Future<void>.delayed(const Duration(milliseconds: 40));
       yield i / chunks;
     }
-  }
-
-  Map<String, dynamic> _buildMockData() {
-    return {
-      'totalEarnings': 48500.00,
-      'totalDeliveries': 312,
-      'todayEarnings': 2450.00,
-      'todayDeliveries': 18,
-      'earningsGrowth': 18.5,
-      'weeklyEarnings': 12450.00,
-      'weeklyDeliveries': 85,
-      'monthlyEarnings': 48500.00,
-      'monthlyDeliveries': 312,
-      'averagePerOrder': 155.45,
-      'rating': 4.8,
-      'weeklyChart': [
-        {'day': 'Mon', 'amount': 320.0},
-        {'day': 'Tue', 'amount': 410.0},
-        {'day': 'Wed', 'amount': 380.0},
-        {'day': 'Thu', 'amount': 520.0},
-        {'day': 'Fri', 'amount': 450.0},
-        {'day': 'Sat', 'amount': 280.0},
-        {'day': 'Sun', 'amount': 90.0},
-      ],
-      'monthlyChart': [
-        {'week': 'W1', 'amount': 10450.0},
-        {'week': 'W2', 'amount': 12300.0},
-        {'week': 'W3', 'amount': 11800.0},
-        {'week': 'W4', 'amount': 13950.0},
-      ],
-    };
   }
 }

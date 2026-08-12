@@ -73,12 +73,12 @@ void main() {
       );
 
       expect(bloc.state.status, DeliveryEarningsStatus.initial);
-      expect(bloc.state.totalEarnings, 12850.00);
-      expect(bloc.state.walletBalance, 12850.00);
-      expect(bloc.state.todayEarnings, 2450.00);
-      expect(bloc.state.weeklyEarnings, 12850.00);
-      expect(bloc.state.monthlyEarnings, 48900.00);
-      expect(bloc.state.earningsGrowth, 18.5);
+      expect(bloc.state.totalEarnings, 0.0);
+      expect(bloc.state.walletBalance, 0.0);
+      expect(bloc.state.todayEarnings, 0.0);
+      expect(bloc.state.weeklyEarnings, 0.0);
+      expect(bloc.state.monthlyEarnings, 0.0);
+      expect(bloc.state.earningsGrowth, 0.0);
       expect(bloc.state.selectedRange, EarningsDateRange.today);
       expect(bloc.state.selectedTab, EarningsTab.overview);
       expect(bloc.state.rangeEarnings, isEmpty);

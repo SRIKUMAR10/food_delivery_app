@@ -63,6 +63,7 @@ void main() {
   setUp(() {
     mockBloc = MockDeliveryNavigationBarPageBloc();
     when(() => mockBloc.state).thenReturn(loadedState);
+    when(() => mockBloc.stream).thenAnswer((_) => Stream.value(loadedState));
   });
 
   void setDesktopSize(WidgetTester tester) {

@@ -157,7 +157,8 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                   left: 0,
                   right: 0,
                   child: BlocBuilder<CarouselCubit, int>(
-                    builder: (context, currentIndex) {
+                    buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, currentIndex) {
                       return Container(
                         height: 106,
                         alignment: Alignment.bottomCenter,

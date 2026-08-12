@@ -49,7 +49,8 @@ class StoreDetailsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<SellerStoreDetailsBloc, SellerStoreDetailsPageState>(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         if (state is SellerStoreDetailsLoading ||
             state is SellerStoreDetailsInitial) {
           return const _StoreDetailsSkeleton();

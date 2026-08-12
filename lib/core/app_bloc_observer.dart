@@ -19,12 +19,18 @@ class AppBlocObserver extends BlocObserver {
   void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
     debugPrint('${bloc.runtimeType} $error');
 
-    FirebaseCrashlytics.instance.recordError(
-      error,
-      stackTrace,
-      reason: 'Exception in ${bloc.runtimeType}',
-      fatal: false,
-    );
+    if (!kIsWeb) {
+      try {
+        FirebaseCrashlytics.instance.recordError(
+          error,
+          stackTrace,
+          reason: 'Exception in ${bloc.runtimeType}',
+          fatal: false,
+        );
+      } catch (e) {
+        debugPrint('Crashlytics record error skipped: $e');
+      }
+    }
 
     super.onError(bloc, error, stackTrace);
   }

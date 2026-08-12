@@ -1,7 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_state.dart';
+
+class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockCollectionReference extends Mock
+    implements CollectionReference<Map<String, dynamic>> {}
+class MockQuerySnapshot extends Mock implements QuerySnapshot<Map<String, dynamic>> {}
 
 DeliveryOrderCardModel order({
   String id = 'ORD12345',
@@ -32,7 +41,27 @@ DeliveryOrderCardModel order({
 }
 
 void main() {
-  final service = DeliveryOrdersService();
+  late MockFirebaseFirestore mockFirestore;
+  late MockFirebaseAuth mockAuth;
+  late MockCollectionReference mockCollection;
+  late DeliveryOrdersService service;
+
+  setUp(() {
+    mockFirestore = MockFirebaseFirestore();
+    mockAuth = MockFirebaseAuth();
+    mockCollection = MockCollectionReference();
+
+    when(() => mockFirestore.collection(any())).thenReturn(mockCollection);
+    when(() => mockCollection.where(any(), whereIn: any(named: 'whereIn'))).thenReturn(mockCollection);
+    when(() => mockCollection.where(any(), isEqualTo: any(named: 'isEqualTo'))).thenReturn(mockCollection);
+    when(() => mockCollection.get()).thenAnswer((_) async => MockQuerySnapshot());
+    when(() => mockCollection.snapshots()).thenAnswer((_) => Stream.value(MockQuerySnapshot()));
+
+    service = DeliveryOrdersService(
+      firestore: mockFirestore,
+      auth: mockAuth,
+    );
+  });
 
   final pending = order(status: DeliveryOrderStatus.pending);
   final active = order(
@@ -50,14 +79,17 @@ void main() {
   final orders = [pending, active, completed];
 
   group('DeliveryOrdersPage Service Tests', () {
-    test('fetchOrdersData returns valid order data', () async {
+    test('fetchOrdersData returns an empty list when unauthenticated', () async {
       final data = await service.fetchOrdersData();
       final rawOrders = data['orders'] as List;
 
-      expect(rawOrders, hasLength(8));
-      final first = rawOrders.first as Map<String, dynamic>;
-      expect(first['orderId'], 'ORD12345');
-      expect(first['customerName'], 'Priya Sharma');
+      expect(rawOrders, isEmpty);
+    });
+
+    test('watchOrdersData emits an empty list when unauthenticated', () async {
+      final data = await service.watchOrdersData().first;
+
+      expect(data['orders'] as List, isEmpty);
     });
 
     test(
@@ -261,8 +293,19 @@ void main() {
       ]);
     });
 
-    test('getAcceptanceRate returns the stored partner rate', () {
-      expect(service.getAcceptanceRate(), 92);
+    test('state acceptanceRate derives from real order data', () {
+      final state = DeliveryOrdersPageState(orders: [
+        order(id: 'ORD1', status: DeliveryOrderStatus.completed),
+        order(id: 'ORD2', status: DeliveryOrderStatus.active),
+        order(id: 'ORD3', status: DeliveryOrderStatus.pending),
+        order(id: 'ORD4', status: DeliveryOrderStatus.cancelled),
+      ]);
+      expect(state.acceptanceRate, 75);
+    });
+
+    test('state acceptanceRate is zero with no orders', () {
+      const state = DeliveryOrdersPageState();
+      expect(state.acceptanceRate, 0);
     });
 
     test('formatCurrency renders rupee amount with two decimals', () {

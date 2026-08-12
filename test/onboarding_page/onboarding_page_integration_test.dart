@@ -6,11 +6,14 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/hom
 import 'package:food_delivery_app/features/buyer_bloc_architecture/onboarding_page/onboarding_page_UI.dart';
 import 'package:mocktail/mocktail.dart';
 
+import '../mock_firebase.dart';
+
 class MockHomePageBloc extends Mock implements HomePageBloc {}
 class MockAuthService extends Mock implements IAuthService {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setupFirebaseAuthMocks();
 
   late MockHomePageBloc mockHomePageBloc;
   late MockAuthService mockAuthService;

@@ -1,9 +1,11 @@
+// Real-Time Firestore Stream Provider Standardized
 import 'dart:async';
 import 'Delivery_Incoming_Order_page_service.dart';
 import 'Delivery_Incoming_Order_page_state.dart';
 
 abstract class DeliveryIncomingOrderRepositoryBase {
   Future<DeliveryIncomingOrderState> fetchIncomingOrder();
+  Stream<DeliveryIncomingOrderState?> watchIncomingOrder();
   Future<bool> acceptOrder(String orderId);
   Future<bool> declineOrder(String orderId);
 }
@@ -15,31 +17,32 @@ class DeliveryIncomingOrderRepository
   DeliveryIncomingOrderRepository({DeliveryIncomingOrderServiceBase? service})
       : _service = service ?? DeliveryIncomingOrderService();
 
+  DeliveryIncomingOrderState _mapRaw(Map<String, dynamic>? raw) {
+    if (raw == null) return const DeliveryIncomingOrderState();
+    return DeliveryIncomingOrderState(
+      status: IncomingOrderStatus.loaded,
+      orderId: raw['orderId'] ?? '',
+      storeName: raw['storeName'] ?? '',
+      storeAddress: raw['storeAddress'] ?? '',
+      customerName: raw['customerName'] ?? '',
+      customerAddress: raw['customerAddress'] ?? '',
+      orderAmount: (raw['orderAmount'] as num?)?.toDouble() ?? 0.0,
+      distanceKm: (raw['distanceKm'] as num?)?.toDouble() ?? 0.0,
+      etaMins: (raw['etaMins'] as num?)?.toInt() ?? 0,
+      paymentMethod: raw['paymentMethod'] ?? '',
+      remainingSeconds: (raw['remainingSeconds'] as num?)?.toInt() ?? 0,
+    );
+  }
+
   @override
   Future<DeliveryIncomingOrderState> fetchIncomingOrder() async {
     final raw = await _service.fetchIncomingOrderData();
-    if (raw != null) {
-      return DeliveryIncomingOrderState(
-        status: IncomingOrderStatus.loaded,
-        orderId: raw['orderId'] ?? '',
-        storeName: raw['storeName'] ?? '',
-        storeAddress: raw['storeAddress'] ?? '',
-        customerName: raw['customerName'] ?? '',
-        customerAddress: raw['customerAddress'] ?? '',
-        orderAmount: (raw['orderAmount'] as num?)?.toDouble() ?? 0.0,
-        remainingSeconds: raw['remainingSeconds'] ?? 15,
-      );
-    }
-    return const DeliveryIncomingOrderState(
-      status: IncomingOrderStatus.loaded,
-      orderId: '#ORD98234',
-      storeName: 'Green Mart',
-      storeAddress: '24, Anna Salai, Chennai',
-      customerName: 'Mike Anderson',
-      customerAddress: '12, Beach Road, Chennai',
-      orderAmount: 620.00,
-      remainingSeconds: 15,
-    );
+    return _mapRaw(raw);
+  }
+
+  @override
+  Stream<DeliveryIncomingOrderState?> watchIncomingOrder() {
+    return _service.watchIncomingOrderData().map(_mapRaw);
   }
 
   @override

@@ -1,0 +1,189 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_login_page/buyer_login_page_bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_login_page/buyer_login_page_event.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_login_page/buyer_login_page_state.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_login_page/buyer_login_page_repository.dart';
+
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_sign_up_page/buyer_sign_up_page_bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_sign_up_page/buyer_sign_up_page_event.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_sign_up_page/buyer_sign_up_page_state.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_sign_up_page/buyer_sign_up_page_repository.dart';
+
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_otp_verification_page/buyer_otp_verification_page_bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_otp_verification_page/buyer_otp_verification_page_event.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_otp_verification_page/buyer_otp_verification_page_state.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_otp_verification_page/buyer_otp_verification_page_repository.dart';
+
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_forgot_password_page/buyer_forgot_password_page_bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_forgot_password_page/buyer_forgot_password_page_event.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_forgot_password_page/buyer_forgot_password_page_state.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_forgot_password_page/buyer_forgot_password_page_repository.dart';
+
+class MockBuyerLoginRepository extends Mock implements BuyerLoginRepository {}
+class MockBuyerSignUpRepository extends Mock implements BuyerSignUpRepository {}
+class MockBuyerOtpRepository extends Mock implements BuyerOtpRepository {}
+class MockBuyerForgotPasswordRepository extends Mock implements BuyerForgotPasswordRepository {}
+
+void main() {
+  group('BuyerLoginBloc', () {
+    late MockBuyerLoginRepository mockRepo;
+
+    setUp(() {
+      mockRepo = MockBuyerLoginRepository();
+    });
+
+    test('initial state is BuyerLoginState()', () {
+      final bloc = BuyerLoginBloc(repository: mockRepo);
+      expect(bloc.state, const BuyerLoginState());
+    });
+
+    test('toggles password visibility correctly', () async {
+      final bloc = BuyerLoginBloc(repository: mockRepo);
+      expect(bloc.state.isPasswordObscured, isTrue);
+      bloc.add(const BuyerLoginTogglePasswordVisibility());
+      await expectLater(
+        bloc.stream,
+        emits(const BuyerLoginState(isPasswordObscured: false)),
+      );
+    });
+
+    test('emits failure when phone is empty', () async {
+      final bloc = BuyerLoginBloc(repository: mockRepo);
+      bloc.add(const BuyerLoginSubmitted(phone: '', password: '123'));
+      await expectLater(
+        bloc.stream,
+        emits(const BuyerLoginState(
+          phone: '',
+          password: '',
+          status: BuyerLoginStatus.failure,
+          errorMessage: 'Please enter your phone number',
+        )),
+      );
+    });
+  });
+
+  group('BuyerSignUpBloc', () {
+    late MockBuyerSignUpRepository mockRepo;
+
+    setUp(() {
+      mockRepo = MockBuyerSignUpRepository();
+    });
+
+    test('emits failure when passwords do not match', () async {
+      final bloc = BuyerSignUpBloc(repository: mockRepo);
+      bloc.add(const BuyerSignUpSubmitted(
+        fullName: 'Test User',
+        email: 'test@example.com',
+        mobileNumber: '+91 9876543210',
+        password: 'password123',
+        confirmPassword: 'password456',
+      ));
+
+      await expectLater(
+        bloc.stream,
+        emits(const BuyerSignUpState(
+          status: BuyerSignUpStatus.failure,
+          errorMessage: 'Passwords do not match',
+        )),
+      );
+    });
+  });
+
+  group('BuyerOtpBloc', () {
+    late MockBuyerOtpRepository mockRepo;
+
+    setUp(() {
+      mockRepo = MockBuyerOtpRepository();
+    });
+
+    test('emits success on valid OTP verification', () async {
+      when(() => mockRepo.verifyOtpAndSaveProfile(
+            fullName: any(named: 'fullName'),
+            email: any(named: 'email'),
+            mobileNumber: any(named: 'mobileNumber'),
+            password: any(named: 'password'),
+            otpCode: any(named: 'otpCode'),
+          )).thenAnswer((_) async => 'user_123');
+
+      final bloc = BuyerOtpBloc(repository: mockRepo);
+      bloc.add(const BuyerVerifyOtpSubmitted(
+        fullName: 'Test Buyer',
+        email: 'buyer@test.com',
+        mobileNumber: '+919999999999',
+        password: 'pass1234',
+        otpCode: '123456',
+      ));
+
+      expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const BuyerOtpState(status: BuyerOtpStatus.loading),
+          const BuyerOtpState(status: BuyerOtpStatus.success),
+        ]),
+      );
+    });
+  });
+
+  group('BuyerForgotPasswordBloc', () {
+    late MockBuyerForgotPasswordRepository mockRepo;
+
+    setUp(() {
+      mockRepo = MockBuyerForgotPasswordRepository();
+    });
+
+    test('initial state is BuyerForgotPasswordState()', () {
+      final bloc = BuyerForgotPasswordBloc(repository: mockRepo);
+      expect(bloc.state, const BuyerForgotPasswordState());
+    });
+
+    test('updates inputs and toggles password visibility', () async {
+      final bloc = BuyerForgotPasswordBloc(repository: mockRepo);
+
+      final expectedStream = expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const BuyerForgotPasswordState(phoneNumber: '9876543210'),
+          const BuyerForgotPasswordState(phoneNumber: '9876543210', isPasswordVisible: true),
+          const BuyerForgotPasswordState(
+            phoneNumber: '9876543210',
+            isPasswordVisible: true,
+            isConfirmPasswordVisible: true,
+          ),
+        ]),
+      );
+
+      bloc.add(const BuyerForgotPasswordPhoneChanged('9876543210'));
+      bloc.add(const BuyerForgotPasswordTogglePasswordVisibility());
+      bloc.add(const BuyerForgotPasswordToggleConfirmPasswordVisibility());
+
+      await expectedStream;
+    });
+
+    test('emits validation failure when submit called without verification ID', () async {
+      final bloc = BuyerForgotPasswordBloc(repository: mockRepo);
+
+      final expectedStream = expectLater(
+        bloc.stream,
+        emitsThrough(const BuyerForgotPasswordState(
+          phoneNumber: '9876543210',
+          otp: '123456',
+          password: 'password123',
+          confirmPassword: 'password123',
+          status: BuyerForgotPasswordStatus.failure,
+          errorMessage: 'Please request OTP first.',
+        )),
+      );
+
+      bloc.add(const BuyerForgotPasswordPhoneChanged('9876543210'));
+      bloc.add(const BuyerForgotPasswordOtpChanged('123456'));
+      bloc.add(const BuyerForgotPasswordPasswordChanged('password123'));
+      bloc.add(const BuyerForgotPasswordConfirmPasswordChanged('password123'));
+      bloc.add(const BuyerForgotPasswordSubmitted());
+
+      await expectedStream;
+    });
+  });
+}
+
+

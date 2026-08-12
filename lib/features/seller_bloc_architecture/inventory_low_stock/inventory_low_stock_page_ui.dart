@@ -151,6 +151,7 @@ class _InventoryLowStockViewState extends State<_InventoryLowStockView> {
         appBar: _buildAppBar(),
         body: SafeArea(
           child: BlocBuilder<InventoryBloc, InventoryState>(
+            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
             builder: (context, state) {
               if (state is InventoryLoading) {
                 return const Center(child: CircularProgressIndicator());
@@ -223,7 +224,8 @@ class _InventoryLowStockViewState extends State<_InventoryLowStockView> {
           },
         ),
         BlocBuilder<InventoryBloc, InventoryState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return PopupMenuButton<String>(
               icon: const Icon(Icons.filter_list, color: Colors.black),
               onSelected: (val) => context.read<InventoryBloc>().add(FilterInventory(val)),

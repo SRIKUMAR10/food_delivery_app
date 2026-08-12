@@ -15,6 +15,9 @@ class ChatSupportLoaded extends ChatSupportState {
   final bool isSendingMessage;
   final String? errorMessage;
   final String searchQuery;
+  final bool showEmojiPicker;
+  final bool isRecording;
+  final Duration recordingDuration;
 
   ChatSupportLoaded({
     required this.currentUserId,
@@ -24,6 +27,9 @@ class ChatSupportLoaded extends ChatSupportState {
     this.isSendingMessage = false,
     this.errorMessage,
     this.searchQuery = '',
+    this.showEmojiPicker = false,
+    this.isRecording = false,
+    this.recordingDuration = Duration.zero,
   });
 
   ConversationModel? get selectedConversation {
@@ -56,6 +62,9 @@ class ChatSupportLoaded extends ChatSupportState {
     String? errorMessage,
     bool clearError = false,
     String? searchQuery,
+    bool? showEmojiPicker,
+    bool? isRecording,
+    Duration? recordingDuration,
   }) {
     return ChatSupportLoaded(
       currentUserId: currentUserId ?? this.currentUserId,
@@ -66,6 +75,9 @@ class ChatSupportLoaded extends ChatSupportState {
       isSendingMessage: isSendingMessage ?? this.isSendingMessage,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       searchQuery: searchQuery ?? this.searchQuery,
+      showEmojiPicker: showEmojiPicker ?? this.showEmojiPicker,
+      isRecording: isRecording ?? this.isRecording,
+      recordingDuration: recordingDuration ?? this.recordingDuration,
     );
   }
 }

@@ -30,6 +30,13 @@ abstract class DeliveryAppTypography {
     height: 1.3,
   );
 
+  static const TextStyle h4 = TextStyle(
+    fontSize: 16.0,
+    fontWeight: FontWeight.w600,
+    color: DeliveryAppColors.textPrimary,
+    height: 1.35,
+  );
+
   // Subtitles & Titles
   static const TextStyle titleLarge = TextStyle(
     fontSize: 16.0,
@@ -40,6 +47,13 @@ abstract class DeliveryAppTypography {
 
   static const TextStyle titleMedium = TextStyle(
     fontSize: 14.0,
+    fontWeight: FontWeight.w600,
+    color: DeliveryAppColors.textSecondary,
+    height: 1.35,
+  );
+
+  static const TextStyle titleSmall = TextStyle(
+    fontSize: 13.0,
     fontWeight: FontWeight.w600,
     color: DeliveryAppColors.textSecondary,
     height: 1.35,

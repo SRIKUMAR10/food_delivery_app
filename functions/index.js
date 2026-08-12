@@ -566,7 +566,7 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
   }
 
   const uid = context.auth.uid;
-  const { selectedCartItems, customerName, deliveryAddress, paymentMethod, coupon } = data;
+  const { selectedCartItems, customerName, customerPhone, deliveryAddress, paymentMethod, coupon } = data;
 
   if (!selectedCartItems || selectedCartItems.length === 0) {
     throw new functions.https.HttpsError('invalid-argument', 'No items selected.');
@@ -697,19 +697,49 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
         }
       }
 
-      // 4. Perform Writes
+      // 4. Enrich Customer Details Snapshot & Perform Writes
+      let finalName = customerName && customerName !== 'Customer' && customerName !== 'Unknown Customer' ? customerName : '';
+      let finalPhone = customerPhone || '';
+      let finalAddress = deliveryAddress && deliveryAddress !== 'Primary Address' && deliveryAddress !== 'Default Address' ? deliveryAddress : '';
+
+      if ((!finalName || !finalPhone || !finalAddress) && uid) {
+        const userRef = db.collection('users').doc(uid);
+        const userSnap = await transaction.get(userRef);
+        if (userSnap.exists) {
+          const uData = userSnap.data() || {};
+          if (!finalName) {
+            finalName = uData.name || uData.displayName || uData.fullName || uData.userName || '';
+          }
+          if (!finalPhone) {
+            finalPhone = uData.phone || uData.phoneNumber || uData.mobile || uData.userPhone || '';
+          }
+          if (!finalAddress) {
+            const selType = (uData.selectedAddressType || '').toLowerCase().trim();
+            if (selType === 'home' && uData.homeAddress) finalAddress = uData.homeAddress;
+            else if (selType === 'work' && uData.workAddress) finalAddress = uData.workAddress;
+            else if (selType === 'other' && uData.otherAddress) finalAddress = uData.otherAddress;
+            else finalAddress = uData.address || uData.primaryAddress || '';
+          }
+        }
+      }
+
+      if (!finalName) finalName = 'Customer';
+      if (!finalAddress) finalAddress = 'Primary Address';
+
       for (const sellerId in itemsBySeller) {
         const orderData = itemsBySeller[sellerId];
         const orderRef = db.collection('orders').doc();
         const orderPayload = {
           customerId: uid || '',
-          customerName: customerName || 'Unknown Customer',
+          customerName: finalName,
+          customerPhone: finalPhone,
           sellerId: sellerId || 'Unknown Seller',
           status: 'New',
           amount: orderData.totalAmount || 0,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           items: orderData.items,
-          deliveryAddress: deliveryAddress || 'Default Address',
+          deliveryAddress: finalAddress,
+          deliveryAddressSnapshot: finalAddress,
           paymentMethod: paymentMethod || 'Wallet'
         };
 
@@ -793,6 +823,77 @@ exports.generateZegoToken = functions.https.onRequest((req, res) => {
       });
     } catch (error) {
       console.error("Error generating Zego token:", error);
+      res.status(500).send({ message: "Internal Server Error: " + error.message });
+    }
+  });
+});
+
+exports.resetDeliveryPartnerPassword = functions.https.onRequest((req, res) => {
+  corsHandler(req, res, async () => {
+    if (req.method !== "POST") {
+      return res.status(405).send({ message: "Method Not Allowed" });
+    }
+
+    try {
+      const { phone, email, uid, newPassword } = req.body;
+      if ((!phone && !email && !uid) || !newPassword) {
+        return res.status(400).send({ message: "Bad Request: Missing parameters" });
+      }
+
+      let updatedUids = new Set();
+
+      if (uid) {
+        try {
+          await admin.auth().updateUser(uid, { password: newPassword });
+          updatedUids.add(uid);
+        } catch (e) {
+          console.log("Error updating by UID:", e.message);
+        }
+      }
+
+      if (email) {
+        try {
+          const userByEmail = await admin.auth().getUserByEmail(email);
+          await admin.auth().updateUser(userByEmail.uid, { password: newPassword });
+          updatedUids.add(userByEmail.uid);
+        } catch (e) {
+          console.log("Error updating by Email:", e.message);
+        }
+      }
+
+      if (phone) {
+        const cleaned = phone.replaceAll(/\s+/g, '').replaceAll('-', '');
+        const fullPhone = cleaned.startsWith('+') ? cleaned : '+91' + cleaned;
+        try {
+          const userByPhone = await admin.auth().getUserByPhoneNumber(fullPhone);
+          await admin.auth().updateUser(userByPhone.uid, { password: newPassword });
+          updatedUids.add(userByPhone.uid);
+        } catch (e) {
+          console.log("Error updating by Phone:", e.message);
+        }
+
+        const snapshot = await admin.firestore().collection('delivery_partners')
+          .where('phoneNumber', '==', fullPhone)
+          .limit(5)
+          .get();
+
+        for (const doc of snapshot.docs) {
+          try {
+            await admin.auth().updateUser(doc.id, { password: newPassword });
+            updatedUids.add(doc.id);
+          } catch (e) {
+            console.log(`Error updating doc ${doc.id}:`, e.message);
+          }
+        }
+      }
+
+      return res.status(200).send({
+        success: true,
+        updatedCount: updatedUids.size,
+        message: `Password reset successfully for ${updatedUids.size} account(s).`
+      });
+    } catch (error) {
+      console.error("Error in resetDeliveryPartnerPassword:", error);
       res.status(500).send({ message: "Internal Server Error: " + error.message });
     }
   });

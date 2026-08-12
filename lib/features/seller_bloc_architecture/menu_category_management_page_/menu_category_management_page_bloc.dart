@@ -1,26 +1,63 @@
+// Real-Time BLoC Stream Binding Standardized
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'menu_category_management_page_event.dart';
 import 'menu_category_management_page_state.dart';
 import 'menu_category_management_page_model.dart';
 import 'menu_category_management_page_repository.dart';
 
+class _CategoriesUpdatedEvent extends MenuCategoryManagementEvent {
+  final List<MenuCategoryModel> categories;
+  const _CategoriesUpdatedEvent(this.categories);
+
+  @override
+  List<Object?> get props => [categories];
+}
+
 class MenuCategoryManagementBloc extends Bloc<MenuCategoryManagementEvent, MenuCategoryManagementState> {
   final MenuCategoryManagementRepository repository;
+  StreamSubscription? _categoriesSub;
 
   MenuCategoryManagementBloc({required this.repository}) : super(const MenuCategoryManagementInitial()) {
     on<LoadMenuCategoriesEvent>(_onLoadMenuCategories);
+    on<_CategoriesUpdatedEvent>(_onCategoriesUpdated);
     on<ToggleCategorySelectionEvent>(_onToggleCategorySelection);
     on<ReorderCategoriesEvent>(_onReorderCategories);
     on<SaveCategoryPreferencesEvent>(_onSaveCategoryPreferences);
   }
 
+  @override
+  Future<void> close() {
+    _categoriesSub?.cancel();
+    return super.close();
+  }
+
   Future<void> _onLoadMenuCategories(LoadMenuCategoriesEvent event, Emitter<MenuCategoryManagementState> emit) async {
-    emit(MenuCategoryManagementLoading());
+    emit(const MenuCategoryManagementLoading());
     try {
+      await _categoriesSub?.cancel();
       final categories = await repository.getMenuCategories(event.sellerId);
       emit(MenuCategoryManagementLoaded(categories: categories));
+
+      _categoriesSub = repository.streamMenuCategories(event.sellerId).listen((liveCategories) {
+        final currentState = state;
+        if (currentState is MenuCategoryManagementLoaded && !currentState.hasUnsavedChanges) {
+          add(_CategoriesUpdatedEvent(liveCategories));
+        }
+      });
     } catch (e) {
       emit(MenuCategoryManagementError('Failed to load categories: $e'));
+    }
+  }
+
+  void _onCategoriesUpdated(_CategoriesUpdatedEvent event, Emitter<MenuCategoryManagementState> emit) {
+    final currentState = state;
+    if (currentState is MenuCategoryManagementLoaded) {
+      if (!currentState.hasUnsavedChanges) {
+        emit(currentState.copyWith(categories: event.categories));
+      }
+    } else {
+      emit(MenuCategoryManagementLoaded(categories: event.categories));
     }
   }
 

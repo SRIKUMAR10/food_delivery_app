@@ -10,7 +10,6 @@ class DeliveryIncomingOrderBloc
   final DeliveryIncomingOrderRepositoryBase repository;
   final DeliveryIncomingOrderServiceBase service;
   Timer? _timer;
-  static const int _totalSeconds = 15;
 
   DeliveryIncomingOrderBloc({
     DeliveryIncomingOrderRepositoryBase? repository,
@@ -44,12 +43,23 @@ class DeliveryIncomingOrderBloc
   ) async {
     emit(state.copyWith(status: IncomingOrderStatus.loading));
     try {
-      final orderData = await repository.fetchIncomingOrder();
-      emit(orderData.copyWith(
-        status: IncomingOrderStatus.loaded,
-        remainingSeconds: _totalSeconds,
-      ));
-      _startTimer();
+      await emit.forEach<DeliveryIncomingOrderState?>(
+        repository.watchIncomingOrder(),
+        onData: (orderData) {
+          if (orderData == null || orderData.orderId.isEmpty) {
+            _timer?.cancel();
+            return state.copyWith(status: IncomingOrderStatus.loaded);
+          }
+          _startTimer();
+          return orderData.copyWith(status: IncomingOrderStatus.loaded);
+        },
+        onError: (error, stackTrace) {
+          return state.copyWith(
+            status: IncomingOrderStatus.expired,
+            errorMessage: error.toString(),
+          );
+        },
+      );
     } catch (e) {
       emit(state.copyWith(
         status: IncomingOrderStatus.expired,

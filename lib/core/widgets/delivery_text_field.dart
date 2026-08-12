@@ -51,6 +51,7 @@ class DeliveryTextField extends StatelessWidget {
           const SizedBox(height: 6),
         ],
         TextFormField(
+          key: key,
           controller: controller,
           focusNode: focusNode,
           obscureText: obscureText,

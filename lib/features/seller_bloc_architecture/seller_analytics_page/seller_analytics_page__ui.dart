@@ -54,7 +54,8 @@ class SellerAnalyticsPageUI extends StatelessWidget {
       ),
       body: SafeArea(
         child: BlocBuilder<SellerAnalyticsBloc, SellerAnalyticsState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             if (state is AnalyticsInitial) {
               final String sellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
               context.read<SellerAnalyticsBloc>().add(LoadSellerAnalytics(sellerId: sellerId, timeRange: 'Weekly'));

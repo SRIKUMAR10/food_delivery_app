@@ -47,8 +47,8 @@ class ZegoService {
       debugPrint('ZegoCloud CF init failed, falling back to .env: $e');
     }
 
-    appId ??= int.tryParse(dotenv.env['ZEGO_APP_ID'] ?? '');
-    appSign ??= dotenv.env['ZEGO_APP_SIGN'];
+    appId ??= int.tryParse(dotenv.maybeGet('ZEGO_APP_ID') ?? '');
+    appSign ??= dotenv.maybeGet('ZEGO_APP_SIGN');
 
     if (appId == null || appSign == null || appSign.isEmpty) {
       debugPrint('ZegoCloud credentials not available');

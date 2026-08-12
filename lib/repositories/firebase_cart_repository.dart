@@ -10,7 +10,7 @@ class FirebaseCartRepository implements ICartRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _getCartCollection(String buyerId) {
-    return _firestore.collection('users').doc(buyerId).collection('cart');
+    return _firestore.collection('buyer_user').doc(buyerId).collection('cart');
   }
 
   @override
@@ -19,7 +19,7 @@ class FirebaseCartRepository implements ICartRepository {
     
     return _getCartCollection(buyerId).snapshots(includeMetadataChanges: true).map((snapshot) {
       return snapshot.docs.map((doc) => CartItem.fromFirestore(doc)).toList();
-    });
+    }).handleError((_) => <CartItem>[]);
   }
 
   @override
@@ -97,7 +97,14 @@ class FirebaseCartRepository implements ICartRepository {
   }
 
   @override
-  Future<void> checkoutCart(String buyerId, List<CartItem> selectedItems, String customerName, String deliveryAddress, {AppliedCoupon? appliedCoupon}) async {
+  Future<void> checkoutCart(
+    String buyerId,
+    List<CartItem> selectedItems,
+    String customerName,
+    String deliveryAddress, {
+    String? customerPhone,
+    AppliedCoupon? appliedCoupon,
+  }) async {
     if (buyerId.isEmpty || selectedItems.isEmpty) return;
 
     final selectedCartItemsPayload = selectedItems.map((item) => {
@@ -109,6 +116,7 @@ class FirebaseCartRepository implements ICartRepository {
     final payload = <String, dynamic>{
       'selectedCartItems': selectedCartItemsPayload,
       'customerName': customerName,
+      'customerPhone': customerPhone ?? '',
       'deliveryAddress': deliveryAddress,
       'paymentMethod': 'Wallet',
     };

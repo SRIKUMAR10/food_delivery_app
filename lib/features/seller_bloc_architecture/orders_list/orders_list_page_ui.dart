@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/models/order_status.dart';
 import '../../../../core/models/order_model.dart';
 import 'orders_list_page_bloc.dart';
@@ -154,7 +156,8 @@ class OrdersListView extends StatelessWidget {
                         ),
                         SliverToBoxAdapter(
                           child: BlocBuilder<OrdersListBloc, OrdersListState>(
-                            builder: (context, state) {
+                            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                               if (state is OrdersListLoaded) {
                                 return _SegmentedFilter(state: state);
                               }
@@ -170,7 +173,8 @@ class OrdersListView extends StatelessWidget {
                         ),
                         const SliverToBoxAdapter(child: SizedBox(height: 16)),
                         BlocBuilder<OrdersListBloc, OrdersListState>(
-                          builder: (context, state) {
+                          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                             if (state is OrdersListLoading ||
                                 state is OrdersListInitial) {
                               return SliverList(
@@ -184,7 +188,7 @@ class OrdersListView extends StatelessWidget {
                                       vertical: 8,
                                     ),
                                     child: _SkeletonLoader(
-                                      height: 160,
+                                      height: 220,
                                       borderRadius: 20,
                                     ),
                                   );
@@ -250,7 +254,6 @@ class OrdersListView extends StatelessWidget {
                                 context,
                               ).size.width;
                               final isDesktop = screenWidth >= 1024;
-                              final crossAxisCount = isDesktop ? 2 : 1;
 
                               return SliverPadding(
                                 padding: const EdgeInsets.symmetric(
@@ -260,9 +263,9 @@ class OrdersListView extends StatelessWidget {
                                 sliver: isDesktop
                                     ? SliverGrid(
                                         gridDelegate:
-                                            SliverGridDelegateWithFixedCrossAxisCount(
-                                              crossAxisCount: crossAxisCount,
-                                              mainAxisExtent: 210,
+                                            const SliverGridDelegateWithFixedCrossAxisCount(
+                                              crossAxisCount: 2,
+                                              mainAxisExtent: 290,
                                               mainAxisSpacing: 16,
                                               crossAxisSpacing: 16,
                                             ),
@@ -480,7 +483,8 @@ class _OrderListCardState extends State<_OrderListCard> {
         curve: Curves.easeOutCubic,
         offset: _startAnimation ? Offset.zero : const Offset(0, 0.1),
         child: BlocBuilder<OrdersListBloc, OrdersListState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             final isUpdating =
                 state is OrdersListLoaded &&
                 state.updatingOrderIds.contains(widget.order.id);
@@ -551,9 +555,7 @@ class _OrderListCardState extends State<_OrderListCard> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFF8FAFC),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
+                                          borderRadius: BorderRadius.circular(8),
                                           border: Border.all(
                                             color: const Color(0xFFE2E8F0),
                                           ),
@@ -612,57 +614,222 @@ class _OrderListCardState extends State<_OrderListCard> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: const Color(0xFFEFF6FF),
-                                child: Text(
-                                  widget.order.customerName
-                                      .substring(0, 1)
-                                      .toUpperCase(),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 16,
-                                    color: Color(0xFF3B82F6),
+                          RealtimeOrderCustomerDetails(
+                            fallbackName: widget.order.customerName,
+                            fallbackPhone: widget.order.customerPhone,
+                            fallbackAddress: widget.order.deliveryAddress,
+                            customerId: widget.order.customerId,
+                            orderId: widget.order.id,
+                            builder: (context, buyerProfile) {
+                              final itemCount =
+                                  widget.order.items?.length ?? 0;
+                              String itemSummary = '';
+                              final items = widget.order.items;
+                              if (items != null && items.isNotEmpty) {
+                                final names = items
+                                    .where((item) =>
+                                        item.name.isNotEmpty &&
+                                        item.name != 'Unknown Item')
+                                    .map((item) => item.name)
+                                    .toList();
+                                if (names.length == 1) {
+                                  itemSummary = names.first;
+                                } else if (names.length == 2) {
+                                  itemSummary = '${names[0]} + ${names[1]}';
+                                } else if (names.length > 2) {
+                                  itemSummary =
+                                      '${names[0]}, ${names[1]}...';
+                                } else {
+                                  itemSummary = '$itemCount items';
+                                }
+                              }
+                              if (itemSummary.isEmpty) {
+                                itemSummary = '$itemCount items';
+                              }
+
+                              final displayName = buyerProfile.name.isNotEmpty
+                                  ? buyerProfile.name
+                                  : (widget.order.customerName.isNotEmpty && widget.order.customerName != 'Customer'
+                                      ? widget.order.customerName
+                                      : 'Customer');
+
+                              final displayPhone = buyerProfile.phone.isNotEmpty
+                                  ? buyerProfile.phone
+                                  : (widget.order.customerPhone ?? '');
+
+                              final displayAddress = buyerProfile.address.isNotEmpty
+                                  ? buyerProfile.address
+                                  : (widget.order.deliveryAddress ?? '');
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              displayName,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF0F172A),
+                                                letterSpacing: -0.3,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.phone_outlined,
+                                                  size: 13,
+                                                  color: Color(0xFF3B82F6),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    displayPhone.isNotEmpty
+                                                        ? displayPhone
+                                                        : 'Phone not provided',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: displayPhone.isNotEmpty
+                                                          ? FontWeight.w600
+                                                          : FontWeight.w400,
+                                                      color: displayPhone.isNotEmpty
+                                                          ? const Color(0xFF3B82F6)
+                                                          : const Color(0xFF94A3B8),
+                                                      fontStyle: displayPhone.isNotEmpty
+                                                          ? FontStyle.normal
+                                                          : FontStyle.italic,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (displayPhone.isNotEmpty)
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            onTap: () => _launchPhoneCall(
+                                                displayPhone),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    const Color(0xFFEFF6FF),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: const Icon(
+                                                Icons.call_rounded,
+                                                size: 18,
+                                                color: Color(0xFF3B82F6),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      widget.order.customerName,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1E293B),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Padding(
+                                        padding: EdgeInsets.only(top: 2),
+                                        child: Icon(
+                                          Icons.location_on_outlined,
+                                          size: 14,
+                                          color: Color(0xFFEF4444),
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '${widget.order.items?.length ?? 0} Items • ${widget.order.paymentMethod ?? "Cash"}',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Color(0xFF64748B),
-                                        fontWeight: FontWeight.w500,
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          displayAddress.isNotEmpty
+                                              ? displayAddress
+                                              : 'Address not specified',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: displayAddress.isNotEmpty
+                                                ? FontWeight.w500
+                                                : FontWeight.w400,
+                                            color: displayAddress.isNotEmpty
+                                                ? const Color(0xFF475569)
+                                                : const Color(0xFF94A3B8),
+                                            fontStyle: displayAddress.isNotEmpty
+                                                ? FontStyle.normal
+                                                : FontStyle.italic,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '$itemCount Item${itemCount != 1 ? 's' : ''} · $itemSummary',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF334155),
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              '${widget.order.paymentMethod ?? "Wallet"} · ${NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(widget.order.amount)}',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: Color(0xFF64748B),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                           const Padding(
                             padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                            child: Divider(
+                              height: 1,
+                              color: Color(0xFFF1F5F9),
+                            ),
                           ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              _StatusBadge(status: widget.order.status.value),
+                              _StatusBadge(
+                                  status: widget.order.status.value),
                               Row(
                                 children: [
                                   const Icon(
@@ -685,14 +852,14 @@ class _OrderListCardState extends State<_OrderListCard> {
                           ),
                         ],
                       ),
-                    ), // Padding
-                  ), // InkWell
-                ), // Material
-            ); // AnimatedContainer
-          }, // BlocBuilder builder
+                    ),
+                  ),
+                ),
+            );
+          },
         ),
-      ), // AnimatedSlide
-    ); // AnimatedOpacity
+      ),
+    );
   }
 }
 
@@ -716,7 +883,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         }
       },
       child: BlocBuilder<OrdersListBloc, OrdersListState>(
-        builder: (context, state) {
+        buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
           // Find the most up to date order object from state
           OrderModel order = widget.order;
           bool isUpdating = false;
@@ -729,7 +897,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           }
 
           final isNew = order.status == OrderStatus.newOrder;
-          final isPreparing = order.status == OrderStatus.preparing;
+          final isPreparing = order.status == OrderStatus.preparing || order.status == OrderStatus.accepted;
           final isReady =
               order.status == OrderStatus.ready ||
               order.status ==
@@ -787,6 +955,100 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // Customer & Delivery Details
+                                const _SectionTitle(title: 'Customer & Delivery Info'),
+                                RealtimeOrderCustomerDetails(
+                                  fallbackName: order.customerName,
+                                  fallbackPhone: order.customerPhone,
+                                  fallbackAddress: order.deliveryAddress,
+                                  customerId: order.customerId,
+                                  orderId: order.id,
+                                  builder: (context, buyerProfile) {
+                                    if (buyerProfile.name.isEmpty && buyerProfile.address.isEmpty && buyerProfile.phone.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return _InfoContainer(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          if (buyerProfile.name.isNotEmpty) ...[
+                                            Row(
+                                              children: [
+                                                CircleAvatar(
+                                                  radius: 18,
+                                                  backgroundColor: const Color(0xFFEFF6FF),
+                                                  child: const Icon(
+                                                    Icons.person_outline_rounded,
+                                                    color: Color(0xFF2563EB),
+                                                    size: 20,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        buyerProfile.name,
+                                                        style: const TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Color(0xFF0F172A),
+                                                        ),
+                                                      ),
+                                                      if (buyerProfile.phone.isNotEmpty) ...[
+                                                        const SizedBox(height: 2),
+                                                        SelectableText(
+                                                          buyerProfile.phone,
+                                                          style: const TextStyle(
+                                                            fontSize: 13,
+                                                            fontWeight: FontWeight.w500,
+                                                            color: Color(0xFF3B82F6),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                          if (buyerProfile.address.isNotEmpty) ...[
+                                            if (buyerProfile.name.isNotEmpty)
+                                              const Padding(
+                                                padding: EdgeInsets.symmetric(vertical: 10),
+                                                child: Divider(color: Color(0xFFE2E8F0)),
+                                              ),
+                                            Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Icon(
+                                                  Icons.location_on_outlined,
+                                                  size: 16,
+                                                  color: Color(0xFFEF4444),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: SelectableText(
+                                                    buyerProfile.address,
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: Color(0xFF334155),
+                                                      height: 1.4,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 20),
+
                                 // Items
                                 const _SectionTitle(title: 'Items'),
                                 _InfoContainer(
@@ -1540,5 +1802,419 @@ class _DashedLinePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DashedLinePainter oldDelegate) {
     return oldDelegate.color != color;
+  }
+}
+
+Future<void> _launchPhoneCall(String phoneNumber) async {
+  final uri = Uri.parse('tel:$phoneNumber');
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+  }
+}
+
+class BuyerProfile {
+  final String name;
+  final String phone;
+  final String address;
+
+  const BuyerProfile({
+    required this.name,
+    required this.phone,
+    required this.address,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BuyerProfile &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          phone == other.phone &&
+          address == other.address;
+
+  @override
+  int get hashCode => name.hashCode ^ phone.hashCode ^ address.hashCode;
+}
+
+class RealtimeOrderCustomerDetails extends StatelessWidget {
+  final String fallbackName;
+  final String? fallbackPhone;
+  final String? fallbackAddress;
+  final String? customerId;
+  final String? orderId;
+  final Widget Function(BuildContext context, BuyerProfile profile) builder;
+
+  const RealtimeOrderCustomerDetails({
+    Key? key,
+    required this.fallbackName,
+    this.fallbackPhone,
+    this.fallbackAddress,
+    this.customerId,
+    this.orderId,
+    required this.builder,
+  }) : super(key: key);
+
+  static final Map<String, BuyerProfile> _profileCache = {};
+
+  static bool _isValidName(String? name) {
+    if (name == null) return false;
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return false;
+    final lower = trimmed.toLowerCase();
+    return lower != 'customer' &&
+        lower != 'buyer' &&
+        lower != 'unknown customer' &&
+        lower != 'unknown' &&
+        lower != '?' &&
+        lower != 'null';
+  }
+
+  static bool _isValidPhone(String? phone) {
+    if (phone == null) return false;
+    final trimmed = phone.trim();
+    if (trimmed.isEmpty) return false;
+    final lower = trimmed.toLowerCase();
+    return lower != 'n/a' && lower != 'none' && lower != 'null' && trimmed.length >= 3;
+  }
+
+  static bool _isValidAddress(String? address) {
+    if (address == null) return false;
+    final trimmed = address.trim();
+    if (trimmed.isEmpty) return false;
+    final lower = trimmed.toLowerCase();
+    if (lower == 'primary address' ||
+        lower == 'n/a' ||
+        lower == 'null' ||
+        lower == 'no address' ||
+        lower == 'none' ||
+        lower == 'select address' ||
+        lower == 'not set') {
+      return false;
+    }
+    return trimmed.length >= 1;
+  }
+
+  static String _extractName(Map<String, dynamic>? data) {
+    if (data == null) return '';
+    for (final key in [
+      'name',
+      'customerName',
+      'buyerName',
+      'userName',
+      'displayName',
+      'fullName',
+      'customer_name',
+      'buyer_name',
+      'user_name',
+      'firstName',
+      'first_name',
+    ]) {
+      final val = data[key];
+      if (val is String && _isValidName(val)) {
+        return val.trim();
+      }
+    }
+    final first = data['firstName'] ?? data['first_name'];
+    final last = data['lastName'] ?? data['last_name'];
+    if (first is String && first.trim().isNotEmpty) {
+      final combined = '$first ${last ?? ''}'.trim();
+      if (_isValidName(combined)) return combined;
+    }
+    for (final key in ['customer', 'user', 'buyer', 'profile']) {
+      final val = data[key];
+      if (val is Map<String, dynamic>) {
+        final nestedName = _extractName(val);
+        if (_isValidName(nestedName)) return nestedName;
+      }
+    }
+    return '';
+  }
+
+  static String _extractPhone(Map<String, dynamic>? data) {
+    if (data == null) return '';
+    for (final key in [
+      'phone',
+      'phoneNumber',
+      'mobile',
+      'userPhone',
+      'customerPhone',
+      'buyerPhone',
+      'contactNumber',
+      'contact',
+      'contactPhone',
+      'phone_number',
+    ]) {
+      final val = data[key];
+      if (val is String && _isValidPhone(val)) {
+        return val.trim();
+      }
+    }
+    for (final key in ['customer', 'user', 'buyer', 'profile']) {
+      final val = data[key];
+      if (val is Map<String, dynamic>) {
+        final nestedPhone = _extractPhone(val);
+        if (_isValidPhone(nestedPhone)) return nestedPhone;
+      }
+    }
+    return '';
+  }
+
+  static String _extractAddress(Map<String, dynamic>? data) {
+    if (data == null) return '';
+
+    final selectedType =
+        (data['selectedAddressType'] as String? ?? '').toLowerCase().trim();
+    final typeFieldMap = {
+      'home': 'homeAddress',
+      'work': 'workAddress',
+      'other': 'otherAddress',
+    };
+    final selectedKey = typeFieldMap[selectedType] ?? '';
+    if (selectedKey.isNotEmpty) {
+      final val = data[selectedKey];
+      if (val is String && _isValidAddress(val)) return val.trim();
+    }
+
+    final primaryAddr = data['address'];
+    if (primaryAddr is String && _isValidAddress(primaryAddr)) {
+      return primaryAddr.trim();
+    }
+
+    for (final key in [
+      'deliveryAddress',
+      'primaryAddress',
+      'homeAddress',
+      'workAddress',
+      'otherAddress',
+      'shippingAddress',
+      'userAddress',
+      'fullAddress',
+      'displayAddress',
+      'dropOffAddress',
+      'delivery_address',
+    ]) {
+      final val = data[key];
+      if (val is String && _isValidAddress(val)) {
+        return val.trim();
+      } else if (val is Map) {
+        final sub = val['address'] ??
+            val['fullAddress'] ??
+            val['street'] ??
+            val['formattedAddress'] ??
+            val['displayAddress'];
+        if (sub != null && _isValidAddress(sub.toString())) {
+          return sub.toString().trim();
+        }
+      }
+    }
+    if (data['addresses'] is List && (data['addresses'] as List).isNotEmpty) {
+      final first = (data['addresses'] as List).first;
+      if (first is Map) {
+        final sub = first['address'] ??
+            first['fullAddress'] ??
+            first['street'] ??
+            first['formattedAddress'];
+        if (sub != null && _isValidAddress(sub.toString())) {
+          return sub.toString().trim();
+        }
+      } else if (first is String && _isValidAddress(first)) {
+        return first.trim();
+      }
+    }
+    for (final key in ['customer', 'user', 'buyer', 'profile']) {
+      final val = data[key];
+      if (val is Map<String, dynamic>) {
+        final nestedAddress = _extractAddress(val);
+        if (_isValidAddress(nestedAddress)) return nestedAddress;
+      }
+    }
+    return '';
+  }
+
+  static String _extractCustomerId(Map<String, dynamic>? data) {
+    if (data == null) return '';
+    for (final key in ['customerId', 'buyerId', 'userId', 'customer_id', 'buyer_id', 'user_id', 'uid']) {
+      final val = data[key];
+      if (val is String && val.trim().isNotEmpty) return val.trim();
+    }
+    for (final key in ['customer', 'user', 'buyer']) {
+      final val = data[key];
+      if (val is Map<String, dynamic>) {
+        final id = _extractCustomerId(val);
+        if (id.isNotEmpty) return id;
+      }
+    }
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cacheKey = '${customerId ?? ""}_${orderId ?? ""}';
+    final cached = _profileCache[cacheKey];
+    final initialProfile = cached ??
+        BuyerProfile(
+          name: _isValidName(fallbackName) ? fallbackName : '',
+          phone: _isValidPhone(fallbackPhone) ? fallbackPhone! : '',
+          address: _isValidAddress(fallbackAddress) ? fallbackAddress! : '',
+        );
+
+    final hasValidSnapshot = _isValidName(fallbackName) &&
+        _isValidPhone(fallbackPhone) &&
+        _isValidAddress(fallbackAddress);
+
+    if (hasValidSnapshot) {
+      final snapshotProfile = BuyerProfile(
+        name: fallbackName,
+        phone: fallbackPhone!,
+        address: fallbackAddress!,
+      );
+      _profileCache[cacheKey] = snapshotProfile;
+      return builder(context, snapshotProfile);
+    }
+
+    if (customerId != null && customerId!.isNotEmpty) {
+      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('buyer_user').doc(customerId).snapshots(),
+        builder: (context, userSnap) {
+          Map<String, dynamic>? uData;
+          if (userSnap.hasData && userSnap.data != null && userSnap.data!.exists) {
+            uData = userSnap.data!.data();
+          }
+
+          final uName = _extractName(uData);
+          final uPhone = _extractPhone(uData);
+          final uAddress = _extractAddress(uData);
+
+          if (orderId != null && orderId!.isNotEmpty) {
+            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance.collection('orders').doc(orderId).snapshots(),
+              builder: (context, orderSnap) {
+                Map<String, dynamic>? oData;
+                if (orderSnap.hasData && orderSnap.data != null && orderSnap.data!.exists) {
+                  oData = orderSnap.data!.data();
+                }
+
+                final oName = _extractName(oData);
+                final oPhone = _extractPhone(oData);
+                final oAddress = _extractAddress(oData);
+
+                final resolvedName = _isValidName(uName) ? uName : (_isValidName(oName) ? oName : initialProfile.name);
+                final resolvedPhone = _isValidPhone(uPhone) ? uPhone : (_isValidPhone(oPhone) ? oPhone : initialProfile.phone);
+                final resolvedAddress = _isValidAddress(uAddress) ? uAddress : (_isValidAddress(oAddress) ? oAddress : initialProfile.address);
+
+                final profile = BuyerProfile(
+                  name: resolvedName,
+                  phone: resolvedPhone,
+                  address: resolvedAddress,
+                );
+                _profileCache[cacheKey] = profile;
+                return builder(context, profile);
+              },
+            );
+          }
+
+          final resolvedName = _isValidName(uName) ? uName : initialProfile.name;
+          final resolvedPhone = _isValidPhone(uPhone) ? uPhone : initialProfile.phone;
+          final resolvedAddress = _isValidAddress(uAddress) ? uAddress : initialProfile.address;
+
+          final profile = BuyerProfile(
+            name: resolvedName,
+            phone: resolvedPhone,
+            address: resolvedAddress,
+          );
+          _profileCache[cacheKey] = profile;
+          return builder(context, profile);
+        },
+      );
+    }
+
+    if (orderId != null && orderId!.isNotEmpty) {
+      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('orders').doc(orderId).snapshots(),
+        builder: (context, orderSnap) {
+          Map<String, dynamic>? oData;
+          if (orderSnap.hasData && orderSnap.data != null && orderSnap.data!.exists) {
+            oData = orderSnap.data!.data();
+          }
+
+          final oName = _extractName(oData);
+          final oPhone = _extractPhone(oData);
+          final oAddress = _extractAddress(oData);
+          final foundCustomerId = _extractCustomerId(oData);
+
+          if (foundCustomerId.isNotEmpty) {
+            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance.collection('buyer_user').doc(foundCustomerId).snapshots(),
+              builder: (context, userSnap) {
+                Map<String, dynamic>? uData;
+                if (userSnap.hasData && userSnap.data != null && userSnap.data!.exists) {
+                  uData = userSnap.data!.data();
+                }
+
+                final uName = _extractName(uData);
+                final uPhone = _extractPhone(uData);
+                final uAddress = _extractAddress(uData);
+
+                final resolvedName = _isValidName(uName) ? uName : (_isValidName(oName) ? oName : initialProfile.name);
+                final resolvedPhone = _isValidPhone(uPhone) ? uPhone : (_isValidPhone(oPhone) ? oPhone : initialProfile.phone);
+                final resolvedAddress = _isValidAddress(uAddress) ? uAddress : (_isValidAddress(oAddress) ? oAddress : initialProfile.address);
+
+                final profile = BuyerProfile(
+                  name: resolvedName,
+                  phone: resolvedPhone,
+                  address: resolvedAddress,
+                );
+                _profileCache[cacheKey] = profile;
+                return builder(context, profile);
+              },
+            );
+          }
+
+          final resolvedName = _isValidName(oName) ? oName : initialProfile.name;
+          final resolvedPhone = _isValidPhone(oPhone) ? oPhone : initialProfile.phone;
+          final resolvedAddress = _isValidAddress(oAddress) ? oAddress : initialProfile.address;
+
+          final profile = BuyerProfile(
+            name: resolvedName,
+            phone: resolvedPhone,
+            address: resolvedAddress,
+          );
+          _profileCache[cacheKey] = profile;
+          return builder(context, profile);
+        },
+      );
+    }
+
+    return builder(context, initialProfile);
+  }
+}
+
+class RealtimeOrderCustomerNameText extends StatelessWidget {
+  final String fallbackName;
+  final String? customerId;
+  final String? orderId;
+  final TextStyle style;
+  final Widget Function(BuildContext context, String resolvedName)? builder;
+
+  const RealtimeOrderCustomerNameText({
+    Key? key,
+    required this.fallbackName,
+    this.customerId,
+    this.orderId,
+    required this.style,
+    this.builder,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return RealtimeOrderCustomerDetails(
+      fallbackName: fallbackName,
+      customerId: customerId,
+      orderId: orderId,
+      builder: (context, profile) {
+        if (builder != null) return builder!(context, profile.name);
+        return Text(profile.name, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
+      },
+    );
   }
 }

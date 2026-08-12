@@ -6,9 +6,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'package:food_delivery_app/repositories/user_repository.dart';
 import 'package:food_delivery_app/repositories/product_repository.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/FoodGoLoginScreen/FoodGoLoginScreen_Bloc.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/FoodGoLoginScreen/FoodGoLoginScreen_Event.dart';
-import 'package:food_delivery_app/features/buyer_bloc_architecture/FoodGoLoginScreen/FoodGoLoginScreen_State.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_state.dart';
@@ -17,9 +14,6 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Pag
 class MockUserRepository extends Mock implements UserRepository {}
 
 class MockProductRepository extends Mock implements ProductRepository {}
-
-class MockFoodGoLoginBloc extends MockBloc<FoodGoLoginEvent, FoodGoLoginState>
-    implements FoodGoLoginBloc {}
 
 class FakeCartBloc extends Bloc<CartEvent, CartState> implements CartBloc {
   FakeCartBloc() : super(const CartLoaded()) {

@@ -1,188 +1,240 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // --- Helper functions ---
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
-    
-    function isSellerData() {
-      // In this app, sellers and users are stored in separate collections,
-      // but both use Firebase Auth. We check ownership by comparing uid.
-      return isAuthenticated() && request.resource.data.sellerId == request.auth.uid;
-    }
-    
-    function isUnmodified(field) {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([field]);
-    }
 
-    // --- 1. Users Collection ---
-    // Users can only read and write their own profile document
+    // ── Users Collection ────────────────────────────────────────────────
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
-      
-      // Subcollections inside user (e.g., wallet transactions, ratings, favorites)
-      match /{subcollection}/{document=**} {
-        allow read, write: if isOwner(userId);
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isOwner(userId);
+
+      match /{allSubcollections=**} {
+        allow read, write: if isAuthenticated();
       }
     }
 
-    // --- 2. Sellers Collection ---
-    // Anyone can read seller profiles (e.g., buyers looking at restaurants)
-    // Only the seller can write to their profile.
+    // ── Buyer User Collection ───────────────────────────────────────────
+    match /buyer_user/{userId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isOwner(userId);
+
+      match /ratings/{ratingId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+
+      match /transactions/{txId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /favorites/{favId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /cart/{cartId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /orders/{orderId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /addresses/{addrId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /support_tickets/{ticketId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /feedback/{feedbackId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /{allSubcollections=**} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // ── Sellers Collection ──────────────────────────────────────────────
     match /sellers/{sellerId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(sellerId);
-      
-      // Subcollections (e.g., payments, hidden settings) restricted to the seller only.
-      match /{subcollection}/{document=**} {
-        allow read, write: if isOwner(sellerId);
+      allow read: if true;
+      allow create: if isOwner(sellerId);
+      allow update: if isOwner(sellerId);
+      allow delete: if isOwner(sellerId);
+
+      match /products/{productId} {
+        allow read: if true;
+        allow write: if isOwner(sellerId);
+      }
+
+      match /settings/{settingId} {
+        allow read: if true;
+        allow write: if isOwner(sellerId);
+      }
+
+      match /payouts/{payoutId} {
+        allow read: if isOwner(sellerId);
+        allow write: if isOwner(sellerId);
+      }
+
+      match /transactions/{txId} {
+        allow read: if isOwner(sellerId);
+        allow write: if isOwner(sellerId);
+      }
+
+      match /{allSubcollections=**} {
+        allow read: if true;
+        allow write: if isOwner(sellerId);
       }
     }
 
-    // --- 3. Products Collection ---
-    // Anyone can read products. 
-    // Only authenticated sellers can create/update/delete their own products.
+    // ── Products Collection ─────────────────────────────────────────────
     match /products/{productId} {
       allow read: if true;
-      allow create: if isSellerData();
-      allow update: if isOwner(resource.data.sellerId) && isUnmodified('sellerId');
-      allow delete: if isOwner(resource.data.sellerId);
-      
-      // Product Reviews Subcollection
-      // Anyone can read reviews. Buyers can create/update/delete their own reviews.
-      match /reviews/{reviewId} {
-        allow read: if true;
-        allow create, update, delete: if isOwner(reviewId);
-      }
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated()
+        && resource.data.sellerId == request.auth.uid;
     }
 
-    // --- 4. Orders Collection ---
-    // Orders link a buyer, seller, and optionally a delivery partner.
-    match /orders/{orderId} {
-      // Buyer, seller, or delivery partner can read/update their assigned orders or claim available orders.
-      allow read, update: if isAuthenticated() && (
-        resource.data.customerId == request.auth.uid ||
-        resource.data.sellerId == request.auth.uid ||
-        resource.data.riderId == request.auth.uid ||
-        resource.data.deliveryPartnerId == request.auth.uid ||
-        (request.resource.data.riderId == request.auth.uid) ||
-        (request.resource.data.deliveryPartnerId == request.auth.uid)
-      );
-      
-      // Only backend (Cloud Functions) can create an order to ensure secure pricing and inventory.
-      allow create: if false;
-      
-      // Orders should not be deleted, only their status should be updated.
-      allow delete: if false;
-    }
-    
-    // --- 5. Inventory Logs Collection ---
-    // Tracks stock changes. Restricted to the seller.
-    match /inventory_logs/{logId} {
-      allow read: if isOwner(resource.data.sellerId);
-      allow create: if isSellerData();
-      allow update, delete: if false; // Logs should be immutable
-    }
-
-    // --- 6. Seller Notification Settings Collection ---
-    match /seller_notification_settings/{sellerId} {
-      allow read, write: if isOwner(sellerId);
-    }
-
-    // --- 7. Pending Sellers Collection ---
-    // Used during sign-up before authentication is complete.
-    match /pending_sellers/{phoneNumber} {
-      // Allow only creation during sign-up. Block reads/updates to prevent data scraping.
-      allow create: if true;
-      allow read, update, delete: if false;
-    }
-
-    // --- 8. Payouts Collection ---
-    // Contains historical payouts for sellers
-    match /payouts/{payoutId} {
-      allow read: if isOwner(resource.data.sellerId);
-      allow create: if isSellerData();
-      allow update, delete: if false; // Only admins or backend can modify/delete payouts
-    }
-
-    // --- 9. Payout Requests Collection ---
-    // Contains withdrawal requests made by sellers
-    match /payout_requests/{requestId} {
-      allow read: if isOwner(resource.data.sellerId);
-      allow create: if isSellerData();
-      allow update, delete: if false; // Admins handle approval via backend
-    }
-
-    // --- 10. Conversations Collection (Centralized Chat) ---
-    // A buyer or seller can read/write conversations they participate in.
-    match /conversations/{conversationId} {
-      allow read: if isAuthenticated() && (
-        resource.data.buyerId == request.auth.uid ||
-        resource.data.sellerId == request.auth.uid
-      );
-      allow create: if isAuthenticated() && (
-        request.resource.data.buyerId == request.auth.uid ||
-        request.resource.data.sellerId == request.auth.uid
-      );
-      allow update, delete: if isAuthenticated() && (
-        resource.data.buyerId == request.auth.uid ||
-        resource.data.sellerId == request.auth.uid
-      );
-
-      // Chat subcollections — participants can read and create, but not modify or delete.
-      match /{subcollection}/{messageId} {
-        allow read: if subcollection in ['messages', 'photos', 'videos', 'audios'] && isAuthenticated() && (
-          get(/databases/$(database)/documents/conversations/$(conversationId)).data.buyerId == request.auth.uid ||
-          get(/databases/$(database)/documents/conversations/$(conversationId)).data.sellerId == request.auth.uid
-        );
-        allow create: if subcollection in ['messages', 'photos', 'videos', 'audios'] && isAuthenticated() && (
-          get(/databases/$(database)/documents/conversations/$(conversationId)).data.buyerId == request.auth.uid ||
-          get(/databases/$(database)/documents/conversations/$(conversationId)).data.sellerId == request.auth.uid
-        ) && request.resource.data.senderId == request.auth.uid;
-        allow update, delete: if false;
-      }
-    }
-
-    // --- 11. Riders Collection ---
-    // Buyers and sellers need to read rider details for tracking orders.
-    match /riders/{riderId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(riderId);
-      
-      match /{subcollection}/{document=**} {
-        allow read, write: if isOwner(riderId);
-      }
-    }
-
-    // --- 12. Seller Reviews Collection ---
-    match /reviews/{reviewId} {
+    // ── Categories Collection ───────────────────────────────────────────
+    match /global_categories/{categoryId} {
       allow read: if true;
-      allow create: if isOwner(request.resource.data.customerId);
-      allow update, delete: if isOwner(resource.data.customerId);
+      allow write: if isAuthenticated();
     }
 
-    // --- 13. Delivery Partners Collection ---
+    // ── Orders Collection (Cross-Role) ──────────────────────────────────
+    match /orders/{orderId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+
+      // Buyer can cancel own orders; Seller can update status; Driver can accept & update
+      allow update: if isAuthenticated() && (
+        resource.data.customerId == request.auth.uid
+        || resource.data.sellerId == request.auth.uid
+        || resource.data.deliveryPartnerId == request.auth.uid
+        || resource.data.riderId == request.auth.uid
+        || (resource.data.status in ['ready', 'ready_for_pickup', 'preparing'] && (resource.data.deliveryPartnerId == null || resource.data.deliveryPartnerId == ''))
+      );
+
+      allow delete: if false;
+
+      match /live_location/{docId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && (
+          resource == null
+          || resource.data.driverId == request.auth.uid
+          || request.resource.data.driverId == request.auth.uid
+        );
+      }
+
+      match /messages/{msgId} {
+        allow read: if isAuthenticated() && (
+          resource.data.senderId == request.auth.uid
+          || resource.data.receiverId == request.auth.uid
+        );
+        allow write: if isAuthenticated();
+      }
+    }
+
+    // ── Delivery Partners Collection ────────────────────────────────────
     match /delivery_partners/{partnerId} {
       allow read: if true;
-      allow create: if isAuthenticated() && request.auth.uid == partnerId;
-      allow update, delete: if isOwner(partnerId);
-      
-      match /{subcollection}/{document=**} {
-        allow read, write: if isOwner(partnerId);
+      allow create: if true;
+      allow update: if isAuthenticated();
+      allow delete: if isOwner(partnerId);
+
+      match /notifications/{notificationId} {
+        allow read: if isOwner(partnerId);
+        allow create: if true;
+        allow update, delete: if isOwner(partnerId);
+      }
+
+      match /transactions/{txId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /earnings/{earningId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /sessions/{sessionId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      match /{allSubcollections=**} {
+        allow read, write: if isAuthenticated();
       }
     }
 
-    // --- 14. Global Categories Collection ---
-    // Categories are read-only for all authenticated users. Only admins (backend) can create/update.
-    match /global_categories/{categoryId} {
+    // ── Riders Collection ───────────────────────────────────────────────
+    match /riders/{riderId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+
+      match /{allSubcollections=**} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // ── Conversations & Messages ────────────────────────────────────────
+    match /conversations/{conversationId} {
       allow read: if isAuthenticated();
-      allow write: if false;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+
+      match /{allSubcollections=**} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // ── Reviews & Ratings ───────────────────────────────────────────────
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated()
+        && resource.data.customerId == request.auth.uid;
+      allow delete: if isAuthenticated()
+        && resource.data.customerId == request.auth.uid;
+    }
+
+    // ── Coupons Collection (Collection Group & Root) ────────────────────
+    match /{path=**}/coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // ── Support Tickets ─────────────────────────────────────────────────
+    match /support_tickets/{ticketId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // ── Default Deny ────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

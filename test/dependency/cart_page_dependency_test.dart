@@ -47,6 +47,7 @@ void main() {
 
       when(() => mockAuthService.currentUserId).thenReturn('test_uid');
       when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value(null));
+      when(() => mockAuthService.ensureTokenReady()).thenAnswer((_) async {});
 
       getIt.registerSingleton<ICartRepository>(mockCartRepository);
       getIt.registerSingleton<ICouponRepository>(mockCouponRepository);

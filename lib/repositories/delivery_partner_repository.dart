@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:food_delivery_app/app_data_collection/delivery_collection/delivery_collection.dart';
 import 'package:food_delivery_app/core/models/delivery_partner_model.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -10,14 +12,20 @@ class DeliveryPartnerRepository {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
   final FlutterSecureStorage _secureStorage;
+  final DeliveryCollection _deliveryCollection;
+  RecaptchaVerifier? _recaptchaVerifier;
+  ConfirmationResult? _webConfirmationResult;
 
   DeliveryPartnerRepository({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
     FlutterSecureStorage? secureStorage,
+    DeliveryCollection? deliveryCollection,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
         _auth = auth ?? FirebaseAuth.instance,
-        _secureStorage = secureStorage ?? const FlutterSecureStorage();
+        _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+        _deliveryCollection = deliveryCollection ??
+            DeliveryCollection(firestore: firestore ?? FirebaseFirestore.instance);
 
   User? get currentUser => _auth.currentUser;
 
@@ -39,19 +47,10 @@ class DeliveryPartnerRepository {
   Future<UserCredential> signInWithGoogle() async {
     try {
       if (kIsWeb) {
-        final googleSignIn = GoogleSignIn(
-          clientId: '318384112771-psfipm61tk7m64smr99j59pe28djds08.apps.googleusercontent.com',
-        );
-        final googleUser = await googleSignIn.signIn();
-        if (googleUser == null) {
-          throw Exception('Google Sign-In was cancelled.');
-        }
-        final googleAuth = await googleUser.authentication;
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-        return await _auth.signInWithCredential(credential);
+        final authProvider = GoogleAuthProvider();
+        authProvider.addScope('email');
+        authProvider.addScope('profile');
+        return await _auth.signInWithPopup(authProvider);
       } else {
         final googleSignIn = GoogleSignIn();
         final googleUser = await googleSignIn.signIn();
@@ -105,6 +104,40 @@ class DeliveryPartnerRepository {
     required void Function(PhoneAuthCredential credential) onVerificationCompleted,
     required void Function(String verificationId) onCodeAutoRetrievalTimeout,
   }) async {
+    if (kIsWeb) {
+      try {
+        try {
+          _recaptchaVerifier?.clear();
+        } catch (_) {}
+        _recaptchaVerifier = RecaptchaVerifier(
+          auth: FirebaseAuthPlatform.instance,
+          container: 'recaptcha-container',
+          size: RecaptchaVerifierSize.compact,
+        );
+        _webConfirmationResult = await _auth.signInWithPhoneNumber(
+          phoneNumber,
+          _recaptchaVerifier!,
+        ).timeout(const Duration(seconds: 30), onTimeout: () {
+          try {
+            _recaptchaVerifier?.clear();
+          } catch (_) {}
+          _recaptchaVerifier = null;
+          throw Exception('OTP request timed out. Please try again.');
+        });
+        onCodeSent(_webConfirmationResult?.verificationId ?? 'web_verification_id', null);
+      } catch (e) {
+        try {
+          _recaptchaVerifier?.clear();
+        } catch (_) {}
+        _recaptchaVerifier = null;
+        onVerificationFailed(FirebaseAuthException(
+          code: 'captcha-failed',
+          message: e.toString().replaceAll('Exception: ', ''),
+        ));
+      }
+      return;
+    }
+
     await _auth.verifyPhoneNumber(
       phoneNumber: phoneNumber,
       verificationCompleted: onVerificationCompleted,
@@ -123,14 +156,17 @@ class DeliveryPartnerRepository {
     required String email,
     required String password,
   }) async {
-    final phoneCredential = PhoneAuthProvider.credential(
-      verificationId: verificationId,
-      smsCode: smsCode,
-    );
-
     late UserCredential phoneUserCredential;
     try {
-      phoneUserCredential = await _auth.signInWithCredential(phoneCredential);
+      if (kIsWeb && _webConfirmationResult != null) {
+        phoneUserCredential = await _webConfirmationResult!.confirm(smsCode);
+      } else {
+        final phoneCredential = PhoneAuthProvider.credential(
+          verificationId: verificationId,
+          smsCode: smsCode,
+        );
+        phoneUserCredential = await _auth.signInWithCredential(phoneCredential);
+      }
     } catch (e) {
       throw Exception('Invalid or expired OTP. Please try again.');
     }
@@ -150,28 +186,6 @@ class DeliveryPartnerRepository {
       await signOut();
       throw Exception(
           'This phone number is already registered. Please login.');
-    }
-
-    final authEmail = (email != null && email.trim().isNotEmpty)
-        ? email.trim()
-        : '$fullPhone@delivery.app';
-
-    final emailCredential = EmailAuthProvider.credential(
-      email: authEmail,
-      password: password,
-    );
-
-    try {
-      await phoneUser.linkWithCredential(emailCredential);
-    } on FirebaseAuthException catch (e) {
-      await signOut();
-      if (e.code == 'email-already-in-use' ||
-          e.code == 'credential-already-in-use' ||
-          e.code == 'account-exists-with-different-credential') {
-        throw Exception(
-            'This phone number is already registered. Please login.');
-      }
-      throw Exception(e.message ?? 'Account creation failed');
     }
 
     final uid = phoneUser.uid;
@@ -196,7 +210,24 @@ class DeliveryPartnerRepository {
       updatedAt: now,
     );
 
+    // Write full profile data to Firestore immediately so no data is lost
     await createDeliveryPartner(uid, partner);
+
+    final authEmail = (email != null && email.trim().isNotEmpty)
+        ? email.trim()
+        : '$fullPhone@delivery.app';
+
+    final emailCredential = EmailAuthProvider.credential(
+      email: authEmail,
+      password: password,
+    );
+
+    try {
+      await phoneUser.linkWithCredential(emailCredential);
+    } catch (e) {
+      debugPrint('Credential link note during OTP complete: $e');
+    }
+
     await signOut();
 
     return partner;
@@ -216,14 +247,10 @@ class DeliveryPartnerRepository {
     final uid = _auth.currentUser?.uid;
     if (uid != null) {
       try {
-        await _firestore.collection('delivery_partners').doc(uid).set({
+        await _deliveryCollection.updateDeliveryPartner(uid, {
           'isOnline': false,
           'lastLogout': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true)).catchError((_) {});
-        await _firestore.collection('riders').doc(uid).set({
-          'isOnline': false,
-        }, SetOptions(merge: true)).catchError((_) {});
+        });
       } catch (_) {}
     }
     await _auth.signOut();
@@ -234,9 +261,22 @@ class DeliveryPartnerRepository {
     }
   }
 
+  /// Real-time snapshot stream of the `delivery_partners/{uid}` document.
+  /// Emits `null` when the document does not exist (e.g. unregistered user).
+  Stream<DeliveryPartnerModel?> getDeliveryPartnerStream(String uid) {
+    return _firestore
+        .collection('delivery_partners')
+        .doc(uid)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return null;
+      return DeliveryPartnerModel.fromFirestore(doc);
+    });
+  }
+
   Future<DeliveryPartnerModel?> getDeliveryPartner(String uid) async {
     try {
-      final doc = await _firestore.collection('delivery_partners').doc(uid).get();
+      final doc = await _deliveryCollection.getDeliveryPartner(uid);
       if (doc.exists) {
         return DeliveryPartnerModel.fromFirestore(doc);
       } else {
@@ -276,8 +316,29 @@ class DeliveryPartnerRepository {
     return null;
   }
 
+  Future<DeliveryPartnerModel?> getDeliveryPartnerByEmail(String email) async {
+    try {
+      final docSnap = await _deliveryCollection.getDeliveryPartnerByEmail(email);
+      if (docSnap != null && docSnap.exists) {
+        return DeliveryPartnerModel.fromFirestore(docSnap);
+      }
+    } catch (e) {
+      debugPrint('DeliveryCollection email search note: $e');
+    }
+    return null;
+  }
+
   Future<DeliveryPartnerModel?> getDeliveryPartnerByPhone(
       String phoneNumber) async {
+    try {
+      final docSnap = await _deliveryCollection.getDeliveryPartnerByPhone(phoneNumber);
+      if (docSnap != null && docSnap.exists) {
+        return DeliveryPartnerModel.fromFirestore(docSnap);
+      }
+    } catch (e) {
+      debugPrint('DeliveryCollection phone search note: $e');
+    }
+
     try {
       final cleaned = phoneNumber.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
       final withPrefix = cleaned.startsWith('+') ? cleaned : '+91$cleaned';
@@ -310,10 +371,11 @@ class DeliveryPartnerRepository {
 
       final limitedSearchNumbers = searchNumbers.toList();
 
+      final isAuth = _auth.currentUser != null;
       final collectionsToSearch = [
         'delivery_partners',
-        'riders',
-        'users',
+        if (isAuth) 'riders',
+        if (isAuth) 'buyer_user',
       ];
       final fieldsToSearch = [
         'phoneNumber',
@@ -392,64 +454,29 @@ class DeliveryPartnerRepository {
 
   Future<void> createDeliveryPartner(
       String uid, DeliveryPartnerModel partner) async {
-    await _firestore
-        .collection('delivery_partners')
-        .doc(uid)
-        .set(partner.toMap());
-    await _firestore.collection('riders').doc(uid).set({
-      'name': partner.displayName,
-      'phone': partner.phoneNumber,
-      'imageUrl': partner.photoUrl ?? '',
-      'rating': partner.rating,
-      'distance': '1.2 km',
-      'currentLocation': {
-        'lat': 13.0827,
-        'lng': 80.2707,
-      },
-    });
+    await _deliveryCollection.createDeliveryPartner(uid, partner.toMap());
   }
 
   Future<void> updateDeliveryPartner(
       String uid, Map<String, dynamic> data) async {
-    data['updatedAt'] = FieldValue.serverTimestamp();
-    await _firestore
-        .collection('delivery_partners')
-        .doc(uid)
-        .set(data, SetOptions(merge: true));
+    await _deliveryCollection.updateDeliveryPartner(uid, data);
+  }
 
-    final Map<String, dynamic> riderUpdates = {};
-    if (data.containsKey('displayName')) riderUpdates['name'] = data['displayName'];
-    if (data.containsKey('phoneNumber')) riderUpdates['phone'] = data['phoneNumber'];
-    if (data.containsKey('photoUrl')) riderUpdates['imageUrl'] = data['photoUrl'];
-    if (data.containsKey('rating')) riderUpdates['rating'] = data['rating'];
-    if (riderUpdates.isNotEmpty) {
-      await _firestore
-          .collection('riders')
-          .doc(uid)
-          .set(riderUpdates, SetOptions(merge: true))
-          .catchError((_) {});
-    }
+  Future<void> updatePassword(String uid, String newPassword) async {
+    await _deliveryCollection.updatePassword(uid, newPassword);
   }
 
   Future<void> updateLastLogin(String uid) async {
-    await _firestore.collection('delivery_partners').doc(uid).set({
+    await _deliveryCollection.updateDeliveryPartner(uid, {
       'lastLogin': FieldValue.serverTimestamp(),
       'isOnline': true,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    await _firestore.collection('riders').doc(uid).set({
-      'isOnline': true,
-    }, SetOptions(merge: true)).catchError((_) {});
+    });
   }
 
   Future<void> updateOnlineStatus(String uid, bool isOnline) async {
-    await _firestore.collection('delivery_partners').doc(uid).set({
+    await _deliveryCollection.updateDeliveryPartner(uid, {
       'isOnline': isOnline,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    await _firestore.collection('riders').doc(uid).set({
-      'isOnline': isOnline,
-    }, SetOptions(merge: true)).catchError((_) {});
+    });
   }
 
   Future<void> saveSession(String uid, String email) async {
@@ -486,5 +513,117 @@ class DeliveryPartnerRepository {
       debugPrint('Secure storage get saved phone failed: $e');
       return null;
     }
+  }
+
+  // ── Real-Time Tri-Party Synchronization Methods ────────────────────────────
+
+  Future<void> updateDriverLocation(String driverId, double lat, double lng) async {
+    if (driverId.isEmpty) return;
+    final locationMap = {
+      'currentLocation': {'lat': lat, 'lng': lng},
+      'driverLat': lat,
+      'driverLng': lng,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    await _deliveryCollection.updateDeliveryPartner(driverId, locationMap);
+  }
+
+  Stream<List<Map<String, dynamic>>> streamAvailableDeliveries() {
+    return _firestore
+        .collection('orders')
+        .where('status', whereIn: ['ready', 'ready_for_pickup', 'preparing'])
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    }).handleError((error) {
+      debugPrint('Error streaming available deliveries: $error');
+      return <Map<String, dynamic>>[];
+    });
+  }
+
+  Stream<Map<String, dynamic>?> streamAssignedDelivery(String driverId) {
+    if (driverId.isEmpty) return Stream.value(null);
+
+    return _firestore
+        .collection('orders')
+        .where('deliveryPartnerId', isEqualTo: driverId)
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) {
+      if (snapshot.docs.isEmpty) return null;
+      final activeDocs = snapshot.docs.where((doc) {
+        final status = doc.data()['status']?.toString() ?? '';
+        return status != 'delivered' && status != 'cancelled';
+      }).toList();
+
+      if (activeDocs.isEmpty) return null;
+      final data = activeDocs.first.data();
+      data['id'] = activeDocs.first.id;
+      return data;
+    }).handleError((error) {
+      debugPrint('Error streaming assigned delivery: $error');
+      return null;
+    });
+  }
+
+  Future<void> acceptOrder({
+    required String orderId,
+    required String driverId,
+    required String driverName,
+    required String driverPhone,
+  }) async {
+    await _firestore.collection('orders').doc(orderId).update({
+      'deliveryPartnerId': driverId,
+      'deliveryPartnerName': driverName,
+      'deliveryPartnerPhone': driverPhone,
+      'deliveryPartnerStatus': 'accepted',
+      'deliveryStatus': 'accepted',
+      'acceptedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> confirmPickup(String orderId) async {
+    await _firestore.collection('orders').doc(orderId).update({
+      'status': 'out_for_delivery',
+      'deliveryPartnerStatus': 'picked_up',
+      'deliveryStatus': 'picked_up',
+      'pickedUpAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> completeDelivery({
+    required String orderId,
+    required String driverId,
+    required double deliveryFee,
+  }) async {
+    final batch = _firestore.batch();
+
+    final orderRef = _firestore.collection('orders').doc(orderId);
+    batch.update(orderRef, {
+      'status': 'delivered',
+      'deliveryPartnerStatus': 'completed',
+      'deliveryStatus': 'delivered',
+      'deliveredAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    final driverRef = _firestore.collection('delivery_partners').doc(driverId);
+    batch.set(
+      driverRef,
+      {
+        'totalEarnings': FieldValue.increment(deliveryFee),
+        'completedTrips': FieldValue.increment(1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+
+    await batch.commit();
   }
 }

@@ -66,23 +66,30 @@ class DeliveryOrderHistoryPageBloc
       ),
     );
     try {
-      final orders = await repository.fetchOrderHistory();
-      final stats = await repository.fetchStats();
-      if (orders.isEmpty) {
-        emit(
-          state.copyWith(
-            status: DeliveryOrderHistoryPageStatus.empty,
-            stats: stats,
-            orders: const [],
-            filteredOrders: const [],
-            pageOrders: const [],
-          ),
-        );
-        return;
-      }
-      final base = state.copyWith(orders: orders, stats: stats);
-      emit(
-        _applyPage(base).copyWith(status: DeliveryOrderHistoryPageStatus.loaded),
+      await emit.forEach<List<DeliveryOrderHistoryModel>>(
+        repository.watchOrderHistory(),
+        onData: (orders) {
+          final stats = _computeStats(orders);
+          if (orders.isEmpty) {
+            return state.copyWith(
+              status: DeliveryOrderHistoryPageStatus.empty,
+              stats: stats,
+              orders: const [],
+              filteredOrders: const [],
+              pageOrders: const [],
+            );
+          }
+          final base = state.copyWith(orders: orders, stats: stats);
+          return _applyPage(base).copyWith(
+            status: DeliveryOrderHistoryPageStatus.loaded,
+          );
+        },
+        onError: (error, stackTrace) {
+          return state.copyWith(
+            status: DeliveryOrderHistoryPageStatus.error,
+            errorMessage: error.toString().replaceAll('Exception: ', ''),
+          );
+        },
       );
     } catch (e) {
       emit(
@@ -92,6 +99,31 @@ class DeliveryOrderHistoryPageBloc
         ),
       );
     }
+  }
+
+  DeliveryOrderHistoryStats _computeStats(
+    List<DeliveryOrderHistoryModel> orders,
+  ) {
+    final completed = orders
+        .where((o) => o.status == DeliveryOrderHistoryStatus.completed)
+        .length;
+    final cancelled = orders
+        .where((o) => o.status == DeliveryOrderHistoryStatus.cancelled)
+        .length;
+    final pending = orders
+        .where((o) => o.status == DeliveryOrderHistoryStatus.pending)
+        .length;
+    final earnings = orders.fold<double>(
+      0.0,
+      (sum, o) => sum + (o.amount > 0 ? o.amount : 0.0),
+    );
+    return DeliveryOrderHistoryStats(
+      totalOrders: orders.length,
+      completedCount: completed,
+      cancelledCount: cancelled,
+      pendingCount: pending,
+      totalEarnings: earnings,
+    );
   }
 
   void _onSearchChanged(
@@ -168,7 +200,7 @@ class DeliveryOrderHistoryPageBloc
     emit(state.copyWith(status: DeliveryOrderHistoryPageStatus.loading));
     try {
       final orders = await repository.fetchOrderHistory();
-      final stats = await repository.fetchStats();
+      final stats = _computeStats(orders);
       if (orders.isEmpty) {
         emit(
           state.copyWith(

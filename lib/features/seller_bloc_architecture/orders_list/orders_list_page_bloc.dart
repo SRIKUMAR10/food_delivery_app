@@ -9,6 +9,8 @@ import 'orders_list_page_state.dart';
 import '../../../../core/repositories/i_order_repository.dart';
 import '../../../../core/repositories/i_chat_repository.dart';
 
+import '../../../../core/services/backfill_orders_service.dart';
+
 class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
   final IOrderRepository repository;
   final IChatRepository chatRepository;
@@ -29,6 +31,12 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
 
   Future<void> _onLoadOrdersStream(LoadOrdersStream event, Emitter<OrdersListState> emit) async {
     emit(OrdersListLoading());
+    if (event.sellerId.isEmpty) {
+      _allOrders = [];
+      emit(_createFilteredState());
+      return;
+    }
+    unawaited(BackfillOrdersService().runBackfillMigration(event.sellerId));
     await emit.forEach<List<OrderModel>>(
       repository.getSellerOrdersStream(event.sellerId),
       onData: (orders) {
@@ -96,8 +104,8 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
     try {
       await repository.updateOrderStatus(event.orderId, event.newStatus);
       
-      // Auto-create chat conversation when an order is accepted
-      if (event.newStatus == OrderStatus.accepted) {
+      // Auto-create chat conversation when an order is accepted or preparing
+      if (event.newStatus == OrderStatus.accepted || event.newStatus == OrderStatus.preparing) {
         try {
           await chatRepository.createConversation(
             buyerId: order.customerId,
@@ -148,7 +156,9 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
 
   OrdersListLoaded _createFilteredState({Set<String> updatingOrderIds = const {}}) {
     final filtered = _allOrders.where((order) {
-      final matchesFilter = order.status.value == _activeFilter;
+      final matchesFilter = _activeFilter == 'Preparing'
+          ? (order.status == OrderStatus.preparing || order.status == OrderStatus.accepted)
+          : order.status.value == _activeFilter;
       final query = _searchQuery.toLowerCase();
       final matchesSearch = _searchQuery.isEmpty || 
                             order.id.toLowerCase().contains(query) || 

@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../core/repositories/i_app_settings_repository.dart';
 import '../features/buyer_bloc_architecture/user_profile_image/AppSettings_State.dart';
 
@@ -16,55 +15,49 @@ class FirebaseAppSettingsRepository implements IAppSettingsRepository {
 
   @override
   Future<AppSettingsState> loadSettings(String userId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final cachedTheme = prefs.getString('app_settings_theme');
-    final cachedLanguage = prefs.getString('app_settings_language');
+    final docRef = _firestore
+        .collection('buyer_user')
+        .doc(userId)
+        .collection('settings')
+        .doc('app');
+    final snapshot = await docRef.get();
 
-    try {
-      final docRef = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('settings')
-          .doc('app');
-      final snapshot = await docRef.get();
-
-      if (snapshot.exists) {
-        final data = snapshot.data()!;
-
-        final theme = _resolveTheme(data['theme'] as String?, cachedTheme);
-        final language =
-            _resolveLanguage(data['language'] as String?, cachedLanguage);
-
-        await _cacheToPrefs(theme, language);
-
-        return AppSettingsState(
-          pushNotifications: data['pushNotifications'] as bool? ?? true,
-          orderNotifications: data['orderNotifications'] as bool? ?? true,
-          offerNotifications: data['offerNotifications'] as bool? ?? false,
-          chatNotifications: data['chatNotifications'] as bool? ?? true,
-          notificationSound: data['notificationSound'] as bool? ?? true,
-          vibration: data['vibration'] as bool? ?? true,
-          theme: theme,
-          language: language,
-          isInitialized: true,
-        );
-      }
-
-      return AppSettingsState(
-        theme: cachedTheme ?? 'system',
-        language: cachedLanguage ?? 'en',
-        isInitialized: true,
-      );
-    } catch (e) {
-      if (cachedTheme != null || cachedLanguage != null) {
-        return AppSettingsState(
-          theme: cachedTheme ?? 'system',
-          language: cachedLanguage ?? 'en',
-          isInitialized: true,
-        );
-      }
-      rethrow;
+    if (snapshot.exists) {
+      return _fromSnapshot(snapshot);
     }
+
+    return const AppSettingsState(isInitialized: true);
+  }
+
+  @override
+  Stream<AppSettingsState> watchSettings(String userId) {
+    final docRef = _firestore
+        .collection('buyer_user')
+        .doc(userId)
+        .collection('settings')
+        .doc('app');
+
+    return docRef.snapshots().map((snapshot) {
+      if (snapshot.exists) {
+        return _fromSnapshot(snapshot);
+      }
+      return const AppSettingsState(isInitialized: true);
+    });
+  }
+
+  AppSettingsState _fromSnapshot(DocumentSnapshot<Map<String, dynamic>> snapshot) {
+    final data = snapshot.data()!;
+    return AppSettingsState(
+      pushNotifications: data['pushNotifications'] as bool? ?? true,
+      orderNotifications: data['orderNotifications'] as bool? ?? true,
+      offerNotifications: data['offerNotifications'] as bool? ?? false,
+      chatNotifications: data['chatNotifications'] as bool? ?? true,
+      notificationSound: data['notificationSound'] as bool? ?? true,
+      vibration: data['vibration'] as bool? ?? true,
+      theme: _resolveTheme(data['theme'] as String?, null),
+      language: _resolveLanguage(data['language'] as String?, null),
+      isInitialized: true,
+    );
   }
 
   @override
@@ -72,10 +65,8 @@ class FirebaseAppSettingsRepository implements IAppSettingsRepository {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return;
 
-    await _cacheToPrefs(state.theme, state.language);
-
     await _firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(userId)
         .collection('settings')
         .doc('app')
@@ -111,12 +102,6 @@ class FirebaseAppSettingsRepository implements IAppSettingsRepository {
 
   @override
   Future<void> deleteUserData(String userId) async {
-    await _firestore.collection('users').doc(userId).delete();
-  }
-
-  Future<void> _cacheToPrefs(String theme, String language) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('app_settings_theme', theme);
-    await prefs.setString('app_settings_language', language);
+    await _firestore.collection('buyer_user').doc(userId).delete();
   }
 }

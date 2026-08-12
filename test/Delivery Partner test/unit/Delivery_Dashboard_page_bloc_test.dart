@@ -28,6 +28,27 @@ void main() {
     workingHours: '05h 45m',
     acceptanceRate: 92,
     performanceScore: 4.8,
+    incomingSellerOrders: [
+      DeliveryActivityItem(
+        id: 'order_001',
+        time: '2:30 PM',
+        title: 'Incoming Order #ord00123',
+        subtitle: 'Green Mart',
+        details: '350.00',
+        statusType: 'seller_ready',
+      ),
+    ],
+    unreadNotificationCount: 3,
+    recentActivities: [
+      DeliveryActivityItem(
+        id: 'act_1',
+        time: '10:30 AM',
+        title: 'Order Delivered',
+        subtitle: 'Order #ORD12345',
+        details: '₹120.00',
+        statusType: 'delivered',
+      ),
+    ],
   );
 
   setUp(() {
@@ -42,23 +63,27 @@ void main() {
         service: mockService,
       );
       expect(bloc.state.status, DeliveryDashboardStatus.initial);
-      expect(bloc.state.isOnline, isTrue);
-      expect(bloc.state.todayEarnings, 2450.00);
-      expect(bloc.state.walletBalance, 2450.00);
-      expect(bloc.state.activeOrdersCount, 2);
-      expect(bloc.state.todayOrdersCount, 18);
-      expect(bloc.state.workingHours, '05h 45m');
-      expect(bloc.state.acceptanceRate, 92);
-      expect(bloc.state.performanceScore, 4.8);
+      expect(bloc.state.isOnline, isFalse);
+      expect(bloc.state.todayEarnings, 0.0);
+      expect(bloc.state.walletBalance, 0.0);
+      expect(bloc.state.activeOrdersCount, 0);
+      expect(bloc.state.todayOrdersCount, 0);
+      expect(bloc.state.workingHours, '');
+      expect(bloc.state.acceptanceRate, 0);
+      expect(bloc.state.performanceScore, 0.0);
+      expect(bloc.state.unreadNotificationCount, 0);
+      expect(bloc.state.incomingSellerOrders, isEmpty);
       bloc.close();
     });
 
     blocTest<DeliveryDashboardPageBloc, DeliveryDashboardState>(
       'emits [loading, loaded] on DeliveryDashboardInitEvent success',
       build: () {
+        when(() => mockRepository.loadDashboardData())
+            .thenAnswer((_) async => loadedState);
         when(
-          () => mockRepository.loadDashboardData(),
-        ).thenAnswer((_) async => loadedState);
+          () => mockRepository.watchDashboard(),
+        ).thenAnswer((_) => Stream.value(loadedState));
         return DeliveryDashboardPageBloc(
           repository: mockRepository,
           service: mockService,
@@ -70,8 +95,53 @@ void main() {
         loadedState,
       ],
       verify: (_) {
-        verify(() => mockRepository.loadDashboardData()).called(1);
+        verify(() => mockRepository.watchDashboard()).called(1);
       },
+    );
+
+    blocTest<DeliveryDashboardPageBloc, DeliveryDashboardState>(
+      'emits loaded state with correct unreadNotificationCount',
+      build: () {
+        when(() => mockRepository.loadDashboardData())
+            .thenAnswer((_) async => loadedState);
+        when(
+          () => mockRepository.watchDashboard(),
+        ).thenAnswer((_) => Stream.value(loadedState));
+        return DeliveryDashboardPageBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      act: (bloc) => bloc.add(const DeliveryDashboardInitEvent()),
+      expect: () => [
+        const DeliveryDashboardState(status: DeliveryDashboardStatus.loading),
+        loadedState,
+      ],
+      verify: (_) {
+        verify(() => mockRepository.watchDashboard()).called(1);
+      },
+    );
+
+    blocTest<DeliveryDashboardPageBloc, DeliveryDashboardState>(
+      'emits [loading, loaded] when the dashboard stream fails but fallback succeeds',
+      build: () {
+        when(() => mockRepository.loadDashboardData())
+            .thenAnswer((_) async => loadedState);
+        when(
+          () => mockRepository.watchDashboard(),
+        ).thenAnswer(
+          (_) => Stream.error(Exception('Database offline')),
+        );
+        return DeliveryDashboardPageBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      act: (bloc) => bloc.add(const DeliveryDashboardInitEvent()),
+      expect: () => [
+        const DeliveryDashboardState(status: DeliveryDashboardStatus.loading),
+        loadedState,
+      ],
     );
 
     blocTest<DeliveryDashboardPageBloc, DeliveryDashboardState>(

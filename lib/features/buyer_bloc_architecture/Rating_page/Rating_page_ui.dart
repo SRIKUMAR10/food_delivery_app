@@ -347,7 +347,7 @@ class _RatingPageViewState extends State<RatingPageView>
         ),
         const SizedBox(height: 8),
         Text(
-          'Please rate ',
+          'Please rate ${widget.foodName}',
           style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
           textAlign: TextAlign.center,
         ),

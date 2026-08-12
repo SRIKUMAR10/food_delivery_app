@@ -91,7 +91,12 @@ void main() {
       await tester.tap(find.text('Help & Support'), warnIfMissed: false);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Help & Support Overview'), findsOneWidget);
+      expect(find.text('Emergency Assistance'), findsOneWidget);
+      expect(find.text('Create Support Ticket'), findsOneWidget);
+      expect(
+        find.byKey(const Key('dp_help_emergency_banner')),
+        findsOneWidget,
+      );
 
       await tester.tap(find.text('Contact Support'), warnIfMissed: false);
       await tester.pump();

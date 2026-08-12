@@ -1,3 +1,5 @@
+// Real-Time BLoC Stream Binding Standardized
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../repositories/seller_wallet_repository.dart';
 import 'seller_wallet_page__event.dart';
@@ -6,6 +8,8 @@ import 'seller_wallet_page__state.dart';
 class SellerWalletBloc extends Bloc<SellerWalletEvent, SellerWalletState> {
   final SellerWalletRepository repository;
   static const int _pageSize = 10;
+  StreamSubscription<double>? _balanceSubscription;
+  StreamSubscription<List<PayoutItem>>? _payoutsSubscription;
 
   SellerWalletBloc({required this.repository}) : super(const SellerWalletInitial()) {
     on<LoadWalletData>(_onLoadWalletData);
@@ -20,6 +24,9 @@ class SellerWalletBloc extends Bloc<SellerWalletEvent, SellerWalletState> {
   ) async {
     emit(const SellerWalletLoading());
     try {
+      await _balanceSubscription?.cancel();
+      await _payoutsSubscription?.cancel();
+
       final balance = await repository.getWalletBalance();
       final payouts = await repository.getPayoutHistory(offset: 0, limit: _pageSize);
 
@@ -30,9 +37,30 @@ class SellerWalletBloc extends Bloc<SellerWalletEvent, SellerWalletState> {
         isPaginatedLoading: false,
         isWithdrawing: false,
       ));
+
+      _balanceSubscription = repository.streamWalletBalance().listen((newBalance) {
+        final currentState = state;
+        if (currentState is SellerWalletLoaded) {
+          add(RefreshWalletData());
+        }
+      });
+
+      _payoutsSubscription = repository.streamPayoutHistory().listen((newPayouts) {
+        final currentState = state;
+        if (currentState is SellerWalletLoaded && newPayouts.isNotEmpty) {
+          add(RefreshWalletData());
+        }
+      });
     } catch (e) {
       emit(SellerWalletError(e.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _balanceSubscription?.cancel();
+    _payoutsSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onRefreshWalletData(

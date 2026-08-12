@@ -15,7 +15,7 @@ class DeliveryCompletedRepository implements DeliveryCompletedRepositoryBase {
 
   DeliveryCompletedModel _mapDetails(Map<String, dynamic> raw) {
     return DeliveryCompletedModel(
-      orderId: raw['orderId'] ?? '#ORD12345',
+      orderId: raw['orderId'] ?? '',
       walletBalance: (raw['walletBalance'] as num?)?.toDouble() ?? 0.0,
       partnerName: raw['partnerName'] ?? '',
       partnerVehicleNo: raw['partnerVehicleNo'] ?? '',
@@ -23,9 +23,9 @@ class DeliveryCompletedRepository implements DeliveryCompletedRepositoryBase {
       deliveryAddress: raw['deliveryAddress'] ?? '',
       timeTaken: raw['timeTaken'] ?? '',
       distanceCovered: (raw['distanceCovered'] as num?)?.toDouble() ?? 0.0,
-      paymentStatus: raw['paymentStatus'] ?? 'Paid Successfully',
+      paymentStatus: raw['paymentStatus'] ?? '',
       paymentMethod: raw['paymentMethod'] ?? '',
-      customerRating: (raw['customerRating'] as num?)?.toDouble() ?? 5.0,
+      customerRating: (raw['customerRating'] as num?)?.toDouble() ?? 0.0,
       deliveryEarnings: (raw['deliveryEarnings'] as num?)?.toDouble() ?? 0.0,
       completedAt: raw['completedAt'] ?? '',
     );

@@ -4,6 +4,31 @@ import 'promotions_coupons_page_model.dart';
 class PromotionsCouponsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  Stream<List<CouponModel>> streamCoupons(String sellerId) {
+    return _firestore
+        .collection('sellers')
+        .doc(sellerId)
+        .collection('coupons')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return CouponModel(
+          id: doc.id,
+          code: data['code'] ?? '',
+          description: data['description'] ?? '',
+          discountAmount: (data['discountAmount'] ?? 0).toDouble(),
+          isPercentage: data['isPercentage'] ?? false,
+          expiryDate: (data['expiryDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          isActive: data['isActive'] ?? true,
+          usageLimit: (data['usageLimit'] as num?)?.toInt() ?? 0,
+          usedCount: (data['usedCount'] as num?)?.toInt() ?? 0,
+          minimumOrderValue: (data['minimumOrderValue'] as num?)?.toDouble() ?? 0,
+        );
+      }).toList();
+    });
+  }
+
   Future<List<CouponModel>> fetchCoupons(String sellerId) async {
     try {
       final snapshot = await _firestore

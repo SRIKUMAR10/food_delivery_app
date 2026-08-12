@@ -9,14 +9,19 @@ abstract class DeliveryIncentivesDashboardServiceBase {
 
 class DeliveryIncentivesDashboardService
     implements DeliveryIncentivesDashboardServiceBase {
-  final FirebaseFirestore? _firestore;
-  final FirebaseAuth? _auth;
+  final FirebaseFirestore? _firestoreParam;
+  final FirebaseAuth? _authParam;
 
   DeliveryIncentivesDashboardService({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  })  : _firestoreParam = firestore,
+        _authParam = auth;
+
+  FirebaseFirestore? get _firestore =>
+      _firestoreParam ?? (FirebaseAuth.instance.app != null ? FirebaseFirestore.instance : null);
+  FirebaseAuth? get _auth =>
+      _authParam ?? (FirebaseAuth.instance.app != null ? FirebaseAuth.instance : null);
 
   @override
   Future<Map<String, dynamic>> fetchIncentivesData() async {
@@ -80,21 +85,21 @@ class DeliveryIncentivesDashboardService
 
   Map<String, dynamic> _buildFullMockData() {
     return {
-      'walletBalance': 2450.00,
-      'todayBonus': 350.00,
-      'todayBonusGrowth': 12.5,
-      'weeklyBonus': 1250.00,
-      'weeklyBonusGrowth': 18.6,
-      'monthlyBonus': 4750.00,
-      'monthlyBonusGrowth': 24.3,
-      'targetProgress': 76.0,
-      'targetEarned': 7650.00,
+      'walletBalance': 0.0,
+      'todayBonus': 0.0,
+      'todayBonusGrowth': 0.0,
+      'weeklyBonus': 0.0,
+      'weeklyBonusGrowth': 0.0,
+      'monthlyBonus': 0.0,
+      'monthlyBonusGrowth': 0.0,
+      'targetProgress': 0.0,
+      'targetEarned': 0.0,
       'targetGoal': 10000.00,
       'targetDeadline': DateTime(2026, 8, 31).toIso8601String(),
       'rangePoints': _buildMockRangePoints(),
       'achievements': _buildMockAchievements(),
       'donutSlices': _buildMockDonutSlices(),
-      'milestones': _buildMockMilestones(62),
+      'milestones': _buildMockMilestones(0),
       'rewards': _buildMockRewards(),
     };
   }

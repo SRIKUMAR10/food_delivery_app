@@ -1,3 +1,4 @@
+// Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'chat_support_page_event.dart';
@@ -43,6 +44,11 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
     on<_ConversationsError>(_onConversationsError);
     on<_MessagesError>(_onMessagesError);
     on<DeleteSupportMessageEvent>(_onDeleteMessage);
+    on<SendSupportMediaMessage>(_onSendMediaMessage);
+    on<ToggleSupportEmojiPicker>(_onToggleEmojiPicker);
+    on<StartSupportAudioRecording>(_onStartAudioRecording);
+    on<StopSupportAudioRecording>(_onStopAudioRecording);
+    on<CancelSupportAudioRecording>(_onCancelAudioRecording);
   }
 
   void _onLoadChatSessions(
@@ -173,6 +179,78 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
         ));
       }
     }
+  }
+
+  Future<void> _onSendMediaMessage(
+      SendSupportMediaMessage event, Emitter<ChatSupportState> emit) async {
+    final current = state;
+    if (current is! ChatSupportLoaded) return;
+    if (current.currentUserId.isEmpty) return;
+
+    emit(current.copyWith(isSendingMessage: true, clearError: true));
+
+    try {
+      final mediaUrl = await repository.uploadChatAttachment(
+        event.file,
+        event.conversationId,
+        event.fileName,
+      );
+
+      await repository.sendMessage(
+        conversationId: event.conversationId,
+        text: (event.fileName != null && event.fileName!.isNotEmpty)
+            ? event.fileName!
+            : event.messageType,
+        senderId: current.currentUserId,
+        senderRole: 'seller',
+        messageType: event.messageType,
+        mediaUrl: mediaUrl,
+        fileName: event.fileName,
+        duration: event.duration,
+      );
+      if (isClosed) return;
+      final s = state;
+      if (s is ChatSupportLoaded) {
+        emit(s.copyWith(isSendingMessage: false));
+      }
+    } catch (e) {
+      if (isClosed) return;
+      final s = state;
+      if (s is ChatSupportLoaded) {
+        emit(s.copyWith(
+          isSendingMessage: false,
+          errorMessage: 'Failed to send media. Please try again.',
+        ));
+      }
+    }
+  }
+
+  void _onToggleEmojiPicker(
+      ToggleSupportEmojiPicker event, Emitter<ChatSupportState> emit) {
+    final current = state;
+    if (current is! ChatSupportLoaded) return;
+    emit(current.copyWith(showEmojiPicker: event.show));
+  }
+
+  void _onStartAudioRecording(
+      StartSupportAudioRecording event, Emitter<ChatSupportState> emit) {
+    final current = state;
+    if (current is! ChatSupportLoaded) return;
+    emit(current.copyWith(isRecording: true, recordingDuration: Duration.zero));
+  }
+
+  void _onStopAudioRecording(
+      StopSupportAudioRecording event, Emitter<ChatSupportState> emit) {
+    final current = state;
+    if (current is! ChatSupportLoaded) return;
+    emit(current.copyWith(isRecording: false));
+  }
+
+  void _onCancelAudioRecording(
+      CancelSupportAudioRecording event, Emitter<ChatSupportState> emit) {
+    final current = state;
+    if (current is! ChatSupportLoaded) return;
+    emit(current.copyWith(isRecording: false, recordingDuration: Duration.zero));
   }
 
   Future<void> _onDeleteMessage(

@@ -22,15 +22,15 @@ void main() {
     test('fetchIncentivesData returns valid incentive metric data', () async {
       final data = await service.fetchIncentivesData();
 
-      expect(data['walletBalance'], 2450.00);
-      expect(data['todayBonus'], 350.00);
-      expect(data['todayBonusGrowth'], 12.5);
-      expect(data['weeklyBonus'], 1250.00);
-      expect(data['weeklyBonusGrowth'], 18.6);
-      expect(data['monthlyBonus'], 4750.00);
-      expect(data['monthlyBonusGrowth'], 24.3);
-      expect(data['targetProgress'], 76.0);
-      expect(data['targetEarned'], 7650.00);
+      expect(data['walletBalance'], 0.0);
+      expect(data['todayBonus'], 0.0);
+      expect(data['todayBonusGrowth'], 0.0);
+      expect(data['weeklyBonus'], 0.0);
+      expect(data['weeklyBonusGrowth'], 0.0);
+      expect(data['monthlyBonus'], 0.0);
+      expect(data['monthlyBonusGrowth'], 0.0);
+      expect(data['targetProgress'], 0.0);
+      expect(data['targetEarned'], 0.0);
       expect(data['targetGoal'], 10000.00);
     });
 

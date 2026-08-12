@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../../core/models/order_model.dart';
+import '../../../../core/models/order_status.dart';
 
 abstract class OrdersListState extends Equatable {
   const OrdersListState();
@@ -56,6 +57,9 @@ class OrdersListLoaded extends OrdersListState {
   List<Object?> get props => [allOrders, filteredOrders, activeFilter, searchQuery, updatingOrderIds, errorMessage, successMessage];
 
   int getCount(String status) {
+    if (status == 'Preparing') {
+      return allOrders.where((order) => order.status == OrderStatus.preparing || order.status == OrderStatus.accepted).length;
+    }
     return allOrders.where((order) => order.status.value == status).length;
   }
 }

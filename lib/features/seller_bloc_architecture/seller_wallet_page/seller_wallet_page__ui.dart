@@ -119,7 +119,8 @@ class _SellerWalletViewState extends State<SellerWalletView> {
                         vertical: 16.0,
                       ),
                       child: BlocBuilder<SellerWalletBloc, SellerWalletState>(
-                        builder: (context, state) {
+                        buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                           return AnimatedSwitcher(
                             duration: const Duration(milliseconds: 300),
                             child: _buildStateContent(context, state),

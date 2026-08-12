@@ -39,8 +39,11 @@ class _CartPageUIState extends State<CartPageUI> {
   @override
   void initState() {
     super.initState();
-    // Ensure the cart is loaded when we open the page.
-    context.read<CartBloc>().add(const LoadCartStarted());
+    // NOTE: Do NOT dispatch LoadCartStarted here. The CartBloc automatically
+    // subscribes to authStateChanges in its constructor and dispatches
+    // LoadCartStarted once the user is authenticated. Dispatching it again
+    // from the UI creates a second concurrent Firestore stream listener,
+    // which causes a [cloud_firestore/permission-denied] race condition.
   }
 
   void _showCheckoutSnackBar(BuildContext context) {
@@ -145,6 +148,7 @@ class _CartPageUIState extends State<CartPageUI> {
       child: Scaffold(
         body: SafeArea(
           child: BlocBuilder<CartBloc, CartState>(
+            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
             builder: (context, state) {
               if (state is CartLoading) {
                 return const Center(

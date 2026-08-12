@@ -17,7 +17,7 @@ class DetailsRepository {
 
   Stream<double> getUserRatingStream(String userId, String foodId) {
     return _firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(userId)
         .collection('ratings')
         .doc(foodId)
@@ -25,9 +25,9 @@ class DetailsRepository {
         .map((snapshot) {
       if (snapshot.exists) {
         final data = snapshot.data() as Map<String, dynamic>;
-        return (data['rating'] as num?)?.toDouble() ?? 4.5;
+        return (data['rating'] as num?)?.toDouble() ?? 0.0;
       }
-      return 4.5;
+      return 0.0;
     });
   }
 
@@ -35,7 +35,7 @@ class DetailsRepository {
     final batch = _firestore.batch();
 
     final userRatingRef = _firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(userId)
         .collection('ratings')
         .doc(foodId);

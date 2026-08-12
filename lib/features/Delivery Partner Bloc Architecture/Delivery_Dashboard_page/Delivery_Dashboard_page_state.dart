@@ -67,33 +67,41 @@ class DeliveryDashboardState extends Equatable {
   final String workingHours;
   final int acceptanceRate;
   final double performanceScore;
+  final double distanceTravelled;
+  final double weeklyEarnings;
   final String partnerName;
   final String vehicleNumber;
   final List<DeliveryActivityItem> recentActivities;
   final String selectedFilter;
   final String? errorMessage;
   final String localeCode;
+  final List<DeliveryActivityItem> incomingSellerOrders;
+  final int unreadNotificationCount;
 
   const DeliveryDashboardState({
     this.status = DeliveryDashboardStatus.initial,
-    this.isOnline = true,
-    this.todayEarnings = 2450.00,
-    this.earningsGrowth = 18.5,
-    this.todayOrdersCount = 18,
-    this.activeOrdersCount = 2,
-    this.walletBalance = 2450.00,
-    this.incentiveEarned = 350.00,
-    this.incentiveTarget = 500.00,
+    this.isOnline = false,
+    this.todayEarnings = 0.0,
+    this.earningsGrowth = 0.0,
+    this.todayOrdersCount = 0,
+    this.activeOrdersCount = 0,
+    this.walletBalance = 0.0,
+    this.incentiveEarned = 0.0,
+    this.incentiveTarget = 0.0,
     this.incentivesList = const [],
-    this.workingHours = '05h 45m',
-    this.acceptanceRate = 92,
-    this.performanceScore = 4.8,
-    this.partnerName = 'Ravi Kumar',
-    this.vehicleNumber = 'TN 01 AB 1234',
+    this.workingHours = '',
+    this.acceptanceRate = 0,
+    this.performanceScore = 0.0,
+    this.distanceTravelled = 0.0,
+    this.weeklyEarnings = 0.0,
+    this.partnerName = '',
+    this.vehicleNumber = '',
     this.recentActivities = const [],
     this.selectedFilter = 'All',
     this.errorMessage,
     this.localeCode = 'en',
+    this.incomingSellerOrders = const [],
+    this.unreadNotificationCount = 0,
   });
 
   DeliveryDashboardState copyWith({
@@ -110,6 +118,8 @@ class DeliveryDashboardState extends Equatable {
     String? workingHours,
     int? acceptanceRate,
     double? performanceScore,
+    double? distanceTravelled,
+    double? weeklyEarnings,
     String? partnerName,
     String? vehicleNumber,
     List<DeliveryActivityItem>? recentActivities,
@@ -117,6 +127,8 @@ class DeliveryDashboardState extends Equatable {
     String? errorMessage,
     bool clearError = false,
     String? localeCode,
+    List<DeliveryActivityItem>? incomingSellerOrders,
+    int? unreadNotificationCount,
   }) {
     return DeliveryDashboardState(
       status: status ?? this.status,
@@ -132,12 +144,16 @@ class DeliveryDashboardState extends Equatable {
       workingHours: workingHours ?? this.workingHours,
       acceptanceRate: acceptanceRate ?? this.acceptanceRate,
       performanceScore: performanceScore ?? this.performanceScore,
+      distanceTravelled: distanceTravelled ?? this.distanceTravelled,
+      weeklyEarnings: weeklyEarnings ?? this.weeklyEarnings,
       partnerName: partnerName ?? this.partnerName,
       vehicleNumber: vehicleNumber ?? this.vehicleNumber,
       recentActivities: recentActivities ?? this.recentActivities,
       selectedFilter: selectedFilter ?? this.selectedFilter,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       localeCode: localeCode ?? this.localeCode,
+      incomingSellerOrders: incomingSellerOrders ?? this.incomingSellerOrders,
+      unreadNotificationCount: unreadNotificationCount ?? this.unreadNotificationCount,
     );
   }
 
@@ -156,11 +172,15 @@ class DeliveryDashboardState extends Equatable {
         workingHours,
         acceptanceRate,
         performanceScore,
+        distanceTravelled,
+        weeklyEarnings,
         partnerName,
         vehicleNumber,
         recentActivities,
         selectedFilter,
         errorMessage,
         localeCode,
+        incomingSellerOrders,
+        unreadNotificationCount,
       ];
 }

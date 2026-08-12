@@ -5,6 +5,7 @@ import 'package:food_delivery_app/repositories/delivery_partner_repository.dart'
 
 abstract class DeliveryProfileServiceBase {
   Future<Map<String, dynamic>> fetchProfileData();
+  Stream<Map<String, dynamic>> watchProfileData();
   Future<bool> updateProfile(Map<String, dynamic> data);
   Future<bool> uploadDocument(String type, String filePath);
   Stream<double> chunkedUpload(String documentId);
@@ -34,62 +35,50 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
             .doc(uid)
             .get();
 
-        if (!doc.exists) {
-          final currentUser = _auth?.currentUser;
-          final initialData = {
-            'displayName': currentUser?.displayName ?? 'Delivery Partner',
-            'phoneNumber': currentUser?.phoneNumber ?? '',
-            'email': currentUser?.email ?? '',
-            'photoUrl': currentUser?.photoURL ?? '',
-            'vehicleType': 'Bike',
-            'vehicleNumber': '',
-            'drivingLicense': '',
-            'aadhaarNumber': '',
-            'kycStatus': 'pending',
-            'totalEarnings': 0.0,
-            'totalDeliveries': 0,
-            'rating': 5.0,
-            'isOnline': false,
-            'profileCompletion': 10,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          };
-          await _firestore!
-              .collection('delivery_partners')
-              .doc(uid)
-              .set(initialData, SetOptions(merge: true));
-        }
-
-        final updatedDoc = await _firestore!
-            .collection('delivery_partners')
-            .doc(uid)
-            .get();
-
-        if (updatedDoc.exists) {
-          final data = updatedDoc.data()!;
-          return {
-            'id': uid,
-            'displayName': data['displayName'] ?? 'Delivery Partner',
-            'phoneNumber': data['phoneNumber'] ?? '',
-            'email': data['email'] ?? '',
-            'photoUrl': data['photoUrl'] ?? '',
-            'vehicleType': data['vehicleType'] ?? 'Bike',
-            'vehicleNumber': data['vehicleNumber'] ?? '',
-            'drivingLicense': data['drivingLicense'] ?? '',
-            'aadhaarNumber': data['aadhaarNumber'] ?? '',
-            'kycStatus': data['kycStatus'] ?? 'pending',
-            'totalEarnings': (data['totalEarnings'] as num?)?.toDouble() ?? 0.0,
-            'totalDeliveries': data['totalDeliveries'] ?? 0,
-            'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
-            'isOnline': data['isOnline'] ?? false,
-            'profileCompletion': data['profileCompletion'] ?? 0,
-            'createdAt': (data['createdAt'] as Timestamp?)?.toDate()?.toIso8601String() ?? '',
-          };
+        if (doc.exists) {
+          return _mapProfileData(uid, doc.data() ?? {});
         }
       }
     } catch (_) {}
 
-    return _buildMockProfile();
+    return {};
+  }
+
+  @override
+  Stream<Map<String, dynamic>> watchProfileData() {
+    final uid = _auth?.currentUser?.uid;
+    if (uid == null || _firestore == null) {
+      return const Stream.empty();
+    }
+    return _firestore!
+        .collection('delivery_partners')
+        .doc(uid)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return const <String, dynamic>{};
+      return _mapProfileData(uid, doc.data() ?? {});
+    });
+  }
+
+  Map<String, dynamic> _mapProfileData(String uid, Map<String, dynamic> data) {
+    return {
+      'id': uid,
+      'displayName': data['displayName'] ?? '',
+      'phoneNumber': data['phoneNumber'] ?? '',
+      'email': data['email'] ?? '',
+      'photoUrl': data['photoUrl'] ?? '',
+      'vehicleType': data['vehicleType'] ?? '',
+      'vehicleNumber': data['vehicleNumber'] ?? '',
+      'drivingLicense': data['drivingLicense'] ?? '',
+      'aadhaarNumber': data['aadhaarNumber'] ?? '',
+      'kycStatus': data['kycStatus'] ?? 'pending',
+      'totalEarnings': (data['totalEarnings'] as num?)?.toDouble() ?? 0.0,
+      'totalDeliveries': (data['totalDeliveries'] as num?)?.toInt() ?? 0,
+      'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
+      'isOnline': data['isOnline'] ?? false,
+      'profileCompletion': (data['profileCompletion'] as num?)?.toInt() ?? 0,
+      'createdAt': (data['createdAt'] as Timestamp?)?.toDate()?.toIso8601String() ?? '',
+    };
   }
 
   @override
@@ -104,8 +93,7 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
         return true;
       }
     } catch (_) {}
-    await Future.delayed(const Duration(milliseconds: 300));
-    return true;
+    return false;
   }
 
   @override
@@ -125,35 +113,13 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
         return true;
       }
     } catch (_) {}
-    await Future.delayed(const Duration(milliseconds: 500));
-    return true;
+    return false;
   }
 
   @override
   Future<bool> requestPermission(String type) async {
     await Future.delayed(const Duration(milliseconds: 50));
     return true;
-  }
-
-  Map<String, dynamic> _buildMockProfile() {
-    return {
-      'id': 'dp_001',
-      'displayName': 'Ravi Kumar',
-      'phoneNumber': '+919876543210',
-      'email': 'ravi.kumar@email.com',
-      'photoUrl': '',
-      'vehicleType': 'Bike',
-      'vehicleNumber': 'TN 01 AB 1234',
-      'drivingLicense': 'DL-2023-001',
-      'aadhaarNumber': 'XXXX-XXXX-1234',
-      'kycStatus': 'verified',
-      'totalEarnings': 48500.00,
-      'totalDeliveries': 312,
-      'rating': 4.8,
-      'isOnline': true,
-      'profileCompletion': 85,
-      'createdAt': DateTime.now().toIso8601String(),
-    };
   }
 
   @override

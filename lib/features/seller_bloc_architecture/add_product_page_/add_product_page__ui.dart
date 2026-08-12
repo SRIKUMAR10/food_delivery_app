@@ -361,7 +361,8 @@ class _AddProductViewState extends State<AddProductView> {
       ),
       actions: [
         BlocBuilder<AddProductPageBloc, AddProductPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             if (state.lastSavedAt == null) return const SizedBox.shrink();
             final difference = DateTime.now().difference(state.lastSavedAt!);
             final timeStr = difference.inSeconds < 60
@@ -2072,7 +2073,8 @@ class _AddProductViewState extends State<AddProductView> {
 
   Widget _buildBottomActionBar() {
     return BlocBuilder<AddProductPageBloc, AddProductPageState>(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         return Container(
           padding: EdgeInsets.only(
             left: 20,

@@ -41,7 +41,7 @@ class DeliveryOrderHistoryDateRangeChangedEvent
   const DeliveryOrderHistoryDateRangeChangedEvent({
     this.startEpoch,
     this.endEpoch,
-    this.dateLabel = 'May 18, 2025 - May 24, 2025',
+    this.dateLabel = '',
   });
 
   @override

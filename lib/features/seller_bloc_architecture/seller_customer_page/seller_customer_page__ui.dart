@@ -124,7 +124,8 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
                   vertical: 16.0,
                 ),
                 child: BlocBuilder<SellerCustomerBloc, SellerCustomerState>(
-                  builder: (context, state) {
+                  buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                     return AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
                       child: _buildStateContent(context, state),
@@ -487,42 +488,30 @@ class _CustomerListItemState extends State<_CustomerListItem>
                 // Avatar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(24),
-                  child: CachedNetworkImage(
-                    imageUrl: widget.customer.avatarUrl,
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[200],
-                      width: 48,
-                      height: 48,
-                      child: const Center(
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFFE11D48),
+                  child: widget.customer.avatarUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: widget.customer.avatarUrl,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey[200],
+                            width: 48,
+                            height: 48,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFE11D48),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: const Color(0xFFF1F5F9),
-                      width: 48,
-                      height: 48,
-                      child: Center(
-                        child: Text(
-                          widget.customer.name.substring(0, 1).toUpperCase(),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF475569),
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                          errorWidget: (context, url, error) => _buildInitialsAvatar(),
+                        )
+                      : _buildInitialsAvatar(),
                 ),
                 const SizedBox(width: 16),
 
@@ -549,6 +538,27 @@ class _CustomerListItemState extends State<_CustomerListItem>
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitialsAvatar() {
+    final String initial = widget.customer.name.trim().isNotEmpty
+        ? widget.customer.name.trim().substring(0, 1).toUpperCase()
+        : '?';
+    return Container(
+      color: const Color(0xFFF1F5F9),
+      width: 48,
+      height: 48,
+      child: Center(
+        child: Text(
+          initial,
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF475569),
+            fontSize: 18,
           ),
         ),
       ),

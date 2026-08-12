@@ -3,6 +3,8 @@ import 'package:equatable/equatable.dart';
 // Models
 class DashboardOrder extends Equatable {
   final String id;
+  final String? fullOrderId;
+  final String? customerId;
   final String customerName;
   final String status; // 'New', 'Preparing', etc.
   final double price;
@@ -10,6 +12,8 @@ class DashboardOrder extends Equatable {
 
   const DashboardOrder({
     required this.id,
+    this.fullOrderId,
+    this.customerId,
     required this.customerName,
     required this.status,
     required this.price,
@@ -17,7 +21,7 @@ class DashboardOrder extends Equatable {
   });
 
   @override
-  List<Object?> get props => [id, customerName, status, price, timeAgo];
+  List<Object?> get props => [id, fullOrderId, customerId, customerName, status, price, timeAgo];
 }
 
 class DashboardData extends Equatable {

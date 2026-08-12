@@ -29,10 +29,10 @@ class DeliverySessionState {
 
   const DeliverySessionState({
     this.isOnline = true,
-    this.walletBalance = 2450.50,
-    this.pendingWithdrawal = 500.00,
-    this.totalEarningsToday = 1280.00,
-    this.completedOrdersCount = 14,
+    this.walletBalance = 0.0,
+    this.pendingWithdrawal = 0.0,
+    this.totalEarningsToday = 0.0,
+    this.completedOrdersCount = 0,
     this.deliveryStage = ActiveDeliveryStage.idle,
     this.activeOrderId,
     this.storeName,
@@ -163,12 +163,12 @@ class DeliveryActiveOrderSessionRepository {
 
   /// Trigger an incoming order event.
   void triggerIncomingOrder({
-    String orderId = '#ORD98234',
-    String storeName = 'Tandoori Junction',
-    String storeAddress = '123 MG Road, Sector 4',
-    String customerName = 'Rahul Sharma',
-    String customerAddress = '458 Green Park, Block B',
-    double orderAmount = 450.00,
+    required String orderId,
+    String? storeName,
+    String? storeAddress,
+    String? customerName,
+    String? customerAddress,
+    double? orderAmount,
   }) {
     _emitState(_currentState.copyWith(
       deliveryStage: ActiveDeliveryStage.incomingOrder,
@@ -204,8 +204,8 @@ class DeliveryActiveOrderSessionRepository {
   }
 
   /// Complete delivery and update earnings and completed orders count synchronously.
-  void completeDelivery() {
-    final earningsAdded = (_currentState.orderAmount ?? 50.0) * 0.15 + 40.0;
+  void completeDelivery({double? deliveryFee}) {
+    final earningsAdded = deliveryFee ?? 0.0;
     _emitState(_currentState.copyWith(
       deliveryStage: ActiveDeliveryStage.deliveryCompleted,
       walletBalance: _currentState.walletBalance + earningsAdded,

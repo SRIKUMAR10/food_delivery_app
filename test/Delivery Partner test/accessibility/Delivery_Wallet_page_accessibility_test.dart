@@ -3,7 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:bloc_test/bloc_test.dart';
+import 'package:mocktail/mocktail.dart';
+
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Wallet_page/Delivery_Wallet_page_bloc.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Wallet_page/Delivery_Wallet_page_event.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Wallet_page/Delivery_Wallet_page_state.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Wallet_page/Delivery_Wallet_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Wallet_page/Delivery_Wallet_page_ui.dart';
+
+class MockDeliveryWalletPageBloc extends MockBloc<DeliveryWalletPageEvent, DeliveryWalletPageState> implements DeliveryWalletPageBloc {}
 
 double contrastRatio(Color foreground, Color background) {
   double channel(double value) {
@@ -25,14 +34,25 @@ double contrastRatio(Color foreground, Color background) {
 }
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  late MockDeliveryWalletPageBloc mockBloc;
+  const loadedState = DeliveryWalletPageState(
+    status: DeliveryWalletStatus.loaded,
+    activeFilter: DeliveryWalletTransactionFilter.all,
+  );
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    mockBloc = MockDeliveryWalletPageBloc();
+    when(() => mockBloc.state).thenReturn(loadedState);
+    when(() => mockBloc.stream).thenAnswer((_) => Stream.value(loadedState));
+  });
 
   Future<void> load(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1280, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(
-      MaterialApp(home: const Scaffold(body: DeliveryWalletPage())),
+      MaterialApp(home: Scaffold(body: DeliveryWalletPage(bloc: mockBloc))),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));

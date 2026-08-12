@@ -22,14 +22,16 @@ class TrackOrderService {
     String sellerPhone = '';
 
     if (sellerId.isNotEmpty) {
-      final sellerDoc = await firestore.collection('sellers').doc(sellerId).get();
-      if (sellerDoc.exists) {
-        final sellerData = sellerDoc.data()!;
-        sellerName = (sellerData['shopName'] as String? ?? sellerData['sellerName'] as String? ?? sellerData['name'] as String? ?? 'Restaurant');
-        sellerAddress = sellerData['address'] as String? ?? '';
-        sellerImageUrl = sellerData['profileImageUrl'] as String? ?? '';
-        sellerPhone = sellerData['phoneNumber'] as String? ?? sellerData['contactNumber'] as String? ?? '';
-      }
+      try {
+        final sellerDoc = await firestore.collection('sellers').doc(sellerId).get();
+        if (sellerDoc.exists) {
+          final sellerData = sellerDoc.data()!;
+          sellerName = (sellerData['shopName'] as String? ?? sellerData['sellerName'] as String? ?? sellerData['name'] as String? ?? 'Restaurant');
+          sellerAddress = sellerData['address'] as String? ?? '';
+          sellerImageUrl = sellerData['profileImageUrl'] as String? ?? '';
+          sellerPhone = sellerData['phoneNumber'] as String? ?? sellerData['contactNumber'] as String? ?? '';
+        }
+      } catch (_) {}
     }
 
     String driverName = '';
@@ -39,18 +41,48 @@ class TrackOrderService {
     double? driverLng;
 
     if (riderId != null && riderId.isNotEmpty) {
-      final riderDoc = await firestore.collection('riders').doc(riderId).get();
-      if (riderDoc.exists) {
-        final riderData = riderDoc.data()!;
-        driverName = riderData['name'] as String? ?? '';
-        driverImage = riderData['imageUrl'] as String? ?? '';
-        driverPhone = riderData['phone'] as String? ?? '';
-        final location = riderData['currentLocation'];
-        if (location is Map<String, dynamic>) {
-          driverLat = (location['lat'] as num?)?.toDouble();
-          driverLng = (location['lng'] as num?)?.toDouble();
+      try {
+        DocumentSnapshot? riderDoc;
+        try {
+          final partnerDoc = await firestore.collection('delivery_partners').doc(riderId).get();
+          if (partnerDoc.exists) {
+            riderDoc = partnerDoc;
+          }
+        } catch (_) {}
+
+        if (riderDoc == null || !riderDoc.exists) {
+          try {
+            final subRiderDoc = await firestore.collection('delivery_partners').doc(riderId).collection('riders').doc('info').get();
+            if (subRiderDoc.exists) {
+              riderDoc = subRiderDoc;
+            }
+          } catch (_) {}
         }
-      }
+
+        if (riderDoc == null || !riderDoc.exists) {
+          try {
+            final directRiderDoc = await firestore.collection('riders').doc(riderId).get();
+            if (directRiderDoc.exists) {
+              riderDoc = directRiderDoc;
+            }
+          } catch (_) {}
+        }
+
+        if (riderDoc != null && riderDoc.exists) {
+          final riderData = riderDoc.data() as Map<String, dynamic>? ?? {};
+          driverName = riderData['displayName'] as String? ?? riderData['name'] as String? ?? '';
+          driverImage = riderData['photoUrl'] as String? ?? riderData['imageUrl'] as String? ?? '';
+          driverPhone = riderData['phoneNumber'] as String? ?? riderData['phone'] as String? ?? '';
+          final location = riderData['currentLocation'];
+          if (location is Map<String, dynamic>) {
+            driverLat = (location['lat'] as num?)?.toDouble();
+            driverLng = (location['lng'] as num?)?.toDouble();
+          } else {
+            driverLat = (riderData['driverLat'] as num?)?.toDouble();
+            driverLng = (riderData['driverLng'] as num?)?.toDouble();
+          }
+        }
+      } catch (_) {}
     }
 
     final acceptedAt = orderData['acceptedAt'];
@@ -91,9 +123,9 @@ class TrackOrderService {
   Stream<Map<String, dynamic>> riderLocationStream(String riderId) {
     final controller = StreamController<Map<String, dynamic>>();
 
-    final subscription = firestore.collection('riders').doc(riderId).snapshots().listen(
+    final subRider = firestore.collection('riders').doc(riderId).snapshots().listen(
       (snapshot) {
-        if (!snapshot.exists) return;
+        if (!snapshot.exists || snapshot.data() == null) return;
         final data = snapshot.data()!;
         final location = data['currentLocation'];
         if (location is Map<String, dynamic>) {
@@ -101,16 +133,40 @@ class TrackOrderService {
             'lat': (location['lat'] as num?)?.toDouble() ?? 0.0,
             'lng': (location['lng'] as num?)?.toDouble() ?? 0.0,
           });
+        } else if (location is GeoPoint) {
+          controller.add({
+            'lat': location.latitude,
+            'lng': location.longitude,
+          });
         }
       },
-      onError: (e) {
-        if (!controller.isClosed) {
-          controller.addError(e);
-        }
-      },
+      onError: (_) {},
     );
 
-    controller.onCancel = subscription.cancel;
+    final subPartner = firestore.collection('delivery_partners').doc(riderId).snapshots().listen(
+      (snapshot) {
+        if (!snapshot.exists || snapshot.data() == null) return;
+        final data = snapshot.data()!;
+        final location = data['currentLocation'];
+        if (location is Map<String, dynamic>) {
+          controller.add({
+            'lat': (location['lat'] as num?)?.toDouble() ?? 0.0,
+            'lng': (location['lng'] as num?)?.toDouble() ?? 0.0,
+          });
+        } else if (location is GeoPoint) {
+          controller.add({
+            'lat': location.latitude,
+            'lng': location.longitude,
+          });
+        }
+      },
+      onError: (_) {},
+    );
+
+    controller.onCancel = () {
+      subRider.cancel();
+      subPartner.cancel();
+    };
     return controller.stream;
   }
 

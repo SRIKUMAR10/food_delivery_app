@@ -8,6 +8,17 @@ class ChatSupportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _uuid = const Uuid();
 
+  Stream<List<ChatSessionModel>> streamChatSessions(String sellerId) {
+    return _firestore
+        .collection('sellers')
+        .doc(sellerId)
+        .collection('chats')
+        .snapshots()
+        .asyncMap((snapshot) async {
+      return await fetchChatSessions(sellerId);
+    });
+  }
+
   Future<List<ChatSessionModel>> fetchChatSessions(String sellerId) async {
     try {
       final snapshot = await _firestore

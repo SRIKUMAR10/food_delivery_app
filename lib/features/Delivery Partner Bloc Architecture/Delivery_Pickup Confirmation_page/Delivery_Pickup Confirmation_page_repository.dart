@@ -18,7 +18,7 @@ class DeliveryPickupConfirmationRepository
 
   PickupConfirmationModel _mapDetails(Map<String, dynamic> raw) {
     return PickupConfirmationModel(
-      orderId: raw['orderId'] ?? '#ORD12345',
+      orderId: raw['orderId'] ?? '',
       pickupLocationName: raw['pickupLocationName'] ?? '',
       pickupAddress: raw['pickupAddress'] ?? '',
       pickupContactName: raw['pickupContactName'] ?? '',
@@ -28,7 +28,7 @@ class DeliveryPickupConfirmationRepository
       customerAddress: raw['customerAddress'] ?? '',
       customerPhone: raw['customerPhone'] ?? '',
       pickupTime: raw['pickupTime'] ?? '',
-      paymentType: raw['paymentType'] ?? 'Cash on Delivery',
+      paymentType: raw['paymentType'] ?? '',
       orderAmount: (raw['orderAmount'] as num?)?.toDouble() ?? 0.0,
       walletBalance: (raw['walletBalance'] as num?)?.toDouble() ?? 0.0,
     );

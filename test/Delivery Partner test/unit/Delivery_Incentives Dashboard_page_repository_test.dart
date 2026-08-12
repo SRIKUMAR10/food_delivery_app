@@ -11,11 +11,27 @@ class MockDeliveryIncentivesDashboardService extends Mock
 
 void main() {
   late DeliveryIncentivesDashboardRepository repository;
+  late MockDeliveryIncentivesDashboardService mockService;
+  final realService = DeliveryIncentivesDashboardService();
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    repository = DeliveryIncentivesDashboardRepository(prefs: prefs);
+    mockService = MockDeliveryIncentivesDashboardService();
+    
+    when(() => mockService.fetchIncentivesData()).thenAnswer(
+      (_) async => _getMockDataset(),
+    );
+    when(() => mockService.exportRewardHistory(any())).thenAnswer(
+      (invocation) async => realService.exportRewardHistory(
+        invocation.positionalArguments[0] as List<Map<String, dynamic>>,
+      ),
+    );
+
+    repository = DeliveryIncentivesDashboardRepository(
+      service: mockService,
+      prefs: prefs,
+    );
   });
 
   group('DeliveryIncentivesDashboardPage Repository Tests', () {
@@ -143,4 +159,58 @@ void main() {
       expect(csv, contains('REF-1040'));
     });
   });
+}
+
+Map<String, dynamic> _getMockDataset() {
+  final List<Map<String, dynamic>> rewards = List.generate(32, (index) {
+    final ref = 'REF-${1040 - index}';
+    return {
+      'id': 'inc_rw_${index + 1}',
+      'referenceId': ref,
+      'title': index % 2 == 0 ? 'Peak Hour Bonus' : 'On-Time Delivery Incentive',
+      'date': DateTime.now().toIso8601String(),
+      'amount': 100.0 + index,
+      'type': 'peakHour',
+      'status': 'completed',
+    };
+  });
+
+  return {
+    'walletBalance': 2450.00,
+    'todayBonus': 350.00,
+    'todayBonusGrowth': 12.5,
+    'weeklyBonus': 1250.00,
+    'weeklyBonusGrowth': 18.6,
+    'monthlyBonus': 4750.00,
+    'monthlyBonusGrowth': 24.3,
+    'targetProgress': 76.0,
+    'targetEarned': 7650.00,
+    'targetGoal': 10000.00,
+    'targetDeadline': DateTime(2026, 8, 31).toIso8601String(),
+    'achievements': [
+      {'id': 'a1', 'title': 'Early Bird', 'subtitle': 'Deliver before 8 AM', 'progress': 1.0, 'rewardAmount': 50.0, 'isClaimed': true},
+      {'id': 'a2', 'title': 'Speed Racer', 'subtitle': 'Fast delivery', 'progress': 0.8, 'rewardAmount': 100.0, 'isClaimed': false},
+      {'id': 'a3', 'title': 'Night Owl', 'subtitle': 'Late night delivery', 'progress': 0.5, 'rewardAmount': 75.0, 'isClaimed': false},
+      {'id': 'a4', 'title': 'Weekend Warrior', 'subtitle': 'Weekend shifts', 'progress': 0.9, 'rewardAmount': 150.0, 'isClaimed': false},
+    ],
+    'donutSlices': [
+      {'label': 'Peak Hour', 'amount': 1200.0, 'percentage': 40.0, 'hexColor': '#FF0000'},
+      {'label': 'Surge', 'amount': 900.0, 'percentage': 30.0, 'hexColor': '#00FF00'},
+      {'label': 'Bonus', 'amount': 600.0, 'percentage': 20.0, 'hexColor': '#0000FF'},
+      {'label': 'Tips', 'amount': 300.0, 'percentage': 10.0, 'hexColor': '#FFFF00'},
+    ],
+    'milestones': [
+      {'title': '5 Deliveries', 'targetDeliveries': 5, 'completedDeliveries': 5, 'rewardAmount': 50.0, 'status': 'completed'},
+      {'title': '10 Deliveries', 'targetDeliveries': 10, 'completedDeliveries': 10, 'rewardAmount': 100.0, 'status': 'completed'},
+      {'title': '15 Deliveries', 'targetDeliveries': 15, 'completedDeliveries': 12, 'rewardAmount': 150.0, 'status': 'inProgress'},
+      {'title': '20 Deliveries', 'targetDeliveries': 20, 'completedDeliveries': 12, 'rewardAmount': 200.0, 'status': 'locked'},
+      {'title': '25 Deliveries', 'targetDeliveries': 25, 'completedDeliveries': 12, 'rewardAmount': 250.0, 'status': 'locked'},
+    ],
+    'rangePoints': {
+      'today': [{'label': 'Mon', 'value': 10.0, 'date': DateTime.now().toIso8601String()}],
+      'thisWeek': [{'label': 'Mon', 'value': 10.0, 'date': DateTime.now().toIso8601String()}],
+      'thisMonth': [{'label': 'Mon', 'value': 10.0, 'date': DateTime.now().toIso8601String()}],
+    },
+    'rewards': rewards,
+  };
 }

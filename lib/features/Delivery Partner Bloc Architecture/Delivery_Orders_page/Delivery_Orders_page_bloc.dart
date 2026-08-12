@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'Delivery_Orders_page_event.dart';
 import 'Delivery_Orders_page_repository.dart';
@@ -10,8 +8,6 @@ class DeliveryOrdersPageBloc
     extends Bloc<DeliveryOrdersPageEvent, DeliveryOrdersPageState> {
   final DeliveryOrdersRepositoryBase repository;
   final DeliveryOrdersServiceBase service;
-
-  Timer? _autoRefreshTimer;
 
   DeliveryOrdersPageBloc({
     DeliveryOrdersRepositoryBase? repository,
@@ -27,12 +23,6 @@ class DeliveryOrdersPageBloc
     on<DeliveryOrdersSortChangedEvent>(_onSortChanged);
     on<DeliveryOrdersPaymentFilterChangedEvent>(_onPaymentFilterChanged);
     on<DeliveryOrdersAutoRefreshToggledEvent>(_onAutoRefreshToggled);
-  }
-
-  @override
-  Future<void> close() {
-    _autoRefreshTimer?.cancel();
-    return super.close();
   }
 
   List<DeliveryOrderCardModel> _applyFilters(DeliveryOrdersPageState source) {
@@ -57,23 +47,28 @@ class DeliveryOrdersPageBloc
       ),
     );
     try {
-      final orders = await repository.fetchOrders();
-      if (orders.isEmpty) {
-        emit(
-          state.copyWith(
-            status: DeliveryOrdersPageStatus.empty,
-            orders: const [],
-            filteredOrders: const [],
-          ),
-        );
-        return;
-      }
-      final next = state.copyWith(orders: orders);
-      emit(
-        next.copyWith(
-          status: DeliveryOrdersPageStatus.loaded,
-          filteredOrders: _applyFilters(next),
-        ),
+      await emit.forEach<List<DeliveryOrderCardModel>>(
+        repository.watchOrders(),
+        onData: (orders) {
+          if (orders.isEmpty) {
+            return state.copyWith(
+              status: DeliveryOrdersPageStatus.empty,
+              orders: const [],
+              filteredOrders: const [],
+            );
+          }
+          final next = state.copyWith(orders: orders);
+          return next.copyWith(
+            status: DeliveryOrdersPageStatus.loaded,
+            filteredOrders: _applyFilters(next),
+          );
+        },
+        onError: (error, stackTrace) {
+          return state.copyWith(
+            status: DeliveryOrdersPageStatus.error,
+            errorMessage: error.toString().replaceAll('Exception: ', ''),
+          );
+        },
       );
     } catch (e) {
       emit(
@@ -121,14 +116,6 @@ class DeliveryOrdersPageBloc
     DeliveryOrdersAutoRefreshToggledEvent event,
     Emitter<DeliveryOrdersPageState> emit,
   ) {
-    _autoRefreshTimer?.cancel();
-    _autoRefreshTimer = null;
-    if (event.enabled) {
-      _autoRefreshTimer = Timer.periodic(
-        const Duration(seconds: 30),
-        (_) => add(const DeliveryOrdersRefreshEvent()),
-      );
-    }
     emit(state.copyWith(autoRefresh: event.enabled));
   }
 

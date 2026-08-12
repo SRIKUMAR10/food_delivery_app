@@ -37,8 +37,8 @@ class FirebaseChatRepository implements IChatRepository {
               .toList();
           
           conversations.sort((a, b) {
-            final aTime = a.lastMessageTimestamp ?? a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-            final bTime = b.lastMessageTimestamp ?? b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final aTime = a.lastMessageTimestamp ?? a.createdAt;
+            final bTime = b.lastMessageTimestamp ?? b.createdAt;
             return bTime.compareTo(aTime); // descending
           });
           
@@ -145,8 +145,19 @@ class FirebaseChatRepository implements IChatRepository {
         ? 'sellerUnreadCount'
         : 'buyerUnreadCount';
 
+    String displayLastMessage = text;
+    final lowerType = (messageType ?? '').toLowerCase();
+    final lowerText = text.toLowerCase();
+    if (lowerType == 'pdf' || lowerType == 'document' || lowerType == 'invoice' || lowerText.contains('.pdf') || lowerText.startsWith('invoice_')) {
+      displayLastMessage = '📄 Invoice.pdf';
+    } else if (lowerType == 'image') {
+      displayLastMessage = '📷 Photo';
+    } else if (lowerType == 'audio') {
+      displayLastMessage = '🎵 Audio message';
+    }
+
     batch.update(conversationRef, {
-      'lastMessage': text,
+      'lastMessage': displayLastMessage,
       'lastMessageSenderId': senderId,
       'lastMessageTimestamp': Timestamp.fromDate(timestamp),
       'updatedAt': Timestamp.fromDate(timestamp),

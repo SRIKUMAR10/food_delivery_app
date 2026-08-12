@@ -72,34 +72,31 @@ void main() {
   final orders = [completed, pending, cancelled];
 
   group('DeliveryOrderHistoryPage Service Tests', () {
-    test('fetchOrderHistoryData returns 20 orders with stats', () async {
+    test('fetchOrderHistoryData returns an empty history when unauthenticated', () async {
       final data = await service.fetchOrderHistoryData();
       final rawOrders = data['orders'] as List;
       final rawStats = data['stats'] as Map<String, dynamic>;
 
-      expect(rawOrders, hasLength(20));
-      expect(rawStats['totalOrders'], 20);
-      expect(rawStats['completed'], 7);
-      expect(rawStats['cancelled'], 6);
-      expect(rawStats['pending'], 7);
-      expect(rawStats['totalEarnings'], 18230.00);
+      expect(rawOrders, isEmpty);
+      expect(rawStats['totalOrders'], 0);
+      expect(rawStats['completed'], 0);
+      expect(rawStats['cancelled'], 0);
+      expect(rawStats['pending'], 0);
+      expect(rawStats['totalEarnings'], 0.0);
+    });
+
+    test('watchOrderHistoryData emits an empty history when unauthenticated', () async {
+      final data = await service.watchOrderHistoryData().first;
+
+      expect(data['orders'] as List, isEmpty);
     });
 
     test(
-      'fetchOrderHistoryData returns all orders within the week window',
+      'fetchOrderHistoryData returns no fabricated records within a week window',
       () async {
         final data = await service.fetchOrderHistoryData();
         final rawOrders = data['orders'] as List;
-        final start = DateTime(2025, 5, 18).millisecondsSinceEpoch ~/ 1000;
-        final end =
-            DateTime(2025, 5, 24, 23, 59).millisecondsSinceEpoch ~/ 1000;
-
-        for (final raw in rawOrders) {
-          final map = raw as Map<String, dynamic>;
-          final epoch = map['epochSeconds'] as int;
-          expect(epoch, greaterThanOrEqualTo(start));
-          expect(epoch, lessThanOrEqualTo(end));
-        }
+        expect(rawOrders, isEmpty);
       },
     );
 

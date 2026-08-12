@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/models/order_model.dart';
+import '../../../../core/models/order_status.dart';
 
 class NewOrderNotificationService {
   final FirebaseFirestore _firestore;
@@ -16,7 +17,7 @@ class NewOrderNotificationService {
         .map((snapshot) {
           final orders = snapshot.docs
               .map((doc) => OrderModel.fromMap(doc.data(), doc.id))
-              .where((order) => order.status.value == 'New')
+              .where((order) => order.status == OrderStatus.newOrder)
               .toList();
           orders.sort((a, b) => b.timestamp.compareTo(a.timestamp));
           return orders;
@@ -27,6 +28,14 @@ class NewOrderNotificationService {
     await _firestore.collection('orders').doc(orderId).update({
       'status': 'Accepted',
       'acceptedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> markReady(String orderId) async {
+    await _firestore.collection('orders').doc(orderId).update({
+      'status': 'Ready',
+      'readyAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }

@@ -16,21 +16,23 @@ import '../Favorites_Page/favorites_bloc.dart';
 import '../Favorites_Page/favorites_event.dart';
 import '../Favorites_Page/favorites_state.dart';
 import '../Favorites_Page/favorites_models.dart';
-import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import '../Chat_Page/buyer_chat_ui.dart';
 import '../../../core/services/i_auth_service.dart';
 import '../../../core/repositories/i_user_profile_repository.dart';
 import '../../../core/services/seller_status_service.dart';
+import '../../../repositories/firebase_product_repository.dart';
+import '../../../repositories/category_repository.dart';
 import 'home_Page_Bloc.dart';
 import 'home_page_models.dart';
 import '../user_profile_image/user_profile_image.dart';
+import '../buyer_login_page/buyer_login_page_ui.dart';
 
 // ─── HomePage (entry point) ────────────────────────────────────────────────────
 
 /// Root widget for the Home Page.
 /// Provides [HomePageBloc] to the subtree and dispatches [HomePageStarted]
 /// on first build to trigger initial data loading.
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   /// Callback invoked after a successful "Add to Cart" action in DetailsPageUI.
   /// Causes the bottom navigation bar to switch to the Cart tab.
   final VoidCallback? onNavigateToCart;
@@ -38,10 +40,27 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key, this.onNavigateToCart});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => HomePageBloc(
+        productRepository: FirebaseProductRepository(),
+        categoryRepository: CategoryRepository(),
+      ),
+      child: _HomePageContentView(onNavigateToCart: onNavigateToCart),
+    );
+  }
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageContentView extends StatefulWidget {
+  final VoidCallback? onNavigateToCart;
+
+  const _HomePageContentView({this.onNavigateToCart});
+
+  @override
+  State<_HomePageContentView> createState() => _HomePageContentViewState();
+}
+
+class _HomePageContentViewState extends State<_HomePageContentView> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -73,7 +92,8 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: SafeArea(
         child: BlocBuilder<HomePageBloc, HomePageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return LayoutBuilder(
               builder: (context, constraints) {
                 final maxWidth = constraints.maxWidth;
@@ -307,20 +327,10 @@ class _ProfileAvatar extends StatelessWidget {
         Builder(
           builder: (innerCtx) => GestureDetector(
             onTap: () {
-              final isLoggedIn = context.read<IAuthService>().currentUserId != null;
-              if (!isLoggedIn) {
-                Navigator.push(
-                  innerCtx,
-                  MaterialPageRoute(
-                    builder: (_) => const FoodGoLoginScreenUI(),
-                  ),
-                );
-              } else {
-                Navigator.push(
-                  innerCtx,
-                  MaterialPageRoute(builder: (_) => const user_profile_image()),
-                );
-              }
+              Navigator.push(
+                innerCtx,
+                MaterialPageRoute(builder: (_) => const user_profile_image()),
+              );
             },
             child: StreamBuilder<String?>(
               stream: context.read<IAuthService>().authStateChanges,
@@ -674,12 +684,17 @@ class _FoodCardState extends State<FoodCard> {
                 widget.onNavigateToCart?.call();
               }
             } else {
-              // Redirect unauthenticated users to the login screen.
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      FoodGoLoginScreenUI(foodItemToAccess: widget.item),
+                  builder: (_) => DetailsPageUI(
+                        id: widget.item.id,
+                        name: widget.item.name,
+                        price: widget.item.price,
+                        description: widget.item.description,
+                        sellerId: widget.item.sellerId,
+                        foodItem: widget.item,
+                      ),
                 ),
               );
             }
@@ -785,14 +800,6 @@ class _FoodCardState extends State<FoodCard> {
                                         padding: const EdgeInsets.all(6),
                                         decoration: BoxDecoration(
                                           color: Colors.white.withValues(alpha: 0.9),
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.1),
-                                              blurRadius: 4,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
                                         ),
                                         child: const Icon(
                                           Icons.chat_bubble_outline_rounded,
@@ -805,92 +812,50 @@ class _FoodCardState extends State<FoodCard> {
                                   Positioned(
                                     top: 8,
                                     right: 8,
-                                    child:
-                                        BlocBuilder<
-                                          FavoritesBloc,
-                                          FavoritesState
-                                        >(
-                                          builder: (context, state) {
-                                            bool isFav = false;
-                                            if (state is FavoritesLoaded) {
-                                              isFav = state.favoriteIds
-                                                  .contains(widget.item.id);
+                                    child: BlocBuilder<FavoritesBloc, FavoritesState>(
+                                      builder: (context, state) {
+                                        bool isFav = false;
+                                        if (state is FavoritesLoaded) {
+                                          isFav = state.favoriteIds.contains(widget.item.id);
+                                        }
+                                        return GestureDetector(
+                                          onTap: () {
+                                            HapticFeedback.lightImpact();
+                                            final isLoggedIn = context.read<IAuthService>().currentUserId != null;
+                                            if (!isLoggedIn) {
+                                              Navigator.of(context, rootNavigator: true).push(
+                                                MaterialPageRoute(builder: (_) => const BuyerLoginPageUI()),
+                                              );
+                                              return;
                                             }
-
-                                            return GestureDetector(
-                                              onTap: () {
-                                                HapticFeedback.lightImpact();
-                                                final isLoggedIn = context.read<IAuthService>().currentUserId != null;
-
-                                                if (!isLoggedIn) {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) =>
-                                                          FoodGoLoginScreenUI(
-                                                            foodItemToAccess:
-                                                                widget.item,
-                                                          ),
-                                                    ),
-                                                  );
-                                                  return;
-                                                }
-
-                                                final favItem = FavoriteItem(
-                                                  id: widget.item.id,
-                                                  name: widget.item.name,
-                                                  price: widget.item.discountPrice > 0 ? widget.item.discountPrice : widget.item.price,
-                                                  description:
-                                                      widget.item.description,
-                                                  sellerId:
-                                                      widget.item.sellerId,
-                                                  image: widget.item.image,
-                                                );
-                                                context
-                                                    .read<FavoritesBloc>()
-                                                    .add(
-                                                      FavoritesToggleRequested(
-                                                        favItem,
-                                                      ),
-                                                    );
-                                              },
-                                              child: AnimatedContainer(
-                                                duration: const Duration(
-                                                  milliseconds: 250,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: isFav
-                                                      ? const Color(
-                                                          0xFFEF2A39,
-                                                        ).withValues(alpha: 0.1)
-                                                      : Colors.white.withValues(
-                                                          alpha: 0.9,
-                                                        ),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                padding: const EdgeInsets.all(
-                                                  6,
-                                                ),
-                                                child: AnimatedSwitcher(
-                                                  duration: const Duration(
-                                                    milliseconds: 300,
-                                                  ),
-                                                  child: Icon(
-                                                    isFav
-                                                        ? Icons.favorite_rounded
-                                                        : Icons
-                                                              .favorite_border_rounded,
-                                                    key: ValueKey(isFav),
-                                                    color: const Color(
-                                                      0xFFEF2A39,
-                                                    ),
-                                                    size: 18,
-                                                  ),
-                                                ),
-                                              ),
+                                            final favItem = FavoriteItem(
+                                              id: widget.item.id,
+                                              name: widget.item.name,
+                                              price: widget.item.price,
+                                              description: widget.item.description,
+                                              sellerId: widget.item.sellerId,
+                                              image: widget.item.image,
+                                            );
+                                            context.read<FavoritesBloc>().add(
+                                              FavoritesToggleRequested(favItem),
                                             );
                                           },
-                                        ),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.9),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                              key: ValueKey(isFav),
+                                              color: const Color(0xFFEF2A39),
+                                              size: 18,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1076,62 +1041,69 @@ class _FoodCardState extends State<FoodCard> {
 
 // ─── Product Image ─────────────────────────────────────────────────────────────
 
-/// Renders a product image from its URL with a loading spinner and fallback chain.
+/// Renders a product image from its URL with smooth frameBuilder and fallback chain.
 class _ProductImage extends StatelessWidget {
   final FoodItem item;
   const _ProductImage({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    // Strip extra whitespace or newline characters from the URL before parsing.
-    final imageUri = Uri.tryParse(item.image ?? '');
+    final cleanUrl = (item.image ?? '').trim();
+    final imageUri = Uri.tryParse(cleanUrl);
 
-    if (imageUri != null && imageUri.hasAbsolutePath) {
+    if (imageUri != null && imageUri.hasAbsolutePath && cleanUrl.startsWith('http')) {
       return Image.network(
-        imageUri.toString(),
+        cleanUrl,
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
-        loadingBuilder: (_, child, progress) {
-          if (progress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: progress.expectedTotalBytes != null
-                  ? progress.cumulativeBytesLoaded /
-                        progress.expectedTotalBytes!
-                  : null,
-              strokeWidth: 2,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded || frame != null) {
+            return child;
+          }
+          return Container(
+            color: Colors.grey[200],
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFFEF2A39),
+                ),
+              ),
             ),
           );
         },
         errorBuilder: (_, error, __) {
-          debugPrint('Image Load Error: $error');
-          // First fallback: use the default food image stored in Firebase Storage.
-          return Image.network(
-            kDefaultFoodImageUrl,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            errorBuilder: (_, __, ___) => Image.asset(
+          debugPrint('Image Load Error for ${item.name}: $error');
+          return Container(
+            color: Colors.grey[100],
+            child: Image.asset(
               'assets/images/chef.png',
               fit: BoxFit.contain,
               width: double.infinity,
               height: double.infinity,
+              errorBuilder: (_, __, ___) => const Center(
+                child: Icon(Icons.fastfood, color: Colors.grey, size: 36),
+              ),
             ),
           );
         },
       );
     }
 
-    // No valid URL — show the default food image directly.
+    // Fallback when URL is invalid or empty
     return Container(
-      width: double.infinity,
-      height: double.infinity,
       color: Colors.grey[100],
-      child: Image.network(
-        kDefaultFoodImageUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const SizedBox(),
+      child: Image.asset(
+        'assets/images/chef.png',
+        fit: BoxFit.contain,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) => const Center(
+          child: Icon(Icons.fastfood, color: Colors.grey, size: 36),
+        ),
       ),
     );
   }

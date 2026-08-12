@@ -13,7 +13,8 @@ class SellerSettingPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: BlocBuilder<SellerSettingBloc, SellerSettingState>(
-        builder: (context, state) {
+        buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
           if (state.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }

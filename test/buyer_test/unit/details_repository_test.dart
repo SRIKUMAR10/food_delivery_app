@@ -46,7 +46,7 @@ void main() {
       expect(repository.currentUserId, 'user_123');
     });
 
-    test('submitRating writes via batch to users/ratings and products/reviews', () async {
+    test('submitRating writes via batch to buyer_user/ratings and products/reviews', () async {
       final mockBatch = MockWriteBatch();
       final mockUsersCollection = MockCollectionReference();
       final mockUserDoc = MockDocumentReference();
@@ -58,7 +58,7 @@ void main() {
       final mockReviewRef = MockDocumentReference();
 
       when(() => mockFirestore.batch()).thenReturn(mockBatch);
-      when(() => mockFirestore.collection('users')).thenReturn(mockUsersCollection);
+      when(() => mockFirestore.collection('buyer_user')).thenReturn(mockUsersCollection);
       when(() => mockUsersCollection.doc('user_123')).thenReturn(mockUserDoc);
       when(() => mockUserDoc.collection('ratings')).thenReturn(mockRatingsCollection);
       when(() => mockRatingsCollection.doc('food_123')).thenReturn(mockUserRatingRef);

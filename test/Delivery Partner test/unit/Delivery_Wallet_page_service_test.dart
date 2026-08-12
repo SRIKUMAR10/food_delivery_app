@@ -20,23 +20,27 @@ void main() {
       );
     });
 
-    test('fetchWalletData returns valid wallet payload data', () async {
+    test('fetchWalletData returns an empty payload when unauthenticated', () async {
       final data = await service.fetchWalletData();
 
-      expect(data['walletBalance'], 2450.00);
-      expect(data['totalEarnings'], 48500.00);
-      expect(data['todayEarnings'], 2450.00);
-      expect(data['pendingWithdrawal'], 500.00);
-      expect(data['lastUpdated'], isA<String>());
+      expect(data, isEmpty);
+      expect(data['walletBalance'], isNull);
     });
 
-    test('withdraw returns a success record', () async {
+    test('watchWalletData emits an empty payload when unauthenticated', () async {
+      final data = await service.watchWalletData().first;
+
+      expect(data, isEmpty);
+    });
+
+    test('withdraw fails gracefully when unauthenticated', () async {
       final result = await service.withdraw(500.00);
 
-      expect(result['success'], isTrue);
+      expect(result['success'], isFalse);
+      expect(result['error'], isNotNull);
     });
 
-    test('addPaymentMethod returns a success record', () async {
+    test('addPaymentMethod fails gracefully when unauthenticated', () async {
       final result = await service.addPaymentMethod({
         'id': 'pm_new',
         'type': 'UPI',
@@ -45,29 +49,27 @@ void main() {
         'isDefault': false,
       });
 
-      expect(result['success'], isTrue);
+      expect(result['success'], isFalse);
     });
 
-    test('fetchTransactions filters by type', () async {
+    test('fetchTransactions returns an empty list when unauthenticated', () async {
       final income = await service.fetchTransactions(
         DeliveryWalletTransactionFilter.income,
       );
-      expect(income, isNotEmpty);
-      expect(income.every((t) => ((t['amount'] as num?) ?? 0) > 0), isTrue);
-
-      final withdrawals = await service.fetchTransactions(
-        DeliveryWalletTransactionFilter.withdrawals,
-      );
-      expect(withdrawals, isNotEmpty);
-      expect(
-        withdrawals.every((t) => ((t['amount'] as num?) ?? 0) < 0),
-        isTrue,
-      );
+      expect(income, isEmpty);
 
       final all = await service.fetchTransactions(
         DeliveryWalletTransactionFilter.all,
       );
-      expect(all, isNotEmpty);
+      expect(all, isEmpty);
+    });
+
+    test('watchTransactions emits an empty list when unauthenticated', () async {
+      final all = await service
+          .watchTransactions(DeliveryWalletTransactionFilter.all)
+          .first;
+
+      expect(all, isEmpty);
     });
   });
 }

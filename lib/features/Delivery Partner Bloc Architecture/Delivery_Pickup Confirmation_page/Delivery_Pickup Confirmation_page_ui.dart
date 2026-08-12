@@ -7,8 +7,6 @@ import 'Delivery_Pickup Confirmation_page_repository.dart';
 import 'Delivery_Pickup Confirmation_page_service.dart';
 import 'Delivery_Pickup Confirmation_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
-import '../../../core/theme/delivery_app_theme.dart';
-import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryPickupConfirmationStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -1270,7 +1268,15 @@ class _CustomerDetailsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = state.localeCode;
     final model = state.model;
-    final customerPhone = model?.customerPhone ?? '+919876543211';
+    final customerPhone = (model?.customerPhone != null && model!.customerPhone.trim().isNotEmpty)
+        ? model.customerPhone.trim()
+        : '';
+    final customerName = (model?.customerName != null && model!.customerName.trim().isNotEmpty)
+        ? model.customerName.trim()
+        : 'Customer';
+    final customerAddress = (model?.customerAddress != null && model!.customerAddress.trim().isNotEmpty)
+        ? model.customerAddress.trim()
+        : 'N/A';
 
     return Container(
       key: const Key('dp_pickup_customer_card'),
@@ -1310,19 +1316,19 @@ class _CustomerDetailsCard extends StatelessWidget {
           _CustomerInfoRow(
             icon: Icons.person_outline,
             label: DeliveryPickupConfirmationStrings.of('customer', locale),
-            value: model?.customerName ?? 'Mike Johnson',
+            value: customerName,
           ),
           const SizedBox(height: 10),
           _CustomerInfoRow(
             icon: Icons.location_on_outlined,
             label: DeliveryPickupConfirmationStrings.of('address', locale),
-            value: model?.customerAddress ?? '12, Beach Road, Chennai',
+            value: customerAddress,
           ),
           const SizedBox(height: 10),
           _CustomerInfoRow(
             icon: Icons.phone_outlined,
             label: DeliveryPickupConfirmationStrings.of('phone', locale),
-            value: customerPhone,
+            value: customerPhone.isNotEmpty ? customerPhone : 'N/A',
           ),
           const SizedBox(height: 16),
           Row(

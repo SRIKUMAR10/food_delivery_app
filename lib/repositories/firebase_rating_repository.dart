@@ -11,7 +11,7 @@ class FirebaseRatingRepository implements IRatingRepository {
   @override
   Stream<double?> getUserRatingStream(String userId, String foodId) {
     return firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(userId)
         .collection('ratings')
         .doc(foodId)
@@ -35,7 +35,7 @@ class FirebaseRatingRepository implements IRatingRepository {
     final batch = firestore.batch();
 
     final ratingsRef = firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(userId)
         .collection('ratings')
         .doc(foodId);

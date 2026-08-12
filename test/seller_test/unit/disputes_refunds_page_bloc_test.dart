@@ -30,6 +30,7 @@ void main() {
       'emits [Loading, Loaded] when LoadDisputesEvent is added',
       build: () {
         when(() => mockRepository.getDisputes(any())).thenAnswer((_) async => []);
+        when(() => mockRepository.streamDisputes(any())).thenAnswer((_) => const Stream.empty());
         return bloc;
       },
       act: (bloc) => bloc.add(LoadDisputesEvent('seller1')),

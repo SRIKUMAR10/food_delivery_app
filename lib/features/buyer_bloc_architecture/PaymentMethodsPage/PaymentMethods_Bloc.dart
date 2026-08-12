@@ -17,7 +17,7 @@ class PaymentMethodsRepository {
     final uid = _uid;
     if (uid == null) return Stream.value([]);
     return _firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(uid)
         .collection('payment_methods')
         .orderBy('createdAt', descending: false)
@@ -44,7 +44,7 @@ class PaymentMethodsRepository {
 
     final batch = _firestore.batch();
     final methodsRef = _firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(uid)
         .collection('payment_methods');
 
@@ -84,14 +84,14 @@ class PaymentMethodsRepository {
 
     final batch = _firestore.batch();
     final methodRef = _firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(uid)
         .collection('payment_methods')
         .doc(methodId);
 
     if (isDefault == true) {
       final existingSnapshot = await _firestore
-          .collection('users')
+          .collection('buyer_user')
           .doc(uid)
           .collection('payment_methods')
           .where('isDefault', isEqualTo: true)
@@ -120,7 +120,7 @@ class PaymentMethodsRepository {
     if (uid == null) throw Exception('User not authenticated');
 
     await _firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(uid)
         .collection('payment_methods')
         .doc(methodId)
@@ -133,7 +133,7 @@ class PaymentMethodsRepository {
 
     final batch = _firestore.batch();
     final methodsRef = _firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(uid)
         .collection('payment_methods');
 

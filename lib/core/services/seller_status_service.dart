@@ -42,6 +42,8 @@ class SellerStatusService {
             ? null
             : hoursResult.message,
       );
+    }).handleError((error) {
+      return const SellerAvailability(isOnline: false, isOpen: true);
     });
   }
 

@@ -52,10 +52,12 @@ class OrderModel extends Equatable {
     switch (status) {
       case OrderStatus.newOrder:
         return newStatus == OrderStatus.accepted ||
+            newStatus == OrderStatus.preparing ||
             newStatus == OrderStatus.rejected ||
             newStatus == OrderStatus.cancelled;
       case OrderStatus.accepted:
         return newStatus == OrderStatus.preparing ||
+            newStatus == OrderStatus.ready ||
             newStatus == OrderStatus.rejected ||
             newStatus == OrderStatus.cancelled;
       case OrderStatus.preparing:
@@ -88,10 +90,131 @@ class OrderModel extends Equatable {
   factory OrderModel.fromMap(Map<String, dynamic> map, String documentId) {
     DateTime? _ts(String key) =>
         (map[key] as Timestamp?)?.toDate();
+
+    String extractedCustomerId = '';
+    for (final k in ['customerId', 'buyerId', 'userId', 'customer_id', 'buyer_id', 'user_id', 'uid']) {
+      final val = map[k];
+      if (val is String && val.trim().isNotEmpty) {
+        extractedCustomerId = val.trim();
+        break;
+      }
+    }
+    if (extractedCustomerId.isEmpty && map['customer'] is Map) {
+      final cMap = map['customer'] as Map;
+      for (final k in ['id', 'uid', 'customerId', 'buyerId', 'userId']) {
+        final val = cMap[k];
+        if (val is String && val.trim().isNotEmpty) {
+          extractedCustomerId = val.trim();
+          break;
+        }
+      }
+    }
+
+    String extractedCustomerName = '';
+    for (final k in ['customerName', 'buyerName', 'userName', 'name', 'customer_name', 'buyer_name', 'user_name', 'displayName', 'fullName']) {
+      final val = map[k];
+      if (val is String && val.trim().isNotEmpty) {
+        final candidate = val.trim();
+        final lower = candidate.toLowerCase();
+        if (lower != 'customer' && lower != 'buyer' && lower != 'unknown' && lower != 'unknown customer' && lower != '?') {
+          extractedCustomerName = candidate;
+          break;
+        }
+      }
+    }
+    if (extractedCustomerName.isEmpty && map['customer'] is Map) {
+      final cMap = map['customer'] as Map;
+      for (final k in ['name', 'customerName', 'buyerName', 'userName', 'displayName', 'fullName']) {
+        final val = cMap[k];
+        if (val is String && val.trim().isNotEmpty) {
+          final candidate = val.trim();
+          final lower = candidate.toLowerCase();
+          if (lower != 'customer' && lower != 'buyer' && lower != 'unknown') {
+            extractedCustomerName = candidate;
+            break;
+          }
+        }
+      }
+    }
+    if (extractedCustomerName.isEmpty) {
+      extractedCustomerName = map['customerName'] as String? ?? 'Customer';
+    }
+
+    String extractedCustomerPhone = '';
+    for (final k in [
+      'customerPhone',
+      'phone',
+      'phoneNumber',
+      'mobile',
+      'userPhone',
+      'buyerPhone',
+      'contactNumber',
+      'contact',
+      'contactPhone',
+      'phone_number',
+      'customer_phone',
+      'buyer_phone',
+    ]) {
+      final val = map[k];
+      if (val is String && val.trim().isNotEmpty) {
+        extractedCustomerPhone = val.trim();
+        break;
+      }
+    }
+    if (extractedCustomerPhone.isEmpty && map['customer'] is Map) {
+      final cMap = map['customer'] as Map;
+      for (final k in ['phone', 'customerPhone', 'phoneNumber', 'mobile', 'userPhone']) {
+        final val = cMap[k];
+        if (val is String && val.trim().isNotEmpty) {
+          extractedCustomerPhone = val.trim();
+          break;
+        }
+      }
+    }
+
+    String extractedDeliveryAddress = '';
+    for (final k in [
+      'deliveryAddress',
+      'address',
+      'primaryAddress',
+      'homeAddress',
+      'workAddress',
+      'otherAddress',
+      'shippingAddress',
+      'userAddress',
+      'fullAddress',
+      'displayAddress',
+      'dropOffAddress',
+      'delivery_address',
+      'customer_address',
+    ]) {
+      final val = map[k];
+      if (val is String && val.trim().isNotEmpty) {
+        extractedDeliveryAddress = val.trim();
+        break;
+      } else if (val is Map) {
+        final sub = val['address'] ?? val['fullAddress'] ?? val['street'] ?? val['formattedAddress'] ?? val['displayAddress'];
+        if (sub != null && sub.toString().trim().isNotEmpty) {
+          extractedDeliveryAddress = sub.toString().trim();
+          break;
+        }
+      }
+    }
+    if (extractedDeliveryAddress.isEmpty && map['customer'] is Map) {
+      final cMap = map['customer'] as Map;
+      for (final k in ['address', 'deliveryAddress', 'primaryAddress', 'homeAddress', 'workAddress']) {
+        final val = cMap[k];
+        if (val is String && val.trim().isNotEmpty) {
+          extractedDeliveryAddress = val.trim();
+          break;
+        }
+      }
+    }
+
     return OrderModel(
       id: documentId,
-      customerId: map['customerId'] as String? ?? '',
-      customerName: map['customerName'] as String? ?? 'Unknown Customer',
+      customerId: extractedCustomerId,
+      customerName: extractedCustomerName,
       sellerId: map['sellerId'] as String? ?? '',
       riderId: map['riderId'] as String?,
       status: OrderStatus.fromString(map['status'] as String? ?? 'New'),
@@ -100,8 +223,8 @@ class OrderModel extends Equatable {
       items: (map['items'] as List<dynamic>?)
           ?.map((e) => OrderItemModel.fromMap(e as Map<String, dynamic>))
           .toList(),
-      deliveryAddress: map['deliveryAddress'] as String?,
-      customerPhone: map['customerPhone'] as String?,
+      deliveryAddress: extractedDeliveryAddress.isNotEmpty ? extractedDeliveryAddress : map['deliveryAddress'] as String?,
+      customerPhone: extractedCustomerPhone.isNotEmpty ? extractedCustomerPhone : map['customerPhone'] as String?,
       paymentMethod: map['paymentMethod'] as String?,
       acceptedAt: _ts('acceptedAt'),
       rejectedAt: _ts('rejectedAt'),

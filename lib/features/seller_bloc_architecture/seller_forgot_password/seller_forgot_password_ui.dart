@@ -196,7 +196,8 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                           const SizedBox(height: 8),
                           BlocBuilder<SellerForgotPasswordBloc,
                               SellerForgotPasswordState>(
-                            builder: (context, state) {
+                            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                               return TextFormField(
                                 onChanged: (value) => context
                                     .read<SellerForgotPasswordBloc>()
@@ -237,7 +238,8 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                           const SizedBox(height: 32),
                           BlocBuilder<SellerForgotPasswordBloc,
                               SellerForgotPasswordState>(
-                            builder: (context, state) {
+                            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                               final isLoading = state.status ==
                                   SellerForgotPasswordStatus.loading;
                               return _HoverableButton(

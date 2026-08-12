@@ -22,7 +22,7 @@ class HelpSupportRepository {
     final uid = _uid;
     if (uid == null) throw Exception('Please sign in to submit a ticket.');
 
-    await _firestore.collection('users').doc(uid).collection('support_tickets').add({
+    await _firestore.collection('buyer_user').doc(uid).collection('support_tickets').add({
       'type': type,
       'subject': subject,
       'message': message,
@@ -39,10 +39,21 @@ class HelpSupportRepository {
     final uid = _uid;
     if (uid == null) throw Exception('Please sign in to submit feedback.');
 
-    await _firestore.collection('users').doc(uid).collection('feedback').add({
+    await _firestore.collection('buyer_user').doc(uid).collection('feedback').add({
       'rating': rating,
       'comments': comments,
       'createdAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchSupportTickets() {
+    final uid = _uid;
+    if (uid == null) return const Stream.empty();
+    return _firestore
+        .collection('buyer_user')
+        .doc(uid)
+        .collection('support_tickets')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
   }
 }

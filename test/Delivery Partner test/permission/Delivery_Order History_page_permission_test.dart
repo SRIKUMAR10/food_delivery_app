@@ -72,6 +72,7 @@ void main() {
   setUp(() {
     mockBloc = MockDeliveryOrderHistoryPageBloc();
     when(() => mockBloc.state).thenReturn(loadedState);
+    when(() => mockBloc.stream).thenAnswer((_) => const Stream.empty());
   });
 
   void setDesktopSize(WidgetTester tester) {

@@ -562,7 +562,12 @@ class _DashboardHeader extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
-          _NotificationBell(count: 3, onTap: () {}),
+          _NotificationBell(
+            count: state.unreadNotificationCount,
+            onTap: () {
+              _showNotificationsBottomSheet(context, state);
+            },
+          ),
         ],
       ),
     );
@@ -629,29 +634,286 @@ class _NotificationBell extends StatelessWidget {
               size: 22,
             ),
           ),
-          Positioned(
-            right: 2,
-            top: 2,
-            child: Container(
-              key: const Key('dp_dashboard_notification_badge'),
-              width: 18,
-              height: 18,
-              decoration: const BoxDecoration(
-                color: DeliveryAppColors.primary,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  '$count',
-                  style: DeliveryAppTypography.caption.copyWith(
-                    color: DeliveryAppColors.buttonPrimaryText,
-                    fontWeight: FontWeight.bold,
+          if (count > 0)
+            Positioned(
+              right: 2,
+              top: 2,
+              child: Container(
+                key: const Key('dp_dashboard_notification_badge'),
+                width: 18,
+                height: 18,
+                decoration: const BoxDecoration(
+                  color: DeliveryAppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: DeliveryAppTypography.caption.copyWith(
+                      color: DeliveryAppColors.buttonPrimaryText,
+                      fontWeight: FontWeight.bold,
+                      fontSize: count > 99 ? 8 : 10,
+                    ),
                   ),
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+void _showNotificationsBottomSheet(
+    BuildContext context, DeliveryDashboardState state) {
+  final lang = state.localeCode;
+  final hasNotifications = state.incomingSellerOrders.isNotEmpty;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => _NotificationsBottomSheet(
+      state: state,
+      lang: lang,
+      hasNotifications: hasNotifications,
+    ),
+  );
+}
+
+class _NotificationsBottomSheet extends StatelessWidget {
+  final DeliveryDashboardState state;
+  final String lang;
+  final bool hasNotifications;
+
+  const _NotificationsBottomSheet({
+    required this.state,
+    required this.lang,
+    required this.hasNotifications,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
+      decoration: const BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(DeliveryAppSpacing.radiusXl),
+          topRight: Radius.circular(DeliveryAppSpacing.radiusXl),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  DeliveryDashboardStrings.of('notifications', lang),
+                  style: DeliveryAppTypography.titleLarge.copyWith(
+                    color: DeliveryAppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (hasNotifications)
+                  TextButton(
+                    onPressed: () {},
+                    child: Text(
+                      DeliveryDashboardStrings.of('markAllRead', lang),
+                      style: DeliveryAppTypography.bodySmall.copyWith(
+                        color: DeliveryAppColors.primary,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Flexible(
+            child: hasNotifications
+                ? ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    shrinkWrap: true,
+                    itemCount: state.incomingSellerOrders.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 4),
+                    itemBuilder: (context, index) {
+                      final order = state.incomingSellerOrders[index];
+                      return _BottomSheetNotificationItem(
+                        order: order,
+                        lang: lang,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushNamed(
+                            '/deliveryIncomingOrder',
+                            arguments: {'orderId': order.id},
+                          );
+                        },
+                      );
+                    },
+                  )
+                : Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 48, horizontal: 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.notifications_none,
+                          size: 48,
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No incoming orders',
+                          style: DeliveryAppTypography.bodyMedium.copyWith(
+                            color: DeliveryAppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BottomSheetNotificationItem extends StatelessWidget {
+  final DeliveryActivityItem order;
+  final String lang;
+  final VoidCallback onTap;
+
+  const _BottomSheetNotificationItem({
+    required this.order,
+    required this.lang,
+    required this.onTap,
+  });
+
+  Color get _statusColor {
+    final st = order.statusType.toLowerCase();
+    if (st.contains('ready')) return DeliveryAppColors.primary;
+    if (st.contains('placed')) return DeliveryAppColors.warning;
+    if (st.contains('searching')) return DeliveryAppColors.info;
+    if (st.contains('assigned')) return const Color(0xFFAB47BC);
+    return DeliveryAppColors.warning;
+  }
+
+  IconData get _statusIcon {
+    final st = order.statusType.toLowerCase();
+    if (st.contains('ready')) return Icons.check_circle_outline;
+    if (st.contains('placed')) return Icons.receipt_long_outlined;
+    if (st.contains('searching')) return Icons.search;
+    if (st.contains('assigned')) return Icons.person_outline;
+    return Icons.notifications_outlined;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: DeliveryAppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _statusColor.withValues(alpha: 0.15),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _statusColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_statusIcon, color: _statusColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            order.title,
+                            style: DeliveryAppTypography.bodyMedium.copyWith(
+                              color: DeliveryAppColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      order.subtitle.isNotEmpty
+                          ? '${order.subtitle} • ₹${order.details}'
+                          : '₹${order.details}',
+                      style: DeliveryAppTypography.caption.copyWith(
+                        color: DeliveryAppColors.textMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    order.time,
+                    style: DeliveryAppTypography.caption.copyWith(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _statusColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'View Order',
+                      style: DeliveryAppTypography.caption.copyWith(
+                        color: _statusColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -808,7 +1070,9 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
               _StatusChip(
                 icon: Icons.schedule,
                 label: DeliveryDashboardStrings.of('onlineSince', lang),
-                value: DeliveryDashboardStrings.of('sinceMorning', lang),
+                value: state.workingHours.isEmpty
+                    ? '-'
+                    : state.workingHours,
                 color: isOnline
                     ? DeliveryAppColors.primary
                     : DeliveryAppColors.error,
@@ -816,7 +1080,9 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
               _StatusChip(
                 icon: Icons.timer_outlined,
                 label: DeliveryDashboardStrings.of('onlineDuration', lang),
-                value: DeliveryDashboardStrings.of('durationToday', lang),
+                value: state.workingHours.isEmpty
+                    ? '-'
+                    : state.workingHours,
                 color: isOnline
                     ? DeliveryAppColors.primary
                     : DeliveryAppColors.error,
@@ -1153,7 +1419,7 @@ class _MetricsGrid extends StatelessWidget {
       _MetricCard(
         title: DeliveryDashboardStrings.of('completedOrders', lang),
         value: '${state.todayOrdersCount}',
-        subtext: '▲ 12.5% ${DeliveryDashboardStrings.of('vsYesterday', lang)}',
+        subtext: DeliveryDashboardStrings.of('completedOrders', lang),
         icon: Icons.assignment_turned_in,
         color: DeliveryAppColors.info,
       ),
@@ -1167,7 +1433,7 @@ class _MetricsGrid extends StatelessWidget {
       _MetricCard(
         title: DeliveryDashboardStrings.of('acceptanceRate', lang),
         value: '${state.acceptanceRate}%',
-        subtext: '▲ 5% ${DeliveryDashboardStrings.of('vsLast7Days', lang)}',
+        subtext: DeliveryDashboardStrings.of('acceptanceRate', lang),
         icon: Icons.shield,
         color: const Color(0xFF26A69A),
       ),
@@ -1187,15 +1453,15 @@ class _MetricsGrid extends StatelessWidget {
       ),
       _MetricCard(
         title: DeliveryDashboardStrings.of('distanceTravelled', lang),
-        value: '42.5 km',
+        value: '${state.distanceTravelled.toStringAsFixed(1)} km',
         subtext: DeliveryDashboardStrings.of('totalDistance', lang),
         icon: Icons.directions_bike,
         color: const Color(0xFF00E5FF),
       ),
       _MetricCard(
         title: DeliveryDashboardStrings.of('weeklyEarnings', lang),
-        value: '₹12,850',
-        subtext: '▲ 8.2% ${DeliveryDashboardStrings.of('vsLastWeek', lang)}',
+        value: '₹${state.weeklyEarnings.toStringAsFixed(0)}',
+        subtext: '${state.weeklyEarnings.toStringAsFixed(0)} ${DeliveryDashboardStrings.of('totalEarnings', lang)}',
         icon: Icons.trending_up,
         color: const Color(0xFF7C4DFF),
       ),
@@ -1298,12 +1564,21 @@ class _ActiveOrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final lang = state.localeCode;
     final isOnline = state.isOnline;
+    final firstActivity = state.recentActivities.isNotEmpty
+        ? state.recentActivities.first
+        : null;
 
     return GestureDetector(
-      onTap: () => Navigator.of(context).pushNamed(
-        '/deliveryOrderDetails',
-        arguments: {'orderId': '#ORD12345'},
-      ),
+      onTap: () {
+        final activeOrderId = state.recentActivities.isNotEmpty
+            ? state.recentActivities.first.id
+            : null;
+        if (activeOrderId == null || activeOrderId.isEmpty) return;
+        Navigator.of(context).pushNamed(
+          '/deliveryOrderDetails',
+          arguments: {'orderId': activeOrderId},
+        );
+      },
       child: Container(
       key: const Key('dp_dashboard_active_order_card'),
       padding: const EdgeInsets.all(DeliveryAppSpacing.lg),
@@ -1365,7 +1640,7 @@ class _ActiveOrderCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          if (isOnline) ...[
+          if (isOnline && firstActivity != null) ...[
             Row(
               children: [
                 const Icon(
@@ -1375,7 +1650,9 @@ class _ActiveOrderCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  DeliveryDashboardStrings.of('orderNo', lang),
+                  firstActivity.title.isEmpty
+                      ? '#${firstActivity.id}'
+                      : firstActivity.title,
                   style: DeliveryAppTypography.bodyLarge.copyWith(
                     color: DeliveryAppColors.textPrimary,
                     fontWeight: FontWeight.w700,
@@ -1387,8 +1664,10 @@ class _ActiveOrderCard extends StatelessWidget {
             _RoutePoint(
               icon: Icons.storefront,
               label: DeliveryDashboardStrings.of('pickup', lang),
-              address: DeliveryDashboardStrings.of('pickupLocation', lang),
-              time: '12:05 PM',
+              address: firstActivity.subtitle.isEmpty
+                  ? '-'
+                  : firstActivity.subtitle,
+              time: firstActivity.time.isEmpty ? '-' : firstActivity.time,
               color: DeliveryAppColors.warning,
             ),
             Padding(
@@ -1402,8 +1681,10 @@ class _ActiveOrderCard extends StatelessWidget {
             _RoutePoint(
               icon: Icons.home_work_outlined,
               label: DeliveryDashboardStrings.of('drop', lang),
-              address: DeliveryDashboardStrings.of('dropLocation', lang),
-              time: '12:35 PM',
+              address: firstActivity.details.isEmpty
+                  ? '-'
+                  : firstActivity.details,
+              time: firstActivity.time.isEmpty ? '-' : firstActivity.time,
               color: DeliveryAppColors.info,
             ),
             const SizedBox(height: 16),
@@ -1412,23 +1693,15 @@ class _ActiveOrderCard extends StatelessWidget {
               runSpacing: 10,
               children: [
                 _OrderInfoChip(
-                  icon: Icons.route_outlined,
-                  label: DeliveryDashboardStrings.of('distance', lang),
-                  value: '4.2 km',
-                ),
-                _OrderInfoChip(
-                  icon: Icons.access_time,
-                  label: DeliveryDashboardStrings.of('eta', lang),
-                  value: '18 min',
-                ),
-                _OrderInfoChip(
                   icon: Icons.currency_rupee,
                   label: DeliveryDashboardStrings.of('payment', lang),
-                  value: '₹120.00',
+                  value: firstActivity.details.isEmpty
+                      ? '-'
+                      : firstActivity.details,
                 ),
               ],
             ),
-          ] else ...[
+          ] else if (isOnline) ...[
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
@@ -1559,26 +1832,31 @@ class _EarningsChartCard extends StatefulWidget {
 class _EarningsChartCardState extends State<_EarningsChartCard> {
   String _selected = 'Today';
 
-  static const Map<String, List<double>> _data = {
-    'Today': [12, 18, 14, 22, 26, 20, 28, 24, 32, 26, 30, 36],
-    '7 Days': [8, 12, 10, 16, 14, 20, 18],
-    'Weekly': [5, 8, 12, 10, 15, 13, 18, 22, 20, 26, 24, 28],
-    'Monthly': [4, 6, 9, 7, 12, 14, 11, 16, 18, 15, 20, 24, 22, 27, 25, 30],
-  };
+  List<double> get _chartData {
+    final amounts = widget.state.recentActivities
+        .map((a) => double.tryParse(a.details) ?? 0.0)
+        .toList();
+    if (amounts.isEmpty) return const [0, 0, 0, 0, 0, 0];
+    return amounts;
+  }
 
-  static const Map<String, String> _totals = {
-    'Today': '₹1,285',
-    '7 Days': '₹9,750',
-    'Weekly': '₹12,850',
-    'Monthly': '₹48,900',
-  };
+  double get _selectedTotal {
+    switch (_selected) {
+      case '7 Days':
+        return widget.state.weeklyEarnings;
+      case 'Weekly':
+        return widget.state.weeklyEarnings;
+      case 'Monthly':
+        return widget.state.weeklyEarnings * 4;
+      default:
+        return widget.state.todayEarnings;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final lang = widget.state.localeCode;
-    final values =
-        _data[_selected] ??
-        const [12, 18, 14, 22, 26, 20, 28, 24, 32, 26, 30, 36];
+    final values = _chartData;
 
     return Container(
       key: const Key('dp_dashboard_earnings_chart_card'),
@@ -1631,7 +1909,7 @@ class _EarningsChartCardState extends State<_EarningsChartCard> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                _totals[_selected] ?? '₹1,285',
+                '₹${_selectedTotal.toStringAsFixed(0)}',
                 style: DeliveryAppTypography.h2.copyWith(
                   color: DeliveryAppColors.textPrimary,
                   fontWeight: FontWeight.bold,
@@ -1650,7 +1928,7 @@ class _EarningsChartCardState extends State<_EarningsChartCard> {
                     borderRadius: DeliveryAppSpacing.borderRadiusPill,
                   ),
                   child: Text(
-                    '▲ 12.4%',
+                    '▲ ${widget.state.earningsGrowth.toStringAsFixed(1)}%',
                     style: DeliveryAppTypography.caption.copyWith(
                       color: DeliveryAppColors.primary,
                       fontWeight: FontWeight.w700,
@@ -2002,46 +2280,17 @@ class _NotificationPanel extends StatelessWidget {
     final lang = state.localeCode;
 
     final items = [
-      (
-        icon: Icons.notifications_active,
-        color: DeliveryAppColors.primary,
-        title: DeliveryDashboardStrings.of('notifNewOrder', lang),
-        subtitle: DeliveryDashboardStrings.of('notifNewOrderSub', lang),
-        time: '2m',
-        unread: true,
-      ),
-      (
-        icon: Icons.stars,
-        color: DeliveryAppColors.warning,
-        title: DeliveryDashboardStrings.of('notifBonus', lang),
-        subtitle: DeliveryDashboardStrings.of('notifBonusSub', lang),
-        time: '1h',
-        unread: true,
-      ),
-      (
-        icon: Icons.star_border,
-        color: DeliveryAppColors.error,
-        title: DeliveryDashboardStrings.of('notifLowRating', lang),
-        subtitle: DeliveryDashboardStrings.of('notifLowRatingSub', lang),
-        time: '3h',
-        unread: false,
-      ),
-      (
-        icon: Icons.account_balance_wallet,
-        color: DeliveryAppColors.info,
-        title: DeliveryDashboardStrings.of('notifWallet', lang),
-        subtitle: DeliveryDashboardStrings.of('notifWalletSub', lang),
-        time: '5h',
-        unread: false,
-      ),
-      (
-        icon: Icons.system_update_alt,
-        color: const Color(0xFFAB47BC),
-        title: DeliveryDashboardStrings.of('notifSystem', lang),
-        subtitle: DeliveryDashboardStrings.of('notifSystemSub', lang),
-        time: '1d',
-        unread: false,
-      ),
+      for (final activity in state.recentActivities)
+        (
+          icon: Icons.receipt_long_outlined,
+          color: DeliveryAppColors.primary,
+          title: activity.title.isEmpty ? 'Order #${activity.id}' : activity.title,
+          subtitle: activity.subtitle,
+          time: activity.time,
+          unread: activity.statusType == 'active' ||
+              activity.statusType == 'outfordelivery' ||
+              activity.statusType == 'accepted',
+        ),
     ];
 
     return DeliveryCard(

@@ -58,7 +58,8 @@ class _SellerSignUpPageView extends StatelessWidget {
       child: Scaffold(
         backgroundColor: _AppColors.background,
         body: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return AnimatedSwitcher(
               duration: const Duration(milliseconds: 350),
               transitionBuilder: (child, animation) {
@@ -314,7 +315,8 @@ class _PersonalDetailsScreen extends StatelessWidget {
     return _ResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -391,7 +393,8 @@ class _ContactPasswordScreen extends StatelessWidget {
     return _ResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -531,7 +534,8 @@ class _OtpVerificationScreenState extends State<_OtpVerificationScreen> {
     return _ResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -752,7 +756,8 @@ class _SignUpSuccessScreenState extends State<_SignUpSuccessScreen> with SingleT
     return _ResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(

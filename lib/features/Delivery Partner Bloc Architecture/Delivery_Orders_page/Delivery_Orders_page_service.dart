@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:rxdart/rxdart.dart';
 import 'Delivery_Orders_page_state.dart';
 
 abstract class DeliveryOrdersServiceBase {
   Future<Map<String, dynamic>> fetchOrdersData();
+  Stream<Map<String, dynamic>> watchOrdersData();
   List<DeliveryOrderCardModel> filterOrders({
     required List<DeliveryOrderCardModel> orders,
     required DeliveryOrdersTab tab,
@@ -16,7 +19,6 @@ abstract class DeliveryOrdersServiceBase {
   String formatDistance(double distance);
   double calculateEarnings(double orderAmount);
   DeliveryOrderStatus? getNextStatus(DeliveryOrderStatus status);
-  int getAcceptanceRate();
   Map<String, String> getEnvironmentVariables();
   Future<bool> requestNotificationPermission();
   Future<bool> requestLocationPermission();
@@ -45,47 +47,390 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
     try {
       final currentFirestore = _firestore ?? FirebaseFirestore.instance;
       final currentAuth = _auth ?? FirebaseAuth.instance;
-      if (currentAuth.currentUser != null) {
-        final uid = currentAuth.currentUser!.uid;
-        final ordersQuery = await currentFirestore
+      final uid = currentAuth.currentUser?.uid;
+      final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> docMap = {};
+      
+      if (uid != null && uid.isNotEmpty) {
+        try {
+          final q1 = await currentFirestore.collection('orders').where('riderId', isEqualTo: uid).get();
+          for (var doc in q1.docs) {
+            docMap[doc.id] = doc;
+          }
+        } catch (e) {
+          debugPrint('fetchOrdersData riderId query fallback: $e');
+        }
+
+        try {
+          final q2 = await currentFirestore.collection('orders').where('deliveryPartnerId', isEqualTo: uid).get();
+          for (var doc in q2.docs) {
+            docMap[doc.id] = doc;
+          }
+        } catch (e) {
+          debugPrint('fetchOrdersData deliveryPartnerId query fallback: $e');
+        }
+      }
+
+      if (docMap.isEmpty) {
+        try {
+          final q3 = await currentFirestore
+              .collection('orders')
+              .where('status', whereIn: ['pending', 'new', 'ready', 'preparing', 'outfordelivery', 'active', 'accepted', 'completed', 'delivered'])
+              .get();
+          for (var doc in q3.docs) {
+            docMap[doc.id] = doc;
+          }
+        } catch (e) {
+          debugPrint('fetchOrdersData status query fallback: $e');
+        }
+      }
+
+      final docs = docMap.values.toList();
+      docs.sort((a, b) {
+        final aTs = a.data()['timestamp'] as Timestamp?;
+        final bTs = b.data()['timestamp'] as Timestamp?;
+        if (aTs == null && bTs == null) return 0;
+        if (aTs == null) return 1;
+        if (bTs == null) return -1;
+        return bTs.compareTo(aTs);
+      });
+
+      final orders = await Future.wait(
+        docs.map((doc) => _enrichFirestoreOrder(doc.id, doc.data())),
+      );
+      return {'orders': orders};
+    } catch (e) {
+      debugPrint('fetchOrdersData error: $e');
+    }
+
+    return {'orders': const <Map<String, dynamic>>[]};
+  }
+
+  static final Map<String, Map<String, dynamic>> _sellerCache = {};
+  static final Map<String, Map<String, dynamic>> _userCache = {};
+
+  bool _isRawUid(String? text) {
+    if (text == null || text.trim().isEmpty) return false;
+    final trimmed = text.trim();
+    return trimmed.length >= 20 && !trimmed.contains(' ');
+  }
+
+  Future<Map<String, dynamic>> _enrichFirestoreOrder(String docId, Map<String, dynamic> data) async {
+    final currentFirestore = _firestore ?? FirebaseFirestore.instance;
+
+    final sellerId = (data['sellerId'] ?? data['seller_id'] ?? data['vendorId'] ?? data['vendor_id'] ?? data['storeId'] ?? data['store_id'] ?? data['merchantId'] ?? data['merchant_id'])?.toString();
+    final customerId = (data['customerId'] ?? data['customer_id'] ?? data['userId'] ?? data['user_id'] ?? data['buyerId'] ?? data['buyer_id'] ?? data['customerUid'] ?? data['buyerUid'] ?? data['uid'])?.toString();
+
+    String restaurantName = (data['restaurantName'] ?? data['sellerName'] ?? data['shopName'] ?? data['storeName'])?.toString() ?? '';
+    String pickupAddress = (data['pickupAddress'] ?? data['sellerAddress'] ?? data['restaurantAddress'] ?? data['storeAddress'])?.toString() ?? '';
+    String merchantPhone = (data['sellerPhone'] ?? data['merchantPhone'] ?? data['storePhone'])?.toString() ?? '';
+
+    if ((restaurantName.isEmpty || _isRawUid(restaurantName) || restaurantName == sellerId) && sellerId != null && sellerId.isNotEmpty) {
+      if (!_sellerCache.containsKey(sellerId)) {
+        try {
+          final sDoc = await currentFirestore.collection('sellers').doc(sellerId).get();
+          if (sDoc.exists && sDoc.data() != null) {
+            final sData = sDoc.data()!;
+            final sShopName = sData['shopName'] ?? sData['name'] ?? sData['storeName'] ?? sData['businessDetails'] ?? 'Partner Store';
+            final sAddr = sData['address'] ?? sData['businessDetails'] ?? sData['shopAddress'] ?? sData['deliveryArea'] ?? sData['location'] ?? '';
+            final sPhone = sData['phoneNumber'] ?? sData['phone'] ?? sData['contactNumber'] ?? sData['merchantPhone'] ?? '';
+            _sellerCache[sellerId] = {
+              'shopName': sShopName,
+              'address': sAddr.toString().trim() == sShopName.toString().trim() ? '' : sAddr,
+              'phone': sPhone,
+            };
+          }
+        } catch (e) {
+          debugPrint('Error looking up seller $sellerId: $e');
+        }
+      }
+      if (_sellerCache.containsKey(sellerId)) {
+        final cached = _sellerCache[sellerId]!;
+        restaurantName = cached['shopName']?.toString() ?? restaurantName;
+        if (pickupAddress.isEmpty || pickupAddress == restaurantName || pickupAddress == sellerId) {
+          pickupAddress = cached['address']?.toString() ?? '';
+        }
+        if (merchantPhone.isEmpty) {
+          merchantPhone = cached['phone']?.toString() ?? merchantPhone;
+        }
+      }
+    }
+
+    if (restaurantName.isEmpty || _isRawUid(restaurantName)) {
+      restaurantName = 'Partner Store';
+    }
+
+    String _extractStringOrMap(Map<String, dynamic> source, List<String> stringKeys, List<String> subKeys) {
+      for (final key in stringKeys) {
+        final val = source[key];
+        if (val != null) {
+          if (val is String && val.trim().isNotEmpty) {
+            return val.trim();
+          }
+          if (val is Map) {
+            for (final subKey in subKeys) {
+              final subVal = val[subKey];
+              if (subVal != null && subVal is String && subVal.trim().isNotEmpty) {
+                return subVal.trim();
+              }
+            }
+          }
+        }
+      }
+      return '';
+    }
+
+    String customerName = _extractStringOrMap(
+      data,
+      ['customerName', 'userName', 'user_name', 'buyerName', 'buyer_name', 'name'],
+      ['name', 'displayName', 'fullName', 'customerName', 'userName'],
+    );
+    if (customerName.isEmpty) {
+      customerName = _extractStringOrMap(
+        data,
+        ['customer', 'user', 'buyer'],
+        ['name', 'displayName', 'fullName', 'customerName', 'userName'],
+      );
+    }
+
+    String deliveryAddress = _extractStringOrMap(
+      data,
+      ['deliveryAddress', 'userAddress', 'address', 'dropoffAddress', 'shippingAddress', 'primaryAddress', 'destinationAddress'],
+      ['address', 'fullAddress', 'street', 'formattedAddress', 'displayAddress', 'primaryAddress'],
+    );
+    if (deliveryAddress.isEmpty || deliveryAddress == 'Primary Address') {
+      deliveryAddress = _extractStringOrMap(
+        data,
+        ['customer', 'user', 'buyer', 'deliveryAddressDetails'],
+        ['address', 'fullAddress', 'street', 'formattedAddress', 'displayAddress', 'primaryAddress'],
+      );
+    }
+
+    String customerPhone = _extractStringOrMap(
+      data,
+      ['customerPhone', 'phone', 'userPhone', 'phoneNumber', 'mobile', 'contact', 'contactPhone', 'contactNumber'],
+      ['phone', 'phoneNumber', 'mobile', 'contactNumber'],
+    );
+    if (customerPhone.isEmpty) {
+      customerPhone = _extractStringOrMap(
+        data,
+        ['customer', 'user', 'buyer'],
+        ['phone', 'phoneNumber', 'mobile', 'contactNumber'],
+      );
+    }
+
+    if ((customerName.isEmpty || customerName == 'Customer' || _isRawUid(customerName) || customerName == customerId || deliveryAddress.isEmpty || deliveryAddress == 'Primary Address' || customerPhone.isEmpty) && customerId != null && customerId.isNotEmpty) {
+      if (!_userCache.containsKey(customerId)) {
+        try {
+          final uDoc = await currentFirestore.collection('buyer_user').doc(customerId).get();
+          if (uDoc.exists && uDoc.data() != null) {
+            final uData = uDoc.data()!;
+            final uName = uData['name'] ?? uData['displayName'] ?? uData['fullName'] ?? uData['userName'] ?? uData['buyerName'] ?? uData['customerName'] ?? 'Customer';
+            final uPhone = uData['phone'] ?? uData['phoneNumber'] ?? uData['mobile'] ?? uData['userPhone'] ?? uData['contactNumber'] ?? '';
+
+            String uAddr = '';
+            for (final k in ['address', 'primaryAddress', 'homeAddress', 'workAddress', 'deliveryAddress', 'shippingAddress']) {
+              final val = uData[k];
+              if (val != null) {
+                if (val is String && val.trim().isNotEmpty && val.trim() != 'Primary Address') {
+                  uAddr = val.trim();
+                  break;
+                } else if (val is Map) {
+                  final sub = val['address'] ?? val['fullAddress'] ?? val['street'] ?? val['formattedAddress'] ?? val['displayAddress'];
+                  if (sub != null && sub.toString().trim().isNotEmpty && sub.toString().trim() != 'Primary Address') {
+                    uAddr = sub.toString().trim();
+                    break;
+                  }
+                }
+              }
+            }
+            if (uAddr.isEmpty && uData['addresses'] is List && (uData['addresses'] as List).isNotEmpty) {
+              final first = (uData['addresses'] as List).first;
+              if (first is Map) {
+                final sub = first['address'] ?? first['fullAddress'] ?? first['street'] ?? first['formattedAddress'];
+                if (sub != null && sub.toString().trim().isNotEmpty && sub.toString().trim() != 'Primary Address') {
+                  uAddr = sub.toString().trim();
+                }
+              } else if (first is String && first.trim().isNotEmpty && first.trim() != 'Primary Address') {
+                uAddr = first.trim();
+              }
+            }
+
+            _userCache[customerId] = {
+              'name': uName,
+              'phone': uPhone,
+              'address': uAddr,
+            };
+          }
+        } catch (e) {
+          // Graceful fallback if user profile doc is restricted by cloud security rules
+        }
+      }
+      if (_userCache.containsKey(customerId)) {
+        final cached = _userCache[customerId]!;
+        final cName = cached['name']?.toString() ?? '';
+        final cPhone = cached['phone']?.toString() ?? '';
+        final cAddr = cached['address']?.toString() ?? '';
+
+        if (customerName.isEmpty || customerName == 'Customer' || _isRawUid(customerName) || customerName == customerId) {
+          if (cName.isNotEmpty && cName != 'Customer') {
+            customerName = cName;
+          }
+        }
+        if (customerPhone.isEmpty && cPhone.isNotEmpty) {
+          customerPhone = cPhone;
+        }
+        if (deliveryAddress.isEmpty || deliveryAddress == 'Primary Address') {
+          if (cAddr.isNotEmpty && cAddr != 'Primary Address') {
+            deliveryAddress = cAddr;
+          }
+        }
+      }
+    }
+
+    if ((customerName.isEmpty || customerName == 'Customer') && customerPhone.isNotEmpty) {
+      try {
+        final q = await currentFirestore.collection('buyer_user').where('phone', isEqualTo: customerPhone).limit(1).get();
+        if (q.docs.isNotEmpty) {
+          final uData = q.docs.first.data();
+          customerName = uData['name'] ?? uData['displayName'] ?? uData['fullName'] ?? customerName;
+          if (deliveryAddress.isEmpty || deliveryAddress == 'Primary Address') {
+            deliveryAddress = uData['address'] ?? uData['homeAddress'] ?? uData['workAddress'] ?? uData['primaryAddress'] ?? deliveryAddress;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (pickupAddress.trim() == restaurantName.trim()) {
+      pickupAddress = '';
+    }
+    if (deliveryAddress.trim() == customerName.trim()) {
+      deliveryAddress = '';
+    }
+
+    final rawOrderMap = _mapFirestoreOrder(docId, data);
+    rawOrderMap['restaurantName'] = restaurantName;
+    rawOrderMap['pickupAddress'] = pickupAddress;
+    rawOrderMap['customerName'] = customerName.isNotEmpty && customerName != 'Customer' ? customerName : 'Customer';
+    rawOrderMap['deliveryAddress'] = deliveryAddress;
+    if (customerPhone.isNotEmpty) {
+      rawOrderMap['phoneNumber'] = customerPhone;
+    }
+    return rawOrderMap;
+  }
+
+  @override
+  Stream<Map<String, dynamic>> watchOrdersData() {
+    final currentFirestore = _firestore ?? FirebaseFirestore.instance;
+    final currentAuth = _auth ?? FirebaseAuth.instance;
+    final uid = currentAuth.currentUser?.uid;
+
+    final Stream<QuerySnapshot<Map<String, dynamic>>?> s1 = (uid != null && uid.isNotEmpty)
+        ? currentFirestore
             .collection('orders')
             .where('riderId', isEqualTo: uid)
-            .where('status', whereIn: ['Accepted', 'Preparing', 'Ready', 'OutForDelivery'])
-            .orderBy('timestamp', descending: true)
-            .get();
+            .snapshots()
+            .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+            .onErrorReturnWith((e, st) {
+              debugPrint('watchOrdersData riderId stream fallback: $e');
+              return null;
+            })
+        : Stream.value(null);
 
-        final orders = ordersQuery.docs.map((doc) {
-          final data = doc.data();
-          return _mapFirestoreOrder(doc.id, data);
-        }).toList();
-        return {'orders': orders};
-      }
-    } catch (_) {}
+    final Stream<QuerySnapshot<Map<String, dynamic>>?> s2 = (uid != null && uid.isNotEmpty)
+        ? currentFirestore
+            .collection('orders')
+            .where('deliveryPartnerId', isEqualTo: uid)
+            .snapshots()
+            .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+            .onErrorReturnWith((e, st) {
+              debugPrint('watchOrdersData deliveryPartnerId stream fallback: $e');
+              return null;
+            })
+        : Stream.value(null);
 
-    return _buildMockOrders();
+    final Stream<QuerySnapshot<Map<String, dynamic>>?> s3 = currentFirestore
+        .collection('orders')
+        .where('status', whereIn: ['pending', 'new', 'ready', 'preparing', 'outfordelivery', 'active', 'accepted', 'completed', 'delivered'])
+        .snapshots()
+        .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+        .onErrorReturnWith((e, st) {
+          return null;
+        });
+
+    return Rx.combineLatest3<
+        QuerySnapshot<Map<String, dynamic>>?,
+        QuerySnapshot<Map<String, dynamic>>?,
+        QuerySnapshot<Map<String, dynamic>>?,
+        Map<String, dynamic>>(
+      s1,
+      s2,
+      s3,
+      (snap1, snap2, snap3) {
+        final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> docMap = {};
+
+        if (snap1 != null) {
+          for (var doc in snap1.docs) {
+            docMap[doc.id] = doc;
+          }
+        }
+        if (snap2 != null) {
+          for (var doc in snap2.docs) {
+            docMap[doc.id] = doc;
+          }
+        }
+
+        if (docMap.isEmpty && snap3 != null) {
+          for (var doc in snap3.docs) {
+            docMap[doc.id] = doc;
+          }
+        }
+
+        final docs = docMap.values.toList();
+        docs.sort((a, b) {
+          final aTs = a.data()['timestamp'] as Timestamp?;
+          final bTs = b.data()['timestamp'] as Timestamp?;
+          if (aTs == null && bTs == null) return 0;
+          if (aTs == null) return 1;
+          if (bTs == null) return -1;
+          return bTs.compareTo(aTs);
+        });
+
+        final rawOrders = docs.map((doc) => {'id': doc.id, 'data': doc.data()}).toList();
+        return {'_rawDocs': rawOrders};
+      },
+    ).asyncMap((map) async {
+      final rawDocs = map['_rawDocs'] as List<Map<String, dynamic>>? ?? [];
+      final enrichedOrders = await Future.wait(
+        rawDocs.map((item) => _enrichFirestoreOrder(item['id'] as String, item['data'] as Map<String, dynamic>)),
+      );
+      return {'orders': enrichedOrders};
+    }).onErrorReturnWith((error, stackTrace) {
+      debugPrint('watchOrdersData stream error: $error');
+      return {'orders': const <Map<String, dynamic>>[]};
+    });
   }
 
   Map<String, dynamic> _mapFirestoreOrder(String docId, Map<String, dynamic> data) {
     return {
       'orderId': docId,
-      'customerName': data['customerName'] ?? 'Customer',
-      'restaurantName': data['sellerId'] ?? 'Restaurant',
-      'pickupAddress': '',
-      'deliveryAddress': data['deliveryAddress'] ?? '',
-      'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
-      'itemsCount': (data['items'] as List?)?.length ?? 0,
-      'status': _mapFirestoreStatus(data['status'] ?? 'pending'),
-      'distance': 2.4,
-      'time': _formatTimestamp(data['timestamp']),
-      'paymentType': data['paymentMethod'] ?? 'Cash',
-      'phoneNumber': data['customerPhone'] ?? '',
-      'etaMins': 18,
-      'lateMins': 0,
-      'priority': false,
-      'restaurantRating': 4.5,
-      'expectedTip': 20.0,
-      'preparationTimeMins': 12,
-      'deliveryBonus': 10.0,
+      'customerName': data['customerName'] ?? data['userName'] ?? data['user_name'] ?? '',
+      'restaurantName': data['restaurantName'] ?? data['sellerName'] ?? '',
+      'pickupAddress': data['pickupAddress'] ?? data['sellerAddress'] ?? data['restaurantAddress'] ?? '',
+      'deliveryAddress': data['deliveryAddress'] ?? data['userAddress'] ?? data['address'] ?? '',
+      'amount': (data['amount'] as num?)?.toDouble() ?? (data['totalAmount'] as num?)?.toDouble() ?? (data['totalPrice'] as num?)?.toDouble() ?? 0.0,
+      'itemsCount': (data['items'] as List?)?.length ?? (data['itemCount'] as num?)?.toInt() ?? 0,
+      'status': _mapFirestoreStatus(data['status']?.toString() ?? 'pending'),
+      'distance': (data['distance'] as num?)?.toDouble() ?? 0.0,
+      'time': _formatTimestamp(data['timestamp'] ?? data['createdAt'] ?? data['created_at']),
+      'paymentType': data['paymentMethod'] ?? data['paymentType'] ?? '',
+      'phoneNumber': data['customerPhone'] ?? data['phone'] ?? data['userPhone'] ?? '',
+      'etaMins': (data['etaMins'] as num?)?.toInt() ?? 0,
+      'lateMins': (data['lateMins'] as num?)?.toInt() ?? 0,
+      'priority': data['priority'] ?? false,
+      'restaurantRating': (data['restaurantRating'] as num?)?.toDouble() ?? 0.0,
+      'expectedTip': (data['expectedTip'] as num?)?.toDouble() ?? (data['tip'] as num?)?.toDouble() ?? 0.0,
+      'preparationTimeMins': (data['preparationTimeMins'] as num?)?.toInt() ?? 0,
+      'deliveryBonus': (data['deliveryBonus'] as num?)?.toDouble() ?? 0.0,
     };
   }
 
@@ -94,11 +439,24 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
       case 'accepted':
       case 'preparing':
       case 'ready':
+      case 'ready_for_pickup':
       case 'outfordelivery':
+      case 'active':
+      case 'on_the_way':
+      case 'in_progress':
+      case 'picked_up':
         return 'active';
       case 'new':
       case 'neworder':
+      case 'pending':
+      case 'assigned':
+      case 'searching_driver':
         return 'pending';
+      case 'delivered':
+      case 'completed':
+        return 'completed';
+      case 'cancelled':
+        return 'cancelled';
       default:
         return 'pending';
     }
@@ -113,18 +471,6 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
       return '$hour:$minute $period';
     }
     return '';
-  }
-
-  Map<String, dynamic> _buildMockOrders() {
-    return {
-      'orders': [
-        {'orderId': 'ORD12345', 'customerName': 'Priya Sharma', 'restaurantName': 'Green Bowl Kitchen', 'pickupAddress': '42 Anna Salai, Chennai', 'deliveryAddress': '21 MG Road, Velachery', 'amount': 486.50, 'itemsCount': 3, 'status': 'pending', 'distance': 2.4, 'time': '10:30 AM', 'paymentType': 'Cash', 'phoneNumber': '9840112233', 'etaMins': 18, 'lateMins': 0, 'priority': false, 'restaurantRating': 4.5, 'expectedTip': 20.0, 'preparationTimeMins': 12, 'deliveryBonus': 10.0},
-        {'orderId': 'ORD12346', 'customerName': 'Arun Prakash', 'restaurantName': 'Spice Route', 'pickupAddress': '108 Greams Road, Nungambakkam', 'deliveryAddress': '7 Lake View Road, Adyar', 'amount': 732.00, 'itemsCount': 4, 'status': 'active', 'distance': 4.1, 'time': '10:42 AM', 'paymentType': 'Card', 'phoneNumber': '9884499001', 'etaMins': 12, 'lateMins': 0, 'priority': true, 'restaurantRating': 4.7, 'expectedTip': 30.0, 'preparationTimeMins': 15, 'deliveryBonus': 15.0},
-        {'orderId': 'ORD12347', 'customerName': 'Meena Krishnan', 'restaurantName': 'The Pasta Lab', 'pickupAddress': '15 Cathedral Road', 'deliveryAddress': '33 Besant Nagar Main Road', 'amount': 1204.75, 'itemsCount': 6, 'status': 'active', 'distance': 5.8, 'time': '11:05 AM', 'paymentType': 'Online', 'phoneNumber': '9790933445', 'etaMins': 20, 'lateMins': 3, 'priority': false, 'restaurantRating': 4.2, 'expectedTip': 25.0, 'preparationTimeMins': 20, 'deliveryBonus': 0.0},
-        {'orderId': 'ORD12348', 'customerName': 'Karthik Raja', 'restaurantName': 'Sunrise Tiffins', 'pickupAddress': '2 T Nagar 3rd Main Road', 'deliveryAddress': '19 Ashok Nagar 1st Avenue', 'amount': 245.00, 'itemsCount': 2, 'status': 'pending', 'distance': 1.2, 'time': '11:20 AM', 'paymentType': 'Cash', 'phoneNumber': '9003112220', 'etaMins': 10, 'lateMins': 0, 'priority': false, 'restaurantRating': 4.4, 'expectedTip': 10.0, 'preparationTimeMins': 8, 'deliveryBonus': 5.0},
-        {'orderId': 'ORD12349', 'customerName': 'Divya Nair', 'restaurantName': 'Coastal Bites', 'pickupAddress': '77 EC Road, Sholinganallur', 'deliveryAddress': '5 Old Mahabalipuram Road', 'amount': 1890.00, 'itemsCount': 5, 'status': 'completed', 'distance': 6.4, 'time': '09:15 AM', 'paymentType': 'Card', 'phoneNumber': '9677008812', 'etaMins': 0, 'lateMins': 0, 'priority': false, 'restaurantRating': 4.8, 'expectedTip': 50.0, 'preparationTimeMins': 18, 'deliveryBonus': 20.0},
-      ],
-    };
   }
 
   @override
@@ -202,9 +548,6 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
         return null;
     }
   }
-
-  @override
-  int getAcceptanceRate() => 92;
 
   @override
   Map<String, String> getEnvironmentVariables() => Map<String, String>.unmodifiable(_environment);

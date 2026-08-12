@@ -1,9 +1,2 @@
-import 'package:flutter_test/flutter_test.dart';
-
-void main() {
-  group('Forgot Password Page widget Tests', () {
-    test('Placeholder for widget testing', () {
-      expect(true, isTrue);
-    });
-  });
-}
+// Obsolete test removed per user request.
+void main() {}

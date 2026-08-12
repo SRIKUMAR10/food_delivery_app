@@ -9,11 +9,10 @@ import '../seller_NavigationBarView_page/seller_NavigationBarView_page_bloc.dart
 import '../seller_NavigationBarView_page/seller_NavigationBarView_page_event.dart';
 import '../orders_list/orders_list_page_bloc.dart';
 import '../orders_list/orders_list_page_event.dart';
+import '../orders_list/orders_list_page_ui.dart';
 
 import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
-import '../new_order_notification/new_order_notification_ui.dart';
 import '../seller_analytics_page/seller_analytics_page__ui.dart';
-import '../seller_customer_page/seller_customer_page__ui.dart';
 import '../inventory_low_stock/inventory_low_stock_page_ui.dart';
 import '../seller_analytics_page/seller_analytics_page__bloc.dart';
 import '../seller_analytics_page/seller_analytics_repository.dart';
@@ -259,15 +258,7 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                   iconColor: const Color(0xFFF59E0B),
                                   bgColor: const Color(0xFFFFFBEB),
                                   subtitle: 'Awaiting processing',
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const SellerCustomerPage(),
-                                      ),
-                                    );
-                                  },
+                                  onTap: () {},
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -347,15 +338,7 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                     iconColor: const Color(0xFFF59E0B),
                                     bgColor: const Color(0xFFFFFBEB),
                                     subtitle: 'Awaiting',
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const SellerCustomerPage(),
-                                        ),
-                                      );
-                                    },
+                                    onTap: () {},
                                   ),
                                   _buildStatCard(
                                     width: constraints.maxWidth / 2 - 8,
@@ -843,8 +826,10 @@ class _HoverableOrderItemState extends State<_HoverableOrderItem> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          widget.order.customerName,
+                        RealtimeOrderCustomerNameText(
+                          fallbackName: widget.order.customerName,
+                          customerId: widget.order.customerId,
+                          orderId: widget.order.fullOrderId ?? widget.order.id.replaceAll('#', ''),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF6B7280),
@@ -918,13 +903,14 @@ class _HoverableOrderItemState extends State<_HoverableOrderItem> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          widget.order.customerName,
+                        RealtimeOrderCustomerNameText(
+                          fallbackName: widget.order.customerName,
+                          customerId: widget.order.customerId,
+                          orderId: widget.order.fullOrderId ?? widget.order.id.replaceAll('#', ''),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF6B7280),
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),

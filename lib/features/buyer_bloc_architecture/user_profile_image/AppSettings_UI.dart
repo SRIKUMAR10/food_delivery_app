@@ -647,7 +647,19 @@ class _AppSettingsPageViewState extends State<AppSettingsPageView> {
       MaterialPageRoute(
         builder: (_) => Scaffold(
           appBar: AppBar(title: Text(title)),
-          body: const Center(child: Text('WebView placeholder')),
+          body: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: SingleChildScrollView(
+              child: Text(
+                '$title\n\n'
+                'Welcome to FoodGo. We are committed to protecting your privacy and providing a safe, seamless experience.\n\n'
+                '1. Data Usage: Your personal information, saved addresses, and profile data are stored securely on Firebase cloud services and used solely to fulfill your food delivery orders.\n\n'
+                '2. Account Security: You can update your profile, change address preferences, or delete your account at any time via App Settings.\n\n'
+                '3. Contact Us: For support or questions regarding policies, reach out through the Help & Support section.',
+                style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87),
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -1,3 +1,4 @@
+// Real-Time Firestore Stream Provider Standardized
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +7,7 @@ import 'Delivery_Profile_page_state.dart';
 
 abstract class DeliveryProfileRepositoryBase {
   Future<DeliveryProfileState> fetchProfile();
+  Stream<DeliveryProfileState> watchProfile();
   Future<void> saveProfile(DeliveryProfileState profile);
   Future<String?> pickProfileImage();
   Future<String?> getAvatarPath();
@@ -30,13 +32,13 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
       id: 'drivingLicense',
       label: 'Driving License',
       icon: Icons.badge_outlined,
-      status: DeliveryProfileDocumentStatus.verified,
+      status: DeliveryProfileDocumentStatus.notUploaded,
     ),
     DeliveryProfileDocument(
       id: 'vehicleRc',
       label: 'Vehicle RC',
       icon: Icons.description_outlined,
-      status: DeliveryProfileDocumentStatus.uploaded,
+      status: DeliveryProfileDocumentStatus.notUploaded,
     ),
     DeliveryProfileDocument(
       id: 'insurance',
@@ -48,15 +50,15 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
       id: 'panCard',
       label: 'PAN Card',
       icon: Icons.credit_card_outlined,
-      status: DeliveryProfileDocumentStatus.uploaded,
+      status: DeliveryProfileDocumentStatus.notUploaded,
     ),
   ];
 
   static const Map<String, bool> defaultVerificationStatuses = {
-    'phone': true,
-    'email': true,
+    'phone': false,
+    'email': false,
     'identity': false,
-    'document': true,
+    'document': false,
   };
 
   static List<DeliveryProfileChecklistItem> buildDefaultChecklist({
@@ -154,14 +156,14 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
     try {
       final map = jsonDecode(raw) as Map<String, dynamic>;
       final profile = defaultProfile.copyWith(
-        fullName: map['fullName'] as String? ?? 'Ravi Kumar',
-        phone: map['phone'] as String? ?? '+91 98765 43210',
-        email: map['email'] as String? ?? 'ravi.kumar@example.com',
-        dob: map['dob'] as String? ?? '15-08-1995',
-        gender: map['gender'] as String? ?? 'male',
-        vehicleType: map['vehicleType'] as String? ?? 'scooter',
+        fullName: map['fullName'] as String? ?? '',
+        phone: map['phone'] as String? ?? '',
+        email: map['email'] as String? ?? '',
+        dob: map['dob'] as String? ?? '',
+        gender: map['gender'] as String? ?? '',
+        vehicleType: map['vehicleType'] as String? ?? '',
         vehicleNumber: map['vehicleNumber'] as String? ?? '',
-        licenseNumber: map['licenseNumber'] as String? ?? 'TN07 20010012345',
+        licenseNumber: map['licenseNumber'] as String? ?? '',
         licenseValidTill: map['licenseValidTill'] as String? ?? '',
       );
       final checklist = buildDefaultChecklist(profile: profile);
@@ -181,6 +183,34 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
     );
     final checklist = buildDefaultChecklist(profile: profile);
     return profile.copyWith(checklist: checklist);
+  }
+
+  @override
+  Stream<DeliveryProfileState> watchProfile() {
+    return _service.watchProfileData().map((data) {
+      final defaultProfile = buildDefaultProfile();
+      final displayName = data['displayName'] ?? '';
+      final profile = defaultProfile.copyWith(
+        fullName: displayName,
+        phone: data['phoneNumber'] ?? '',
+        email: data['email'] ?? '',
+        vehicleType: data['vehicleType'] ?? '',
+        vehicleNumber: data['vehicleNumber'] ?? '',
+        licenseNumber: data['drivingLicense'] ?? '',
+        avatarPath: (data['photoUrl'] as String?)?.isNotEmpty == true
+            ? data['photoUrl']
+            : null,
+      );
+      final checklist = buildDefaultChecklist(profile: profile);
+      return profile.copyWith(
+        checklist: checklist,
+        status: displayName.trim().isEmpty &&
+                profile.phone.trim().isEmpty &&
+                profile.email.trim().isEmpty
+            ? DeliveryProfileStatus.empty
+            : DeliveryProfileStatus.loaded,
+      );
+    });
   }
 
   @override

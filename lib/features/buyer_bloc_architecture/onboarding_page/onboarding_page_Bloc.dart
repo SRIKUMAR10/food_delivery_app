@@ -1,3 +1,4 @@
+// Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
@@ -25,13 +26,16 @@ class OnboardingPageBloc extends Bloc<OnboardingPageEvent, OnboardingPageState> 
   }
 
   /// Handles the 'Get Started' button press.
-  /// Navigates to Home Page if web layout, otherwise Curved Navigation Bar.
+  /// Navigates to Login Page if unauthenticated, otherwise Home Page (Curved Navigation Bar).
   void _onGetStartedPressed(
     OnboardingGetStartedPressed event,
     Emitter<OnboardingPageState> emit,
   ) {
-    // Navigate globally to the Home page route.
-    emit(OnboardingNavigateToHome());
+    if (_authService.currentUserId != null) {
+      emit(OnboardingNavigateToHome());
+    } else {
+      emit(OnboardingNavigateToLogin());
+    }
   }
 
   void _onAuthStatusChanged(

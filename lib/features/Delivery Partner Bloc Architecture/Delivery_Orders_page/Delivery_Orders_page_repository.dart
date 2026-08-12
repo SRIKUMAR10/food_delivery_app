@@ -1,3 +1,4 @@
+// Real-Time Firestore Stream Provider Standardized
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'Delivery_Orders_page_service.dart';
@@ -52,16 +53,28 @@ class DeliveryOrdersRepository implements DeliveryOrdersRepositoryBase {
   DeliveryOrderStatus _parseStatus(String raw) {
     switch (raw.toLowerCase()) {
       case 'pending':
+      case 'new':
+      case 'neworder':
+      case 'assigned':
+      case 'searching_driver':
         return DeliveryOrderStatus.pending;
       case 'active':
       case 'accepted':
       case 'on_the_way':
+      case 'preparing':
+      case 'ready':
+      case 'ready_for_pickup':
+      case 'outfordelivery':
+      case 'in_progress':
+      case 'picked_up':
         return DeliveryOrderStatus.active;
       case 'completed':
       case 'delivered':
         return DeliveryOrderStatus.completed;
-      default:
+      case 'cancelled':
         return DeliveryOrderStatus.cancelled;
+      default:
+        return DeliveryOrderStatus.pending;
     }
   }
 
@@ -111,7 +124,7 @@ class DeliveryOrdersRepository implements DeliveryOrdersRepositoryBase {
   }
 
   @override
-  Stream<List<DeliveryOrderCardModel>> watchOrders() async* {
-    yield await fetchOrders();
+  Stream<List<DeliveryOrderCardModel>> watchOrders() {
+    return _service.watchOrdersData().map(_mapOrders);
   }
 }

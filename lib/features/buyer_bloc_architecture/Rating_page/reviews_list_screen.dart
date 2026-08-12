@@ -3,18 +3,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/core/repositories/i_rating_repository.dart';
-import '../FoodGoLoginScreen/FoodGoLoginScreen_UI.dart';
 import '../home_Page/home_page_models.dart';
 import 'Rating_page_ui.dart';
 
 class ReviewsListScreen extends StatelessWidget {
   final String productId;
   final String productName;
+  final FoodItem? foodItem;
 
   const ReviewsListScreen({
     Key? key,
     required this.productId,
     required this.productName,
+    this.foodItem,
   }) : super(key: key);
 
   @override
@@ -60,30 +61,6 @@ class ReviewsListScreen extends StatelessWidget {
                     TextButton.icon(
                       onPressed: () {
                         HapticFeedback.lightImpact();
-                        final isLoggedIn = context.read<IAuthService>().currentUserId != null;
-
-                        if (!isLoggedIn) {
-                          // Note: Creating a dummy food item here just for navigation requirements.
-                          final foodItem = FoodItem(
-                            id: productId,
-                            name: productName,
-                            price: 0.0,
-                            description: '',
-                            sellerId: '',
-                            image: '',
-                            category: 'Unknown',
-                          );
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => FoodGoLoginScreenUI(
-                                foodItemToAccess: foodItem,
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-
                         Navigator.push(
                           context,
                           MaterialPageRoute(

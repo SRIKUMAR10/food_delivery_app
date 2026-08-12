@@ -1,28 +1,63 @@
+// Real-Time BLoC Stream Binding Standardized
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'promotions_coupons_page_event.dart';
 import 'promotions_coupons_page_state.dart';
 import 'promotions_coupons_page_repository.dart';
+import 'promotions_coupons_page_model.dart';
+
+class _CouponsUpdatedEvent extends PromotionsCouponsEvent {
+  final List<CouponModel> coupons;
+  const _CouponsUpdatedEvent(this.coupons);
+
+  @override
+  List<Object?> get props => [coupons];
+}
 
 class PromotionsCouponsBloc extends Bloc<PromotionsCouponsEvent, PromotionsCouponsState> {
   final PromotionsCouponsRepository repository;
   String? _sellerId;
+  StreamSubscription? _couponsSub;
 
   PromotionsCouponsBloc({required this.repository}) : super(const PromotionsCouponsInitial()) {
     on<LoadCouponsEvent>(_onLoadCoupons);
+    on<_CouponsUpdatedEvent>(_onCouponsUpdated);
     on<AddCouponEvent>(_onAddCoupon);
     on<UpdateCouponEvent>(_onUpdateCoupon);
     on<DeleteCouponEvent>(_onDeleteCoupon);
     on<ToggleCouponStatusEvent>(_onToggleCouponStatus);
   }
 
+  @override
+  Future<void> close() {
+    _couponsSub?.cancel();
+    return super.close();
+  }
+
   Future<void> _onLoadCoupons(LoadCouponsEvent event, Emitter<PromotionsCouponsState> emit) async {
     _sellerId = event.sellerId;
-    emit(PromotionsCouponsLoading());
+    emit(const PromotionsCouponsLoading());
     try {
+      await _couponsSub?.cancel();
       final coupons = await repository.getCoupons(event.sellerId);
       emit(PromotionsCouponsLoaded(coupons: coupons));
+
+      _couponsSub = repository.streamCoupons(event.sellerId).listen((liveCoupons) {
+        if (!isClosed) {
+          add(_CouponsUpdatedEvent(liveCoupons));
+        }
+      });
     } catch (e) {
       emit(PromotionsCouponsError('Failed to load coupons: $e'));
+    }
+  }
+
+  void _onCouponsUpdated(_CouponsUpdatedEvent event, Emitter<PromotionsCouponsState> emit) {
+    final currentState = state;
+    if (currentState is PromotionsCouponsLoaded) {
+      emit(currentState.copyWith(coupons: event.coupons));
+    } else {
+      emit(PromotionsCouponsLoaded(coupons: event.coupons));
     }
   }
 

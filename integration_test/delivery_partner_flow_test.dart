@@ -84,10 +84,10 @@ void main() {
       sessionRepo.confirmPickup();
       expect(sessionRepo.currentState.deliveryStage, equals(ActiveDeliveryStage.navigatingToCustomer));
 
-      sessionRepo.completeDelivery();
+      sessionRepo.completeDelivery(deliveryFee: 40.0);
       expect(sessionRepo.currentState.deliveryStage, equals(ActiveDeliveryStage.deliveryCompleted));
       expect(sessionRepo.currentState.completedOrdersCount, greaterThan(0));
-      expect(sessionRepo.currentState.totalEarningsToday, greaterThan(1280.00));
+      expect(sessionRepo.currentState.totalEarningsToday, greaterThan(0.0));
     });
 
     test('Session: declineOrder resets to idle', () {

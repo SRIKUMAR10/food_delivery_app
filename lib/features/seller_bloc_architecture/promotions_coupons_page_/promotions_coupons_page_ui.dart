@@ -119,7 +119,8 @@ class PromotionsCouponsView extends StatelessWidget {
                         ),
                       ),
                       BlocBuilder<PromotionsCouponsBloc, PromotionsCouponsState>(
-                        builder: (context, state) {
+                        buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                           if (state is PromotionsCouponsLoading || state is PromotionsCouponsInitial) {
                             return const SliverFillRemaining(
                               child: Center(child: CircularProgressIndicator(color: Color(0xFF3B82F6))),

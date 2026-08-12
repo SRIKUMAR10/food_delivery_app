@@ -5,6 +5,17 @@ import 'menu_category_management_page_model.dart';
 class MenuCategoryManagementService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  Stream<List<MenuCategoryModel>> streamAllGlobalCategories(String sellerId) {
+    return _firestore
+        .collection('sellers')
+        .doc(sellerId)
+        .collection('menu_preferences')
+        .snapshots()
+        .asyncMap((prefsSnapshot) async {
+      return await fetchAllGlobalCategories(sellerId);
+    });
+  }
+
   Future<List<MenuCategoryModel>> fetchAllGlobalCategories(String sellerId) async {
     try {
       // 1. Fetch global categories

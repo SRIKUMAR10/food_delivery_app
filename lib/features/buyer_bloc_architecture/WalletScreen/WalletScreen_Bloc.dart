@@ -1,3 +1,4 @@
+// Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,7 +26,7 @@ class WalletDatabase {
   Stream<double?> getWalletBalanceStream() {
     final uid = _uid;
     if (uid == null) return const Stream.empty();
-    return _firestore.collection('users').doc(uid).snapshots().map((snapshot) {
+    return _firestore.collection('buyer_user').doc(uid).snapshots().map((snapshot) {
       if (!snapshot.exists) return null;
       final data = snapshot.data();
       return (data?['wallet'] as num?)?.toDouble();
@@ -37,7 +38,7 @@ class WalletDatabase {
     final uid = _uid;
     if (uid == null) return const Stream.empty();
     return _firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(uid)
         .collection('transactions')
         .orderBy('createdAt', descending: true)
@@ -61,7 +62,7 @@ class WalletDatabase {
     final uid = _uid;
     if (uid == null) return null;
     try {
-      final doc = await _firestore.collection('users').doc(uid).get();
+      final doc = await _firestore.collection('buyer_user').doc(uid).get();
       if (doc.exists) {
         final data = doc.data();
         if (data == null) return null;
@@ -83,7 +84,7 @@ class WalletDatabase {
     final uid = _uid;
     if (uid == null) return;
 
-    final userRef = _firestore.collection('users').doc(uid);
+    final userRef = _firestore.collection('buyer_user').doc(uid);
 
     await _firestore.runTransaction((transaction) async {
       DocumentSnapshot snapshot = await transaction.get(userRef);
@@ -119,6 +120,7 @@ class WalletDatabase {
 class WalletBloc extends Bloc<WalletEvent, WalletState> {
   final WalletDatabase database;
   final RazorpayApiService razorpayApiService;
+  StreamSubscription<double?>? _balanceSubscription;
 
   WalletBloc(this.database, this.razorpayApiService)
     : super(const WalletState()) {
@@ -129,6 +131,12 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
     });
     on<PaymentSuccessEvent>(_onPaymentSuccess);
     on<PaymentFailedEvent>(_onPaymentFailed);
+  }
+
+  @override
+  Future<void> close() {
+    _balanceSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onLoadWalletData(
@@ -144,10 +152,17 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
     emit(state.copyWith(paymentStatus: PaymentStatus.loading));
 
     try {
+      await _balanceSubscription?.cancel();
       final balance = await database.getInitialBalance();
       if (balance != null) {
         emit(state.copyWith(walletBalance: balance));
       }
+
+      _balanceSubscription = database.getWalletBalanceStream().listen((liveBalance) {
+        if (!isClosed && liveBalance != null) {
+          add(LoadWalletData());
+        }
+      });
     } catch (_) {
       emit(state.copyWith(paymentStatus: PaymentStatus.initial));
     }

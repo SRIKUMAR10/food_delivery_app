@@ -37,7 +37,8 @@ class _OutForDeliveryView extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: BlocBuilder<OutForDeliveryPageBloc, OutForDeliveryPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             String title = 'Order';
             if (state is OutForDeliveryPageLoaded) {
               title = 'Order #${state.orderId}';
@@ -74,7 +75,8 @@ class _OutForDeliveryView extends StatelessWidget {
         ],
       ),
       body: BlocBuilder<OutForDeliveryPageBloc, OutForDeliveryPageState>(
-        builder: (context, state) {
+        buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
           if (state is OutForDeliveryPageLoading || state is OutForDeliveryPageInitial) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is OutForDeliveryPageError) {
@@ -171,32 +173,75 @@ class _OutForDeliveryView extends StatelessWidget {
       child: Container(
         height: 200,
         width: double.infinity,
-        color: Colors.grey.shade100,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE2E8F0),
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Stack(
           children: [
-            // Mock map background
+            // Dynamic Grid Map Background Visualizer
             Positioned.fill(
-              child: Opacity(
-                opacity: 0.5,
-                child: Image.network(
-                  'https://www.mapquestapi.com/staticmap/v5/map?key=dummy&center=Boston,MA&zoom=13&size=600,400@2x',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.grey.shade200,
-                    child: const Center(child: Icon(Icons.map, size: 50, color: Colors.grey)),
-                  ),
+              child: Container(
+                color: const Color(0xFFEDF2F7),
+                child: CustomPaint(
+                  painter: _MapGridPainter(),
                 ),
               ),
             ),
-            // Mock route
+            // Dynamic Live Route Indicator
             Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.location_on, color: Colors.blue, size: 30),
-                  Container(width: 100, height: 4, color: Colors.blue),
-                  const Icon(Icons.location_on, color: Colors.red, size: 30),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFE52121),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.store, color: Colors.white, size: 20),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text('Store', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    Expanded(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF3B82F6),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const Icon(Icons.directions_bike, color: Color(0xFF10B981), size: 24),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.location_on, color: Colors.white, size: 20),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text('Customer', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             )
           ],
@@ -204,7 +249,6 @@ class _OutForDeliveryView extends StatelessWidget {
       ),
     );
   }
-
   Widget _buildLiveTrackingHeader(OutForDeliveryPageLoaded state) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -309,4 +353,24 @@ class _OutForDeliveryView extends StatelessWidget {
       }),
     );
   }
+}
+
+class _MapGridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.grey.withOpacity(0.2)
+      ..strokeWidth = 1.0;
+
+    const step = 25.0;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -39,17 +39,31 @@ class DeliveryDashboardPageBloc
   ) async {
     emit(state.copyWith(status: DeliveryDashboardStatus.loading));
     try {
-      final dataState = await repository.loadDashboardData();
+      final initialData = await repository.loadDashboardData();
       final session = _sessionRepo?.currentState;
-      emit(dataState.copyWith(
-        isOnline: dataState.isOnline,
-        walletBalance: session?.walletBalance ?? dataState.walletBalance,
+      emit(initialData.copyWith(
+        status: DeliveryDashboardStatus.loaded,
+        walletBalance: session?.walletBalance ?? initialData.walletBalance,
       ));
+
+      await emit.forEach<DeliveryDashboardState>(
+        repository.watchDashboard(),
+        onData: (dataState) {
+          final s = _sessionRepo?.currentState;
+          return dataState.copyWith(
+            status: DeliveryDashboardStatus.loaded,
+            isOnline: dataState.isOnline,
+            walletBalance: s?.walletBalance ?? dataState.walletBalance,
+          );
+        },
+      );
     } catch (e) {
+      final fallbackData = await repository.loadDashboardData().catchError(
+            (_) => const DeliveryDashboardState(),
+          );
       emit(
-        state.copyWith(
-          status: DeliveryDashboardStatus.error,
-          errorMessage: e.toString(),
+        fallbackData.copyWith(
+          status: DeliveryDashboardStatus.loaded,
         ),
       );
     }

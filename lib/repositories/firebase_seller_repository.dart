@@ -26,4 +26,16 @@ class FirebaseSellerRepository implements ISellerRepository {
     }
     return null;
   }
+
+  @override
+  Stream<SellerModel?> watchSeller(String sellerId) {
+    return firestore
+        .collection('sellers')
+        .doc(sellerId)
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists) return null;
+      return SellerModel.fromFirestore(snapshot);
+    });
+  }
 }

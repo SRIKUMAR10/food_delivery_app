@@ -18,17 +18,17 @@ class DeliveryIncentivesDashboardRepository
     implements DeliveryIncentivesDashboardRepositoryBase {
   static const String _cacheKey = 'dp_incentives_cache_v1';
 
-  final DeliveryIncentivesDashboardServiceBase _service;
+  DeliveryIncentivesDashboardServiceBase? _service;
   final SharedPreferences? _prefs;
 
   DeliveryIncentivesDashboardRepository({
     DeliveryIncentivesDashboardServiceBase? service,
     SharedPreferences? prefs,
-  })  : _service = service ?? DeliveryIncentivesDashboardService(
-            firestore: FirebaseFirestore.instance,
-            auth: FirebaseAuth.instance,
-        ),
+  })  : _service = service,
         _prefs = prefs;
+
+  DeliveryIncentivesDashboardServiceBase get service =>
+      _service ??= DeliveryIncentivesDashboardService();
 
   Future<SharedPreferences> _getPrefs() async =>
       _prefs ?? await SharedPreferences.getInstance();
@@ -36,7 +36,7 @@ class DeliveryIncentivesDashboardRepository
   @override
   Future<DeliveryIncentivesDashboardLoadedState> loadIncentivesData() async {
     try {
-      final raw = await _service.fetchIncentivesData();
+      final raw = await service.fetchIncentivesData();
       await _saveCache(raw);
       return _buildState(raw);
     } catch (_) {
@@ -90,7 +90,7 @@ class DeliveryIncentivesDashboardRepository
           },
         )
         .toList();
-    return _service.exportRewardHistory(rows);
+    return service.exportRewardHistory(rows);
   }
 
   DeliveryIncentivesDashboardLoadedState _buildState(

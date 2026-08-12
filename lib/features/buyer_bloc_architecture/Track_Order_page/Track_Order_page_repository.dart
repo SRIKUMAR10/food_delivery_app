@@ -1,4 +1,6 @@
+// Real-Time Firestore Stream Provider Standardized
 import 'dart:async';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
 import 'Track_Order_page_service.dart';
 
 abstract class TrackOrderRepository {
@@ -11,24 +13,6 @@ abstract class TrackOrderRepository {
   Future<void> stopTracking();
 
   Future<void> cancelOrder(String orderId);
-}
-
-class DriverLocation {
-  final double lat;
-  final double lng;
-
-  const DriverLocation({required this.lat, required this.lng});
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is DriverLocation &&
-          runtimeType == other.runtimeType &&
-          lat == other.lat &&
-          lng == other.lng;
-
-  @override
-  int get hashCode => lat.hashCode ^ lng.hashCode;
 }
 
 class TrackOrderRepositoryImpl implements TrackOrderRepository {

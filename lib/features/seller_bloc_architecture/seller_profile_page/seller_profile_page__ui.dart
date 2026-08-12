@@ -69,7 +69,8 @@ class ProfileContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<SellerProfilePageBloc, SellerProfilePageState>(
-      builder: (context, state) {
+      buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
         if (state is ProfileLoading || state is ProfileInitial) {
           return const ProfileSkeletonLoader();
         } else if (state is ProfileError) {

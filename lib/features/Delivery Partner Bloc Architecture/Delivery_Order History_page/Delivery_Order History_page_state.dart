@@ -144,7 +144,7 @@ class DeliveryOrderHistoryPageState extends Equatable {
     this.paymentFilter = DeliveryOrderHistoryPaymentFilter.all,
     this.startEpoch,
     this.endEpoch,
-    this.dateLabel = 'May 18, 2025 - May 24, 2025',
+    this.dateLabel = '',
     this.page = 1,
     this.pageSize = 10,
     this.sidebarOpen = true,

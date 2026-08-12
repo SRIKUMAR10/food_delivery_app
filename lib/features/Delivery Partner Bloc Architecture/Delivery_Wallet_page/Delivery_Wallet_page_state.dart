@@ -140,10 +140,10 @@ class DeliveryWalletPageState extends Equatable {
 
   const DeliveryWalletPageState({
     this.status = DeliveryWalletStatus.initial,
-    this.walletBalance = 24580.50,
-    this.totalEarnings = 128450.00,
-    this.totalWithdrawn = 89450.00,
-    this.bonusEarnings = 12500.00,
+    this.walletBalance = 0.0,
+    this.totalEarnings = 0.0,
+    this.totalWithdrawn = 0.0,
+    this.bonusEarnings = 0.0,
     this.activeFilter = DeliveryWalletTransactionFilter.all,
     this.selectedPeriod = DeliveryWalletPeriod.thisMonth,
     this.transactions = const [],

@@ -14,53 +14,29 @@ class MockDeliveryProfileRepository extends Mock
 class MockDeliveryProfileService extends Mock
     implements DeliveryProfileServiceBase {}
 
+/// Loaded profile fixture consistent with the completion engine and
+/// checklist builder so that bloc-recomputed values match exactly.
+DeliveryProfileState defaultLoaded() {
+  const base = DeliveryProfileState(
+    status: DeliveryProfileStatus.loaded,
+    fullName: 'Ravi Kumar',
+    phone: '+91 98765 43210',
+    email: 'ravi@test.com',
+    dob: '15-08-1995',
+    vehicleType: 'scooter',
+    licenseNumber: 'TN07 20010012345',
+    verificationStatuses: DeliveryProfileRepository.defaultVerificationStatuses,
+    documents: DeliveryProfileRepository.defaultDocuments,
+  );
+  return base.copyWith(
+    completionPercentage: 50,
+    checklist: DeliveryProfileRepository.buildDefaultChecklist(profile: base),
+  );
+}
+
 void main() {
   late MockDeliveryProfileRepository mockRepository;
   late MockDeliveryProfileService mockService;
-
-  const DeliveryProfileState defaultLoaded = DeliveryProfileState(
-    status: DeliveryProfileStatus.loaded,
-    completionPercentage: 75,
-    verificationStatuses: DeliveryProfileRepository.defaultVerificationStatuses,
-    documents: DeliveryProfileRepository.defaultDocuments,
-    checklist: [
-      DeliveryProfileChecklistItem(
-        id: 'personalDetails',
-        label: 'Personal details completed',
-        isComplete: true,
-      ),
-      DeliveryProfileChecklistItem(
-        id: 'vehicleInfo',
-        label: 'Vehicle information provided',
-        isComplete: false,
-      ),
-      DeliveryProfileChecklistItem(
-        id: 'drivingLicense',
-        label: 'Driving license uploaded',
-        isComplete: true,
-      ),
-      DeliveryProfileChecklistItem(
-        id: 'vehicleRc',
-        label: 'Vehicle RC uploaded',
-        isComplete: true,
-      ),
-      DeliveryProfileChecklistItem(
-        id: 'insurance',
-        label: 'Insurance uploaded',
-        isComplete: false,
-      ),
-      DeliveryProfileChecklistItem(
-        id: 'panCard',
-        label: 'PAN card uploaded',
-        isComplete: true,
-      ),
-      DeliveryProfileChecklistItem(
-        id: 'documentVerification',
-        label: 'Document verification approved',
-        isComplete: true,
-      ),
-    ],
-  );
 
   List<DeliveryProfileDocument> docsWithInsurance(
     DeliveryProfileDocumentStatus status,
@@ -89,10 +65,10 @@ void main() {
           service: mockService,
         );
         expect(bloc.state.status, DeliveryProfileStatus.initial);
-        expect(bloc.state.fullName, 'Ravi Kumar');
-        expect(bloc.state.completionPercentage, 75);
+        expect(bloc.state.fullName, '');
+        expect(bloc.state.completionPercentage, 0);
         expect(bloc.state.documents, isEmpty);
-        expect(bloc.state.verificationStatuses['phone'], isTrue);
+        expect(bloc.state.verificationStatuses['phone'], isFalse);
         bloc.close();
       },
     );
@@ -102,7 +78,7 @@ void main() {
       build: () {
         when(
           () => mockRepository.fetchProfile(),
-        ).thenAnswer((_) async => defaultLoaded);
+        ).thenAnswer((_) async => defaultLoaded());
         return DeliveryProfileBloc(
           repository: mockRepository,
           service: mockService,
@@ -111,7 +87,7 @@ void main() {
       act: (b) => b.add(const DeliveryProfileInitEvent()),
       expect: () => [
         const DeliveryProfileState(status: DeliveryProfileStatus.loading),
-        defaultLoaded,
+        defaultLoaded(),
       ],
     );
 
@@ -168,7 +144,7 @@ void main() {
       'recalculates completion percentage when a field is updated',
       build: () =>
           DeliveryProfileBloc(repository: mockRepository, service: mockService),
-      seed: () => defaultLoaded,
+      seed: defaultLoaded,
       act: (b) => b.add(
         const DeliveryProfileUpdateFieldEvent(
           field: 'vehicleNumber',
@@ -176,9 +152,9 @@ void main() {
         ),
       ),
       expect: () => [
-        defaultLoaded.copyWith(
+        defaultLoaded().copyWith(
           vehicleNumber: 'TN 01 AB 1234',
-          completionPercentage: 83,
+          completionPercentage: 58,
         ),
       ],
     );
@@ -187,7 +163,7 @@ void main() {
       'completes vehicle checklist when all vehicle fields are filled',
       build: () =>
           DeliveryProfileBloc(repository: mockRepository, service: mockService),
-      seed: () => defaultLoaded,
+      seed: defaultLoaded,
       act: (b) {
         b.add(
           const DeliveryProfileUpdateFieldEvent(
@@ -203,14 +179,14 @@ void main() {
         );
       },
       expect: () => [
-        defaultLoaded.copyWith(
+        defaultLoaded().copyWith(
           vehicleNumber: 'TN 01 AB 1234',
-          completionPercentage: 83,
+          completionPercentage: 58,
         ),
-        defaultLoaded.copyWith(
+        defaultLoaded().copyWith(
           vehicleNumber: 'TN 01 AB 1234',
           licenseValidTill: '12-09-2030',
-          completionPercentage: 92,
+          completionPercentage: 67,
           checklist: const [
             DeliveryProfileChecklistItem(
               id: 'personalDetails',
@@ -225,12 +201,12 @@ void main() {
             DeliveryProfileChecklistItem(
               id: 'drivingLicense',
               label: 'Driving license uploaded',
-              isComplete: true,
+              isComplete: false,
             ),
             DeliveryProfileChecklistItem(
               id: 'vehicleRc',
               label: 'Vehicle RC uploaded',
-              isComplete: true,
+              isComplete: false,
             ),
             DeliveryProfileChecklistItem(
               id: 'insurance',
@@ -240,12 +216,12 @@ void main() {
             DeliveryProfileChecklistItem(
               id: 'panCard',
               label: 'PAN card uploaded',
-              isComplete: true,
+              isComplete: false,
             ),
             DeliveryProfileChecklistItem(
               id: 'documentVerification',
               label: 'Document verification approved',
-              isComplete: true,
+              isComplete: false,
             ),
           ],
         ),
@@ -263,9 +239,9 @@ void main() {
           service: mockService,
         );
       },
-      seed: () => defaultLoaded,
+      seed: defaultLoaded,
       act: (b) => b.add(const DeliveryProfilePickImageEvent()),
-      expect: () => [defaultLoaded.copyWith(avatarPath: '/tmp/avatar.png')],
+      expect: () => [defaultLoaded().copyWith(avatarPath: '/tmp/avatar.png')],
     );
 
     blocTest<DeliveryProfileBloc, DeliveryProfileState>(
@@ -279,30 +255,30 @@ void main() {
           service: mockService,
         );
       },
-      seed: () => defaultLoaded,
+      seed: defaultLoaded,
       act: (b) => b.add(const DeliveryProfileUploadDocumentEvent('insurance')),
       expect: () => [
-        defaultLoaded.copyWith(
+        defaultLoaded().copyWith(
           documents: docsWithInsurance(
             DeliveryProfileDocumentStatus.uploading,
             0.0,
           ),
           uploadProgress: 0.0,
         ),
-        defaultLoaded.copyWith(
+        defaultLoaded().copyWith(
           documents: docsWithInsurance(
             DeliveryProfileDocumentStatus.uploading,
             1.0,
           ),
           uploadProgress: 1.0,
         ),
-        defaultLoaded.copyWith(
+        defaultLoaded().copyWith(
           documents: docsWithInsurance(
             DeliveryProfileDocumentStatus.uploaded,
             1.0,
           ),
           uploadProgress: 1.0,
-          completionPercentage: 83,
+          completionPercentage: 58,
           checklist: const [
             DeliveryProfileChecklistItem(
               id: 'personalDetails',
@@ -317,12 +293,12 @@ void main() {
             DeliveryProfileChecklistItem(
               id: 'drivingLicense',
               label: 'Driving license uploaded',
-              isComplete: true,
+              isComplete: false,
             ),
             DeliveryProfileChecklistItem(
               id: 'vehicleRc',
               label: 'Vehicle RC uploaded',
-              isComplete: true,
+              isComplete: false,
             ),
             DeliveryProfileChecklistItem(
               id: 'insurance',
@@ -332,12 +308,12 @@ void main() {
             DeliveryProfileChecklistItem(
               id: 'panCard',
               label: 'PAN card uploaded',
-              isComplete: true,
+              isComplete: false,
             ),
             DeliveryProfileChecklistItem(
               id: 'documentVerification',
               label: 'Document verification approved',
-              isComplete: true,
+              isComplete: false,
             ),
           ],
         ),
@@ -355,17 +331,17 @@ void main() {
           service: mockService,
         );
       },
-      seed: () => defaultLoaded,
+      seed: defaultLoaded,
       act: (b) => b.add(const DeliveryProfileUploadDocumentEvent('insurance')),
       expect: () => [
-        defaultLoaded.copyWith(
+        defaultLoaded().copyWith(
           documents: docsWithInsurance(
             DeliveryProfileDocumentStatus.uploading,
             0.0,
           ),
           uploadProgress: 0.0,
         ),
-        defaultLoaded.copyWith(
+        defaultLoaded().copyWith(
           documents: docsWithInsurance(
             DeliveryProfileDocumentStatus.notUploaded,
             0.0,
@@ -384,11 +360,11 @@ void main() {
           service: mockService,
         );
       },
-      seed: () => defaultLoaded,
+      seed: defaultLoaded,
       act: (b) => b.add(const DeliveryProfileSaveEvent()),
       expect: () => [
-        defaultLoaded.copyWith(saveStatus: DeliveryProfileSaveStatus.saving),
-        defaultLoaded.copyWith(saveStatus: DeliveryProfileSaveStatus.saved),
+        defaultLoaded().copyWith(saveStatus: DeliveryProfileSaveStatus.saving),
+        defaultLoaded().copyWith(saveStatus: DeliveryProfileSaveStatus.saved),
       ],
     );
 
@@ -403,11 +379,11 @@ void main() {
           service: mockService,
         );
       },
-      seed: () => defaultLoaded,
+      seed: defaultLoaded,
       act: (b) => b.add(const DeliveryProfileSaveEvent()),
       expect: () => [
-        defaultLoaded.copyWith(saveStatus: DeliveryProfileSaveStatus.saving),
-        defaultLoaded.copyWith(
+        defaultLoaded().copyWith(saveStatus: DeliveryProfileSaveStatus.saving),
+        defaultLoaded().copyWith(
           saveStatus: DeliveryProfileSaveStatus.failed,
           errorMessage: 'Disk full',
         ),
@@ -419,17 +395,17 @@ void main() {
       build: () {
         when(
           () => mockRepository.fetchProfile(),
-        ).thenAnswer((_) async => defaultLoaded);
+        ).thenAnswer((_) async => defaultLoaded());
         return DeliveryProfileBloc(
           repository: mockRepository,
           service: mockService,
         );
       },
-      seed: () => defaultLoaded.copyWith(status: DeliveryProfileStatus.error),
+      seed: () => defaultLoaded().copyWith(status: DeliveryProfileStatus.error),
       act: (b) => b.add(const DeliveryProfileRetryEvent()),
       expect: () => [
-        defaultLoaded.copyWith(status: DeliveryProfileStatus.loading),
-        defaultLoaded,
+        defaultLoaded().copyWith(status: DeliveryProfileStatus.loading),
+        defaultLoaded(),
       ],
     );
   });

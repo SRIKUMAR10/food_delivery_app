@@ -16,7 +16,7 @@ void main() {
     test('initial state has default values', () {
       final state = repository.currentState;
       expect(state.isOnline, isTrue);
-      expect(state.walletBalance, equals(2450.50));
+      expect(state.walletBalance, equals(0.0));
       expect(state.deliveryStage, equals(ActiveDeliveryStage.idle));
     });
 
@@ -34,8 +34,10 @@ void main() {
     });
 
     test('processWithdrawal updates wallet balance correctly', () async {
+      repository.completeDelivery(deliveryFee: 450.50);
+
       final initialBalance = repository.currentState.walletBalance;
-      const withdrawalAmount = 450.50;
+      const withdrawalAmount = 400.0;
 
       repository.processWithdrawal(withdrawalAmount);
       expect(

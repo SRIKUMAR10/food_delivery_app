@@ -1,3 +1,5 @@
+// Real-Time BLoC Stream Binding Standardized
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -14,6 +16,7 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
   final IAppSettingsRepository _repository;
   final ThemeManager _themeManager;
   final LocaleManager _localeManager;
+  StreamSubscription<AppSettingsState>? _settingsSubscription;
 
   AppSettingsBloc({
     required this.authService,
@@ -53,11 +56,22 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
     emit(state.copyWith(isLoading: true, error: null));
     try {
       final userId = _getUserId();
-      final settings = await _repository.loadSettings(userId);
-      emit(settings.copyWith(isLoading: false));
-
-      _themeManager.setTheme(ThemeManager.themeFromString(settings.theme));
-      _localeManager.setLocale(LocaleManager.localeFromString(settings.language));
+      await _settingsSubscription?.cancel();
+      _settingsSubscription = _repository.watchSettings(userId).listen(
+        (settings) {
+          final live = settings.copyWith(isLoading: false);
+          emit(live);
+          _themeManager.setTheme(ThemeManager.themeFromString(settings.theme));
+          _localeManager.setLocale(LocaleManager.localeFromString(settings.language));
+        },
+        onError: (Object error) {
+          emit(state.copyWith(
+            isLoading: false,
+            error: error.toString(),
+            isInitialized: true,
+          ));
+        },
+      );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString(), isInitialized: true));
     }
@@ -213,5 +227,11 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
     } catch (e) {
       debugPrint('AppSettingsBloc._saveSettings error: $e');
     }
+  }
+
+  @override
+  Future<void> close() async {
+    await _settingsSubscription?.cancel();
+    return super.close();
   }
 }

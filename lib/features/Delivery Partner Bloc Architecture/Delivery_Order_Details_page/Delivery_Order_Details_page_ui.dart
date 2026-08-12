@@ -181,7 +181,9 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Mike Residence Client',
+                          order.customerName.isEmpty
+                              ? 'Customer Details'
+                              : order.customerName,
                           style: DeliveryAppTypography.titleMedium.copyWith(
                             color: DeliveryAppColors.textPrimary,
                             fontWeight: FontWeight.bold,
@@ -217,6 +219,7 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
                 icon: Icons.store,
                 iconColor: DeliveryAppColors.info,
                 title: 'Pickup Details (Merchant)',
+                name: order.restaurantName,
                 address: order.pickupAddress,
                 phone: order.merchantPhone,
               ),
@@ -228,6 +231,7 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
                 icon: Icons.location_on,
                 iconColor: DeliveryAppColors.error,
                 title: 'Drop Details (Customer)',
+                name: order.customerName,
                 address: order.dropoffAddress,
                 phone: order.customerPhone,
               ),
@@ -250,8 +254,15 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              _buildItemRow('Fresh Veggies Bundle', 'x3', '₹300.00'),
-              _buildItemRow('Premium Fruits Assortment', 'x2', '₹320.00'),
+              if (order.items.isEmpty)
+                _buildItemRow('No items available', '-', '-')
+              else
+                for (final item in order.items)
+                  _buildItemRow(
+                    item.name,
+                    'x${item.quantity}',
+                    '₹${item.price.toStringAsFixed(2)}',
+                  ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.0),
                 child: Divider(color: DeliveryAppColors.border, height: 1),
@@ -304,7 +315,26 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
     required String title,
     required String address,
     required String phone,
+    String name = '',
   }) {
+    final cleanName = name.trim();
+    final cleanAddress = address.trim();
+    final cleanPhone = phone.trim();
+
+    final nameIsEmpty = cleanName.isEmpty;
+    final isDefaultAddress = cleanAddress.isEmpty || cleanAddress == 'Primary Address';
+
+    final displayName = nameIsEmpty
+        ? (title.contains('Drop') ? 'Customer' : 'Partner Store')
+        : cleanName;
+
+    final displayAddress = isDefaultAddress
+        ? (title.contains('Drop') ? 'Delivery Address' : 'Store Address')
+        : cleanAddress;
+
+    final showAddress = displayAddress.isNotEmpty &&
+        displayAddress.toLowerCase() != cleanName.toLowerCase();
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -327,18 +357,35 @@ class DeliveryOrderDetailsPageUi extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                address,
+                displayName,
                 style: DeliveryAppTypography.bodyMedium.copyWith(
                   color: DeliveryAppColors.textPrimary,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                'Contact: $phone',
-                style: DeliveryAppTypography.caption.copyWith(
-                  color: DeliveryAppColors.textDisabled,
+              if (showAddress) ...[
+                const SizedBox(height: 2),
+                Text(
+                  displayAddress,
+                  style: DeliveryAppTypography.bodyMedium.copyWith(
+                    color: isDefaultAddress
+                        ? DeliveryAppColors.textMuted
+                        : DeliveryAppColors.textPrimary,
+                    fontWeight: nameIsEmpty && isDefaultAddress
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
                 ),
-              ),
+              ],
+              if (cleanPhone.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Contact: $cleanPhone',
+                  style: DeliveryAppTypography.caption.copyWith(
+                    color: DeliveryAppColors.textMuted,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

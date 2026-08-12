@@ -16,10 +16,10 @@ void main() {
     test('initial state is idle with default values', () {
       final state = repo.currentState;
       expect(state.isOnline, true);
-      expect(state.walletBalance, 2450.50);
-      expect(state.pendingWithdrawal, 500.00);
-      expect(state.totalEarningsToday, 1280.00);
-      expect(state.completedOrdersCount, 14);
+      expect(state.walletBalance, 0.0);
+      expect(state.pendingWithdrawal, 0.0);
+      expect(state.totalEarningsToday, 0.0);
+      expect(state.completedOrdersCount, 0);
       expect(state.deliveryStage, ActiveDeliveryStage.idle);
       expect(state.activeOrderId, isNull);
     });
@@ -39,9 +39,10 @@ void main() {
     });
 
     test('processWithdrawal updates wallet and pending withdrawal', () {
+      repo.completeDelivery(deliveryFee: 250.00);
       repo.processWithdrawal(200.00);
-      expect(repo.currentState.walletBalance, 2250.50);
-      expect(repo.currentState.pendingWithdrawal, 700.00);
+      expect(repo.currentState.walletBalance, 50.00);
+      expect(repo.currentState.pendingWithdrawal, 200.00);
     });
 
     test('processWithdrawal with zero or negative amount does nothing', () {
@@ -75,7 +76,7 @@ void main() {
 
     group('State Machine Transitions', () {
       setUp(() {
-        repo.triggerIncomingOrder();
+        repo.triggerIncomingOrder(orderId: '#ORD001');
       });
 
       test('acceptOrder transitions to acceptedOrder', () {
@@ -102,7 +103,7 @@ void main() {
         final earningsBefore = repo.currentState.totalEarningsToday;
         final countBefore = repo.currentState.completedOrdersCount;
 
-        repo.completeDelivery();
+        repo.completeDelivery(deliveryFee: 107.5);
 
         final state = repo.currentState;
         expect(state.deliveryStage, ActiveDeliveryStage.deliveryCompleted);
@@ -135,7 +136,7 @@ void main() {
     test('full delivery lifecycle', () {
       expect(repo.currentState.deliveryStage, ActiveDeliveryStage.idle);
 
-      repo.triggerIncomingOrder();
+      repo.triggerIncomingOrder(orderId: '#ORD001');
       expect(repo.currentState.deliveryStage, ActiveDeliveryStage.incomingOrder);
 
       repo.acceptOrder();

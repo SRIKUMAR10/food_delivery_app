@@ -98,6 +98,12 @@ class _FakeNavigationService implements DeliveryNavigationServiceBase {
 
   @override
   Stream<double> simulateLiveLocation() => const Stream<double>.empty();
+
+  @override
+  Future<void> updateDriverLocation({
+    required double latitude,
+    required double longitude,
+  }) async {}
 }
 
 void main() {

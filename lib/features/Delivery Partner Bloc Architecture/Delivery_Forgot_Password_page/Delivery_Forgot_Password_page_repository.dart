@@ -110,7 +110,9 @@ class DeliveryForgotPasswordRepository
   }) async {
     final cleaned = phoneNumber.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
     final fullPhone = cleaned.startsWith('+') ? cleaned : '+91$cleaned';
-    final rawPhone = cleaned.startsWith('+91') ? cleaned.substring(3) : cleaned;
+    final withoutPrefix = cleaned.startsWith('+91')
+        ? cleaned.substring(3)
+        : (cleaned.startsWith('+') ? cleaned.substring(1) : cleaned);
 
     final credential = PhoneAuthProvider.credential(
       verificationId: verificationId,
@@ -121,6 +123,12 @@ class DeliveryForgotPasswordRepository
     final user = userCredential.user;
     if (user == null) {
       throw Exception('Failed to sign in with OTP.');
+    }
+
+    try {
+      await user.updatePassword(newPassword);
+    } catch (e) {
+      debugPrint('Warning: user.updatePassword exception: $e');
     }
 
     DeliveryPartnerModel? existingPartner;
@@ -134,23 +142,20 @@ class DeliveryForgotPasswordRepository
       } catch (_) {}
     }
 
-    if (existingPartner == null) {
-      await _auth.signOut();
-      throw Exception('Delivery partner account not found. Please sign up.');
-    }
-
-    try {
-      await user.updatePassword(newPassword);
-    } catch (e) {
-      debugPrint('Warning: user.updatePassword exception: $e');
-    }
+    final primaryEmail = existingPartner?.email ??
+        (user.email?.isNotEmpty == true
+            ? user.email!
+            : 'delivery_${withoutPrefix}@fooddelivery.com');
 
     final candidateEmails = <String>{
-      if (existingPartner.email != null && existingPartner.email!.trim().isNotEmpty)
+      primaryEmail,
+      if (existingPartner?.email != null && existingPartner!.email!.trim().isNotEmpty)
         existingPartner.email!.trim(),
-      '$fullPhone@delivery.app',
-      '$rawPhone@delivery.app',
       if (user.email != null && user.email!.trim().isNotEmpty) user.email!.trim(),
+      'delivery_${withoutPrefix}@fooddelivery.com',
+      'delivery_${cleaned}@fooddelivery.com',
+      'partner_${withoutPrefix}@fooddelivery.com',
+      '${withoutPrefix}@fooddelivery.com',
     };
 
     for (final email in candidateEmails) {
@@ -161,11 +166,38 @@ class DeliveryForgotPasswordRepository
         if (e.code == 'provider-already-linked' ||
             e.code == 'credential-already-in-use' ||
             e.code == 'email-already-in-use') {
-          // Credential exists; password updated via user.updatePassword
+          // Credential exists in Auth
         }
       } catch (e) {
         debugPrint('Warning: Candidate email link error for $email: $e');
       }
+    }
+
+    final now = DateTime.now();
+    final existingId = existingPartner?.id ?? user.uid;
+
+    final updatedPartner = DeliveryPartnerModel(
+      id: existingId,
+      phoneNumber: fullPhone,
+      countryCode: '+91',
+      displayName: existingPartner?.displayName ?? user.displayName ?? 'Delivery Partner',
+      email: primaryEmail,
+      role: 'delivery_partner',
+      status: 'approved',
+      isActive: true,
+      isVerified: true,
+      isPhoneVerified: true,
+      isEmailVerified: true,
+      profileCompletion: 100,
+      isOnline: true,
+      kycStatus: 'approved',
+      createdAt: existingPartner?.createdAt ?? now,
+      updatedAt: now,
+    );
+
+    await _partnerRepo.createDeliveryPartner(existingId, updatedPartner);
+    if (user.uid != existingId) {
+      await _partnerRepo.createDeliveryPartner(user.uid, updatedPartner.copyWith(id: user.uid));
     }
 
     await _auth.signOut();

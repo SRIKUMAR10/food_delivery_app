@@ -45,3 +45,13 @@ class ProfileSaved extends UserProfileEvent {
 class SignOutRequested extends UserProfileEvent {
   const SignOutRequested();
 }
+
+/// Internal event dispatched when the real-time Firestore profile stream updates.
+class _ProfileUpdatedInternal extends UserProfileEvent {
+  final UserProfile profile;
+
+  const _ProfileUpdatedInternal(this.profile);
+
+  @override
+  List<Object?> get props => [profile];
+}

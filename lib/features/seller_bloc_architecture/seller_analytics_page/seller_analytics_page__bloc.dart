@@ -1,3 +1,4 @@
+// Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/models/analytics_data_model.dart';
@@ -7,17 +8,20 @@ import 'seller_analytics_repository.dart';
 
 class SellerAnalyticsBloc extends Bloc<SellerAnalyticsEvent, SellerAnalyticsState> {
   final SellerAnalyticsRepository repository;
+  StreamSubscription<AnalyticsDataModel>? _analyticsSub;
   StreamSubscription<FavoritesAnalytics>? _favoritesSub;
   StreamSubscription<RatingAnalytics>? _reviewsSub;
 
   SellerAnalyticsBloc({required this.repository}) : super(AnalyticsInitial()) {
     on<LoadSellerAnalytics>(_onLoadSellerAnalytics);
+    on<_AnalyticsDataUpdated>(_onAnalyticsDataUpdated);
     on<_FavoritesUpdated>(_onFavoritesUpdated);
     on<_ReviewsUpdated>(_onReviewsUpdated);
   }
 
   @override
   Future<void> close() {
+    _analyticsSub?.cancel();
     _favoritesSub?.cancel();
     _reviewsSub?.cancel();
     return super.close();
@@ -29,16 +33,24 @@ class SellerAnalyticsBloc extends Bloc<SellerAnalyticsEvent, SellerAnalyticsStat
   ) async {
     emit(AnalyticsLoading());
     try {
+      await _analyticsSub?.cancel();
+      await _favoritesSub?.cancel();
+      await _reviewsSub?.cancel();
+
       final data = await repository.fetchAnalyticsData(event.sellerId, event.timeRange);
 
-      _favoritesSub?.cancel();
+      _analyticsSub = repository
+          .streamAnalyticsData(event.sellerId, event.timeRange)
+          .listen((liveData) {
+        if (!isClosed) add(_AnalyticsDataUpdated(liveData));
+      });
+
       _favoritesSub = repository
           .streamFavoritesAnalytics(event.sellerId)
           .listen((fav) {
         if (!isClosed) add(_FavoritesUpdated(fav));
       });
 
-      _reviewsSub?.cancel();
       _reviewsSub = repository
           .streamRatingAnalytics(event.sellerId)
           .listen((ratings) {
@@ -56,11 +68,25 @@ class SellerAnalyticsBloc extends Bloc<SellerAnalyticsEvent, SellerAnalyticsStat
         ));
       }
     } catch (e) {
+      _analyticsSub?.cancel();
       _favoritesSub?.cancel();
-      _favoritesSub = null;
       _reviewsSub?.cancel();
-      _reviewsSub = null;
       emit(AnalyticsError(message: e.toString()));
+    }
+  }
+
+  void _onAnalyticsDataUpdated(
+    _AnalyticsDataUpdated event,
+    Emitter<SellerAnalyticsState> emit,
+  ) {
+    if (state is AnalyticsLoaded) {
+      final loaded = state as AnalyticsLoaded;
+      emit(AnalyticsLoaded(
+        data: event.data,
+        selectedTimeRange: loaded.selectedTimeRange,
+        favorites: loaded.favorites,
+        ratingAnalytics: loaded.ratingAnalytics,
+      ));
     }
   }
 
@@ -98,6 +124,14 @@ class SellerAnalyticsBloc extends Bloc<SellerAnalyticsEvent, SellerAnalyticsStat
       ));
     }
   }
+}
+
+class _AnalyticsDataUpdated extends SellerAnalyticsEvent {
+  final AnalyticsDataModel data;
+  const _AnalyticsDataUpdated(this.data);
+
+  @override
+  List<Object?> get props => [data];
 }
 
 class _FavoritesUpdated extends SellerAnalyticsEvent {

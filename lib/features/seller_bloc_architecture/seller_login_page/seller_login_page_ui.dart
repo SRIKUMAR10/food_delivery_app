@@ -63,7 +63,8 @@ class _SellerLoginPageView extends StatelessWidget {
       child: Scaffold(
         backgroundColor: _AppColors.background,
         body: BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return AnimatedSwitcher(
               duration: const Duration(milliseconds: 350),
               transitionBuilder: (child, animation) {
@@ -397,7 +398,8 @@ class _LoginFormScreenState extends State<_LoginFormScreen>
           child: SlideTransition(
             position: _slideAnim,
             child: BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
-              builder: (context, state) {
+              buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                 return SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
@@ -676,7 +678,8 @@ class _EnterEmailPhoneScreen extends StatelessWidget {
     return _ResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -773,7 +776,8 @@ class _EnterPasswordScreen extends StatelessWidget {
     return _ResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -918,7 +922,8 @@ class _OtpVerificationScreenState extends State<_OtpVerificationScreen> {
     return _ResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             final email = state.emailOrPhone;
             final countdown = state.otpCountdown;
             return SingleChildScrollView(
@@ -1256,7 +1261,8 @@ class _ForgotPasswordScreen extends StatelessWidget {
     return _ResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
-          builder: (context, state) {
+          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(

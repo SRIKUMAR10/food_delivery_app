@@ -90,7 +90,8 @@ class _LowStockAlertViewState extends State<LowStockAlertView>
           ),
           bottomNavigationBar:
               BlocBuilder<LowStockAlertBloc, LowStockAlertState>(
-                builder: (context, state) {
+                buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
+            builder: (context, state) {
                   if (state is LowStockAlertLoaded) {
                     return _buildBottomButton(isDesktop);
                   }

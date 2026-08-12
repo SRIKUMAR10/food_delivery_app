@@ -143,7 +143,7 @@ void main() {
 
       expect(newOrder.canTransitionTo(OrderStatus.outForDelivery), isFalse);
       expect(newOrder.canTransitionTo(OrderStatus.ready), isFalse);
-      expect(newOrder.canTransitionTo(OrderStatus.preparing), isFalse);
+      expect(newOrder.canTransitionTo(OrderStatus.preparing), isTrue);
     });
   });
 

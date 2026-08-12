@@ -131,7 +131,7 @@ void main() {
         ),
         const DeliveryLoginPageState(
           phone: '9876543210',
-          password: 'password123',
+          password: '',
           isRememberMeChecked: true,
           status: DeliveryLoginStatus.success,
           isLoggedIn: true,

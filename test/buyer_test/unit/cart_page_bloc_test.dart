@@ -33,6 +33,7 @@ void main() {
 
       when(() => mockAuthService.currentUserId).thenReturn('test_uid');
       when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value('test_uid'));
+      when(() => mockAuthService.ensureTokenReady()).thenAnswer((_) async {});
       when(() => mockCartRepository.getCartItemsStream(any()))
           .thenAnswer((_) => const Stream.empty());
       when(() => mockCouponRepository.getActiveCouponsBySellers(any()))

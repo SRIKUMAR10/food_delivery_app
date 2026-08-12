@@ -16,6 +16,7 @@ void main() {
     setUp(() {
       mockAuthService = MockAuthService();
       when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream.value(null));
+      when(() => mockAuthService.currentUserId).thenReturn(null);
       onboardingPageBloc = OnboardingPageBloc(authService: mockAuthService);
     });
 
@@ -28,16 +29,19 @@ void main() {
     });
 
     blocTest<OnboardingPageBloc, OnboardingPageState>(
-      'emits OnboardingNavigateToHome when OnboardingGetStartedPressed(isWebLayout: true) is added',
+      'emits OnboardingNavigateToLogin when unauthenticated and OnboardingGetStartedPressed is added',
       build: () => onboardingPageBloc,
-      act: (bloc) => bloc.add(OnboardingGetStartedPressed(isWebLayout: true)),
-      expect: () => [isA<OnboardingNavigateToHome>()],
+      act: (bloc) => bloc.add(OnboardingGetStartedPressed(isWebLayout: false)),
+      expect: () => [isA<OnboardingNavigateToLogin>()],
     );
 
     blocTest<OnboardingPageBloc, OnboardingPageState>(
-      'emits OnboardingNavigateToHome when OnboardingGetStartedPressed(isWebLayout: false) is added',
+      'emits OnboardingNavigateToHome when authenticated and OnboardingGetStartedPressed is added',
+      setUp: () {
+        when(() => mockAuthService.currentUserId).thenReturn('test_user_id');
+      },
       build: () => onboardingPageBloc,
-      act: (bloc) => bloc.add(OnboardingGetStartedPressed(isWebLayout: false)),
+      act: (bloc) => bloc.add(OnboardingGetStartedPressed(isWebLayout: true)),
       expect: () => [isA<OnboardingNavigateToHome>()],
     );
   });

@@ -1,3 +1,5 @@
+// Real-Time BLoC Stream Binding Standardized
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'Delivery_Wallet_page_event.dart';
 import 'Delivery_Wallet_page_repository.dart';
@@ -8,6 +10,8 @@ class DeliveryWalletPageBloc
     extends Bloc<DeliveryWalletPageEvent, DeliveryWalletPageState> {
   final DeliveryWalletPageRepositoryBase repository;
   final DeliveryWalletPageServiceBase service;
+  StreamSubscription<DeliveryWalletPageState>? _walletSubscription;
+  StreamSubscription<List<DeliveryWalletTransaction>>? _transactionsSubscription;
 
   DeliveryWalletPageBloc({
     DeliveryWalletPageRepositoryBase? repository,
@@ -18,9 +22,20 @@ class DeliveryWalletPageBloc
     on<DeliveryWalletInitEvent>(_onInit);
     on<DeliveryWalletRefreshEvent>(_onRefresh);
     on<DeliveryWalletFilterTransactionsEvent>(_onFilterTransactions);
+    on<DeliveryWalletTransactionsUpdatedEvent>(_onTransactionsUpdated);
     on<DeliveryWalletWithdrawRequestedEvent>(_onWithdrawRequested);
     on<DeliveryWalletFilterPeriodChangedEvent>(_onFilterPeriodChanged);
     on<DeliveryWalletAddPaymentMethodEvent>(_onAddPaymentMethod);
+  }
+
+  void _subscribeTransactions(DeliveryWalletTransactionFilter filter) {
+    _transactionsSubscription?.cancel();
+    _transactionsSubscription = repository.watchTransactions(filter).listen(
+      (transactions) {
+        add(DeliveryWalletTransactionsUpdatedEvent(transactions));
+      },
+      onError: (_) {},
+    );
   }
 
   Future<void> _onInit(
@@ -29,8 +44,14 @@ class DeliveryWalletPageBloc
   ) async {
     emit(state.copyWith(status: DeliveryWalletStatus.loading));
     try {
+      await _walletSubscription?.cancel();
       final dataState = await repository.loadWalletData();
       emit(dataState);
+
+      _walletSubscription = repository.watchWalletData().listen((liveState) {
+        add(DeliveryWalletRefreshEvent());
+      });
+      _subscribeTransactions(state.activeFilter);
     } catch (e) {
       emit(
         state.copyWith(
@@ -39,6 +60,13 @@ class DeliveryWalletPageBloc
         ),
       );
     }
+  }
+
+  @override
+  Future<void> close() {
+    _walletSubscription?.cancel();
+    _transactionsSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onRefresh(
@@ -64,13 +92,17 @@ class DeliveryWalletPageBloc
     Emitter<DeliveryWalletPageState> emit,
   ) async {
     emit(state.copyWith(activeFilter: event.filter));
-    try {
-      final filtered = await repository.filterTransactions(event.filter);
-      emit(state.copyWith(activeFilter: event.filter, transactions: filtered));
-    } catch (_) {
-      // Local filtering fallback: keep the in-memory list but apply filter.
-      emit(state.copyWith(activeFilter: event.filter));
-    }
+    _subscribeTransactions(event.filter);
+  }
+
+  void _onTransactionsUpdated(
+    DeliveryWalletTransactionsUpdatedEvent event,
+    Emitter<DeliveryWalletPageState> emit,
+  ) {
+    emit(state.copyWith(
+      transactions: event.transactions,
+      activeFilter: state.activeFilter,
+    ));
   }
 
   Future<void> _onWithdrawRequested(

@@ -32,23 +32,23 @@ class DeliveryProfileBloc
       clearError: true,
     ));
     try {
-      final profile = await repository.fetchProfile();
-
-      if (profile.fullName.trim().isEmpty &&
-          profile.phone.trim().isEmpty &&
-          profile.email.trim().isEmpty) {
-        emit(profile.copyWith(
-          status: DeliveryProfileStatus.empty,
-        ));
-        return;
-      }
-
-      final merged = _recalculate(profile.copyWith(
-        status: DeliveryProfileStatus.loaded,
-        localeCode: state.localeCode,
-        clearError: true,
-      ));
-      emit(merged);
+      await emit.forEach<DeliveryProfileState>(
+        repository.watchProfile(),
+        onData: (profile) {
+          final merged = _recalculate(profile.copyWith(
+            status: profile.status,
+            localeCode: state.localeCode,
+            clearError: true,
+          ));
+          return merged;
+        },
+        onError: (error, stackTrace) {
+          return state.copyWith(
+            status: DeliveryProfileStatus.error,
+            errorMessage: error.toString().replaceAll('Exception: ', ''),
+          );
+        },
+      );
     } catch (e) {
       emit(state.copyWith(
         status: DeliveryProfileStatus.error,

@@ -27,6 +27,17 @@ void main() {
     performanceScore: 4.8,
     partnerName: 'Ravi Kumar',
     vehicleNumber: 'TN 01 AB 1234',
+    unreadNotificationCount: 3,
+    incomingSellerOrders: [
+      DeliveryActivityItem(
+        id: 'order_001',
+        time: '2:30 PM',
+        title: 'Incoming Order #ord00123',
+        subtitle: 'Green Mart',
+        details: '350.00',
+        statusType: 'seller_ready',
+      ),
+    ],
     recentActivities: [
       DeliveryActivityItem(
         id: 'act_1',
@@ -63,6 +74,7 @@ void main() {
 
   Widget buildPage() {
     return MaterialApp(
+      theme: ThemeData(useMaterial3: false),
       home: Scaffold(body: DeliveryDashboardPage(bloc: mockBloc)),
     );
   }
@@ -84,6 +96,54 @@ void main() {
       expect(find.text('05h 45m'), findsOneWidget);
       expect(find.text('92%'), findsOneWidget);
       expect(find.text('4.8 / 5.0'), findsOneWidget);
+    });
+
+    testWidgets('renders notification bell badge with unread count', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      final badge =
+          find.byKey(const Key('dp_dashboard_notification_badge'));
+      expect(badge, findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+    });
+
+    testWidgets('hides notification badge when count is zero', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(
+        loadedState.copyWith(unreadNotificationCount: 0),
+      );
+
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('dp_dashboard_notification_badge')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('notification bell is tappable and renders without crash', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      final bellButton =
+          find.byKey(const Key('dp_dashboard_notification_button'));
+      expect(bellButton, findsOneWidget);
+
+      await tester.tap(bellButton);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Notifications'), findsWidgets);
     });
 
     testWidgets('renders 2-column grid layout for metrics cards in mobile view', (
@@ -110,7 +170,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Recent Activity'), findsOneWidget);
-      expect(find.text('Order Delivered'), findsOneWidget);
+      expect(find.text('Order Delivered'), findsWidgets);
       expect(find.text('Active Zone Map'), findsOneWidget);
       expect(find.text('Quick Actions'), findsOneWidget);
       expect(find.text('Today Incentive Goal'), findsOneWidget);

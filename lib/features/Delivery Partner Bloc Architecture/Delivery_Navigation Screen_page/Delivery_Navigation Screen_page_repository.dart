@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'Delivery_Navigation Screen_page_service.dart';
 import 'Delivery_Navigation Screen_page_state.dart';
 
 abstract class DeliveryNavigationRepositoryBase {
@@ -23,34 +24,13 @@ class DeliveryNavigationRepository
   static const String _localeKey = 'dp_nav_locale';
 
   final SharedPreferences? _prefs;
+  final DeliveryNavigationServiceBase _service;
 
-  DeliveryNavigationRepository({SharedPreferences? prefs}) : _prefs = prefs;
-
-  static const DeliveryNavigationOrderSummary defaultOrder =
-      DeliveryNavigationOrderSummary(
-    orderId: '#ORD-789456',
-    pickupLabel: 'Reliance Digital Store',
-    pickupAddress: '23, Whites Road, Royapettah, Chennai',
-    dropLabel: 'Arun Kumar',
-    dropAddress: '45, 3rd Cross Street, Anna Nagar West, Chennai',
-    customerName: 'Arun Kumar',
-    customerPhone: '+91 98765 43210',
-    status: 'On the Way',
-  );
-
-  static const DeliveryNavigationRoutePoint defaultPickup =
-      DeliveryNavigationRoutePoint(
-    label: 'Pickup',
-    address: 'Reliance Digital Store, 23, Whites Road, Royapettah, Chennai',
-    iconKey: 'pickup',
-  );
-
-  static const DeliveryNavigationRoutePoint defaultDrop =
-      DeliveryNavigationRoutePoint(
-    label: 'Drop',
-    address: '45, 3rd Cross Street, Anna Nagar West, Chennai',
-    iconKey: 'drop',
-  );
+  DeliveryNavigationRepository({
+    SharedPreferences? prefs,
+    DeliveryNavigationServiceBase? service,
+  })  : _prefs = prefs,
+        _service = service ?? DeliveryNavigationService();
 
   Future<SharedPreferences?> _getPrefs() async {
     try {
@@ -60,22 +40,69 @@ class DeliveryNavigationRepository
     }
   }
 
+  Future<Map<String, dynamic>?> _fetchOrderData() async {
+    return await _service.fetchActiveOrder();
+  }
+
   @override
   Future<DeliveryNavigationOrderSummary> fetchOrderSummary() async {
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    return defaultOrder;
+    final data = await _fetchOrderData();
+    if (data == null) {
+      return const DeliveryNavigationOrderSummary(
+        orderId: '',
+        pickupLabel: 'No active order',
+        pickupAddress: '',
+        dropLabel: '',
+        dropAddress: '',
+        customerName: '',
+        customerPhone: '',
+        status: 'Idle',
+      );
+    }
+    return DeliveryNavigationOrderSummary(
+      orderId: '#${(data['orderId'] ?? '').length > 5 ? (data['orderId'] as String).substring(0, 5) : data['orderId']}',
+      pickupLabel: data['sellerName'] as String? ?? 'Restaurant',
+      pickupAddress: data['sellerAddress'] as String? ?? '',
+      dropLabel: data['customerName'] as String? ?? 'Customer',
+      dropAddress: data['deliveryAddress'] as String? ?? '',
+      customerName: data['customerName'] as String? ?? '',
+      customerPhone: data['customerPhone'] as String? ?? '',
+      status: data['status'] as String? ?? 'Idle',
+    );
   }
 
   @override
   Future<DeliveryNavigationRoutePoint> fetchPickup() async {
-    await Future<void>.delayed(const Duration(milliseconds: 60));
-    return defaultPickup;
+    final data = await _fetchOrderData();
+    if (data == null) {
+      return const DeliveryNavigationRoutePoint(
+        label: 'Pickup',
+        address: '',
+        iconKey: 'pickup',
+      );
+    }
+    return DeliveryNavigationRoutePoint(
+      label: 'Pickup',
+      address: data['sellerName'] as String? ?? 'Restaurant',
+      iconKey: 'pickup',
+    );
   }
 
   @override
   Future<DeliveryNavigationRoutePoint> fetchDrop() async {
-    await Future<void>.delayed(const Duration(milliseconds: 60));
-    return defaultDrop;
+    final data = await _fetchOrderData();
+    if (data == null) {
+      return const DeliveryNavigationRoutePoint(
+        label: 'Drop',
+        address: '',
+        iconKey: 'drop',
+      );
+    }
+    return DeliveryNavigationRoutePoint(
+      label: 'Drop',
+      address: data['deliveryAddress'] as String? ?? '',
+      iconKey: 'drop',
+    );
   }
 
   @override

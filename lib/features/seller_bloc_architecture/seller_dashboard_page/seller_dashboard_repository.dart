@@ -32,7 +32,7 @@ class FirebaseSellerDashboardRepository implements SellerDashboardRepository {
         lowStockCount: 0,
         activeProductsCount: 0,
         todaysOrders: [],
-        storeName: 'Picarhub',
+        storeName: '',
       ));
     }
 
@@ -61,11 +61,13 @@ class FirebaseSellerDashboardRepository implements SellerDashboardRepository {
       productsStream,
       sellerStream,
       (QuerySnapshot ordersSnapshot, QuerySnapshot productsSnapshot, DocumentSnapshot sellerSnapshot) {
-        String storeName = 'Picarhub';
+        String storeName = '';
         if (sellerSnapshot.exists) {
           final sellerData = sellerSnapshot.data() as Map<String, dynamic>?;
           if (sellerData != null) {
-            storeName = sellerData['shopName'] ?? (sellerData['name']?.toString().isNotEmpty == true ? sellerData['name'] : 'Picarhub Restaurant');
+            storeName = (sellerData['shopName'] as String?)
+                ?? (sellerData['name'] as String?)
+                ?? '';
           }
         }
 
@@ -110,9 +112,14 @@ class FirebaseSellerDashboardRepository implements SellerDashboardRepository {
               }
             }
 
+            String cId = data['customerId'] ?? data['buyerId'] ?? data['userId'] ?? data['customer_id'] ?? '';
+            String cName = data['customerName'] ?? data['buyerName'] ?? data['userName'] ?? data['name'] ?? data['customer_name'] ?? 'Customer';
+
             todaysOrders.add(DashboardOrder(
               id: doc.id,
-              customerName: data['customerName'] ?? 'Unknown',
+              fullOrderId: doc.id,
+              customerId: cId,
+              customerName: cName,
               status: status,
               price: (data['amount'] ?? 0.0).toDouble(),
               timeAgo: timeAgo,
@@ -170,9 +177,14 @@ class FirebaseSellerDashboardRepository implements SellerDashboardRepository {
              timeAgo = '${diff.inDays} days ago';
            }
 
+           String cId = data['customerId'] ?? data['buyerId'] ?? data['userId'] ?? data['customer_id'] ?? '';
+           String cName = data['customerName'] ?? data['buyerName'] ?? data['userName'] ?? data['name'] ?? data['customer_name'] ?? 'Customer';
+
            return DashboardOrder(
              id: doc.id.length > 5 ? '#${doc.id.substring(0, 5)}' : '#${doc.id}',
-             customerName: data['customerName'] ?? 'Unknown',
+             fullOrderId: doc.id,
+             customerId: cId,
+             customerName: cName,
              status: status,
              price: (data['amount'] ?? 0.0).toDouble(),
              timeAgo: timeAgo,
@@ -217,48 +229,5 @@ class FirebaseSellerDashboardRepository implements SellerDashboardRepository {
   @override
   Future<DashboardData> getDashboardData() async {
     return await getDashboardDataStream().first;
-  }
-}
-
-class MockSellerDashboardRepository implements SellerDashboardRepository {
-  @override
-  Stream<DashboardData> getDashboardDataStream() async* {
-    await Future.delayed(const Duration(milliseconds: 800));
-    yield _getMockData();
-  }
-
-  @override
-  Future<DashboardData> getDashboardData() async {
-    await Future.delayed(const Duration(milliseconds: 800));
-    return _getMockData();
-  }
-
-  DashboardData _getMockData() {
-    return const DashboardData(
-      revenueToday: 45600.0,
-      revenueChangePercentage: 12.5,
-      pendingOrdersCount: 26,
-      newOrdersCount: 1,
-      todaysOrdersCount: 128,
-      lowStockCount: 8,
-      activeProductsCount: 145,
-      todaysOrders: [
-        DashboardOrder(
-          id: '#11024',
-          customerName: 'John Doe',
-          status: 'New',
-          price: 660.0,
-          timeAgo: '10 min ago',
-        ),
-        DashboardOrder(
-          id: '#11023',
-          customerName: 'Jane Smith',
-          status: 'Preparing',
-          price: 450.0,
-          timeAgo: '30 min ago',
-        ),
-      ],
-      storeName: 'Picarhub',
-    );
   }
 }

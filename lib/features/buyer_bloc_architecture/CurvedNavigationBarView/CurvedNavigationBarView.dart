@@ -9,6 +9,7 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buyer_chat_ui.dart';
@@ -18,6 +19,7 @@ import '../WalletScreen/WalletScreen_UI.dart';
 import '../Cart%20Page/cart_page_UI.dart';
 
 import '../home_Page/home_Page_UI.dart';
+import '../buyer_login_page/buyer_login_page_ui.dart';
 
 class CurvedNavigationBarView extends StatefulWidget {
   static final supportNavigation =
@@ -60,23 +62,23 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
     _tabNavigators = [
       _buildTabNavigator(
         0,
-        HomePage(onNavigateToCart: _navigateToCart),
+        () => HomePage(onNavigateToCart: _navigateToCart),
       ),
-      _buildTabNavigator(1, const WalletScreen_UI()),
+      _buildTabNavigator(1, () => const WalletScreen_UI()),
       _buildTabNavigator(
         2,
-        CartPageUI(
+        () => CartPageUI(
           onNavigateToOrders: _navigateToOrders,
           onNavigateToWallet: _navigateToWallet,
         ),
       ),
       _buildTabNavigator(
         3,
-        OrderPageUI(orderRepository: context.read<IOrderRepository>()),
+        () => OrderPageUI(orderRepository: context.read<IOrderRepository>()),
       ),
       _buildTabNavigator(
         4,
-        BuyerChatPage(pendingOrderData: _pendingSupportData),
+        () => BuyerChatPage(pendingOrderData: _pendingSupportData),
       ),
     ];
   }
@@ -97,11 +99,6 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
             builder: (context) => BuyerChatPage(pendingOrderData: data),
           ),
           (route) => false,
-        );
-      } else {
-        _tabNavigators[4] = _buildTabNavigator(
-          4,
-          BuyerChatPage(pendingOrderData: data),
         );
       }
       
@@ -145,6 +142,25 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
     setState(() => _selectedIndex = 3);
   }
 
+  void _navigateToLogin() {
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(
+        builder: (_) => const BuyerLoginPageUI(),
+      ),
+    );
+  }
+
+  void _onTabSelected(int index) {
+    if (!mounted) return;
+    final isLoggedIn = context.read<IAuthService>().currentUserId != null;
+    if (!isLoggedIn && (index == 1 || index == 3 || index == 4)) {
+      _navigateToLogin();
+      return;
+    }
+    setState(() => _selectedIndex = index);
+  }
+
   Widget _buildBody() {
     return IndexedStack(
       index: _selectedIndex,
@@ -152,11 +168,11 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
     );
   }
 
-  Widget _buildTabNavigator(int index, Widget page) {
+  Widget _buildTabNavigator(int index, Widget Function() pageBuilder) {
     return Navigator(
       key: _navigatorKeys[index],
       onGenerateRoute: (routeSettings) {
-        return MaterialPageRoute(builder: (context) => page);
+        return MaterialPageRoute(builder: (context) => pageBuilder());
       },
     );
   }
@@ -206,8 +222,7 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
               ),
               child: NavigationRail(
                 selectedIndex: _selectedIndex,
-                onDestinationSelected: (index) =>
-                    setState(() => _selectedIndex = index),
+                onDestinationSelected: _onTabSelected,
                 labelType: NavigationRailLabelType.all,
                 backgroundColor: Colors.white,
                 selectedIconTheme: const IconThemeData(
@@ -306,7 +321,7 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
         backgroundColor: const Color(0xFFFBF5F5),
         animationCurve: Curves.easeInOut,
         animationDuration: const Duration(milliseconds: 300),
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: _onTabSelected,
       ),
     );
   }

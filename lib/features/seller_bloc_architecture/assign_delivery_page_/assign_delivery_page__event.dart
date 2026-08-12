@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'assign_delivery_page__state.dart';
 
 abstract class AssignDeliveryEvent extends Equatable {
   const AssignDeliveryEvent();
@@ -32,6 +33,15 @@ class UpdateInstructionsEvent extends AssignDeliveryEvent {
 
   @override
   List<Object?> get props => [instructions];
+}
+
+class RidersUpdatedEvent extends AssignDeliveryEvent {
+  final List<RiderModel> riders;
+
+  const RidersUpdatedEvent({required this.riders});
+
+  @override
+  List<Object?> get props => [riders];
 }
 
 class SubmitAssignDeliveryEvent extends AssignDeliveryEvent {

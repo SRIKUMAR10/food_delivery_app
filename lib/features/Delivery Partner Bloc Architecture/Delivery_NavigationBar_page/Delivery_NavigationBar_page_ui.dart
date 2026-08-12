@@ -17,6 +17,7 @@ import '../Delivery_Settings_page/Delivery_Settings_page_ui.dart';
 import '../Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_ui.dart';
 import '../Delivery_Pickup Confirmation_page/Delivery_Pickup Confirmation_page_ui.dart';
 import '../Delivery_Delivery Completed_page/Delivery_Delivery Completed_page_ui.dart';
+import '../Delivery_Help_Support_page/Delivery_Help_Support_page_ui.dart';
 import '../../../core/repositories/delivery_active_order_session_repository.dart';
 import '../../../core/theme/delivery_design_system.dart';
 import '../auto_hide_app_bar_wrapper.dart';
@@ -838,6 +839,8 @@ class _ContentArea extends StatelessWidget {
                         return const DeliveryOrderHistoryPage();
                       case 'settings':
                         return const DeliverySettingsPage();
+                      case 'help':
+                        return const DeliveryHelpSupportPage();
                       case 'profile':
                         return const DeliveryProfilePage();
                       default:

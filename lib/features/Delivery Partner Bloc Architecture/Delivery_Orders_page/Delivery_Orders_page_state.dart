@@ -144,6 +144,12 @@ class DeliveryOrdersPageState extends Equatable {
   int get cancelledCount =>
       orders.where((o) => o.status == DeliveryOrderStatus.cancelled).length;
 
+  int get acceptanceRate {
+    final nonCancelled = totalCount - cancelledCount;
+    if (totalCount == 0) return 0;
+    return ((nonCancelled / totalCount) * 100).round();
+  }
+
   int get averageDeliveryTimeMins {
     if (orders.isEmpty) return 0;
     final total =

@@ -85,8 +85,8 @@ void main() {
       'emits [loading, loaded] on DeliveryOrdersInitEvent success',
       build: () {
         when(
-          () => mockRepository.fetchOrders(),
-        ).thenAnswer((_) async => sampleOrders);
+          () => mockRepository.watchOrders(),
+        ).thenAnswer((_) => Stream.value(sampleOrders));
         return buildBloc();
       },
       act: (bloc) => bloc.add(const DeliveryOrdersInitEvent()),
@@ -99,7 +99,7 @@ void main() {
         ),
       ],
       verify: (_) {
-        verify(() => mockRepository.fetchOrders()).called(1);
+        verify(() => mockRepository.watchOrders()).called(1);
       },
     );
 
@@ -107,8 +107,10 @@ void main() {
       'emits [loading, empty] when there are no orders',
       build: () {
         when(
-          () => mockRepository.fetchOrders(),
-        ).thenAnswer((_) async => const <DeliveryOrderCardModel>[]);
+          () => mockRepository.watchOrders(),
+        ).thenAnswer(
+          (_) => Stream.value(const <DeliveryOrderCardModel>[]),
+        );
         return buildBloc();
       },
       act: (bloc) => bloc.add(const DeliveryOrdersInitEvent()),
@@ -122,8 +124,10 @@ void main() {
       'emits [loading, error] when initialization fails',
       build: () {
         when(
-          () => mockRepository.fetchOrders(),
-        ).thenThrow(Exception('Database offline'));
+          () => mockRepository.watchOrders(),
+        ).thenAnswer(
+          (_) => Stream.error(Exception('Database offline')),
+        );
         return buildBloc();
       },
       act: (bloc) => bloc.add(const DeliveryOrdersInitEvent()),

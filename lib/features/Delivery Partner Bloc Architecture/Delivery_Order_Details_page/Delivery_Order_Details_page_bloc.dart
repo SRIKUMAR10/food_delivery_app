@@ -23,11 +23,27 @@ class DeliveryOrderDetailsPageBloc
   ) async {
     emit(state.copyWith(status: OrderDetailsStatus.loading));
     try {
-      final order = await repository.fetchOrderDetails(event.orderId);
-      emit(state.copyWith(
-        status: OrderDetailsStatus.success,
-        order: order,
-      ));
+      await emit.forEach<OrderModel>(
+        repository.watchOrderDetails(event.orderId),
+        onData: (order) {
+          if (order.id.trim().isEmpty) {
+            return state.copyWith(
+              status: OrderDetailsStatus.error,
+              errorMessage: 'Order not found or could not be loaded.',
+            );
+          }
+          return state.copyWith(
+            status: OrderDetailsStatus.success,
+            order: order,
+          );
+        },
+        onError: (error, stackTrace) {
+          return state.copyWith(
+            status: OrderDetailsStatus.error,
+            errorMessage: error.toString(),
+          );
+        },
+      );
     } catch (e) {
       emit(state.copyWith(
         status: OrderDetailsStatus.error,

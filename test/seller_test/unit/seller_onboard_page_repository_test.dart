@@ -37,11 +37,8 @@ void main() {
         () => mockRepository.onboardSeller(),
       ).thenThrow(Exception('Failed to onboard'));
 
-      // Act
-      final call = mockRepository.onboardSeller;
-
-      // Assert
-      expect(call(), throwsA(isA<Exception>()));
+      // Act & Assert
+      expect(() => mockRepository.onboardSeller(), throwsA(isA<Exception>()));
     });
   });
 }

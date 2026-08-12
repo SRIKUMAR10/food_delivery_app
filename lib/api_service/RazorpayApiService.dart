@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,16 +9,18 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// [RazorpayApiService] handles all direct communication with the Razorpay REST API.
 class RazorpayApiService {
   // Razorpay Key loaded from .env
-  static String get apiKey => dotenv.env['RAZORPAY_API_KEY'] ?? "MISSING_API_KEY";
+  static String get apiKey => dotenv.maybeGet('RAZORPAY_API_KEY') ?? "MISSING_API_KEY";
 
   // Do NOT keep apiSecret inside Flutter app.
   // Keep apiSecret only in backend / Firebase Cloud Functions.
   final String? apiSecret;
 
-  late Razorpay _razorpay;
+  Razorpay? _razorpay;
 
   RazorpayApiService({this.apiSecret}) {
-    _razorpay = Razorpay();
+    if (!kIsWeb) {
+      _razorpay = Razorpay();
+    }
   }
 
   /// Method to initialize Razorpay event listeners
@@ -25,8 +28,10 @@ class RazorpayApiService {
     required Function(PaymentSuccessResponse) onSuccess,
     required Function(PaymentFailureResponse) onFailure,
   }) {
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, onSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, onFailure);
+    if (!kIsWeb && _razorpay != null) {
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, onSuccess);
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, onFailure);
+    }
   }
 
   /// Centralized method to start Payment
@@ -37,6 +42,10 @@ class RazorpayApiService {
     String name = 'Food Delivery App',
     String description = 'Wallet Top-up',
   }) {
+    if (kIsWeb) {
+      debugPrint('Razorpay native checkout is not supported on Web platform.');
+      return;
+    }
     var options = <String, dynamic>{
       'key': apiKey,
       'amount': (amount * 100).toInt(), // Razorpay expects amount in paise
@@ -49,7 +58,7 @@ class RazorpayApiService {
       options['order_id'] = orderId;
     }
 
-    _razorpay.open(options);
+    _razorpay?.open(options);
   }
 
   /// Creates a secure Razorpay Payment Link via Firebase Cloud Functions.
@@ -92,7 +101,9 @@ class RazorpayApiService {
 
   /// Method to release resources
   void dispose() {
-    _razorpay.clear();
+    if (!kIsWeb && _razorpay != null) {
+      _razorpay!.clear();
+    }
   }
 
   /// Creates a new Order safely via Firebase Cloud Functions.

@@ -22,10 +22,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider<OverallRatingBloc>.value(
-          value: mockBloc,
-          child: const OverallRatingPage(),
-        ),
+        home: OverallRatingPage(bloc: mockBloc),
       ),
     );
 

@@ -77,6 +77,8 @@ void main() {
     mockPartnerRepo = MockDeliveryPartnerRepository();
     mockUser = MockUser();
 
+    when(() => mockUser.uid).thenReturn('uid123');
+
     bloc = DeliveryNavigationBarPageBloc(
       repository: mockRepository,
       service: mockService,

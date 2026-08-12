@@ -11,20 +11,22 @@ class FirebaseFavoritesRepository implements IFavoritesRepository {
 
   @override
   Stream<List<FavoriteItem>> getFavoritesStream(String userId) {
+    if (userId.isEmpty) return Stream.value([]);
     return firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(userId)
         .collection('favorites')
         .orderBy('addedAt', descending: true)
         .snapshots(includeMetadataChanges: true)
         .map((snapshot) =>
-            snapshot.docs.map((doc) => FavoriteItem.fromFirestore(doc)).toList());
+            snapshot.docs.map((doc) => FavoriteItem.fromFirestore(doc)).toList())
+        .handleError((_) => <FavoriteItem>[]);
   }
 
   @override
   Future<bool> isFavorite(String userId, String itemId) async {
     final doc = await firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(userId)
         .collection('favorites')
         .doc(itemId)
@@ -35,7 +37,7 @@ class FirebaseFavoritesRepository implements IFavoritesRepository {
   @override
   Future<void> toggleFavorite(String userId, FavoriteItem item) async {
     final docRef = firestore
-        .collection('users')
+        .collection('buyer_user')
         .doc(userId)
         .collection('favorites')
         .doc(item.id);
@@ -45,7 +47,8 @@ class FirebaseFavoritesRepository implements IFavoritesRepository {
     if (docSnapshot.exists) {
       await docRef.delete();
     } else {
-      await docRef.set(item.toMap());
+      final data = item.toMap();
+      await docRef.set(data);
     }
   }
 }

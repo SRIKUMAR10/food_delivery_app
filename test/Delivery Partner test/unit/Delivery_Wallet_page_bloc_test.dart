@@ -107,6 +107,7 @@ void main() {
   setUp(() {
     mockRepository = MockDeliveryWalletPageRepository();
     mockService = MockDeliveryWalletPageService();
+    when(() => mockRepository.watchWalletData()).thenAnswer((_) => const Stream.empty());
   });
 
   group('DeliveryWalletPageBloc Unit Tests', () {
@@ -117,10 +118,10 @@ void main() {
       );
 
       expect(bloc.state.status, DeliveryWalletStatus.initial);
-      expect(bloc.state.walletBalance, 24580.50);
-      expect(bloc.state.totalEarnings, 128450.00);
-      expect(bloc.state.totalWithdrawn, 89450.00);
-      expect(bloc.state.bonusEarnings, 12500.00);
+      expect(bloc.state.walletBalance, 0.0);
+      expect(bloc.state.totalEarnings, 0.0);
+      expect(bloc.state.totalWithdrawn, 0.0);
+      expect(bloc.state.bonusEarnings, 0.0);
       expect(bloc.state.activeFilter, DeliveryWalletTransactionFilter.all);
       expect(bloc.state.selectedPeriod, DeliveryWalletPeriod.thisMonth);
       expect(bloc.state.transactions, isEmpty);

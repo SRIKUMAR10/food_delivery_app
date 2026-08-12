@@ -84,11 +84,11 @@ void main() {
       expect(model.walletBalance, 0.0);
       expect(model.distanceCovered, 0.0);
       expect(model.deliveryEarnings, 0.0);
-      expect(model.customerRating, 5.0);
-      expect(model.paymentStatus, 'Paid Successfully');
+      expect(model.customerRating, 0.0);
+      expect(model.paymentStatus, isEmpty);
     });
 
-    test('uses default order id when raw payload omits it', () async {
+    test('uses an empty order id when raw payload omits it', () async {
       when(
         () => mockService.fetchCompletedOrderData(any()),
       ).thenAnswer((_) async => <String, dynamic>{});
@@ -96,7 +96,7 @@ void main() {
       final repository = DeliveryCompletedRepository(service: mockService);
       final model = await repository.fetchCompletedOrderDetails('');
 
-      expect(model.orderId, '#ORD12345');
+      expect(model.orderId, isEmpty);
     });
   });
 }

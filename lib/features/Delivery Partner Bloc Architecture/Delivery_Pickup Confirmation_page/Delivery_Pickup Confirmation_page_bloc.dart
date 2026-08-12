@@ -35,6 +35,13 @@ class DeliveryPickupConfirmationPageBloc
     try {
       final model =
           await repository.fetchPickupConfirmationDetails(event.orderId);
+      if (model.orderId.trim().isEmpty) {
+        emit(state.copyWith(
+          status: PickupConfirmationStatus.error,
+          errorMessage: 'Order not found or could not be loaded.',
+        ));
+        return;
+      }
       emit(state.copyWith(
         status: PickupConfirmationStatus.success,
         model: model,

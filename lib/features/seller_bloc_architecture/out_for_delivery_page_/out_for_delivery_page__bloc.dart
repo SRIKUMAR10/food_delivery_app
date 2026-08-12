@@ -13,57 +13,110 @@ class OutForDeliveryRepository {
   Stream<OutForDeliveryPageData> streamDeliveryDetails(String orderId) {
     return _firestore.collection('orders').doc(orderId).snapshots().asyncMap((orderDoc) async {
       if (!orderDoc.exists) {
-        throw Exception('Order not found');
+        return OutForDeliveryPageData(
+          orderId: orderId,
+          rider: const RiderDetails(
+            id: '',
+            name: 'Assigning Rider...',
+            phone: '',
+            imageUrl: '',
+            rating: 5.0,
+          ),
+          currentStatus: DeliveryStatus.outForDelivery,
+          riderLat: null,
+          riderLng: null,
+        );
       }
       final orderData = orderDoc.data() as Map<String, dynamic>;
-      final riderId = orderData['riderId'] as String?;
+      final riderId = orderData['riderId'] as String? ??
+          orderData['deliveryPartnerId'] as String? ??
+          orderData['driverId'] as String?;
 
-      if (riderId == null) {
-        throw Exception('No rider assigned yet');
-      }
+      RiderDetails rider = const RiderDetails(
+        id: '',
+        name: 'Delivery Partner',
+        phone: '',
+        imageUrl: '',
+        rating: 4.8,
+      );
 
-      final riderDoc = await _firestore.collection('riders').doc(riderId).get();
-      if (!riderDoc.exists) {
-        throw Exception('Rider not found');
+      if (riderId != null && riderId.isNotEmpty) {
+        try {
+          final riderDoc = await _firestore.collection('riders').doc(riderId).get();
+          if (riderDoc.exists) {
+            final riderData = riderDoc.data()!;
+            rider = RiderDetails(
+              id: riderDoc.id,
+              name: riderData['name'] as String? ?? 'Delivery Partner',
+              phone: riderData['phone'] as String? ?? '',
+              imageUrl: riderData['imageUrl'] as String? ?? '',
+              rating: (riderData['rating'] as num?)?.toDouble() ?? 4.8,
+            );
+          } else {
+            final partnerDoc = await _firestore.collection('delivery_partners').doc(riderId).get();
+            if (partnerDoc.exists) {
+              final pData = partnerDoc.data()!;
+              rider = RiderDetails(
+                id: partnerDoc.id,
+                name: pData['fullName'] as String? ?? pData['name'] as String? ?? 'Delivery Partner',
+                phone: pData['phoneNumber'] as String? ?? pData['phone'] as String? ?? '',
+                imageUrl: pData['profilePicUrl'] as String? ?? pData['imageUrl'] as String? ?? '',
+                rating: (pData['rating'] as num?)?.toDouble() ?? 4.8,
+              );
+            }
+          }
+        } catch (_) {}
       }
-      final riderData = riderDoc.data() as Map<String, dynamic>;
 
       final statusStr = orderData['status'] as String? ?? 'OutForDelivery';
       DeliveryStatus status;
-      switch (statusStr) {
-        case 'Accepted':
+      switch (statusStr.toLowerCase()) {
+        case 'accepted':
           status = DeliveryStatus.orderAccepted;
           break;
-        case 'Preparing':
+        case 'preparing':
           status = DeliveryStatus.preparing;
           break;
-        case 'Ready':
+        case 'ready':
+        case 'readyforpickup':
+        case 'ready_for_pickup':
           status = DeliveryStatus.readyForPickup;
           break;
-        case 'OutForDelivery':
+        case 'outfordelivery':
+        case 'active':
+        case 'on_the_way':
           status = DeliveryStatus.outForDelivery;
           break;
-        case 'Delivered':
+        case 'delivered':
+        case 'completed':
           status = DeliveryStatus.delivered;
           break;
         default:
           status = DeliveryStatus.outForDelivery;
       }
 
-      final rider = RiderDetails(
-        id: riderDoc.id,
-        name: riderData['name'] as String? ?? 'Unknown Rider',
-        phone: riderData['phone'] as String? ?? '',
-        imageUrl: riderData['imageUrl'] as String? ?? '',
-        rating: (riderData['rating'] as num?)?.toDouble() ?? 0.0,
-      );
-
-      final currentLocation = riderData['currentLocation'] as Map<String, dynamic>?;
+      final currentLocation = orderData['currentLocation'] as Map<String, dynamic>?;
       double? riderLat;
       double? riderLng;
       if (currentLocation != null) {
         riderLat = (currentLocation['lat'] as num?)?.toDouble();
         riderLng = (currentLocation['lng'] as num?)?.toDouble();
+      }
+
+      if ((riderLat == null || riderLng == null) && riderId != null && riderId.isNotEmpty) {
+        try {
+          final pDoc = await _firestore.collection('delivery_partners').doc(riderId).get();
+          if (pDoc.exists && pDoc.data() != null) {
+            final loc = pDoc.data()!['currentLocation'];
+            if (loc is Map<String, dynamic>) {
+              riderLat = (loc['lat'] as num?)?.toDouble();
+              riderLng = (loc['lng'] as num?)?.toDouble();
+            } else if (loc is GeoPoint) {
+              riderLat = loc.latitude;
+              riderLng = loc.longitude;
+            }
+          }
+        } catch (_) {}
       }
 
       return OutForDeliveryPageData(
@@ -77,24 +130,32 @@ class OutForDeliveryRepository {
   }
 
   Future<RiderDetails> fetchRiderDetails(String riderId) async {
-    final riderDoc = await _firestore.collection('riders').doc(riderId).get();
-    if (!riderDoc.exists) {
-      throw Exception('Rider not found');
-    }
-    final data = riderDoc.data() as Map<String, dynamic>;
-    return RiderDetails(
-      id: riderDoc.id,
-      name: data['name'] as String? ?? 'Unknown Rider',
-      phone: data['phone'] as String? ?? '',
-      imageUrl: data['imageUrl'] as String? ?? '',
-      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
+    try {
+      final riderDoc = await _firestore.collection('riders').doc(riderId).get();
+      if (riderDoc.exists) {
+        final data = riderDoc.data()!;
+        return RiderDetails(
+          id: riderDoc.id,
+          name: data['name'] as String? ?? 'Delivery Partner',
+          phone: data['phone'] as String? ?? '',
+          imageUrl: data['imageUrl'] as String? ?? '',
+          rating: (data['rating'] as num?)?.toDouble() ?? 4.8,
+        );
+      }
+    } catch (_) {}
+
+    return const RiderDetails(
+      id: '',
+      name: 'Delivery Partner',
+      phone: '',
+      imageUrl: '',
+      rating: 4.8,
     );
   }
 }
 
 class OutForDeliveryPageBloc extends Bloc<OutForDeliveryPageEvent, OutForDeliveryPageState> {
   final OutForDeliveryRepository repository;
-  StreamSubscription? _deliverySubscription;
 
   OutForDeliveryPageBloc({required this.repository}) : super(OutForDeliveryPageInitial()) {
     on<FetchDeliveryDetails>(_onFetchDeliveryDetails);
@@ -106,11 +167,11 @@ class OutForDeliveryPageBloc extends Bloc<OutForDeliveryPageEvent, OutForDeliver
       FetchDeliveryDetails event, Emitter<OutForDeliveryPageState> emit) async {
     emit(OutForDeliveryPageLoading());
     try {
-      _deliverySubscription?.cancel();
-      _deliverySubscription = repository.streamDeliveryDetails(event.orderId).listen(
-        (data) {
+      await emit.forEach<OutForDeliveryPageData>(
+        repository.streamDeliveryDetails(event.orderId),
+        onData: (data) {
           final isLive = data.riderLat != null && data.riderLng != null;
-          emit(OutForDeliveryPageLoaded(
+          return OutForDeliveryPageLoaded(
             orderId: data.orderId,
             rider: data.rider,
             currentStatus: data.currentStatus,
@@ -118,30 +179,20 @@ class OutForDeliveryPageBloc extends Bloc<OutForDeliveryPageEvent, OutForDeliver
             distance: isLive
                 ? '${data.riderLat!.toStringAsFixed(4)}, ${data.riderLng!.toStringAsFixed(4)}'
                 : 'Location available',
-          ));
+          );
         },
-        onError: (error) {
-          emit(OutForDeliveryPageError(message: 'Failed to load delivery details.'));
+        onError: (error, stackTrace) {
+          return const OutForDeliveryPageError(message: 'Failed to load delivery details.');
         },
       );
     } catch (e) {
-      emit(OutForDeliveryPageError(message: 'Failed to load delivery details.'));
+      emit(const OutForDeliveryPageError(message: 'Failed to load delivery details.'));
     }
   }
 
-  Future<void> _onCallRider(CallRider event, Emitter<OutForDeliveryPageState> emit) async {
-    // Implement phone call logic (e.g., using url_launcher)
-  }
+  Future<void> _onCallRider(CallRider event, Emitter<OutForDeliveryPageState> emit) async {}
 
-  Future<void> _onMessageRider(MessageRider event, Emitter<OutForDeliveryPageState> emit) async {
-    // Implement messaging logic
-  }
-
-  @override
-  Future<void> close() {
-    _deliverySubscription?.cancel();
-    return super.close();
-  }
+  Future<void> _onMessageRider(MessageRider event, Emitter<OutForDeliveryPageState> emit) async {}
 }
 
 class OutForDeliveryPageData {

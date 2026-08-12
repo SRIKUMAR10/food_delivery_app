@@ -42,6 +42,8 @@ void main() {
 
   const DeliveryDashboardState loadedState = DeliveryDashboardState(
     status: DeliveryDashboardStatus.loaded,
+    isOnline: true,
+    selectedFilter: 'All',
   );
 
   setUpAll(() {
@@ -59,6 +61,7 @@ void main() {
   setUp(() {
     mockBloc = MockDeliveryDashboardPageBloc();
     when(() => mockBloc.state).thenReturn(loadedState);
+    when(() => mockBloc.stream).thenAnswer((_) => Stream.value(loadedState));
   });
 
   void setDesktopSize(WidgetTester tester) {
@@ -94,38 +97,48 @@ void main() {
 
     testWidgets('exposes semantics for the online switch', (tester) async {
       setDesktopSize(tester);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: DeliveryDashboardPage(bloc: mockBloc)),
-        ),
-      );
-      await tester.pump();
+      final handle = tester.ensureSemantics();
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: DeliveryDashboardPage(bloc: mockBloc)),
+          ),
+        );
+        await tester.pump();
 
-      final toggledSemantics = tester
-          .widgetList<Semantics>(find.byType(Semantics))
-          .where((s) => s.properties.toggled == true)
-          .toList();
+        final toggledSemantics = tester
+            .widgetList<Semantics>(find.byType(Semantics))
+            .where((s) => s.properties.toggled == true)
+            .toList();
 
-      expect(toggledSemantics, isNotEmpty);
+        expect(toggledSemantics, isNotEmpty);
+      } finally {
+        handle.dispose();
+      }
     });
 
     testWidgets('exposes selected semantics for active filter chips', (
       tester,
     ) async {
       setDesktopSize(tester);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: DeliveryDashboardPage(bloc: mockBloc)),
-        ),
-      );
-      await tester.pump();
+      final handle = tester.ensureSemantics();
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: DeliveryDashboardPage(bloc: mockBloc)),
+          ),
+        );
+        await tester.pump();
 
-      final selectedSemantics = tester
-          .widgetList<Semantics>(find.byType(Semantics))
-          .where((s) => s.properties.selected == true)
-          .toList();
+        final selectedSemantics = tester
+            .widgetList<Semantics>(find.byType(Semantics))
+            .where((s) => s.properties.selected == true)
+            .toList();
 
-      expect(selectedSemantics, isNotEmpty);
+        expect(selectedSemantics, isNotEmpty);
+      } finally {
+        handle.dispose();
+      }
     });
 
     testWidgets('maintains accessible color contrast ratios on dark cards', (

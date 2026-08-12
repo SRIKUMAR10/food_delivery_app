@@ -40,36 +40,7 @@ class SellerPayoutHistoryService {
       final end = (offset + limit) > allPayouts.length ? allPayouts.length : (offset + limit);
       return allPayouts.sublist(offset, end);
     } catch (e) {
-      // Mock historical data matching visual standards from wallet page
-      final allMockPayouts = [
-        {
-          'id': 'payout_0002',
-          'title': 'Payout #0002',
-          'amount': 4000.0,
-          'status': 'Paid',
-          'date': '2024-05-01T12:00:00Z',
-        },
-        {
-          'id': 'payout_0001',
-          'title': 'Payout #0001',
-          'amount': 1900.0,
-          'status': 'Paid',
-          'date': '2024-04-25T12:00:00Z',
-        },
-        {
-          'id': 'payout_0000',
-          'title': 'Payout #0000',
-          'amount': 6180.0,
-          'status': 'Paid',
-          'date': '2024-04-18T12:00:00Z',
-        },
-      ];
-
-      if (offset >= allMockPayouts.length) {
-        return [];
-      }
-      final end = (offset + limit) > allMockPayouts.length ? allMockPayouts.length : (offset + limit);
-      return allMockPayouts.sublist(offset, end);
+      return [];
     }
   }
 }

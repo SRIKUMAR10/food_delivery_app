@@ -6,6 +6,24 @@ class SellerWalletRepository {
 
   SellerWalletRepository({required this.service});
 
+  Stream<double> streamWalletBalance() {
+    return service.streamWalletBalance();
+  }
+
+  Stream<List<PayoutItem>> streamPayoutHistory() {
+    return service.streamPayoutHistory().map((rawList) {
+      return rawList.map((map) {
+        return PayoutItem(
+          id: map['id'] ?? '',
+          title: map['title'] ?? '',
+          amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+          status: map['status'] ?? 'Paid',
+          date: map['date'] != null ? DateTime.parse(map['date']) : DateTime.now(),
+        );
+      }).toList();
+    });
+  }
+
   Future<double> getWalletBalance() async {
     return await service.fetchWalletBalance();
   }

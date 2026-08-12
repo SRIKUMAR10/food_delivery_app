@@ -20,6 +20,8 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
+  <meta name="google-signin-client_id" content="318384112771-psfipm61tk7m64smr99j59pe28djds08.apps.googleusercontent.com">
+
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -38,15 +40,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://checkout.razorpay.com">
 
-  <!-- Preload fonts used by google_fonts package -->
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
-  </noscript>
+  <!-- Fonts loaded via standard stylesheet -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
 </head>
 
 <body>
+  <div id="recaptcha-container" style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 10000;"></div>
   <script>
+    // Intercept WebGL context lost events to prevent CanvasKit surface crashes
+    window.addEventListener('webglcontextlost', function (event) {
+      event.preventDefault();
+    }, false);
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = "F52886E2-8A9E-4295-B292-AE501B770BEE";
   </script>
   <!--

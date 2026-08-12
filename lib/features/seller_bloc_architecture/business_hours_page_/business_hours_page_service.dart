@@ -14,30 +14,50 @@ class BusinessHoursService {
           .get();
 
       if (docSnapshot.exists && docSnapshot.data() != null) {
-        final data = docSnapshot.data()!;
-        final scheduleList = (data['schedule'] as List<dynamic>?)?.map((s) {
-          return BusinessDayModel(
-            dayOfWeek: s['dayOfWeek'] ?? '',
-            openTime: s['openTime'] ?? '',
-            closeTime: s['closeTime'] ?? '',
-            isOpen: s['isOpen'] ?? false,
-          );
-        }).toList();
-
-        return {
-          'isEmergencyClosed': data['isEmergencyClosed'] ?? false,
-          'schedule': scheduleList ?? _getDefaultSchedule(),
-        };
+        return _mapScheduleData(docSnapshot.data()!);
       }
 
-      // Return default if document doesn't exist
       return {
         'isEmergencyClosed': false,
-        'schedule': _getDefaultSchedule(),
+        'schedule': <BusinessDayModel>[],
       };
     } catch (e) {
       throw Exception('Failed to fetch schedule: $e');
     }
+  }
+
+  Stream<Map<String, dynamic>> watchSchedule(String sellerId) {
+    return _firestore
+        .collection('sellers')
+        .doc(sellerId)
+        .collection('settings')
+        .doc('business_hours')
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        return _mapScheduleData(snapshot.data()!);
+      }
+      return {
+        'isEmergencyClosed': false,
+        'schedule': <BusinessDayModel>[],
+      };
+    });
+  }
+
+  Map<String, dynamic> _mapScheduleData(Map<String, dynamic> data) {
+    final scheduleList = (data['schedule'] as List<dynamic>?)?.map((s) {
+      return BusinessDayModel(
+        dayOfWeek: s['dayOfWeek'] ?? '',
+        openTime: s['openTime'] ?? '',
+        closeTime: s['closeTime'] ?? '',
+        isOpen: s['isOpen'] ?? false,
+      );
+    }).toList();
+
+    return {
+      'isEmergencyClosed': data['isEmergencyClosed'] ?? false,
+      'schedule': scheduleList ?? <BusinessDayModel>[],
+    };
   }
 
   Future<void> updateSchedule(String sellerId, BusinessDayModel updatedDay) async {
@@ -52,8 +72,6 @@ class BusinessHoursService {
       List<dynamic> schedule = [];
       if (doc.exists && doc.data() != null && doc.data()!['schedule'] != null) {
         schedule = List.from(doc.data()!['schedule']);
-      } else {
-        schedule = _getDefaultSchedule().map((d) => _modelToMap(d)).toList();
       }
 
       final index = schedule.indexWhere((s) => s['dayOfWeek'] == updatedDay.dayOfWeek);
@@ -77,18 +95,6 @@ class BusinessHoursService {
     } catch (e) {
       throw Exception('Failed to toggle emergency close: $e');
     }
-  }
-
-  List<BusinessDayModel> _getDefaultSchedule() {
-    return [
-      BusinessDayModel(dayOfWeek: 'Monday', openTime: '09:00 AM', closeTime: '10:00 PM', isOpen: true),
-      BusinessDayModel(dayOfWeek: 'Tuesday', openTime: '09:00 AM', closeTime: '10:00 PM', isOpen: true),
-      BusinessDayModel(dayOfWeek: 'Wednesday', openTime: '09:00 AM', closeTime: '10:00 PM', isOpen: true),
-      BusinessDayModel(dayOfWeek: 'Thursday', openTime: '09:00 AM', closeTime: '10:00 PM', isOpen: true),
-      BusinessDayModel(dayOfWeek: 'Friday', openTime: '09:00 AM', closeTime: '11:00 PM', isOpen: true),
-      BusinessDayModel(dayOfWeek: 'Saturday', openTime: '09:00 AM', closeTime: '11:00 PM', isOpen: true),
-      BusinessDayModel(dayOfWeek: 'Sunday', openTime: '10:00 AM', closeTime: '09:00 PM', isOpen: false),
-    ];
   }
 
   Map<String, dynamic> _modelToMap(BusinessDayModel model) {
