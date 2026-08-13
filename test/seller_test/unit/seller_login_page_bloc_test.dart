@@ -191,18 +191,17 @@ void main() {
             .having((s) => s.errorMessage, 'errorMessage', isNotNull),
       ],
     );
-
     blocTest<SellerLoginPageBloc, SellerLoginPageState>(
-      'phone login sends OTP and navigates to OTP screen',
+      'phone login with password executes custom login and succeeds',
       build: () {
         when(
-          () => mockRepo.requestPhoneLoginOtp(any()),
-        ).thenAnswer((_) async {});
+          () => mockRepo.signIn(any(), any()),
+        ).thenAnswer((_) async => MockUserCredential());
         return SellerLoginPageBloc(authRepository: mockRepo);
       },
       seed: () => const SellerLoginPageState(
         emailOrPhone: '+919876543210',
-        password: 'any',
+        password: 'Passw0rd!',
         isPhoneLogin: true,
       ),
       act: (b) => b.add(const SellerLoginSubmitted()),
@@ -213,9 +212,12 @@ void main() {
           SellerLoginStatus.loading,
         ),
         isA<SellerLoginPageState>()
-            .having((s) => s.status, 'status', SellerLoginStatus.otpSent)
-            .having((s) => s.step, 'step', SellerLoginStep.otpVerification),
+            .having((s) => s.status, 'status', SellerLoginStatus.success)
+            .having((s) => s.step, 'step', SellerLoginStep.loginSuccess),
       ],
+      verify: (_) {
+        verify(() => mockRepo.signIn('+919876543210', 'Passw0rd!')).called(1);
+      },
     );
   });
 

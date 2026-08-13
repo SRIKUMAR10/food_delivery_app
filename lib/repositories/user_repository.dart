@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:food_delivery_app/app_data_collection/buyer%20collection/user_collection.dart';
+import 'package:food_delivery_app/core/services/firebase_auth_config.dart';
 
 class UserRepository {
   static final UserRepository _instance = UserRepository._internal();
@@ -16,9 +18,13 @@ class UserRepository {
   RecaptchaVerifier? _recaptchaVerifier;
   ConfirmationResult? _webConfirmationResult;
 
-  Future<void> sendPasswordResetEmail(String email) async {
+  Future<void> sendPasswordResetEmail(String email, {ActionCodeSettings? actionCodeSettings}) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      final settings = actionCodeSettings ?? FirebaseAuthConfig.defaultActionCodeSettings;
+      await _auth.sendPasswordResetEmail(
+        email: email,
+        actionCodeSettings: settings,
+      );
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
@@ -30,6 +36,36 @@ class UserRepository {
         default:
           throw Exception('Failed to send reset email: ${e.message}');
       }
+    }
+  }
+
+  Future<void> sendSignInLinkToEmail(String email, {ActionCodeSettings? actionCodeSettings}) async {
+    try {
+      final settings = actionCodeSettings ?? FirebaseAuthConfig.defaultActionCodeSettings;
+      await _auth.sendSignInLinkToEmail(
+        email: email,
+        actionCodeSettings: settings,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw Exception('Failed to send sign-in link: ${e.message}');
+    }
+  }
+
+  bool isSignInWithEmailLink(String emailLink) {
+    return _auth.isSignInWithEmailLink(emailLink);
+  }
+
+  Future<UserCredential> signInWithEmailLink({
+    required String email,
+    required String emailLink,
+  }) async {
+    try {
+      return await _auth.signInWithEmailLink(
+        email: email,
+        emailLink: emailLink,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw Exception('Failed to sign in with email link: ${e.message}');
     }
   }
 
@@ -89,7 +125,9 @@ class UserRepository {
         // Send email verification link
         if (!credential.user!.emailVerified) {
           try {
-            await credential.user!.sendEmailVerification();
+            await credential.user!.sendEmailVerification(
+              FirebaseAuthConfig.defaultActionCodeSettings,
+            );
           } catch (e) {
             debugPrint('Email verification link send error: $e');
           }
@@ -141,6 +179,38 @@ class UserRepository {
 
     if (trimmed.contains('@')) {
       return await signIn(trimmed, password);
+    }
+
+    // 1. Primary Authentication: Call Cloud Function customLogin (bypasses unauthenticated Firestore rule restrictions)
+    try {
+      final cleanPhone = trimmed.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
+      final formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : '+91$cleanPhone';
+
+      final callable = FirebaseFunctions.instance.httpsCallable('customLogin');
+      final response = await callable.call({
+        'phoneNumber': formattedPhone,
+        'password': password,
+      });
+
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final customToken = data['customToken'] as String?;
+
+      if (customToken != null && customToken.isNotEmpty) {
+        final credential = await _auth.signInWithCustomToken(customToken);
+        if (credential.user != null) {
+          await syncUserProfile(
+            uid: credential.user!.uid,
+            phone: formattedPhone,
+            email: (data['user'] as Map?)?['email'] as String?,
+          );
+        }
+        return credential;
+      }
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('customLogin FirebaseFunctionsException: ${e.code} - ${e.message}');
+      throw Exception(e.message ?? 'Invalid phone number or password.');
+    } catch (e) {
+      debugPrint('customLogin Cloud Function error, attempting fallback: $e');
     }
 
     final digitsOnly = trimmed.replaceAll(RegExp(r'\D'), '');
@@ -583,6 +653,7 @@ class UserRepository {
   Future<void> resetPasswordWithPhoneOtp({
     required String verificationId,
     required String smsCode,
+    required String phoneNumber,
     required String newPassword,
   }) async {
     late UserCredential userCredential;
@@ -604,11 +675,33 @@ class UserRepository {
         debugPrint('Direct user.updatePassword note: $e');
       }
 
-      final phoneNumber = user.phoneNumber ?? '';
       final cleaned = phoneNumber.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
+      final fullPhone = cleaned.startsWith('+') ? cleaned : '+91$cleaned';
       final digitsOnly = cleaned.replaceAll(RegExp(r'\D'), '');
+      final withoutPrefix = cleaned.startsWith('+91')
+          ? cleaned.substring(3)
+          : (cleaned.startsWith('+') ? cleaned.substring(1) : cleaned);
+
+      Map<String, dynamic>? existingUser;
+      try {
+        final snap = await _userCollection.buyerUserCollection
+            .where('phone', isEqualTo: fullPhone)
+            .limit(1)
+            .get();
+        if (snap.docs.isNotEmpty) {
+          existingUser = snap.docs.first.data() as Map<String, dynamic>?;
+        }
+      } catch (e) {
+        debugPrint('Error querying user by phone in resetPasswordWithPhoneOtp: $e');
+      }
+
+      final primaryEmail = existingUser?['email']?.toString() ??
+          (user.email?.isNotEmpty == true
+              ? user.email!
+              : '$withoutPrefix@foodgo.app');
 
       final targetEmails = <String>{
+        primaryEmail,
         if (user.email != null && user.email!.contains('@')) user.email!,
         if (digitsOnly.isNotEmpty) '$digitsOnly@foodgo.app',
         if (digitsOnly.isNotEmpty) '$digitsOnly@foodgo.com',
@@ -639,11 +732,18 @@ class UserRepository {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
+      final existingId = existingUser?['uid']?.toString() ?? user.uid;
+
       try {
-        await _userCollection.updateUser(user.uid, updateData);
+        await _userCollection.updateUser(existingId, updateData);
+        if (user.uid != existingId) {
+          await _userCollection.updateUser(user.uid, updateData);
+        }
       } catch (e) {
         debugPrint('Error updating password in UserRepository Firestore doc: $e');
       }
+
+      await _auth.signOut();
     }
   }
 

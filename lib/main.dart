@@ -27,14 +27,34 @@ import 'features/buyer_bloc_architecture/Cart Page/cart_page_Bloc.dart';
 import 'features/buyer_bloc_architecture/Favorites_Page/favorites_bloc.dart';
 import 'features/buyer_bloc_architecture/home_Page/home_Page_Bloc.dart';
 
+import 'features/seller_bloc_architecture/seller_onboard_page/seller_onboard_page_ui.dart';
+import 'features/seller_bloc_architecture/seller_login_page/seller_login_page_ui.dart';
+import 'features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_bloc.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_repository.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_service.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Login Page/Delivery_Login Page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Sign_Up_page/Delivery_Sign_Up_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_OTP_Verification_page/Delivery_OTP_Verification_page_ui.dart';
+
+enum AppRole { buyer, seller, delivery }
+
+// Global Role Toggle Switch
+const AppRole activeRole = AppRole.buyer;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  await FirebaseAppCheck.instance.activate(
-    providerWeb: ReCaptchaV3Provider('recaptcha-v3-site-key'),
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    await FirebaseAppCheck.instance.activate(
+      providerWeb: ReCaptchaV3Provider('recaptcha-v3-site-key'),
+    );
+  } catch (e) {
+    debugPrint('AppCheck initialization note: $e');
+  }
 
   if (kIsWeb) {
     FirebaseFirestore.instance.settings = const Settings(
@@ -67,7 +87,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveAuthService = authService ?? FirebaseAuthService();
-    final effectiveUserProfileRepo = userProfileRepository ?? FirebaseUserProfileRepository();
+    final effectiveUserProfileRepo =
+        userProfileRepository ?? FirebaseUserProfileRepository();
     final effectiveOrderRepo = orderRepository ?? FirebaseOrderRepository();
     final effectiveProductRepo = FirebaseProductRepository();
     final effectiveCategoryRepo = CategoryRepository();
@@ -76,10 +97,16 @@ class MyApp extends StatelessWidget {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<IAuthService>.value(value: effectiveAuthService),
-        RepositoryProvider<IUserProfileRepository>.value(value: effectiveUserProfileRepo),
+        RepositoryProvider<IUserProfileRepository>.value(
+          value: effectiveUserProfileRepo,
+        ),
         RepositoryProvider<IOrderRepository>.value(value: effectiveOrderRepo),
-        RepositoryProvider<IProductRepository>.value(value: effectiveProductRepo),
-        RepositoryProvider<CategoryRepository>.value(value: effectiveCategoryRepo),
+        RepositoryProvider<IProductRepository>.value(
+          value: effectiveProductRepo,
+        ),
+        RepositoryProvider<CategoryRepository>.value(
+          value: effectiveCategoryRepo,
+        ),
         RepositoryProvider<IChatRepository>.value(value: effectiveChatRepo),
       ],
       child: MultiBlocProvider(
@@ -122,10 +149,52 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: const Color(0xFFFBF5F5),
             useMaterial3: true,
           ),
-          home: const OnboardingPage(),
+          home: _getHomeWidget(),
+          routes: {
+            '/sellerlogin': (context) => const SellerLoginPageUI(),
+            '/sellerDashboard': (context) =>
+                const SellerNavigationBarViewPageUI(),
+            '/deliveryLogin': (context) => const DeliveryLoginPage(),
+            '/deliveryNavigationBar': (context) =>
+                const DeliveryNavigationBarPage(),
+            '/deliverySignUp': (context) => const DeliverySignUpPage(),
+            '/deliveryForgotPassword': (context) =>
+                const DeliveryForgotPasswordPage(),
+          },
+          onGenerateRoute: (settings) {
+            if (settings.name == '/deliveryOtpVerification') {
+              final args = settings.arguments as Map<String, dynamic>? ?? {};
+              return MaterialPageRoute(
+                builder: (context) => DeliveryOtpVerificationPage(
+                  verificationId: args['verificationId'] as String? ?? '',
+                  name: args['name'] as String? ?? '',
+                  phone: args['phone'] as String? ?? '',
+                  email: args['email'] as String? ?? '',
+                  password: args['password'] as String? ?? '',
+                ),
+              );
+            }
+            return null;
+          },
         ),
       ),
     );
   }
-}
 
+  Widget _getHomeWidget() {
+    switch (activeRole) {
+      case AppRole.buyer:
+        return const OnboardingPage();
+      case AppRole.seller:
+        return const SellerOnboardPageUI();
+      case AppRole.delivery:
+        return BlocProvider<DeliveryOnboardingPageBloc>(
+          create: (context) => DeliveryOnboardingPageBloc(
+            repository: DeliveryOnboardingRepository(),
+            service: DeliveryOnboardingService(),
+          ),
+          child: const DeliveryOnboardingPageUI(),
+        );
+    }
+  }
+}

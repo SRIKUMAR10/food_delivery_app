@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/seller_model.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:food_delivery_app/core/services/firebase_auth_config.dart';
 import 'dart:async';
 
 class SellerRepository {
@@ -40,16 +42,63 @@ class SellerRepository {
     await _firestore.collection('sellers').doc(sellerId).update(data);
   }
 
+  Future<UserCredential> signInWithPhoneAndPassword(String phoneNumber, String password) async {
+    final cleanPhone = phoneNumber.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
+    final formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : '+91$cleanPhone';
+
+    final callable = FirebaseFunctions.instance.httpsCallable('customLogin');
+    final response = await callable.call({
+      'phoneNumber': formattedPhone,
+      'password': password,
+    });
+
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final customToken = data['customToken'] as String;
+
+    return await _auth.signInWithCustomToken(customToken);
+  }
+
   Future<UserCredential> signIn(String emailOrPhone, String password) async {
-    return await _auth.signInWithEmailAndPassword(email: emailOrPhone, password: password);
+    final trimmed = emailOrPhone.trim();
+    final isPhone = !trimmed.contains('@') && RegExp(r'^\+?[0-9\s\-]+$').hasMatch(trimmed);
+    if (isPhone) {
+      return await signInWithPhoneAndPassword(trimmed, password);
+    }
+    return await _auth.signInWithEmailAndPassword(email: trimmed, password: password);
   }
 
   Future<void> signOut() async {
     await _auth.signOut();
   }
 
-  Future<void> sendPasswordResetEmail(String email) async {
-    await _auth.sendPasswordResetEmail(email: email);
+  Future<void> sendPasswordResetEmail(String email, {ActionCodeSettings? actionCodeSettings}) async {
+    final settings = actionCodeSettings ?? FirebaseAuthConfig.defaultActionCodeSettings;
+    await _auth.sendPasswordResetEmail(
+      email: email,
+      actionCodeSettings: settings,
+    );
+  }
+
+  Future<void> sendSignInLinkToEmail(String email, {ActionCodeSettings? actionCodeSettings}) async {
+    final settings = actionCodeSettings ?? FirebaseAuthConfig.defaultActionCodeSettings;
+    await _auth.sendSignInLinkToEmail(
+      email: email,
+      actionCodeSettings: settings,
+    );
+  }
+
+  bool isSignInWithEmailLink(String emailLink) {
+    return _auth.isSignInWithEmailLink(emailLink);
+  }
+
+  Future<UserCredential> signInWithEmailLink({
+    required String email,
+    required String emailLink,
+  }) async {
+    return await _auth.signInWithEmailLink(
+      email: email,
+      emailLink: emailLink,
+    );
   }
 
   Future<UserCredential> signInWithGoogle() async {

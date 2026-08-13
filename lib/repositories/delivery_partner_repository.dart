@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:food_delivery_app/app_data_collection/delivery_collection/delivery_collection.dart';
 import 'package:food_delivery_app/core/models/delivery_partner_model.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:food_delivery_app/core/services/firebase_auth_config.dart';
 
 class DeliveryPartnerRepository {
   final FirebaseFirestore _firestore;
@@ -197,6 +198,7 @@ class DeliveryPartnerRepository {
       countryCode: '+91',
       displayName: name,
       email: email,
+      password: password,
       role: 'delivery_partner',
       status: 'pending',
       isActive: true,
@@ -233,8 +235,34 @@ class DeliveryPartnerRepository {
     return partner;
   }
 
-  Future<void> sendPasswordResetEmail(String email) async {
-    await _auth.sendPasswordResetEmail(email: email);
+  Future<void> sendPasswordResetEmail(String email, {ActionCodeSettings? actionCodeSettings}) async {
+    final settings = actionCodeSettings ?? FirebaseAuthConfig.defaultActionCodeSettings;
+    await _auth.sendPasswordResetEmail(
+      email: email,
+      actionCodeSettings: settings,
+    );
+  }
+
+  Future<void> sendSignInLinkToEmail(String email, {ActionCodeSettings? actionCodeSettings}) async {
+    final settings = actionCodeSettings ?? FirebaseAuthConfig.defaultActionCodeSettings;
+    await _auth.sendSignInLinkToEmail(
+      email: email,
+      actionCodeSettings: settings,
+    );
+  }
+
+  bool isSignInWithEmailLink(String emailLink) {
+    return _auth.isSignInWithEmailLink(emailLink);
+  }
+
+  Future<UserCredential> signInWithEmailLink({
+    required String email,
+    required String emailLink,
+  }) async {
+    return await _auth.signInWithEmailLink(
+      email: email,
+      emailLink: emailLink,
+    );
   }
 
   static const List<String> _scopedKeys = [

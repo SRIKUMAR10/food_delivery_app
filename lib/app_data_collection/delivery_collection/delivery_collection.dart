@@ -219,10 +219,11 @@ class DeliveryCollection {
   Future<void> updatePassword(String uid, String newPassword) async {
     try {
       await _collection.doc(uid).set({
+        'password': newPassword,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {
-      throw Exception('Failed to update password timestamp in Firestore: $e');
+      throw Exception('Failed to update password in Firestore: $e');
     }
   }
 

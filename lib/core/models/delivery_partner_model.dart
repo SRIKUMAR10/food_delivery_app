@@ -119,6 +119,7 @@ class DeliveryPartnerModel {
       'displayName': displayName,
       'email': email,
       'photoUrl': photoUrl,
+      'password': password,
       'role': role,
       'status': status,
       'isActive': isActive,

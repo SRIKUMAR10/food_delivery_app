@@ -61,6 +61,7 @@ class BuyerForgotPasswordRepository implements BuyerForgotPasswordRepositoryBase
     await _userRepository.resetPasswordWithPhoneOtp(
       verificationId: verificationId,
       smsCode: cleanOtp,
+      phoneNumber: phoneNumber,
       newPassword: newPassword.trim(),
     );
   }

@@ -112,8 +112,19 @@ class SellerLoginPageBloc
     emit(state.copyWith(status: SellerLoginStatus.loading, clearError: true));
 
     try {
-      if (state.isPhoneLogin) {
-        // Phone login → send OTP flow
+      if (state.isPhoneLogin && state.password.isNotEmpty) {
+        // Phone + Password custom login via Cloud Function
+        await authRepository.signIn(state.emailOrPhone, state.password);
+        final uid = authRepository.currentUser?.uid;
+        if (uid != null) {
+          await authRepository.updateSellerData(uid, {'isOnline': true});
+        }
+        emit(state.copyWith(
+          status: SellerLoginStatus.success,
+          step: SellerLoginStep.loginSuccess,
+        ));
+      } else if (state.isPhoneLogin) {
+        // Phone login without password → send OTP flow
         final formattedPhone = _formatPhoneNumber(state.emailOrPhone);
         await authRepository.requestPhoneLoginOtp(formattedPhone);
         _startOtpCountdown();

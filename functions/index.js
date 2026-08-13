@@ -1,21 +1,44 @@
 const functions = require("firebase-functions");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const Razorpay = require("razorpay");
 const cors = require("cors");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+
 
 admin.initializeApp();
 
-// Use Firebase Environment Configuration for sensitive keys
-const rzpKeyId = functions.config().razorpay ? functions.config().razorpay.key_id : (process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_API_KEY);
-const rzpKeySecret = functions.config().razorpay ? functions.config().razorpay.key_secret : process.env.RAZORPAY_KEY_SECRET;
-const rzpWebhookSecret = functions.config().razorpay ? functions.config().razorpay.webhook_secret : process.env.RAZORPAY_WEBHOOK_SECRET;
+// Lazy configuration resolver to prevent deployment timeouts during global initialization
+function getRazorpayConfig() {
+  let cfg = {};
+  try {
+    if (typeof functions.config === "function") {
+      cfg = functions.config() || {};
+    }
+  } catch (err) {
+    // Graceful fallback for Functions v2 environment
+  }
+  const rzpConfig = cfg.razorpay || {};
+  const keyId = process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_API_KEY || rzpConfig.key_id || "dummy_key_id";
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || rzpConfig.key_secret || "dummy_key_secret";
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || rzpConfig.webhook_secret || "dummy_webhook_secret";
+  return { keyId, keySecret, webhookSecret };
+}
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: rzpKeyId || 'dummy_key_id',
-  key_secret: rzpKeySecret || 'dummy_key_secret',
-});
+let razorpayInstance = null;
+function getRazorpayInstance() {
+  if (!razorpayInstance) {
+    const { keyId, keySecret } = getRazorpayConfig();
+    try {
+      razorpayInstance = new Razorpay({ key_id: keyId, key_secret: keySecret });
+    } catch (err) {
+      console.warn("Razorpay initialization warning:", err.message);
+    }
+  }
+  return razorpayInstance;
+}
+
 
 const projectId = process.env.GCLOUD_PROJECT || "food-delivery-app-cd4ca";
 const corsHandler = cors({ origin: true });
@@ -66,7 +89,7 @@ exports.createPaymentLink = functions.https.onRequest((req, res) => {
         callback_method: "get",
       };
 
-      const paymentLink = await razorpay.paymentLink.create(paymentLinkOptions);
+      const paymentLink = await getRazorpayInstance().paymentLink.create(paymentLinkOptions);
 
       // 4. Return the secure link to the app
       res.status(200).send({ paymentLink: paymentLink.short_url });
@@ -98,7 +121,7 @@ exports.createRazorpayOrder = functions.https.onRequest((req, res) => {
       }
 
       const { amount, currency, receipt } = req.body;
-      
+
       if (!amount) {
         return res.status(400).send({ message: "Bad Request: Missing amount" });
       }
@@ -110,14 +133,14 @@ exports.createRazorpayOrder = functions.https.onRequest((req, res) => {
         receipt: receipt || `receipt_${Date.now()}`,
       };
 
-      const order = await razorpay.orders.create(options);
+      const order = await getRazorpayInstance().orders.create(options);
 
       // Return order details to Flutter
       res.status(200).send({
         id: order.id,
         amount: order.amount,
         currency: order.currency,
-        key_id: rzpKeyId
+        key_id: getRazorpayConfig().keyId
       });
     } catch (error) {
       console.error("Error creating Razorpay order:", error);
@@ -143,7 +166,7 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
     
     // Validate signature
     const expectedSignature = crypto
-      .createHmac("sha256", rzpWebhookSecret)
+      .createHmac("sha256", getRazorpayConfig().webhookSecret)
       .update(payload)
       .digest("hex");
 
@@ -426,7 +449,8 @@ async function creditDeliveryPartnerWallet(db, orderData, orderId) {
 // Handles all status transitions with FCM + business side effects.
 // Each business flow is idempotent (safe on retry).
 // ────────────────────────────────────────────────────────────
-exports.onOrderStatusChanged = functions.firestore
+const firestoreTrigger = require("firebase-functions/v1").firestore;
+exports.onOrderStatusChanged = firestoreTrigger
   .document("orders/{orderId}")
   .onWrite(async (change, context) => {
     const beforeData = change.before.data();
@@ -805,8 +829,9 @@ exports.generateZegoToken = functions.https.onRequest((req, res) => {
       }
 
       // 3. ZEGOCLOUD Credentials from Firebase Config or Env
-      const appId = parseInt(functions.config().zegocloud ? functions.config().zegocloud.app_id : (process.env.ZEGO_APP_ID || "0"));
-      const serverSecret = functions.config().zegocloud ? functions.config().zegocloud.server_secret : (process.env.ZEGO_SERVER_SECRET || "dummy_secret");
+      const zegoCfg = cfg.zegocloud || {};
+      const appId = parseInt(zegoCfg.app_id || process.env.ZEGO_APP_ID || "0", 10);
+      const serverSecret = zegoCfg.server_secret || process.env.ZEGO_SERVER_SECRET || "dummy_secret";
       
       if (appId === 0 || serverSecret === "dummy_secret") {
          return res.status(500).send({ message: "Server misconfiguration: ZEGOCLOUD credentials missing" });
@@ -898,3 +923,156 @@ exports.resetDeliveryPartnerPassword = functions.https.onRequest((req, res) => {
     }
   });
 });
+
+/**
+ * Custom Login Callable Cloud Function (Firebase Functions v2)
+ * Validates user credentials against Firestore `users` collection, verifies bcrypt hashed password,
+ * and generates a Firebase Custom Auth Token for authentication.
+ */
+exports.customLogin = onCall({ cors: true, invoker: "public" }, async (request) => {
+  const { phoneNumber, password } = request.data || {};
+
+  // 1. Input Validation
+  if (!phoneNumber || !password) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Both 'phoneNumber' and 'password' are required fields."
+    );
+  }
+
+  const rawPhone = String(phoneNumber).trim();
+  const rawPassword = String(password).trim();
+
+  if (rawPhone.length === 0 || rawPassword.length === 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Phone number and password cannot be empty."
+    );
+  }
+
+  // Extract digits only and last 10 digits for robust matching
+  const digitsOnly = rawPhone.replace(/\D/g, "");
+  const last10 = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
+
+  // Generate all possible phone string variations that might exist in Firestore
+  const phoneVariations = new Set();
+  phoneVariations.add(rawPhone);
+  if (digitsOnly) {
+    phoneVariations.add(digitsOnly);
+    phoneVariations.add(`+${digitsOnly}`);
+  }
+  if (last10.length === 10) {
+    phoneVariations.add(last10);
+    phoneVariations.add(`+91${last10}`);
+    phoneVariations.add(`+91 ${last10}`);
+    phoneVariations.add(`0${last10}`);
+    phoneVariations.add(`91${last10}`);
+  }
+
+  const variationsList = Array.from(phoneVariations);
+  const collectionsToSearch = ["users", "buyer_user", "buyer_users", "sellers", "delivery_partners", "customers"];
+  const fieldsToSearch = ["phone", "phoneNumber", "contactNumber", "mobile", "mobileNumber"];
+
+  try {
+    const db = admin.firestore();
+    let userDoc = null;
+    let foundCollection = null;
+
+    // Search across all collections and field names for any matching variation
+    for (const coll of collectionsToSearch) {
+      for (const field of fieldsToSearch) {
+        for (const pVal of variationsList) {
+          if (!pVal) continue;
+          const snap = await db.collection(coll)
+            .where(field, "==", pVal)
+            .limit(1)
+            .get();
+          if (!snap.empty) {
+            userDoc = snap.docs[0];
+            foundCollection = coll;
+            break;
+          }
+        }
+        if (userDoc) break;
+      }
+      if (userDoc) break;
+    }
+
+    if (!userDoc) {
+      console.warn(`customLogin: No document found in Firestore for phone variations: ${variationsList.join(", ")}`);
+      throw new HttpsError(
+        "not-found",
+        "No registered account found with the provided phone number."
+      );
+    }
+
+    const userData = userDoc.data();
+    const uid = userDoc.id;
+
+    // Check account status
+    if (userData.status === "disabled" || userData.status === "blocked" || userData.isActive === false) {
+      throw new HttpsError(
+        "permission-denied",
+        "Account is deactivated or blocked. Please contact support."
+      );
+    }
+
+    // Verify Password using bcryptjs or direct string comparison
+    const storedHash = String(userData.password || userData.hashedPassword || userData.pass || userData.pwd || "").trim();
+    if (!storedHash) {
+      throw new HttpsError(
+        "failed-precondition",
+        "No password configured for this user. Please sign in via OTP or reset password."
+      );
+    }
+
+    let isPasswordValid = (storedHash === rawPassword);
+    if (!isPasswordValid) {
+      try {
+        isPasswordValid = await bcrypt.compare(rawPassword, storedHash);
+      } catch (e) {
+        console.warn("bcrypt compare check error:", e.message);
+        isPasswordValid = false;
+      }
+    }
+
+    if (!isPasswordValid) {
+      console.warn(`customLogin: Password mismatch for UID ${uid} in collection '${foundCollection}'`);
+      throw new HttpsError(
+        "unauthenticated",
+        "Invalid phone number or password. Please try again."
+      );
+    }
+
+    // Generate Custom Auth Token via Firebase Admin SDK
+    const formattedPhone = last10.length === 10 ? `+91${last10}` : rawPhone;
+    const customClaims = {
+      role: userData.role || (foundCollection === "sellers" ? "seller" : (foundCollection === "delivery_partners" ? "delivery_partner" : "user")),
+      phoneNumber: formattedPhone,
+    };
+
+    const customToken = await admin.auth().createCustomToken(uid, customClaims);
+
+    return {
+      success: true,
+      customToken: customToken,
+      uid: uid,
+      user: {
+        uid: uid,
+        name: userData.fullName || userData.name || userData.displayName || userData.sellerName || "",
+        phoneNumber: userData.phoneNumber || userData.phone || userData.contactNumber || formattedPhone,
+        role: customClaims.role,
+      },
+    };
+  } catch (error) {
+    console.error("Error executing customLogin callable function:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError(
+      "internal",
+      `Authentication internal error: ${error.message}`
+    );
+  }
+});
+

@@ -84,5 +84,23 @@ void main() {
       final alignWidget = tester.widget<Align>(alignFinder.first);
       expect(alignWidget.alignment, Alignment.centerRight);
     });
+
+    testWidgets('obscures password and confirm password fields by default', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(buildWidget());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      final editableTexts = tester.widgetList<EditableText>(find.byType(EditableText)).toList();
+      // Password field (4th text field) and Confirm Password field (5th text field) must be obscured by default
+      expect(editableTexts.length, greaterThanOrEqualTo(5));
+      expect(editableTexts[3].obscureText, isTrue);
+      expect(editableTexts[4].obscureText, isTrue);
+    });
   });
 }

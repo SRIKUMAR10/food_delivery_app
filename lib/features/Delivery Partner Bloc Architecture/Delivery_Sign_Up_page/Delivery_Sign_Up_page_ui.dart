@@ -303,8 +303,8 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
           _buildLabel('Password'),
           const SizedBox(height: 8),
           _buildTextField(
-            hint: '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022',
-            obscure: !state.isPasswordObscured,
+            hint: '••••••••••',
+            obscure: state.isPasswordObscured,
             errorText: state.passwordError,
             onChanged: (v) =>
                 bloc.add(DeliverySignUpPasswordChanged(v)),
@@ -325,8 +325,8 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
           _buildLabel('Confirm Password'),
           const SizedBox(height: 8),
           _buildTextField(
-            hint: '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022',
-            obscure: !state.isConfirmPasswordObscured,
+            hint: '••••••••••',
+            obscure: state.isConfirmPasswordObscured,
             errorText: state.confirmPasswordError,
             onChanged: (v) =>
                 bloc.add(DeliverySignUpConfirmPasswordChanged(v)),

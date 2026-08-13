@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,6 +28,69 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
     final withoutPrefix = cleaned.startsWith('+91')
         ? cleaned.substring(3)
         : (cleaned.startsWith('+') ? cleaned.substring(1) : cleaned);
+    final defaultEmail = 'delivery_${withoutPrefix}@fooddelivery.com';
+
+    // 1. Primary Authentication: Call Cloud Function customLogin (bypasses unauthenticated Firestore rule restrictions)
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('customLogin');
+      final response = await callable.call({
+        'phoneNumber': fullPhone,
+        'password': password,
+      });
+
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final customToken = data['customToken'] as String;
+      final uid = data['uid'] as String;
+
+      // Authenticate session with Firebase Auth using Custom Token
+      await FirebaseAuth.instance.signInWithCustomToken(customToken);
+
+      // Now authenticated! Fetch partner profile document securely
+      DeliveryPartnerModel? partner;
+      try {
+        partner = await _partnerRepo.getDeliveryPartner(uid);
+      } catch (e) {
+        debugPrint('Error fetching delivery partner profile: $e');
+      }
+
+      partner ??= DeliveryPartnerModel(
+        id: uid,
+        phoneNumber: fullPhone,
+        countryCode: '+91',
+        displayName: (data['user'] as Map?)?['name'] as String? ?? 'Delivery Partner',
+        email: defaultEmail,
+        password: password,
+        role: 'delivery_partner',
+        status: 'approved',
+        isActive: true,
+        isVerified: true,
+        isPhoneVerified: true,
+        isEmailVerified: true,
+        profileCompletion: 100,
+        isOnline: true,
+        kycStatus: 'approved',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      try {
+        await _partnerRepo.updateLastLogin(partner.id);
+        await _partnerRepo.saveSession(partner.id, partner.email ?? '');
+      } catch (_) {}
+
+      return partner;
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('customLogin FirebaseFunctionsException: ${e.code} - ${e.message}');
+      throw Exception(e.message ?? 'Invalid phone number or password.');
+    } catch (e) {
+      debugPrint('customLogin error, trying fallback handling: $e');
+    }
+
+    // 2. Fallback handling if Cloud Function is unreachable
+    UserCredential? authCred;
+    try {
+      authCred = await _partnerRepo.signInWithEmailPassword(defaultEmail, password);
+    } catch (_) {}
 
     DeliveryPartnerModel? partner;
     try {
@@ -43,22 +107,23 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
         throw Exception('Account is disabled. Contact support.');
       }
 
-      // Password validation check
-      if (partner.password != null &&
-          partner.password!.isNotEmpty &&
-          partner.password != password) {
-        // Attempt FirebaseAuth sign-in check as fallback
-        bool authSuccess = false;
-        if (partner.email != null && partner.email!.isNotEmpty) {
-          try {
-            await _partnerRepo.signInWithEmailPassword(
-                partner.email!, password);
-            authSuccess = true;
-          } catch (_) {}
+      bool passwordVerified = (authCred != null);
+
+      if (!passwordVerified && partner.password != null && partner.password!.isNotEmpty) {
+        if (partner.password == password) {
+          passwordVerified = true;
         }
-        if (!authSuccess) {
-          throw Exception('Incorrect password. Please try again.');
-        }
+      }
+
+      if (!passwordVerified && partner.email != null && partner.email!.isNotEmpty) {
+        try {
+          authCred = await _partnerRepo.signInWithEmailPassword(partner.email!, password);
+          passwordVerified = true;
+        } catch (_) {}
+      }
+
+      if (!passwordVerified) {
+        throw Exception('Incorrect password. Please try again.');
       }
 
       final updates = <String, dynamic>{};
@@ -77,13 +142,19 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
         );
       }
     } else {
-      // Attempt Firebase Email/Password Sign-In if fullPhone is formatted as email or phone
-      final defaultEmail = 'delivery_${withoutPrefix}@fooddelivery.com';
-      try {
-        await _partnerRepo.signInWithEmailPassword(defaultEmail, password);
-      } catch (_) {}
+      if (authCred == null) {
+        try {
+          authCred = await _partnerRepo.createUserWithEmailPassword(defaultEmail, password);
+        } catch (e) {
+          try {
+            authCred = await _partnerRepo.signInWithEmailPassword(defaultEmail, password);
+          } catch (_) {
+            throw Exception('Incorrect password. Please try again.');
+          }
+        }
+      }
 
-      final uid = 'dp_${withoutPrefix.isNotEmpty ? withoutPrefix : DateTime.now().millisecondsSinceEpoch}';
+      final uid = authCred.user?.uid ?? 'dp_${withoutPrefix.isNotEmpty ? withoutPrefix : DateTime.now().millisecondsSinceEpoch}';
       final now = DateTime.now();
       partner = DeliveryPartnerModel(
         id: uid,
@@ -254,7 +325,7 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
 
   @override
   Future<void> sendPasswordResetEmail(String email) async {
-    return;
+    await _partnerRepo.sendPasswordResetEmail(email);
   }
 
   @override

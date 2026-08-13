@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'firebase_auth_config.dart';
 import 'i_auth_service.dart';
+
 class FirebaseAuthService implements IAuthService {
   final FirebaseAuth _auth;
 
@@ -57,4 +58,44 @@ class FirebaseAuthService implements IAuthService {
 
     await user.delete();
   }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email, {ActionCodeSettings? actionCodeSettings}) async {
+    final settings = actionCodeSettings ?? FirebaseAuthConfig.defaultActionCodeSettings;
+    await _auth.sendPasswordResetEmail(
+      email: email,
+      actionCodeSettings: settings,
+    );
+  }
+
+  @override
+  Future<void> sendEmailVerification({ActionCodeSettings? actionCodeSettings}) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user currently signed in.');
+    final settings = actionCodeSettings ?? FirebaseAuthConfig.defaultActionCodeSettings;
+    await user.sendEmailVerification(settings);
+  }
+
+  @override
+  Future<void> sendSignInLinkToEmail(String email, {ActionCodeSettings? actionCodeSettings}) async {
+    final settings = actionCodeSettings ?? FirebaseAuthConfig.defaultActionCodeSettings;
+    await _auth.sendSignInLinkToEmail(
+      email: email,
+      actionCodeSettings: settings,
+    );
+  }
+
+  @override
+  bool isSignInWithEmailLink(String emailLink) {
+    return _auth.isSignInWithEmailLink(emailLink);
+  }
+
+  @override
+  Future<UserCredential> signInWithEmailLink({required String email, required String emailLink}) async {
+    return await _auth.signInWithEmailLink(
+      email: email,
+      emailLink: emailLink,
+    );
+  }
 }
+
