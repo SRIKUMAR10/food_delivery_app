@@ -39,11 +39,10 @@ import 'features/Delivery Partner Bloc Architecture/Delivery_NavigationBar_page/
 import 'features/Delivery Partner Bloc Architecture/Delivery_Sign_Up_page/Delivery_Sign_Up_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_OTP_Verification_page/Delivery_OTP_Verification_page_ui.dart';
+import 'core/utils/app_role_helper.dart';
 
-enum AppRole { buyer, seller, delivery }
-
-// Global Role Toggle Switch
-const AppRole activeRole = AppRole.buyer;
+// Global Role Toggle Switch (Default fallback when no tab session or URL param is present)
+const AppRole activeRole = AppRole.delivery;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -182,7 +181,8 @@ class MyApp extends StatelessWidget {
   }
 
   Widget _getHomeWidget() {
-    switch (activeRole) {
+    final effectiveRole = getEffectiveAppRole(activeRole);
+    switch (effectiveRole) {
       case AppRole.buyer:
         return const OnboardingPage();
       case AppRole.seller:

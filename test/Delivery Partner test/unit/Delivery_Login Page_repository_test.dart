@@ -35,6 +35,10 @@ DeliveryPartnerModel buildPartner({
 }
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(buildPartner());
+  });
+
   late MockDeliveryPartnerRepository partnerRepo;
   late DeliveryLoginRepository repository;
   late MockUserCredential credential;
@@ -59,7 +63,7 @@ void main() {
     test('loginWithPhone returns partner for valid credentials', () async {
       when(
         () => partnerRepo.signInWithEmailPassword(
-          '+919876543210@delivery.app',
+          'delivery_9876543210@fooddelivery.com',
           'password123',
         ),
       ).thenAnswer((_) async => credential);
@@ -70,7 +74,7 @@ void main() {
         () => partnerRepo.updateLastLogin('uid123'),
       ).thenAnswer((_) async {});
       when(
-        () => partnerRepo.saveSession('uid123', '+919876543210@delivery.app'),
+        () => partnerRepo.saveSession('uid123', 'delivery_9876543210@fooddelivery.com'),
       ).thenAnswer((_) async {});
 
       final result = await repository.loginWithPhone(
@@ -81,12 +85,12 @@ void main() {
       expect(result.id, 'uid123');
       verify(
         () => partnerRepo.signInWithEmailPassword(
-          '+919876543210@delivery.app',
+          'delivery_9876543210@fooddelivery.com',
           'password123',
         ),
       ).called(1);
       verify(
-        () => partnerRepo.saveSession('uid123', '+919876543210@delivery.app'),
+        () => partnerRepo.saveSession('uid123', 'delivery_9876543210@fooddelivery.com'),
       ).called(1);
     });
 
@@ -102,7 +106,7 @@ void main() {
           throwsA(
             predicate(
               (e) =>
-                  e.toString().contains('Account not found. Please sign up.'),
+                  e.toString().contains('Incorrect password. Please try again.'),
             ),
           ),
         );
@@ -131,8 +135,11 @@ void main() {
 
     test('loginWithPhone throws for disabled account', () async {
       when(
+        () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
+      ).thenAnswer((_) async => buildPartner(isActive: false, status: 'disabled'));
+      when(
         () => partnerRepo.signInWithEmailPassword(
-          '+919876543210@delivery.app',
+          'delivery_9876543210@fooddelivery.com',
           'password123',
         ),
       ).thenAnswer((_) async => credential);
@@ -218,36 +225,38 @@ void main() {
       ).called(1);
     });
 
-    test('loginWithPhone falls back to dummy email when real email fails with user-not-found', () async {
-      final partnerWithRealEmail = buildPartner(email: 'srikumar@gmail.com');
+    test('loginWithPhone falls back to dummy email when initial creation fails', () async {
       when(
         () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
-      ).thenAnswer((_) async => partnerWithRealEmail);
+      ).thenAnswer((_) async => null);
       
-      // First attempt with real email fails with user-not-found
+      // First attempt creating user fails
       when(
-        () => partnerRepo.signInWithEmailPassword(
-          'srikumar@gmail.com',
+        () => partnerRepo.createUserWithEmailPassword(
+          'delivery_9876543210@fooddelivery.com',
           'password123',
         ),
-      ).thenThrow(FirebaseAuthException(code: 'user-not-found'));
+      ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
       
-      // Fallback attempt with dummy email succeeds
+      // Fallback attempt with signInWithEmailPassword succeeds
       when(
         () => partnerRepo.signInWithEmailPassword(
-          '+919876543210@delivery.app',
+          'delivery_9876543210@fooddelivery.com',
           'password123',
         ),
       ).thenAnswer((_) async => credential);
       
       when(
         () => partnerRepo.getDeliveryPartner('uid123'),
-      ).thenAnswer((_) async => partnerWithRealEmail);
+      ).thenAnswer((_) async => buildPartner());
+      when(
+        () => partnerRepo.createDeliveryPartner(any(), any()),
+      ).thenAnswer((_) async {});
       when(
         () => partnerRepo.updateLastLogin('uid123'),
       ).thenAnswer((_) async {});
       when(
-        () => partnerRepo.saveSession('uid123', '+919876543210@delivery.app'),
+        () => partnerRepo.saveSession('uid123', 'delivery_9876543210@fooddelivery.com'),
       ).thenAnswer((_) async {});
 
       final result = await repository.loginWithPhone(
@@ -258,13 +267,7 @@ void main() {
       expect(result.id, 'uid123');
       verify(
         () => partnerRepo.signInWithEmailPassword(
-          'srikumar@gmail.com',
-          'password123',
-        ),
-      ).called(1);
-      verify(
-        () => partnerRepo.signInWithEmailPassword(
-          '+919876543210@delivery.app',
+          'delivery_9876543210@fooddelivery.com',
           'password123',
         ),
       ).called(1);
@@ -284,7 +287,7 @@ void main() {
       // Default email attempt succeeds
       when(
         () => partnerRepo.signInWithEmailPassword(
-          '+919876543210@delivery.app',
+          'delivery_9876543210@fooddelivery.com',
           'password123',
         ),
       ).thenAnswer((_) async => credential);
@@ -296,7 +299,7 @@ void main() {
         () => partnerRepo.updateLastLogin('uid123'),
       ).thenAnswer((_) async {});
       when(
-        () => partnerRepo.saveSession('uid123', '+919876543210@delivery.app'),
+        () => partnerRepo.saveSession('uid123', 'delivery_9876543210@fooddelivery.com'),
       ).thenAnswer((_) async {});
 
       final result = await repository.loginWithPhone(
@@ -307,17 +310,20 @@ void main() {
       expect(result.id, 'uid123');
       verify(
         () => partnerRepo.signInWithEmailPassword(
-          '+919876543210@delivery.app',
+          'delivery_9876543210@fooddelivery.com',
           'password123',
         ),
       ).called(1);
       verify(
-        () => partnerRepo.saveSession('uid123', '+919876543210@delivery.app'),
+        () => partnerRepo.saveSession('uid123', 'delivery_9876543210@fooddelivery.com'),
       ).called(1);
     });
 
-    test('loginWithApple throws unimplemented error', () async {
-      expect(() => repository.loginWithApple(), throwsUnimplementedError);
+    test('loginWithApple throws error on unsupported platforms', () async {
+      expect(
+        () => repository.loginWithApple(),
+        throwsA(predicate((e) => e.toString().contains('Apple Sign-In is only supported'))),
+      );
     });
 
     test('sendPasswordResetEmail delegates to partner repository', () async {

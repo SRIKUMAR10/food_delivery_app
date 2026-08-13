@@ -190,6 +190,8 @@ class UserRepository {
       final response = await callable.call({
         'phoneNumber': formattedPhone,
         'password': password,
+        'role': 'user',
+        'targetRole': 'user',
       });
 
       final data = Map<String, dynamic>.from(response.data as Map);

@@ -1,16 +1,25 @@
-
-┌─────────────────────────────────────────────────────────┐
-│ A new version of Flutter is available!                  │
-│                                                         │
-│ To update to the latest version, run "flutter upgrade". │
-└─────────────────────────────────────────────────────────┘
-Resolving dependencies...
-The current Flutter SDK version is 3.41.7.
-
-Because audioplayers 6.8.1 requires Flutter SDK version >=3.44.0 and no versions of audioplayers match >6.8.1 <7.0.0, audioplayers ^6.8.1 is forbidden.
-So, because food_delivery_app depends on audioplayers ^6.8.1, version solving failed.
-
-
-You can try the following suggestion to make the pubspec resolve:
-* Try using the Flutter SDK version: 3.44.6. 
-Failed to update packages.
+﻿00:00 +0: loading D:/Flutter_Project/food_delivery_app/test/Delivery Partner test/unit/Delivery_Login Page_repository_test.dart
+00:00 +0: (setUpAll)
+00:00 +0: DeliveryLoginRepository Unit Tests loginWithPhone returns partner for valid credentials
+customLogin error, trying fallback handling: [core/no-app] No Firebase App '[DEFAULT]' has been created - call Firebase.initializeApp()
+Firestore create partner on login: type 'Null' is not a subtype of type 'Future<void>'
+00:00 +1: DeliveryLoginRepository Unit Tests loginWithPhone throws Account not found for user-not-found
+customLogin error, trying fallback handling: [core/no-app] No Firebase App '[DEFAULT]' has been created - call Firebase.initializeApp()
+00:00 +2: DeliveryLoginRepository Unit Tests loginWithPhone throws Incorrect password for wrong-password
+customLogin error, trying fallback handling: [core/no-app] No Firebase App '[DEFAULT]' has been created - call Firebase.initializeApp()
+00:00 +3: DeliveryLoginRepository Unit Tests loginWithPhone throws for disabled account
+customLogin error, trying fallback handling: [core/no-app] No Firebase App '[DEFAULT]' has been created - call Firebase.initializeApp()
+00:00 +4: DeliveryLoginRepository Unit Tests loginWithGoogle returns partner on success and sets selected navigation index to 11
+00:00 +5: DeliveryLoginRepository Unit Tests loginWithPhone uses real email from partner profile when present
+customLogin error, trying fallback handling: [core/no-app] No Firebase App '[DEFAULT]' has been created - call Firebase.initializeApp()
+00:00 +6: DeliveryLoginRepository Unit Tests loginWithPhone falls back to dummy email when initial creation fails
+customLogin error, trying fallback handling: [core/no-app] No Firebase App '[DEFAULT]' has been created - call Firebase.initializeApp()
+00:00 +7: DeliveryLoginRepository Unit Tests loginWithPhone handles Firestore permission-denied gracefully, trying default email credentials
+customLogin error, trying fallback handling: [core/no-app] No Firebase App '[DEFAULT]' has been created - call Firebase.initializeApp()
+Firestore lookup by phone during login: [cloud_firestore/permission-denied] Missing or insufficient permissions.
+Firestore create partner on login: type 'Null' is not a subtype of type 'Future<void>'
+00:00 +8: DeliveryLoginRepository Unit Tests loginWithApple throws error on unsupported platforms
+00:00 +9: DeliveryLoginRepository Unit Tests sendPasswordResetEmail delegates to partner repository
+00:00 +10: DeliveryLoginRepository Unit Tests saveSavedPhone and getSavedPhone delegate to partner repository
+00:00 +11: (tearDownAll)
+00:00 +11: All tests passed!

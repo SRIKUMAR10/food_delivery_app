@@ -50,6 +50,8 @@ class SellerRepository {
     final response = await callable.call({
       'phoneNumber': formattedPhone,
       'password': password,
+      'role': 'seller',
+      'targetRole': 'seller',
     });
 
     final data = Map<String, dynamic>.from(response.data as Map);

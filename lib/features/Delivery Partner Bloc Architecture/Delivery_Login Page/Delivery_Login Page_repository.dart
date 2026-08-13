@@ -36,6 +36,8 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
       final response = await callable.call({
         'phoneNumber': fullPhone,
         'password': password,
+        'role': 'delivery_partner',
+        'targetRole': 'delivery_partner',
       });
 
       final data = Map<String, dynamic>.from(response.data as Map);
@@ -78,10 +80,12 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
         await _partnerRepo.saveSession(partner.id, partner.email ?? '');
       } catch (_) {}
 
-      return partner;
     } on FirebaseFunctionsException catch (e) {
       debugPrint('customLogin FirebaseFunctionsException: ${e.code} - ${e.message}');
-      throw Exception(e.message ?? 'Invalid phone number or password.');
+      if (e.code == 'permission-denied') {
+        throw Exception(e.message ?? 'Account is blocked or deactivated.');
+      }
+      debugPrint('customLogin Cloud Function returned ${e.code}, continuing to fallback handling...');
     } catch (e) {
       debugPrint('customLogin error, trying fallback handling: $e');
     }
