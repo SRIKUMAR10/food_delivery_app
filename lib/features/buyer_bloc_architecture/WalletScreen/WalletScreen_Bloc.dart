@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'package:food_delivery_app/api_service/RazorpayApiService.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
 
@@ -198,7 +199,7 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
       emit(
         state.copyWith(
           paymentStatus: PaymentStatus.failed,
-          errorMessage: e.toString(),
+          errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
         ),
       );
     }

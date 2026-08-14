@@ -87,14 +87,15 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
       throw Exception('A valid email address is required for registration.');
     }
 
-    // Check if email or phone is ALREADY registered specifically in Delivery Partner collection
-    final existingByEmail = await _partnerRepo.getDeliveryPartnerByEmail(authEmail);
-    if (existingByEmail != null) {
+    // Check if email or phone is ALREADY registered specifically in Delivery Partner collection concurrently
+    final existingChecks = await Future.wait([
+      _partnerRepo.getDeliveryPartnerByEmail(authEmail),
+      _partnerRepo.getDeliveryPartnerByPhone(fullPhone),
+    ]);
+    if (existingChecks[0] != null) {
       throw Exception('This email address is already registered in Delivery Partner. Please login.');
     }
-
-    final existingByPhone = await _partnerRepo.getDeliveryPartnerByPhone(fullPhone);
-    if (existingByPhone != null) {
+    if (existingChecks[1] != null) {
       throw Exception('This phone number is already registered in Delivery Partner. Please login.');
     }
 

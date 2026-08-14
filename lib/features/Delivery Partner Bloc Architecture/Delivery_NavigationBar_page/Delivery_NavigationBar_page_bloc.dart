@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/repositories/delivery_partner_repository.dart';
 import 'Delivery_NavigationBar_page_event.dart';
@@ -27,18 +28,29 @@ class DeliveryNavigationBarPageBloc
     on<DeliveryNavigationBarLogoutRequestedEvent>(_onLogout);
   }
 
+  bool? _cachedIsProfileComplete;
+
   Future<void> _onInit(
     DeliveryNavigationBarInitEvent event,
     Emitter<DeliveryNavigationBarState> emit,
   ) async {
     emit(state.copyWith(status: DeliveryNavigationBarStatus.loading));
     try {
-      final isOnline = await service.checkConnectivity();
-      final navItems = await repository.getNavItems();
-      final savedIndex = await repository.getSavedSelectedIndex();
-      final localeCode = await repository.getLocaleCode();
-      final partnerName = await repository.getPartnerName();
-      final hasPermission = await service.checkPermission();
+      final results = await Future.wait([
+        service.checkConnectivity(),
+        repository.getNavItems(),
+        repository.getSavedSelectedIndex(),
+        repository.getLocaleCode(),
+        repository.getPartnerName(),
+        service.checkPermission(),
+      ]);
+
+      final isOnline = results[0] as bool;
+      final navItems = results[1] as List<DeliveryNavigationBarItem>;
+      final savedIndex = results[2] as int;
+      final localeCode = results[3] as String;
+      final partnerName = results[4] as String;
+      final hasPermission = results[5] as bool;
 
       if (navItems.isEmpty) {
         emit(state.copyWith(
@@ -55,27 +67,32 @@ class DeliveryNavigationBarPageBloc
           ? savedIndex
           : 0;
 
-      if (isOnline) {
-        final uid = _partnerRepo.currentUser?.uid;
-        if (uid != null) {
+      final session = await _partnerRepo.getSession();
+      final uid = _partnerRepo.currentUser?.uid ?? session['uid'];
+
+      if (uid != null && uid.isNotEmpty) {
+        try {
           final partner = await _partnerRepo.getDeliveryPartner(uid);
           if (partner != null) {
-            final isProfileComplete = partner.displayName.trim().isNotEmpty &&
+            _cachedIsProfileComplete = partner.displayName.trim().isNotEmpty &&
                 partner.phoneNumber.trim().isNotEmpty &&
                 partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
                 partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
                 partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
-                
-            if (!isProfileComplete) {
+
+            if (_cachedIsProfileComplete == false) {
               indexToUse = 11;
             }
           } else {
-            indexToUse = 11;
+            _cachedIsProfileComplete = true;
           }
-        } else {
-          indexToUse = 11;
+        } catch (_) {
+          _cachedIsProfileComplete = true;
         }
+      } else {
+        _cachedIsProfileComplete = true;
       }
+
 
       emit(state.copyWith(
         status: DeliveryNavigationBarStatus.loaded,
@@ -104,34 +121,22 @@ class DeliveryNavigationBarPageBloc
       return;
     }
 
-    final isOnline = await service.checkConnectivity();
-    if (isOnline && event.index != 11) {
-      final uid = _partnerRepo.currentUser?.uid;
-      if (uid != null) {
-        final partner = await _partnerRepo.getDeliveryPartner(uid);
-        if (partner != null) {
-          final isProfileComplete = partner.displayName.trim().isNotEmpty &&
-              partner.phoneNumber.trim().isNotEmpty &&
-              partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
-              partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
-              partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
-
-          if (!isProfileComplete) {
-            emit(state.copyWith(
-              selectedIndex: 11,
-              errorMessage: 'Please fill in and save your profile details first.',
-            ));
-            return;
-          }
-        }
-      }
+    if (_cachedIsProfileComplete == false && event.index != 11) {
+      emit(state.copyWith(
+        selectedIndex: 11,
+        errorMessage: 'Please fill in and save your profile details first.',
+      ));
+      return;
     }
 
-    await repository.saveSelectedIndex(event.index);
+    // Instantly switch tabs for responsive UI navigation
     emit(state.copyWith(
       selectedIndex: event.index,
       errorMessage: null,
     ));
+
+    // Save selection in background
+    unawaited(repository.saveSelectedIndex(event.index).catchError((_) => false));
   }
 
   Future<void> _onContactSupport(

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 abstract class DeliveryNavigationBarServiceBase {
   Future<bool> checkConnectivity();
@@ -15,21 +16,32 @@ class DeliveryNavigationBarService
     implements DeliveryNavigationBarServiceBase {
   @override
   Future<bool> checkConnectivity() async {
-    if (kIsWeb) {
-      return true;
-    }
     try {
-      final result = await InternetAddress.lookup('google.com')
-          .timeout(const Duration(seconds: 5));
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } on SocketException {
-      return false;
-    } on TimeoutException {
-      return false;
+      if (kIsWeb) {
+        final response = await http
+            .get(Uri.parse('https://www.google.com'))
+            .timeout(const Duration(seconds: 4));
+        return response.statusCode >= 200 && response.statusCode < 400;
+      } else {
+        final result = await InternetAddress.lookup('google.com')
+            .timeout(const Duration(seconds: 4));
+        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+          return true;
+        }
+      }
     } catch (_) {
-      return false;
+      try {
+        final response = await http
+            .get(Uri.parse('https://www.google.com'))
+            .timeout(const Duration(seconds: 4));
+        return response.statusCode >= 200 && response.statusCode < 400;
+      } catch (_) {
+        return false;
+      }
     }
+    return false;
   }
+
 
   @override
   Map<String, String> getEnvironmentVariables() {

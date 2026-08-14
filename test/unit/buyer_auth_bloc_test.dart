@@ -57,8 +57,92 @@ void main() {
           phone: '',
           password: '',
           status: BuyerLoginStatus.failure,
-          errorMessage: 'Please enter your phone number',
+          errorMessage: 'Please enter your phone number or email.',
         )),
+      );
+    });
+
+    test('emits failure when mobile number is less than 10 digits', () async {
+      final bloc = BuyerLoginBloc(repository: mockRepo);
+      bloc.add(const BuyerLoginSubmitted(phone: '+91 98427', password: '123'));
+      await expectLater(
+        bloc.stream,
+        emits(const BuyerLoginState(
+          phone: '',
+          password: '',
+          status: BuyerLoginStatus.failure,
+          errorMessage: 'Please enter a valid 10-digit mobile number.',
+        )),
+      );
+    });
+
+    test('emits failure when no internet connection', () async {
+      when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => false);
+      final bloc = BuyerLoginBloc(repository: mockRepo);
+      bloc.add(const BuyerLoginSubmitted(phone: '+919876543210', password: 'password123'));
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const BuyerLoginState(status: BuyerLoginStatus.loading),
+          const BuyerLoginState(
+            status: BuyerLoginStatus.failure,
+            errorMessage: 'No internet connection. Please check your network.',
+          ),
+        ]),
+      );
+    });
+
+    test('emits success on valid login with internet', () async {
+      when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => true);
+      when(() => mockRepo.login(phone: '+919876543210', password: 'password123')).thenAnswer((_) async => 'user_buyer_123');
+      final bloc = BuyerLoginBloc(repository: mockRepo);
+      bloc.add(const BuyerLoginSubmitted(phone: '+919876543210', password: 'password123'));
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const BuyerLoginState(status: BuyerLoginStatus.loading),
+          const BuyerLoginState(
+            status: BuyerLoginStatus.success,
+            userId: 'user_buyer_123',
+          ),
+        ]),
+      );
+    });
+    test('emits failure when mobile number is not registered in firestore', () async {
+      when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => true);
+      when(() => mockRepo.login(phone: '9842770280', password: '123456')).thenThrow(
+        Exception('No registered buyer account found for "9842770280". Please sign up.'),
+      );
+      final bloc = BuyerLoginBloc(repository: mockRepo);
+      bloc.add(const BuyerLoginSubmitted(phone: '9842770280', password: '123456'));
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const BuyerLoginState(status: BuyerLoginStatus.loading),
+          const BuyerLoginState(
+            status: BuyerLoginStatus.failure,
+            errorMessage: 'Mobile number or email is not registered. Please sign up.',
+          ),
+        ]),
+      );
+    });
+
+    test('emits failure with Incorrect password. Please try again. when password is wrong', () async {
+      when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => true);
+      when(() => mockRepo.login(phone: '+919876543210', password: 'wrongpassword')).thenThrow(
+        Exception('invalid-credential'),
+      );
+      final bloc = BuyerLoginBloc(repository: mockRepo);
+      bloc.add(const BuyerLoginSubmitted(phone: '+919876543210', password: 'wrongpassword'));
+      await expectLater(
+        bloc.stream,
+        emitsInOrder([
+          const BuyerLoginState(status: BuyerLoginStatus.loading),
+          const BuyerLoginState(
+            status: BuyerLoginStatus.failure,
+            errorMessage: 'Incorrect password. Please try again.',
+          ),
+        ]),
       );
     });
   });

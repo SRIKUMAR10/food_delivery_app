@@ -37,26 +37,52 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: BlocConsumer<BuyerLoginBloc, BuyerLoginState>(
+                listenWhen: (previous, current) =>
+                    previous.status != current.status ||
+                    previous.errorMessage != current.errorMessage,
                 listener: (context, state) {
-                  if (state.status == BuyerLoginStatus.success) {
-                    if (Navigator.of(context).canPop()) {
-                      Navigator.of(context).pop();
-                    } else {
-                      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (_) => const CurvedNavigationBarView(),
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.clearSnackBars();
+
+                    if (state.status == BuyerLoginStatus.success) {
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Login successful! Welcome back.'),
+                          backgroundColor: Color(0xFFE52121),
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 3),
                         ),
-                        (route) => false,
+                      );
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      } else {
+                        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (_) => const CurvedNavigationBarView(),
+                          ),
+                          (route) => false,
+                        );
+                      }
+                    } else if (state.status == BuyerLoginStatus.failure) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            state.errorMessage ?? 'Incorrect password. Please try again.',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 4),
+                        ),
                       );
                     }
-                  } else if (state.status == BuyerLoginStatus.failure) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(state.errorMessage ?? 'Login failed'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
+                  });
                 },
                 builder: (context, state) {
                   final isWide = MediaQuery.of(context).size.width > 768;
@@ -122,7 +148,8 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 24),
+
                         const Text(
                           'Phone Number or Email',
                           style: TextStyle(
@@ -356,7 +383,7 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                   );
 
                   return Container(
-                    constraints: const BoxConstraints(maxWidth: 960, maxHeight: 620),
+                    constraints: const BoxConstraints(maxWidth: 960),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(32),
@@ -370,16 +397,24 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: isWide
-                        ? Row(
-                            children: [
-                              Expanded(flex: 5, child: leftBanner),
-                              Expanded(flex: 6, child: rightForm),
-                            ],
+                        ? IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(flex: 5, child: leftBanner),
+                                Expanded(
+                                  flex: 6,
+                                  child: SingleChildScrollView(
+                                    child: rightForm,
+                                  ),
+                                ),
+                              ],
+                            ),
                           )
                         : SingleChildScrollView(
                             child: Column(
                               children: [
-                                SizedBox(height: 240, child: leftBanner),
+                                SizedBox(height: 280, child: leftBanner),
                                 rightForm,
                               ],
                             ),

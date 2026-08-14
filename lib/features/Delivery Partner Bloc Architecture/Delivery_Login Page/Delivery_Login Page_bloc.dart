@@ -163,9 +163,17 @@ class DeliveryLoginPageBloc
         errorMessage: null,
       ));
     } catch (e) {
+      final rawMsg = e.toString()
+          .replaceAll('Exception: ', '')
+          .replaceAll(RegExp(r'\[firebase_[a-zA-Z0-9_\/-]+\]\s*'), '')
+          .trim();
+      final cleanMsg = (rawMsg == 'INTERNAL' || rawMsg.contains('INTERNAL') || rawMsg.contains('internal'))
+          ? 'Password is incorrect or account not found. Please try again.'
+          : (rawMsg.isEmpty ? 'Authentication failed. Please try again.' : rawMsg);
+
       emit(state.copyWith(
         status: DeliveryLoginStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: cleanMsg,
       ));
     }
   }

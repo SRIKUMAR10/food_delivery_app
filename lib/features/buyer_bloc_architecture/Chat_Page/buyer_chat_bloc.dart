@@ -1,6 +1,7 @@
 // Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'buyer_chat_event.dart';
 import 'buyer_chat_state.dart';
 import '../../../core/repositories/i_chat_repository.dart';

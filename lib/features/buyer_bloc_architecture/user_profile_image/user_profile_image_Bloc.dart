@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/core/repositories/i_user_profile_repository.dart';
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'user_profile_models.dart';
 
 part 'user_profile_image_Event.dart';
@@ -218,8 +219,8 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     } catch (e) {
       debugPrint('Upload error: $e');
       final String message = e.toString().contains('unauthorized')
-          ? 'Storage Permission Error: User is not authorized to upload to Firebase Storage. Please check Firebase Storage Security Rules.'
-          : 'Upload failed: ${e.toString().replaceAll('Exception: ', '')}';
+          ? 'Storage Permission Error: User is not authorized to upload to Firebase Storage.'
+          : AppExceptionFormatter.toUserFriendlyMessage(e);
       emit(currentState.copyWith(
         uploadProgress: 0.0,
         errorMessage: message,

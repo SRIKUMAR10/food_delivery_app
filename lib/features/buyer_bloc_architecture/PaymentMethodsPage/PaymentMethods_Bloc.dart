@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 
 import 'PaymentMethods_Event.dart';
 import 'PaymentMethods_State.dart';
@@ -180,14 +181,14 @@ class PaymentMethodsBloc
         onError: (e, stackTrace) {
           return state.copyWith(
             status: PaymentMethodsStatus.error,
-            errorMessage: 'Failed to load payment methods: $e',
+            errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
           );
         },
       );
     } catch (e) {
       emit(state.copyWith(
         status: PaymentMethodsStatus.error,
-        errorMessage: 'Failed to load payment methods: $e',
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }
@@ -216,7 +217,7 @@ class PaymentMethodsBloc
     } catch (e) {
       emit(state.copyWith(
         isSaving: false,
-        errorMessage: 'Failed to add payment method: $e',
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }
@@ -238,7 +239,7 @@ class PaymentMethodsBloc
     } catch (e) {
       emit(state.copyWith(
         isSaving: false,
-        errorMessage: 'Failed to update payment method: $e',
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }
@@ -254,7 +255,7 @@ class PaymentMethodsBloc
     } catch (e) {
       emit(state.copyWith(
         isSaving: false,
-        errorMessage: 'Failed to delete payment method: $e',
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }
@@ -266,7 +267,7 @@ class PaymentMethodsBloc
     try {
       await _repository.setDefault(event.methodId);
     } catch (e) {
-      emit(state.copyWith(errorMessage: 'Failed to set default: $e'));
+      emit(state.copyWith(errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e)));
     }
   }
 

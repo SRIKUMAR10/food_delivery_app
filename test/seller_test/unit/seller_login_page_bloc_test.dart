@@ -31,6 +31,7 @@ void main() {
 
   setUp(() {
     mockRepo = MockSellerRepository();
+    when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => true);
     bloc = SellerLoginPageBloc(authRepository: mockRepo);
   });
 

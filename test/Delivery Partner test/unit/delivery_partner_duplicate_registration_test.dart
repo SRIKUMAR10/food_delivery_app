@@ -62,8 +62,11 @@ void main() {
     );
 
     test(
-      'signUp throws when FirebaseAuth returns email-already-in-use',
+      'signUp handles FirebaseAuth email-already-in-use correctly',
       () async {
+        when(
+          () => mockPartnerRepo.getDeliveryPartnerByEmail(any()),
+        ).thenAnswer((_) async => null);
         when(
           () => mockPartnerRepo.getDeliveryPartnerByPhone(any()),
         ).thenAnswer((_) async => null);
@@ -74,6 +77,14 @@ void main() {
           ),
         ).thenThrow(
           FirebaseAuthException(code: 'email-already-in-use'),
+        );
+        when(
+          () => mockPartnerRepo.signInWithEmailPassword(
+            any(),
+            any(),
+          ),
+        ).thenThrow(
+          FirebaseAuthException(code: 'wrong-password'),
         );
 
         final signUpRepo =
@@ -91,7 +102,7 @@ void main() {
               (e) =>
                   e is Exception &&
                   e.toString().contains(
-                    'This phone number is already registered. Please login.',
+                    'This email is registered under another account',
                   ),
             ),
           ),

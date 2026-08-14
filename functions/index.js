@@ -897,22 +897,20 @@ exports.resetDeliveryPartnerPassword = functions.https.onRequest((req, res) => {
 
 // 9. Custom Login Callable Cloud Function
 exports.customLogin = onCallV2({ cors: true }, async (request) => {
-  const { phoneNumber, password } = request.data || {};
+  const rawIdentifier = String(
+    request.data?.phoneNumber ||
+    request.data?.phone ||
+    request.data?.email ||
+    request.data?.identifier ||
+    request.data?.emailOrPhone ||
+    ""
+  ).trim();
+  const rawPassword = String(request.data?.password || "").trim();
 
-  if (!phoneNumber || !password) {
+  if (rawIdentifier.length === 0 || rawPassword.length === 0) {
     throw new HttpsErrorV2(
       "invalid-argument",
-      "Both 'phoneNumber' and 'password' are required fields."
-    );
-  }
-
-  const rawPhone = String(phoneNumber).trim();
-  const rawPassword = String(password).trim();
-
-  if (rawPhone.length === 0 || rawPassword.length === 0) {
-    throw new HttpsError(
-      "invalid-argument",
-      "Phone number and password cannot be empty."
+      "Both email/phone number and password are required fields."
     );
   }
 
@@ -923,8 +921,9 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
     ""
   ).toLowerCase().trim();
 
-  const variationsList = normalizePhoneVariations(rawPhone);
-  const digitsOnly = rawPhone.replace(/\D/g, "");
+  const isEmail = rawIdentifier.includes("@");
+  const variationsList = isEmail ? [rawIdentifier] : normalizePhoneVariations(rawIdentifier);
+  const digitsOnly = rawIdentifier.replace(/\D/g, "");
   const last10 = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
 
   let collectionsToSearch = [...SEARCHABLE_USER_COLLECTIONS];
@@ -935,28 +934,12 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
       "delivery_users",
       "riders",
       "partners",
-      "buyer_user",
-      "buyer_users",
-      "users",
-      "sellers",
-      "seller",
-      "seller_users",
-      "customers",
-      "customer",
     ];
   } else if (requestedRole.includes("seller") || requestedRole.includes("vendor")) {
     collectionsToSearch = [
       "sellers",
       "seller",
       "seller_users",
-      "buyer_user",
-      "buyer_users",
-      "users",
-      "delivery_partners",
-      "delivery_partner",
-      "riders",
-      "customers",
-      "customer",
     ];
   } else if (requestedRole.includes("buyer") || requestedRole.includes("user") || requestedRole.includes("customer")) {
     collectionsToSearch = [
@@ -965,11 +948,6 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
       "users",
       "customers",
       "customer",
-      "sellers",
-      "seller",
-      "delivery_partners",
-      "delivery_partner",
-      "riders",
     ];
   }
 
@@ -979,31 +957,56 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
     let foundCollection = null;
     let foundField = null;
 
-    for (const coll of collectionsToSearch) {
-      for (const field of SEARCHABLE_PHONE_FIELDS) {
-        for (const pVal of variationsList) {
-          if (!pVal) continue;
-          const snap = await db.collection(coll)
-            .where(field, "==", pVal)
-            .limit(1)
-            .get();
+    if (isEmail) {
+      const lowerEmail = rawIdentifier.toLowerCase();
+      for (const coll of collectionsToSearch) {
+        for (const eField of ["email", "userEmail", "customerEmail", "sellerEmail", "partnerEmail"]) {
+          const snap = await db.collection(coll).where(eField, "==", rawIdentifier).limit(1).get();
           if (!snap.empty) {
             userDoc = snap.docs[0];
             foundCollection = coll;
-            foundField = field;
+            foundField = eField;
             break;
+          }
+          if (rawIdentifier !== lowerEmail) {
+            const snapLower = await db.collection(coll).where(eField, "==", lowerEmail).limit(1).get();
+            if (!snapLower.empty) {
+              userDoc = snapLower.docs[0];
+              foundCollection = coll;
+              foundField = eField;
+              break;
+            }
           }
         }
         if (userDoc) break;
       }
-      if (userDoc) break;
+    } else {
+      for (const coll of collectionsToSearch) {
+        for (const field of SEARCHABLE_PHONE_FIELDS) {
+          for (const pVal of variationsList) {
+            if (!pVal) continue;
+            const snap = await db.collection(coll)
+              .where(field, "==", pVal)
+              .limit(1)
+              .get();
+            if (!snap.empty) {
+              userDoc = snap.docs[0];
+              foundCollection = coll;
+              foundField = field;
+              break;
+            }
+          }
+          if (userDoc) break;
+        }
+        if (userDoc) break;
+      }
     }
 
     if (!userDoc) {
-      console.warn(`customLogin: No document found in Firestore for phone variations: ${variationsList.join(", ")}`);
-      throw new HttpsError(
+      console.warn(`customLogin: No document found in Firestore for identifier: ${rawIdentifier}`);
+      throw new HttpsErrorV2(
         "not-found",
-        "No registered account found with the provided phone number."
+        "No registered account found with the provided email or phone number."
       );
     }
 
@@ -1011,7 +1014,7 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
     const uid = userDoc.id;
 
     if (userData.status === "disabled" || userData.status === "blocked" || userData.isActive === false) {
-      throw new HttpsError(
+      throw new HttpsErrorV2(
         "permission-denied",
         "Account is deactivated or blocked. Please contact support."
       );
@@ -1063,90 +1066,27 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
         } catch (e) {}
       }
     } else {
-      console.log(`customLogin: No password field configured in doc ${uid}, allowing active account login.`);
-      isPasswordValid = true;
+      console.warn(`customLogin: No password field configured in doc ${uid}. Password validation required.`);
+      isPasswordValid = false;
     }
 
     if (!isPasswordValid) {
       console.warn(`customLogin: Password mismatch for UID ${uid} in collection '${foundCollection}' field '${foundField}'`);
-      throw new HttpsError(
+      throw new HttpsErrorV2(
         "unauthenticated",
-        "Invalid phone number or password. Please try again."
+        "Password is incorrect. Please try again."
       );
     }
 
-    const formattedPhone = last10.length === 10 ? `+91${last10}` : rawPhone;
+    const formattedPhone = last10.length === 10 ? `+91${last10}` : rawIdentifier;
 
     let effectiveRole = userData.role;
     if (requestedRole.includes("delivery") || requestedRole.includes("rider") || requestedRole.includes("partner")) {
       effectiveRole = "delivery_partner";
-      if (!foundCollection.includes("delivery") && !foundCollection.includes("rider")) {
-        try {
-          console.log(`customLogin: Auto-provisioning delivery_partners profile for UID ${uid}...`);
-          await db.collection("delivery_partners").doc(uid).set({
-            id: uid,
-            phoneNumber: userData.phoneNumber || userData.phone || formattedPhone,
-            countryCode: "+91",
-            displayName: userData.fullName || userData.name || userData.displayName || userData.sellerName || "Delivery Partner",
-            email: userData.email || `${formattedPhone}@delivery.app`,
-            password: rawPassword,
-            role: "delivery_partner",
-            status: "approved",
-            isActive: true,
-            isVerified: true,
-            isPhoneVerified: true,
-            isEmailVerified: true,
-            profileCompletion: 100,
-            isOnline: true,
-            kycStatus: "approved",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, { merge: true });
-        } catch (provErr) {
-          console.warn(`customLogin: Error auto-provisioning delivery_partners for ${uid}:`, provErr);
-        }
-      }
     } else if (requestedRole.includes("seller") || requestedRole.includes("vendor")) {
       effectiveRole = "seller";
-      if (!foundCollection.includes("seller")) {
-        try {
-          console.log(`customLogin: Auto-provisioning sellers profile for UID ${uid}...`);
-          await db.collection("sellers").doc(uid).set({
-            id: uid,
-            phoneNumber: userData.phoneNumber || userData.phone || formattedPhone,
-            sellerName: userData.fullName || userData.name || userData.displayName || "Seller",
-            email: userData.email || `${formattedPhone}@seller.app`,
-            password: rawPassword,
-            role: "seller",
-            status: "approved",
-            isActive: true,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, { merge: true });
-        } catch (provErr) {
-          console.warn(`customLogin: Error auto-provisioning sellers for ${uid}:`, provErr);
-        }
-      }
     } else if (requestedRole.includes("buyer") || requestedRole.includes("user") || requestedRole.includes("customer")) {
       effectiveRole = "user";
-      if (!foundCollection.includes("buyer") && !foundCollection.includes("user")) {
-        try {
-          console.log(`customLogin: Auto-provisioning buyer_user profile for UID ${uid}...`);
-          await db.collection("buyer_user").doc(uid).set({
-            id: uid,
-            phone: userData.phoneNumber || userData.phone || formattedPhone,
-            name: userData.fullName || userData.name || userData.displayName || "Buyer User",
-            email: userData.email || `${formattedPhone}@foodgo.app`,
-            password: rawPassword,
-            role: "user",
-            status: "active",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, { merge: true });
-        } catch (provErr) {
-          console.warn(`customLogin: Error auto-provisioning buyer_user for ${uid}:`, provErr);
-        }
-      }
     } else {
       const isSellerColl = foundCollection.includes("seller");
       const isDeliveryColl = (foundCollection.includes("delivery") || foundCollection.includes("rider"));
@@ -1173,10 +1113,10 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
     };
   } catch (error) {
     console.error("Error executing customLogin callable function:", error);
-    if (error instanceof HttpsError) {
+    if (error instanceof HttpsErrorV2 || error.code || error.status) {
       throw error;
     }
-    throw new HttpsError(
+    throw new HttpsErrorV2(
       "internal",
       `Authentication internal error: ${error.message}`
     );

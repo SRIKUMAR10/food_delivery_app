@@ -3,10 +3,11 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/seller_model.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:food_delivery_app/core/services/firebase_auth_config.dart';
 import 'dart:async';
+import 'dart:io';
 
 class SellerRepository {
   final FirebaseFirestore _firestore;
@@ -15,6 +16,23 @@ class SellerRepository {
   SellerRepository({FirebaseFirestore? firestore, FirebaseAuth? auth})
       : _firestore = firestore ?? FirebaseFirestore.instance,
         _auth = auth ?? FirebaseAuth.instance;
+
+  Future<bool> checkNetworkConnectivity() async {
+    if (kIsWeb) {
+      return true;
+    }
+    try {
+      final result = await InternetAddress.lookup('google.com')
+          .timeout(const Duration(seconds: 5));
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
+    } on TimeoutException catch (_) {
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
 
   User? get currentUser => _auth.currentUser;
 
@@ -45,28 +63,114 @@ class SellerRepository {
   Future<UserCredential> signInWithPhoneAndPassword(String phoneNumber, String password) async {
     final cleanPhone = phoneNumber.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
     final formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : '+91$cleanPhone';
+    final trimmedPassword = password.trim();
 
-    final callable = FirebaseFunctions.instance.httpsCallable('customLogin');
-    final response = await callable.call({
-      'phoneNumber': formattedPhone,
-      'password': password,
-      'role': 'seller',
-      'targetRole': 'seller',
-    });
+    // 0. Verify Firestore seller document and password if present
+    final variants = <String>[
+      formattedPhone,
+      cleanPhone,
+      phoneNumber.trim(),
+      if (cleanPhone.length >= 10) cleanPhone.substring(cleanPhone.length - 10),
+    ];
 
-    final data = Map<String, dynamic>.from(response.data as Map);
-    final customToken = data['customToken'] as String;
+    DocumentSnapshot? sellerDoc;
+    try {
+      final snap = await _firestore
+          .collection('sellers')
+          .where('contactNumber', whereIn: variants)
+          .limit(1)
+          .get();
 
-    return await _auth.signInWithCustomToken(customToken);
+      sellerDoc = snap.docs.isNotEmpty ? snap.docs.first : null;
+      if (sellerDoc == null) {
+        final snapPhone = await _firestore
+            .collection('sellers')
+            .where('phoneNumber', whereIn: variants)
+            .limit(1)
+            .get();
+        if (snapPhone.docs.isNotEmpty) sellerDoc = snapPhone.docs.first;
+      }
+    } catch (e) {
+      debugPrint('Seller Firestore phone lookup note: $e');
+    }
+
+    if (sellerDoc != null) {
+      final data = sellerDoc.data() as Map<String, dynamic>?;
+      final storedPassword = data?['password']?.toString().trim();
+      if (storedPassword != null && storedPassword.isNotEmpty) {
+        if (storedPassword != trimmedPassword) {
+          throw Exception('Password is incorrect. Please try again.');
+        }
+      }
+    } else {
+      throw Exception('No registered seller account found for "$phoneNumber". Please sign up.');
+    }
+
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('customLogin');
+      final response = await callable.call({
+        'phoneNumber': formattedPhone,
+        'password': trimmedPassword,
+        'role': 'seller',
+        'targetRole': 'seller',
+      });
+
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final customToken = data['customToken'] as String;
+
+      return await _auth.signInWithCustomToken(customToken);
+    } on FirebaseFunctionsException catch (e) {
+      throw Exception(e.message ?? 'Password is incorrect. Please try again.');
+    } catch (e) {
+      if (e.toString().contains('Password is incorrect') || e.toString().contains('No registered seller account')) {
+        rethrow;
+      }
+      throw Exception('Password is incorrect. Please try again.');
+    }
   }
 
   Future<UserCredential> signIn(String emailOrPhone, String password) async {
     final trimmed = emailOrPhone.trim();
+    final trimmedPassword = password.trim();
     final isPhone = !trimmed.contains('@') && RegExp(r'^\+?[0-9\s\-]+$').hasMatch(trimmed);
     if (isPhone) {
-      return await signInWithPhoneAndPassword(trimmed, password);
+      return await signInWithPhoneAndPassword(trimmed, trimmedPassword);
     }
-    return await _auth.signInWithEmailAndPassword(email: trimmed, password: password);
+
+    // Email branch: Check Firestore seller document password first
+    DocumentSnapshot? sellerDoc;
+    try {
+      final snap = await _firestore
+          .collection('sellers')
+          .where('email', isEqualTo: trimmed)
+          .limit(1)
+          .get();
+      if (snap.docs.isNotEmpty) sellerDoc = snap.docs.first;
+    } catch (e) {
+      debugPrint('Seller Firestore email lookup note: $e');
+    }
+
+    if (sellerDoc != null) {
+      final data = sellerDoc.data() as Map<String, dynamic>?;
+      final storedPassword = data?['password']?.toString().trim();
+      if (storedPassword != null && storedPassword.isNotEmpty) {
+        if (storedPassword != trimmedPassword) {
+          throw Exception('Password is incorrect. Please try again.');
+        }
+      }
+    } else {
+      throw Exception('No registered seller account found for "$trimmed". Please sign up.');
+    }
+
+    try {
+      return await _auth.signInWithEmailAndPassword(email: trimmed, password: trimmedPassword);
+    } catch (e) {
+      if (e is FirebaseAuthException && (e.code == 'wrong-password' || e.code == 'invalid-credential')) {
+        throw Exception('Password is incorrect. Please try again.');
+      }
+      debugPrint('Seller signInWithEmailAndPassword failed ($e), falling back to customLogin...');
+      return await signInWithPhoneAndPassword(trimmed, trimmedPassword);
+    }
   }
 
   Future<void> signOut() async {

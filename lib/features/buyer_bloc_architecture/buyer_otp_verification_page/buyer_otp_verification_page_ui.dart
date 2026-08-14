@@ -62,30 +62,44 @@ class _BuyerOtpVerificationPageUIState extends State<BuyerOtpVerificationPageUI>
               padding: const EdgeInsets.all(24.0),
               child: BlocConsumer<BuyerOtpBloc, BuyerOtpState>(
                 listener: (context, state) {
-                  if (state.status == BuyerOtpStatus.success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Registration & Mobile Verification Successful! Welcome to FoodGo.'),
-                        backgroundColor: Colors.green,
-                        behavior: SnackBarBehavior.floating,
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (_) => const CurvedNavigationBarView(),
-                      ),
-                      (route) => false,
-                    );
-                  } else if (state.status == BuyerOtpStatus.failure) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(state.errorMessage ?? 'OTP Verification failed'),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.clearSnackBars();
+
+                    if (state.status == BuyerOtpStatus.success) {
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Registration & Mobile Verification Successful! Welcome to FoodGo.'),
+                          backgroundColor: Colors.green,
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) => const CurvedNavigationBarView(),
+                        ),
+                        (route) => false,
+                      );
+                    } else if (state.status == BuyerOtpStatus.failure) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            state.errorMessage ?? 'OTP Verification failed',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+                    }
+                  });
                 },
                 builder: (context, state) {
                   return Container(

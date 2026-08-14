@@ -307,31 +307,6 @@ class DeliveryPartnerRepository {
       final doc = await _deliveryCollection.getDeliveryPartner(uid);
       if (doc.exists) {
         return DeliveryPartnerModel.fromFirestore(doc);
-      } else {
-        final user = _auth.currentUser;
-        if (user != null && user.uid == uid) {
-          final now = DateTime.now();
-          final partner = DeliveryPartnerModel(
-            id: uid,
-            phoneNumber: user.phoneNumber ?? '',
-            countryCode: '+91',
-            displayName: user.displayName ?? 'Delivery Partner',
-            email: user.email ?? '',
-            role: 'delivery_partner',
-            status: 'pending',
-            isActive: true,
-            isVerified: false,
-            isPhoneVerified: true,
-            isEmailVerified: false,
-            profileCompletion: 0,
-            isOnline: false,
-            kycStatus: 'pending',
-            createdAt: now,
-            updatedAt: now,
-          );
-          await createDeliveryPartner(uid, partner);
-          return partner;
-        }
       }
     } catch (e) {
       debugPrint('getDeliveryPartner by uid error: $e');
@@ -399,11 +374,8 @@ class DeliveryPartnerRepository {
 
       final limitedSearchNumbers = searchNumbers.toList();
 
-      final isAuth = _auth.currentUser != null;
       final collectionsToSearch = [
         'delivery_partners',
-        if (isAuth) 'riders',
-        if (isAuth) 'buyer_user',
       ];
       final fieldsToSearch = [
         'phoneNumber',

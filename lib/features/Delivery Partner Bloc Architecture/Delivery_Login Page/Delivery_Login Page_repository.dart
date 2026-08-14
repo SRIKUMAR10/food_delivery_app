@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -29,13 +30,16 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
         ? cleaned.substring(3)
         : (cleaned.startsWith('+') ? cleaned.substring(1) : cleaned);
     final defaultEmail = 'delivery_${withoutPrefix}@fooddelivery.com';
+    final trimmedPassword = password.trim();
 
-    // 1. Primary Authentication: Call Cloud Function customLogin (bypasses unauthenticated Firestore rule restrictions)
+      DeliveryPartnerModel? partner;
+
+    // 1. Primary Authentication: Call Cloud Function customLogin
     try {
       final callable = FirebaseFunctions.instance.httpsCallable('customLogin');
       final response = await callable.call({
         'phoneNumber': fullPhone,
-        'password': password,
+        'password': trimmedPassword,
         'role': 'delivery_partner',
         'targetRole': 'delivery_partner',
       });
@@ -44,154 +48,113 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
       final customToken = data['customToken'] as String;
       final uid = data['uid'] as String;
 
-      // Authenticate session with Firebase Auth using Custom Token
       await FirebaseAuth.instance.signInWithCustomToken(customToken);
 
-      // Now authenticated! Fetch partner profile document securely
-      DeliveryPartnerModel? partner;
       try {
-        partner = await _partnerRepo.getDeliveryPartner(uid);
+        final fetched = await _partnerRepo.getDeliveryPartner(uid);
+        if (fetched != null) partner = fetched;
       } catch (e) {
         debugPrint('Error fetching delivery partner profile: $e');
       }
 
-      partner ??= DeliveryPartnerModel(
-        id: uid,
-        phoneNumber: fullPhone,
-        countryCode: '+91',
-        displayName: (data['user'] as Map?)?['name'] as String? ?? 'Delivery Partner',
-        email: defaultEmail,
-        password: password,
-        role: 'delivery_partner',
-        status: 'approved',
-        isActive: true,
-        isVerified: true,
-        isPhoneVerified: true,
-        isEmailVerified: true,
-        profileCompletion: 100,
-        isOnline: true,
-        kycStatus: 'approved',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+      if (partner == null) {
+        try {
+          partner = await _partnerRepo.getDeliveryPartnerByPhone(fullPhone);
+        } catch (_) {}
+      }
 
-      try {
-        await _partnerRepo.updateLastLogin(partner.id);
-        await _partnerRepo.saveSession(partner.id, partner.email ?? '');
-      } catch (_) {}
+      if (partner == null) {
+        throw Exception('No registered delivery partner account found for "$phone". Please sign up.');
+      }
 
+      // Perform post-login background updates concurrently
+      unawaited(Future.wait([
+        _partnerRepo.updateLastLogin(partner.id),
+        _partnerRepo.saveSession(partner.id, partner.email ?? ''),
+      ]).catchError((_) => <void>[]));
+
+      return partner;
     } on FirebaseFunctionsException catch (e) {
       debugPrint('customLogin FirebaseFunctionsException: ${e.code} - ${e.message}');
+      if (e.code == 'not-found' || (e.message != null && e.message!.contains('No registered account'))) {
+        throw Exception('No registered delivery partner account found for "$phone". Please sign up.');
+      }
       if (e.code == 'permission-denied') {
         throw Exception(e.message ?? 'Account is blocked or deactivated.');
       }
-      debugPrint('customLogin Cloud Function returned ${e.code}, continuing to fallback handling...');
+      if (e.code == 'unauthenticated' || (e.message != null && e.message!.contains('Password is incorrect'))) {
+        throw Exception('Password is incorrect. Please try again.');
+      }
+      if (e.code == 'invalid-argument') {
+        throw Exception(e.message ?? 'Please check your phone number and password.');
+      }
+      debugPrint('customLogin returned ${e.code}, attempting client fallback handling...');
     } catch (e) {
       debugPrint('customLogin error, trying fallback handling: $e');
     }
 
     // 2. Fallback handling if Cloud Function is unreachable
+    if (partner == null) {
+      try {
+        partner = await _partnerRepo.getDeliveryPartnerByPhone(fullPhone);
+      } catch (e) {
+        debugPrint('Fallback Firestore phone lookup error: $e');
+      }
+    }
+
+    if (partner == null) {
+      throw Exception('No registered delivery partner account found for "$phone". Please sign up.');
+    }
+
+    if (partner.status == 'blocked') {
+      throw Exception('Account is blocked. Contact support.');
+    }
+    if (partner.status == 'disabled') {
+      throw Exception('Account is disabled. Contact support.');
+    }
+
     UserCredential? authCred;
     try {
-      authCred = await _partnerRepo.signInWithEmailPassword(defaultEmail, password);
+      authCred = await _partnerRepo.signInWithEmailPassword(defaultEmail, trimmedPassword);
     } catch (_) {}
 
-    DeliveryPartnerModel? partner;
-    try {
-      partner = await _partnerRepo.getDeliveryPartnerByPhone(fullPhone);
-    } catch (e) {
-      debugPrint('Firestore lookup by phone during login: $e');
-    }
+    final targetPartner = partner;
 
-    if (partner != null) {
-      if (partner.status == 'blocked') {
-        throw Exception('Account is blocked. Contact support.');
-      }
-      if (partner.status == 'disabled') {
-        throw Exception('Account is disabled. Contact support.');
-      }
-
-      bool passwordVerified = (authCred != null);
-
-      if (!passwordVerified && partner.password != null && partner.password!.isNotEmpty) {
-        if (partner.password == password) {
-          passwordVerified = true;
-        }
-      }
-
-      if (!passwordVerified && partner.email != null && partner.email!.isNotEmpty) {
-        try {
-          authCred = await _partnerRepo.signInWithEmailPassword(partner.email!, password);
-          passwordVerified = true;
-        } catch (_) {}
-      }
-
-      if (!passwordVerified) {
-        throw Exception('Incorrect password. Please try again.');
-      }
-
-      final updates = <String, dynamic>{};
-      if (!partner.isActive) updates['isActive'] = true;
-      if (!partner.isPhoneVerified) updates['isPhoneVerified'] = true;
-      if (partner.status == 'pending') updates['status'] = 'approved';
-
-      if (updates.isNotEmpty) {
-        try {
-          await _partnerRepo.updateDeliveryPartner(partner.id, updates);
-        } catch (_) {}
-        partner = partner.copyWith(
-          isActive: true,
-          isPhoneVerified: true,
-          status: 'approved',
-        );
-      }
-    } else {
-      if (authCred == null) {
-        try {
-          authCred = await _partnerRepo.createUserWithEmailPassword(defaultEmail, password);
-        } catch (e) {
-          try {
-            authCred = await _partnerRepo.signInWithEmailPassword(defaultEmail, password);
-          } catch (_) {
-            throw Exception('Incorrect password. Please try again.');
-          }
-        }
-      }
-
-      final uid = authCred.user?.uid ?? 'dp_${withoutPrefix.isNotEmpty ? withoutPrefix : DateTime.now().millisecondsSinceEpoch}';
-      final now = DateTime.now();
-      partner = DeliveryPartnerModel(
-        id: uid,
-        phoneNumber: fullPhone,
-        countryCode: '+91',
-        displayName: 'Delivery Partner',
-        email: defaultEmail,
-        password: password,
-        role: 'delivery_partner',
-        status: 'approved',
-        isActive: true,
-        isVerified: true,
-        isPhoneVerified: true,
-        isEmailVerified: true,
-        profileCompletion: 100,
-        isOnline: true,
-        kycStatus: 'approved',
-        createdAt: now,
-        updatedAt: now,
-      );
+    if (authCred == null && targetPartner.email != null && targetPartner.email!.isNotEmpty) {
       try {
-        await _partnerRepo.createDeliveryPartner(uid, partner);
-      } catch (e) {
-        debugPrint('Firestore create partner on login: $e');
-      }
+        authCred = await _partnerRepo.signInWithEmailPassword(targetPartner.email!, trimmedPassword);
+      } catch (_) {}
+    }
+
+    bool passwordVerified = (authCred != null) ||
+        (targetPartner.password != null && targetPartner.password == trimmedPassword);
+
+    if (!passwordVerified) {
+      throw Exception('Password is incorrect. Please try again.');
+    }
+
+    final updates = <String, dynamic>{};
+    if (!targetPartner.isActive) updates['isActive'] = true;
+    if (!targetPartner.isPhoneVerified) updates['isPhoneVerified'] = true;
+
+    var finalPartner = targetPartner;
+
+    if (updates.isNotEmpty) {
+      try {
+        await _partnerRepo.updateDeliveryPartner(targetPartner.id, updates);
+      } catch (_) {}
+      finalPartner = targetPartner.copyWith(
+        isActive: true,
+        isPhoneVerified: true,
+      );
     }
 
     try {
-      await _partnerRepo.updateLastLogin(partner.id);
-      await _partnerRepo.saveSession(partner.id, partner.email ?? '');
+      await _partnerRepo.updateLastLogin(finalPartner.id);
+      await _partnerRepo.saveSession(finalPartner.id, finalPartner.email ?? '');
     } catch (_) {}
 
-    return partner;
+    return finalPartner;
   }
 
   @override

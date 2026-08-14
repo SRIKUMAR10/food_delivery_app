@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'buyer_otp_verification_page_event.dart';
 import 'buyer_otp_verification_page_state.dart';
 import 'buyer_otp_verification_page_repository.dart';
@@ -39,7 +40,7 @@ class BuyerOtpBloc extends Bloc<BuyerOtpEvent, BuyerOtpState> {
     } catch (e) {
       emit(state.copyWith(
         status: BuyerOtpStatus.failure,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }

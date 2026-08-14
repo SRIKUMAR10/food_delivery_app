@@ -6,6 +6,10 @@ class BuyerLoginRepository {
   BuyerLoginRepository({BuyerLoginService? service})
       : _service = service ?? BuyerLoginService();
 
+  Future<bool> checkNetworkConnectivity() async {
+    return await _service.checkNetworkConnectivity();
+  }
+
   Future<String> login({
     required String phone,
     required String password,

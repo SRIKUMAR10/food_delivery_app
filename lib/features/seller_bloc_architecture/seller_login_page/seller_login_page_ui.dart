@@ -53,6 +53,20 @@ class _SellerLoginPageView extends StatelessWidget {
       listener: (context, state) {
         if (state.step == SellerLoginStep.loginSuccess &&
             state.status == SellerLoginStatus.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Login successful! Welcome Seller.',
+                style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+              ),
+              backgroundColor: _AppColors.primary,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
           Navigator.pushReplacementNamed(context, '/sellerDashboard');
         }
         if (state.status == SellerLoginStatus.failure &&

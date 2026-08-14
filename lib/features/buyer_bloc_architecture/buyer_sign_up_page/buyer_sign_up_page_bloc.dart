@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'buyer_sign_up_page_event.dart';
 import 'buyer_sign_up_page_state.dart';
 import 'buyer_sign_up_page_repository.dart';
@@ -79,7 +80,7 @@ class BuyerSignUpBloc extends Bloc<BuyerSignUpEvent, BuyerSignUpState> {
     } catch (e) {
       emit(state.copyWith(
         status: BuyerSignUpStatus.failure,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }

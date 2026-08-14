@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'buyer_login_page_event.dart';
 import 'buyer_login_page_state.dart';
 import 'buyer_login_page_repository.dart';
@@ -41,17 +42,28 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
     BuyerLoginSubmitted event,
     Emitter<BuyerLoginState> emit,
   ) async {
-    if (event.phone.trim().isEmpty) {
+    final trimmedPhone = event.phone.trim();
+    if (trimmedPhone.isEmpty || trimmedPhone == '+91') {
       emit(state.copyWith(
         status: BuyerLoginStatus.failure,
-        errorMessage: 'Please enter your phone number',
+        errorMessage: 'Please enter your phone number or email.',
       ));
       return;
+    }
+    if (!trimmedPhone.contains('@')) {
+      final digits = trimmedPhone.replaceAll(RegExp(r'\D'), '');
+      if (digits.isNotEmpty && digits.length < 10) {
+        emit(state.copyWith(
+          status: BuyerLoginStatus.failure,
+          errorMessage: 'Please enter a valid 10-digit mobile number.',
+        ));
+        return;
+      }
     }
     if (event.password.trim().isEmpty) {
       emit(state.copyWith(
         status: BuyerLoginStatus.failure,
-        errorMessage: 'Please enter your password',
+        errorMessage: 'Please enter your password.',
       ));
       return;
     }
@@ -59,6 +71,15 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
     emit(state.copyWith(status: BuyerLoginStatus.loading));
 
     try {
+      final isOnline = await repository.checkNetworkConnectivity();
+      if (!isOnline) {
+        emit(state.copyWith(
+          status: BuyerLoginStatus.failure,
+          errorMessage: 'No internet connection. Please check your network.',
+        ));
+        return;
+      }
+
       final userId = await repository.login(
         phone: event.phone,
         password: event.password,
@@ -70,7 +91,7 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
     } catch (e) {
       emit(state.copyWith(
         status: BuyerLoginStatus.failure,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }
@@ -81,6 +102,15 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
   ) async {
     emit(state.copyWith(status: BuyerLoginStatus.loading));
     try {
+      final isOnline = await repository.checkNetworkConnectivity();
+      if (!isOnline) {
+        emit(state.copyWith(
+          status: BuyerLoginStatus.failure,
+          errorMessage: 'No internet connection. Please check your network.',
+        ));
+        return;
+      }
+
       final userId = await repository.loginWithGoogle();
       if (userId != null) {
         emit(state.copyWith(
@@ -93,7 +123,7 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
     } catch (e) {
       emit(state.copyWith(
         status: BuyerLoginStatus.failure,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }

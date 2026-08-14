@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'buyer_forgot_password_page_event.dart';
 import 'buyer_forgot_password_page_repository.dart';
 import 'buyer_forgot_password_page_service.dart';
@@ -119,7 +120,7 @@ class BuyerForgotPasswordBloc
       if (otpErrorMsg != null) {
         emit(state.copyWith(
           status: BuyerForgotPasswordStatus.otpSendFailure,
-          errorMessage: otpErrorMsg,
+          errorMessage: AppExceptionFormatter.toUserFriendlyMessage(otpErrorMsg),
         ));
       } else if (verificationId != null) {
         emit(state.copyWith(
@@ -135,7 +136,7 @@ class BuyerForgotPasswordBloc
     } catch (e) {
       emit(state.copyWith(
         status: BuyerForgotPasswordStatus.otpSendFailure,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }
@@ -195,7 +196,7 @@ class BuyerForgotPasswordBloc
     } catch (e) {
       emit(state.copyWith(
         status: BuyerForgotPasswordStatus.failure,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }

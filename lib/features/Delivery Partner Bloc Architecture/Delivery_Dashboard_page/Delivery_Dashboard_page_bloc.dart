@@ -39,13 +39,6 @@ class DeliveryDashboardPageBloc
   ) async {
     emit(state.copyWith(status: DeliveryDashboardStatus.loading));
     try {
-      final initialData = await repository.loadDashboardData();
-      final session = _sessionRepo?.currentState;
-      emit(initialData.copyWith(
-        status: DeliveryDashboardStatus.loaded,
-        walletBalance: session?.walletBalance ?? initialData.walletBalance,
-      ));
-
       await emit.forEach<DeliveryDashboardState>(
         repository.watchDashboard(),
         onData: (dataState) {

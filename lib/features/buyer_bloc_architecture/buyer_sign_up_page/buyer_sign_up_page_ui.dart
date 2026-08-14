@@ -60,26 +60,41 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
               padding: const EdgeInsets.all(24.0),
               child: BlocConsumer<BuyerSignUpBloc, BuyerSignUpState>(
                 listener: (context, state) {
-                  if (state.status == BuyerSignUpStatus.otpSent) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => BuyerOtpVerificationPageUI(
-                          fullName: state.fullName ?? '',
-                          email: state.email ?? '',
-                          mobileNumber: state.mobileNumber ?? '',
-                          password: state.password ?? '',
-                          verificationId: state.verificationId ?? '',
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.clearSnackBars();
+
+                    if (state.status == BuyerSignUpStatus.otpSent) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => BuyerOtpVerificationPageUI(
+                            fullName: state.fullName ?? '',
+                            email: state.email ?? '',
+                            mobileNumber: state.mobileNumber ?? '',
+                            password: state.password ?? '',
+                            verificationId: state.verificationId ?? '',
+                          ),
                         ),
-                      ),
-                    );
-                  } else if (state.status == BuyerSignUpStatus.failure) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(state.errorMessage ?? 'Sign Up failed'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
+                      );
+                    } else if (state.status == BuyerSignUpStatus.failure) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            state.errorMessage ?? 'Sign Up failed',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+                    }
+                  });
                 },
                 builder: (context, state) {
                   return Container(

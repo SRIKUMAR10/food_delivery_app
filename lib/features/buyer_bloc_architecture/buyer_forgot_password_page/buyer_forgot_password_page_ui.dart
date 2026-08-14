@@ -44,34 +44,48 @@ class _BuyerForgotPasswordPageUIState extends State<BuyerForgotPasswordPageUI> {
                     previous.status != current.status ||
                     previous.errorMessage != current.errorMessage,
                 listener: (context, state) {
-                  if (state.status == BuyerForgotPasswordStatus.success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Password reset successfully! Please log in.'),
-                        backgroundColor: Colors.green,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    if (Navigator.canPop(context)) Navigator.of(context).pop();
-                  } else if (state.status == BuyerForgotPasswordStatus.otpSent) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('OTP sent successfully to your phone number.'),
-                        backgroundColor: Colors.green,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  } else if ((state.status == BuyerForgotPasswordStatus.failure ||
-                          state.status == BuyerForgotPasswordStatus.otpSendFailure) &&
-                      state.errorMessage != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(state.errorMessage!),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.clearSnackBars();
+
+                    if (state.status == BuyerForgotPasswordStatus.success) {
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Password reset successfully! Please log in.'),
+                          backgroundColor: Colors.green,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      if (Navigator.canPop(context)) Navigator.of(context).pop();
+                    } else if (state.status == BuyerForgotPasswordStatus.otpSent) {
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('OTP sent successfully to your phone number.'),
+                          backgroundColor: Colors.green,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    } else if ((state.status == BuyerForgotPasswordStatus.failure ||
+                            state.status == BuyerForgotPasswordStatus.otpSendFailure) &&
+                        state.errorMessage != null) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            state.errorMessage!,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+                    }
+                  });
                 },
                 builder: (context, state) {
                   final bloc = context.read<BuyerForgotPasswordBloc>();

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import '../../../core/services/i_auth_service.dart';
 import '../../../core/services/seller_status_service.dart';
 import '../../../core/repositories/i_cart_repository.dart';
@@ -371,7 +371,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       debugPrint("Checkout Error: $e");
       if (state is CartLoaded) {
         emit((state as CartLoaded).copyWith(
-          couponMessage: 'Checkout failed. Please try again.',
+          couponMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
           clearCouponMessage: false,
         ));
       }

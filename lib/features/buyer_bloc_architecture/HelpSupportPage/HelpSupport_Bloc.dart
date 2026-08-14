@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'HelpSupport_Event.dart';
 import 'HelpSupport_State.dart';
 import 'HelpSupport_Repository.dart';
@@ -73,7 +74,7 @@ class HelpSupportBloc extends Bloc<HelpSupportEvent, HelpSupportState> {
     } catch (e) {
       emit(state.copyWith(
         status: HelpSupportStatus.failure,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }
@@ -96,7 +97,7 @@ class HelpSupportBloc extends Bloc<HelpSupportEvent, HelpSupportState> {
     } catch (e) {
       emit(state.copyWith(
         status: HelpSupportStatus.failure,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ));
     }
   }

@@ -112,6 +112,15 @@ class SellerLoginPageBloc
     emit(state.copyWith(status: SellerLoginStatus.loading, clearError: true));
 
     try {
+      final isOnline = await authRepository.checkNetworkConnectivity();
+      if (!isOnline) {
+        emit(state.copyWith(
+          status: SellerLoginStatus.failure,
+          errorMessage: 'No internet connection. Please check your network.',
+        ));
+        return;
+      }
+
       if (state.isPhoneLogin && state.password.isNotEmpty) {
         // Phone + Password custom login via Cloud Function
         await authRepository.signIn(state.emailOrPhone, state.password);
@@ -174,6 +183,15 @@ class SellerLoginPageBloc
       emit(state.copyWith(
           status: SellerLoginStatus.loading, clearEmailPhoneError: true));
       try {
+        final isOnline = await authRepository.checkNetworkConnectivity();
+        if (!isOnline) {
+          emit(state.copyWith(
+            status: SellerLoginStatus.failure,
+            errorMessage: 'No internet connection. Please check your network.',
+          ));
+          return;
+        }
+
         final formattedPhone = _formatPhoneNumber(input);
         await authRepository.requestPhoneLoginOtp(formattedPhone);
         _startOtpCountdown();
@@ -218,6 +236,15 @@ class SellerLoginPageBloc
     emit(state.copyWith(
         status: SellerLoginStatus.loading, clearPasswordError: true));
     try {
+      final isOnline = await authRepository.checkNetworkConnectivity();
+      if (!isOnline) {
+        emit(state.copyWith(
+          status: SellerLoginStatus.failure,
+          errorMessage: 'No internet connection. Please check your network.',
+        ));
+        return;
+      }
+
       await authRepository.signIn(state.emailOrPhone, state.password);
       final uid = authRepository.currentUser?.uid;
       if (uid != null) {
@@ -394,6 +421,15 @@ class SellerLoginPageBloc
       Emitter<SellerLoginPageState> emit) async {
     emit(state.copyWith(status: SellerLoginStatus.loading, clearError: true));
     try {
+      final isOnline = await authRepository.checkNetworkConnectivity();
+      if (!isOnline) {
+        emit(state.copyWith(
+          status: SellerLoginStatus.failure,
+          errorMessage: 'No internet connection. Please check your network.',
+        ));
+        return;
+      }
+
       await authRepository.signInWithGoogle();
       final uid = authRepository.currentUser?.uid;
       if (uid != null) {
@@ -426,6 +462,15 @@ class SellerLoginPageBloc
       Emitter<SellerLoginPageState> emit) async {
     emit(state.copyWith(status: SellerLoginStatus.loading, clearError: true));
     try {
+      final isOnline = await authRepository.checkNetworkConnectivity();
+      if (!isOnline) {
+        emit(state.copyWith(
+          status: SellerLoginStatus.failure,
+          errorMessage: 'No internet connection. Please check your network.',
+        ));
+        return;
+      }
+
       await authRepository.signInWithApple();
       final uid = authRepository.currentUser?.uid;
       if (uid != null) {

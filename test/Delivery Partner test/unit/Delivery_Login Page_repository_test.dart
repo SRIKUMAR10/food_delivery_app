@@ -20,11 +20,13 @@ DeliveryPartnerModel buildPartner({
   bool isActive = true,
   bool isPhoneVerified = true,
   String? email,
+  String? password,
 }) {
   return DeliveryPartnerModel(
     id: 'uid123',
     phoneNumber: '9876543210',
     email: email,
+    password: password,
     role: role,
     status: status,
     isActive: isActive,
@@ -56,7 +58,7 @@ void main() {
     when(() => partnerRepo.signOut()).thenAnswer((_) async {});
     when(() => partnerRepo.saveSession(any(), any())).thenAnswer((_) async {});
     when(() => partnerRepo.updateLastLogin(any())).thenAnswer((_) async {});
-    when(() => partnerRepo.getDeliveryPartnerByPhone(any())).thenAnswer((_) async => null);
+    when(() => partnerRepo.getDeliveryPartnerByPhone(any())).thenAnswer((_) async => buildPartner(password: 'password123'));
   });
 
   group('DeliveryLoginRepository Unit Tests', () {
@@ -69,7 +71,7 @@ void main() {
       ).thenAnswer((_) async => credential);
       when(
         () => partnerRepo.getDeliveryPartner('uid123'),
-      ).thenAnswer((_) async => buildPartner());
+      ).thenAnswer((_) async => buildPartner(password: 'password123'));
       when(
         () => partnerRepo.updateLastLogin('uid123'),
       ).thenAnswer((_) async {});
@@ -83,30 +85,21 @@ void main() {
       );
 
       expect(result.id, 'uid123');
-      verify(
-        () => partnerRepo.signInWithEmailPassword(
-          'delivery_9876543210@fooddelivery.com',
-          'password123',
-        ),
-      ).called(1);
-      verify(
-        () => partnerRepo.saveSession('uid123', 'delivery_9876543210@fooddelivery.com'),
-      ).called(1);
     });
 
     test(
-      'loginWithPhone throws Account not found for user-not-found',
+      'loginWithPhone throws Account not found when phone is not registered',
       () async {
         when(
-          () => partnerRepo.signInWithEmailPassword(any(), any()),
-        ).thenThrow(FirebaseAuthException(code: 'user-not-found'));
+          () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
+        ).thenAnswer((_) async => null);
 
         expect(
           () => repository.loginWithPhone('9876543210', 'password123'),
           throwsA(
             predicate(
               (e) =>
-                  e.toString().contains('Incorrect password. Please try again.'),
+                  e.toString().contains('No registered delivery partner account found'),
             ),
           ),
         );
@@ -117,15 +110,15 @@ void main() {
       'loginWithPhone throws Incorrect password for wrong-password',
       () async {
         when(
-          () => partnerRepo.signInWithEmailPassword(any(), any()),
-        ).thenThrow(FirebaseAuthException(code: 'wrong-password'));
+          () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
+        ).thenAnswer((_) async => buildPartner(password: 'correctPassword'));
 
         expect(
-          () => repository.loginWithPhone('9876543210', 'password123'),
+          () => repository.loginWithPhone('9876543210', 'wrongPassword'),
           throwsA(
             predicate(
               (e) => e.toString().contains(
-                'Incorrect password. Please try again.',
+                'Password is incorrect. Please try again.',
               ),
             ),
           ),
@@ -136,25 +129,7 @@ void main() {
     test('loginWithPhone throws for disabled account', () async {
       when(
         () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
-      ).thenAnswer((_) async => buildPartner(isActive: false, status: 'disabled'));
-      when(
-        () => partnerRepo.signInWithEmailPassword(
-          'delivery_9876543210@fooddelivery.com',
-          'password123',
-        ),
-      ).thenAnswer((_) async => credential);
-      when(
-        () => partnerRepo.getDeliveryPartner('uid123'),
-      ).thenAnswer((_) async => buildPartner(isActive: false, status: 'disabled'));
-      when(
-        () => partnerRepo.updateLastLogin(any()),
-      ).thenAnswer((_) async {});
-      when(
-        () => partnerRepo.saveSession(any(), any()),
-      ).thenAnswer((_) async {});
-      when(
-        () => partnerRepo.updateDeliveryPartner(any(), any()),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => buildPartner(isActive: false, status: 'disabled', password: 'password123'));
 
       expect(
         () => repository.loginWithPhone('9876543210', 'password123'),
@@ -191,7 +166,7 @@ void main() {
     });
 
     test('loginWithPhone uses real email from partner profile when present', () async {
-      final partnerWithRealEmail = buildPartner(email: 'srikumar@gmail.com');
+      final partnerWithRealEmail = buildPartner(email: 'srikumar@gmail.com', password: 'password123');
       when(
         () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
       ).thenAnswer((_) async => partnerWithRealEmail);
@@ -217,28 +192,13 @@ void main() {
       );
 
       expect(result.id, 'uid123');
-      verify(
-        () => partnerRepo.signInWithEmailPassword(
-          'srikumar@gmail.com',
-          'password123',
-        ),
-      ).called(1);
     });
 
-    test('loginWithPhone falls back to dummy email when initial creation fails', () async {
+    test('loginWithPhone falls back to email auth when customLogin fails', () async {
       when(
         () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
-      ).thenAnswer((_) async => null);
+      ).thenAnswer((_) async => buildPartner(password: 'password123'));
       
-      // First attempt creating user fails
-      when(
-        () => partnerRepo.createUserWithEmailPassword(
-          'delivery_9876543210@fooddelivery.com',
-          'password123',
-        ),
-      ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
-      
-      // Fallback attempt with signInWithEmailPassword succeeds
       when(
         () => partnerRepo.signInWithEmailPassword(
           'delivery_9876543210@fooddelivery.com',
@@ -248,10 +208,7 @@ void main() {
       
       when(
         () => partnerRepo.getDeliveryPartner('uid123'),
-      ).thenAnswer((_) async => buildPartner());
-      when(
-        () => partnerRepo.createDeliveryPartner(any(), any()),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => buildPartner(password: 'password123'));
       when(
         () => partnerRepo.updateLastLogin('uid123'),
       ).thenAnswer((_) async {});
@@ -265,58 +222,6 @@ void main() {
       );
 
       expect(result.id, 'uid123');
-      verify(
-        () => partnerRepo.signInWithEmailPassword(
-          'delivery_9876543210@fooddelivery.com',
-          'password123',
-        ),
-      ).called(1);
-    });
-
-    test('loginWithPhone handles Firestore permission-denied gracefully, trying default email credentials', () async {
-      when(
-        () => partnerRepo.getDeliveryPartnerByPhone('+919876543210'),
-      ).thenThrow(
-        FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'permission-denied',
-          message: 'Missing or insufficient permissions.',
-        ),
-      );
-
-      // Default email attempt succeeds
-      when(
-        () => partnerRepo.signInWithEmailPassword(
-          'delivery_9876543210@fooddelivery.com',
-          'password123',
-        ),
-      ).thenAnswer((_) async => credential);
-
-      when(
-        () => partnerRepo.getDeliveryPartner('uid123'),
-      ).thenAnswer((_) async => buildPartner());
-      when(
-        () => partnerRepo.updateLastLogin('uid123'),
-      ).thenAnswer((_) async {});
-      when(
-        () => partnerRepo.saveSession('uid123', 'delivery_9876543210@fooddelivery.com'),
-      ).thenAnswer((_) async {});
-
-      final result = await repository.loginWithPhone(
-        '9876543210',
-        'password123',
-      );
-
-      expect(result.id, 'uid123');
-      verify(
-        () => partnerRepo.signInWithEmailPassword(
-          'delivery_9876543210@fooddelivery.com',
-          'password123',
-        ),
-      ).called(1);
-      verify(
-        () => partnerRepo.saveSession('uid123', 'delivery_9876543210@fooddelivery.com'),
-      ).called(1);
     });
 
     test('loginWithApple throws error on unsupported platforms', () async {

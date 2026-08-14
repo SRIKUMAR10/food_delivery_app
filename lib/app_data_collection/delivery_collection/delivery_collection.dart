@@ -133,6 +133,14 @@ class DeliveryCollection {
         withoutPrefix,
         cleaned,
         phone.trim(),
+        if (withoutPrefix.length == 10) ...[
+          '+91 ${withoutPrefix.substring(0, 5)} ${withoutPrefix.substring(5)}',
+          '${withoutPrefix.substring(0, 5)} ${withoutPrefix.substring(5)}',
+          '+91-$withoutPrefix',
+          '0$withoutPrefix',
+          '91$withoutPrefix',
+          '+91 $withoutPrefix',
+        ],
       };
 
       for (final pNum in searchNumbers) {

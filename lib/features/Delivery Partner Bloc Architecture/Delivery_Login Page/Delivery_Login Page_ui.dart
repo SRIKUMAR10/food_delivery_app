@@ -60,6 +60,8 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
 
+  bool _isNetworkDialogOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -82,6 +84,89 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
     } else {
       _animController.forward();
     }
+  }
+
+  void _showNoInternetDialog(BuildContext context, String message) {
+    if (_isNetworkDialogOpen) return;
+    _isNetworkDialogOpen = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0E1C1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: Colors.redAccent.withValues(alpha: 0.5),
+            ),
+          ),
+          title: Row(
+            children: [
+              const Icon(
+                Icons.wifi_off_rounded,
+                color: Colors.redAccent,
+                size: 26,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'No Internet Connection',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message.isNotEmpty
+                ? message
+                : 'No internet connection detected. Please check your Wi-Fi or mobile data network and try again.',
+            style: GoogleFonts.inter(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _isNetworkDialogOpen = false;
+                Navigator.pop(ctx);
+              },
+              child: Text(
+                'Dismiss',
+                style: GoogleFonts.inter(color: Colors.white60),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _isNetworkDialogOpen = false;
+                Navigator.pop(ctx);
+                context
+                    .read<DeliveryLoginPageBloc>()
+                    .add(const DeliveryLoginInitEvent());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DeliveryAppColors.primary,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Retry',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    ).then((_) => _isNetworkDialogOpen = false);
   }
 
   @override
@@ -125,15 +210,21 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
             listenWhen: (previous, current) =>
                 previous.status != current.status ||
                 previous.isLoggedIn != current.isLoggedIn ||
-                previous.isForgotPasswordSuccess != current.isForgotPasswordSuccess ||
-                previous.phone != current.phone ||
-                previous.password != current.password,
+                previous.errorMessage != current.errorMessage ||
+                previous.isForgotPasswordSuccess != current.isForgotPasswordSuccess,
             listener: (context, state) {
-              if (state.phone != _phoneController.text) {
+              if (state.phone.isNotEmpty && _phoneController.text.isEmpty) {
                 _phoneController.text = state.phone;
               }
-              if (state.password != _passwordController.text) {
+              if (state.password.isNotEmpty && _passwordController.text.isEmpty) {
                 _passwordController.text = state.password;
+              }
+              if (state.status == DeliveryLoginStatus.error &&
+                  state.errorMessage != null &&
+                  (state.errorMessage!.toLowerCase().contains('internet') ||
+                      state.errorMessage!.toLowerCase().contains('network') ||
+                      state.errorMessage!.toLowerCase().contains('offline'))) {
+                _showNoInternetDialog(context, state.errorMessage!);
               }
               if (state.status == DeliveryLoginStatus.success &&
                   state.isLoggedIn) {
