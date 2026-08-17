@@ -269,7 +269,7 @@ void main() {
         () => mockBloc.add(
           const DeliveryHelpSupportCreateTicketEvent(
             subject: 'Payment issue',
-            category: 'Earnings',
+            category: 'Order Issue',
             priority: 'medium',
             description: 'Order delivered but not credited.',
             orderId: 'ORD12345',
@@ -361,5 +361,25 @@ void main() {
         () => mockBloc.add(any<DeliveryHelpSupportSubmitFeedbackEvent>()),
       );
     });
+
+    testWidgets('renders all 4 quick issue buttons and opens dialog when tapped', (
+      tester,
+    ) async {
+      setLargeSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dp_help_report_order_btn')), findsOneWidget);
+      expect(find.byKey(const Key('dp_help_report_payment_btn')), findsOneWidget);
+      expect(find.byKey(const Key('dp_help_report_restaurant_btn')), findsOneWidget);
+      expect(find.byKey(const Key('dp_help_report_customer_btn')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('dp_help_report_order_btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dp_help_ticket_subject')), findsOneWidget);
+      expect(find.text('Order Issue'), findsWidgets);
+    });
   });
 }
+

@@ -16,6 +16,7 @@ class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
         super(const RatingInitial()) {
     on<RatingChanged>(_onRatingChanged);
     on<SubmitRating>(_onSubmitRating);
+    on<SubmitPartnerRatingEvent>(_onSubmitPartnerRating);
     on<LoadRating>(_onLoadRating);
   }
 
@@ -52,6 +53,7 @@ class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
         throw Exception("User not logged in.");
       }
 
+      // 1. Submit Product Rating
       await _ratingRepository.submitRating(
         userId: userId,
         foodId: event.foodId,
@@ -61,6 +63,7 @@ class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
         reviewerAvatarUrl: _authService.currentUserPhotoUrl,
       );
 
+      // 2. Submit Seller Review
       final sellerId = await _ratingRepository.getProductSellerId(event.foodId);
       if (sellerId != null && sellerId.isNotEmpty) {
         await _ratingRepository.addSellerReview(
@@ -75,10 +78,64 @@ class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
         );
       }
 
+      // 3. Submit Delivery Partner Rating if provided
+      if (event.partnerId != null && event.partnerId!.isNotEmpty) {
+        final pRating = event.partnerRating ?? event.rating;
+        final pReview = event.partnerReviewText ?? event.reviewText;
+        await _ratingRepository.submitPartnerRating(
+          customerId: userId,
+          customerName: _authService.currentUserDisplayName ?? 'Anonymous User',
+          customerAvatarUrl: _authService.currentUserPhotoUrl,
+          partnerId: event.partnerId!,
+          partnerName: event.partnerName,
+          orderId: event.orderId ?? '',
+          rating: pRating,
+          reviewText: pReview,
+          tags: event.partnerTags,
+        );
+      }
+
       emit(RatingSuccess(rating: event.rating));
     } catch (e) {
       emit(RatingError(
         message: e.toString().replaceAll("Exception: ", ""), 
+        rating: event.rating,
+      ));
+    }
+  }
+
+  Future<void> _onSubmitPartnerRating(
+    SubmitPartnerRatingEvent event,
+    Emitter<RatingPageState> emit,
+  ) async {
+    emit(RatingLoading(rating: event.rating));
+
+    try {
+      if (event.rating == 0) {
+        throw Exception("Please provide a valid rating greater than 0.");
+      }
+
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        throw Exception("User not logged in.");
+      }
+
+      await _ratingRepository.submitPartnerRating(
+        customerId: userId,
+        customerName: _authService.currentUserDisplayName ?? 'Anonymous User',
+        customerAvatarUrl: _authService.currentUserPhotoUrl,
+        partnerId: event.partnerId,
+        partnerName: event.partnerName,
+        orderId: event.orderId,
+        rating: event.rating,
+        reviewText: event.reviewText,
+        tags: event.tags,
+      );
+
+      emit(RatingSuccess(rating: event.rating));
+    } catch (e) {
+      emit(RatingError(
+        message: e.toString().replaceAll("Exception: ", ""),
         rating: event.rating,
       ));
     }

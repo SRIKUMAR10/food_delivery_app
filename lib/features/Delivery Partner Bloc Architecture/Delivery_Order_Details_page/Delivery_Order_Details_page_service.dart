@@ -16,6 +16,12 @@ abstract class DeliveryOrderDetailsServiceBase {
     String orderId, {
     required double amountReceived,
   });
+  Future<Map<String, dynamic>> cancelOrderWithReason(
+    String orderId, {
+    required String reason,
+    String? notes,
+    bool isFailedDelivery = false,
+  });
 }
 
 class DeliveryOrderDetailsService
@@ -639,4 +645,46 @@ class DeliveryOrderDetailsService
       };
     }
   }
+
+  @override
+  Future<Map<String, dynamic>> cancelOrderWithReason(
+    String orderId, {
+    required String reason,
+    String? notes,
+    bool isFailedDelivery = false,
+  }) async {
+    final firestore = _firestore ?? FirebaseFirestore.instance;
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final targetStatus = isFailedDelivery ? 'FailedDelivery' : 'Cancelled';
+      final payload = <String, dynamic>{
+        'status': targetStatus,
+        'cancellationReason': reason,
+        'cancellationNotes': notes ?? '',
+        'cancelledBy': uid ?? '',
+        'cancelledByRole': 'delivery_partner',
+        'cancelledAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      if (reason == 'Restaurant Closed' ||
+          reason == 'Customer Unavailable' ||
+          reason == 'Wrong Address') {
+        payload['cancellationCompensation'] = 25.0;
+        payload['isRiderCompensationEligible'] = true;
+      }
+      await firestore.collection('orders').doc(orderId).update(payload);
+      return {
+        'success': true,
+        'status': targetStatus,
+        'reason': reason,
+        'message': 'Order successfully marked as $targetStatus.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': e.toString(),
+      };
+    }
+  }
 }
+

@@ -221,5 +221,158 @@ void main() {
             .having((s) => s.selectedLanguage, 'selectedLanguage', 'ta'),
       ],
     );
+
+    blocTest<DeliveryOrderDetailsPageBloc, DeliveryOrderDetailsPageState>(
+      'cancels order with valid reason and updates cancellationStatus',
+      build: () {
+        when(
+          () => mockRepository.cancelOrderWithReason(
+            'ORD12345',
+            reason: 'Restaurant Closed',
+            notes: 'Gates locked',
+            isFailedDelivery: true,
+          ),
+        ).thenAnswer((_) async => {'success': true, 'message': 'Order cancelled'});
+        return DeliveryOrderDetailsPageBloc(repository: mockRepository);
+      },
+      seed: () => const DeliveryOrderDetailsPageState(
+        status: OrderDetailsStatus.success,
+        order: sampleOrder,
+      ),
+      act: (bloc) => bloc.add(
+        const CancelOrderWithReasonEvent(
+          orderId: 'ORD12345',
+          reason: 'Restaurant Closed',
+          notes: 'Gates locked',
+          isFailedDelivery: true,
+        ),
+      ),
+      expect: () => [
+        isA<DeliveryOrderDetailsPageState>()
+            .having((s) => s.cancellationStatus, 'cancelling', OrderCancellationStatus.cancelling),
+        isA<DeliveryOrderDetailsPageState>()
+            .having((s) => s.cancellationStatus, 'success', OrderCancellationStatus.success)
+            .having((s) => s.order?.status, 'status', 'FailedDelivery')
+            .having((s) => s.order?.cancellationReason, 'reason', 'Restaurant Closed'),
+      ],
+    );
+
+    blocTest<DeliveryOrderDetailsPageBloc, DeliveryOrderDetailsPageState>(
+      'emits cancellation failed when repository returns success false',
+      build: () {
+        when(
+          () => mockRepository.cancelOrderWithReason(
+            'ORD12345',
+            reason: 'Customer Cancelled',
+            notes: null,
+            isFailedDelivery: false,
+          ),
+        ).thenAnswer((_) async => {'success': false, 'message': 'Cannot cancel'});
+        return DeliveryOrderDetailsPageBloc(repository: mockRepository);
+      },
+      seed: () => const DeliveryOrderDetailsPageState(
+        status: OrderDetailsStatus.success,
+        order: sampleOrder,
+      ),
+      act: (bloc) => bloc.add(
+        const CancelOrderWithReasonEvent(
+          orderId: 'ORD12345',
+          reason: 'Customer Cancelled',
+          isFailedDelivery: false,
+        ),
+      ),
+      expect: () => [
+        isA<DeliveryOrderDetailsPageState>()
+            .having((s) => s.cancellationStatus, 'cancelling', OrderCancellationStatus.cancelling),
+        isA<DeliveryOrderDetailsPageState>()
+            .having((s) => s.cancellationStatus, 'failed', OrderCancellationStatus.failed),
+      ],
+    );
+
+    blocTest<DeliveryOrderDetailsPageBloc, DeliveryOrderDetailsPageState>(
+      'collect COD cash marks the order collected and computes change',
+      build: () {
+        when(
+          () => mockRepository.collectCodCash(
+            'ORD12345',
+            amountReceived: 1000.0,
+          ),
+        ).thenAnswer(
+          (_) async => {
+            'success': true,
+            'changeAmount': 500.0,
+            'collectedAmount': 500.0,
+            'message': 'COD collected',
+          },
+        );
+        return DeliveryOrderDetailsPageBloc(repository: mockRepository);
+      },
+      seed: () => const DeliveryOrderDetailsPageState(
+        status: OrderDetailsStatus.success,
+        order: OrderModel(
+          id: 'ORD12345',
+          customerName: 'Arun Kumar',
+          paymentMethod: 'COD',
+          codAmount: 500.0,
+          isCodCollected: false,
+        ),
+      ),
+      act: (bloc) =>
+          bloc.add(const CollectCodCashEvent('ORD12345', 1000.0)),
+      expect: () => [
+        isA<DeliveryOrderDetailsPageState>()
+            .having((s) => s.codCollectionStatus, 'collecting',
+                CodCollectionStatus.collecting),
+        isA<DeliveryOrderDetailsPageState>()
+            .having((s) => s.codCollectionStatus, 'success',
+                CodCollectionStatus.success)
+            .having((s) => s.codChangeAmount, 'change', 500.0)
+            .having((s) => s.order?.isCodCollected, 'collected', true)
+            .having((s) => s.order?.collectedAmount, 'collectedAmount', 500.0),
+      ],
+    );
+
+    blocTest<DeliveryOrderDetailsPageBloc, DeliveryOrderDetailsPageState>(
+      'collect COD cash reports failure when received amount is less',
+      build: () {
+        when(
+          () => mockRepository.collectCodCash(
+            'ORD12345',
+            amountReceived: 200.0,
+          ),
+        ).thenAnswer(
+          (_) async => {
+            'success': false,
+            'changeAmount': 0.0,
+            'message': 'Received amount is less than the COD amount to collect.',
+          },
+        );
+        return DeliveryOrderDetailsPageBloc(repository: mockRepository);
+      },
+      seed: () => const DeliveryOrderDetailsPageState(
+        status: OrderDetailsStatus.success,
+        order: OrderModel(
+          id: 'ORD12345',
+          customerName: 'Arun Kumar',
+          paymentMethod: 'COD',
+          codAmount: 500.0,
+          isCodCollected: false,
+        ),
+      ),
+      act: (bloc) =>
+          bloc.add(const CollectCodCashEvent('ORD12345', 200.0)),
+      expect: () => [
+        isA<DeliveryOrderDetailsPageState>()
+            .having((s) => s.codCollectionStatus, 'collecting',
+                CodCollectionStatus.collecting),
+        isA<DeliveryOrderDetailsPageState>()
+            .having((s) => s.codCollectionStatus, 'failed',
+                CodCollectionStatus.failed)
+            .having((s) => s.order?.isCodCollected, 'collected', false),
+      ],
+    );
   });
 }
+
+
+

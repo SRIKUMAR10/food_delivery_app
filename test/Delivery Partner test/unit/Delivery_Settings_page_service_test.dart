@@ -68,5 +68,23 @@ void main() {
       expect(service.parseDeliveryRadius('0'), 5.0);
       expect(service.parseDeliveryRadius('60'), 5.0);
     });
+
+    test('changePassword validates minimum length', () async {
+      expect(await service.changePassword('old', '123456'), isTrue);
+      expect(await service.changePassword('old', '123'), isFalse);
+    });
+
+    test('deactivateAccount returns true on success', () async {
+      expect(await service.deactivateAccount(reason: 'Vacation'), isTrue);
+    });
+
+    test('deleteAccount returns true on success', () async {
+      expect(await service.deleteAccount(reason: 'Moving'), isTrue);
+    });
+
+    test('clearAppCache completes successfully', () async {
+      expect(await service.clearAppCache(), isTrue);
+    });
   });
 }
+

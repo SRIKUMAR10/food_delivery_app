@@ -67,6 +67,9 @@ void main() {
     mockService = MockDeliveryIncentivesDashboardService();
 
     when(
+      () => mockRepository.watchIncentivesData(),
+    ).thenAnswer((_) => Stream.value(buildLoadedState()));
+    when(
       () => mockRepository.loadIncentivesData(),
     ).thenAnswer((_) async => buildLoadedState());
     when(
@@ -101,6 +104,9 @@ void main() {
     ) async {
       setDesktopSize(tester);
       when(
+        () => mockRepository.watchIncentivesData(),
+      ).thenAnswer((_) => Stream.error(Exception('Server unreachable')));
+      when(
         () => mockRepository.loadIncentivesData(),
       ).thenThrow(Exception('Server unreachable'));
 
@@ -116,8 +122,14 @@ void main() {
     testWidgets('retry recovers and loads the dashboard', (tester) async {
       setDesktopSize(tester);
       var calls = 0;
-      when(() => mockRepository.loadIncentivesData()).thenAnswer((_) async {
+      when(() => mockRepository.watchIncentivesData()).thenAnswer((_) {
         calls++;
+        if (calls == 1) {
+          return Stream.error(Exception('Temporary failure'));
+        }
+        return Stream.value(buildLoadedState());
+      });
+      when(() => mockRepository.loadIncentivesData()).thenAnswer((_) async {
         if (calls == 1) {
           throw Exception('Temporary failure');
         }

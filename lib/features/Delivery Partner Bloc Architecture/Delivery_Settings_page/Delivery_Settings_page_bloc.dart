@@ -25,6 +25,17 @@ class DeliverySettingsBloc
     on<DeliverySettingsChangeLanguageEvent>(_onChangeLanguage);
     on<DeliverySettingsSaveEvent>(_onSave);
     on<DeliverySettingsRetryEvent>(_onRetry);
+    on<DeliverySettingsToggleSoundAlertsEvent>(_onToggleSoundAlerts);
+    on<DeliverySettingsToggleVibrationAlertsEvent>(_onToggleVibrationAlerts);
+    on<DeliverySettingsToggleHighAccuracyGpsEvent>(_onToggleHighAccuracyGps);
+    on<DeliverySettingsToggleBackgroundLocationEvent>(_onToggleBackgroundLocation);
+    on<DeliverySettingsToggleBiometricLockEvent>(_onToggleBiometricLock);
+    on<DeliverySettingsToggleTwoFactorAuthEvent>(_onToggleTwoFactorAuth);
+    on<DeliverySettingsToggleDataSharingEvent>(_onToggleDataSharing);
+    on<DeliverySettingsChangePasswordEvent>(_onChangePassword);
+    on<DeliverySettingsDeactivateAccountEvent>(_onDeactivateAccount);
+    on<DeliverySettingsDeleteAccountEvent>(_onDeleteAccount);
+    on<DeliverySettingsClearCacheEvent>(_onClearCache);
   }
 
   Future<void> _onInit(
@@ -189,6 +200,147 @@ class DeliverySettingsBloc
     add(const DeliverySettingsInitEvent());
   }
 
+  void _onToggleSoundAlerts(
+    DeliverySettingsToggleSoundAlertsEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) {
+    emit(state.copyWith(
+      soundAlertsEnabled: !state.soundAlertsEnabled,
+      saveStatus: DeliverySettingsSaveStatus.idle,
+    ));
+  }
+
+  void _onToggleVibrationAlerts(
+    DeliverySettingsToggleVibrationAlertsEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) {
+    emit(state.copyWith(
+      vibrationAlertsEnabled: !state.vibrationAlertsEnabled,
+      saveStatus: DeliverySettingsSaveStatus.idle,
+    ));
+  }
+
+  void _onToggleHighAccuracyGps(
+    DeliverySettingsToggleHighAccuracyGpsEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) {
+    emit(state.copyWith(
+      highAccuracyGps: !state.highAccuracyGps,
+      saveStatus: DeliverySettingsSaveStatus.idle,
+    ));
+  }
+
+  void _onToggleBackgroundLocation(
+    DeliverySettingsToggleBackgroundLocationEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) {
+    emit(state.copyWith(
+      backgroundLocationEnabled: !state.backgroundLocationEnabled,
+      saveStatus: DeliverySettingsSaveStatus.idle,
+    ));
+  }
+
+  void _onToggleBiometricLock(
+    DeliverySettingsToggleBiometricLockEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) {
+    emit(state.copyWith(
+      biometricLockEnabled: !state.biometricLockEnabled,
+      saveStatus: DeliverySettingsSaveStatus.idle,
+    ));
+  }
+
+  void _onToggleTwoFactorAuth(
+    DeliverySettingsToggleTwoFactorAuthEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) {
+    emit(state.copyWith(
+      twoFactorAuthEnabled: !state.twoFactorAuthEnabled,
+      saveStatus: DeliverySettingsSaveStatus.idle,
+    ));
+  }
+
+  void _onToggleDataSharing(
+    DeliverySettingsToggleDataSharingEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) {
+    emit(state.copyWith(
+      dataSharingConsent: !state.dataSharingConsent,
+      saveStatus: DeliverySettingsSaveStatus.idle,
+    ));
+  }
+
+  Future<void> _onChangePassword(
+    DeliverySettingsChangePasswordEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) async {
+    try {
+      final success = await repository.changePassword(
+        event.currentPassword,
+        event.newPassword,
+      );
+      if (success) {
+        emit(state.copyWith(
+          actionMessage: 'Password updated successfully',
+          clearError: true,
+        ));
+      } else {
+        emit(state.copyWith(
+          errorMessage: 'Failed to update password. Ensure it has at least 6 characters.',
+        ));
+      }
+    } catch (e) {
+      emit(state.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onDeactivateAccount(
+    DeliverySettingsDeactivateAccountEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) async {
+    try {
+      await repository.deactivateAccount(reason: event.reason);
+      emit(state.copyWith(
+        isAccountDeactivated: true,
+        actionMessage: 'Delivery partner account deactivated',
+        clearError: true,
+      ));
+    } catch (e) {
+      emit(state.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteAccount(
+    DeliverySettingsDeleteAccountEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) async {
+    try {
+      await repository.deleteAccount(reason: event.reason);
+      emit(state.copyWith(
+        isAccountDeactivated: true,
+        actionMessage: 'Delivery partner account scheduled for deletion',
+        clearError: true,
+      ));
+    } catch (e) {
+      emit(state.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onClearCache(
+    DeliverySettingsClearCacheEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) async {
+    try {
+      await repository.clearCache();
+      emit(state.copyWith(
+        actionMessage: 'App cache cleared successfully',
+        clearError: true,
+      ));
+    } catch (e) {
+      emit(state.copyWith(errorMessage: e.toString()));
+    }
+  }
+
   DeliverySettingsState _syncItems(DeliverySettingsState current) {
     final items = DeliverySettingsRepository.buildDefaultItems(
       notificationsEnabled: current.notificationsEnabled,
@@ -200,3 +352,8 @@ class DeliverySettingsBloc
     return current.copyWith(items: items);
   }
 }
+
+/// Standardized Feature-Architecture Alias for SettingsBloc
+typedef SettingsBloc = DeliverySettingsBloc;
+
+

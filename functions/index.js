@@ -3086,7 +3086,7 @@ exports.updateOrderStatus = functions.https.onCall(async (data, context) => {
       if (callerUid !== riderId && callerUid !== sellerId) {
         throw new functions.https.HttpsError("permission-denied", "Only the assigned delivery rider can mark delivery status.");
       }
-    } else if (newStatus === "Cancelled") {
+    } else if (newStatus === "Cancelled" || newStatus === "FailedDelivery") {
       if (callerUid === customerId) {
         if (currentStatus !== "New") {
           throw new functions.https.HttpsError(
@@ -3094,7 +3094,7 @@ exports.updateOrderStatus = functions.https.onCall(async (data, context) => {
             "Orders cannot be cancelled by the customer once the kitchen has started preparing."
           );
         }
-      } else if (callerUid !== sellerId) {
+      } else if (callerUid !== sellerId && callerUid !== riderId) {
         throw new functions.https.HttpsError("permission-denied", "Unauthorized to cancel this order.");
       }
     }
@@ -3107,6 +3107,7 @@ exports.updateOrderStatus = functions.https.onCall(async (data, context) => {
     if (cancellationReason) {
       updatePayload.cancellationReason = cancellationReason;
       updatePayload.cancelledBy = callerUid;
+      updatePayload.cancelledByRole = callerUid === riderId ? "delivery_partner" : callerUid === sellerId ? "seller" : "customer";
     }
 
     if (newStatus === "Delivered") {
@@ -3559,4 +3560,747 @@ exports.updateDeliveryLifecycleStatus = functions.https.onCall(async (data, cont
     };
   });
 });
+
+/**
+ * Cloud Function to dispatch real-time Delivery Partner Notifications
+ */
+exports.sendDeliveryPartnerNotification = functions.https.onCall(async (data, context) => {
+  const { partnerId, title, body, type, category, notificationData, priority } = data || {};
+  if (!partnerId || !title) {
+    throw new functions.https.HttpsError("invalid-argument", "partnerId and title are required.");
+  }
+
+  try {
+    const notifRef = admin.firestore()
+      .collection("delivery_partners")
+      .doc(partnerId)
+      .collection("notifications")
+      .doc();
+
+    const notifPayload = {
+      recipientId: partnerId,
+      title: title || "Delivery Update",
+      body: body || "",
+      type: type || "new_delivery_request",
+      category: category || "order",
+      data: notificationData || {},
+      isRead: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      priority: priority || "high",
+    };
+
+    await notifRef.set(notifPayload);
+
+    // Also attempt sending FCM Push Notification if token exists
+    const partnerDoc = await admin.firestore().collection("delivery_partners").doc(partnerId).get();
+    const fcmToken = partnerDoc.exists ? partnerDoc.data().fcmToken : null;
+    if (fcmToken) {
+      try {
+        await admin.messaging().send({
+          token: fcmToken,
+          notification: {
+            title: notifPayload.title,
+            body: notifPayload.body,
+          },
+          data: {
+            type: notifPayload.type,
+            category: notifPayload.category,
+            click_action: "FLUTTER_NOTIFICATION_CLICK",
+            ...Object.fromEntries(
+              Object.entries(notifPayload.data).map(([k, v]) => [k, String(v)])
+            ),
+          },
+        });
+      } catch (fcmErr) {
+        console.warn("FCM push send warning:", fcmErr.message);
+      }
+    }
+
+    return { success: true, notificationId: notifRef.id };
+  } catch (error) {
+    console.error("sendDeliveryPartnerNotification error:", error);
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+/**
+ * 20. Cancellation / Failed Delivery with Standard Reasons & Compensation Validation
+ */
+exports.cancelOrReportFailedDelivery = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  const callerUid = context.auth.uid;
+  const { orderId, reason, notes, isFailedDelivery } = data || {};
+
+  if (!orderId || !reason) {
+    throw new functions.https.HttpsError("invalid-argument", "Missing orderId or cancellation reason.");
+  }
+
+  const validReasons = [
+    "Restaurant Closed",
+    "Restaurant Not Ready",
+    "Customer Unavailable",
+    "Wrong Address",
+    "Customer Cancelled",
+    "Vehicle Problem",
+    "Emergency",
+    "Other",
+  ];
+
+  if (!validReasons.includes(reason)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      `Invalid cancellation reason: '${reason}'. Allowed reasons: ${validReasons.join(", ")}`
+    );
+  }
+
+  const db = admin.firestore();
+  const orderRef = db.collection("orders").doc(orderId);
+
+  return await db.runTransaction(async (transaction) => {
+    const orderSnap = await transaction.get(orderRef);
+    if (!orderSnap.exists) {
+      throw new functions.https.HttpsError("not-found", `Order '${orderId}' not found.`);
+    }
+
+    const order = orderSnap.data() || {};
+    const currentStatus = order.status || "New";
+
+    if (currentStatus === "Delivered" || currentStatus === "Cancelled" || currentStatus === "FailedDelivery") {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        `Order '${orderId}' is already in '${currentStatus}' status and cannot be cancelled.`
+      );
+    }
+
+    const customerId = order.customerId;
+    const sellerId = order.sellerId;
+    const riderId = order.riderId;
+
+    const isRider = callerUid === riderId;
+    const isCustomer = callerUid === customerId;
+    const isSeller = callerUid === sellerId;
+
+    if (!isRider && !isCustomer && !isSeller) {
+      throw new functions.https.HttpsError("permission-denied", "Unauthorized to cancel or report failure for this order.");
+    }
+
+    const targetStatus = isFailedDelivery ? "FailedDelivery" : "Cancelled";
+
+    let compensationAmount = 0.0;
+    if (isRider) {
+      if (reason === "Restaurant Closed" || reason === "Customer Unavailable" || reason === "Wrong Address") {
+        compensationAmount = 25.0; // Base trip compensation
+      }
+    }
+
+    const updatePayload = {
+      status: targetStatus,
+      cancellationReason: reason,
+      cancellationNotes: notes || "",
+      cancelledBy: callerUid,
+      cancelledByRole: isRider ? "delivery_partner" : isSeller ? "seller" : "customer",
+      cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      previousStatus: currentStatus,
+      cancellationCompensation: compensationAmount,
+      isRiderCompensationEligible: compensationAmount > 0,
+    };
+
+    if (isRider && (reason === "Vehicle Problem" || reason === "Emergency")) {
+      updatePayload.riderEmergencyReported = true;
+    }
+
+    transaction.update(orderRef, updatePayload);
+
+    if (isRider && compensationAmount > 0) {
+      const riderRef = db.collection("delivery_partners").doc(callerUid);
+      transaction.set(
+        riderRef,
+        {
+          todayEarnings: admin.firestore.FieldValue.increment(compensationAmount),
+          totalEarnings: admin.firestore.FieldValue.increment(compensationAmount),
+          walletBalance: admin.firestore.FieldValue.increment(compensationAmount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      const txRef = db.collection("delivery_partners").doc(callerUid).collection("wallet_transactions").doc();
+      transaction.set(txRef, {
+        type: "credit",
+        category: "cancellation_compensation",
+        amount: compensationAmount,
+        orderId,
+        reason,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: "completed",
+        description: `Compensation for cancelled order #${orderId} (${reason})`,
+      });
+    }
+
+    return {
+      success: true,
+      orderId,
+      status: targetStatus,
+      cancellationReason: reason,
+      compensationAmount,
+      message: `Order #${orderId} marked as '${targetStatus}' successfully.`,
+    };
+  });
+});
+
+/**
+ * 21. Secure Delivery Partner Account Deactivation / Deletion
+ */
+exports.deactivateOrDeleteDeliveryAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  const callerUid = context.auth.uid;
+  const { action, reason } = data || {}; // action: 'deactivate' | 'delete'
+
+  const db = admin.firestore();
+  const partnerRef = db.collection("delivery_partners").doc(callerUid);
+  const partnerSnap = await partnerRef.get();
+
+  if (!partnerSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "Delivery partner profile not found.");
+  }
+
+  // Check if rider has active in-flight orders
+  const activeOrders = await db.collection("orders")
+    .where("riderId", "==", callerUid)
+    .where("status", "in", ["Accepted", "Assigned", "Preparing", "Ready", "OutForDelivery"])
+    .limit(1)
+    .get();
+
+  if (!activeOrders.empty) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Cannot deactivate/delete account while having active delivery assignments. Please complete or report active orders first."
+    );
+  }
+
+  if (action === "delete") {
+    await partnerRef.update({
+      accountStatus: "deleted",
+      isOnline: false,
+      deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+      deletionReason: reason || "User requested deletion",
+    });
+    // In production, also disable Firebase Auth account
+    try {
+      await admin.auth().updateUser(callerUid, { disabled: true });
+    } catch (authErr) {
+      console.warn("Auth disable warning:", authErr.message);
+    }
+    return { success: true, action: "delete", message: "Delivery partner account successfully scheduled for deletion." };
+  } else {
+    await partnerRef.update({
+      accountStatus: "deactivated",
+      isOnline: false,
+      deactivatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      deactivationReason: reason || "User requested deactivation",
+    });
+    return { success: true, action: "deactivate", message: "Delivery partner account deactivated. You can log in again anytime to reactivate." };
+  }
+});
+
+// =============================================================================
+// 22. Atomic Delivery Order Claiming (Race-Condition Free)
+// =============================================================================
+exports.acceptDeliveryOrderAtomic = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  const callerUid = context.auth.uid;
+  const { orderId, driverName, driverPhone } = data || {};
+
+  if (!orderId) {
+    throw new functions.https.HttpsError("invalid-argument", "Missing orderId.");
+  }
+
+  const db = admin.firestore();
+  const orderRef = db.collection("orders").doc(orderId);
+  const partnerRef = db.collection("delivery_partners").doc(callerUid);
+
+  return await db.runTransaction(async (transaction) => {
+    const orderSnap = await transaction.get(orderRef);
+    if (!orderSnap.exists) {
+      throw new functions.https.HttpsError("not-found", `Order '${orderId}' not found.`);
+    }
+
+    const orderData = orderSnap.data() || {};
+    const existingRider = orderData.deliveryPartnerId || orderData.riderId;
+
+    if (existingRider && existingRider !== callerUid) {
+      throw new functions.https.HttpsError(
+        "already-exists",
+        "Order has already been claimed by another delivery partner."
+      );
+    }
+
+    const partnerSnap = await transaction.get(partnerRef);
+    const partnerData = partnerSnap.exists ? partnerSnap.data() : {};
+    const effectiveName = driverName || partnerData.displayName || partnerData.name || "Delivery Partner";
+    const effectivePhone = driverPhone || partnerData.phoneNumber || partnerData.phone || "";
+
+    const nowIso = new Date().toISOString();
+    const currentHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
+    const historyEntry = {
+      status: "ACCEPTED",
+      timestamp: nowIso,
+      partnerId: callerUid,
+      notes: `Order claimed atomically by ${effectiveName}`,
+    };
+
+    transaction.update(orderRef, {
+      deliveryPartnerId: callerUid,
+      riderId: callerUid,
+      driverId: callerUid,
+      deliveryPartnerName: effectiveName,
+      deliveryPartnerPhone: effectivePhone,
+      deliveryPartnerStatus: "accepted",
+      deliveryStatus: "accepted",
+      pickupStatus: "heading_to_store",
+      deliveryAssignmentStatus: "assigned",
+      assignedAt: admin.firestore.FieldValue.serverTimestamp(),
+      acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      statusHistory: [...currentHistory, historyEntry],
+    });
+
+    if (partnerSnap.exists) {
+      transaction.set(partnerRef, {
+        currentStatus: "busy",
+        isBusy: true,
+        currentOrderId: orderId,
+        activeOrdersCount: admin.firestore.FieldValue.increment(1),
+        lastActiveAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
+
+    return {
+      success: true,
+      orderId,
+      partnerId: callerUid,
+      partnerName: effectiveName,
+      message: "Order successfully claimed and assigned to delivery partner.",
+    };
+  });
+});
+
+// =============================================================================
+// 23. Server-Side Pickup Verification Endpoint
+// =============================================================================
+exports.confirmOrderPickup = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  const callerUid = context.auth.uid;
+  const { orderId, storeVerificationCode, notes } = data || {};
+
+  if (!orderId) {
+    throw new functions.https.HttpsError("invalid-argument", "Missing orderId.");
+  }
+
+  const db = admin.firestore();
+  const orderRef = db.collection("orders").doc(orderId);
+
+  return await db.runTransaction(async (transaction) => {
+    const orderSnap = await transaction.get(orderRef);
+    if (!orderSnap.exists) {
+      throw new functions.https.HttpsError("not-found", `Order '${orderId}' not found.`);
+    }
+
+    const orderData = orderSnap.data() || {};
+    const assignedPartner = orderData.deliveryPartnerId || orderData.riderId || orderData.driverId;
+
+    if (assignedPartner && assignedPartner !== callerUid && orderData.sellerId !== callerUid) {
+      throw new functions.https.HttpsError("permission-denied", "Unauthorized to confirm pickup for this order.");
+    }
+
+    const nowIso = new Date().toISOString();
+    const currentHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
+    const historyEntry = {
+      status: "PICKED_UP",
+      timestamp: nowIso,
+      partnerId: callerUid,
+      notes: notes || "Order picked up from restaurant by delivery partner.",
+    };
+
+    let deliveryOtp = orderData.deliveryOtp || orderData.otp;
+    if (!deliveryOtp) {
+      deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    }
+
+    const updatePayload = {
+      status: "OutForDelivery",
+      deliveryPartnerStatus: "picked_up",
+      deliveryStatus: "picked_up",
+      pickupStatus: "picked_up",
+      pickedUpAt: admin.firestore.FieldValue.serverTimestamp(),
+      outForDeliveryAt: admin.firestore.FieldValue.serverTimestamp(),
+      deliveryOtp: deliveryOtp,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      statusHistory: [...currentHistory, historyEntry],
+    };
+
+    if (storeVerificationCode) {
+      updatePayload.storeVerificationCode = storeVerificationCode;
+    }
+
+    transaction.update(orderRef, updatePayload);
+
+    // Notify customer that order is on the way
+    const customerId = orderData.customerId;
+    if (customerId) {
+      const notifRef = db.collection("buyer_user").doc(customerId).collection("notifications").doc();
+      transaction.set(notifRef, {
+        category: "order_picked_up",
+        priority: "high",
+        title: "Order Picked Up!",
+        titleTa: "ஆர்டர் எடுக்கப்பட்டது!",
+        body: `Your Order #${orderId.substring(0, 6)} has been picked up and is on its way.`,
+        bodyTa: `உங்கள் ஆர்டர் #${orderId.substring(0, 6)} உணவகத்திலிருந்து பெறப்பட்டு, உங்களை நோக்கி வருகிறது.`,
+        orderId,
+        deliveryOtp,
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    return {
+      success: true,
+      orderId,
+      status: "OutForDelivery",
+      pickupStatus: "picked_up",
+      deliveryOtp,
+      message: "Order pickup confirmed successfully.",
+    };
+  });
+});
+
+// =============================================================================
+// 24. Calculate Delivery Earnings & Base Breakdown
+// =============================================================================
+exports.calculateDeliveryEarnings = functions.https.onCall(async (data, context) => {
+  const { orderAmount, distanceKm, isPeakHour, surgeMultiplier } = data || {};
+  const baseOrderAmt = parseFloat(orderAmount) || 0.0;
+  const distKm = parseFloat(distanceKm) || 0.0;
+  const multiplier = parseFloat(surgeMultiplier) || 1.0;
+
+  // Base pay = ₹40 + 15% commission
+  const basePay = 40.0;
+  const commissionPay = Math.round(baseOrderAmt * 0.15 * 100) / 100;
+
+  // Distance incentive = ₹10/km for distance > 5km
+  let distancePay = 0.0;
+  if (distKm > 5) {
+    distancePay = Math.round((distKm - 5) * 10.0 * 100) / 100;
+  }
+
+  // Peak hour incentive = ₹25
+  let peakPay = 0.0;
+  if (isPeakHour) {
+    peakPay = 25.0;
+  } else {
+    const now = new Date();
+    const currentHour = (now.getUTCHours() + 5.5) % 24; // IST
+    if ((currentHour >= 12 && currentHour < 14) || (currentHour >= 19 && currentHour < 22)) {
+      peakPay = 25.0;
+    }
+  }
+
+  const subTotal = basePay + commissionPay + distancePay + peakPay;
+  const totalEarnings = Math.round(subTotal * multiplier * 100) / 100;
+
+  return {
+    success: true,
+    basePay,
+    commissionPay,
+    distancePay,
+    peakPay,
+    totalEarnings,
+    currency: "INR",
+  };
+});
+
+// =============================================================================
+// 25. Calculate Delivery Incentives & Milestone Progress
+// =============================================================================
+exports.calculateDeliveryIncentives = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  const callerUid = context.auth.uid;
+  const db = admin.firestore();
+  const partnerDoc = await db.collection("delivery_partners").doc(callerUid).get();
+
+  if (!partnerDoc.exists) {
+    throw new functions.https.HttpsError("not-found", "Delivery partner profile not found.");
+  }
+
+  const partnerData = partnerDoc.data() || {};
+  const todayDeliveries = parseInt(partnerData.todayDeliveries, 10) || 0;
+  const weeklyDeliveries = parseInt(partnerData.weeklyDeliveries, 10) || 0;
+  const currentStreak = parseInt(partnerData.currentStreakDays, 10) || 1;
+
+  // Daily target: 10 deliveries -> ₹300
+  const dailyTarget = 10;
+  const dailyProgress = Math.min(1.0, todayDeliveries / dailyTarget);
+  const dailyBonus = todayDeliveries >= dailyTarget ? 300.0 : 0.0;
+
+  // Weekly target: 50 deliveries -> ₹1500
+  const weeklyTarget = 50;
+  const weeklyProgress = Math.min(1.0, weeklyDeliveries / weeklyTarget);
+  const weeklyBonus = weeklyDeliveries >= weeklyTarget ? 1500.0 : 0.0;
+
+  // Streak bonus: every 20 deliveries -> ₹100
+  const streakBonus = Math.floor(todayDeliveries / 20) * 100.0;
+
+  return {
+    success: true,
+    partnerId: callerUid,
+    todayDeliveries,
+    dailyTarget,
+    dailyProgress,
+    dailyBonus,
+    weeklyDeliveries,
+    weeklyTarget,
+    weeklyProgress,
+    weeklyBonus,
+    currentStreakDays: currentStreak,
+    streakBonus,
+    totalEarnedIncentives: (parseFloat(partnerData.incentiveEarnings) || 0) + (parseFloat(partnerData.bonusEarnings) || 0),
+  };
+});
+
+// =============================================================================
+// 26. COD (Cash on Delivery) Reconciliation Endpoint
+// =============================================================================
+exports.reconcileCodPayment = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  const callerUid = context.auth.uid;
+  const { orderId, amountCollected, notes } = data || {};
+
+  if (!orderId) {
+    throw new functions.https.HttpsError("invalid-argument", "Missing orderId.");
+  }
+
+  const db = admin.firestore();
+  const orderRef = db.collection("orders").doc(orderId);
+  const partnerRef = db.collection("delivery_partners").doc(callerUid);
+
+  return await db.runTransaction(async (transaction) => {
+    const orderSnap = await transaction.get(orderRef);
+    if (!orderSnap.exists) {
+      throw new functions.https.HttpsError("not-found", `Order '${orderId}' not found.`);
+    }
+
+    const orderData = orderSnap.data() || {};
+    const orderAmount = parseFloat(orderData.amount) || 0;
+    const effectiveCollected = parseFloat(amountCollected) || orderAmount;
+
+    transaction.update(orderRef, {
+      paymentStatus: "Paid",
+      codCollected: true,
+      codAmountCollected: effectiveCollected,
+      codCollectedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const partnerSnap = await transaction.get(partnerRef);
+    if (partnerSnap.exists) {
+      const pData = partnerSnap.data() || {};
+      const currentWallet = parseFloat(pData.walletBalance) || 0;
+      const newWallet = Math.max(0, currentWallet - effectiveCollected);
+
+      transaction.set(partnerRef, {
+        codAdjustment: admin.firestore.FieldValue.increment(effectiveCollected),
+        codCollectedTotal: admin.firestore.FieldValue.increment(effectiveCollected),
+        walletBalance: newWallet,
+        availableBalance: Math.max(0, newWallet - 100.0),
+        withdrawableAmount: Math.max(0, newWallet - 100.0),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      const txRef = partnerRef.collection("transactions").doc();
+      transaction.set(txRef, {
+        id: txRef.id,
+        type: "cod_adjustment",
+        title: `Cash Collected (COD) - Order #${orderId.substring(0, 6)}`,
+        orderId,
+        amount: -effectiveCollected,
+        status: "completed",
+        notes: notes || "Cash on Delivery payment collected from customer.",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    return {
+      success: true,
+      orderId,
+      amountCollected: effectiveCollected,
+      message: `COD payment of ₹${effectiveCollected} reconciled successfully.`,
+    };
+  });
+});
+
+// =============================================================================
+// 27. Delivery Partner Wallet Payout Request
+// =============================================================================
+exports.requestPartnerPayout = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  const callerUid = context.auth.uid;
+  const { amount, paymentMethod, bankDetails } = data || {};
+  const payoutAmount = parseFloat(amount) || 0;
+
+  if (payoutAmount < 100) {
+    throw new functions.https.HttpsError("invalid-argument", "Minimum payout amount is ₹100.");
+  }
+
+  const db = admin.firestore();
+  const partnerRef = db.collection("delivery_partners").doc(callerUid);
+
+  return await db.runTransaction(async (transaction) => {
+    const partnerSnap = await transaction.get(partnerRef);
+    if (!partnerSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "Delivery partner profile not found.");
+    }
+
+    const partnerData = partnerSnap.data() || {};
+    const walletBalance = parseFloat(partnerData.walletBalance) || 0;
+    const withdrawableAmount = parseFloat(partnerData.withdrawableAmount) || Math.max(0, walletBalance - 100.0);
+
+    if (payoutAmount > withdrawableAmount) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        `Insufficient withdrawable balance. Available: ₹${withdrawableAmount.toFixed(2)} (₹100 minimum balance reserve maintained).`
+      );
+    }
+
+    const newWalletBalance = Math.max(0, walletBalance - payoutAmount);
+    const newWithdrawable = Math.max(0, newWalletBalance - 100.0);
+
+    transaction.set(partnerRef, {
+      walletBalance: newWalletBalance,
+      availableBalance: newWithdrawable,
+      withdrawableAmount: newWithdrawable,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    const payoutRef = partnerRef.collection("payouts").doc();
+    transaction.set(payoutRef, {
+      id: payoutRef.id,
+      partnerId: callerUid,
+      amount: payoutAmount,
+      status: "pending",
+      paymentMethod: paymentMethod || "bank_transfer",
+      bankDetails: bankDetails || partnerData.bankDetails || {},
+      requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const txRef = partnerRef.collection("transactions").doc();
+    transaction.set(txRef, {
+      id: txRef.id,
+      type: "payout_withdrawal",
+      title: `Payout Request - ₹${payoutAmount}`,
+      payoutId: payoutRef.id,
+      amount: -payoutAmount,
+      status: "pending",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {
+      success: true,
+      payoutId: payoutRef.id,
+      amount: payoutAmount,
+      newWalletBalance,
+      newWithdrawable,
+      message: `Payout request of ₹${payoutAmount} submitted successfully.`,
+    };
+  });
+});
+
+// =============================================================================
+// 28. Delivery Partner Rating Aggregation Helper & Trigger
+// =============================================================================
+async function aggregateDeliveryPartnerRating(db, partnerId) {
+  if (!partnerId) return;
+
+  try {
+    const reviewsSnap = await db.collection("reviews")
+      .where("deliveryPartnerId", "==", partnerId)
+      .get();
+
+    const ratings = [];
+    let fiveStar = 0, fourStar = 0, threeStar = 0, twoStar = 0, oneStar = 0;
+
+    for (const doc of reviewsSnap.docs) {
+      const r = parseFloat(doc.data().riderRating || doc.data().driverRating || doc.data().rating) || 0;
+      if (r > 0) {
+        ratings.push(r);
+        if (r >= 4.5) fiveStar++;
+        else if (r >= 3.5) fourStar++;
+        else if (r >= 2.5) threeStar++;
+        else if (r >= 1.5) twoStar++;
+        else oneStar++;
+      }
+    }
+
+    const totalRatings = ratings.length;
+    const averageRating = totalRatings > 0
+      ? Math.round((ratings.reduce((a, b) => a + b, 0) / totalRatings) * 10) / 10
+      : 5.0;
+
+    await db.collection("delivery_partners").doc(partnerId).set({
+      rating: averageRating,
+      averageRating,
+      totalRatings,
+      totalReviews: totalRatings,
+      ratingBreakdown: {
+        fiveStar,
+        fourStar,
+        threeStar,
+        twoStar,
+        oneStar,
+      },
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    console.log(`Aggregated rating for partner ${partnerId}: ${averageRating} (${totalRatings} ratings)`);
+  } catch (error) {
+    console.error(`Error aggregating delivery partner rating for ${partnerId}:`, error);
+  }
+}
+
+exports.onDeliveryPartnerRatingCreated = functions.firestore
+  .document("reviews/{reviewId}")
+  .onWrite(async (change, context) => {
+    const data = change.after.exists ? change.after.data() : change.before.data();
+    const partnerId = data ? (data.deliveryPartnerId || data.riderId || data.driverId) : null;
+    if (partnerId) {
+      const db = admin.firestore();
+      await aggregateDeliveryPartnerRating(db, partnerId);
+    }
+    return null;
+  });
+
+
 

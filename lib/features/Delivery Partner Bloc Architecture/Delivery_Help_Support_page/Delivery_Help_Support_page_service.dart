@@ -16,6 +16,38 @@ class DeliveryHelpSupportPageService
 
   static const List<Map<String, String>> _defaultFAQs = [
     {
+      'id': 'faq_order_1',
+      'category': 'Order Issue',
+      'question': 'How do I report a cancelled or damaged order?',
+      'answer':
+          'Select "Report Order Issue" or use the Cancel / Failed Delivery '
+          'button directly on the order details screen to submit verified proof.',
+    },
+    {
+      'id': 'faq_payment_1',
+      'category': 'Payment Issue',
+      'question': 'What if cash collected does not match the order total?',
+      'answer':
+          'Raise a Payment Issue ticket with the exact amount received. Our '
+          'reconciliation team will audit the transaction within 24 hours.',
+    },
+    {
+      'id': 'faq_restaurant_1',
+      'category': 'Restaurant Issue',
+      'question': 'What should I do if the restaurant is closed or items are missing?',
+      'answer':
+          'Mark "Restaurant Closed" under cancellation reasons on the order '
+          'details screen. You will receive eligible compensation for the trip.',
+    },
+    {
+      'id': 'faq_emergency_1',
+      'category': 'Emergency Contact',
+      'question': 'How do I reach the 24/7 Safety Support Team during an accident?',
+      'answer':
+          'Tap the Emergency SOS button in the app to immediately dial our '
+          'priority safety hotline (1800 123 4567) and broadcast your location.',
+    },
+    {
       'id': 'faq_earnings_1',
       'category': 'Earnings',
       'question': 'When will my earnings be credited to my wallet?',

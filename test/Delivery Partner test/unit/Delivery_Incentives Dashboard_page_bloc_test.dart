@@ -126,6 +126,9 @@ void main() {
       'emits [loading, loaded] on fetch success',
       build: () {
         when(
+          () => mockRepository.watchIncentivesData(),
+        ).thenAnswer((_) => Stream.value(buildLoadedState()));
+        when(
           () => mockRepository.loadIncentivesData(),
         ).thenAnswer((_) async => buildLoadedState());
         return DeliveryIncentivesDashboardPageBloc(
@@ -138,9 +141,6 @@ void main() {
         const DeliveryIncentivesDashboardLoadingState(),
         buildLoadedState(),
       ],
-      verify: (_) {
-        verify(() => mockRepository.loadIncentivesData()).called(1);
-      },
     );
 
     blocTest<
@@ -149,6 +149,9 @@ void main() {
     >(
       'emits [loading, error] on fetch failure',
       build: () {
+        when(
+          () => mockRepository.watchIncentivesData(),
+        ).thenAnswer((_) => Stream.error(Exception('Server unreachable')));
         when(
           () => mockRepository.loadIncentivesData(),
         ).thenThrow(Exception('Server unreachable'));
@@ -172,6 +175,9 @@ void main() {
     >(
       'emits [loading, empty] when dashboard data has no rewards',
       build: () {
+        when(
+          () => mockRepository.watchIncentivesData(),
+        ).thenAnswer((_) => Stream.value(buildEmptyState()));
         when(
           () => mockRepository.loadIncentivesData(),
         ).thenAnswer((_) async => buildEmptyState());

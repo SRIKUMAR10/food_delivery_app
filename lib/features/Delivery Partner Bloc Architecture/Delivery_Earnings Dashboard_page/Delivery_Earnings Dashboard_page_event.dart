@@ -43,6 +43,19 @@ class DeliveryEarningsWithdrawEvent
   List<Object?> get props => [amount];
 }
 
+class DeliveryEarningsSubmitCashEvent
+    extends DeliveryEarningsDashboardPageEvent {
+  final double amount;
+  final String method;
+  const DeliveryEarningsSubmitCashEvent({
+    required this.amount,
+    required this.method,
+  });
+
+  @override
+  List<Object?> get props => [amount, method];
+}
+
 class DeliveryEarningsMediaUploadStartedEvent
     extends DeliveryEarningsDashboardPageEvent {
   const DeliveryEarningsMediaUploadStartedEvent();

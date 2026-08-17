@@ -130,6 +130,19 @@ class DeliveryNavigationConfirmDeliveryEvent extends DeliveryNavigationEvent {
   const DeliveryNavigationConfirmDeliveryEvent();
 }
 
+class DeliveryNavigationCollectCodCashEvent extends DeliveryNavigationEvent {
+  final String orderId;
+  final double amountReceived;
+
+  const DeliveryNavigationCollectCodCashEvent({
+    required this.orderId,
+    required this.amountReceived,
+  });
+
+  @override
+  List<Object?> get props => [orderId, amountReceived];
+}
+
 class DeliveryNavigationProfileUpdatedEvent extends DeliveryNavigationEvent {
   final Map<String, dynamic> profile;
 

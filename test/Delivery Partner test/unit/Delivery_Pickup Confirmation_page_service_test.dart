@@ -50,6 +50,7 @@ void main() {
       final fakeFirestore = FakeFirebaseFirestore();
       final testService = DeliveryPickupConfirmationService(
         firestore: fakeFirestore,
+        auth: MockFirebaseAuth(),
       );
 
       await fakeFirestore.collection('buyer_user').doc('buyer_101').set({
@@ -118,5 +119,22 @@ void main() {
         expect(await service.requestLocationPermission(), isTrue);
       },
     );
+
+    test('watchPickupConfirmationData returns real-time stream', () async {
+      final fakeFirestore = FakeFirebaseFirestore();
+      final testService = DeliveryPickupConfirmationService(
+        firestore: fakeFirestore,
+        auth: MockFirebaseAuth(),
+      );
+      await fakeFirestore.collection('orders').doc('ORD_STREAM_1').set({
+        'customerName': 'Test Customer',
+        'amount': 300.0,
+      });
+
+      final stream = testService.watchPickupConfirmationData('ORD_STREAM_1');
+      final result = await stream.first;
+      expect(result['customerName'], 'Test Customer');
+      expect(result['orderAmount'], 300.0);
+    });
   });
 }

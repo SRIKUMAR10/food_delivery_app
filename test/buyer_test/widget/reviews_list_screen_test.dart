@@ -58,5 +58,63 @@ void main() {
       expect(find.text('Delicious food!'), findsOneWidget);
       expect(find.text('Thank you John!'), findsOneWidget);
     });
+
+    testWidgets('renders empty reviews state cleanly when no reviews exist', (
+      WidgetTester tester,
+    ) async {
+      when(() => mockRatingRepository.watchProductReviews(any()))
+          .thenAnswer((_) => Stream.value([]));
+      when(() => mockRatingRepository.watchProductRatingSummary(any()))
+          .thenAnswer((_) => Stream.value({
+                'overallRating': 0.0,
+                'totalReviews': 0,
+                'fiveStar': 0,
+                'fourStar': 0,
+                'threeStar': 0,
+                'twoStar': 0,
+                'oneStar': 0,
+              }));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ReviewsListScreen(
+              productId: 'test_product_empty',
+              productName: 'Empty Burger',
+              ratingRepository: mockRatingRepository,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('User Reviews'), findsOneWidget);
+      expect(find.text('No reviews yet. Be the first!'), findsOneWidget);
+    });
+
+    testWidgets('renders error recovery state with Write a Review button on stream error', (
+      WidgetTester tester,
+    ) async {
+      when(() => mockRatingRepository.watchProductReviews(any()))
+          .thenAnswer((_) => Stream.error('Permission denied'));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ReviewsListScreen(
+              productId: 'test_product_err',
+              productName: 'Error Burger',
+              ratingRepository: mockRatingRepository,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('No reviews yet. Be the first!'), findsOneWidget);
+      expect(find.text('Write a Review'), findsOneWidget);
+    });
   });
 }

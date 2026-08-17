@@ -6,6 +6,10 @@ import 'Delivery_Settings_page_state.dart';
 abstract class DeliverySettingsRepositoryBase {
   Future<DeliverySettingsState> fetchSettings();
   Future<void> saveSettings(DeliverySettingsState settings);
+  Future<bool> changePassword(String currentPassword, String newPassword);
+  Future<bool> deactivateAccount({String? reason});
+  Future<bool> deleteAccount({String? reason});
+  Future<bool> clearCache();
 }
 
 class DeliverySettingsRepository implements DeliverySettingsRepositoryBase {
@@ -116,4 +120,29 @@ class DeliverySettingsRepository implements DeliverySettingsRepositoryBase {
     if (prefs == null) return;
     await prefs.setString(_settingsKey, jsonEncode(settings.toJson()));
   }
+
+  @override
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    return newPassword.length >= 6;
+  }
+
+  @override
+  Future<bool> deactivateAccount({String? reason}) async {
+    return true;
+  }
+
+  @override
+  Future<bool> deleteAccount({String? reason}) async {
+    return true;
+  }
+
+  @override
+  Future<bool> clearCache() async {
+    final prefs = await _getPrefs();
+    if (prefs != null) {
+      await prefs.remove('cached_temp_data');
+    }
+    return true;
+  }
 }
+

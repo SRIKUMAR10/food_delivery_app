@@ -317,6 +317,16 @@ class DeliveryNavigationState extends Equatable {
     String? partnerPhotoUrl,
     String? partnerVehicleNumber,
     double? partnerRating,
+    String? paymentMethod,
+    double? codAmount,
+    bool? isCodCollected,
+    double? collectedAmount,
+    CodCollectStatus? codCollectStatus,
+    double? codReceivedAmount,
+    double? codChangeAmount,
+    String? codMessage,
+    bool? isArrivedAtCustomer,
+    String? activeOrderId,
   }) {
     return DeliveryNavigationState(
       status: status ?? this.status,
@@ -370,6 +380,16 @@ class DeliveryNavigationState extends Equatable {
       partnerPhotoUrl: partnerPhotoUrl ?? this.partnerPhotoUrl,
       partnerVehicleNumber: partnerVehicleNumber ?? this.partnerVehicleNumber,
       partnerRating: partnerRating ?? this.partnerRating,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      codAmount: codAmount ?? this.codAmount,
+      isCodCollected: isCodCollected ?? this.isCodCollected,
+      collectedAmount: collectedAmount ?? this.collectedAmount,
+      codCollectStatus: codCollectStatus ?? this.codCollectStatus,
+      codReceivedAmount: codReceivedAmount ?? this.codReceivedAmount,
+      codChangeAmount: codChangeAmount ?? this.codChangeAmount,
+      codMessage: codMessage ?? this.codMessage,
+      isArrivedAtCustomer: isArrivedAtCustomer ?? this.isArrivedAtCustomer,
+      activeOrderId: activeOrderId ?? this.activeOrderId,
     );
   }
 
@@ -423,5 +443,15 @@ class DeliveryNavigationState extends Equatable {
         partnerPhotoUrl,
         partnerVehicleNumber,
         partnerRating,
+        paymentMethod,
+        codAmount,
+        isCodCollected,
+        collectedAmount,
+        codCollectStatus,
+        codReceivedAmount,
+        codChangeAmount,
+        codMessage,
+        isArrivedAtCustomer,
+        activeOrderId,
       ];
 }

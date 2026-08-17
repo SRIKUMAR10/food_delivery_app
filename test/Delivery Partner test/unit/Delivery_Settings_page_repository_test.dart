@@ -95,5 +95,25 @@ void main() {
       expect(settings.notificationsEnabled, isTrue);
       expect(settings.items, hasLength(5));
     });
+
+    test('changePassword validates password length', () async {
+      expect(await repository.changePassword('old', 'secretPass'), isTrue);
+      expect(await repository.changePassword('old', '12'), isFalse);
+    });
+
+    test('deactivateAccount completes with boolean', () async {
+      expect(await repository.deactivateAccount(reason: 'Temp break'), isTrue);
+    });
+
+    test('deleteAccount completes with boolean', () async {
+      expect(await repository.deleteAccount(reason: 'Permanent delete'), isTrue);
+    });
+
+    test('clearCache clears cached items', () async {
+      await prefs.setString('cached_temp_data', 'foo');
+      expect(await repository.clearCache(), isTrue);
+      expect(prefs.getString('cached_temp_data'), isNull);
+    });
   });
 }
+

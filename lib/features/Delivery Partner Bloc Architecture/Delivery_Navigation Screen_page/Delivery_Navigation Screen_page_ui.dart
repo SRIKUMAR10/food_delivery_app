@@ -74,6 +74,17 @@ class DeliveryNavigationStrings {
       'destination': 'Destination',
       'customerNotes': 'Notes',
       'liveTelemetry': 'Live Telemetry',
+      'codCollectCash': 'Collect COD Cash',
+      'codAmountToCollect': 'COD Amount to Collect',
+      'cashReceivedTitle': 'Cash Received',
+      'receivedAmountLabel': 'Amount received from customer',
+      'changeToReturn': 'Change to return',
+      'codCollectedStatus': 'Cash Collected',
+      'amountLessThanCod': 'Amount is less than the COD amount.',
+      'invalidAmount': 'Please enter a valid amount.',
+      'confirm': 'Confirm',
+      'cancel': 'Cancel',
+      'collectingCod': 'Collecting cash...',
     },
     'ta': {
       'liveNavigation': 'நேரடி வழிசெலுத்தல்',
@@ -141,6 +152,17 @@ class DeliveryNavigationStrings {
       'destination': 'இலக்கு',
       'customerNotes': 'குறிப்புகள்',
       'liveTelemetry': 'நேரடி டெலிமெட்ரி',
+      'codCollectCash': 'COD பணத்தை பெறவும்',
+      'codAmountToCollect': 'COD தொகை பெறவேண்டியது',
+      'cashReceivedTitle': 'பெறப்பட்ட பணம்',
+      'receivedAmountLabel': 'வாடிக்கையாளரிடமிருந்து பெறப்பட்ட தொகை',
+      'changeToReturn': 'திரும்ப வழங்க வேண்டிய பணம்',
+      'codCollectedStatus': 'பணம் பெறப்பட்டது',
+      'amountLessThanCod': 'தொகை COD தொகையை விட குறைவு.',
+      'invalidAmount': 'சரியான தொகையை உள்ளிடவும்.',
+      'confirm': 'உறுதிப்படுத்து',
+      'cancel': 'ரத்து செய்',
+      'collectingCod': 'பணம் பெறுகிறது...',
     },
   };
 
@@ -159,17 +181,36 @@ class _MapCoords {
   static const double currentY = 0.55;
 }
 
+typedef DeliveryNavigationScreenPageUi = DeliveryNavigationScreenPage;
+
 class DeliveryNavigationScreenPage extends StatelessWidget {
   final DeliveryNavigationRepositoryBase? repository;
   final DeliveryNavigationServiceBase? service;
   final DeliveryNavigationBloc? bloc;
+  final String? orderId;
+  final String? pickupAddress;
+  final String? dropoffAddress;
+  final String? restaurantName;
+  final String? customerName;
+  final double? destinationLatitude;
+  final double? destinationLongitude;
+  final bool? isStoreRoute;
 
   const DeliveryNavigationScreenPage({
     super.key,
     this.repository,
     this.service,
     this.bloc,
+    this.orderId,
+    this.pickupAddress,
+    this.dropoffAddress,
+    this.restaurantName,
+    this.customerName,
+    this.destinationLatitude,
+    this.destinationLongitude,
+    this.isStoreRoute,
   });
+
 
   @override
   Widget build(BuildContext context) {
@@ -1510,6 +1551,10 @@ class _StageBanner extends StatelessWidget {
               ],
             ),
           ],
+          if (isStage2 && state.isCOD) ...[
+            const SizedBox(height: 12),
+            _CodCollectionCard(state: state, localeCode: localeCode),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1562,6 +1607,261 @@ class _StageBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CodCollectionCard extends StatelessWidget {
+  final DeliveryNavigationState state;
+  final String localeCode;
+
+  const _CodCollectionCard({required this.state, required this.localeCode});
+
+  Future<void> _openCollectDialog(BuildContext context) async {
+    final controller = TextEditingController();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final amount = double.tryParse(controller.text);
+            final codAmount = state.codAmountToCollect;
+            final hasAmount = amount != null && amount >= 0;
+            final valid = amount != null && amount >= codAmount;
+            final change =
+                valid ? (amount - codAmount) : 0.0;
+
+            return AlertDialog(
+              backgroundColor: DeliveryAppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                DeliveryNavigationStrings.of('cashReceivedTitle', localeCode),
+                style: const TextStyle(color: Colors.white),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${DeliveryNavigationStrings.of('codAmountToCollect', localeCode)}: '
+                    '\u{20B9}${codAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: DeliveryNavigationStrings.of(
+                        'receivedAmountLabel',
+                        localeCode,
+                      ),
+                      prefixText: '\u{20B9} ',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: valid
+                          ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                          : (hasAmount
+                              ? const Color(0xFFEF4444).withValues(alpha: 0.12)
+                              : Colors.white.withValues(alpha: 0.05)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      !hasAmount
+                          ? DeliveryNavigationStrings.of('invalidAmount', localeCode)
+                          : (!valid
+                              ? DeliveryNavigationStrings.of('amountLessThanCod', localeCode)
+                              : '${DeliveryNavigationStrings.of('changeToReturn', localeCode)}: '
+                                  '\u{20B9}${change.toStringAsFixed(2)}'),
+                      style: TextStyle(
+                        color: !hasAmount || !valid
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFF10B981),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    DeliveryNavigationStrings.of('cancel', localeCode),
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: controller,
+                  builder: (context, value, _) {
+                    final parsed = double.tryParse(value.text);
+                    final canSubmit =
+                        parsed != null && parsed >= state.codAmountToCollect;
+                    return FilledButton.icon(
+                      onPressed: canSubmit
+                          ? () {
+                              Navigator.of(dialogContext).pop();
+                              context.read<DeliveryNavigationBloc>().add(
+                                DeliveryNavigationCollectCodCashEvent(
+                                  orderId: state.activeOrderId,
+                                  amountReceived: parsed,
+                                ),
+                              );
+                            }
+                          : null,
+                      icon: const Icon(Icons.payments_outlined, size: 18),
+                      label: Text(
+                        DeliveryNavigationStrings.of('confirm', localeCode),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCollecting =
+        state.codCollectStatus == CodCollectStatus.collecting;
+    final isCollected = state.isCodCollected ||
+        state.codCollectStatus == CodCollectStatus.success;
+    final failed =
+        state.codCollectStatus == CodCollectStatus.failed;
+    final codAmount = state.codAmountToCollect;
+
+    return Container(
+      key: const Key('dp_navscreen_cod_card'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isCollected
+            ? const Color(0xFF10B981).withValues(alpha: 0.12)
+            : const Color(0xFFF59E0B).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: (isCollected
+                  ? const Color(0xFF10B981)
+                  : const Color(0xFFF59E0B))
+              .withValues(alpha: 0.4),
+        ),
+      ),
+      child: isCollected
+          ? Row(
+              children: [
+                const Icon(Icons.check_circle,
+                    color: Color(0xFF10B981), size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    DeliveryNavigationStrings.of('codCollectedStatus', localeCode),
+                    style: const TextStyle(
+                      color: Color(0xFF10B981),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Text(
+                  '\u{20B9}${(state.collectedAmount > 0 ? state.collectedAmount : codAmount).toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.payments_outlined,
+                        color: Color(0xFFF59E0B), size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${DeliveryNavigationStrings.of('codAmountToCollect', localeCode)}: '
+                        '\u{20B9}${codAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (failed && state.codMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    state.codMessage!,
+                    style: const TextStyle(
+                      color: Color(0xFFEF4444),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: isCollecting
+                        ? null
+                        : () => _openCollectDialog(context),
+                    icon: isCollecting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.currency_rupee, size: 16),
+                    label: Text(
+                      isCollecting
+                          ? DeliveryNavigationStrings.of('collectingCod', localeCode)
+                          : DeliveryNavigationStrings.of('codCollectCash', localeCode),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFF59E0B),
+                      foregroundColor: Colors.black87,
+                      minimumSize: const Size(0, 42),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

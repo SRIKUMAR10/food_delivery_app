@@ -65,6 +65,7 @@ void main() {
       when(() => mockFirestore.collection('products')).thenReturn(mockProductsCollection);
       when(() => mockProductsCollection.doc('food_123')).thenReturn(mockProductDoc);
       when(() => mockProductDoc.collection('reviews')).thenReturn(mockReviewsCollection);
+      when(() => mockReviewsCollection.doc(any())).thenReturn(mockReviewRef);
       when(() => mockReviewsCollection.doc()).thenReturn(mockReviewRef);
       when(() => mockBatch.commit()).thenAnswer((_) async => {});
 

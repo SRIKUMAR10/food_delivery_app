@@ -2,6 +2,19 @@ import 'package:equatable/equatable.dart';
 
 enum OrderDetailsStatus { initial, loading, success, error }
 
+enum OrderCancellationStatus { initial, cancelling, success, failed }
+
+const List<String> kDeliveryCancellationReasons = [
+  'Restaurant Closed',
+  'Restaurant Not Ready',
+  'Customer Unavailable',
+  'Wrong Address',
+  'Customer Cancelled',
+  'Vehicle Problem',
+  'Emergency',
+  'Other',
+];
+
 enum PickupFlowStep {
   assigned,
   goingToRestaurant,
@@ -101,6 +114,7 @@ class OrderModel extends Equatable {
   final bool isCodCollected;
   final double collectedAmount;
   final String codReconciliationStatus;
+  final String cancellationReason;
 
   const OrderModel({
     required this.id,
@@ -136,6 +150,7 @@ class OrderModel extends Equatable {
     this.isCodCollected = false,
     this.collectedAmount = 0.0,
     this.codReconciliationStatus = '',
+    this.cancellationReason = '',
   });
 
   bool get isCOD {
@@ -202,6 +217,7 @@ class OrderModel extends Equatable {
     bool? isCodCollected,
     double? collectedAmount,
     String? codReconciliationStatus,
+    String? cancellationReason,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -238,6 +254,7 @@ class OrderModel extends Equatable {
       collectedAmount: collectedAmount ?? this.collectedAmount,
       codReconciliationStatus:
           codReconciliationStatus ?? this.codReconciliationStatus,
+      cancellationReason: cancellationReason ?? this.cancellationReason,
     );
   }
 
@@ -276,6 +293,7 @@ class OrderModel extends Equatable {
         isCodCollected,
         collectedAmount,
         codReconciliationStatus,
+        cancellationReason,
       ];
 }
 
@@ -291,6 +309,8 @@ class DeliveryOrderDetailsPageState extends Equatable {
   final double codReceivedAmount;
   final double codChangeAmount;
   final String? codCollectionMessage;
+  final OrderCancellationStatus cancellationStatus;
+  final String? cancellationMessage;
 
   const DeliveryOrderDetailsPageState({
     this.status = OrderDetailsStatus.initial,
@@ -304,6 +324,8 @@ class DeliveryOrderDetailsPageState extends Equatable {
     this.codReceivedAmount = 0.0,
     this.codChangeAmount = 0.0,
     this.codCollectionMessage,
+    this.cancellationStatus = OrderCancellationStatus.initial,
+    this.cancellationMessage,
   });
 
   DeliveryOrderDetailsPageState copyWith({
@@ -320,6 +342,9 @@ class DeliveryOrderDetailsPageState extends Equatable {
     double? codChangeAmount,
     String? codCollectionMessage,
     bool clearCodCollectionMessage = false,
+    OrderCancellationStatus? cancellationStatus,
+    String? cancellationMessage,
+    bool clearCancellationMessage = false,
   }) {
     return DeliveryOrderDetailsPageState(
       status: status ?? this.status,
@@ -335,6 +360,10 @@ class DeliveryOrderDetailsPageState extends Equatable {
       codCollectionMessage: clearCodCollectionMessage
           ? null
           : (codCollectionMessage ?? this.codCollectionMessage),
+      cancellationStatus: cancellationStatus ?? this.cancellationStatus,
+      cancellationMessage: clearCancellationMessage
+          ? null
+          : (cancellationMessage ?? this.cancellationMessage),
     );
   }
 
@@ -351,5 +380,8 @@ class DeliveryOrderDetailsPageState extends Equatable {
         codReceivedAmount,
         codChangeAmount,
         codCollectionMessage,
+        cancellationStatus,
+        cancellationMessage,
       ];
 }
+

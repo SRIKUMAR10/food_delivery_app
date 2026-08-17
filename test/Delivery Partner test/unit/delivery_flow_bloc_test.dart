@@ -210,6 +210,18 @@ void main() {
 
     test('load fetches from repository and transitions to loaded', () async {
       when(
+        () => mockRepository.watchIncomingOrder(),
+      ).thenAnswer((_) => Stream.value(const DeliveryIncomingOrderState(
+            status: IncomingOrderStatus.loaded,
+            orderId: '#ORD-IN-001',
+            storeName: 'Green Mart',
+            storeAddress: '24, Anna Salai, Chennai',
+            customerName: 'Arun Kumar',
+            customerAddress: '12, Beach Road, Chennai',
+            orderAmount: 620.00,
+            remainingSeconds: 15,
+          )));
+      when(
         () => mockRepository.fetchIncomingOrder(),
       ).thenAnswer((_) async => const DeliveryIncomingOrderState(
             status: IncomingOrderStatus.loaded,
@@ -273,11 +285,6 @@ void main() {
     late MockPickupConfirmationRepository mockRepository;
     late MockPickupConfirmationService mockService;
 
-    setUp(() {
-      mockRepository = MockPickupConfirmationRepository();
-      mockService = MockPickupConfirmationService();
-    });
-
     const pickupModel = PickupConfirmationModel(
       orderId: '#ORD-PU-001',
       pickupLocationName: 'Green Mart',
@@ -293,6 +300,14 @@ void main() {
       orderAmount: 486.50,
       walletBalance: 2450.00,
     );
+
+    setUp(() {
+      mockRepository = MockPickupConfirmationRepository();
+      mockService = MockPickupConfirmationService();
+      when(
+        () => mockRepository.watchPickupConfirmationDetails(any()),
+      ).thenAnswer((_) => Stream.value(pickupModel));
+    });
 
     test('initial state has defaults', () {
       final bloc = DeliveryPickupConfirmationPageBloc(
@@ -354,11 +369,6 @@ void main() {
     late MockDeliveryCompletedRepository mockRepository;
     late MockDeliveryCompletedService mockService;
 
-    setUp(() {
-      mockRepository = MockDeliveryCompletedRepository();
-      mockService = MockDeliveryCompletedService();
-    });
-
     const completedModel = DeliveryCompletedModel(
       orderId: '#ORD-CO-001',
       walletBalance: 2450.00,
@@ -374,6 +384,14 @@ void main() {
       deliveryEarnings: 120.00,
       completedAt: 'Today, 4:15 PM',
     );
+
+    setUp(() {
+      mockRepository = MockDeliveryCompletedRepository();
+      mockService = MockDeliveryCompletedService();
+      when(
+        () => mockRepository.watchCompletedOrder(any()),
+      ).thenAnswer((_) => Stream.value(completedModel));
+    });
 
     test('initial state has defaults', () {
       final bloc = DeliveryCompletedBloc(repository: mockRepository, service: mockService);
@@ -615,6 +633,9 @@ void main() {
     });
 
     test('fetchOrderDetails loads order data', () async {
+      when(
+        () => mockRepository.watchOrderDetails('#ORD12345'),
+      ).thenAnswer((_) => Stream.value(sampleOrder));
       when(
         () => mockRepository.fetchOrderDetails('#ORD12345'),
       ).thenAnswer((_) async => sampleOrder);

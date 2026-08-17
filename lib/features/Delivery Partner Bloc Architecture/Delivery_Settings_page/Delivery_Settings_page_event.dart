@@ -56,3 +56,67 @@ class DeliverySettingsSaveEvent extends DeliverySettingsEvent {
 class DeliverySettingsRetryEvent extends DeliverySettingsEvent {
   const DeliverySettingsRetryEvent();
 }
+
+class DeliverySettingsToggleSoundAlertsEvent extends DeliverySettingsEvent {
+  const DeliverySettingsToggleSoundAlertsEvent();
+}
+
+class DeliverySettingsToggleVibrationAlertsEvent extends DeliverySettingsEvent {
+  const DeliverySettingsToggleVibrationAlertsEvent();
+}
+
+class DeliverySettingsToggleHighAccuracyGpsEvent extends DeliverySettingsEvent {
+  const DeliverySettingsToggleHighAccuracyGpsEvent();
+}
+
+class DeliverySettingsToggleBackgroundLocationEvent extends DeliverySettingsEvent {
+  const DeliverySettingsToggleBackgroundLocationEvent();
+}
+
+class DeliverySettingsToggleBiometricLockEvent extends DeliverySettingsEvent {
+  const DeliverySettingsToggleBiometricLockEvent();
+}
+
+class DeliverySettingsToggleTwoFactorAuthEvent extends DeliverySettingsEvent {
+  const DeliverySettingsToggleTwoFactorAuthEvent();
+}
+
+class DeliverySettingsToggleDataSharingEvent extends DeliverySettingsEvent {
+  const DeliverySettingsToggleDataSharingEvent();
+}
+
+class DeliverySettingsChangePasswordEvent extends DeliverySettingsEvent {
+  final String currentPassword;
+  final String newPassword;
+
+  const DeliverySettingsChangePasswordEvent({
+    required this.currentPassword,
+    required this.newPassword,
+  });
+
+  @override
+  List<Object?> get props => [currentPassword, newPassword];
+}
+
+class DeliverySettingsDeactivateAccountEvent extends DeliverySettingsEvent {
+  final String? reason;
+
+  const DeliverySettingsDeactivateAccountEvent({this.reason});
+
+  @override
+  List<Object?> get props => [reason];
+}
+
+class DeliverySettingsDeleteAccountEvent extends DeliverySettingsEvent {
+  final String? reason;
+
+  const DeliverySettingsDeleteAccountEvent({this.reason});
+
+  @override
+  List<Object?> get props => [reason];
+}
+
+class DeliverySettingsClearCacheEvent extends DeliverySettingsEvent {
+  const DeliverySettingsClearCacheEvent();
+}
+

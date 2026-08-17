@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 abstract class DeliveryPickupConfirmationServiceBase {
   Future<Map<String, dynamic>> fetchPickupConfirmationData(String orderId);
+  Stream<Map<String, dynamic>> watchPickupConfirmationData(String orderId);
   Future<Map<String, dynamic>> startDeliveryData(String orderId);
   Future<bool> arrivedAtStore(String orderId);
   String formatCurrency(double amount);
@@ -52,91 +53,112 @@ class DeliveryPickupConfirmationService
       if (fs != null) {
         final orderDoc = await fs.collection('orders').doc(orderId).get();
         if (orderDoc.exists) {
-          final data = orderDoc.data()!;
-          final sellerId = data['sellerId'] as String? ?? '';
-          
-          String shopName = 'Restaurant';
-          String shopAddress = '';
-          String shopPhone = '';
-          
-          if (sellerId.isNotEmpty) {
-            final sellerDoc = await fs.collection('sellers').doc(sellerId).get();
-            if (sellerDoc.exists) {
-              final sData = sellerDoc.data()!;
-              shopName = sData['shopName'] as String? ?? sData['name'] as String? ?? 'Restaurant';
-              shopAddress = sData['address'] as String? ?? '';
-              shopPhone = sData['phoneNumber'] as String? ?? sData['contactNumber'] as String? ?? '';
-            }
-          }
-          
-          double walletBalance = 0.0;
-          final user = _auth?.currentUser;
-          if (user != null) {
-            final partnerDoc = await fs
-                .collection('delivery_partners')
-                .doc(user.uid)
-                .get();
-            if (partnerDoc.exists) {
-              walletBalance = (partnerDoc.data()?['totalEarnings'] as num?)?.toDouble() ?? 0.0;
-            }
-          }
-
-          String customerName = data['customerName'] as String? ?? '';
-          String customerAddress = data['deliveryAddress'] as String? ?? data['address'] as String? ?? '';
-          String customerPhone = data['customerPhone'] as String? ?? data['phone'] as String? ?? data['userPhone'] as String? ?? '';
-
-          final customerId = (data['customerId'] ?? data['customer_id'] ?? data['userId'] ?? data['user_id'] ?? data['buyerId'] ?? data['buyer_id'] ?? data['customerUid'] ?? data['buyerUid'] ?? data['uid'])?.toString();
-
-          if ((customerName.isEmpty || customerName == 'Customer' || customerAddress.isEmpty || customerPhone.isEmpty) && customerId != null && customerId.isNotEmpty) {
-            try {
-              final uDoc = await fs.collection('buyer_user').doc(customerId).get();
-              if (uDoc.exists && uDoc.data() != null) {
-                final uData = uDoc.data()!;
-                final uName = uData['name'] ?? uData['displayName'] ?? uData['fullName'] ?? uData['userName'] ?? uData['buyerName'] ?? uData['customerName'] ?? '';
-                final uPhone = uData['phone'] ?? uData['phoneNumber'] ?? uData['mobile'] ?? uData['userPhone'] ?? uData['contactNumber'] ?? '';
-
-                if (customerName.isEmpty || customerName == 'Customer') {
-                  if (uName.toString().trim().isNotEmpty) {
-                    customerName = uName.toString().trim();
-                  }
-                }
-                if (customerPhone.isEmpty && uPhone.toString().trim().isNotEmpty) {
-                  customerPhone = uPhone.toString().trim();
-                }
-                if (customerAddress.isEmpty) {
-                  for (final k in ['address', 'primaryAddress', 'homeAddress', 'workAddress', 'deliveryAddress', 'shippingAddress']) {
-                    final val = uData[k];
-                    if (val != null && val is String && val.trim().isNotEmpty && val.trim() != 'Primary Address') {
-                      customerAddress = val.trim();
-                      break;
-                    }
-                  }
-                }
-              }
-            } catch (_) {}
-          }
-
-          if (customerName.isEmpty) customerName = 'Customer';
-
-          return {
-            'orderId': orderId,
-            'pickupLocationName': shopName,
-            'pickupAddress': shopAddress,
-            'pickupContactName': shopName,
-            'pickupContactPhone': shopPhone,
-            'pickupInstructions': data['deliveryInstructions'] ?? 'Collect sealed bags.',
-            'customerName': customerName,
-            'customerAddress': customerAddress,
-            'customerPhone': customerPhone,
-            'pickupTime': _formatTimestamp(data['timestamp']),
-            'paymentType': data['paymentMethod'] ?? 'Cash on Delivery',
-            'orderAmount': (data['amount'] as num?)?.toDouble() ?? 0.0,
-            'walletBalance': walletBalance,
-          };
+          return await _mapPickupDoc(orderDoc);
         }
       }
     } catch (_) {}
     return {};
+  }
+
+  @override
+  Stream<Map<String, dynamic>> watchPickupConfirmationData(String orderId) {
+    final fs = _firestore;
+    if (fs == null || orderId.isEmpty) {
+      return Stream.value({});
+    }
+    return fs
+        .collection('orders')
+        .doc(orderId)
+        .snapshots(includeMetadataChanges: true)
+        .asyncMap((doc) async {
+      if (!doc.exists) return <String, dynamic>{};
+      return await _mapPickupDoc(doc);
+    }).handleError((_) => <String, dynamic>{});
+  }
+
+  Future<Map<String, dynamic>> _mapPickupDoc(DocumentSnapshot<Map<String, dynamic>> orderDoc) async {
+    final fs = _firestore;
+    final data = orderDoc.data() ?? {};
+    final sellerId = data['sellerId'] as String? ?? '';
+
+    String shopName = 'Restaurant';
+    String shopAddress = '';
+    String shopPhone = '';
+
+    if (sellerId.isNotEmpty && fs != null) {
+      final sellerDoc = await fs.collection('sellers').doc(sellerId).get();
+      if (sellerDoc.exists) {
+        final sData = sellerDoc.data()!;
+        shopName = sData['shopName'] as String? ?? sData['name'] as String? ?? 'Restaurant';
+        shopAddress = sData['address'] as String? ?? '';
+        shopPhone = sData['phoneNumber'] as String? ?? sData['contactNumber'] as String? ?? '';
+      }
+    }
+
+    double walletBalance = 0.0;
+    final user = _auth?.currentUser;
+    if (user != null && fs != null) {
+      final partnerDoc = await fs
+          .collection('delivery_partners')
+          .doc(user.uid)
+          .get();
+      if (partnerDoc.exists) {
+        walletBalance = (partnerDoc.data()?['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+      }
+    }
+
+    String customerName = data['customerName'] as String? ?? '';
+    String customerAddress = data['deliveryAddress'] as String? ?? data['address'] as String? ?? '';
+    String customerPhone = data['customerPhone'] as String? ?? data['phone'] as String? ?? data['userPhone'] as String? ?? '';
+
+    final customerId = (data['customerId'] ?? data['customer_id'] ?? data['userId'] ?? data['user_id'] ?? data['buyerId'] ?? data['buyer_id'] ?? data['customerUid'] ?? data['buyerUid'] ?? data['uid'])?.toString();
+
+    if ((customerName.isEmpty || customerName == 'Customer' || customerAddress.isEmpty || customerPhone.isEmpty) && customerId != null && customerId.isNotEmpty && fs != null) {
+      try {
+        final uDoc = await fs.collection('buyer_user').doc(customerId).get();
+        if (uDoc.exists && uDoc.data() != null) {
+          final uData = uDoc.data()!;
+          final uName = uData['name'] ?? uData['displayName'] ?? uData['fullName'] ?? uData['userName'] ?? uData['buyerName'] ?? uData['customerName'] ?? '';
+          final uPhone = uData['phone'] ?? uData['phoneNumber'] ?? uData['mobile'] ?? uData['userPhone'] ?? uData['contactNumber'] ?? '';
+
+          if (customerName.isEmpty || customerName == 'Customer') {
+            if (uName.toString().trim().isNotEmpty) {
+              customerName = uName.toString().trim();
+            }
+          }
+          if (customerPhone.isEmpty && uPhone.toString().trim().isNotEmpty) {
+            customerPhone = uPhone.toString().trim();
+          }
+          if (customerAddress.isEmpty) {
+            for (final k in ['address', 'primaryAddress', 'homeAddress', 'workAddress', 'deliveryAddress', 'shippingAddress']) {
+              final val = uData[k];
+              if (val != null && val is String && val.trim().isNotEmpty && val.trim() != 'Primary Address') {
+                customerAddress = val.trim();
+                break;
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (customerName.isEmpty) customerName = 'Customer';
+
+    return {
+      'orderId': orderDoc.id,
+      'pickupLocationName': shopName,
+      'pickupAddress': shopAddress,
+      'pickupContactName': shopName,
+      'pickupContactPhone': shopPhone,
+      'pickupInstructions': data['deliveryInstructions'] ?? 'Collect sealed bags.',
+      'customerName': customerName,
+      'customerAddress': customerAddress,
+      'customerPhone': customerPhone,
+      'pickupTime': _formatTimestamp(data['timestamp']),
+      'paymentType': data['paymentMethod'] ?? 'Cash on Delivery',
+      'orderAmount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+      'walletBalance': walletBalance,
+    };
   }
 
   @override

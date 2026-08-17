@@ -22,6 +22,9 @@ void main() {
     when(() => mockService.fetchIncentivesData()).thenAnswer(
       (_) async => _getMockDataset(),
     );
+    when(() => mockService.watchIncentivesData()).thenAnswer(
+      (_) => Stream.value(_getMockDataset()),
+    );
     when(() => mockService.exportRewardHistory(any())).thenAnswer(
       (invocation) async => realService.exportRewardHistory(
         invocation.positionalArguments[0] as List<Map<String, dynamic>>,
@@ -35,6 +38,16 @@ void main() {
   });
 
   group('DeliveryIncentivesDashboardPage Repository Tests', () {
+    test(
+      'watchIncentivesData returns stream of loaded states',
+      () async {
+        final stream = repository.watchIncentivesData();
+        final state = await stream.first;
+        expect(state.walletBalance, 2450.00);
+        expect(state.todayBonus, 350.00);
+      },
+    );
+
     test(
       'loadIncentivesData returns loaded state with correct metrics',
       () async {

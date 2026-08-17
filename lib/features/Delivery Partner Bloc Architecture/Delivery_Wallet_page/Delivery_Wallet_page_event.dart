@@ -60,3 +60,16 @@ class DeliveryWalletAddPaymentMethodEvent extends DeliveryWalletPageEvent {
   @override
   List<Object?> get props => [method];
 }
+
+class DeliveryWalletSubmitCashEvent extends DeliveryWalletPageEvent {
+  final double amount;
+  final String method;
+
+  const DeliveryWalletSubmitCashEvent({
+    required this.amount,
+    required this.method,
+  });
+
+  @override
+  List<Object?> get props => [amount, method];
+}

@@ -10,8 +10,11 @@ abstract class DeliveryAppColors {
 
   // Backgrounds & Surface Containers
   static const Color background = Color(0xFF0D131E); // Deep Slate/Charcoal Background
+  static const Color backgroundDark = Color(0xFF0D131E);
   static const Color surface = Color(0xFF161B22);    // Card & Elevated Surface
+  static const Color surfaceDark = Color(0xFF161B22);
   static const Color surfaceLight = Color(0xFF1E2631); // Interactive / Hover Surface
+  static const Color surfaceMedium = Color(0xFF1E2631);
   static const Color surfaceElevated = Color(0xFF28313F);
 
   // Text Colors (High Contrast on Dark Surfaces)

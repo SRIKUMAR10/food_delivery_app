@@ -22,6 +22,7 @@ void main() {
 
       when(() => mockAuthService.currentUserId).thenReturn('test_uid');
       when(() => mockAuthService.currentUserDisplayName).thenReturn('Test User');
+      when(() => mockAuthService.currentUserPhotoUrl).thenReturn('https://example.com/photo.jpg');
       when(() => mockAuthService.authStateChanges).thenAnswer((_) => const Stream.empty());
 
       bloc = RatingPageBloc(
@@ -46,6 +47,38 @@ void main() {
 
         expectLater(bloc.stream, emitsInOrder(expectedStates));
         bloc.add(const RatingChanged(4.0));
+      });
+    });
+
+    group('SubmitPartnerRatingEvent', () {
+      test('submits delivery partner rating and emits RatingSuccess', () async {
+        when(() => mockRepository.submitPartnerRating(
+              customerId: any(named: 'customerId'),
+              customerName: any(named: 'customerName'),
+              customerAvatarUrl: any(named: 'customerAvatarUrl'),
+              partnerId: any(named: 'partnerId'),
+              partnerName: any(named: 'partnerName'),
+              orderId: any(named: 'orderId'),
+              rating: any(named: 'rating'),
+              reviewText: any(named: 'reviewText'),
+              tags: any(named: 'tags'),
+            )).thenAnswer((_) async {});
+
+        final expectedStates = [
+          isA<RatingLoading>(),
+          isA<RatingSuccess>().having((s) => s.rating, 'rating', 4.8),
+        ];
+
+        expectLater(bloc.stream, emitsInOrder(expectedStates));
+
+        bloc.add(const SubmitPartnerRatingEvent(
+          partnerId: 'partner_123',
+          partnerName: 'Mani',
+          orderId: 'order_456',
+          rating: 4.8,
+          reviewText: 'Great delivery!',
+          tags: ['Fast'],
+        ));
       });
     });
   });

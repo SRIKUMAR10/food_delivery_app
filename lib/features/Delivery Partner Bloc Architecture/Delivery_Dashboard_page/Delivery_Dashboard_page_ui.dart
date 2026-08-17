@@ -14,6 +14,8 @@ import '../../../core/widgets/delivery_button.dart';
 import '../../../core/widgets/delivery_card.dart';
 import '../../../core/widgets/delivery_chip.dart';
 import '../../../core/widgets/delivery_floating_online_pill.dart';
+import 'delivery_ratings_reviews_view.dart';
+import '../Delivery_Notifications_page/delivery_notification_ui.dart';
 
 class DeliveryDashboardStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -621,8 +623,13 @@ class _DashboardHeader extends StatelessWidget {
           _NotificationBell(
             count: state.unreadNotificationCount,
             onTap: () {
-              _showNotificationsBottomSheet(context, state);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const DeliveryNotificationsPage(),
+                ),
+              );
             },
+            onLongPress: () => _showNotificationsBottomSheet(context, state),
           ),
         ],
       ),
@@ -664,61 +671,70 @@ class _HeaderQuickAction extends StatelessWidget {
 class _NotificationBell extends StatelessWidget {
   final int count;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  const _NotificationBell({required this.count, required this.onTap});
+  const _NotificationBell({
+    required this.count,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: const Key('dp_dashboard_notification_button'),
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: DeliveryAppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          IconButton(
-            padding: EdgeInsets.zero,
-            onPressed: onTap,
-            icon: const Icon(
-              Icons.notifications_outlined,
-              color: Colors.white,
-              size: 22,
+    return GestureDetector(
+      onLongPress: onLongPress,
+      child: Container(
+        key: const Key('dp_dashboard_notification_button'),
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: DeliveryAppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              padding: EdgeInsets.zero,
+              onPressed: onTap,
+              icon: const Icon(
+                Icons.notifications_outlined,
+                color: Colors.white,
+                size: 22,
+              ),
             ),
-          ),
-          if (count > 0)
-            Positioned(
-              right: 2,
-              top: 2,
-              child: Container(
-                key: const Key('dp_dashboard_notification_badge'),
-                width: 18,
-                height: 18,
-                decoration: const BoxDecoration(
-                  color: DeliveryAppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    count > 99 ? '99+' : '$count',
-                    style: DeliveryAppTypography.caption.copyWith(
-                      color: DeliveryAppColors.buttonPrimaryText,
-                      fontWeight: FontWeight.bold,
-                      fontSize: count > 99 ? 8 : 10,
+            if (count > 0)
+              Positioned(
+                right: 2,
+                top: 2,
+                child: Container(
+                  key: const Key('dp_dashboard_notification_badge'),
+                  width: 18,
+                  height: 18,
+                  decoration: const BoxDecoration(
+                    color: DeliveryAppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      count > 99 ? '99+' : '$count',
+                      style: DeliveryAppTypography.caption.copyWith(
+                        color: DeliveryAppColors.buttonPrimaryText,
+                        fontWeight: FontWeight.bold,
+                        fontSize: count > 99 ? 8 : 10,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
+
 
 void _showNotificationsBottomSheet(
     BuildContext context, DeliveryDashboardState state) {
@@ -1239,15 +1255,19 @@ class _StatusActionButton extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: isActive ? color : Colors.white.withValues(alpha: 0.6)),
             const SizedBox(width: 6),
-            Text(
-              label,
-              style: DeliveryAppTypography.caption.copyWith(
-                color: isActive ? color : Colors.white.withValues(alpha: 0.7),
-                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+            Flexible(
+              child: Text(
+                label,
+                style: DeliveryAppTypography.caption.copyWith(
+                  color: isActive ? color : Colors.white.withValues(alpha: 0.7),
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
+
       ),
     );
   }
@@ -1700,6 +1720,14 @@ class _MetricsGrid extends StatelessWidget {
         subtext: DeliveryDashboardStrings.of('excellentPerf', lang),
         icon: Icons.star,
         color: const Color(0xFFFFD700),
+        onTap: () {
+          DeliveryRatingsReviewsSheet.show(
+            context,
+            partnerId: state.partnerId,
+            initialAverageRating: state.averageRating,
+            initialTotalDeliveries: state.totalDeliveries,
+          );
+        },
       ),
     ];
 
@@ -1728,6 +1756,7 @@ class _MetricCard extends StatelessWidget {
   final String subtext;
   final IconData icon;
   final Color color;
+  final VoidCallback? onTap;
 
   const _MetricCard({
     super.key,
@@ -1736,6 +1765,7 @@ class _MetricCard extends StatelessWidget {
     required this.subtext,
     required this.icon,
     required this.color,
+    this.onTap,
   });
 
   @override
@@ -1743,6 +1773,7 @@ class _MetricCard extends StatelessWidget {
     return DeliveryCard(
       padding: const EdgeInsets.all(18),
       borderRadius: 20,
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1790,6 +1821,7 @@ class _MetricCard extends StatelessWidget {
     );
   }
 }
+
 
 class _ActiveOrderCard extends StatelessWidget {
   final DeliveryDashboardState state;

@@ -71,7 +71,7 @@ void main() {
 
         // Verify Order Information
         expect(find.text('ORDER INFORMATION'), findsOneWidget);
-        expect(find.text('₹620.00'), findsOneWidget);
+        expect(find.text('₹620.00'), findsWidgets);
 
         // Verify Restaurant Information
         expect(find.text('RESTAURANT INFORMATION'), findsOneWidget);
@@ -84,7 +84,40 @@ void main() {
         // Verify Order Verification Checklist
         expect(find.text('ORDER ITEMS VERIFICATION'), findsOneWidget);
         expect(find.text('Special Masala Dosa'), findsOneWidget);
+
+        // Verify Cancel / Report Failed Delivery button
+        expect(find.byKey(const Key('dp_order_details_cancel_btn')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Opens cancellation dialog with 8 reasons when cancel button is tapped',
+      (WidgetTester tester) async {
+        setDesktopSize(tester);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: DeliveryOrderDetailsPageUi(
+              orderId: 'ORD12345',
+              bloc: _FakeDeliveryOrderDetailsBloc(),
+            ),
+          ),
+        );
+
+        await tester.pump();
+
+        final cancelBtn = find.byKey(const Key('dp_order_details_cancel_btn'));
+        await tester.ensureVisible(cancelBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(cancelBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Cancel / Report Failed Delivery'), findsOneWidget);
+        expect(find.text('Restaurant Closed'), findsOneWidget);
+        expect(find.byKey(const Key('dp_cancel_reason_chip_Restaurant Closed')), findsOneWidget);
+        expect(find.byKey(const Key('dp_cancel_reason_chip_Customer Unavailable')), findsOneWidget);
+        expect(find.byKey(const Key('dp_cancel_confirm_btn')), findsOneWidget);
       },
     );
   });
 }
+

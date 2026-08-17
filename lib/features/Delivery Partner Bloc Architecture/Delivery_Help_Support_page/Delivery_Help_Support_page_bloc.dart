@@ -246,3 +246,7 @@ class DeliveryHelpSupportPageBloc
     return super.close();
   }
 }
+
+/// Standardized Feature-Architecture Alias for SupportBloc
+typedef SupportBloc = DeliveryHelpSupportPageBloc;
+

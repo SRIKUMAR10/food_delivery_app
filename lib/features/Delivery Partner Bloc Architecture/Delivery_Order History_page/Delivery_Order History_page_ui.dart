@@ -48,17 +48,26 @@ class DeliveryOrderHistoryStrings {
       'statusPending': 'Pending',
       'statusCancelled': 'Cancelled',
       'dateAll': 'All Time',
+      'dateToday': 'Today',
+      'dateYesterday': 'Yesterday',
+      'dateThisWeek': 'This Week',
+      'dateThisMonth': 'This Month',
+      'dateCustom': 'Custom Date',
       'paymentAll': 'All Payment',
       'paymentCod': 'COD',
       'paymentOnline': 'Online',
       'filters': 'Filters',
       'colOrderId': 'Order ID',
       'colCustomer': 'Customer',
+      'colRestaurant': 'Restaurant',
+      'colCustomerArea': 'Customer Area',
       'colLocation': 'Pickup & Drop',
       'colDate': 'Date & Time',
+      'colDeliveryDate': 'Delivery Date',
+      'colDeliveryTime': 'Delivery Time',
       'colStatus': 'Status',
-      'colAmount': 'Amount',
-      'colPayment': 'Payment',
+      'colAmount': 'Earnings',
+      'colPayment': 'Payment Type',
       'colAction': 'Action',
       'viewDetails': 'View Details',
       'showing': 'Showing {start} to {end} of {total} orders',
@@ -107,17 +116,26 @@ class DeliveryOrderHistoryStrings {
       'statusPending': 'நிலுவையில்',
       'statusCancelled': 'ரத்து',
       'dateAll': 'அனைத்து நேரம்',
+      'dateToday': 'இன்று',
+      'dateYesterday': 'நேற்று',
+      'dateThisWeek': 'இந்த வாரம்',
+      'dateThisMonth': 'இந்த மாதம்',
+      'dateCustom': 'தனிப்பயன் தேதி',
       'paymentAll': 'அனைத்து கட்டணம்',
       'paymentCod': 'COD',
       'paymentOnline': 'ஆன்லைன்',
       'filters': 'வடிகட்டிகள்',
       'colOrderId': 'ஆர்டர் ஐடி',
       'colCustomer': 'வாடிக்கையாளர்',
+      'colRestaurant': 'உணவகம்',
+      'colCustomerArea': 'வாடிக்கையாளர் பகுதி',
       'colLocation': 'பிக்கப் & டிராப்',
       'colDate': 'தேதி & நேரம்',
+      'colDeliveryDate': 'டெலிவரி தேதி',
+      'colDeliveryTime': 'டெலிவரி நேரம்',
       'colStatus': 'நிலை',
-      'colAmount': 'தொகை',
-      'colPayment': 'கட்டணம்',
+      'colAmount': 'வருவாய்',
+      'colPayment': 'கட்டண வகை',
       'colAction': 'செயல்',
       'viewDetails': 'விவரங்களை பார்க்க',
       'showing': 'மொத்தம் {total} ஆர்டர்களில் {start} முதல் {end} வரை காட்டப்படுகிறது',
@@ -1146,6 +1164,38 @@ class _FilterBarState extends State<_FilterBar> {
   Widget build(BuildContext context) {
     final state = widget.state;
     final lang = state.localeCode;
+    final bloc = context.read<DeliveryOrderHistoryPageBloc>();
+
+    final datePresets = [
+      (
+        preset: DeliveryOrderHistoryDatePreset.all,
+        label: DeliveryOrderHistoryStrings.of('dateAll', lang),
+      ),
+      (
+        preset: DeliveryOrderHistoryDatePreset.today,
+        label: DeliveryOrderHistoryStrings.of('dateToday', lang),
+      ),
+      (
+        preset: DeliveryOrderHistoryDatePreset.yesterday,
+        label: DeliveryOrderHistoryStrings.of('dateYesterday', lang),
+      ),
+      (
+        preset: DeliveryOrderHistoryDatePreset.thisWeek,
+        label: DeliveryOrderHistoryStrings.of('dateThisWeek', lang),
+      ),
+      (
+        preset: DeliveryOrderHistoryDatePreset.thisMonth,
+        label: DeliveryOrderHistoryStrings.of('dateThisMonth', lang),
+      ),
+      (
+        preset: DeliveryOrderHistoryDatePreset.custom,
+        label: state.datePreset == DeliveryOrderHistoryDatePreset.custom &&
+                state.dateLabel.isNotEmpty
+            ? state.dateLabel
+            : DeliveryOrderHistoryStrings.of('dateCustom', lang),
+      ),
+    ];
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1153,180 +1203,229 @@ class _FilterBarState extends State<_FilterBar> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool narrow = constraints.maxWidth < 700;
-          final Widget search = SizedBox(
-            width: narrow ? double.infinity : 260,
-            child: DeliveryTextField(
-              key: const Key('dp_oh_search_field'),
-              controller: _searchController,
-              hintText: DeliveryOrderHistoryStrings.of('searchHint', lang),
-              prefixIcon: const Icon(Icons.search, color: _kTextSecondary),
-              onChanged: (value) => context
-                  .read<DeliveryOrderHistoryPageBloc>()
-                  .add(DeliveryOrderHistorySearchChangedEvent(value)),
-            ),
-          );
-
-          final Widget status = _FilterDropdown<DeliveryOrderHistoryStatusFilter>(
-            dropdownKey: const Key('dp_oh_status_filter'),
-            expanded: narrow,
-            value: state.statusFilter,
-            items: const [
-              DropdownMenuItem(
-                value: DeliveryOrderHistoryStatusFilter.all,
-                child: Text('All Status'),
-              ),
-              DropdownMenuItem(
-                value: DeliveryOrderHistoryStatusFilter.completed,
-                child: Text('Completed'),
-              ),
-              DropdownMenuItem(
-                value: DeliveryOrderHistoryStatusFilter.pending,
-                child: Text('Pending'),
-              ),
-              DropdownMenuItem(
-                value: DeliveryOrderHistoryStatusFilter.cancelled,
-                child: Text('Cancelled'),
-              ),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                context
-                    .read<DeliveryOrderHistoryPageBloc>()
-                    .add(DeliveryOrderHistoryStatusFilterChangedEvent(value));
-              }
-            },
-          );
-
-          final Widget date = _FilterDropdown<String>(
-            dropdownKey: const Key('dp_oh_date_filter'),
-            expanded: narrow,
-            value: state.dateLabel.isEmpty
-                ? DeliveryOrderHistoryStrings.of('dateAll', lang)
-                : state.dateLabel,
-            items: [
-              DropdownMenuItem(
-                value: DeliveryOrderHistoryStrings.of('dateAll', lang),
-                child: Text(DeliveryOrderHistoryStrings.of('dateAll', lang)),
-              ),
-              const DropdownMenuItem(
-                value: 'May 18, 2025 - May 24, 2025',
-                child: Text('May 18, 2025 - May 24, 2025'),
-              ),
-              if (state.dateLabel.isNotEmpty &&
-                  state.dateLabel != DeliveryOrderHistoryStrings.of('dateAll', lang) &&
-                  state.dateLabel != 'May 18, 2025 - May 24, 2025')
-                DropdownMenuItem(
-                  value: state.dateLabel,
-                  child: Text(state.dateLabel),
-                ),
-            ],
-            onChanged: (value) {
-              if (value == null) return;
-              if (value == 'May 18, 2025 - May 24, 2025') {
-                context
-                    .read<DeliveryOrderHistoryPageBloc>()
-                    .add(const DeliveryOrderHistoryDateRangeChangedEvent(
-                      startEpoch: 1747526400,
-                      endEpoch: 1748131140,
-                      dateLabel: 'May 18, 2025 - May 24, 2025',
-                    ));
-              } else if (value == DeliveryOrderHistoryStrings.of('dateAll', lang)) {
-                context
-                    .read<DeliveryOrderHistoryPageBloc>()
-                    .add(const DeliveryOrderHistoryDateRangeChangedEvent(
-                      startEpoch: null,
-                      endEpoch: null,
-                      dateLabel: '',
-                    ));
-              }
-            },
-          );
-
-          final Widget payment = _FilterDropdown<DeliveryOrderHistoryPaymentFilter>(
-            dropdownKey: const Key('dp_oh_payment_filter'),
-            expanded: narrow,
-            value: state.paymentFilter,
-            items: const [
-              DropdownMenuItem(
-                value: DeliveryOrderHistoryPaymentFilter.all,
-                child: Text('All Payment'),
-              ),
-              DropdownMenuItem(
-                value: DeliveryOrderHistoryPaymentFilter.cod,
-                child: Text('COD'),
-              ),
-              DropdownMenuItem(
-                value: DeliveryOrderHistoryPaymentFilter.online,
-                child: Text('Online'),
-              ),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                context
-                    .read<DeliveryOrderHistoryPageBloc>()
-                    .add(DeliveryOrderHistoryPaymentFilterChangedEvent(value));
-              }
-            },
-          );
-
-          final Widget filtersButton = ElevatedButton.icon(
-            key: const Key('dp_oh_filters_button'),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    DeliveryOrderHistoryStrings.of('filtersApplied', lang),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Preset Date Filter Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: datePresets.map((item) {
+                final isSelected = state.datePreset == item.preset;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8, bottom: 12),
+                  child: FilterChip(
+                    avatar: item.preset == DeliveryOrderHistoryDatePreset.custom
+                        ? Icon(
+                            Icons.calendar_today,
+                            size: 14,
+                            color: isSelected ? Colors.black : const Color(0xFF94A3B8),
+                          )
+                        : null,
+                    label: Text(
+                      item.label,
+                      style: TextStyle(
+                        color: isSelected ? Colors.black : const Color(0xFFE2E8F0),
+                        fontSize: 12,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedColor: _kPrimary,
+                    backgroundColor: const Color(0xFF1E293B),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: isSelected
+                            ? _kPrimary
+                            : Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    showCheckmark: false,
+                    onSelected: (_) async {
+                      if (item.preset ==
+                          DeliveryOrderHistoryDatePreset.custom) {
+                        final picked = await showDateRangePicker(
+                          context: context,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          initialDateRange: DateTimeRange(
+                            start: DateTime.now()
+                                .subtract(const Duration(days: 7)),
+                            end: DateTime.now(),
+                          ),
+                        );
+                        if (picked != null) {
+                          final startEpoch =
+                              picked.start.millisecondsSinceEpoch ~/ 1000;
+                          final endEpoch = DateTime(
+                                    picked.end.year,
+                                    picked.end.month,
+                                    picked.end.day,
+                                    23,
+                                    59,
+                                    59,
+                                  ).millisecondsSinceEpoch ~/
+                              1000;
+                          final label =
+                              '${picked.start.day}/${picked.start.month} - ${picked.end.day}/${picked.end.month}';
+                          bloc.add(
+                            DeliveryOrderHistoryDatePresetChangedEvent(
+                              DeliveryOrderHistoryDatePreset.custom,
+                              startEpoch: startEpoch,
+                              endEpoch: endEpoch,
+                              dateLabel: label,
+                            ),
+                          );
+                        }
+                      } else {
+                        bloc.add(
+                          DeliveryOrderHistoryDatePresetChangedEvent(
+                            item.preset,
+                          ),
+                        );
+                      }
+                    },
                   ),
-                  behavior: SnackBarBehavior.floating,
+                );
+              }).toList(),
+            ),
+          ),
+
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final bool narrow = constraints.maxWidth < 700;
+              final Widget search = SizedBox(
+                width: narrow ? double.infinity : 260,
+                child: DeliveryTextField(
+                  key: const Key('dp_oh_search_field'),
+                  controller: _searchController,
+                  hintText: DeliveryOrderHistoryStrings.of('searchHint', lang),
+                  prefixIcon:
+                      const Icon(Icons.search, color: _kTextSecondary),
+                  onChanged: (value) => context
+                      .read<DeliveryOrderHistoryPageBloc>()
+                      .add(DeliveryOrderHistorySearchChangedEvent(value)),
                 ),
               );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kPrimary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(0, 44),
-            ),
-            icon: const Icon(Icons.tune, size: 18),
-            label: Text(DeliveryOrderHistoryStrings.of('filters', lang)),
-          );
 
-          if (narrow) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                search,
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: status),
-                    const SizedBox(width: 12),
-                    Expanded(child: payment),
-                  ],
+              final Widget status =
+                  _FilterDropdown<DeliveryOrderHistoryStatusFilter>(
+                dropdownKey: const Key('dp_oh_status_filter'),
+                expanded: narrow,
+                value: state.statusFilter,
+                items: const [
+                  DropdownMenuItem(
+                    value: DeliveryOrderHistoryStatusFilter.all,
+                    child: Text('All Status'),
+                  ),
+                  DropdownMenuItem(
+                    value: DeliveryOrderHistoryStatusFilter.completed,
+                    child: Text('Completed'),
+                  ),
+                  DropdownMenuItem(
+                    value: DeliveryOrderHistoryStatusFilter.pending,
+                    child: Text('Pending'),
+                  ),
+                  DropdownMenuItem(
+                    value: DeliveryOrderHistoryStatusFilter.cancelled,
+                    child: Text('Cancelled'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    context.read<DeliveryOrderHistoryPageBloc>().add(
+                          DeliveryOrderHistoryStatusFilterChangedEvent(value),
+                        );
+                  }
+                },
+              );
+
+              final Widget payment =
+                  _FilterDropdown<DeliveryOrderHistoryPaymentFilter>(
+                dropdownKey: const Key('dp_oh_payment_filter'),
+                expanded: narrow,
+                value: state.paymentFilter,
+                items: const [
+                  DropdownMenuItem(
+                    value: DeliveryOrderHistoryPaymentFilter.all,
+                    child: Text('All Payment'),
+                  ),
+                  DropdownMenuItem(
+                    value: DeliveryOrderHistoryPaymentFilter.cod,
+                    child: Text('COD'),
+                  ),
+                  DropdownMenuItem(
+                    value: DeliveryOrderHistoryPaymentFilter.online,
+                    child: Text('Online'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    context.read<DeliveryOrderHistoryPageBloc>().add(
+                          DeliveryOrderHistoryPaymentFilterChangedEvent(value),
+                        );
+                  }
+                },
+              );
+
+              final Widget filtersButton = ElevatedButton.icon(
+                key: const Key('dp_oh_filters_button'),
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        DeliveryOrderHistoryStrings.of(
+                            'filtersApplied', lang),
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kPrimary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 44),
                 ),
-                const SizedBox(height: 12),
-                date,
-                const SizedBox(height: 12),
-                filtersButton,
-              ],
-            );
-          }
+                icon: const Icon(Icons.tune, size: 18),
+                label:
+                    Text(DeliveryOrderHistoryStrings.of('filters', lang)),
+              );
 
-          return Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              search,
-              status,
-              date,
-              payment,
-              filtersButton,
-            ],
-          );
-        },
+              if (narrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    search,
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: status),
+                        const SizedBox(width: 12),
+                        Expanded(child: payment),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    filtersButton,
+                  ],
+                );
+              }
+
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  search,
+                  status,
+                  payment,
+                  filtersButton,
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -1392,14 +1491,15 @@ class _OrdersTable extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Table(
           columnWidths: const {
-            0: FixedColumnWidth(130),
-            1: FixedColumnWidth(180),
-            2: FixedColumnWidth(220),
-            3: FixedColumnWidth(150),
-            4: FixedColumnWidth(150),
-            5: FixedColumnWidth(110),
-            6: FixedColumnWidth(90),
-            7: FixedColumnWidth(140),
+            0: FixedColumnWidth(130), // Order ID
+            1: FixedColumnWidth(180), // Restaurant
+            2: FixedColumnWidth(180), // Customer Area
+            3: FixedColumnWidth(140), // Delivery Date
+            4: FixedColumnWidth(110), // Delivery Time
+            5: FixedColumnWidth(110), // Earnings
+            6: FixedColumnWidth(110), // Payment Type
+            7: FixedColumnWidth(120), // Delivery Status
+            8: FixedColumnWidth(130), // Action
           },
           border: TableBorder(
             horizontalInside: BorderSide(
@@ -1412,23 +1512,27 @@ class _OrdersTable extends StatelessWidget {
               children: [
                 _HeaderCell(DeliveryOrderHistoryStrings.of('colOrderId', lang)),
                 _HeaderCell(
-                    DeliveryOrderHistoryStrings.of('colCustomer', lang)),
+                    DeliveryOrderHistoryStrings.of('colRestaurant', lang)),
                 _HeaderCell(
-                    DeliveryOrderHistoryStrings.of('colLocation', lang)),
-                _HeaderCell(DeliveryOrderHistoryStrings.of('colDate', lang)),
-                _HeaderCell(DeliveryOrderHistoryStrings.of('colStatus', lang)),
+                    DeliveryOrderHistoryStrings.of('colCustomerArea', lang)),
+                _HeaderCell(
+                    DeliveryOrderHistoryStrings.of('colDeliveryDate', lang)),
+                _HeaderCell(
+                    DeliveryOrderHistoryStrings.of('colDeliveryTime', lang)),
                 _HeaderCell(DeliveryOrderHistoryStrings.of('colAmount', lang)),
                 _HeaderCell(DeliveryOrderHistoryStrings.of('colPayment', lang)),
+                _HeaderCell(DeliveryOrderHistoryStrings.of('colStatus', lang)),
                 _HeaderCell(DeliveryOrderHistoryStrings.of('colAction', lang)),
               ],
             ),
             for (final order in state.pageOrders)
               TableRow(
                 key: ValueKey('dp_oh_row_${order.orderId}'),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.transparent,
                 ),
                 children: [
+                  // Order ID + Distance
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
@@ -1452,70 +1556,139 @@ class _OrdersTable extends StatelessWidget {
                       ],
                     ),
                   ),
+
+                  // Restaurant
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          order.customerName,
+                          order.restaurantName.isNotEmpty
+                              ? order.restaurantName
+                              : order.pickupAddress,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (order.pickupAddress.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            order.pickupAddress,
+                            style: const TextStyle(
+                              color: _kTextSecondary,
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // Customer Area
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          order.customerArea.isNotEmpty
+                              ? order.customerArea
+                              : order.dropAddress,
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w500,
+                            fontSize: 13,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          order.phoneNumber,
+                          order.customerName,
                           style: const TextStyle(
                             color: _kTextSecondary,
                             fontSize: 11,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _LocationLine(icon: Icons.storefront_outlined,
-                            text: order.pickupAddress),
-                        const SizedBox(height: 4),
-                        _LocationLine(
-                            icon: Icons.place_outlined, text: order.dropAddress),
-                      ],
-                    ),
-                  ),
+
+                  // Delivery Date
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: Text(
-                      order.dateLabel,
+                      order.deliveryDate.isNotEmpty
+                          ? order.deliveryDate
+                          : order.dateLabel,
                       style: const TextStyle(color: _kTextSecondary, fontSize: 12),
                     ),
                   ),
+
+                  // Delivery Time
                   Padding(
                     padding: const EdgeInsets.all(12),
-                    child: _StatusBadge(status: order.status),
+                    child: Text(
+                      order.deliveryTime.isNotEmpty
+                          ? order.deliveryTime
+                          : (order.dateLabel.contains('•')
+                              ? order.dateLabel.split('•').last.trim()
+                              : '--:--'),
+                      style: const TextStyle(color: _kTextSecondary, fontSize: 12),
+                    ),
                   ),
+
+                  // Earnings
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: Text(
                       '₹${order.amount.toStringAsFixed(2)}',
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                        color: _kPrimary,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
+
+                  // Payment Type
                   Padding(
                     padding: const EdgeInsets.all(12),
-                    child: Text(
-                      order.paymentType,
-                      style: const TextStyle(color: _kTextSecondary, fontSize: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _kBackground,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        order.paymentType,
+                        style: const TextStyle(
+                          color: _kTextSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
+
+                  // Delivery Status
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: _StatusBadge(status: order.status),
+                  ),
+
+                  // Action
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: TextButton(
@@ -1672,6 +1845,7 @@ class _OrdersCards extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Order ID & Status
                 Row(
                   children: [
                     Expanded(
@@ -1686,34 +1860,23 @@ class _OrdersCards extends StatelessWidget {
                     _StatusBadge(status: order.status),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  order.customerName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  order.phoneNumber,
-                  style: const TextStyle(
-                    color: _kTextSecondary,
-                    fontSize: 12,
-                  ),
-                ),
                 const SizedBox(height: 8),
+
+                // Restaurant & Customer Area
                 Row(
                   children: [
                     const Icon(Icons.storefront_outlined,
-                        size: 14, color: _kTextSecondary),
+                        size: 14, color: _kPrimary),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        order.pickupAddress,
+                        order.restaurantName.isNotEmpty
+                            ? order.restaurantName
+                            : order.pickupAddress,
                         style: const TextStyle(
-                          color: _kTextSecondary,
-                          fontSize: 12,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1724,11 +1887,13 @@ class _OrdersCards extends StatelessWidget {
                 Row(
                   children: [
                     const Icon(Icons.place_outlined,
-                        size: 14, color: _kTextSecondary),
+                        size: 14, color: Color(0xFF38BDF8)),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        order.dropAddress,
+                        order.customerArea.isNotEmpty
+                            ? order.customerArea
+                            : order.dropAddress,
                         style: const TextStyle(
                           color: _kTextSecondary,
                           fontSize: 12,
@@ -1739,17 +1904,36 @@ class _OrdersCards extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  order.dateLabel,
-                  style: const TextStyle(color: _kTextSecondary, fontSize: 12),
+
+                // Delivery Date & Time
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 13, color: _kTextSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      order.deliveryDate.isNotEmpty
+                          ? order.deliveryDate
+                          : order.dateLabel,
+                      style: const TextStyle(color: _kTextSecondary, fontSize: 11),
+                    ),
+                    if (order.deliveryTime.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        '• ${order.deliveryTime}',
+                        style: const TextStyle(color: _kTextSecondary, fontSize: 11),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 12),
+
+                // Earnings & Payment Type & Distance
                 Row(
                   children: [
                     Text(
                       '₹${order.amount.toStringAsFixed(2)}',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: _kPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
                       ),
@@ -1767,6 +1951,7 @@ class _OrdersCards extends StatelessWidget {
                         style: const TextStyle(
                           color: _kTextSecondary,
                           fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),

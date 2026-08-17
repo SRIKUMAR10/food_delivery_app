@@ -41,6 +41,17 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
     }
   }
 
+  static const List<String> _availableStatuses = [
+    'Ready',
+    'ready',
+    'ready_for_pickup',
+    'Preparing',
+    'preparing',
+    'searching_driver',
+    'placed',
+    'assigned',
+  ];
+
   @override
   Future<Map<String, dynamic>> fetchDashboardMetrics() async {
     try {
@@ -50,16 +61,57 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
         final partnerDoc = await currentFirestore
             .collection('delivery_partners')
             .doc(uid)
-            .get();
+            .get()
+            .catchError((_) => null as dynamic);
 
-        if (partnerDoc.exists) {
-          final allDriverOrders = await currentFirestore
+        final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> docMap = {};
+        try {
+          final q1 = await currentFirestore
               .collection('orders')
               .where('riderId', isEqualTo: uid)
               .get();
+          for (var doc in q1.docs) {
+            docMap[doc.id] = doc;
+          }
+        } catch (_) {}
 
-          return _mapMetricsFromDocs(partnerDoc, allDriverOrders.docs, uid: uid);
-        }
+        try {
+          final q2 = await currentFirestore
+              .collection('orders')
+              .where('deliveryPartnerId', isEqualTo: uid)
+              .get();
+          for (var doc in q2.docs) {
+            docMap[doc.id] = doc;
+          }
+        } catch (_) {}
+
+        final List<QueryDocumentSnapshot<Map<String, dynamic>>> sellerDocs = [];
+        try {
+          final q3 = await currentFirestore
+              .collection('orders')
+              .where('status', whereIn: _availableStatuses)
+              .get();
+          sellerDocs.addAll(q3.docs);
+        } catch (_) {}
+
+        final List<QueryDocumentSnapshot<Map<String, dynamic>>> notifDocs = [];
+        try {
+          final q4 = await currentFirestore
+              .collection('delivery_partners')
+              .doc(uid)
+              .collection('notifications')
+              .orderBy('createdAt', descending: true)
+              .get();
+          notifDocs.addAll(q4.docs);
+        } catch (_) {}
+
+        return _mapMetricsFromDocs(
+          partnerDoc,
+          docMap.values.toList(),
+          sellerOrdersSnapshot: sellerDocs,
+          uid: uid,
+          notifsSnapshot: notifDocs,
+        );
       }
     } catch (e) {
       debugPrint('fetchDashboardMetrics error: $e');
@@ -83,6 +135,8 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
       'activeOrdersCount': 0,
       'walletBalance': 0.0,
       'activities': [],
+      'incomingSellerOrders': [],
+      'unreadNotificationCount': 0,
     };
   }
 
@@ -120,58 +174,92 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
         });
       }
 
-      final partnerStream = currentFirestore
+      final Stream<DocumentSnapshot<Map<String, dynamic>>?> partnerStream = currentFirestore
           .collection('delivery_partners')
           .doc(uid)
           .snapshots()
-          .handleError((e) => debugPrint('partnerStream error: $e'));
+          .map<DocumentSnapshot<Map<String, dynamic>>?>((s) => s)
+          .onErrorReturnWith((e, st) {
+            debugPrint('partnerStream error fallback: $e');
+            return null;
+          });
 
-      final allOrdersStream = currentFirestore
+      final Stream<QuerySnapshot<Map<String, dynamic>>?> riderOrdersStream = currentFirestore
           .collection('orders')
           .where('riderId', isEqualTo: uid)
           .snapshots()
-          .handleError((e) => debugPrint('watchDashboardMetrics stream error: $e'));
+          .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+          .onErrorReturnWith((e, st) {
+            debugPrint('riderOrdersStream error fallback: $e');
+            return null;
+          });
 
-      final sellerOrdersStream = currentFirestore
+      final Stream<QuerySnapshot<Map<String, dynamic>>?> partnerOrdersStream = currentFirestore
           .collection('orders')
-          .where('status', whereIn: [
-            'Ready',
-            'ready',
-            'ready_for_pickup',
-            'assigned',
-            'searching_driver',
-            'placed',
-          ])
+          .where('deliveryPartnerId', isEqualTo: uid)
           .snapshots()
-          .handleError((e) => debugPrint('sellerOrdersStream error: $e'));
+          .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+          .onErrorReturnWith((e, st) {
+            debugPrint('partnerOrdersStream error fallback: $e');
+            return null;
+          });
 
-      final notificationsStream = currentFirestore
+      final Stream<QuerySnapshot<Map<String, dynamic>>?> sellerOrdersStream = currentFirestore
+          .collection('orders')
+          .where('status', whereIn: _availableStatuses)
+          .snapshots()
+          .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+          .onErrorReturnWith((e, st) {
+            debugPrint('sellerOrdersStream error fallback: $e');
+            return null;
+          });
+
+      final Stream<QuerySnapshot<Map<String, dynamic>>?> notificationsStream = currentFirestore
           .collection('delivery_partners')
           .doc(uid)
           .collection('notifications')
           .orderBy('createdAt', descending: true)
           .snapshots()
-          .handleError((e) => debugPrint('notificationsStream error: $e'));
+          .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+          .onErrorReturnWith((e, st) {
+            debugPrint('notificationsStream error fallback: $e');
+            return null;
+          });
 
-      return Rx.combineLatest4<
-          DocumentSnapshot<Map<String, dynamic>>,
-          QuerySnapshot<Map<String, dynamic>>,
-          QuerySnapshot<Map<String, dynamic>>,
-          QuerySnapshot<Map<String, dynamic>>,
+      return Rx.combineLatest5<
+          DocumentSnapshot<Map<String, dynamic>>?,
+          QuerySnapshot<Map<String, dynamic>>?,
+          QuerySnapshot<Map<String, dynamic>>?,
+          QuerySnapshot<Map<String, dynamic>>?,
+          QuerySnapshot<Map<String, dynamic>>?,
           Map<String, dynamic>>(
         partnerStream,
-        allOrdersStream,
+        riderOrdersStream,
+        partnerOrdersStream,
         sellerOrdersStream,
         notificationsStream,
-        (partnerDoc, ordersSnapshot, sellerOrdersSnapshot, notifsSnapshot) =>
-            _mapMetricsFromDocs(
-          partnerDoc,
-          ordersSnapshot.docs,
-          sellerOrdersSnapshot: sellerOrdersSnapshot.docs,
-          uid: uid,
-          notifsSnapshot: notifsSnapshot.docs,
-        ),
-      ).handleError((e) {
+        (partnerDoc, riderSnap, partnerSnap, sellerOrdersSnapshot, notifsSnapshot) {
+          final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> docMap = {};
+          if (riderSnap != null) {
+            for (var d in riderSnap.docs) {
+              docMap[d.id] = d;
+            }
+          }
+          if (partnerSnap != null) {
+            for (var d in partnerSnap.docs) {
+              docMap[d.id] = d;
+            }
+          }
+
+          return _mapMetricsFromDocs(
+            partnerDoc,
+            docMap.values.toList(),
+            sellerOrdersSnapshot: sellerOrdersSnapshot?.docs,
+            uid: uid,
+            notifsSnapshot: notifsSnapshot?.docs,
+          );
+        },
+      ).onErrorReturnWith((e, st) {
         debugPrint('watchDashboardMetrics combine error: $e');
         return {
           'partnerName': 'Delivery Partner',
@@ -183,13 +271,15 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
   }
 
   Map<String, dynamic> _mapMetricsFromDocs(
-    DocumentSnapshot<Map<String, dynamic>> partnerDoc,
+    DocumentSnapshot<Map<String, dynamic>>? partnerDoc,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> allDocs, {
     List<QueryDocumentSnapshot<Map<String, dynamic>>>? sellerOrdersSnapshot,
     String? uid,
     List<QueryDocumentSnapshot<Map<String, dynamic>>>? notifsSnapshot,
   }) {
-    final data = partnerDoc.exists ? partnerDoc.data() ?? {} : {};
+    final data = (partnerDoc != null && partnerDoc.exists)
+        ? (partnerDoc.data() ?? <String, dynamic>{})
+        : <String, dynamic>{};
     final isOnline = (data['isOnline'] as bool?) ?? false;
     final isAvailable = (data['isAvailable'] as bool?) ?? (isOnline ? !(data['isBusy'] ?? false) : false);
     final isBusy = (data['isBusy'] as bool?) ?? false;

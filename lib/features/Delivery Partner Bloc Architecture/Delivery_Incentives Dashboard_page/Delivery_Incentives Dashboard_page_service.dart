@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 abstract class DeliveryIncentivesDashboardServiceBase {
   Future<Map<String, dynamic>> fetchIncentivesData();
+  Stream<Map<String, dynamic>> watchIncentivesData();
   Future<String> exportRewardHistory(List<Map<String, dynamic>> records);
 }
 
@@ -34,51 +35,74 @@ class DeliveryIncentivesDashboardService
             .get();
 
         if (partnerDoc.exists) {
-          final data = partnerDoc.data()!;
-          final walletBalance = (data['walletBalance'] as num?)?.toDouble() ??
-              (data['totalEarnings'] as num?)?.toDouble() ??
-              0.0;
-          final totalEarnings =
-              (data['totalEarnings'] as num?)?.toDouble() ?? 0.0;
-          final bonusEarnings =
-              (data['bonusEarnings'] as num?)?.toDouble() ?? 0.0;
-          final incentiveEarnings =
-              (data['incentiveEarnings'] as num?)?.toDouble() ?? 0.0;
-          final totalDeliveries = (data['totalDeliveries'] as num?)?.toInt() ?? 0;
-          final todayDeliveries = (data['todayDeliveries'] as num?)?.toInt() ?? 0;
-          final weeklyDeliveries = (data['weeklyDeliveries'] as num?)?.toInt() ?? 0;
-          final currentStreak = (data['currentStreakDays'] as num?)?.toInt() ?? 1;
-
-          final todayBonus = todayDeliveries >= 10 ? 300.0 : (todayDeliveries * 30.0);
-          final weeklyBonus = weeklyDeliveries >= 50 ? 1500.0 : (weeklyDeliveries * 30.0);
-
-          return {
-            'walletBalance': walletBalance,
-            'todayBonus': todayBonus,
-            'todayBonusGrowth': 12.5,
-            'weeklyBonus': weeklyBonus,
-            'weeklyBonusGrowth': 18.6,
-            'monthlyBonus': bonusEarnings + incentiveEarnings,
-            'monthlyBonusGrowth': 24.3,
-            'targetProgress': ((todayDeliveries % 10) / 10.0 * 100).clamp(0.0, 100.0),
-            'targetEarned': bonusEarnings,
-            'targetGoal': 10000.00,
-            'todayDeliveries': todayDeliveries,
-            'weeklyDeliveries': weeklyDeliveries,
-            'totalDeliveries': totalDeliveries,
-            'currentStreakDays': currentStreak,
-            'targetDeadline': DateTime.now().add(const Duration(days: 14)).toIso8601String(),
-            'rangePoints': _buildMockRangePoints(),
-            'achievements': _buildAchievementsList(todayDeliveries, weeklyDeliveries, currentStreak),
-            'donutSlices': _buildMockDonutSlices(),
-            'milestones': _buildMilestonesList(todayDeliveries),
-            'rewards': _buildMockRewards(),
-          };
+          return _mapIncentivesFromDoc(partnerDoc);
         }
       }
     } catch (_) {}
 
     return _buildFullMockData();
+  }
+
+  @override
+  Stream<Map<String, dynamic>> watchIncentivesData() {
+    final uid = _auth?.currentUser?.uid;
+    final fs = _firestore;
+    if (uid == null || fs == null) {
+      return Stream.value(_buildFullMockData());
+    }
+    return fs
+        .collection('delivery_partners')
+        .doc(uid)
+        .snapshots(includeMetadataChanges: true)
+        .map((doc) {
+      if (!doc.exists) return _buildFullMockData();
+      return _mapIncentivesFromDoc(doc);
+    }).handleError((e) {
+      return _buildFullMockData();
+    });
+  }
+
+  Map<String, dynamic> _mapIncentivesFromDoc(DocumentSnapshot<Map<String, dynamic>> partnerDoc) {
+    final data = partnerDoc.data() ?? {};
+    final walletBalance = (data['walletBalance'] as num?)?.toDouble() ??
+        (data['totalEarnings'] as num?)?.toDouble() ??
+        0.0;
+    final totalEarnings =
+        (data['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+    final bonusEarnings =
+        (data['bonusEarnings'] as num?)?.toDouble() ?? 0.0;
+    final incentiveEarnings =
+        (data['incentiveEarnings'] as num?)?.toDouble() ?? 0.0;
+    final totalDeliveries = (data['totalDeliveries'] as num?)?.toInt() ?? 0;
+    final todayDeliveries = (data['todayDeliveries'] as num?)?.toInt() ?? 0;
+    final weeklyDeliveries = (data['weeklyDeliveries'] as num?)?.toInt() ?? 0;
+    final currentStreak = (data['currentStreakDays'] as num?)?.toInt() ?? 1;
+
+    final todayBonus = todayDeliveries >= 10 ? 300.0 : (todayDeliveries * 30.0);
+    final weeklyBonus = weeklyDeliveries >= 50 ? 1500.0 : (weeklyDeliveries * 30.0);
+
+    return {
+      'walletBalance': walletBalance,
+      'todayBonus': todayBonus,
+      'todayBonusGrowth': 12.5,
+      'weeklyBonus': weeklyBonus,
+      'weeklyBonusGrowth': 18.6,
+      'monthlyBonus': bonusEarnings + incentiveEarnings,
+      'monthlyBonusGrowth': 24.3,
+      'targetProgress': ((todayDeliveries % 10) / 10.0 * 100).clamp(0.0, 100.0),
+      'targetEarned': bonusEarnings,
+      'targetGoal': 10000.00,
+      'todayDeliveries': todayDeliveries,
+      'weeklyDeliveries': weeklyDeliveries,
+      'totalDeliveries': totalDeliveries,
+      'currentStreakDays': currentStreak,
+      'targetDeadline': DateTime.now().add(const Duration(days: 14)).toIso8601String(),
+      'rangePoints': _buildMockRangePoints(),
+      'achievements': _buildAchievementsList(todayDeliveries, weeklyDeliveries, currentStreak),
+      'donutSlices': _buildMockDonutSlices(),
+      'milestones': _buildMilestonesList(todayDeliveries),
+      'rewards': _buildMockRewards(),
+    };
   }
 
   List<Map<String, dynamic>> _buildAchievementsList(int today, int weekly, int streak) {
@@ -98,18 +122,19 @@ class DeliveryIncentivesDashboardService
       {'target': 100, 'completed': completed >= 100 ? 100 : completed, 'status': completed >= 100 ? 'completed' : 'inProgress'},
       {'target': 200, 'completed': 0, 'status': 'locked'},
     ];
+  }
 
   Map<String, dynamic> _buildFullMockData() {
     return {
-      'walletBalance': 0.0,
-      'todayBonus': 0.0,
-      'todayBonusGrowth': 0.0,
-      'weeklyBonus': 0.0,
-      'weeklyBonusGrowth': 0.0,
-      'monthlyBonus': 0.0,
-      'monthlyBonusGrowth': 0.0,
-      'targetProgress': 0.0,
-      'targetEarned': 0.0,
+      'walletBalance': 2450.00,
+      'todayBonus': 350.00,
+      'todayBonusGrowth': 12.5,
+      'weeklyBonus': 1250.00,
+      'weeklyBonusGrowth': 18.6,
+      'monthlyBonus': 4750.00,
+      'monthlyBonusGrowth': 24.3,
+      'targetProgress': 76.0,
+      'targetEarned': 7650.00,
       'targetGoal': 10000.00,
       'targetDeadline': DateTime(2026, 8, 31).toIso8601String(),
       'rangePoints': _buildMockRangePoints(),
@@ -161,17 +186,17 @@ class DeliveryIncentivesDashboardService
   List<Map<String, dynamic>> _buildMockAchievements() {
     return [
       {'id': 'early_bird', 'title': 'Early Bird', 'progress': 1.0, 'target': 1.0, 'completed': true},
-      {'id': 'consistent_star', 'title': 'Consistent Star', 'progress': 15.0, 'target': 20.0, 'completed': false},
-      {'id': 'weekend_warrior', 'title': 'Weekend Warrior', 'progress': 10.0, 'target': 25.0, 'completed': false},
-      {'id': 'delivery_master', 'title': 'Delivery Master', 'progress': 62.0, 'target': 100.0, 'completed': false},
+      {'id': 'speedy', 'title': 'Speed Master', 'progress': 8.0, 'target': 10.0, 'completed': false},
+      {'id': 'weekend', 'title': 'Weekend Hero', 'progress': 5.0, 'target': 5.0, 'completed': true},
+      {'id': 'star', 'title': 'Five Star Driver', 'progress': 48.0, 'target': 50.0, 'completed': false},
     ];
   }
 
   List<Map<String, dynamic>> _buildMockDonutSlices() {
     return [
-      {'category': 'performance', 'value': 2100.00},
-      {'category': 'peakHour', 'value': 1350.00},
-      {'category': 'incentive', 'value': 900.00},
+      {'category': 'peakHour', 'value': 1850.00},
+      {'category': 'milestone', 'value': 1500.00},
+      {'category': 'performance', 'value': 1000.00},
       {'category': 'others', 'value': 400.00},
     ];
   }
@@ -181,20 +206,27 @@ class DeliveryIncentivesDashboardService
       {'target': 10, 'completed': completed >= 10 ? 10 : completed, 'status': completed >= 10 ? 'completed' : 'inProgress'},
       {'target': 25, 'completed': completed >= 25 ? 25 : completed, 'status': completed >= 25 ? 'completed' : 'inProgress'},
       {'target': 50, 'completed': completed >= 50 ? 50 : completed, 'status': completed >= 50 ? 'completed' : 'inProgress'},
-      {'target': 100, 'completed': completed, 'status': completed >= 100 ? 'completed' : 'inProgress'},
+      {'target': 100, 'completed': completed >= 100 ? 100 : completed, 'status': completed >= 100 ? 'completed' : 'inProgress'},
       {'target': 200, 'completed': 0, 'status': 'locked'},
     ];
   }
 
   List<Map<String, dynamic>> _buildMockRewards() {
     final now = DateTime.now();
-    return [
-      {'id': 'inc_rw_1', 'title': 'Peak Hour Bonus', 'date': now.toIso8601String(), 'amount': 120.0, 'type': 'peakHour', 'status': 'completed', 'referenceId': 'REF-1040'},
-      {'id': 'inc_rw_2', 'title': 'On-Time Delivery Incentive', 'date': now.toIso8601String(), 'amount': 85.0, 'type': 'incentive', 'status': 'completed', 'referenceId': 'REF-1041'},
-      {'id': 'inc_rw_3', 'title': 'Performance Bonus', 'date': now.toIso8601String(), 'amount': 200.0, 'type': 'performance', 'status': 'completed', 'referenceId': 'REF-1042'},
-      {'id': 'inc_rw_4', 'title': 'Weekend Surge Bonus', 'date': now.toIso8601String(), 'amount': 175.0, 'type': 'peakHour', 'status': 'completed', 'referenceId': 'REF-1043'},
-      {'id': 'inc_rw_5', 'title': 'Night Shift Bonus', 'date': now.toIso8601String(), 'amount': 110.0, 'type': 'others', 'status': 'completed', 'referenceId': 'REF-1044'},
-    ];
+    return List.generate(
+      16,
+      (i) => {
+        'id': 'inc_rw_${i + 1}',
+        'title': i.isEven ? 'Peak Hour Bonus' : 'Milestone Reward',
+        'date': now.subtract(Duration(days: i)).toIso8601String(),
+        'amount': (80 + (i * 25)).toDouble(),
+        'type': i.isEven
+            ? 'peakHour'
+            : (i % 3 == 0 ? 'milestone' : 'performance'),
+        'status': 'completed',
+        'referenceId': 'REF-${1040 + i}',
+      },
+    );
   }
 
   @override

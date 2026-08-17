@@ -126,5 +126,20 @@ void main() {
 
       expect(model.orderId, isEmpty);
     });
+
+    test('watchPickupConfirmationDetails streams mapped models', () async {
+      when(
+        () => mockService.watchPickupConfirmationData(any()),
+      ).thenAnswer((_) => Stream.value(rawData()));
+
+      final repository = DeliveryPickupConfirmationRepository(
+        service: mockService,
+      );
+      final stream = repository.watchPickupConfirmationDetails('#ORD12345');
+      final model = await stream.first;
+
+      expect(model.orderId, '#ORD12345');
+      expect(model.customerName, 'Mike Johnson');
+    });
   });
 }

@@ -86,6 +86,15 @@ class DeliverySettingsState extends Equatable {
   final String languageCode;
   final String localeCode;
   final List<DeliverySettingsItem> items;
+  final bool soundAlertsEnabled;
+  final bool vibrationAlertsEnabled;
+  final bool highAccuracyGps;
+  final bool backgroundLocationEnabled;
+  final bool biometricLockEnabled;
+  final bool twoFactorAuthEnabled;
+  final bool dataSharingConsent;
+  final bool isAccountDeactivated;
+  final String? actionMessage;
 
   const DeliverySettingsState({
     this.status = DeliverySettingsStatus.initial,
@@ -100,6 +109,15 @@ class DeliverySettingsState extends Equatable {
     this.languageCode = 'en',
     this.localeCode = 'en',
     this.items = const [],
+    this.soundAlertsEnabled = true,
+    this.vibrationAlertsEnabled = true,
+    this.highAccuracyGps = true,
+    this.backgroundLocationEnabled = true,
+    this.biometricLockEnabled = false,
+    this.twoFactorAuthEnabled = false,
+    this.dataSharingConsent = true,
+    this.isAccountDeactivated = false,
+    this.actionMessage,
   });
 
   DeliverySettingsState copyWith({
@@ -116,6 +134,16 @@ class DeliverySettingsState extends Equatable {
     String? languageCode,
     String? localeCode,
     List<DeliverySettingsItem>? items,
+    bool? soundAlertsEnabled,
+    bool? vibrationAlertsEnabled,
+    bool? highAccuracyGps,
+    bool? backgroundLocationEnabled,
+    bool? biometricLockEnabled,
+    bool? twoFactorAuthEnabled,
+    bool? dataSharingConsent,
+    bool? isAccountDeactivated,
+    String? actionMessage,
+    bool clearActionMessage = false,
   }) {
     return DeliverySettingsState(
       status: status ?? this.status,
@@ -130,6 +158,21 @@ class DeliverySettingsState extends Equatable {
       languageCode: languageCode ?? this.languageCode,
       localeCode: localeCode ?? this.localeCode,
       items: items ?? this.items,
+      soundAlertsEnabled: soundAlertsEnabled ?? this.soundAlertsEnabled,
+      vibrationAlertsEnabled:
+          vibrationAlertsEnabled ?? this.vibrationAlertsEnabled,
+      highAccuracyGps: highAccuracyGps ?? this.highAccuracyGps,
+      backgroundLocationEnabled:
+          backgroundLocationEnabled ?? this.backgroundLocationEnabled,
+      biometricLockEnabled:
+          biometricLockEnabled ?? this.biometricLockEnabled,
+      twoFactorAuthEnabled:
+          twoFactorAuthEnabled ?? this.twoFactorAuthEnabled,
+      dataSharingConsent: dataSharingConsent ?? this.dataSharingConsent,
+      isAccountDeactivated:
+          isAccountDeactivated ?? this.isAccountDeactivated,
+      actionMessage:
+          clearActionMessage ? null : (actionMessage ?? this.actionMessage),
     );
   }
 
@@ -146,6 +189,14 @@ class DeliverySettingsState extends Equatable {
         'languageCode': languageCode,
         'localeCode': localeCode,
         'items': items.map((item) => item.toJson()).toList(),
+        'soundAlertsEnabled': soundAlertsEnabled,
+        'vibrationAlertsEnabled': vibrationAlertsEnabled,
+        'highAccuracyGps': highAccuracyGps,
+        'backgroundLocationEnabled': backgroundLocationEnabled,
+        'biometricLockEnabled': biometricLockEnabled,
+        'twoFactorAuthEnabled': twoFactorAuthEnabled,
+        'dataSharingConsent': dataSharingConsent,
+        'isAccountDeactivated': isAccountDeactivated,
       };
 
   factory DeliverySettingsState.fromJson(Map<String, dynamic> json) {
@@ -173,6 +224,14 @@ class DeliverySettingsState extends Equatable {
           .whereType<Map<String, dynamic>>()
           .map(DeliverySettingsItem.fromJson)
           .toList(),
+      soundAlertsEnabled: json['soundAlertsEnabled'] as bool? ?? true,
+      vibrationAlertsEnabled: json['vibrationAlertsEnabled'] as bool? ?? true,
+      highAccuracyGps: json['highAccuracyGps'] as bool? ?? true,
+      backgroundLocationEnabled: json['backgroundLocationEnabled'] as bool? ?? true,
+      biometricLockEnabled: json['biometricLockEnabled'] as bool? ?? false,
+      twoFactorAuthEnabled: json['twoFactorAuthEnabled'] as bool? ?? false,
+      dataSharingConsent: json['dataSharingConsent'] as bool? ?? true,
+      isAccountDeactivated: json['isAccountDeactivated'] as bool? ?? false,
     );
   }
 
@@ -190,5 +249,15 @@ class DeliverySettingsState extends Equatable {
         languageCode,
         localeCode,
         items,
+        soundAlertsEnabled,
+        vibrationAlertsEnabled,
+        highAccuracyGps,
+        backgroundLocationEnabled,
+        biometricLockEnabled,
+        twoFactorAuthEnabled,
+        dataSharingConsent,
+        isAccountDeactivated,
+        actionMessage,
       ];
 }
+

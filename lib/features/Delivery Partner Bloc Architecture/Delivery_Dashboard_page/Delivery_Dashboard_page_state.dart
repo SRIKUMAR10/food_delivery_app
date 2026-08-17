@@ -87,13 +87,17 @@ class DeliveryDashboardState extends Equatable {
   final String vehicleNumber;
   final List<DeliveryActivityItem> recentActivities;
   final String selectedFilter;
+  final String partnerId;
   final String? errorMessage;
   final String localeCode;
   final List<DeliveryActivityItem> incomingSellerOrders;
   final int unreadNotificationCount;
 
+  int get totalDeliveries => completedDeliveriesCount > 0 ? completedDeliveriesCount : todayTotalDeliveries;
+
   const DeliveryDashboardState({
     this.status = DeliveryDashboardStatus.initial,
+    this.partnerId = '',
     this.isOnline = false,
     this.isAvailable = false,
     this.isBusy = false,
@@ -132,6 +136,7 @@ class DeliveryDashboardState extends Equatable {
 
   DeliveryDashboardState copyWith({
     DeliveryDashboardStatus? status,
+    String? partnerId,
     bool? isOnline,
     bool? isAvailable,
     bool? isBusy,
@@ -170,6 +175,7 @@ class DeliveryDashboardState extends Equatable {
   }) {
     return DeliveryDashboardState(
       status: status ?? this.status,
+      partnerId: partnerId ?? this.partnerId,
       isOnline: isOnline ?? this.isOnline,
       isAvailable: isAvailable ?? this.isAvailable,
       isBusy: isBusy ?? this.isBusy,
@@ -206,6 +212,7 @@ class DeliveryDashboardState extends Equatable {
       unreadNotificationCount: unreadNotificationCount ?? this.unreadNotificationCount,
     );
   }
+
 
   @override
   List<Object?> get props => [

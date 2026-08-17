@@ -77,6 +77,9 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
     final incentiveEarnings =
         (data['incentiveEarnings'] as num?)?.toDouble() ?? 0.0;
     final codAdjustment = (data['codAdjustment'] as num?)?.toDouble() ?? 0.0;
+    final cashCollected = (data['cashCollected'] as num?)?.toDouble() ?? 0.0;
+    final cashInHand = (data['cashInHand'] as num?)?.toDouble() ?? 0.0;
+    final cashSubmitted = (data['cashSubmitted'] as num?)?.toDouble() ?? 0.0;
     final availableBalance = (data['availableBalance'] as num?)?.toDouble() ??
         (walletBalance > 100.0 ? walletBalance - 100.0 : 0.0);
     final withdrawableAmount =
@@ -102,6 +105,10 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
       'pendingWithdrawal': pendingWithdrawal,
       'withdrawableAmount': withdrawableAmount,
       'codAdjustment': codAdjustment,
+      'cashCollected': cashCollected,
+      'cashInHand': cashInHand,
+      'cashSubmitted': cashSubmitted,
+      'reconciliationStatus': data['reconciliationStatus'] ?? 'balanced',
       'totalEarnings': totalEarnings,
       'bonusEarnings': bonusEarnings,
       'incentiveEarnings': incentiveEarnings,
@@ -164,6 +171,101 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
       return {'success': false, 'error': e.toString()};
     }
     return {'success': false, 'error': 'Authentication required to withdraw.'};
+  }
+
+  @override
+  Future<Map<String, dynamic>> submitCash({
+    required double amount,
+    required String method,
+  }) async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid != null) {
+        final docRef = _firestore.collection('delivery_partners').doc(uid);
+        return await _firestore.runTransaction((transaction) async {
+          final snap = await transaction.get(docRef);
+          if (!snap.exists) throw Exception('Account not found');
+          final data = snap.data() ?? {};
+          final currentCashInHand =
+              (data['cashInHand'] as num?)?.toDouble() ?? 0.0;
+          final currentCashSubmitted =
+              (data['cashSubmitted'] as num?)?.toDouble() ?? 0.0;
+          if (amount > currentCashInHand) {
+            throw Exception('Amount exceeds cash in hand');
+          }
+
+          final remaining = currentCashInHand - amount;
+          final newSubmitted = currentCashSubmitted + amount;
+          final status =
+              remaining <= 0 ? 'balanced' : 'pending_submission';
+
+          transaction.update(docRef, {
+            'cashInHand': remaining,
+            'cashSubmitted': newSubmitted,
+            'reconciliationStatus': status,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+          transaction.set(docRef.collection('transactions').doc(), {
+            'type': 'cash_submission',
+            'amount': amount,
+            'title': 'COD Cash Deposit',
+            'description': 'COD deposit via $method',
+            'status': 'submitted',
+            'method': method,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          transaction.set(docRef.collection('reconciliations').doc(), {
+            'type': 'cash_submission',
+            'amount': amount,
+            'method': method,
+            'status': status,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          return {
+            'success': true,
+            'cashInHand': remaining,
+            'cashSubmitted': newSubmitted,
+            'reconciliationStatus': status,
+            'amount': amount,
+            'method': method,
+          };
+        });
+      }
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+    return {'success': false, 'error': 'Authentication required.'};
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchReconciliationHistory() async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid != null) {
+        final snap = await _firestore
+            .collection('delivery_partners')
+            .doc(uid)
+            .collection('reconciliations')
+            .orderBy('createdAt', descending: true)
+            .limit(30)
+            .get();
+        return snap.docs.map((d) {
+          final data = d.data();
+          final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ??
+              DateTime.now();
+          return {
+            'id': d.id,
+            'method': data['method'] ?? '',
+            'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+            'status': data['status'] ?? 'submitted',
+            'date': createdAt.toIso8601String(),
+            'description': data['description'] ?? '',
+          };
+        }).toList();
+      }
+    } catch (_) {}
+    return [];
   }
 
   @override

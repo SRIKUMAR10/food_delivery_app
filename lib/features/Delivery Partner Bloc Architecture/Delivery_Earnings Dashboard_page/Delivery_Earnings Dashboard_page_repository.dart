@@ -11,6 +11,10 @@ abstract class DeliveryEarningsDashboardRepositoryBase {
   Stream<DeliveryEarningsDashboardState> watchEarningsData();
   Future<DeliveryEarningsDashboardState?> loadCachedEarnings();
   Future<DeliveryEarningsDashboardState> withdraw(double amount);
+  Future<DeliveryEarningsDashboardState> submitCash({
+    required double amount,
+    required String method,
+  });
   Future<void> clearCache();
   Stream<double> mediaUploadStream();
 }
@@ -123,6 +127,30 @@ class DeliveryEarningsDashboardRepository
     return _buildState(raw);
   }
 
+  @override
+  Future<DeliveryEarningsDashboardState> submitCash({
+    required double amount,
+    required String method,
+  }) async {
+    final result = await _service.submitCash(amount: amount, method: method);
+    if (result['success'] != true) {
+      throw Exception(result['message'] ?? 'Cash submission failed');
+    }
+
+    final raw = Map<String, dynamic>.from(_lastRaw ?? const {});
+    if (result['cashInHand'] != null) raw['cashInHand'] = result['cashInHand'];
+    if (result['cashSubmitted'] != null) {
+      raw['cashSubmitted'] = result['cashSubmitted'];
+    }
+    if (result['reconciliationStatus'] != null) {
+      raw['reconciliationStatus'] = result['reconciliationStatus'];
+    }
+
+    _lastRaw = raw;
+    await _saveCache(raw);
+    return _buildState(raw);
+  }
+
   DeliveryEarningsDashboardState _buildState(Map<String, dynamic> raw) {
     final rangeMap = <EarningsDateRange, List<DeliveryEarningsPoint>>{};
     final ranges = raw['rangeEarnings'] as Map<String, dynamic>? ?? {};
@@ -163,6 +191,27 @@ class DeliveryEarningsDashboardRepository
       );
     }).toList();
 
+    final detailedEarnings =
+        (raw['detailedEarnings'] as List? ?? []).map((e) {
+      final map = e as Map<String, dynamic>;
+      return DeliveryDetailedEarningItem(
+        orderId: map['orderId'] ?? '',
+        customerName: map['customerName'] ?? '',
+        timestamp: DateTime.tryParse(map['timestamp'] ?? '') ?? DateTime.now(),
+        paymentMethod: map['paymentMethod'] ?? '',
+        isCOD: map['isCOD'] == true,
+        baseFare: (map['baseFare'] as num?)?.toDouble() ?? 0.0,
+        distanceFare: (map['distanceFare'] as num?)?.toDouble() ?? 0.0,
+        surgeFare: (map['surgeFare'] as num?)?.toDouble() ?? 0.0,
+        incentive: (map['incentive'] as num?)?.toDouble() ?? 0.0,
+        bonus: (map['bonus'] as num?)?.toDouble() ?? 0.0,
+        tips: (map['tips'] as num?)?.toDouble() ?? 0.0,
+        cancellationCompensation:
+            (map['cancellationCompensation'] as num?)?.toDouble() ?? 0.0,
+        totalEarnings: (map['totalEarnings'] as num?)?.toDouble() ?? 0.0,
+      );
+    }).toList();
+
     return DeliveryEarningsDashboardState(
       status: DeliveryEarningsStatus.loaded,
       totalEarnings: (raw['totalEarnings'] as num?)?.toDouble() ?? 0.0,
@@ -174,6 +223,16 @@ class DeliveryEarningsDashboardRepository
       pendingWithdrawal:
           (raw['pendingWithdrawal'] as num?)?.toDouble() ?? 0.0,
       totalWithdrawn: (raw['totalWithdrawn'] as num?)?.toDouble() ?? 0.0,
+      todayDeliveries: (raw['todayDeliveries'] as num?)?.toInt() ?? 0,
+      weeklyDeliveries: (raw['weeklyDeliveries'] as num?)?.toInt() ?? 0,
+      monthlyDeliveries: (raw['monthlyDeliveries'] as num?)?.toInt() ?? 0,
+      totalDeliveries: (raw['totalDeliveries'] as num?)?.toInt() ?? 0,
+      pendingEarnings: (raw['pendingEarnings'] as num?)?.toDouble() ?? 0.0,
+      cashInHand: (raw['cashInHand'] as num?)?.toDouble() ?? 0.0,
+      cashCollected: (raw['cashCollected'] as num?)?.toDouble() ?? 0.0,
+      cashSubmitted: (raw['cashSubmitted'] as num?)?.toDouble() ?? 0.0,
+      reconciliationStatus: raw['reconciliationStatus'] ?? 'balanced',
+      detailedEarnings: detailedEarnings,
       rangeEarnings: rangeMap,
       transactions: transactions,
       withdrawalHistory: withdrawals,

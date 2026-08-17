@@ -19,16 +19,18 @@ void main() {
       );
     });
 
-    test('fetchDashboardMetrics returns empty map when unauthenticated', () async {
+    test('fetchDashboardMetrics returns default map when unauthenticated', () async {
       final metrics = await service.fetchDashboardMetrics();
 
-      expect(metrics, isEmpty);
+      expect(metrics, isNotEmpty);
+      expect(metrics['isOnline'], isFalse);
     });
 
-    test('watchDashboardMetrics emits no data when unauthenticated', () async {
-      final events = await service.watchDashboardMetrics().toList();
+    test('watchDashboardMetrics emits default map when unauthenticated', () async {
+      final events = await service.watchDashboardMetrics().take(1).toList();
 
-      expect(events, isEmpty);
+      expect(events, isNotEmpty);
+      expect(events.first['isOnline'], isFalse);
     });
 
     test('updateOnlineStatus returns updated online status boolean', () async {

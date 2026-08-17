@@ -43,6 +43,7 @@ class DeliveryNavigationBloc
     on<DeliveryNavigationConfirmPickupEvent>(_onConfirmPickup);
     on<DeliveryNavigationArrivedAtCustomerEvent>(_onArrivedAtCustomer);
     on<DeliveryNavigationConfirmDeliveryEvent>(_onConfirmDelivery);
+    on<DeliveryNavigationCollectCodCashEvent>(_onCollectCodCash);
     on<DeliveryNavigationProfileUpdatedEvent>(_onProfileUpdated);
   }
 
@@ -143,6 +144,13 @@ class DeliveryNavigationBloc
       customerNotes: data['customerNotes'] as String? ?? state.customerNotes,
       customerLat: (data['customerLat'] as num?)?.toDouble() ?? state.customerLat,
       customerLng: (data['customerLng'] as num?)?.toDouble() ?? state.customerLng,
+      paymentMethod:
+          data['paymentMethod'] as String? ?? state.paymentMethod,
+      codAmount: (data['codAmount'] as num?)?.toDouble() ?? state.codAmount,
+      isCodCollected: data['isCodCollected'] == true || state.isCodCollected,
+      collectedAmount:
+          (data['collectedAmount'] as num?)?.toDouble() ?? state.collectedAmount,
+      activeOrderId: data['orderId'] as String? ?? state.activeOrderId,
     );
     return _withDestination(withTargets, stage);
   }
@@ -535,7 +543,51 @@ class DeliveryNavigationBloc
     emit(state.copyWith(
       turnDistanceMeters: 0,
       nextTurnInstruction: 'Arrived at Customer',
+      isArrivedAtCustomer: true,
     ));
+  }
+
+  Future<void> _onCollectCodCash(
+    DeliveryNavigationCollectCodCashEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) async {
+    if (state.isCodCollected) return;
+    emit(state.copyWith(
+      codCollectStatus: CodCollectStatus.collecting,
+      clearError: true,
+    ));
+    try {
+      final result = await repository.collectCodCash(
+        orderId: event.orderId,
+        amountReceived: event.amountReceived,
+      );
+      if (result['success'] == true) {
+        emit(state.copyWith(
+          codCollectStatus: CodCollectStatus.success,
+          isCodCollected: true,
+          collectedAmount:
+              (result['collectedAmount'] as num?)?.toDouble() ??
+                  state.codAmountToCollect,
+          codReceivedAmount: event.amountReceived,
+          codChangeAmount:
+              (result['changeAmount'] as num?)?.toDouble() ?? 0.0,
+          codMessage: result['message'] as String?,
+          clearError: true,
+        ));
+      } else {
+        emit(state.copyWith(
+          codCollectStatus: CodCollectStatus.failed,
+          codMessage: result['message'] as String?,
+          errorMessage: result['message'] as String?,
+        ));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+        codCollectStatus: CodCollectStatus.failed,
+        codMessage: e.toString(),
+        errorMessage: e.toString(),
+      ));
+    }
   }
 
   Future<void> _onConfirmDelivery(
@@ -589,3 +641,7 @@ class DeliveryNavigationBloc
     _locationSub = null;
   }
 }
+
+/// Standardized Feature-Architecture Alias for NavigationBloc
+typedef NavigationBloc = DeliveryNavigationBloc;
+

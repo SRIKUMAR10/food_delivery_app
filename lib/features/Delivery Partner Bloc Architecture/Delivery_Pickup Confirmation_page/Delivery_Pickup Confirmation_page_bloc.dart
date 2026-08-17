@@ -53,24 +53,48 @@ class DeliveryPickupConfirmationPageBloc
   ) async {
     emit(state.copyWith(status: PickupConfirmationStatus.loading));
     try {
-      final model =
-          await repository.fetchPickupConfirmationDetails(event.orderId);
-      if (model.orderId.trim().isEmpty) {
+      await emit.forEach<PickupConfirmationModel>(
+        repository.watchPickupConfirmationDetails(event.orderId),
+        onData: (model) {
+          if (model.orderId.trim().isEmpty) {
+            return state.copyWith(
+              status: PickupConfirmationStatus.error,
+              errorMessage: 'Order not found or could not be loaded.',
+            );
+          }
+          return state.copyWith(
+            status: PickupConfirmationStatus.success,
+            model: model,
+          );
+        },
+        onError: (e, stack) {
+          return state.copyWith(
+            status: PickupConfirmationStatus.error,
+            errorMessage: e.toString(),
+          );
+        },
+      );
+    } catch (e) {
+      try {
+        final model =
+            await repository.fetchPickupConfirmationDetails(event.orderId);
+        if (model.orderId.trim().isEmpty) {
+          emit(state.copyWith(
+            status: PickupConfirmationStatus.error,
+            errorMessage: 'Order not found or could not be loaded.',
+          ));
+          return;
+        }
+        emit(state.copyWith(
+          status: PickupConfirmationStatus.success,
+          model: model,
+        ));
+      } catch (err) {
         emit(state.copyWith(
           status: PickupConfirmationStatus.error,
-          errorMessage: 'Order not found or could not be loaded.',
+          errorMessage: err.toString(),
         ));
-        return;
       }
-      emit(state.copyWith(
-        status: PickupConfirmationStatus.success,
-        model: model,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        status: PickupConfirmationStatus.error,
-        errorMessage: e.toString(),
-      ));
     }
   }
 
@@ -116,3 +140,7 @@ class DeliveryPickupConfirmationPageBloc
     // Store phone launch handling is delegated to the UI layer.
   }
 }
+
+/// Standardized Feature-Architecture Alias for PickupBloc
+typedef PickupBloc = DeliveryPickupConfirmationPageBloc;
+

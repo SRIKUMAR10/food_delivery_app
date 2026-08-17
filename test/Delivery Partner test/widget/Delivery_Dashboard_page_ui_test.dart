@@ -151,10 +151,10 @@ void main() {
       expect(bellButton, findsOneWidget);
 
       await tester.tap(bellButton);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
 
       expect(find.text('Notifications'), findsWidgets);
+
     });
 
     testWidgets('renders 2-column grid layout for metrics cards in mobile view', (

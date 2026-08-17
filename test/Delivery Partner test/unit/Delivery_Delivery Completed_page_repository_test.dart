@@ -98,5 +98,23 @@ void main() {
 
       expect(model.orderId, isEmpty);
     });
+
+    test('watchCompletedOrder streams mapped completed models', () async {
+      when(
+        () => mockService.watchCompletedOrderData(any()),
+      ).thenAnswer((_) => Stream.value({
+        'orderId': '#ORD12345',
+        'customerName': 'Mike Johnson',
+        'deliveryEarnings': 45.0,
+      }));
+
+      final repository = DeliveryCompletedRepository(service: mockService);
+      final stream = repository.watchCompletedOrder('#ORD12345');
+      final model = await stream.first;
+
+      expect(model.orderId, '#ORD12345');
+      expect(model.customerName, 'Mike Johnson');
+      expect(model.deliveryEarnings, 45.0);
+    });
   });
 }

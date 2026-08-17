@@ -7,10 +7,14 @@ enum DeliverySupportTicketStatus { open, inProgress, resolved, escalated }
 enum DeliverySupportTicketFilter { all, open, inProgress, resolved, escalated }
 
 const List<String> kDeliverySupportCategories = [
+  'Order Issue',
+  'Payment Issue',
+  'Restaurant Issue',
+  'Customer Issue',
   'Earnings',
   'Route / GPS',
   'App Technical',
-  'Customer Issue',
+  'Emergency Contact',
   'Other',
 ];
 

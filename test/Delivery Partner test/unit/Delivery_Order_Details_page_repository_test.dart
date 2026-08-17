@@ -110,5 +110,35 @@ void main() {
       expect(order.pickupAddress, 'ahbi Store, Main Road');
       expect(order.merchantPhone, '+918888888888');
     });
+
+    test('cancelOrderWithReason forwards call to service', () async {
+      when(
+        () => mockService.cancelOrderWithReason(
+          orderId,
+          reason: 'Restaurant Closed',
+          notes: 'Shop shut',
+          isFailedDelivery: true,
+        ),
+      ).thenAnswer((_) async => {'success': true, 'message': 'Cancelled'});
+
+      final result = await repository.cancelOrderWithReason(
+        orderId,
+        reason: 'Restaurant Closed',
+        notes: 'Shop shut',
+        isFailedDelivery: true,
+      );
+
+      expect(result['success'], isTrue);
+      verify(
+        () => mockService.cancelOrderWithReason(
+          orderId,
+          reason: 'Restaurant Closed',
+          notes: 'Shop shut',
+          isFailedDelivery: true,
+        ),
+      ).called(1);
+    });
   });
 }
+
+

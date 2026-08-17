@@ -58,6 +58,9 @@ void main() {
       'emits [loading, success] when FetchPickupConfirmationDetailsEvent is added',
       build: () {
         when(
+          () => mockRepository.watchPickupConfirmationDetails(any()),
+        ).thenAnswer((_) => Stream.value(mockModel));
+        when(
           () => mockRepository.fetchPickupConfirmationDetails(any()),
         ).thenAnswer((_) async => mockModel);
         return DeliveryPickupConfirmationPageBloc(
@@ -84,6 +87,9 @@ void main() {
     >(
       'emits [loading, error] when fetch fails',
       build: () {
+        when(
+          () => mockRepository.watchPickupConfirmationDetails(any()),
+        ).thenAnswer((_) => Stream.error(Exception('Server unreachable')));
         when(
           () => mockRepository.fetchPickupConfirmationDetails(any()),
         ).thenThrow(Exception('Server unreachable'));

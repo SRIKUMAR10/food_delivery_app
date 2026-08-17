@@ -60,6 +60,7 @@ class DeliveryOrderDetailsStrings {
       'callRestaurant': 'Call Store',
       'chatSeller': 'Chat with Seller',
       'callCustomer': 'Call Customer',
+      'chatCustomer': 'Chat with Customer',
       'startJourney': 'START GOING TO RESTAURANT',
       'markArrived': 'I HAVE ARRIVED AT RESTAURANT',
       'confirmPickup': 'CONFIRM PICKUP & START DELIVERY',
@@ -79,6 +80,22 @@ class DeliveryOrderDetailsStrings {
       'codCollectedStatus': 'Cash Collected',
       'amountLessThanCod': 'Amount is less than COD',
       'collectingCod': 'Collecting cash...',
+      'cancelOrder': 'Cancel / Report Failed Delivery',
+      'cancellationTitle': 'Report Delivery Issue / Cancellation',
+      'cancellationSubtitle': 'Select a verified reason to cancel or report failure',
+      'reasonRestaurantClosed': 'Restaurant Closed',
+      'reasonRestaurantNotReady': 'Restaurant Not Ready',
+      'reasonCustomerUnavailable': 'Customer Unavailable',
+      'reasonWrongAddress': 'Wrong Address',
+      'reasonCustomerCancelled': 'Customer Cancelled',
+      'reasonVehicleProblem': 'Vehicle Problem',
+      'reasonEmergency': 'Emergency',
+      'reasonOther': 'Other',
+      'cancellationNotesHint': 'Enter additional notes or details (optional)...',
+      'submitCancellation': 'SUBMIT REPORT',
+      'cancellationSuccess': 'Order cancellation/failure reported successfully.',
+      'failedDelivery': 'Failed Delivery',
+      'cancelled': 'Cancelled',
     },
     'ta': {
       'title': 'ஆர்டர் விவரங்கள் மற்றும் எடுப்பு',
@@ -124,6 +141,7 @@ class DeliveryOrderDetailsStrings {
       'callRestaurant': 'கடையை அழைக்கவும்',
       'chatSeller': 'விற்பனையாளருடன் அரட்டையடிக்கவும்',
       'callCustomer': 'வாடிக்கையாளரை அழைக்கவும்',
+      'chatCustomer': 'வாடிக்கையாளருடன் அரட்டையடிக்கவும்',
       'startJourney': 'கடைக்கு புறப்படுங்கள்',
       'markArrived': 'நான் கடைக்கு வந்துவிட்டேன்',
       'confirmPickup': 'எடுப்பை உறுதி செய்து டெலிவரி தொடங்கவும்',
@@ -143,6 +161,22 @@ class DeliveryOrderDetailsStrings {
       'codCollectedStatus': 'பணம் வசூலிக்கப்பட்டது',
       'amountLessThanCod': 'தொகை COD தொகையை விட குறைவு',
       'collectingCod': 'பணம் வசூலிக்கப்படுகிறது...',
+      'cancelOrder': 'ஆர்டரை ரத்துசெய் / டெலிவரி தோல்வி',
+      'cancellationTitle': 'டெலிவரி சிக்கல் / ரத்து அறிக்கை',
+      'cancellationSubtitle': 'ரத்து செய்ய அல்லது தோல்வியைப் புகாரளிக்க காரணத்தைத் தேர்ந்தெடுக்கவும்',
+      'reasonRestaurantClosed': 'உணவகம் மூடப்பட்டுள்ளது',
+      'reasonRestaurantNotReady': 'உணவகம் தயாராக இல்லை',
+      'reasonCustomerUnavailable': 'வாடிக்கையாளர் கிடைக்கவில்லை',
+      'reasonWrongAddress': 'தவறான முகவரி',
+      'reasonCustomerCancelled': 'வாடிக்கையாளர் ரத்து செய்தார்',
+      'reasonVehicleProblem': 'வாகன சிக்கல்',
+      'reasonEmergency': 'அவசரம்',
+      'reasonOther': 'மற்றவை',
+      'cancellationNotesHint': 'கூடுதல் குறிப்புகளை உள்ளிடவும் (விருப்பம்)...',
+      'submitCancellation': 'அறிக்கையை சமர்ப்பிக்கவும்',
+      'cancellationSuccess': 'ஆர்டர் ரத்து அறிக்கை வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது.',
+      'failedDelivery': 'தோல்வியுற்ற டெலிவரி',
+      'cancelled': 'ரத்து செய்யப்பட்டது',
     },
   };
 
@@ -788,13 +822,20 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
                     MaterialPageRoute(
                       builder: (_) => DeliveryChatPageUi(
                         orderId: order.id,
-                        recipientName: order.restaurantName,
+                        sellerId: order.sellerId,
+                        sellerName: order.restaurantName,
+                        sellerPhone: order.merchantPhone,
+                        orderTitle: order.restaurantName,
+                        orderTotal: order.totalAmount,
                         recipientRole: 'Merchant',
+                        recipientName: order.restaurantName,
+                        recipientPhone: order.merchantPhone,
                       ),
                     ),
                   );
                 },
               ),
+
             ],
           ),
         ],
@@ -853,6 +894,29 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
                     bloc.add(CallCustomerEvent(order.customerPhone));
                   },
                 ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                icon: const Icon(Icons.chat_bubble_outline, color: DeliveryAppColors.primary),
+                tooltip: DeliveryOrderDetailsStrings.get('chatCustomer', lang),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DeliveryChatPageUi(
+                        orderId: order.id,
+                        customerId: order.customerId,
+                        customerName: order.customerName,
+                        customerPhone: order.customerPhone,
+                        orderTitle: order.restaurantName.isNotEmpty ? order.restaurantName : 'Delivery Order',
+                        orderTotal: order.totalAmount,
+                        recipientRole: 'Customer',
+                        recipientName: order.customerName,
+                        recipientPhone: order.customerPhone,
+                      ),
+                    ),
+                  );
+                },
+              ),
+
             ],
           ),
           const SizedBox(height: 12),
@@ -970,14 +1034,16 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
               separatorBuilder: (_, __) => const Divider(color: DeliveryAppColors.border, height: 1),
               itemBuilder: (context, index) {
                 final item = order.items[index];
-                return CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: item.isVerified,
-                  activeColor: DeliveryAppColors.success,
-                  onChanged: (_) {
-                    bloc.add(ToggleItemVerificationEvent(index));
-                  },
-                  title: Row(
+                return Material(
+                  color: Colors.transparent,
+                  child: CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: item.isVerified,
+                    activeColor: DeliveryAppColors.success,
+                    onChanged: (_) {
+                      bloc.add(ToggleItemVerificationEvent(index));
+                    },
+                    title: Row(
                     children: [
                       Expanded(
                         child: Text(
@@ -1019,8 +1085,9 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
                           style: DeliveryAppTypography.caption.copyWith(color: DeliveryAppColors.textMuted),
                         )
                       : null,
-                );
-              },
+                ),
+              );
+            },
             ),
         ],
       ),
@@ -1203,12 +1270,53 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
         break;
     }
 
-    return DeliveryButton(
-      label: primaryButtonLabel,
-      icon: primaryIcon,
-      onPressed: onPrimaryPressed,
-      variant: DeliveryButtonVariant.primary,
-      height: 52,
+    final isTerminal = order.status == 'Delivered' ||
+        order.status == 'Completed' ||
+        order.status == 'Cancelled' ||
+        order.status == 'FailedDelivery';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DeliveryButton(
+          key: const Key('dp_order_details_primary_btn'),
+          label: primaryButtonLabel,
+          icon: primaryIcon,
+          onPressed: onPrimaryPressed,
+          variant: DeliveryButtonVariant.primary,
+          height: 52,
+        ),
+        if (!isTerminal) ...[
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            key: const Key('dp_order_details_cancel_btn'),
+            icon: const Icon(Icons.cancel_outlined, size: 18, color: DeliveryAppColors.error),
+            label: Text(
+              DeliveryOrderDetailsStrings.get('cancelOrder', lang),
+              style: DeliveryAppTypography.bodyMedium.copyWith(
+                color: DeliveryAppColors.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: DeliveryAppColors.error.withValues(alpha: 0.5)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => _CancellationDialog(
+                  bloc: bloc,
+                  order: order,
+                  lang: lang,
+                ),
+              );
+            },
+          ),
+        ],
+      ],
     );
   }
 
@@ -1644,3 +1752,207 @@ class _CodCollectionDialogState extends State<_CodCollectionDialog> {
     );
   }
 }
+
+class _CancellationDialog extends StatefulWidget {
+  final DeliveryOrderDetailsPageBloc bloc;
+  final OrderModel order;
+  final String lang;
+
+  const _CancellationDialog({
+    required this.bloc,
+    required this.order,
+    required this.lang,
+  });
+
+  @override
+  State<_CancellationDialog> createState() => _CancellationDialogState();
+}
+
+class _CancellationDialogState extends State<_CancellationDialog> {
+  String _selectedReason = kDeliveryCancellationReasons.first;
+  final TextEditingController _notesController = TextEditingController();
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  String _getReasonLabel(String reason, String lang) {
+    switch (reason) {
+      case 'Restaurant Closed':
+        return DeliveryOrderDetailsStrings.get('reasonRestaurantClosed', lang);
+      case 'Restaurant Not Ready':
+        return DeliveryOrderDetailsStrings.get('reasonRestaurantNotReady', lang);
+      case 'Customer Unavailable':
+        return DeliveryOrderDetailsStrings.get('reasonCustomerUnavailable', lang);
+      case 'Wrong Address':
+        return DeliveryOrderDetailsStrings.get('reasonWrongAddress', lang);
+      case 'Customer Cancelled':
+        return DeliveryOrderDetailsStrings.get('reasonCustomerCancelled', lang);
+      case 'Vehicle Problem':
+        return DeliveryOrderDetailsStrings.get('reasonVehicleProblem', lang);
+      case 'Emergency':
+        return DeliveryOrderDetailsStrings.get('reasonEmergency', lang);
+      case 'Other':
+      default:
+        return DeliveryOrderDetailsStrings.get('reasonOther', lang);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = widget.lang;
+
+    return AlertDialog(
+      backgroundColor: DeliveryAppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          const Icon(Icons.report_problem_outlined, color: DeliveryAppColors.error, size: 24),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              DeliveryOrderDetailsStrings.get('cancellationTitle', lang),
+              style: DeliveryAppTypography.titleMedium.copyWith(
+                color: DeliveryAppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                DeliveryOrderDetailsStrings.get('cancellationSubtitle', lang),
+                style: DeliveryAppTypography.caption.copyWith(
+                  color: DeliveryAppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...kDeliveryCancellationReasons.map((reason) {
+                final isSelected = _selectedReason == reason;
+                return InkWell(
+                  key: Key('dp_cancel_reason_chip_$reason'),
+                  onTap: () {
+                    setState(() {
+                      _selectedReason = reason;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? DeliveryAppColors.error.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected
+                            ? DeliveryAppColors.error
+                            : DeliveryAppColors.border,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isSelected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                          color: isSelected
+                              ? DeliveryAppColors.error
+                              : DeliveryAppColors.textMuted,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _getReasonLabel(reason, lang),
+                            style: DeliveryAppTypography.bodyMedium.copyWith(
+                              color: isSelected
+                                  ? DeliveryAppColors.textPrimary
+                                  : DeliveryAppColors.textSecondary,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _notesController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: DeliveryOrderDetailsStrings.get('cancellationNotesHint', lang),
+                  hintStyle: DeliveryAppTypography.caption.copyWith(color: DeliveryAppColors.textMuted),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: DeliveryAppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: DeliveryAppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: DeliveryAppColors.error),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            DeliveryOrderDetailsStrings.get('cancel', lang),
+            style: DeliveryAppTypography.bodyMedium.copyWith(
+              color: DeliveryAppColors.textMuted,
+            ),
+          ),
+        ),
+        FilledButton(
+          key: const Key('dp_cancel_confirm_btn'),
+          style: FilledButton.styleFrom(
+            backgroundColor: DeliveryAppColors.error,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () {
+            Navigator.of(context).pop();
+            final isFailed = _selectedReason == 'Customer Unavailable' ||
+                _selectedReason == 'Wrong Address' ||
+                _selectedReason == 'Restaurant Closed';
+            widget.bloc.add(
+              CancelOrderWithReasonEvent(
+                orderId: widget.order.id,
+                reason: _selectedReason,
+                notes: _notesController.text.trim(),
+                isFailedDelivery: isFailed,
+              ),
+            );
+          },
+          child: Text(
+            DeliveryOrderDetailsStrings.get('submitCancellation', lang),
+            style: DeliveryAppTypography.bodyMedium.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

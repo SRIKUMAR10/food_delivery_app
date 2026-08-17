@@ -35,22 +35,42 @@ class DeliveryIncentivesDashboardPageBloc
       ),
     );
     try {
-      final loaded = await repository.loadIncentivesData();
-      emit(
-        _withContext(
-          _isDashboardEmpty(loaded)
-              ? DeliveryIncentivesDashboardEmptyState()
-              : loaded,
-        ),
+      await emit.forEach<DeliveryIncentivesDashboardLoadedState>(
+        repository.watchIncentivesData(),
+        onData: (loaded) {
+          return _withContext(
+            _isDashboardEmpty(loaded)
+                ? DeliveryIncentivesDashboardEmptyState()
+                : loaded,
+          );
+        },
+        onError: (e, stack) {
+          return DeliveryIncentivesDashboardErrorState(
+            errorMessage: e.toString(),
+            selectedRange: state.selectedRange,
+            localeCode: state.localeCode,
+          );
+        },
       );
     } catch (e) {
-      emit(
-        DeliveryIncentivesDashboardErrorState(
-          errorMessage: e.toString(),
-          selectedRange: state.selectedRange,
-          localeCode: state.localeCode,
-        ),
-      );
+      try {
+        final loaded = await repository.loadIncentivesData();
+        emit(
+          _withContext(
+            _isDashboardEmpty(loaded)
+                ? DeliveryIncentivesDashboardEmptyState()
+                : loaded,
+          ),
+        );
+      } catch (err) {
+        emit(
+          DeliveryIncentivesDashboardErrorState(
+            errorMessage: err.toString(),
+            selectedRange: state.selectedRange,
+            localeCode: state.localeCode,
+          ),
+        );
+      }
     }
   }
 
@@ -142,3 +162,7 @@ class DeliveryIncentivesDashboardPageBloc
         : next;
   }
 }
+
+/// Standardized Feature-Architecture Alias for IncentiveBloc
+typedef IncentiveBloc = DeliveryIncentivesDashboardPageBloc;
+

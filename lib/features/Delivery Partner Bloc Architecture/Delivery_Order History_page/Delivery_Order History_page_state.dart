@@ -8,12 +8,26 @@ enum DeliveryOrderHistoryStatusFilter { all, completed, pending, cancelled }
 
 enum DeliveryOrderHistoryPaymentFilter { all, cod, online }
 
+enum DeliveryOrderHistoryDatePreset {
+  all,
+  today,
+  yesterday,
+  thisWeek,
+  thisMonth,
+  custom,
+}
+
 class DeliveryOrderHistoryModel extends Equatable {
   final String orderId;
+  final String restaurantName;
+  final String restaurantAddress;
   final String customerName;
+  final String customerArea;
   final String phoneNumber;
   final String pickupAddress;
   final String dropAddress;
+  final String deliveryDate;
+  final String deliveryTime;
   final String dateLabel;
   final int epochSeconds;
   final double distanceKm;
@@ -23,43 +37,77 @@ class DeliveryOrderHistoryModel extends Equatable {
 
   const DeliveryOrderHistoryModel({
     required this.orderId,
+    String? restaurantName,
+    String? restaurantAddress,
     required this.customerName,
+    String? customerArea,
     required this.phoneNumber,
     required this.pickupAddress,
     required this.dropAddress,
+    String? deliveryDate,
+    String? deliveryTime,
     required this.dateLabel,
     required this.epochSeconds,
     required this.distanceKm,
     required this.amount,
     required this.status,
     this.paymentType = 'COD',
-  });
+  })  : restaurantName = restaurantName ?? pickupAddress,
+        restaurantAddress = restaurantAddress ?? pickupAddress,
+        customerArea = customerArea ?? dropAddress,
+        deliveryDate = deliveryDate ?? dateLabel,
+        deliveryTime = deliveryTime ?? '';
 
   DeliveryOrderHistoryModel copyWith({
+    String? orderId,
+    String? restaurantName,
+    String? restaurantAddress,
+    String? customerName,
+    String? customerArea,
+    String? phoneNumber,
+    String? pickupAddress,
+    String? dropAddress,
+    String? deliveryDate,
+    String? deliveryTime,
+    String? dateLabel,
+    int? epochSeconds,
+    double? distanceKm,
+    double? amount,
     DeliveryOrderHistoryStatus? status,
+    String? paymentType,
   }) {
     return DeliveryOrderHistoryModel(
-      orderId: orderId,
-      customerName: customerName,
-      phoneNumber: phoneNumber,
-      pickupAddress: pickupAddress,
-      dropAddress: dropAddress,
-      dateLabel: dateLabel,
-      epochSeconds: epochSeconds,
-      distanceKm: distanceKm,
-      amount: amount,
+      orderId: orderId ?? this.orderId,
+      restaurantName: restaurantName ?? this.restaurantName,
+      restaurantAddress: restaurantAddress ?? this.restaurantAddress,
+      customerName: customerName ?? this.customerName,
+      customerArea: customerArea ?? this.customerArea,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      pickupAddress: pickupAddress ?? this.pickupAddress,
+      dropAddress: dropAddress ?? this.dropAddress,
+      deliveryDate: deliveryDate ?? this.deliveryDate,
+      deliveryTime: deliveryTime ?? this.deliveryTime,
+      dateLabel: dateLabel ?? this.dateLabel,
+      epochSeconds: epochSeconds ?? this.epochSeconds,
+      distanceKm: distanceKm ?? this.distanceKm,
+      amount: amount ?? this.amount,
       status: status ?? this.status,
-      paymentType: paymentType,
+      paymentType: paymentType ?? this.paymentType,
     );
   }
 
   @override
   List<Object?> get props => [
         orderId,
+        restaurantName,
+        restaurantAddress,
         customerName,
+        customerArea,
         phoneNumber,
         pickupAddress,
         dropAddress,
+        deliveryDate,
+        deliveryTime,
         dateLabel,
         epochSeconds,
         distanceKm,
@@ -118,6 +166,7 @@ class DeliveryOrderHistoryPageState extends Equatable {
   final String searchQuery;
   final DeliveryOrderHistoryStatusFilter statusFilter;
   final DeliveryOrderHistoryPaymentFilter paymentFilter;
+  final DeliveryOrderHistoryDatePreset datePreset;
   final int? startEpoch;
   final int? endEpoch;
   final String dateLabel;
@@ -142,6 +191,7 @@ class DeliveryOrderHistoryPageState extends Equatable {
     this.searchQuery = '',
     this.statusFilter = DeliveryOrderHistoryStatusFilter.all,
     this.paymentFilter = DeliveryOrderHistoryPaymentFilter.all,
+    this.datePreset = DeliveryOrderHistoryDatePreset.all,
     this.startEpoch,
     this.endEpoch,
     this.dateLabel = '',
@@ -180,6 +230,7 @@ class DeliveryOrderHistoryPageState extends Equatable {
     String? searchQuery,
     DeliveryOrderHistoryStatusFilter? statusFilter,
     DeliveryOrderHistoryPaymentFilter? paymentFilter,
+    DeliveryOrderHistoryDatePreset? datePreset,
     int? startEpoch,
     int? endEpoch,
     bool clearDateRange = false,
@@ -200,6 +251,7 @@ class DeliveryOrderHistoryPageState extends Equatable {
       searchQuery: searchQuery ?? this.searchQuery,
       statusFilter: statusFilter ?? this.statusFilter,
       paymentFilter: paymentFilter ?? this.paymentFilter,
+      datePreset: datePreset ?? this.datePreset,
       startEpoch: clearDateRange ? null : (startEpoch ?? this.startEpoch),
       endEpoch: clearDateRange ? null : (endEpoch ?? this.endEpoch),
       dateLabel: dateLabel ?? this.dateLabel,
@@ -221,6 +273,7 @@ class DeliveryOrderHistoryPageState extends Equatable {
         searchQuery,
         statusFilter,
         paymentFilter,
+        datePreset,
         startEpoch,
         endEpoch,
         dateLabel,

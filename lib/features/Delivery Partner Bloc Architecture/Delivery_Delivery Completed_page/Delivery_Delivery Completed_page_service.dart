@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 abstract class DeliveryCompletedServiceBase {
   Future<Map<String, dynamic>> fetchCompletedOrderData(String orderId);
+  Stream<Map<String, dynamic>> watchCompletedOrderData(String orderId);
   Future<Map<String, dynamic>> completeOrderData(String orderId);
   Stream<double> chunkedMediaUpload(String orderId);
   String? validateMedia(String? filePath);
@@ -51,151 +52,172 @@ class DeliveryCompletedService implements DeliveryCompletedServiceBase {
       if (fs != null) {
         final orderDoc = await fs.collection('orders').doc(orderId).get();
         if (orderDoc.exists) {
-          final data = orderDoc.data()!;
-
-          double walletBalance = 0.0;
-          String partnerName = '';
-          String partnerVehicleNo = '';
-          final user = _auth?.currentUser;
-          if (user != null) {
-            final partnerDoc = await fs
-                .collection('delivery_partners')
-                .doc(user.uid)
-                .get();
-            if (partnerDoc.exists) {
-              final pData = partnerDoc.data()!;
-              walletBalance = (pData['totalEarnings'] as num?)?.toDouble() ?? 0.0;
-              partnerName = pData['displayName'] ?? '';
-              partnerVehicleNo = pData['vehicleNumber'] ?? '';
-            }
-          }
-
-          String customerName = data['customerName'] as String? ?? '';
-          String deliveryAddress = data['deliveryAddress'] as String? ?? data['address'] as String? ?? '';
-          String customerPhone = data['customerPhone'] as String? ?? data['phone'] as String? ?? data['userPhone'] as String? ?? '';
-
-          final customerId = (data['customerId'] ?? data['customer_id'] ?? data['userId'] ?? data['user_id'] ?? data['buyerId'] ?? data['buyer_id'] ?? data['customerUid'] ?? data['buyerUid'] ?? data['uid'])?.toString();
-
-          if ((customerName.isEmpty || customerName == 'Customer' || deliveryAddress.isEmpty || customerPhone.isEmpty) && customerId != null && customerId.isNotEmpty) {
-            try {
-              final uDoc = await fs.collection('buyer_user').doc(customerId).get();
-              if (uDoc.exists && uDoc.data() != null) {
-                final uData = uDoc.data()!;
-                final uName = uData['name'] ?? uData['displayName'] ?? uData['fullName'] ?? uData['userName'] ?? uData['buyerName'] ?? uData['customerName'] ?? '';
-                final uPhone = uData['phone'] ?? uData['phoneNumber'] ?? uData['mobile'] ?? uData['userPhone'] ?? uData['contactNumber'] ?? '';
-
-                if (customerName.isEmpty || customerName == 'Customer') {
-                  if (uName.toString().trim().isNotEmpty) {
-                    customerName = uName.toString().trim();
-                  }
-                }
-                if (customerPhone.isEmpty && uPhone.toString().trim().isNotEmpty) {
-                  customerPhone = uPhone.toString().trim();
-                }
-                if (deliveryAddress.isEmpty) {
-                  for (final k in ['address', 'primaryAddress', 'homeAddress', 'workAddress', 'deliveryAddress', 'shippingAddress']) {
-                    final val = uData[k];
-                    if (val != null && val is String && val.trim().isNotEmpty && val.trim() != 'Primary Address') {
-                      deliveryAddress = val.trim();
-                      break;
-                    }
-                  }
-                }
-              }
-            } catch (_) {}
-          }
-
-          if (customerName.isEmpty) customerName = 'Customer';
-
-          final double earnings = ((data['amount'] as num?)?.toDouble() ?? 0.0) * 0.15;
-
-          final double codAmount =
-              ((data['codAmount'] ?? data['amount']) as num?)?.toDouble() ?? 0.0;
-          final double collectedAmount =
-              (data['collectedAmount'] as num?)?.toDouble() ?? 0.0;
-
-          final double? baseFareRaw = (data['baseFare'] as num?)?.toDouble();
-          final double? distanceFareRaw =
-              (data['distanceFare'] as num?)?.toDouble();
-          final double? surgeFareRaw = (data['surgeFare'] as num?)?.toDouble();
-          final double? incentiveRaw =
-              ((data['incentiveAmount'] ?? data['incentive']) as num?)
-                  ?.toDouble();
-          final double? bonusRaw =
-              ((data['bonusAmount'] ?? data['bonus']) as num?)?.toDouble();
-          final double? tipsRaw =
-              ((data['tipsAmount'] ?? data['tipAmount'] ?? data['tips']) as num?)
-                  ?.toDouble();
-          final double? cancellationCompensationRaw =
-              (data['cancellationCompensation'] as num?)?.toDouble();
-
-          final bool hasBreakdown = baseFareRaw != null ||
-              distanceFareRaw != null ||
-              surgeFareRaw != null ||
-              incentiveRaw != null ||
-              bonusRaw != null ||
-              tipsRaw != null ||
-              cancellationCompensationRaw != null;
-
-          final double baseFare = hasBreakdown ? (baseFareRaw ?? 0.0) : earnings;
-          final double distanceFare =
-              hasBreakdown ? (distanceFareRaw ?? 0.0) : 0.0;
-          final double surgeFare = hasBreakdown ? (surgeFareRaw ?? 0.0) : 0.0;
-          final double incentive = hasBreakdown ? (incentiveRaw ?? 0.0) : 0.0;
-          final double bonus = hasBreakdown ? (bonusRaw ?? 0.0) : 0.0;
-          final double tips = hasBreakdown ? (tipsRaw ?? 0.0) : 0.0;
-          final double cancellationCompensation =
-              hasBreakdown ? (cancellationCompensationRaw ?? 0.0) : 0.0;
-
-          final double totalPartnerEarnings =
-              (data['totalPartnerEarnings'] as num?)?.toDouble() ??
-                  (hasBreakdown
-                      ? baseFare +
-                          distanceFare +
-                          surgeFare +
-                          incentive +
-                          bonus +
-                          tips +
-                          cancellationCompensation
-                      : earnings);
-
-          return {
-            'orderId': orderId,
-            'walletBalance': walletBalance,
-            'partnerName': partnerName,
-            'partnerVehicleNo': partnerVehicleNo,
-            'customerName': customerName,
-            'deliveryAddress': deliveryAddress,
-            'customerPhone': customerPhone,
-            'timeTaken': data['timeTaken'] ?? '',
-            'distanceCovered': (data['distance'] as num?)?.toDouble() ?? 0.0,
-            'paymentStatus': data['paymentStatus'] ?? '',
-            'paymentMethod': data['paymentMethod'] ?? '',
-            'customerRating': (data['customerRating'] as num?)?.toDouble() ?? 0.0,
-            'deliveryEarnings': earnings,
-            'completedAt': data['deliveredAt'] != null
-                ? _formatTimestamp(data['deliveredAt'])
-                : '',
-            'isCOD': (data['paymentMethod'] as String? ?? '')
-                    .toUpperCase() ==
-                'COD',
-            'codAmount': codAmount,
-            'collectedAmount': collectedAmount,
-            'isCodCollected': data['isCodCollected'] == true,
-            'codReconciliationStatus': data['codReconciliationStatus'] ?? '',
-            'baseFare': baseFare,
-            'distanceFare': distanceFare,
-            'surgeFare': surgeFare,
-            'incentive': incentive,
-            'bonus': bonus,
-            'tips': tips,
-            'cancellationCompensation': cancellationCompensation,
-            'totalPartnerEarnings': totalPartnerEarnings,
-          };
+          return await _mapCompletedOrderDoc(orderDoc);
         }
       }
     } catch (_) {}
     return {};
+  }
+
+  @override
+  Stream<Map<String, dynamic>> watchCompletedOrderData(String orderId) {
+    final fs = _firestore;
+    if (fs == null || orderId.isEmpty) {
+      return Stream.value({});
+    }
+    return fs
+        .collection('orders')
+        .doc(orderId)
+        .snapshots(includeMetadataChanges: true)
+        .asyncMap((doc) async {
+      if (!doc.exists) return <String, dynamic>{};
+      return await _mapCompletedOrderDoc(doc);
+    }).handleError((_) => <String, dynamic>{});
+  }
+
+  Future<Map<String, dynamic>> _mapCompletedOrderDoc(DocumentSnapshot<Map<String, dynamic>> orderDoc) async {
+    final fs = _firestore;
+    final data = orderDoc.data() ?? {};
+
+    double walletBalance = 0.0;
+    String partnerName = '';
+    String partnerVehicleNo = '';
+    final user = _auth?.currentUser;
+    if (user != null && fs != null) {
+      final partnerDoc = await fs
+          .collection('delivery_partners')
+          .doc(user.uid)
+          .get();
+      if (partnerDoc.exists) {
+        final pData = partnerDoc.data()!;
+        walletBalance = (pData['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+        partnerName = pData['displayName'] ?? '';
+        partnerVehicleNo = pData['vehicleNumber'] ?? '';
+      }
+    }
+
+    String customerName = data['customerName'] as String? ?? '';
+    String deliveryAddress = data['deliveryAddress'] as String? ?? data['address'] as String? ?? '';
+    String customerPhone = data['customerPhone'] as String? ?? data['phone'] as String? ?? data['userPhone'] as String? ?? '';
+
+    final customerId = (data['customerId'] ?? data['customer_id'] ?? data['userId'] ?? data['user_id'] ?? data['buyerId'] ?? data['buyer_id'] ?? data['customerUid'] ?? data['buyerUid'] ?? data['uid'])?.toString();
+
+    if ((customerName.isEmpty || customerName == 'Customer' || deliveryAddress.isEmpty || customerPhone.isEmpty) && customerId != null && customerId.isNotEmpty && fs != null) {
+      try {
+        final uDoc = await fs.collection('buyer_user').doc(customerId).get();
+        if (uDoc.exists && uDoc.data() != null) {
+          final uData = uDoc.data()!;
+          final uName = uData['name'] ?? uData['displayName'] ?? uData['fullName'] ?? uData['userName'] ?? uData['buyerName'] ?? uData['customerName'] ?? '';
+          final uPhone = uData['phone'] ?? uData['phoneNumber'] ?? uData['mobile'] ?? uData['userPhone'] ?? uData['contactNumber'] ?? '';
+
+          if (customerName.isEmpty || customerName == 'Customer') {
+            if (uName.toString().trim().isNotEmpty) {
+              customerName = uName.toString().trim();
+            }
+          }
+          if (customerPhone.isEmpty && uPhone.toString().trim().isNotEmpty) {
+            customerPhone = uPhone.toString().trim();
+          }
+          if (deliveryAddress.isEmpty) {
+            for (final k in ['address', 'primaryAddress', 'homeAddress', 'workAddress', 'deliveryAddress', 'shippingAddress']) {
+              final val = uData[k];
+              if (val != null && val is String && val.trim().isNotEmpty && val.trim() != 'Primary Address') {
+                deliveryAddress = val.trim();
+                break;
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (customerName.isEmpty) customerName = 'Customer';
+
+    final double earnings = ((data['amount'] as num?)?.toDouble() ?? 0.0) * 0.15;
+
+    final double codAmount =
+        ((data['codAmount'] ?? data['amount']) as num?)?.toDouble() ?? 0.0;
+    final double collectedAmount =
+        (data['collectedAmount'] as num?)?.toDouble() ?? 0.0;
+
+    final double? baseFareRaw = (data['baseFare'] as num?)?.toDouble();
+    final double? distanceFareRaw =
+        (data['distanceFare'] as num?)?.toDouble();
+    final double? surgeFareRaw = (data['surgeFare'] as num?)?.toDouble();
+    final double? incentiveRaw =
+        ((data['incentiveAmount'] ?? data['incentive']) as num?)
+            ?.toDouble();
+    final double? bonusRaw =
+        ((data['bonusAmount'] ?? data['bonus']) as num?)?.toDouble();
+    final double? tipsRaw =
+        ((data['tipsAmount'] ?? data['tipAmount'] ?? data['tips']) as num?)
+            ?.toDouble();
+    final double? cancellationCompensationRaw =
+        (data['cancellationCompensation'] as num?)?.toDouble();
+
+    final bool hasBreakdown = baseFareRaw != null ||
+        distanceFareRaw != null ||
+        surgeFareRaw != null ||
+        incentiveRaw != null ||
+        bonusRaw != null ||
+        tipsRaw != null ||
+        cancellationCompensationRaw != null;
+
+    final double baseFare = hasBreakdown ? (baseFareRaw ?? 0.0) : earnings;
+    final double distanceFare =
+        hasBreakdown ? (distanceFareRaw ?? 0.0) : 0.0;
+    final double surgeFare = hasBreakdown ? (surgeFareRaw ?? 0.0) : 0.0;
+    final double incentive = hasBreakdown ? (incentiveRaw ?? 0.0) : 0.0;
+    final double bonus = hasBreakdown ? (bonusRaw ?? 0.0) : 0.0;
+    final double tips = hasBreakdown ? (tipsRaw ?? 0.0) : 0.0;
+    final double cancellationCompensation =
+        hasBreakdown ? (cancellationCompensationRaw ?? 0.0) : 0.0;
+
+    final double totalPartnerEarnings =
+        (data['totalPartnerEarnings'] as num?)?.toDouble() ??
+            (hasBreakdown
+                ? baseFare +
+                    distanceFare +
+                    surgeFare +
+                    incentive +
+                    bonus +
+                    tips +
+                    cancellationCompensation
+                : earnings);
+
+    return {
+      'orderId': orderDoc.id,
+      'walletBalance': walletBalance,
+      'partnerName': partnerName,
+      'partnerVehicleNo': partnerVehicleNo,
+      'customerName': customerName,
+      'deliveryAddress': deliveryAddress,
+      'customerPhone': customerPhone,
+      'timeTaken': data['timeTaken'] ?? '',
+      'distanceCovered': (data['distance'] as num?)?.toDouble() ?? 0.0,
+      'paymentStatus': data['paymentStatus'] ?? '',
+      'paymentMethod': data['paymentMethod'] ?? '',
+      'customerRating': (data['customerRating'] as num?)?.toDouble() ?? 0.0,
+      'deliveryEarnings': earnings,
+      'completedAt': data['deliveredAt'] != null
+          ? _formatTimestamp(data['deliveredAt'])
+          : '',
+      'isCOD': (data['paymentMethod'] as String? ?? '')
+              .toUpperCase() ==
+          'COD',
+      'codAmount': codAmount,
+      'collectedAmount': collectedAmount,
+      'isCodCollected': data['isCodCollected'] == true,
+      'codReconciliationStatus': data['codReconciliationStatus'] ?? '',
+      'baseFare': baseFare,
+      'distanceFare': distanceFare,
+      'surgeFare': surgeFare,
+      'incentive': incentive,
+      'bonus': bonus,
+      'tips': tips,
+      'cancellationCompensation': cancellationCompensation,
+      'totalPartnerEarnings': totalPartnerEarnings,
+    };
   }
 
   @override

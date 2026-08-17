@@ -15,10 +15,11 @@ class DeliveryOrderHistoryRepository
   final DeliveryOrderHistoryServiceBase _service;
 
   DeliveryOrderHistoryRepository({DeliveryOrderHistoryServiceBase? service})
-      : _service = service ?? DeliveryOrderHistoryService(
-            firestore: FirebaseFirestore.instance,
-            auth: FirebaseAuth.instance,
-        );
+      : _service = service ??
+            DeliveryOrderHistoryService(
+              firestore: FirebaseFirestore.instance,
+              auth: FirebaseAuth.instance,
+            );
 
   DeliveryOrderHistoryStatus _parseStatus(String raw) {
     switch (raw.toLowerCase()) {
@@ -36,10 +37,15 @@ class DeliveryOrderHistoryRepository
   DeliveryOrderHistoryModel _mapOrder(Map<String, dynamic> map) {
     return DeliveryOrderHistoryModel(
       orderId: map['orderId'] ?? '',
+      restaurantName: map['restaurantName'] ?? map['pickupAddress'] ?? '',
+      restaurantAddress: map['restaurantAddress'] ?? map['pickupAddress'] ?? '',
       customerName: map['customerName'] ?? '',
+      customerArea: map['customerArea'] ?? map['dropAddress'] ?? '',
       phoneNumber: map['phoneNumber'] ?? '',
       pickupAddress: map['pickupAddress'] ?? '',
       dropAddress: map['dropAddress'] ?? '',
+      deliveryDate: map['deliveryDate'] ?? map['dateLabel'] ?? '',
+      deliveryTime: map['deliveryTime'] ?? '',
       dateLabel: map['dateLabel'] ?? '',
       epochSeconds: (map['epochSeconds'] as num?)?.toInt() ?? 0,
       distanceKm: (map['distanceKm'] as num?)?.toDouble() ?? 0.0,
@@ -82,8 +88,7 @@ class DeliveryOrderHistoryRepository
           orders
               .where((o) => o.status == DeliveryOrderHistoryStatus.pending)
               .length,
-      totalEarnings:
-          (stats['totalEarnings'] as num?)?.toDouble() ?? 0.0,
+      totalEarnings: (stats['totalEarnings'] as num?)?.toDouble() ?? 0.0,
       totalOrdersDelta:
           (stats['totalOrdersDelta'] as num?)?.toDouble() ?? 0.0,
       earningsDelta: (stats['earningsDelta'] as num?)?.toDouble() ?? 0.0,

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/models/chat_message_model.dart';
+import '../../../core/repositories/i_chat_repository.dart';
 import 'Delivery_Chat_page_bloc.dart';
 import 'Delivery_Chat_page_event.dart';
 import 'Delivery_Chat_page_state.dart';
@@ -12,42 +13,68 @@ import 'Delivery_Chat_page_service.dart';
 class DeliveryChatStrings {
   static const Map<String, Map<String, String>> _strings = {
     'en': {
-      'title': 'Customer Chat',
+      'customerTitle': 'Customer Chat',
+      'sellerTitle': 'Restaurant Chat',
       'send': 'Send',
       'typeMessage': 'Type a message...',
-      'quickReplyOnMyWay': 'On my way \uD83D\uDEF5',
-      'quickReplyArrived': "I've arrived at your address \uD83D\uDCCD",
-      'quickReplyCollectPackage': 'Please collect your package \uD83D\uDCE6',
-      'quickReplyNeedClarification': 'Need address clarification \uD83D\uDDFA\uFE0F',
+      'quickReplyOnMyWay': 'On my way 🛵',
+      'quickReplyArrived': "I've arrived at your address 📍",
+      'quickReplyCollectPackage': 'Please collect your package 📦',
+      'quickReplyNeedClarification': 'Need address clarification 🗺️',
+      'quickReplyPickupInstructions': 'Pickup instructions 📦',
+      'quickReplyOrderClarification': 'Order clarification 🧾',
+      'quickReplyArrivedRestaurant': "I've arrived at restaurant 🏪",
+      'quickReplyOrderDelay': 'Order taking longer than expected ⏳',
+      'quickReplyReadyPickup': 'Is order ready for pickup? 🛵',
       'callCustomer': 'Call Customer',
+      'callRestaurant': 'Call Restaurant',
       'orderSummary': 'Order Summary',
       'loadingConversation': 'Loading conversation...',
-      'noMessages': 'No messages yet. Send a quick reply to get started.',
+      'noMessages': 'No messages yet. Send a message to get started.',
       'errorLoadingConversation': 'Failed to load conversation.',
       'messageSendFailed': 'Failed to send message.',
-      'attachmentHint': 'Attachment upload coming soon',
+      'photoAttachment': 'Photo',
+      'takePhoto': 'Take Photo',
+      'chooseGallery': 'Choose from Gallery',
+      'cancel': 'Cancel',
       'online': 'Online',
       'offline': 'Offline',
+      'typing': 'is typing...',
       'retry': 'Retry',
+      'viewImage': 'View Photo',
+      'uploadingPhoto': 'Uploading photo...',
     },
     'ta': {
-      'title': '\u0BB5\u0BBE\u0B9F\u0BBF\u0B95\u0BCD\u0B95\u0BC8\u0BAF\u0BBE\u0BB3\u0BB0\u0BCD \u0B85\u0BB0\u0B9F\u0BCD\u0B9F\u0BC8',
-      'send': '\u0B85\u0BA9\u0BC1\u0BAA\u0BCD\u0BAA\u0BC1',
-      'typeMessage': '\u0B9A\u0BC6\u0BAF\u0BCD\u0BA4\u0BBF\u0BAF\u0BC8 \u0BA4\u0B9F\u0BCD\u0B9F\u0BB5\u0BC1\u0BAE\u0BCD...',
-      'quickReplyOnMyWay': '\u0BB5\u0BB0\u0BC1\u0B95\u0BBF\u0BB1\u0BC7\u0BA9\u0BCD \uD83D\uDEF5',
-      'quickReplyArrived': '\u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0BAE\u0BC1\u0B95\u0BB5\u0BB0\u0BBF\u0BAF\u0BC8 \u0BB5\u0BB0\u0BC1\u0B95\u0BBF\u0BB1\u0BC7\u0BA9\u0BCD \uD83D\uDCCD',
-      'quickReplyCollectPackage': '\u0BA4\u0BAF\u0BB5\u0BC1 \u0B9A\u0BC6\u0BAF\u0BCD\u0BAF \u0BAA\u0BCA\u0BA4\u0BBF\u0BA4\u0BCD \u0BA4\u0BB0\u0BB5\u0BC1\u0BAE\u0BCD \uD83D\uDCE6',
-      'quickReplyNeedClarification': '\u0BAE\u0BC1\u0B95\u0BB5\u0BB0\u0BBF \u0BB5\u0BBF\u0BB3\u0B95\u0BCD\u0B95\u0BAE\u0BCD \u0BA4\u0BC7\u0BB5\u0BC8 \uD83D\uDDFA\uFE0F',
-      'callCustomer': '\u0BB5\u0BBE\u0B9F\u0BBF\u0B95\u0BCD\u0B95\u0BC8\u0BAF\u0BBE\u0BB3\u0BB0\u0BC8 \u0B85\u0BB4\u0BC8\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD',
-      'orderSummary': '\u0B86\u0BB0\u0BCD\u0B9F\u0BB0\u0BCD \u0B9A\u0BC1\u0BB0\u0BC1\u0B95\u0BCD\u0B95\u0BAE\u0BCD',
-      'loadingConversation': '\u0B89\u0BB0\u0BC8\u0BAF\u0BBE\u0B9F\u0BB2\u0BCD \u0B8F\u0BB1\u0BCD\u0BB1\u0BA4\u0BCD\u0BA4\u0BC1...',
-      'noMessages': '\u0B87\u0BA4\u0BC1\u0BB5\u0BB0\u0BC8 \u0B9A\u0BC6\u0BAF\u0BCD\u0BA4\u0BBF\u0B95\u0BB3\u0BCD \u0B87\u0BB2\u0BCD\u0BB2\u0BC8. \u0BA4\u0BCA\u0B9F\u0B99\u0BCD\u0B95 \u0BB5\u0BBF\u0BB0\u0BC8\u0BB5\u0BBE\u0BA9 \u0BAA\u0BA4\u0BBF\u0BB2\u0BC8 \u0B85\u0BA9\u0BC1\u0BAA\u0BCD\u0BAA\u0BB5\u0BC1\u0BAE\u0BCD.',
-      'errorLoadingConversation': '\u0B89\u0BB0\u0BC8\u0BAF\u0BBE\u0B9F\u0BB2\u0BCD \u0B8F\u0BB1\u0BCD\u0BB1 \u0BA4\u0BCB\u0BB2\u0BCD\u0BB5\u0BBF\u0BAF\u0BC1\u0BB1\u0BCD\u0BB1\u0BA4\u0BC1.',
-      'messageSendFailed': '\u0B9A\u0BC6\u0BAF\u0BCD\u0BA4\u0BBF \u0B85\u0BA9\u0BC1\u0BAA\u0BCD\u0BAA \u0BA4\u0BCB\u0BB2\u0BCD\u0BB5\u0BBF\u0BAF\u0BC1\u0BB1\u0BCD\u0BB1\u0BA4\u0BC1.',
-      'attachmentHint': '\u0B87\u0BA3\u0BC8\u0BAA\u0BCD\u0BAA\u0BC1 \u0BAA\u0BA4\u0BBF\u0BB5\u0BC7\u0BB1\u0BCD\u0BB1\u0BAE\u0BCD \u0BB5\u0BBF\u0BB0\u0BC8\u0BB5\u0BBF\u0BB2\u0BCD',
-      'online': '\u0B86\u0BA9\u0BCD\u0BB2\u0BC8\u0BA9\u0BCD',
-      'offline': '\u0B86\u0B83\u0BAA\u0BCD\u0BB2\u0BC8\u0BA9\u0BCD',
-      'retry': '\u0BAE\u0BC0\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD \u0BAE\u0BC1\u0BAF\u0BB1\u0BCD\u0B9A\u0BBF \u0B9A\u0BC6\u0BAF\u0BCD',
+      'customerTitle': 'வாடிக்கையாளர் அரட்டை',
+      'sellerTitle': 'உணவக அரட்டை',
+      'send': 'அனுப்பு',
+      'typeMessage': 'செய்தியை தட்டவும்...',
+      'quickReplyOnMyWay': 'வருகிறேன் 🛵',
+      'quickReplyArrived': 'உங்கள் முகவரியை அடைந்தேன் 📍',
+      'quickReplyCollectPackage': 'தயவுசெய்து பார்சலைப் பெறவும் 📦',
+      'quickReplyNeedClarification': 'முகவரி விளக்கம் தேவை 🗺️',
+      'quickReplyPickupInstructions': 'பிக்அப் வழிமுறைகள் 📦',
+      'quickReplyOrderClarification': 'ஆர்டர் விளக்கம் 🧾',
+      'quickReplyArrivedRestaurant': 'உணவகத்தை அடைந்தேன் 🏪',
+      'quickReplyOrderDelay': 'ஆர்டர் தாமதமாகிறது ⏳',
+      'quickReplyReadyPickup': 'ஆர்டர் தயாரா? 🛵',
+      'callCustomer': 'வாடிக்கையாளரை அழைக்கவும்',
+      'callRestaurant': 'உணவகத்தை அழைக்கவும்',
+      'orderSummary': 'ஆர்டர் சுருக்கம்',
+      'loadingConversation': 'உரையாடல் ஏற்றுகிறது...',
+      'noMessages': 'இதுவரை செய்திகள் இல்லை. விரைவான பதிலை அனுப்பவும்.',
+      'errorLoadingConversation': 'உரையாடல் ஏற்ற தோல்வியுற்றது.',
+      'messageSendFailed': 'செய்தி அனுப்ப தோல்வியுற்றது.',
+      'photoAttachment': 'புகைப்படம்',
+      'takePhoto': 'புகைப்படம் எடுக்கவும்',
+      'chooseGallery': 'கேலரியில் இருந்து தேர்வு செய்',
+      'cancel': 'ரத்துசெய்',
+      'online': 'ஆன்லைன்',
+      'offline': 'ஆஃப்லைன்',
+      'typing': 'தட்டச்சு செய்கிறார்...',
+      'retry': 'மீண்டும் முயற்சி செய்',
+      'viewImage': 'படத்தைக் காண்க',
+      'uploadingPhoto': 'புகைப்படம் பதிவேற்றுகிறது...',
     },
   };
 
@@ -63,27 +90,48 @@ class DeliveryQuickReply {
   const DeliveryQuickReply(this.key, this.text);
 }
 
-const List<DeliveryQuickReply> _quickReplies = [
-  DeliveryQuickReply('quickReplyOnMyWay', 'On my way \uD83D\uDEF5'),
-  DeliveryQuickReply('quickReplyArrived', "I've arrived at your address \uD83D\uDCCD"),
-  DeliveryQuickReply('quickReplyCollectPackage', 'Please collect your package \uD83D\uDCE6'),
-  DeliveryQuickReply('quickReplyNeedClarification', 'Need address clarification \uD83D\uDDFA\uFE0F'),
+const List<DeliveryQuickReply> _customerQuickReplies = [
+  DeliveryQuickReply('quickReplyOnMyWay', 'On my way 🛵'),
+  DeliveryQuickReply('quickReplyArrived', "I've arrived at your address 📍"),
+  DeliveryQuickReply('quickReplyCollectPackage', 'Please collect your package 📦'),
+  DeliveryQuickReply('quickReplyNeedClarification', 'Need address clarification 🗺️'),
 ];
 
+const List<DeliveryQuickReply> _sellerQuickReplies = [
+  DeliveryQuickReply('quickReplyPickupInstructions', 'Pickup instructions 📦'),
+  DeliveryQuickReply('quickReplyOrderClarification', 'Order clarification 🧾'),
+  DeliveryQuickReply('quickReplyArrivedRestaurant', "I've arrived at restaurant 🏪"),
+  DeliveryQuickReply('quickReplyReadyPickup', 'Is order ready for pickup? 🛵'),
+  DeliveryQuickReply('quickReplyOrderDelay', 'Order taking longer than expected ⏳'),
+];
+
+/// Primary Delivery Partner Chat Page supporting Customer & Seller chats.
 class DeliveryChatPage extends StatelessWidget {
   final String orderId;
   final String customerId;
   final String customerName;
   final String? customerPhone;
+  final String? sellerId;
+  final String? sellerName;
+  final String? sellerPhone;
+  final String recipientRole; // 'customer' or 'seller' / 'merchant' / 'restaurant'
+  final String? recipientName;
+  final String? recipientPhone;
   final String? orderTitle;
   final double? orderTotal;
 
   const DeliveryChatPage({
     super.key,
-    required this.orderId,
-    required this.customerId,
-    required this.customerName,
+    this.orderId = '',
+    this.customerId = '',
+    this.customerName = '',
     this.customerPhone,
+    this.sellerId,
+    this.sellerName,
+    this.sellerPhone,
+    this.recipientRole = 'customer',
+    this.recipientName,
+    this.recipientPhone,
     this.orderTitle,
     this.orderTotal,
   });
@@ -92,23 +140,39 @@ class DeliveryChatPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider<DeliveryChatBloc>(
       create: (context) {
+        final chatRepo = context.read<IChatRepository>();
+        DeliveryChatRepositoryBase deliveryRepo;
+        try {
+          deliveryRepo = context.read<DeliveryChatRepositoryBase>();
+        } catch (_) {
+          deliveryRepo = DeliveryChatRepository(chatRepository: chatRepo);
+        }
+        DeliveryChatServiceBase deliveryServ;
+        try {
+          deliveryServ = context.read<DeliveryChatServiceBase>();
+        } catch (_) {
+          deliveryServ = DeliveryChatService(
+            chatRepository: chatRepo,
+            deliveryChatRepository: deliveryRepo,
+          );
+        }
+
         final bloc = DeliveryChatBloc(
-          chatRepository: context.read(),
-          deliveryChatRepository: DeliveryChatRepository(
-            chatRepository: context.read(),
-          ),
-          deliveryChatService: DeliveryChatService(
-            chatRepository: context.read(),
-            deliveryChatRepository: DeliveryChatRepository(
-              chatRepository: context.read(),
-            ),
-          ),
+          chatRepository: chatRepo,
+          deliveryChatRepository: deliveryRepo,
+          deliveryChatService: deliveryServ,
         );
         bloc.add(InitDeliveryChatEvent(
           orderId: orderId,
           customerId: customerId,
           customerName: customerName,
           customerPhone: customerPhone,
+          sellerId: sellerId,
+          sellerName: sellerName,
+          sellerPhone: sellerPhone,
+          recipientRole: recipientRole,
+          recipientName: recipientName,
+          recipientPhone: recipientPhone,
           orderTitle: orderTitle,
           orderTotal: orderTotal,
         ));
@@ -117,17 +181,50 @@ class DeliveryChatPage extends StatelessWidget {
       child: const _DeliveryChatView(),
     );
   }
+
 }
 
-class _DeliveryChatView extends StatelessWidget {
+/// Backward compatibility alias for legacy pages.
+typedef DeliveryChatPageUi = DeliveryChatPage;
+
+class _DeliveryChatView extends StatefulWidget {
   const _DeliveryChatView();
 
   @override
+  State<_DeliveryChatView> createState() => _DeliveryChatViewState();
+}
+
+class _DeliveryChatViewState extends State<_DeliveryChatView> {
+  final TextEditingController _textController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent + 80,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final lang = 'en';
+    final lang = Localizations.localeOf(context).languageCode == 'ta' ? 'ta' : 'en';
 
     return BlocConsumer<DeliveryChatBloc, DeliveryChatState>(
-      listener: (context, state) {},
+      listener: (context, state) {
+        if (state is DeliveryChatLoaded) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+        }
+      },
       builder: (context, state) {
         return Scaffold(
           backgroundColor: DeliveryAppColors.background,
@@ -143,45 +240,52 @@ class _DeliveryChatView extends StatelessWidget {
     DeliveryChatState state,
     String lang,
   ) {
-    final customerName = state is DeliveryChatLoaded
-        ? state.customerName
-        : 'Customer';
-    final customerPhone = state is DeliveryChatLoaded ? state.customerPhone : null;
+    final isLoaded = state is DeliveryChatLoaded;
+    final isSeller = isLoaded && state.isSellerChat;
+    final name = isLoaded
+        ? state.recipientName
+        : (isSeller ? 'Restaurant' : 'Customer');
+    final phone = isLoaded ? state.recipientPhone : null;
+    final isTyping = isLoaded && state.isOtherPartyTyping;
 
     return AppBar(
       backgroundColor: DeliveryAppColors.surface,
-      elevation: 0,
+      elevation: 0.5,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: DeliveryAppColors.textPrimary),
+        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: DeliveryAppColors.textPrimary, size: 20),
         onPressed: () => Navigator.of(context).pop(),
       ),
       title: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF10B981), Color(0xFF059669)],
+              gradient: LinearGradient(
+                colors: isSeller
+                    ? [const Color(0xFFFF7A00), const Color(0xFFFF5200)]
+                    : [const Color(0xFF10B981), const Color(0xFF059669)],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: DeliveryAppColors.primary.withOpacity(0.3),
-                  blurRadius: 8,
+                  color: (isSeller ? Colors.orange : DeliveryAppColors.primary).withValues(alpha: 0.3),
+                  blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: Center(
-              child: Text(
-                customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+              child: isSeller
+                  ? const Icon(Icons.storefront_rounded, color: Colors.white, size: 22)
+                  : Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : 'C',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                    ),
             ),
           ),
           const SizedBox(width: 12),
@@ -191,7 +295,7 @@ class _DeliveryChatView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  customerName,
+                  name,
                   style: const TextStyle(
                     color: DeliveryAppColors.textPrimary,
                     fontSize: 16,
@@ -200,33 +304,39 @@ class _DeliveryChatView extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  DeliveryChatStrings.of('online', lang),
+                  isTyping
+                      ? DeliveryChatStrings.of('typing', lang)
+                      : (isSeller
+                          ? DeliveryChatStrings.of('sellerTitle', lang)
+                          : DeliveryChatStrings.of('online', lang)),
                   style: TextStyle(
-                    color: DeliveryAppColors.primary,
+                    color: isTyping ? DeliveryAppColors.warning : DeliveryAppColors.primary,
                     fontSize: 12,
+                    fontWeight: isTyping ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
               ],
             ),
           ),
-          if (customerPhone != null && customerPhone.isNotEmpty)
+          if (phone != null && phone.isNotEmpty)
             IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: DeliveryAppColors.infoBg,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: DeliveryAppColors.infoBorder,
-                  ),
+                  border: Border.all(color: DeliveryAppColors.infoBorder),
                 ),
                 child: const Icon(
-                  Icons.call,
+                  Icons.call_rounded,
                   color: DeliveryAppColors.info,
                   size: 20,
                 ),
               ),
-              onPressed: () => _launchPhoneCall(customerPhone),
+              tooltip: isSeller
+                  ? DeliveryChatStrings.of('callRestaurant', lang)
+                  : DeliveryChatStrings.of('callCustomer', lang),
+              onPressed: () => _launchPhoneCall(phone),
             ),
         ],
       ),
@@ -272,7 +382,7 @@ class _DeliveryChatView extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: DeliveryAppColors.error.withOpacity(0.15),
+                color: DeliveryAppColors.error.withValues(alpha: 0.15),
               ),
               child: const Icon(
                 Icons.error_outline,
@@ -295,8 +405,7 @@ class _DeliveryChatView extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: DeliveryAppColors.buttonPrimaryText,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -318,9 +427,29 @@ class _DeliveryChatView extends StatelessWidget {
     return Column(
       children: [
         _buildOrderContextBar(context, state, lang),
+        if (state.isUploadingAttachment)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            color: DeliveryAppColors.primary.withValues(alpha: 0.1),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: DeliveryAppColors.primary),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  DeliveryChatStrings.of('uploadingPhoto', lang),
+                  style: const TextStyle(color: DeliveryAppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
         Expanded(
           child: state.messages.isEmpty
-              ? _buildEmptyChat(context, lang)
+              ? _buildEmptyChat(context, lang, state.isSellerChat)
               : _buildMessageList(context, state, lang),
         ),
         _buildQuickReplies(context, state, lang),
@@ -349,12 +478,12 @@ class _DeliveryChatView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: DeliveryAppColors.primary.withOpacity(0.1),
+              color: (state.isSellerChat ? Colors.orange : DeliveryAppColors.primary).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
-              Icons.receipt_long,
-              color: DeliveryAppColors.primary,
+            child: Icon(
+              state.isSellerChat ? Icons.store_mall_directory_rounded : Icons.receipt_long_rounded,
+              color: state.isSellerChat ? Colors.orange.shade800 : DeliveryAppColors.primary,
               size: 20,
             ),
           ),
@@ -365,7 +494,8 @@ class _DeliveryChatView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  state.orderTitle ?? '${DeliveryChatStrings.of('orderSummary', lang)} #${state.orderId.substring(0, state.orderId.length < 8 ? state.orderId.length : 8)}',
+                  state.orderTitle ??
+                      '${DeliveryChatStrings.of('orderSummary', lang)} #${state.orderId.length > 8 ? state.orderId.substring(0, 8) : state.orderId}',
                   style: const TextStyle(
                     color: DeliveryAppColors.textPrimary,
                     fontSize: 13,
@@ -375,9 +505,9 @@ class _DeliveryChatView extends StatelessWidget {
                 ),
                 if (state.orderTotal != null)
                   Text(
-                    '\u20B9${state.orderTotal!.toStringAsFixed(0)}',
+                    '₹${state.orderTotal!.toStringAsFixed(2)}',
                     style: TextStyle(
-                      color: DeliveryAppColors.primary,
+                      color: state.isSellerChat ? Colors.orange.shade800 : DeliveryAppColors.primary,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -385,12 +515,28 @@ class _DeliveryChatView extends StatelessWidget {
               ],
             ),
           ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: DeliveryAppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: DeliveryAppColors.border),
+            ),
+            child: Text(
+              state.isSellerChat ? 'Merchant' : 'Customer',
+              style: const TextStyle(
+                color: DeliveryAppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyChat(BuildContext context, String lang) {
+  Widget _buildEmptyChat(BuildContext context, String lang, bool isSeller) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -401,11 +547,11 @@ class _DeliveryChatView extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: DeliveryAppColors.primary.withOpacity(0.1),
+                color: (isSeller ? Colors.orange : DeliveryAppColors.primary).withValues(alpha: 0.1),
               ),
-              child: const Icon(
-                Icons.chat_bubble_outline,
-                color: DeliveryAppColors.primary,
+              child: Icon(
+                isSeller ? Icons.restaurant_menu_rounded : Icons.chat_bubble_outline_rounded,
+                color: isSeller ? Colors.orange.shade800 : DeliveryAppColors.primary,
                 size: 48,
               ),
             ),
@@ -430,6 +576,7 @@ class _DeliveryChatView extends StatelessWidget {
     String lang,
   ) {
     return ListView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: state.messages.length,
       itemBuilder: (context, index) {
@@ -438,6 +585,7 @@ class _DeliveryChatView extends StatelessWidget {
         return _DeliveryChatBubble(
           message: message,
           isMine: isMine,
+          lang: lang,
         );
       },
     );
@@ -448,18 +596,19 @@ class _DeliveryChatView extends StatelessWidget {
     DeliveryChatLoaded state,
     String lang,
   ) {
+    final replies = state.isSellerChat ? _sellerQuickReplies : _customerQuickReplies;
+
     return Container(
       height: 44,
-      margin: const EdgeInsets.only(top: 4),
+      margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _quickReplies.length,
+        itemCount: replies.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final reply = _quickReplies[index];
+          final reply = replies[index];
           final label = DeliveryChatStrings.of(reply.key, lang);
-          final displayLabel = label.length > 30 ? '${label.substring(0, 28)}...' : label;
           return GestureDetector(
             onTap: () {
               context.read<DeliveryChatBloc>().add(
@@ -475,11 +624,11 @@ class _DeliveryChatView extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                displayLabel,
+                label,
                 style: TextStyle(
-                  color: DeliveryAppColors.primary,
+                  color: state.isSellerChat ? Colors.orange.shade900 : DeliveryAppColors.primary,
                   fontSize: 12,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -548,7 +697,6 @@ class _DeliveryChatView extends StatelessWidget {
     DeliveryChatLoaded state,
     String lang,
   ) {
-    final controller = TextEditingController();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -562,15 +710,12 @@ class _DeliveryChatView extends StatelessWidget {
           children: [
             IconButton(
               icon: const Icon(
-                Icons.attach_file,
-                color: DeliveryAppColors.textMuted,
-                size: 22,
+                Icons.add_photo_alternate_rounded,
+                color: DeliveryAppColors.primary,
+                size: 24,
               ),
-              onPressed: () {
-                context
-                    .read<DeliveryChatBloc>()
-                    .add(const PickDeliveryAttachmentEvent());
-              },
+              tooltip: DeliveryChatStrings.of('photoAttachment', lang),
+              onPressed: () => _showMediaPickerSheet(context, lang),
             ),
             Expanded(
               child: Container(
@@ -581,15 +726,23 @@ class _DeliveryChatView extends StatelessWidget {
                   border: Border.all(color: DeliveryAppColors.border),
                 ),
                 child: TextField(
-                  controller: controller,
+                  controller: _textController,
                   maxLines: null,
                   textInputAction: TextInputAction.send,
+                  onChanged: (val) {
+                    context.read<DeliveryChatBloc>().add(
+                          SetDeliveryTypingStatusEvent(val.trim().isNotEmpty),
+                        );
+                  },
                   onSubmitted: (text) {
                     if (text.trim().isNotEmpty) {
                       context.read<DeliveryChatBloc>().add(
                             SendDeliveryMessageEvent(text.trim()),
                           );
-                      controller.clear();
+                      _textController.clear();
+                      context.read<DeliveryChatBloc>().add(
+                            const SetDeliveryTypingStatusEvent(false),
+                          );
                     }
                   },
                   style: const TextStyle(
@@ -598,7 +751,7 @@ class _DeliveryChatView extends StatelessWidget {
                   ),
                   decoration: InputDecoration(
                     hintText: DeliveryChatStrings.of('typeMessage', lang),
-                    hintStyle: TextStyle(
+                    hintStyle: const TextStyle(
                       color: DeliveryAppColors.textDisabled,
                       fontSize: 14,
                     ),
@@ -611,13 +764,13 @@ class _DeliveryChatView extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: state.isSendingMessage
                     ? DeliveryAppColors.textDisabled
-                    : DeliveryAppColors.primary,
+                    : (state.isSellerChat ? Colors.orange.shade700 : DeliveryAppColors.primary),
               ),
               child: IconButton(
                 icon: state.isSendingMessage
@@ -626,23 +779,26 @@ class _DeliveryChatView extends StatelessWidget {
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: DeliveryAppColors.textPrimary,
+                          color: Colors.white,
                         ),
                       )
                     : const Icon(
                         Icons.send_rounded,
-                        color: DeliveryAppColors.buttonPrimaryText,
+                        color: Colors.white,
                         size: 20,
                       ),
                 onPressed: state.isSendingMessage
                     ? null
                     : () {
-                        final text = controller.text.trim();
+                        final text = _textController.text.trim();
                         if (text.isNotEmpty) {
                           context.read<DeliveryChatBloc>().add(
                                 SendDeliveryMessageEvent(text),
                               );
-                          controller.clear();
+                          _textController.clear();
+                          context.read<DeliveryChatBloc>().add(
+                                const SetDeliveryTypingStatusEvent(false),
+                              );
                         }
                       },
               ),
@@ -652,15 +808,75 @@ class _DeliveryChatView extends StatelessWidget {
       ),
     );
   }
+
+  void _showMediaPickerSheet(BuildContext context, String lang) {
+    final bloc = context.read<DeliveryChatBloc>();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: DeliveryAppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: DeliveryAppColors.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: DeliveryAppColors.primary),
+                ),
+                title: Text(
+                  DeliveryChatStrings.of('takePhoto', lang),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  bloc.add(const PickDeliveryAttachmentEvent(fromCamera: true));
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: Colors.purple),
+                ),
+                title: Text(
+                  DeliveryChatStrings.of('chooseGallery', lang),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  bloc.add(const PickDeliveryAttachmentEvent(fromCamera: false));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _DeliveryChatBubble extends StatelessWidget {
   final ChatMessageModel message;
   final bool isMine;
+  final String lang;
 
   const _DeliveryChatBubble({
     required this.message,
     required this.isMine,
+    required this.lang,
   });
 
   @override
@@ -668,6 +884,9 @@ class _DeliveryChatBubble extends StatelessWidget {
     if (message.isDeletedForEveryone) {
       return _buildDeletedBubble();
     }
+
+    final isImage = message.messageType == 'image' && message.mediaUrl != null && message.mediaUrl!.isNotEmpty;
+    final isAudio = message.messageType == 'audio' && message.mediaUrl != null && message.mediaUrl!.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -678,10 +897,10 @@ class _DeliveryChatBubble extends StatelessWidget {
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.75,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: EdgeInsets.all(isImage ? 6 : 12),
             decoration: BoxDecoration(
               color: isMine
-                  ? DeliveryAppColors.primary.withOpacity(0.15)
+                  ? DeliveryAppColors.primary.withValues(alpha: 0.15)
                   : DeliveryAppColors.surfaceLight,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
@@ -691,35 +910,152 @@ class _DeliveryChatBubble extends StatelessWidget {
               ),
               border: Border.all(
                 color: isMine
-                    ? DeliveryAppColors.primary.withOpacity(0.3)
+                    ? DeliveryAppColors.primary.withValues(alpha: 0.3)
                     : DeliveryAppColors.border,
+
               ),
             ),
-            child: Text(
-              message.text,
-              style: TextStyle(
-                color: isMine
-                    ? DeliveryAppColors.primary
-                    : DeliveryAppColors.textPrimary,
-                fontSize: 14,
-              ),
-            ),
+            child: isImage
+                ? _buildImageAttachment(context)
+                : isAudio
+                    ? _buildAudioAttachment()
+                    : Text(
+                        message.text,
+                        style: const TextStyle(
+                          color: DeliveryAppColors.textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
           ),
           Padding(
             padding: EdgeInsets.only(
               top: 2,
-              left: isMine ? 0 : 12,
-              right: isMine ? 12 : 0,
+              left: isMine ? 0 : 8,
+              right: isMine ? 8 : 0,
             ),
-            child: Text(
-              _formatTime(message.timestamp),
-              style: const TextStyle(
-                color: DeliveryAppColors.textDisabled,
-                fontSize: 10,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatTime(message.timestamp),
+                  style: const TextStyle(
+                    color: DeliveryAppColors.textDisabled,
+                    fontSize: 10,
+                  ),
+                ),
+                if (isMine) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    message.isRead ? Icons.done_all_rounded : Icons.done_rounded,
+                    size: 14,
+                    color: message.isRead ? Colors.blue : DeliveryAppColors.textDisabled,
+                  ),
+                ],
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildImageAttachment(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _viewFullScreenImage(context, message.mediaUrl!),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            Image.network(
+              message.mediaUrl!,
+              fit: BoxFit.cover,
+              width: 220,
+              height: 220,
+              errorBuilder: (_, __, ___) => Container(
+                width: 220,
+                height: 140,
+                color: DeliveryAppColors.surface,
+                child: const Center(
+                  child: Icon(Icons.broken_image_rounded, color: DeliveryAppColors.textDisabled, size: 36),
+                ),
+              ),
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return Container(
+                  width: 220,
+                  height: 180,
+                  color: DeliveryAppColors.surface,
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2, color: DeliveryAppColors.primary),
+                  ),
+                );
+              },
+            ),
+            Positioned(
+              right: 6,
+              bottom: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAudioAttachment() {
+    final duration = message.duration ?? 0;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: DeliveryAppColors.primary.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.play_arrow_rounded, color: DeliveryAppColors.primary, size: 20),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          duration > 0 ? '0:${duration.toString().padLeft(2, '0')}' : 'Voice note',
+          style: const TextStyle(color: DeliveryAppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
+  void _viewFullScreenImage(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -732,13 +1068,27 @@ class _DeliveryChatBubble extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: DeliveryAppColors.surfaceLight.withOpacity(0.5),
+            color: DeliveryAppColors.surfaceLight.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Icon(
-            Icons.block,
-            color: DeliveryAppColors.textDisabled,
-            size: 16,
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.block_rounded,
+                color: DeliveryAppColors.textDisabled,
+                size: 14,
+              ),
+              SizedBox(width: 6),
+              Text(
+                'This message was deleted',
+                style: TextStyle(
+                  color: DeliveryAppColors.textDisabled,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -753,7 +1103,8 @@ class _DeliveryChatBubble extends StatelessWidget {
 }
 
 Future<void> _launchPhoneCall(String phoneNumber) async {
-  final uri = Uri.parse('tel:$phoneNumber');
+  final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+  final uri = Uri.parse('tel:$cleanNumber');
   if (await canLaunchUrl(uri)) {
     await launchUrl(uri);
   }

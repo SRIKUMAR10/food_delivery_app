@@ -32,24 +32,47 @@ class DeliveryCompletedBloc
       clearError: true,
     ));
     try {
-      final model = await repository.fetchCompletedOrderDetails(event.orderId);
-
-      if (model.customerName.trim().isEmpty &&
-          model.orderId.trim().isEmpty) {
-        emit(state.copyWith(status: DeliveryCompletedStatus.empty));
-        return;
-      }
-
-      emit(state.copyWith(
-        status: DeliveryCompletedStatus.success,
-        model: model,
-        clearError: true,
-      ));
+      await emit.forEach<DeliveryCompletedModel>(
+        repository.watchCompletedOrder(event.orderId),
+        onData: (model) {
+          if (model.customerName.trim().isEmpty &&
+              model.orderId.trim().isEmpty) {
+            return state.copyWith(status: DeliveryCompletedStatus.empty);
+          }
+          return state.copyWith(
+            status: DeliveryCompletedStatus.success,
+            model: model,
+            clearError: true,
+          );
+        },
+        onError: (e, stack) {
+          return state.copyWith(
+            status: DeliveryCompletedStatus.error,
+            errorMessage: e.toString().replaceAll('Exception: ', ''),
+          );
+        },
+      );
     } catch (e) {
-      emit(state.copyWith(
-        status: DeliveryCompletedStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
-      ));
+      try {
+        final model = await repository.fetchCompletedOrderDetails(event.orderId);
+
+        if (model.customerName.trim().isEmpty &&
+            model.orderId.trim().isEmpty) {
+          emit(state.copyWith(status: DeliveryCompletedStatus.empty));
+          return;
+        }
+
+        emit(state.copyWith(
+          status: DeliveryCompletedStatus.success,
+          model: model,
+          clearError: true,
+        ));
+      } catch (err) {
+        emit(state.copyWith(
+          status: DeliveryCompletedStatus.error,
+          errorMessage: err.toString().replaceAll('Exception: ', ''),
+        ));
+      }
     }
   }
 
@@ -170,3 +193,7 @@ class DeliveryCompletedBloc
     }
   }
 }
+
+/// Standardized Feature-Architecture Alias for DeliveryTrackingBloc
+typedef DeliveryTrackingBloc = DeliveryCompletedBloc;
+

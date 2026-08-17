@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +8,7 @@ import 'Delivery_Incentives Dashboard_page_state.dart';
 
 abstract class DeliveryIncentivesDashboardRepositoryBase {
   Future<DeliveryIncentivesDashboardLoadedState> loadIncentivesData();
+  Stream<DeliveryIncentivesDashboardLoadedState> watchIncentivesData();
   Future<DeliveryIncentivesDashboardLoadedState?> loadCachedIncentives();
   Future<String> exportRewardHistory(
     List<DeliveryIncentivesRewardRecord> records,
@@ -43,6 +45,23 @@ class DeliveryIncentivesDashboardRepository
       final cached = await loadCachedIncentives();
       if (cached != null) return cached;
       rethrow;
+    }
+  }
+
+  @override
+  Stream<DeliveryIncentivesDashboardLoadedState> watchIncentivesData() async* {
+    try {
+      await for (final raw in service.watchIncentivesData()) {
+        unawaited(_saveCache(raw));
+        yield _buildState(raw);
+      }
+    } catch (e) {
+      final cached = await loadCachedIncentives();
+      if (cached != null) {
+        yield cached;
+      } else {
+        rethrow;
+      }
     }
   }
 

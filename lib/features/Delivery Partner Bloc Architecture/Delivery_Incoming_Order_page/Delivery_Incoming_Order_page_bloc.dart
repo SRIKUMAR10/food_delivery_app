@@ -121,3 +121,8 @@ class DeliveryIncomingOrderBloc
     return super.close();
   }
 }
+
+/// Standardized Feature-Architecture Aliases
+typedef AvailableOrdersBloc = DeliveryIncomingOrderBloc;
+typedef DeliveryAssignmentBloc = DeliveryIncomingOrderBloc;
+

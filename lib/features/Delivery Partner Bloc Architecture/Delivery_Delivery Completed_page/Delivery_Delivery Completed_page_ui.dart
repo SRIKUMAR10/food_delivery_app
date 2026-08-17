@@ -6,8 +6,6 @@ import 'Delivery_Delivery Completed_page_repository.dart';
 import 'Delivery_Delivery Completed_page_service.dart';
 import 'Delivery_Delivery Completed_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
-import '../../../core/theme/delivery_app_theme.dart';
-import '../../../core/theme/delivery_app_typography.dart';
 
 class DeliveryCompletedStrings {
   static const Map<String, Map<String, String>> _strings = {

@@ -34,6 +34,18 @@ class ReviewsListScreen extends StatefulWidget {
 class _ReviewsListScreenState extends State<ReviewsListScreen> {
   int? _selectedStar;
 
+  String get _effectiveProductId {
+    if (widget.productId.trim().isNotEmpty) return widget.productId.trim();
+    if (widget.foodItem?.id.trim().isNotEmpty == true) return widget.foodItem!.id.trim();
+    return '';
+  }
+
+  String get _effectiveProductName {
+    if (widget.productName.trim().isNotEmpty) return widget.productName.trim();
+    if (widget.foodItem?.name.trim().isNotEmpty == true) return widget.foodItem!.name.trim();
+    return 'Product';
+  }
+
   IRatingRepository _resolveRatingRepository(BuildContext context) {
     if (widget.ratingRepository != null) return widget.ratingRepository!;
     try {
@@ -57,6 +69,9 @@ class _ReviewsListScreenState extends State<ReviewsListScreen> {
   @override
   Widget build(BuildContext context) {
     final repository = _resolveRatingRepository(context);
+    final prodId = _effectiveProductId;
+    final prodName = _effectiveProductName;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.4,
@@ -100,8 +115,8 @@ class _ReviewsListScreenState extends State<ReviewsListScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => RatingPageUI(
-                              foodId: widget.productId,
-                              foodName: widget.productName,
+                              foodId: prodId,
+                              foodName: prodName,
                             ),
                           ),
                         );
@@ -121,7 +136,7 @@ class _ReviewsListScreenState extends State<ReviewsListScreen> {
               ),
               const Divider(),
               _RatingBreakdownHeader(
-                summaryStream: repository.watchProductRatingSummary(widget.productId),
+                summaryStream: repository.watchProductRatingSummary(prodId),
                 selectedStar: _selectedStar,
                 onStarTap: (star) => setState(
                   () => _selectedStar = (_selectedStar == star) ? null : star,
@@ -129,7 +144,7 @@ class _ReviewsListScreenState extends State<ReviewsListScreen> {
               ),
               Expanded(
                 child: StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: repository.watchProductReviews(widget.productId),
+                  stream: repository.watchProductReviews(prodId),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
@@ -137,11 +152,75 @@ class _ReviewsListScreenState extends State<ReviewsListScreen> {
                       );
                     }
                     if (snapshot.hasError) {
-                      return const Center(child: Text('Error loading reviews.'));
+                      return Center(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.rate_review_outlined,
+                                  size: 40, color: Colors.grey.shade400),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'No reviews yet. Be the first!',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1C1C1C),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  HapticFeedback.lightImpact();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => RatingPageUI(
+                                        foodId: prodId,
+                                        foodName: prodName,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _red,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                ),
+                                icon: const Icon(Icons.rate_review,
+                                    size: 16, color: Colors.white),
+                                label: const Text('Write a Review',
+                                    style: TextStyle(color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     }
                     if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(
-                        child: Text('No reviews yet. Be the first!'),
+                      return Center(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.rate_review_outlined,
+                                  size: 40, color: Colors.grey.shade400),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'No reviews yet. Be the first!',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1C1C1C),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       );
                     }
 

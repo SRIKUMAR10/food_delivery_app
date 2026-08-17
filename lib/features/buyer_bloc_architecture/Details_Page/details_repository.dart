@@ -32,6 +32,7 @@ class DetailsRepository {
   }
 
   Future<void> submitRating(String userId, String foodId, double rating) async {
+    if (foodId.trim().isEmpty || userId.trim().isEmpty) return;
     final batch = _firestore.batch();
 
     final userRatingRef = _firestore
@@ -42,26 +43,29 @@ class DetailsRepository {
     batch.set(userRatingRef, {
       'rating': rating,
       'timestamp': FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
     final reviewRef = _firestore
         .collection('products')
         .doc(foodId)
         .collection('reviews')
-        .doc();
+        .doc(userId);
     batch.set(reviewRef, {
       'userId': userId,
       'rating': rating,
       'createdAt': FieldValue.serverTimestamp(),
-    });
+      'timestamp': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
     await batch.commit();
   }
 
   Stream<double> getAverageProductRatingStream(String foodId) {
+    if (foodId.trim().isEmpty) return Stream.value(0.0);
     return _firestore
         .collection('products')
-        .doc(foodId)
+        .doc(foodId.trim())
         .collection('reviews')
         .snapshots()
         .map((snapshot) {
@@ -72,6 +76,6 @@ class DetailsRepository {
         total += (data['rating'] as num?)?.toDouble() ?? 0.0;
       }
       return total / snapshot.docs.length;
-    });
+    }).handleError((_) => 0.0);
   }
 }

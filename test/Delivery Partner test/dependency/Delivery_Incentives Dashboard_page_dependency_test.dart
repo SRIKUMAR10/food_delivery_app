@@ -127,6 +127,9 @@ void main() {
       SharedPreferences.setMockInitialValues({});
 
       when(
+        () => mockRepository.watchIncentivesData(),
+      ).thenAnswer((_) => Stream.value(buildLoadedState()));
+      when(
         () => mockRepository.loadIncentivesData(),
       ).thenAnswer((_) async => buildLoadedState());
 

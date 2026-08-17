@@ -12,12 +12,13 @@ class DeliveryOrderHistoryPageBloc
   DeliveryOrderHistoryPageBloc({
     DeliveryOrderHistoryRepositoryBase? repository,
     DeliveryOrderHistoryServiceBase? service,
-  }) : repository = repository ?? DeliveryOrderHistoryRepository(),
-       service = service ?? DeliveryOrderHistoryService(),
-       super(const DeliveryOrderHistoryPageState()) {
+  })  : repository = repository ?? DeliveryOrderHistoryRepository(),
+        service = service ?? DeliveryOrderHistoryService(),
+        super(const DeliveryOrderHistoryPageState()) {
     on<DeliveryOrderHistoryInitEvent>(_onInit);
     on<DeliveryOrderHistorySearchChangedEvent>(_onSearchChanged);
     on<DeliveryOrderHistoryStatusFilterChangedEvent>(_onStatusFilterChanged);
+    on<DeliveryOrderHistoryDatePresetChangedEvent>(_onDatePresetChanged);
     on<DeliveryOrderHistoryDateRangeChangedEvent>(_onDateRangeChanged);
     on<DeliveryOrderHistoryPaymentFilterChangedEvent>(_onPaymentFilterChanged);
     on<DeliveryOrderHistoryPageChangedEvent>(_onPageChanged);
@@ -148,11 +149,86 @@ class DeliveryOrderHistoryPageBloc
     emit(_applyPage(next));
   }
 
+  void _onDatePresetChanged(
+    DeliveryOrderHistoryDatePresetChangedEvent event,
+    Emitter<DeliveryOrderHistoryPageState> emit,
+  ) {
+    final now = DateTime.now();
+    int? startEpoch;
+    int? endEpoch;
+    String dateLabel = event.dateLabel;
+
+    switch (event.preset) {
+      case DeliveryOrderHistoryDatePreset.today:
+        final startOfToday = DateTime(now.year, now.month, now.day);
+        final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        startEpoch = startOfToday.millisecondsSinceEpoch ~/ 1000;
+        endEpoch = endOfToday.millisecondsSinceEpoch ~/ 1000;
+        dateLabel = 'Today';
+        break;
+
+      case DeliveryOrderHistoryDatePreset.yesterday:
+        final yesterday = now.subtract(const Duration(days: 1));
+        final startOfYesterday =
+            DateTime(yesterday.year, yesterday.month, yesterday.day);
+        final endOfYesterday =
+            DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59);
+        startEpoch = startOfYesterday.millisecondsSinceEpoch ~/ 1000;
+        endEpoch = endOfYesterday.millisecondsSinceEpoch ~/ 1000;
+        dateLabel = 'Yesterday';
+        break;
+
+      case DeliveryOrderHistoryDatePreset.thisWeek:
+        final currentWeekday = now.weekday; // 1 = Mon, 7 = Sun
+        final startOfWeek = DateTime(
+          now.year,
+          now.month,
+          now.day - (currentWeekday - 1),
+        );
+        final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        startEpoch = startOfWeek.millisecondsSinceEpoch ~/ 1000;
+        endEpoch = endOfToday.millisecondsSinceEpoch ~/ 1000;
+        dateLabel = 'This Week';
+        break;
+
+      case DeliveryOrderHistoryDatePreset.thisMonth:
+        final startOfMonth = DateTime(now.year, now.month, 1);
+        final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        startEpoch = startOfMonth.millisecondsSinceEpoch ~/ 1000;
+        endEpoch = endOfToday.millisecondsSinceEpoch ~/ 1000;
+        dateLabel = 'This Month';
+        break;
+
+      case DeliveryOrderHistoryDatePreset.custom:
+        startEpoch = event.startEpoch;
+        endEpoch = event.endEpoch;
+        dateLabel = event.dateLabel;
+        break;
+
+      case DeliveryOrderHistoryDatePreset.all:
+        startEpoch = null;
+        endEpoch = null;
+        dateLabel = '';
+        break;
+    }
+
+    final next = state.copyWith(
+      datePreset: event.preset,
+      startEpoch: startEpoch,
+      endEpoch: endEpoch,
+      clearDateRange: event.preset == DeliveryOrderHistoryDatePreset.all,
+      dateLabel: dateLabel,
+      page: 1,
+    );
+    emit(_applyPage(next));
+  }
+
   void _onDateRangeChanged(
     DeliveryOrderHistoryDateRangeChangedEvent event,
     Emitter<DeliveryOrderHistoryPageState> emit,
   ) {
     final next = state.copyWith(
+      datePreset: DeliveryOrderHistoryDatePreset.custom,
       startEpoch: event.startEpoch,
       endEpoch: event.endEpoch,
       dateLabel: event.dateLabel,
@@ -177,7 +253,8 @@ class DeliveryOrderHistoryPageBloc
     Emitter<DeliveryOrderHistoryPageState> emit,
   ) {
     final int totalPages = state.totalPages;
-    final int target = event.page < 1 ? 1 : (event.page > totalPages ? totalPages : event.page);
+    final int target =
+        event.page < 1 ? 1 : (event.page > totalPages ? totalPages : event.page);
     final next = state.copyWith(page: target);
     emit(_applyPage(next));
   }
@@ -215,7 +292,9 @@ class DeliveryOrderHistoryPageBloc
       }
       final base = state.copyWith(orders: orders, stats: stats);
       emit(
-        _applyPage(base).copyWith(status: DeliveryOrderHistoryPageStatus.loaded),
+        _applyPage(base).copyWith(
+          status: DeliveryOrderHistoryPageStatus.loaded,
+        ),
       );
     } catch (e) {
       emit(
@@ -234,3 +313,7 @@ class DeliveryOrderHistoryPageBloc
     emit(state.copyWith(sidebarOpen: !state.sidebarOpen));
   }
 }
+
+/// Standardized Feature-Architecture Alias for DeliveryHistoryBloc
+typedef DeliveryHistoryBloc = DeliveryOrderHistoryPageBloc;
+

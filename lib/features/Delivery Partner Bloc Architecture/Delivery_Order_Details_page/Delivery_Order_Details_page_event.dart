@@ -105,3 +105,21 @@ class CollectCodCashEvent extends DeliveryOrderDetailsPageEvent {
   @override
   List<Object?> get props => [orderId, amountReceived];
 }
+
+class CancelOrderWithReasonEvent extends DeliveryOrderDetailsPageEvent {
+  final String orderId;
+  final String reason;
+  final String? notes;
+  final bool isFailedDelivery;
+
+  const CancelOrderWithReasonEvent({
+    required this.orderId,
+    required this.reason,
+    this.notes,
+    this.isFailedDelivery = false,
+  });
+
+  @override
+  List<Object?> get props => [orderId, reason, notes, isFailedDelivery];
+}
+

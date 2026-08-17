@@ -20,6 +20,11 @@ abstract class DeliveryWalletPageRepositoryBase {
   Future<DeliveryWalletPageState> addPaymentMethod(
     DeliveryPaymentMethod method,
   );
+  Future<DeliveryWalletPageState> submitCash({
+    required double amount,
+    required String method,
+  });
+  Future<List<DeliveryCashReconciliationRecord>> fetchReconciliationHistory();
   Future<void> clearCache();
 }
 
@@ -159,6 +164,53 @@ class DeliveryWalletPageRepository implements DeliveryWalletPageRepositoryBase {
   }
 
   @override
+  Future<List<DeliveryCashReconciliationRecord>>
+      fetchReconciliationHistory() async {
+    final rawList = await _service.fetchReconciliationHistory();
+    return rawList
+        .map(
+          (e) => DeliveryCashReconciliationRecord(
+            id: e['id'] ?? '',
+            method: e['method'] ?? '',
+            amount: (e['amount'] as num?)?.toDouble() ?? 0.0,
+            status: e['status'] ?? 'submitted',
+            date: DateTime.tryParse(e['date'] ?? '') ?? DateTime.now(),
+            description: e['description'] ?? '',
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<DeliveryWalletPageState> submitCash({
+    required double amount,
+    required String method,
+  }) async {
+    final result = await _service.submitCash(amount: amount, method: method);
+    if (result['success'] != true) {
+      throw Exception(result['error'] ?? 'Cash submission failed');
+    }
+
+    final raw = Map<String, dynamic>.from(_lastRaw ?? const {});
+    if (result['cashInHand'] != null) raw['cashInHand'] = result['cashInHand'];
+    if (result['cashSubmitted'] != null) {
+      raw['cashSubmitted'] = result['cashSubmitted'];
+    }
+    if (result['reconciliationStatus'] != null) {
+      raw['reconciliationStatus'] = result['reconciliationStatus'];
+    }
+
+    final history = await fetchReconciliationHistory();
+    final updatedState = _buildState(raw).copyWith(
+      reconciliationHistory: history,
+    );
+
+    _lastRaw = raw;
+    await _saveCache(raw);
+    return updatedState;
+  }
+
+  @override
   Future<DeliveryWalletPageState> addPaymentMethod(
     DeliveryPaymentMethod method,
   ) async {
@@ -256,6 +308,19 @@ class DeliveryWalletPageRepository implements DeliveryWalletPageRepositoryBase {
       );
     }).toList();
 
+    final reconciliationHistory =
+        (raw['reconciliationHistory'] as List? ?? []).map((e) {
+      final map = e as Map<String, dynamic>;
+      return DeliveryCashReconciliationRecord(
+        id: map['id'] ?? '',
+        method: map['method'] ?? '',
+        amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+        status: map['status'] ?? 'submitted',
+        date: DateTime.tryParse(map['date'] ?? '') ?? DateTime.now(),
+        description: map['description'] ?? '',
+      );
+    }).toList();
+
     return DeliveryWalletPageState(
       status: DeliveryWalletStatus.loaded,
       walletBalance: (raw['walletBalance'] as num?)?.toDouble() ?? 0.0,
@@ -270,6 +335,11 @@ class DeliveryWalletPageRepository implements DeliveryWalletPageRepositoryBase {
       totalWithdrawn: (raw['totalWithdrawn'] as num?)?.toDouble() ?? 0.0,
       bonusEarnings: (raw['bonusEarnings'] as num?)?.toDouble() ?? 0.0,
       incentiveEarnings: (raw['incentiveEarnings'] as num?)?.toDouble() ?? 0.0,
+      cashCollected: (raw['cashCollected'] as num?)?.toDouble() ?? 0.0,
+      cashInHand: (raw['cashInHand'] as num?)?.toDouble() ?? 0.0,
+      cashSubmitted: (raw['cashSubmitted'] as num?)?.toDouble() ?? 0.0,
+      reconciliationStatus: raw['reconciliationStatus'] ?? 'balanced',
+      reconciliationHistory: reconciliationHistory,
       transactions: transactions,
       paymentMethods: paymentMethods,
       bankAccount: bankAccount,

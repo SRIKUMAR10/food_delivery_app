@@ -141,6 +141,34 @@ class DeliveryWalletBreakdownSlice extends Equatable {
   List<Object?> get props => [label, value, colorHex];
 }
 
+class DeliveryCashReconciliationRecord extends Equatable {
+  final String id;
+  final String method;
+  final double amount;
+  final String status;
+  final DateTime date;
+  final String description;
+
+  const DeliveryCashReconciliationRecord({
+    required this.id,
+    required this.method,
+    required this.amount,
+    required this.status,
+    required this.date,
+    this.description = '',
+  });
+
+  @override
+  List<Object?> get props => [
+        id,
+        method,
+        amount,
+        status,
+        date,
+        description,
+      ];
+}
+
 class DeliveryWalletPageState extends Equatable {
   final DeliveryWalletStatus status;
   final double walletBalance; // Current Balance
@@ -152,6 +180,11 @@ class DeliveryWalletPageState extends Equatable {
   final double totalWithdrawn;
   final double bonusEarnings;
   final double incentiveEarnings;
+  final double cashCollected;
+  final double cashInHand;
+  final double cashSubmitted;
+  final String reconciliationStatus;
+  final List<DeliveryCashReconciliationRecord> reconciliationHistory;
   final DeliveryWalletTransactionFilter activeFilter;
   final DeliveryWalletPeriod selectedPeriod;
   final List<DeliveryWalletTransaction> transactions;
@@ -162,6 +195,7 @@ class DeliveryWalletPageState extends Equatable {
   periodEarnings;
   final List<DeliveryWalletBreakdownSlice> earningsBreakdown;
   final bool isWithdrawing;
+  final bool isSubmittingCash;
   final bool isFromCache;
   final String? errorMessage;
   final String localeCode;
@@ -177,6 +211,11 @@ class DeliveryWalletPageState extends Equatable {
     this.totalWithdrawn = 0.0,
     this.bonusEarnings = 0.0,
     this.incentiveEarnings = 0.0,
+    this.cashCollected = 0.0,
+    this.cashInHand = 0.0,
+    this.cashSubmitted = 0.0,
+    this.reconciliationStatus = 'balanced',
+    this.reconciliationHistory = const [],
     this.activeFilter = DeliveryWalletTransactionFilter.all,
     this.selectedPeriod = DeliveryWalletPeriod.thisMonth,
     this.transactions = const [],
@@ -186,6 +225,7 @@ class DeliveryWalletPageState extends Equatable {
     this.periodEarnings = const {},
     this.earningsBreakdown = const [],
     this.isWithdrawing = false,
+    this.isSubmittingCash = false,
     this.isFromCache = false,
     this.errorMessage,
     this.localeCode = 'en',
@@ -234,6 +274,12 @@ class DeliveryWalletPageState extends Equatable {
     double? totalWithdrawn,
     double? bonusEarnings,
     double? incentiveEarnings,
+    double? cashCollected,
+    double? cashInHand,
+    double? cashSubmitted,
+    String? reconciliationStatus,
+    List<DeliveryCashReconciliationRecord>? reconciliationHistory,
+    bool? isSubmittingCash,
     DeliveryWalletTransactionFilter? activeFilter,
     DeliveryWalletPeriod? selectedPeriod,
     List<DeliveryWalletTransaction>? transactions,
@@ -260,6 +306,13 @@ class DeliveryWalletPageState extends Equatable {
       totalWithdrawn: totalWithdrawn ?? this.totalWithdrawn,
       bonusEarnings: bonusEarnings ?? this.bonusEarnings,
       incentiveEarnings: incentiveEarnings ?? this.incentiveEarnings,
+      cashCollected: cashCollected ?? this.cashCollected,
+      cashInHand: cashInHand ?? this.cashInHand,
+      cashSubmitted: cashSubmitted ?? this.cashSubmitted,
+      reconciliationStatus: reconciliationStatus ?? this.reconciliationStatus,
+      reconciliationHistory:
+          reconciliationHistory ?? this.reconciliationHistory,
+      isSubmittingCash: isSubmittingCash ?? this.isSubmittingCash,
       activeFilter: activeFilter ?? this.activeFilter,
       selectedPeriod: selectedPeriod ?? this.selectedPeriod,
       transactions: transactions ?? this.transactions,
@@ -287,6 +340,11 @@ class DeliveryWalletPageState extends Equatable {
     totalWithdrawn,
     bonusEarnings,
     incentiveEarnings,
+    cashCollected,
+    cashInHand,
+    cashSubmitted,
+    reconciliationStatus,
+    reconciliationHistory,
     activeFilter,
     selectedPeriod,
     transactions,
@@ -296,6 +354,7 @@ class DeliveryWalletPageState extends Equatable {
     periodEarnings,
     earningsBreakdown,
     isWithdrawing,
+    isSubmittingCash,
     isFromCache,
     errorMessage,
     localeCode,

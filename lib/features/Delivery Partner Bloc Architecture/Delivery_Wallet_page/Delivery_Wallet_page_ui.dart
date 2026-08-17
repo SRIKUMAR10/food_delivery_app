@@ -88,6 +88,27 @@ class DeliveryWalletStrings {
       'partnerProfile': 'Partner Profile',
       'retry': 'Retry',
       'somethingWentWrong': 'Something went wrong while loading your wallet.',
+      'cashReconciliation': 'Cash Reconciliation',
+      'cashCollected': 'Cash Collected',
+      'cashInHand': 'Cash in Hand',
+      'cashSubmitted': 'Cash Submitted',
+      'statusBalanced': 'Balanced',
+      'statusPendingSubmission': 'Pending Submission',
+      'statusOverdue': 'Overdue',
+      'statusSubmitted': 'Submitted',
+      'submitCash': 'Submit Cash',
+      'depositCash': 'Deposit / Submit Cash',
+      'depositMethod': 'Deposit Method',
+      'hubDeposit': 'Hub Deposit',
+      'bankDeposit': 'Bank Deposit',
+      'upiTransfer': 'UPI Transfer',
+      'submitCashDialogTitle': 'Deposit Cash',
+      'submitCashDialogSub':
+          'Deposit collected COD cash. Your reconciliation status updates in real time.',
+      'remainingCashInHand': 'Cash in hand after submission',
+      'exceedsCashInHand': 'Amount exceeds cash in hand.',
+      'reconciliationHistory': 'Reconciliation History',
+      'noReconciliationRecords': 'No reconciliation records yet.',
     },
     'ta': {
       'walletTitle': 'என் வாலட்',
@@ -164,6 +185,27 @@ class DeliveryWalletStrings {
       'partnerProfile': 'பார்ட்னர் சுயவிவரம்',
       'retry': 'மீண்டும் முயற்சிக்கவும்',
       'somethingWentWrong': 'வாலட்டை ஏற்றுவதில் பிழை ஏற்பட்டது.',
+      'cashReconciliation': 'பணம் சரிபார்ப்பு',
+      'cashCollected': 'சேகரிக்கப்பட்ட பணம்',
+      'cashInHand': 'கையிருப்பு பணம்',
+      'cashSubmitted': 'சமர்ப்பிக்கப்பட்ட பணம்',
+      'statusBalanced': 'சமநிலை',
+      'statusPendingSubmission': 'சமர்ப்பிக்க நிலுவை',
+      'statusOverdue': 'காலாவதியானது',
+      'statusSubmitted': 'சமர்ப்பிக்கப்பட்டது',
+      'submitCash': 'பணத்தை சமர்ப்பிக்க',
+      'depositCash': 'டெபாசிட் / பணத்தை சமர்ப்பிக்க',
+      'depositMethod': 'டெபாசிட் முறை',
+      'hubDeposit': 'ஹப் டெபாசிட்',
+      'bankDeposit': 'வங்கி டெபாசிட்',
+      'upiTransfer': 'யுபிஐ பரிமாற்றம்',
+      'submitCashDialogTitle': 'பணத்தை டெபாசிட் செய்ய',
+      'submitCashDialogSub':
+          'சேகரித்த COD பணத்தை டெபாசிட் செய்யுங்கள். உங்கள் சரிபார்ப்பு நிலை நேரடியாக புதுப்பிக்கப்படும்.',
+      'remainingCashInHand': 'சமர்ப்பித்த பிறகு கையிருப்பு பணம்',
+      'exceedsCashInHand': 'தொகை கையிருப்பு பணத்தை தாண்டியுள்ளது.',
+      'reconciliationHistory': 'சரிபார்ப்பு வரலாறு',
+      'noReconciliationRecords': 'இதுவரை சரிபார்ப்பு பதிவுகள் இல்லை.',
     },
   };
 
@@ -318,6 +360,8 @@ class _WalletContent extends StatelessWidget {
           const SizedBox(height: 20),
           _WalletQuickActionsCard(state: state),
         ],
+        const SizedBox(height: 20),
+        _WalletCashReconciliationSection(state: state),
         const SizedBox(height: 20),
         if (isDesktop)
           Row(
@@ -1209,6 +1253,469 @@ class _WalletQuickActionsCard extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WalletCashReconciliationSection extends StatelessWidget {
+  final DeliveryWalletPageState state;
+
+  const _WalletCashReconciliationSection({required this.state});
+
+  String _statusLabel(String status, String lang) {
+    return switch (status) {
+      'balanced' =>
+        DeliveryWalletStrings.of('statusBalanced', lang),
+      'pending_submission' =>
+        DeliveryWalletStrings.of('statusPendingSubmission', lang),
+      'submitted' || 'settled' =>
+        DeliveryWalletStrings.of('statusSubmitted', lang),
+      'overdue' => DeliveryWalletStrings.of('statusOverdue', lang),
+      _ => DeliveryWalletStrings.of('statusPending', lang),
+    };
+  }
+
+  Color _statusColor(String status) {
+    return switch (status) {
+      'balanced' || 'settled' => const Color(0xFF10B981),
+      'pending_submission' => const Color(0xFFF59E0B),
+      'overdue' => const Color(0xFFEF4444),
+      _ => const Color(0xFFF59E0B),
+    };
+  }
+
+  Future<void> _openSubmitDialog(BuildContext context, String lang) async {
+    final controller = TextEditingController();
+    var selectedMethod =
+        DeliveryWalletStrings.of('hubDeposit', lang);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final parsed = double.tryParse(controller.text);
+            final valid = parsed != null &&
+                parsed > 0 &&
+                parsed <= state.cashInHand;
+            final remaining = parsed == null
+                ? state.cashInHand
+                : (state.cashInHand - parsed).clamp(0, double.infinity);
+
+            return AlertDialog(
+              backgroundColor: DeliveryAppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                DeliveryWalletStrings.of('submitCashDialogTitle', lang),
+                style: const TextStyle(color: Colors.white),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      DeliveryWalletStrings.of('submitCashDialogSub', lang),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: controller,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: DeliveryWalletStrings.of('amount', lang),
+                        prefixText: '\u{20B9} ',
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: DeliveryAppColors.primary,
+                          ),
+                        ),
+                      ),
+                      onChanged: (_) => setDialogState(() {}),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      DeliveryWalletStrings.of('depositMethod', lang),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      key: ValueKey('wallet_submit_method_$selectedMethod'),
+                      initialValue: selectedMethod,
+                      dropdownColor: DeliveryAppColors.surface,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
+                        ),
+                      ),
+                      items: [
+                        DeliveryWalletStrings.of('hubDeposit', lang),
+                        DeliveryWalletStrings.of('bankDeposit', lang),
+                        DeliveryWalletStrings.of('upiTransfer', lang),
+                      ].map((method) {
+                        return DropdownMenuItem<String>(
+                          value: method,
+                          child: Text(method),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setDialogState(
+                          () => selectedMethod = value ?? selectedMethod,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: valid
+                            ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                            : const Color(0xFFEF4444).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        valid
+                            ? '${DeliveryWalletStrings.of('remainingCashInHand', lang)}: '
+                                '\u{20B9}${remaining.toStringAsFixed(2)}'
+                            : parsed != null && parsed > state.cashInHand
+                                ? DeliveryWalletStrings.of(
+                                    'exceedsCashInHand', lang)
+                                : DeliveryWalletStrings.of(
+                                    'enterValidAmount', lang),
+                        style: TextStyle(
+                          color: valid
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFFEF4444),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    DeliveryWalletStrings.of('cancel', lang),
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: controller,
+                  builder: (context, value, _) {
+                    final amount = double.tryParse(value.text);
+                    final canSubmit = amount != null &&
+                        amount > 0 &&
+                        amount <= state.cashInHand;
+                    return FilledButton(
+                      onPressed: canSubmit
+                          ? () {
+                              Navigator.of(dialogContext).pop();
+                              context.read<DeliveryWalletPageBloc>().add(
+                                    DeliveryWalletSubmitCashEvent(
+                                      amount: amount,
+                                      method: selectedMethod,
+                                    ),
+                                  );
+                            }
+                          : null,
+                      child: const Text('Confirm'),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final local = date.toLocal();
+    final hh = local.hour.toString().padLeft(2, '0');
+    final mm = local.minute.toString().padLeft(2, '0');
+    return '${local.day}/${local.month}/${local.year} \u00B7 $hh:$mm';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = state.localeCode;
+    final status = state.reconciliationStatus;
+    final statusColor = _statusColor(status);
+
+    final metrics = Row(
+      children: [
+        _WalletCashMetric(
+          label: DeliveryWalletStrings.of('cashCollected', lang),
+          value: '\u{20B9}${state.cashCollected.toStringAsFixed(2)}',
+          color: DeliveryAppColors.primary,
+        ),
+        _WalletCashMetric(
+          label: DeliveryWalletStrings.of('cashInHand', lang),
+          value: '\u{20B9}${state.cashInHand.toStringAsFixed(2)}',
+          color: const Color(0xFFF59E0B),
+        ),
+        _WalletCashMetric(
+          label: DeliveryWalletStrings.of('cashSubmitted', lang),
+          value: '\u{20B9}${state.cashSubmitted.toStringAsFixed(2)}',
+          color: const Color(0xFF10B981),
+        ),
+      ],
+    );
+
+    return Container(
+      key: const Key('dp_wallet_cash_reconciliation'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: state.cashInHand > 0
+            ? const Color(0xFFF59E0B).withValues(alpha: 0.08)
+            : DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.account_balance_wallet_outlined,
+                  color: statusColor, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  DeliveryWalletStrings.of('cashReconciliation', lang),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _statusLabel(status, lang),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 700;
+              final button = FilledButton.icon(
+                onPressed:
+                    state.cashInHand <= 0 ? null : () => _openSubmitDialog(
+                          context,
+                          lang,
+                        ),
+                icon: state.isSubmittingCash
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.payments_outlined, size: 18),
+                label: Text(
+                  DeliveryWalletStrings.of('submitCash', lang),
+                ),
+              );
+              if (isWide) {
+                return Row(
+                  children: [
+                    Expanded(child: metrics),
+                    const SizedBox(width: 24),
+                    button,
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  metrics,
+                  const SizedBox(height: 16),
+                  Align(alignment: Alignment.centerLeft, child: button),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          Text(
+            DeliveryWalletStrings.of('reconciliationHistory', lang),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (state.reconciliationHistory.isEmpty)
+            _WalletEmptyHint(
+              text: DeliveryWalletStrings.of('noReconciliationRecords', lang),
+            )
+          else
+            ...state.reconciliationHistory.map(
+              (record) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: DeliveryAppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.currency_rupee,
+                      size: 18,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            record.method,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _formatDate(record.date),
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '\u{20B9}${record.amount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        DeliveryWalletStrings.of('statusSubmitted', lang),
+                        style: const TextStyle(
+                          color: Color(0xFF10B981),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WalletCashMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _WalletCashMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ],
       ),
     );

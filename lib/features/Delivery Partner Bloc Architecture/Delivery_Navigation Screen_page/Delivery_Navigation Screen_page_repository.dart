@@ -10,6 +10,10 @@ abstract class DeliveryNavigationRepositoryBase {
   Stream<Map<String, dynamic>?> watchActiveOrder();
   Future<Map<String, dynamic>?> fetchPartnerProfile();
   Stream<Map<String, dynamic>?> watchPartnerProfile();
+  Future<Map<String, dynamic>> collectCodCash({
+    required String orderId,
+    required double amountReceived,
+  });
   Future<bool> getAudioEnabled();
   Future<void> saveAudioEnabled(bool enabled);
   Future<bool> getEmergencyMode();
@@ -121,6 +125,21 @@ class DeliveryNavigationRepository implements DeliveryNavigationRepositoryBase {
       customerName: data['customerName'] as String? ?? '',
       customerPhone: data['customerPhone'] as String? ?? '',
       status: data['status'] as String? ?? 'Idle',
+      paymentMethod: data['paymentMethod'] as String? ?? '',
+      codAmount: (data['codAmount'] as num?)?.toDouble() ?? 0.0,
+      isCodCollected: data['isCodCollected'] == true,
+      collectedAmount: (data['collectedAmount'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> collectCodCash({
+    required String orderId,
+    required double amountReceived,
+  }) async {
+    return await _service.collectCodCash(
+      orderId,
+      amountReceived: amountReceived,
     );
   }
 

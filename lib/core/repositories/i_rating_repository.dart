@@ -40,4 +40,31 @@ abstract interface class IRatingRepository {
     String? details,
     required String reporterId,
   });
+
+  /// Submit customer rating and review for a delivery partner linked to an order.
+  Future<void> submitPartnerRating({
+    required String customerId,
+    required String customerName,
+    String? customerAvatarUrl,
+    required String partnerId,
+    String? partnerName,
+    required String orderId,
+    required double rating,
+    required String reviewText,
+    List<String>? tags,
+  });
+
+  /// Stream a customer's specific rating for a delivery partner on an order.
+  Stream<double?> getPartnerRatingStream({
+    required String customerId,
+    required String partnerId,
+    required String orderId,
+  });
+
+  /// Real-time stream of delivery partner reviews.
+  Stream<List<Map<String, dynamic>>> watchPartnerReviews(String partnerId);
+
+  /// Real-time 5★-to-1★ breakdown + aggregate rating for a delivery partner.
+  Stream<Map<String, dynamic>> watchPartnerRatingSummary(String partnerId);
 }
+

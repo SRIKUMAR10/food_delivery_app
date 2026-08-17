@@ -340,5 +340,128 @@ void main() {
         defaultLoaded,
       ],
     );
+
+    blocTest<DeliverySettingsBloc, DeliverySettingsState>(
+      'toggles biometric lock successfully',
+      build: () => DeliverySettingsBloc(
+        repository: mockRepository,
+        service: mockService,
+      ),
+      seed: () => defaultLoaded,
+      act: (b) => b.add(const DeliverySettingsToggleBiometricLockEvent()),
+      expect: () => [
+        defaultLoaded.copyWith(biometricLockEnabled: true),
+      ],
+    );
+
+    blocTest<DeliverySettingsBloc, DeliverySettingsState>(
+      'toggles two factor auth successfully',
+      build: () => DeliverySettingsBloc(
+        repository: mockRepository,
+        service: mockService,
+      ),
+      seed: () => defaultLoaded,
+      act: (b) => b.add(const DeliverySettingsToggleTwoFactorAuthEvent()),
+      expect: () => [
+        defaultLoaded.copyWith(twoFactorAuthEnabled: true),
+      ],
+    );
+
+    blocTest<DeliverySettingsBloc, DeliverySettingsState>(
+      'toggles data sharing consent successfully',
+      build: () => DeliverySettingsBloc(
+        repository: mockRepository,
+        service: mockService,
+      ),
+      seed: () => defaultLoaded,
+      act: (b) => b.add(const DeliverySettingsToggleDataSharingEvent()),
+      expect: () => [
+        defaultLoaded.copyWith(dataSharingConsent: false),
+      ],
+    );
+
+    blocTest<DeliverySettingsBloc, DeliverySettingsState>(
+      'changes password successfully',
+      build: () {
+        when(
+          () => mockRepository.changePassword(any(), any()),
+        ).thenAnswer((_) async => true);
+        return DeliverySettingsBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => defaultLoaded,
+      act: (b) => b.add(
+        const DeliverySettingsChangePasswordEvent(
+          currentPassword: 'oldPassword123',
+          newPassword: 'newPassword456',
+        ),
+      ),
+      expect: () => [
+        defaultLoaded.copyWith(actionMessage: 'Password updated successfully'),
+      ],
+    );
+
+    blocTest<DeliverySettingsBloc, DeliverySettingsState>(
+      'deactivates account successfully',
+      build: () {
+        when(
+          () => mockRepository.deactivateAccount(reason: any(named: 'reason')),
+        ).thenAnswer((_) async => true);
+        return DeliverySettingsBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => defaultLoaded,
+      act: (b) => b.add(const DeliverySettingsDeactivateAccountEvent(reason: 'Taking break')),
+      expect: () => [
+        defaultLoaded.copyWith(
+          isAccountDeactivated: true,
+          actionMessage: 'Delivery partner account deactivated',
+        ),
+      ],
+    );
+
+    blocTest<DeliverySettingsBloc, DeliverySettingsState>(
+      'deletes account successfully',
+      build: () {
+        when(
+          () => mockRepository.deleteAccount(reason: any(named: 'reason')),
+        ).thenAnswer((_) async => true);
+        return DeliverySettingsBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => defaultLoaded,
+      act: (b) => b.add(const DeliverySettingsDeleteAccountEvent(reason: 'Relocating')),
+      expect: () => [
+        defaultLoaded.copyWith(
+          isAccountDeactivated: true,
+          actionMessage: 'Delivery partner account scheduled for deletion',
+        ),
+      ],
+    );
+
+    blocTest<DeliverySettingsBloc, DeliverySettingsState>(
+      'clears cache successfully',
+      build: () {
+        when(
+          () => mockRepository.clearCache(),
+        ).thenAnswer((_) async => true);
+        return DeliverySettingsBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => defaultLoaded,
+      act: (b) => b.add(const DeliverySettingsClearCacheEvent()),
+      expect: () => [
+        defaultLoaded.copyWith(actionMessage: 'App cache cleared successfully'),
+      ],
+    );
   });
 }
+

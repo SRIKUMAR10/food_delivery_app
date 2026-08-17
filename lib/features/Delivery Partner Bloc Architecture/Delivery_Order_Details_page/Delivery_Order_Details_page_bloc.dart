@@ -23,6 +23,7 @@ class DeliveryOrderDetailsPageBloc
     on<CallCustomerEvent>(_onCallCustomer);
     on<CallMerchantEvent>(_onCallMerchant);
     on<CollectCodCashEvent>(_onCollectCodCash);
+    on<CancelOrderWithReasonEvent>(_onCancelOrderWithReason);
   }
 
   void _onFetchOrderDetails(
@@ -224,13 +225,6 @@ class DeliveryOrderDetailsPageBloc
     // Call dispatched
   }
 
-  void _onCallMerchantEvent(
-    CallMerchantEvent event,
-    Emitter<DeliveryOrderDetailsPageState> emit,
-  ) {
-    // Call dispatched
-  }
-
   void _onCallMerchant(
     CallMerchantEvent event,
     Emitter<DeliveryOrderDetailsPageState> emit,
@@ -280,4 +274,50 @@ class DeliveryOrderDetailsPageBloc
       ));
     }
   }
+
+  void _onCancelOrderWithReason(
+    CancelOrderWithReasonEvent event,
+    Emitter<DeliveryOrderDetailsPageState> emit,
+  ) async {
+    if (state.order == null) return;
+    emit(state.copyWith(
+      cancellationStatus: OrderCancellationStatus.cancelling,
+      clearCancellationMessage: true,
+    ));
+    try {
+      final result = await repository.cancelOrderWithReason(
+        event.orderId,
+        reason: event.reason,
+        notes: event.notes,
+        isFailedDelivery: event.isFailedDelivery,
+      );
+      if (result['success'] == true) {
+        final targetStatus = event.isFailedDelivery ? 'FailedDelivery' : 'Cancelled';
+        final updatedOrder = state.order!.copyWith(
+          status: targetStatus,
+          cancellationReason: event.reason,
+        );
+        emit(state.copyWith(
+          order: updatedOrder,
+          cancellationStatus: OrderCancellationStatus.success,
+          cancellationMessage: result['message']?.toString(),
+        ));
+      } else {
+        emit(state.copyWith(
+          cancellationStatus: OrderCancellationStatus.failed,
+          cancellationMessage: result['message']?.toString(),
+        ));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+        cancellationStatus: OrderCancellationStatus.failed,
+        cancellationMessage: e.toString(),
+      ));
+    }
+  }
 }
+
+/// Standardized Feature-Architecture Alias for OrderDetailsBloc
+typedef OrderDetailsBloc = DeliveryOrderDetailsPageBloc;
+
+

@@ -64,6 +64,48 @@ class DeliverySettingsStrings {
       'errorTitle': 'Something went wrong',
       'emptyTitle': 'No settings available',
       'emptySub': 'No delivery settings were found. Refresh to load them.',
+      'notificationSettings': 'Notification Alerts',
+      'soundAlerts': 'Audio & Sound Alerts',
+      'soundAlertsSub': 'Play audio chimes for new incoming order offers',
+      'vibrationAlerts': 'Vibration Alerts',
+      'vibrationAlertsSub': 'Haptic vibration for high-priority alerts',
+      'locationSettings': 'Location & GPS Configuration',
+      'highAccuracyGps': 'High-Accuracy GPS Tracking',
+      'highAccuracyGpsSub': 'Use GPS satellites and network towers for precise navigation',
+      'backgroundLocation': 'Background Location Sync',
+      'backgroundLocationSub': 'Keep location active while switching between navigation apps',
+      'privacySecurity': 'Privacy & Security',
+      'biometricLock': 'Biometric App Lock',
+      'biometricLockSub': 'Require Fingerprint or Face ID to access partner portal',
+      'twoFactorAuth': 'Two-Factor Authentication (2FA)',
+      'twoFactorAuthSub': 'Require SMS OTP verification when logging into new devices',
+      'dataSharing': 'Route Diagnostics Telemetry',
+      'dataSharingSub': 'Share anonymous route performance to improve delivery times',
+      'privacyPolicy': 'Privacy Policy',
+      'privacyPolicySub': 'Review our strict partner privacy charter and data rights',
+      'passwordSettings': 'Password Management',
+      'changePassword': 'Change Password',
+      'changePasswordSub': 'Update your account password securely',
+      'currentPassword': 'Current Password',
+      'newPassword': 'New Password',
+      'confirmPassword': 'Confirm New Password',
+      'accountSettings': 'Account & Profile Overview',
+      'accountSettingsSub': 'Partner ID, verified vehicle, and bank settlement status',
+      'appSettings': 'Application & Storage',
+      'clearCache': 'Clear Cache & Temp Storage',
+      'clearCacheSub': 'Free up phone storage by clearing offline map cache',
+      'appVersion': 'App Version',
+      'logout': 'Log Out',
+      'logoutConfirm': 'Are you sure you want to log out of this delivery partner session?',
+      'deleteDeactivate': 'Account Deactivation & Deletion',
+      'deactivateAccount': 'Deactivate Account',
+      'deactivateSub': 'Temporarily pause account. You can reactivate anytime by logging in.',
+      'deleteAccount': 'Delete Account Permanently',
+      'deleteSub': 'Permanently remove your account and partner record. Irreversible.',
+      'deleteConfirm': 'Are you sure you want to permanently delete your delivery partner account? This cannot be undone.',
+      'cancel': 'Cancel',
+      'confirm': 'Confirm',
+      'close': 'Close',
     },
     'ta': {
       'title': 'டெலிவரி அமைப்புகள்',
@@ -102,6 +144,48 @@ class DeliverySettingsStrings {
       'errorTitle': 'ஏதோ தவறு ஏற்பட்டது',
       'emptyTitle': 'அமைப்புகள் இல்லை',
       'emptySub': 'டெலிவரி அமைப்புகள் எதுவும் கிடைக்கவில்லை. அவற்றை ஏற்ற புதுப்பிக்கவும்.',
+      'notificationSettings': 'அறிவிப்பு எச்சரிக்கைகள்',
+      'soundAlerts': 'ஒலி எச்சரிக்கைகள்',
+      'soundAlertsSub': 'புதிய ஆர்டர் அழைப்புகளுக்கு ஒலி எழுப்பவும்',
+      'vibrationAlerts': 'அதிர்வு எச்சரிக்கைகள்',
+      'vibrationAlertsSub': 'முக்கிய ஆர்டர்களுக்கு அதிர்வு செய்யவும்',
+      'locationSettings': 'இருப்பிடம் & GPS கட்டமைப்பு',
+      'highAccuracyGps': 'துல்லியமான GPS கண்காணிப்பு',
+      'highAccuracyGpsSub': 'துல்லியமான வழிகாட்டலுக்கு GPS மற்றும் நெட்வொர்க் கோபுரங்களை பயன்படுத்தவும்',
+      'backgroundLocation': 'பின்னணி இருப்பிட ஒத்திசைவு',
+      'backgroundLocationSub': 'செயலி பின்னணியில் இருக்கும்போதும் இருப்பிடத்தை புதுப்பிக்கவும்',
+      'privacySecurity': 'தனியுரிமை & பாதுகாப்பு',
+      'biometricLock': 'பயோமெட்ரிக் ஆப் பூட்டு',
+      'biometricLockSub': 'கைரேகை அல்லது முக அங்கீகாரம் தேவை',
+      'twoFactorAuth': 'இருபடி அங்கீகாரம் (2FA)',
+      'twoFactorAuthSub': 'புதிய சாதனங்களில் இருந்து உள்நுழையும்போது OTP சரிபார்ப்பு தேவை',
+      'dataSharing': 'வழி கண்டறிதல் தொலைநிலை அளவீடு',
+      'dataSharingSub': 'டெலிவரி நேரத்தை மேம்படுத்த அநாமதேய தரவை பகிரவும்',
+      'privacyPolicy': 'தனியுரிமைக் கொள்கை',
+      'privacyPolicySub': 'எங்கள் கூட்டாளர் தனியுரிமை சாசனத்தை மதிப்பாய்வு செய்யவும்',
+      'passwordSettings': 'கடவுச்சொல் மேலாண்மை',
+      'changePassword': 'கடவுச்சொல்லை மாற்றவும்',
+      'changePasswordSub': 'உங்கள் உள்நுழைவு கடவுச்சொல்லை பாதுகாப்பாக புதுப்பிக்கவும்',
+      'currentPassword': 'தற்போதைய கடவுச்சொல்',
+      'newPassword': 'புதிய கடவுச்சொல்',
+      'confirmPassword': 'புதிய கடவுச்சொல்லை உறுதிப்படுத்தவும்',
+      'accountSettings': 'கணக்கு & சுயவிவர கண்ணோட்டம்',
+      'accountSettingsSub': 'பார்ட்னர் ஐடி, வாகனம் மற்றும் வங்கி தீர்வு நிலை',
+      'appSettings': 'பயன்பாடு & சேமிப்பு',
+      'clearCache': 'கேச் & தற்காலிக சேமிப்பை அழிக்கவும்',
+      'clearCacheSub': 'சேமிக்கப்பட்ட தற்காலிக வரைபடங்களை அழித்து நினைவகத்தை மீட்கவும்',
+      'appVersion': 'செயலி பதிப்பு',
+      'logout': 'வெளியேறு',
+      'logoutConfirm': 'இந்த டெலிவரி பார்ட்னர் அமர்விலிருந்து வெளியேற விரும்புகிறீர்களா?',
+      'deleteDeactivate': 'கணக்கு முடக்கம் & நீக்கம்',
+      'deactivateAccount': 'கணக்கை முடக்கவும்',
+      'deactivateSub': 'கணக்கை தற்காலிகமாக இடைநிறுத்தவும். மீண்டும் உள்நுழைந்து செயல்படுத்தலாம்.',
+      'deleteAccount': 'கணக்கை நிரந்தரமாக நீக்கு',
+      'deleteSub': 'உங்கள் கணக்கு மற்றும் தகவல்களை நிரந்தரமாக நீக்குங்கள். மீட்டெடுக்க முடியாது.',
+      'deleteConfirm': 'உங்கள் கணக்கை நிரந்தரமாக நீக்கவா? இதை திரும்பப் பெற முடியாது.',
+      'cancel': 'ரத்து செய்',
+      'confirm': 'உறுதிப்படுத்து',
+      'close': 'மூடு',
     },
   };
 
@@ -280,6 +364,10 @@ class _SettingsLoadedViewState extends State<_SettingsLoadedView>
                             ),
                             const SizedBox(height: 20),
                             _ToggleCard(state: widget.state),
+                            const SizedBox(height: 20),
+                            _SecurityCard(state: widget.state),
+                            const SizedBox(height: 20),
+                            _AccountCard(state: widget.state),
                           ],
                         );
 
@@ -287,6 +375,10 @@ class _SettingsLoadedViewState extends State<_SettingsLoadedView>
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             _EarningsCard(state: widget.state),
+                            const SizedBox(height: 20),
+                            _AppSystemCard(state: widget.state),
+                            const SizedBox(height: 20),
+                            _AccountActionsCard(state: widget.state),
                             const SizedBox(height: 20),
                             _HelpCard(state: widget.state),
                           ],
@@ -309,6 +401,10 @@ class _SettingsLoadedViewState extends State<_SettingsLoadedView>
                             mainColumn,
                             const SizedBox(height: 20),
                             _EarningsCard(state: widget.state),
+                            const SizedBox(height: 20),
+                            _AppSystemCard(state: widget.state),
+                            const SizedBox(height: 20),
+                            _AccountActionsCard(state: widget.state),
                             const SizedBox(height: 20),
                             _HelpCard(state: widget.state),
                           ],
@@ -863,6 +959,839 @@ class _HelpCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SecurityCard extends StatelessWidget {
+  final DeliverySettingsState state;
+
+  const _SecurityCard({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final String localeCode = state.localeCode;
+    return Container(
+      key: const Key('dp_settings_security_card'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.security, color: DeliveryAppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  DeliverySettingsStrings.of('privacySecurity', localeCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Biometric Lock
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: state.biometricLockEnabled
+                      ? DeliveryAppColors.primaryDark.withValues(alpha: 0.12)
+                      : const Color(0xFF1A2530),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.fingerprint,
+                  color: state.biometricLockEnabled
+                      ? DeliveryAppColors.primary
+                      : const Color(0xFF64748B),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      DeliverySettingsStrings.of('biometricLock', localeCode),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      DeliverySettingsStrings.of('biometricLockSub', localeCode),
+                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                key: const Key('dp_settings_toggle_biometric'),
+                value: state.biometricLockEnabled,
+                activeThumbColor: const Color(0xFF06120B),
+                activeTrackColor: DeliveryAppColors.primaryDark,
+                inactiveThumbColor: const Color(0xFF64748B),
+                inactiveTrackColor: const Color(0xFF1A2530),
+                onChanged: (_) => context
+                    .read<DeliverySettingsBloc>()
+                    .add(const DeliverySettingsToggleBiometricLockEvent()),
+              ),
+            ],
+          ),
+          Divider(color: Colors.white.withValues(alpha: 0.06)),
+          // 2FA
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: state.twoFactorAuthEnabled
+                      ? DeliveryAppColors.primaryDark.withValues(alpha: 0.12)
+                      : const Color(0xFF1A2530),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.verified_user_outlined,
+                  color: state.twoFactorAuthEnabled
+                      ? DeliveryAppColors.primary
+                      : const Color(0xFF64748B),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      DeliverySettingsStrings.of('twoFactorAuth', localeCode),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      DeliverySettingsStrings.of('twoFactorAuthSub', localeCode),
+                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                key: const Key('dp_settings_toggle_2fa'),
+                value: state.twoFactorAuthEnabled,
+                activeThumbColor: const Color(0xFF06120B),
+                activeTrackColor: DeliveryAppColors.primaryDark,
+                inactiveThumbColor: const Color(0xFF64748B),
+                inactiveTrackColor: const Color(0xFF1A2530),
+                onChanged: (_) => context
+                    .read<DeliverySettingsBloc>()
+                    .add(const DeliverySettingsToggleTwoFactorAuthEvent()),
+              ),
+            ],
+          ),
+          Divider(color: Colors.white.withValues(alpha: 0.06)),
+          // Diagnostic Sharing
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: state.dataSharingConsent
+                      ? DeliveryAppColors.primaryDark.withValues(alpha: 0.12)
+                      : const Color(0xFF1A2530),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.analytics_outlined,
+                  color: state.dataSharingConsent
+                      ? DeliveryAppColors.primary
+                      : const Color(0xFF64748B),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      DeliverySettingsStrings.of('dataSharing', localeCode),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      DeliverySettingsStrings.of('dataSharingSub', localeCode),
+                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                key: const Key('dp_settings_toggle_data_sharing'),
+                value: state.dataSharingConsent,
+                activeThumbColor: const Color(0xFF06120B),
+                activeTrackColor: DeliveryAppColors.primaryDark,
+                inactiveThumbColor: const Color(0xFF64748B),
+                inactiveTrackColor: const Color(0xFF1A2530),
+                onChanged: (_) => context
+                    .read<DeliverySettingsBloc>()
+                    .add(const DeliverySettingsToggleDataSharingEvent()),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Action Buttons: Change Password & Privacy Policy
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('dp_settings_change_password_btn'),
+                  onPressed: () => _showChangePasswordDialog(context, state),
+                  icon: const Icon(Icons.password, size: 16),
+                  label: Text(
+                    DeliverySettingsStrings.of('changePassword', localeCode),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white24),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('dp_settings_privacy_policy_btn'),
+                  onPressed: () => _showPrivacyPolicyDialog(context, state),
+                  icon: const Icon(Icons.privacy_tip_outlined, size: 16),
+                  label: Text(
+                    DeliverySettingsStrings.of('privacyPolicy', localeCode),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF94A3B8),
+                    side: const BorderSide(color: Colors.white12),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountCard extends StatelessWidget {
+  final DeliverySettingsState state;
+
+  const _AccountCard({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final String localeCode = state.localeCode;
+    return Container(
+      key: const Key('dp_settings_account_card'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.account_circle_outlined,
+                  color: DeliveryAppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  DeliverySettingsStrings.of('accountSettings', localeCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _AccountInfoRow(
+            icon: Icons.badge_outlined,
+            title: 'Partner ID',
+            value: 'DP-PRO-8842',
+          ),
+          Divider(color: Colors.white.withValues(alpha: 0.06)),
+          _AccountInfoRow(
+            icon: Icons.two_wheeler_outlined,
+            title: 'Vehicle Info',
+            value: 'Honda Activa 6G (TN-09-CB-4521)',
+          ),
+          Divider(color: Colors.white.withValues(alpha: 0.06)),
+          _AccountInfoRow(
+            icon: Icons.account_balance_outlined,
+            title: 'Bank Settlement',
+            value: 'HDFC Bank (•••• 4920) - Active',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+
+  const _AccountInfoRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF64748B), size: 18),
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppSystemCard extends StatelessWidget {
+  final DeliverySettingsState state;
+
+  const _AppSystemCard({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final String localeCode = state.localeCode;
+    return Container(
+      key: const Key('dp_settings_system_card'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.phonelink_setup_outlined,
+                  color: DeliveryAppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  DeliverySettingsStrings.of('appSettings', localeCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  DeliverySettingsStrings.of('appVersion', localeCode),
+                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                ),
+              ),
+              Container(
+                key: const Key('dp_settings_version_tag'),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B1219),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: const Text(
+                  'v2.4.0 (Build 342)',
+                  style: TextStyle(
+                    color: DeliveryAppColors.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const Key('dp_settings_clear_cache_btn'),
+              onPressed: () {
+                context
+                    .read<DeliverySettingsBloc>()
+                    .add(const DeliverySettingsClearCacheEvent());
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Cache cleared successfully'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.cleaning_services_outlined, size: 16),
+              label: Text(
+                DeliverySettingsStrings.of('clearCache', localeCode),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF94A3B8),
+                side: const BorderSide(color: Colors.white12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountActionsCard extends StatelessWidget {
+  final DeliverySettingsState state;
+
+  const _AccountActionsCard({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final String localeCode = state.localeCode;
+    return Container(
+      key: const Key('dp_settings_actions_card'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.manage_accounts_outlined,
+                  color: Color(0xFFF87171), size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  DeliverySettingsStrings.of('deleteDeactivate', localeCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Logout Button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const Key('dp_settings_logout_btn'),
+              onPressed: () => _showLogoutConfirmDialog(context, state),
+              icon: const Icon(Icons.logout, size: 16),
+              label: Text(
+                DeliverySettingsStrings.of('logout', localeCode),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white24),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Deactivate Button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const Key('dp_settings_deactivate_btn'),
+              onPressed: () {
+                context
+                    .read<DeliverySettingsBloc>()
+                    .add(const DeliverySettingsDeactivateAccountEvent());
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      DeliverySettingsStrings.of('deactivateSub', localeCode),
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.pause_circle_outline, size: 16),
+              label: Text(
+                DeliverySettingsStrings.of('deactivateAccount', localeCode),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFFBBF24),
+                side: BorderSide(color: const Color(0xFFFBBF24).withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Delete Account Button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const Key('dp_settings_delete_btn'),
+              onPressed: () => _showDeleteAccountDialog(context, state),
+              icon: const Icon(Icons.delete_forever, size: 16),
+              label: Text(
+                DeliverySettingsStrings.of('deleteAccount', localeCode),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFF87171),
+                side: BorderSide(color: const Color(0xFFF87171).withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _showChangePasswordDialog(
+  BuildContext context,
+  DeliverySettingsState state,
+) async {
+  final currentCtrl = TextEditingController();
+  final newCtrl = TextEditingController();
+  final confirmCtrl = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  final localeCode = state.localeCode;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      backgroundColor: const Color(0xFF0D141C),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                DeliverySettingsStrings.of('changePassword', localeCode),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: currentCtrl,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: DeliverySettingsStrings.of('currentPassword', localeCode),
+                  labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                  filled: true,
+                  fillColor: const Color(0xFF0B1219),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: newCtrl,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: DeliverySettingsStrings.of('newPassword', localeCode),
+                  labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                  filled: true,
+                  fillColor: const Color(0xFF0B1219),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) =>
+                    (v == null || v.length < 6) ? 'At least 6 characters' : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: confirmCtrl,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: DeliverySettingsStrings.of('confirmPassword', localeCode),
+                  labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                  filled: true,
+                  fillColor: const Color(0xFF0B1219),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) =>
+                    (v != newCtrl.text) ? 'Passwords do not match' : null,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: Text(
+                      DeliverySettingsStrings.of('cancel', localeCode),
+                      style: const TextStyle(color: Color(0xFF94A3B8)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    key: const Key('dp_settings_password_submit_btn'),
+                    onPressed: () {
+                      if (!formKey.currentState!.validate()) return;
+                      context.read<DeliverySettingsBloc>().add(
+                            DeliverySettingsChangePasswordEvent(
+                              currentPassword: currentCtrl.text,
+                              newPassword: newCtrl.text,
+                            ),
+                          );
+                      Navigator.of(dialogContext).pop();
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: DeliveryAppColors.primary,
+                      foregroundColor: Colors.black,
+                    ),
+                    child: Text(DeliverySettingsStrings.of('save', localeCode)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _showPrivacyPolicyDialog(
+  BuildContext context,
+  DeliverySettingsState state,
+) async {
+  final localeCode = state.localeCode;
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      backgroundColor: const Color(0xFF0D141C),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              DeliverySettingsStrings.of('privacyPolicy', localeCode),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'We respect your privacy. Location and telemetry data collected '
+              'during active shifts is used strictly for routing precision, trip fare '
+              'verification, and safety support. Your data is encrypted and '
+              'never sold to third parties.',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.5),
+            ),
+            const SizedBox(height: 20),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: DeliveryAppColors.primary,
+                  foregroundColor: Colors.black,
+                ),
+                child: Text(DeliverySettingsStrings.of('close', localeCode)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _showLogoutConfirmDialog(
+  BuildContext context,
+  DeliverySettingsState state,
+) async {
+  final localeCode = state.localeCode;
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: const Color(0xFF0D141C),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(
+        DeliverySettingsStrings.of('logout', localeCode),
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+      ),
+      content: Text(
+        DeliverySettingsStrings.of('logoutConfirm', localeCode),
+        style: const TextStyle(color: Color(0xFF94A3B8)),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(
+            DeliverySettingsStrings.of('cancel', localeCode),
+            style: const TextStyle(color: Color(0xFF94A3B8)),
+          ),
+        ),
+        FilledButton(
+          key: const Key('dp_settings_logout_confirm_btn'),
+          onPressed: () {
+            Navigator.of(dialogContext).pop();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Logged out successfully'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFF87171),
+            foregroundColor: Colors.white,
+          ),
+          child: Text(DeliverySettingsStrings.of('confirm', localeCode)),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<void> _showDeleteAccountDialog(
+  BuildContext context,
+  DeliverySettingsState state,
+) async {
+  final localeCode = state.localeCode;
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: const Color(0xFF0D141C),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(
+        DeliverySettingsStrings.of('deleteAccount', localeCode),
+        style: const TextStyle(
+          color: Color(0xFFF87171),
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      content: Text(
+        DeliverySettingsStrings.of('deleteConfirm', localeCode),
+        style: const TextStyle(color: Color(0xFF94A3B8)),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(
+            DeliverySettingsStrings.of('cancel', localeCode),
+            style: const TextStyle(color: Color(0xFF94A3B8)),
+          ),
+        ),
+        FilledButton(
+          key: const Key('dp_settings_delete_confirm_btn'),
+          onPressed: () {
+            context
+                .read<DeliverySettingsBloc>()
+                .add(const DeliverySettingsDeleteAccountEvent());
+            Navigator.of(dialogContext).pop();
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFF87171),
+            foregroundColor: Colors.white,
+          ),
+          child: Text(DeliverySettingsStrings.of('deleteAccount', localeCode)),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SaveBar extends StatelessWidget {

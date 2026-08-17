@@ -69,6 +69,8 @@ void main() {
     when(() => mockPartnerRepo.currentUser).thenReturn(mockUser);
     when(() => mockPartnerRepo.getDeliveryPartner('uid123'))
         .thenAnswer((_) async => partner ?? buildPartner());
+    when(() => mockPartnerRepo.getSession())
+        .thenAnswer((_) async => {'uid': 'uid123', 'email': 'test@test.com'});
   }
 
   setUp(() {

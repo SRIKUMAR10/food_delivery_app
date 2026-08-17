@@ -57,6 +57,9 @@ void main() {
       'emits [loading, success] when FetchCompletedOrderDetailsEvent is added',
       build: () {
         when(
+          () => mockRepository.watchCompletedOrder(any()),
+        ).thenAnswer((_) => Stream.value(mockModel));
+        when(
           () => mockRepository.fetchCompletedOrderDetails(any()),
         ).thenAnswer((_) async => mockModel);
         return DeliveryCompletedBloc(
@@ -81,6 +84,9 @@ void main() {
       'emits [loading, error] when fetching completed details fails',
       build: () {
         when(
+          () => mockRepository.watchCompletedOrder(any()),
+        ).thenAnswer((_) => Stream.error(Exception('Server unreachable')));
+        when(
           () => mockRepository.fetchCompletedOrderDetails(any()),
         ).thenThrow(Exception('Server unreachable'));
         return DeliveryCompletedBloc(
@@ -104,6 +110,28 @@ void main() {
     blocTest<DeliveryCompletedBloc, DeliveryCompletedPageState>(
       'emits [loading, empty] when fetched model is blank',
       build: () {
+        when(() => mockRepository.watchCompletedOrder(any())).thenAnswer(
+          (_) => Stream.value(const DeliveryCompletedModel(
+            orderId: '',
+            walletBalance: 0,
+            partnerName: '',
+            partnerVehicleNo: '',
+            customerName: '',
+            deliveryAddress: '',
+            timeTaken: '',
+            distanceCovered: 0,
+            paymentStatus: '',
+            paymentMethod: '',
+            customerRating: 0,
+            deliveryEarnings: 0,
+            completedAt: '',
+            isCOD: false,
+            codAmount: 0,
+            collectedAmount: 0,
+            isCodCollected: false,
+            codReconciliationStatus: '',
+          )),
+        );
         when(() => mockRepository.fetchCompletedOrderDetails(any())).thenAnswer(
           (_) async => const DeliveryCompletedModel(
             orderId: '',

@@ -22,6 +22,19 @@ DeliveryWalletPageState buildLoadedState() {
     totalEarnings: 128450.00,
     totalWithdrawn: 89450.00,
     bonusEarnings: 12500.00,
+    cashCollected: 2500.00,
+    cashInHand: 900.00,
+    cashSubmitted: 1600.00,
+    reconciliationStatus: 'pending_submission',
+    reconciliationHistory: [
+      DeliveryCashReconciliationRecord(
+        id: 'rec_1',
+        method: 'Bank Deposit',
+        amount: 1600.00,
+        status: 'submitted',
+        date: now,
+      ),
+    ],
     transactions: [
       DeliveryWalletTransaction(
         id: 'tx_1',
@@ -107,7 +120,10 @@ void main() {
   setUp(() {
     mockRepository = MockDeliveryWalletPageRepository();
     mockService = MockDeliveryWalletPageService();
-    when(() => mockRepository.watchWalletData()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.watchWalletData())
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.watchTransactions(any()))
+        .thenAnswer((_) => const Stream.empty());
   });
 
   group('DeliveryWalletPageBloc Unit Tests', () {
@@ -220,20 +236,22 @@ void main() {
       'filters transactions by income type',
       build: () {
         when(
-          () => mockRepository.filterTransactions(
+          () => mockRepository.watchTransactions(
             DeliveryWalletTransactionFilter.income,
           ),
         ).thenAnswer(
-          (_) async => [
-            DeliveryWalletTransaction(
-              id: 'tx_1',
-              title: 'Delivery Earnings',
-              date: DateTime(2026, 7, 31),
-              amount: 640.00,
-              type: 'income',
-              status: 'completed',
-            ),
-          ],
+          (_) => Stream.fromIterable([
+            [
+              DeliveryWalletTransaction(
+                id: 'tx_1',
+                title: 'Delivery Earnings',
+                date: DateTime(2026, 7, 31),
+                amount: 640.00,
+                type: 'income',
+                status: 'completed',
+              ),
+            ],
+          ]),
         );
         return DeliveryWalletPageBloc(
           repository: mockRepository,
@@ -266,7 +284,7 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockRepository.filterTransactions(
+          () => mockRepository.watchTransactions(
             DeliveryWalletTransactionFilter.income,
           ),
         ).called(1);
@@ -277,8 +295,9 @@ void main() {
       'filter failure falls back to local filter state without throwing',
       build: () {
         when(
-          () => mockRepository.filterTransactions(any()),
-        ).thenThrow(Exception('offline'));
+          () => mockRepository.watchTransactions(any())).thenAnswer(
+          (_) => Stream.error(Exception('offline')),
+        );
         return DeliveryWalletPageBloc(
           repository: mockRepository,
           service: mockService,
@@ -476,6 +495,138 @@ void main() {
       expect: () => [
         buildLoadedState().copyWith(
           errorMessage: 'Could not add payment method. Please try again.',
+        ),
+      ],
+    );
+
+    blocTest<DeliveryWalletPageBloc, DeliveryWalletPageState>(
+      'submit cash emits submitting then updated reconciliation state on success',
+      build: () {
+        when(
+          () => mockRepository.submitCash(
+            amount: 400.0,
+            method: 'Bank Deposit',
+          ),
+        ).thenAnswer(
+          (_) async => buildLoadedState().copyWith(
+            cashInHand: 500.0,
+            cashSubmitted: 2000.0,
+            reconciliationStatus: 'pending_submission',
+          ),
+        );
+        return DeliveryWalletPageBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => buildLoadedState(),
+      act: (bloc) => bloc.add(
+        const DeliveryWalletSubmitCashEvent(
+          amount: 400.0,
+          method: 'Bank Deposit',
+        ),
+      ),
+      expect: () => [
+        buildLoadedState().copyWith(isSubmittingCash: true, clearError: true),
+        buildLoadedState().copyWith(
+          cashInHand: 500.0,
+          cashSubmitted: 2000.0,
+          reconciliationStatus: 'pending_submission',
+          isSubmittingCash: false,
+        ),
+      ],
+      verify: (_) {
+        verify(
+          () => mockRepository.submitCash(
+            amount: 400.0,
+            method: 'Bank Deposit',
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<DeliveryWalletPageBloc, DeliveryWalletPageState>(
+      'submit cash rejects amount exceeding cash in hand without calling repository',
+      build: () => DeliveryWalletPageBloc(
+        repository: mockRepository,
+        service: mockService,
+      ),
+      seed: () => buildLoadedState(),
+      act: (bloc) => bloc.add(
+        const DeliveryWalletSubmitCashEvent(
+          amount: 5000.0,
+          method: 'Hub Deposit',
+        ),
+      ),
+      expect: () => [
+        buildLoadedState().copyWith(
+          errorMessage: 'Amount exceeds cash in hand.',
+        ),
+      ],
+      verify: (_) {
+        verifyNever(
+          () => mockRepository.submitCash(
+            amount: any(named: 'amount'),
+            method: any(named: 'method'),
+          ),
+        );
+      },
+    );
+
+    blocTest<DeliveryWalletPageBloc, DeliveryWalletPageState>(
+      'submit cash rejects non-positive amount without calling repository',
+      build: () => DeliveryWalletPageBloc(
+        repository: mockRepository,
+        service: mockService,
+      ),
+      seed: () => buildLoadedState(),
+      act: (bloc) => bloc.add(
+        const DeliveryWalletSubmitCashEvent(
+          amount: 0.0,
+          method: 'Hub Deposit',
+        ),
+      ),
+      expect: () => [
+        buildLoadedState().copyWith(
+          errorMessage: 'Please enter a valid cash amount.',
+        ),
+      ],
+      verify: (_) {
+        verifyNever(
+          () => mockRepository.submitCash(
+            amount: any(named: 'amount'),
+            method: any(named: 'method'),
+          ),
+        );
+      },
+    );
+
+    blocTest<DeliveryWalletPageBloc, DeliveryWalletPageState>(
+      'submit cash failure emits friendly error and resets submitting',
+      build: () {
+        when(
+          () => mockRepository.submitCash(
+            amount: 400.0,
+            method: 'Hub Deposit',
+          ),
+        ).thenThrow(Exception('Timeout'));
+        return DeliveryWalletPageBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => buildLoadedState(),
+      act: (bloc) => bloc.add(
+        const DeliveryWalletSubmitCashEvent(
+          amount: 400.0,
+          method: 'Hub Deposit',
+        ),
+      ),
+      expect: () => [
+        buildLoadedState().copyWith(isSubmittingCash: true, clearError: true),
+        buildLoadedState().copyWith(
+          isSubmittingCash: false,
+          errorMessage: 'Cash submission failed. Please try again.',
         ),
       ],
     );

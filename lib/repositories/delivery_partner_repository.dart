@@ -733,29 +733,84 @@ class DeliveryPartnerRepository {
     required String driverName,
     required String driverPhone,
   }) async {
-    await _firestore.collection('orders').doc(orderId).update({
-      'deliveryPartnerId': driverId,
-      'riderId': driverId,
-      'deliveryPartnerName': driverName,
-      'deliveryPartnerPhone': driverPhone,
-      'deliveryPartnerStatus': 'accepted',
-      'pickupStatus': 'heading_to_store',
-      'deliveryStatus': 'accepted',
-      'acceptedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('acceptDeliveryOrderAtomic');
+      await callable.call<Map<String, dynamic>>({
+        'orderId': orderId,
+        'driverName': driverName,
+        'driverPhone': driverPhone,
+      });
+      return;
+    } catch (e) {
+      debugPrint('Cloud Function acceptDeliveryOrderAtomic fallback to Firestore: $e');
+    }
+
+    // Direct Firestore atomic transaction fallback
+    final orderRef = _firestore.collection('orders').doc(orderId);
+    final partnerRef = _firestore.collection('delivery_partners').doc(driverId);
+
+    await _firestore.runTransaction((tx) async {
+      final orderSnap = await tx.get(orderRef);
+      if (!orderSnap.exists) {
+        throw Exception('Order not found');
+      }
+      final orderData = orderSnap.data() ?? {};
+      final existingRider = orderData['deliveryPartnerId'] ?? orderData['riderId'];
+      if (existingRider != null && existingRider.toString().isNotEmpty && existingRider != driverId) {
+        throw Exception('Order already assigned to another driver');
+      }
+
+      tx.update(orderRef, {
+        'deliveryPartnerId': driverId,
+        'riderId': driverId,
+        'deliveryPartnerName': driverName,
+        'deliveryPartnerPhone': driverPhone,
+        'deliveryPartnerStatus': 'accepted',
+        'pickupStatus': 'heading_to_store',
+        'deliveryStatus': 'accepted',
+        'deliveryAssignmentStatus': 'assigned',
+        'acceptedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      tx.set(partnerRef, {
+        'currentStatus': 'busy',
+        'isBusy': true,
+        'currentOrderId': orderId,
+        'activeOrdersCount': FieldValue.increment(1),
+        'lastActiveAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     });
   }
 
   Future<void> updatePickupStatus({
     required String orderId,
     required String pickupStatus,
+    String? storeVerificationCode,
+    String? notes,
   }) async {
+    if (pickupStatus == 'picked_up') {
+      try {
+        final callable = FirebaseFunctions.instance.httpsCallable('confirmOrderPickup');
+        await callable.call<Map<String, dynamic>>({
+          'orderId': orderId,
+          if (storeVerificationCode != null) 'storeVerificationCode': storeVerificationCode,
+          if (notes != null) 'notes': notes,
+        });
+        return;
+      } catch (e) {
+        debugPrint('Cloud Function confirmOrderPickup fallback to Firestore: $e');
+      }
+    }
+
     final Map<String, dynamic> updateData = {
       'pickupStatus': pickupStatus,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     if (pickupStatus == 'arrived_at_store') {
       updateData['arrivedAtStoreAt'] = FieldValue.serverTimestamp();
+      updateData['deliveryPartnerStatus'] = 'arrived_at_store';
     } else if (pickupStatus == 'picked_up') {
       updateData['pickedUpAt'] = FieldValue.serverTimestamp();
       updateData['status'] = 'OutForDelivery';
@@ -766,8 +821,146 @@ class DeliveryPartnerRepository {
     await _firestore.collection('orders').doc(orderId).update(updateData);
   }
 
-  Future<void> confirmPickup(String orderId) async {
-    await updatePickupStatus(orderId: orderId, pickupStatus: 'picked_up');
+  Future<void> confirmPickup(String orderId, {String? storeVerificationCode, String? notes}) async {
+    await updatePickupStatus(
+      orderId: orderId,
+      pickupStatus: 'picked_up',
+      storeVerificationCode: storeVerificationCode,
+      notes: notes,
+    );
+  }
+
+  Future<Map<String, dynamic>> calculateDeliveryEarnings({
+    required double orderAmount,
+    required double distanceKm,
+    bool isPeakHour = false,
+  }) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('calculateDeliveryEarnings');
+      final result = await callable.call<Map<String, dynamic>>({
+        'orderAmount': orderAmount,
+        'distanceKm': distanceKm,
+        'isPeakHour': isPeakHour,
+      });
+      return Map<String, dynamic>.from(result.data);
+    } catch (e) {
+      debugPrint('Cloud Function calculateDeliveryEarnings local fallback: $e');
+      final basePay = 40.0;
+      final commissionPay = (orderAmount * 0.15);
+      final distancePay = distanceKm > 5 ? (distanceKm - 5) * 10.0 : 0.0;
+      final peakPay = isPeakHour ? 25.0 : 0.0;
+      final total = basePay + commissionPay + distancePay + peakPay;
+      return {
+        'basePay': basePay,
+        'commissionPay': commissionPay,
+        'distancePay': distancePay,
+        'peakPay': peakPay,
+        'totalEarnings': total,
+      };
+    }
+  }
+
+  Future<void> reconcileCodPayment({
+    required String orderId,
+    required String partnerId,
+    required double amountCollected,
+    String? notes,
+  }) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('reconcileCodPayment');
+      await callable.call<Map<String, dynamic>>({
+        'orderId': orderId,
+        'amountCollected': amountCollected,
+        if (notes != null) 'notes': notes,
+      });
+      return;
+    } catch (e) {
+      debugPrint('Cloud Function reconcileCodPayment fallback to Firestore: $e');
+    }
+
+    final orderRef = _firestore.collection('orders').doc(orderId);
+    final partnerRef = _firestore.collection('delivery_partners').doc(partnerId);
+
+    final batch = _firestore.batch();
+    batch.update(orderRef, {
+      'paymentStatus': 'Paid',
+      'codCollected': true,
+      'codAmountCollected': amountCollected,
+      'codCollectedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    batch.set(partnerRef, {
+      'codAdjustment': FieldValue.increment(amountCollected),
+      'codCollectedTotal': FieldValue.increment(amountCollected),
+      'walletBalance': FieldValue.increment(-amountCollected),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    final txRef = partnerRef.collection('transactions').doc();
+    batch.set(txRef, {
+      'id': txRef.id,
+      'type': 'cod_adjustment',
+      'title': 'Cash Collected (COD)',
+      'orderId': orderId,
+      'amount': -amountCollected,
+      'status': 'completed',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
+  }
+
+  Future<void> requestPayout({
+    required String partnerId,
+    required double amount,
+    String? paymentMethod,
+    Map<String, dynamic>? bankDetails,
+  }) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('requestPartnerPayout');
+      await callable.call<Map<String, dynamic>>({
+        'amount': amount,
+        if (paymentMethod != null) 'paymentMethod': paymentMethod,
+        if (bankDetails != null) 'bankDetails': bankDetails,
+      });
+      return;
+    } catch (e) {
+      debugPrint('Cloud Function requestPartnerPayout fallback to Firestore: $e');
+    }
+
+    final partnerRef = _firestore.collection('delivery_partners').doc(partnerId);
+    final batch = _firestore.batch();
+
+    batch.set(partnerRef, {
+      'walletBalance': FieldValue.increment(-amount),
+      'withdrawableAmount': FieldValue.increment(-amount),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    final payoutRef = partnerRef.collection('payouts').doc();
+    batch.set(payoutRef, {
+      'id': payoutRef.id,
+      'partnerId': partnerId,
+      'amount': amount,
+      'status': 'pending',
+      'paymentMethod': paymentMethod ?? 'bank_transfer',
+      if (bankDetails != null) 'bankDetails': bankDetails,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    final txRef = partnerRef.collection('transactions').doc();
+    batch.set(txRef, {
+      'id': txRef.id,
+      'type': 'payout_withdrawal',
+      'title': 'Payout Request - ₹$amount',
+      'payoutId': payoutRef.id,
+      'amount': -amount,
+      'status': 'pending',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
   }
 
   Future<void> completeDelivery({
@@ -993,6 +1186,158 @@ class DeliveryPartnerRepository {
     }).handleError((error) {
       debugPrint('Error streaming order lifecycle: $error');
       return null;
+    });
+  }
+
+  // ── Unified 11 Core Real-Time Streams for Delivery Partner Module ──────────
+
+  /// Stream 1: Available Orders for Delivery Partners
+  Stream<List<Map<String, dynamic>>> streamAvailableOrders() {
+    return _firestore
+        .collection('orders')
+        .where('status', whereIn: ['Ready', 'ready', 'ready_for_pickup', 'Preparing', 'preparing', 'searching_driver', 'placed'])
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    }).handleError((error) {
+      debugPrint('Error streaming available orders: $error');
+      return <Map<String, dynamic>>[];
+    });
+  }
+
+  /// Stream 2 & 3: Assigned and Active Orders for Driver
+  Stream<List<Map<String, dynamic>>> streamAssignedOrders(String driverId) {
+    if (driverId.isEmpty) return Stream.value([]);
+    return _firestore
+        .collection('orders')
+        .where('riderId', isEqualTo: driverId)
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    }).handleError((error) {
+      debugPrint('Error streaming assigned orders: $error');
+      return <Map<String, dynamic>>[];
+    });
+  }
+
+  /// Stream 5: Restaurant Live Status & Readiness
+  Stream<Map<String, dynamic>?> streamRestaurantStatus(String sellerId) {
+    if (sellerId.isEmpty) return Stream.value(null);
+    return _firestore
+        .collection('sellers')
+        .doc(sellerId)
+        .snapshots(includeMetadataChanges: true)
+        .map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return {'id': doc.id, ...doc.data()!};
+    }).handleError((error) {
+      debugPrint('Error streaming restaurant status: $error');
+      return null;
+    });
+  }
+
+  /// Stream 6: Customer Live Status & Details
+  Stream<Map<String, dynamic>?> streamCustomerStatus(String customerId) {
+    if (customerId.isEmpty) return Stream.value(null);
+    return _firestore
+        .collection('buyer_user')
+        .doc(customerId)
+        .snapshots(includeMetadataChanges: true)
+        .map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return {'id': doc.id, ...doc.data()!};
+    }).handleError((error) {
+      debugPrint('Error streaming customer status: $error');
+      return null;
+    });
+  }
+
+  /// Stream 7: Real-Time Chat Messages
+  Stream<List<Map<String, dynamic>>> streamChatMessages(String conversationId) {
+    if (conversationId.isEmpty) return Stream.value([]);
+    return _firestore
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .orderBy('timestamp', descending: false)
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+    }).handleError((error) {
+      debugPrint('Error streaming chat messages: $error');
+      return <Map<String, dynamic>>[];
+    });
+  }
+
+  /// Stream 8: Real-Time Delivery Partner Notifications
+  Stream<List<Map<String, dynamic>>> streamDeliveryNotifications(String driverId) {
+    if (driverId.isEmpty) return Stream.value([]);
+    return _firestore
+        .collection('delivery_partners')
+        .doc(driverId)
+        .collection('notifications')
+        .orderBy('createdAt', descending: true)
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+    }).handleError((error) {
+      debugPrint('Error streaming delivery notifications: $error');
+      return <Map<String, dynamic>>[];
+    });
+  }
+
+  /// Stream 9: Real-Time Earnings
+  Stream<Map<String, dynamic>> streamEarnings(String driverId) {
+    if (driverId.isEmpty) return Stream.value({});
+    return _firestore
+        .collection('delivery_partners')
+        .doc(driverId)
+        .snapshots(includeMetadataChanges: true)
+        .map((doc) {
+      if (!doc.exists || doc.data() == null) return <String, dynamic>{};
+      final data = doc.data()!;
+      return {
+        'totalEarnings': (data['totalEarnings'] as num?)?.toDouble() ?? 0.0,
+        'todayEarnings': (data['todayEarnings'] as num?)?.toDouble() ?? 0.0,
+        'bonusEarnings': (data['bonusEarnings'] as num?)?.toDouble() ?? 0.0,
+        'incentiveEarnings': (data['incentiveEarnings'] as num?)?.toDouble() ?? 0.0,
+        'completedTrips': (data['completedTrips'] as num?)?.toInt() ?? 0,
+      };
+    }).handleError((error) {
+      debugPrint('Error streaming earnings: $error');
+      return <String, dynamic>{};
+    });
+  }
+
+  /// Stream 10: Real-Time Wallet Balance & Details
+  Stream<Map<String, dynamic>> streamWallet(String driverId) {
+    if (driverId.isEmpty) return Stream.value({});
+    return _firestore
+        .collection('delivery_partners')
+        .doc(driverId)
+        .snapshots(includeMetadataChanges: true)
+        .map((doc) {
+      if (!doc.exists || doc.data() == null) return <String, dynamic>{};
+      final data = doc.data()!;
+      final balance = (data['walletBalance'] as num?)?.toDouble() ??
+          (data['totalEarnings'] as num?)?.toDouble() ??
+          0.0;
+      return {
+        'walletBalance': balance,
+        'availableBalance': (data['availableBalance'] as num?)?.toDouble() ?? (balance > 100.0 ? balance - 100.0 : 0.0),
+        'withdrawableAmount': (data['withdrawableAmount'] as num?)?.toDouble() ?? balance,
+      };
+    }).handleError((error) {
+      debugPrint('Error streaming wallet: $error');
+      return <String, dynamic>{};
     });
   }
 }

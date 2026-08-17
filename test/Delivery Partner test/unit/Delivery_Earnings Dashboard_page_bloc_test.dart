@@ -26,6 +26,32 @@ DeliveryEarningsDashboardState buildLoadedState() {
     walletBalance: 12850.00,
     pendingWithdrawal: 1200.00,
     totalWithdrawn: 48250.00,
+    todayDeliveries: 5,
+    weeklyDeliveries: 42,
+    monthlyDeliveries: 120,
+    totalDeliveries: 512,
+    pendingEarnings: 350.00,
+    cashInHand: 500.00,
+    cashCollected: 500.00,
+    cashSubmitted: 0.00,
+    reconciliationStatus: 'pending_submission',
+    detailedEarnings: [
+      DeliveryDetailedEarningItem(
+        orderId: 'ord_1',
+        customerName: 'Arun Kumar',
+        timestamp: now,
+        paymentMethod: 'COD',
+        isCOD: true,
+        baseFare: 35.0,
+        distanceFare: 15.0,
+        surgeFare: 20.0,
+        incentive: 0.0,
+        bonus: 0.0,
+        tips: 30.0,
+        cancellationCompensation: 0.0,
+        totalEarnings: 100.0,
+      ),
+    ],
     selectedRange: EarningsDateRange.today,
     selectedTab: EarningsTab.overview,
     rangeEarnings: {
@@ -328,6 +354,128 @@ void main() {
         buildLoadedState().copyWith(
           isMediaUploading: false,
           mediaUploadProgress: 1.0,
+        ),
+      ],
+    );
+
+    blocTest<DeliveryEarningsDashboardPageBloc, DeliveryEarningsDashboardState>(
+      'submit cash emits submitting then updated reconciliation state on success',
+      build: () {
+        when(() => mockRepository.submitCash(amount: 200.0, method: 'Bank Deposit'))
+            .thenAnswer((_) async => buildLoadedState().copyWith(
+                  cashInHand: 300.00,
+                  cashSubmitted: 200.00,
+                  reconciliationStatus: 'pending_submission',
+                ));
+        return DeliveryEarningsDashboardPageBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => buildLoadedState(),
+      act: (bloc) => bloc.add(
+        const DeliveryEarningsSubmitCashEvent(
+          amount: 200.0,
+          method: 'Bank Deposit',
+        ),
+      ),
+      expect: () => [
+        buildLoadedState().copyWith(isSubmittingCash: true, clearError: true),
+        buildLoadedState().copyWith(
+          cashInHand: 300.00,
+          cashSubmitted: 200.00,
+          reconciliationStatus: 'pending_submission',
+          isSubmittingCash: false,
+        ),
+      ],
+      verify: (_) {
+        verify(
+          () => mockRepository.submitCash(
+            amount: 200.0,
+            method: 'Bank Deposit',
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<DeliveryEarningsDashboardPageBloc, DeliveryEarningsDashboardState>(
+      'submit cash rejects amount exceeding cash in hand without calling repository',
+      build: () => DeliveryEarningsDashboardPageBloc(
+        repository: mockRepository,
+        service: mockService,
+      ),
+      seed: () => buildLoadedState(),
+      act: (bloc) => bloc.add(
+        const DeliveryEarningsSubmitCashEvent(
+          amount: 5000.0,
+          method: 'Hub Deposit',
+        ),
+      ),
+      expect: () => [
+        buildLoadedState().copyWith(
+          errorMessage: 'Amount exceeds cash in hand.',
+        ),
+      ],
+      verify: (_) {
+        verifyNever(
+          () => mockRepository.submitCash(
+            amount: any(named: 'amount'),
+            method: any(named: 'method'),
+          ),
+        );
+      },
+    );
+
+    blocTest<DeliveryEarningsDashboardPageBloc, DeliveryEarningsDashboardState>(
+      'submit cash rejects non-positive amount without calling repository',
+      build: () => DeliveryEarningsDashboardPageBloc(
+        repository: mockRepository,
+        service: mockService,
+      ),
+      seed: () => buildLoadedState(),
+      act: (bloc) => bloc.add(
+        const DeliveryEarningsSubmitCashEvent(
+          amount: 0.0,
+          method: 'Hub Deposit',
+        ),
+      ),
+      expect: () => [
+        buildLoadedState().copyWith(
+          errorMessage: 'Please enter a valid cash amount.',
+        ),
+      ],
+      verify: (_) {
+        verifyNever(
+          () => mockRepository.submitCash(
+            amount: any(named: 'amount'),
+            method: any(named: 'method'),
+          ),
+        );
+      },
+    );
+
+    blocTest<DeliveryEarningsDashboardPageBloc, DeliveryEarningsDashboardState>(
+      'submit cash failure emits friendly error and resets submitting',
+      build: () {
+        when(() => mockRepository.submitCash(amount: 200.0, method: 'Hub Deposit'))
+            .thenThrow(Exception('Timeout'));
+        return DeliveryEarningsDashboardPageBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => buildLoadedState(),
+      act: (bloc) => bloc.add(
+        const DeliveryEarningsSubmitCashEvent(
+          amount: 200.0,
+          method: 'Hub Deposit',
+        ),
+      ),
+      expect: () => [
+        buildLoadedState().copyWith(isSubmittingCash: true, clearError: true),
+        buildLoadedState().copyWith(
+          isSubmittingCash: false,
+          errorMessage: 'Cash submission failed. Please try again.',
         ),
       ],
     );

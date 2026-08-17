@@ -266,3 +266,7 @@ class DeliveryOrdersPageBloc
     );
   }
 }
+
+/// Standardized Feature-Architecture Alias for DeliveryOrderBloc
+typedef DeliveryOrderBloc = DeliveryOrdersPageBloc;
+

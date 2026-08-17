@@ -225,6 +225,11 @@ class OrderModel extends Equatable {
     }
   }
 
+  factory OrderModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return OrderModel.fromMap(data, doc.id);
+  }
+
   factory OrderModel.fromMap(Map<String, dynamic> map, String documentId) {
     DateTime? _ts(String key) =>
         (map[key] as Timestamp?)?.toDate();

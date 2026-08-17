@@ -289,6 +289,7 @@ void main() {
           startEpoch: 1747909800,
           endEpoch: 1748131140,
           dateLabel: 'May 22, 2025 - May 24, 2025',
+          datePreset: DeliveryOrderHistoryDatePreset.custom,
         ),
       ],
     );
@@ -385,6 +386,67 @@ void main() {
           ),
         ),
       ],
+    );
+
+    blocTest<DeliveryOrderHistoryPageBloc, DeliveryOrderHistoryPageState>(
+      'filters by date preset Today and calculates start/end epochs',
+      build: () => buildBloc(),
+      seed: () => const DeliveryOrderHistoryPageState(
+        status: DeliveryOrderHistoryPageStatus.loaded,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+        pageOrders: sampleOrders,
+      ),
+      act: (bloc) => bloc.add(const DeliveryOrderHistoryDatePresetChangedEvent(
+        DeliveryOrderHistoryDatePreset.today,
+      )),
+      verify: (bloc) {
+        expect(bloc.state.datePreset, DeliveryOrderHistoryDatePreset.today);
+        expect(bloc.state.startEpoch, isNotNull);
+        expect(bloc.state.endEpoch, isNotNull);
+        expect(bloc.state.dateLabel, 'Today');
+      },
+    );
+
+    blocTest<DeliveryOrderHistoryPageBloc, DeliveryOrderHistoryPageState>(
+      'filters by date preset This Week',
+      build: () => buildBloc(),
+      seed: () => const DeliveryOrderHistoryPageState(
+        status: DeliveryOrderHistoryPageStatus.loaded,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+        pageOrders: sampleOrders,
+      ),
+      act: (bloc) => bloc.add(const DeliveryOrderHistoryDatePresetChangedEvent(
+        DeliveryOrderHistoryDatePreset.thisWeek,
+      )),
+      verify: (bloc) {
+        expect(bloc.state.datePreset, DeliveryOrderHistoryDatePreset.thisWeek);
+        expect(bloc.state.dateLabel, 'This Week');
+      },
+    );
+
+    blocTest<DeliveryOrderHistoryPageBloc, DeliveryOrderHistoryPageState>(
+      'filters by custom date range preset',
+      build: () => buildBloc(),
+      seed: () => const DeliveryOrderHistoryPageState(
+        status: DeliveryOrderHistoryPageStatus.loaded,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+        pageOrders: sampleOrders,
+      ),
+      act: (bloc) => bloc.add(const DeliveryOrderHistoryDatePresetChangedEvent(
+        DeliveryOrderHistoryDatePreset.custom,
+        startEpoch: 1747526400,
+        endEpoch: 1748131140,
+        dateLabel: 'May 18 - May 24',
+      )),
+      verify: (bloc) {
+        expect(bloc.state.datePreset, DeliveryOrderHistoryDatePreset.custom);
+        expect(bloc.state.startEpoch, 1747526400);
+        expect(bloc.state.endEpoch, 1748131140);
+        expect(bloc.state.dateLabel, 'May 18 - May 24');
+      },
     );
 
     blocTest<DeliveryOrderHistoryPageBloc, DeliveryOrderHistoryPageState>(

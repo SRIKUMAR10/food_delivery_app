@@ -3,6 +3,7 @@ import 'Delivery_Delivery Completed_page_state.dart';
 
 abstract class DeliveryCompletedRepositoryBase {
   Future<DeliveryCompletedModel> fetchCompletedOrderDetails(String orderId);
+  Stream<DeliveryCompletedModel> watchCompletedOrder(String orderId);
   Future<DeliveryCompletedModel> completeOrder(String orderId);
 }
 
@@ -52,6 +53,11 @@ class DeliveryCompletedRepository implements DeliveryCompletedRepositoryBase {
   ) async {
     final raw = await _service.fetchCompletedOrderData(orderId);
     return _mapDetails(raw);
+  }
+
+  @override
+  Stream<DeliveryCompletedModel> watchCompletedOrder(String orderId) {
+    return _service.watchCompletedOrderData(orderId).map(_mapDetails);
   }
 
   @override

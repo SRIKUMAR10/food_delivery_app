@@ -98,6 +98,9 @@ void main() {
       'sanitizes init exception messages so internals are not leaked',
       build: () {
         when(
+          () => mockRepository.watchIncentivesData(),
+        ).thenAnswer((_) => Stream.error(Exception('Internal server token mismatch')));
+        when(
           () => mockRepository.loadIncentivesData(),
         ).thenThrow(Exception('Internal server token mismatch'));
         return DeliveryIncentivesDashboardPageBloc(
@@ -120,6 +123,9 @@ void main() {
     >(
       'refresh error message is sanitized for display',
       build: () {
+        when(
+          () => mockRepository.watchIncentivesData(),
+        ).thenAnswer((_) => Stream.error(Exception('Disk full')));
         when(
           () => mockRepository.loadIncentivesData(),
         ).thenThrow(Exception('Disk full'));

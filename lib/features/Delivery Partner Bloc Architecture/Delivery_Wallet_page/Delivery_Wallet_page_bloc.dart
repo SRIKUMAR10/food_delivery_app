@@ -26,6 +26,7 @@ class DeliveryWalletPageBloc
     on<DeliveryWalletWithdrawRequestedEvent>(_onWithdrawRequested);
     on<DeliveryWalletFilterPeriodChangedEvent>(_onFilterPeriodChanged);
     on<DeliveryWalletAddPaymentMethodEvent>(_onAddPaymentMethod);
+    on<DeliveryWalletSubmitCashEvent>(_onSubmitCash);
   }
 
   void _subscribeTransactions(DeliveryWalletTransactionFilter filter) {
@@ -174,4 +175,53 @@ class DeliveryWalletPageBloc
       );
     }
   }
+
+  Future<void> _onSubmitCash(
+    DeliveryWalletSubmitCashEvent event,
+    Emitter<DeliveryWalletPageState> emit,
+  ) async {
+    if (event.amount <= 0) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Please enter a valid cash amount.',
+        ),
+      );
+      return;
+    }
+    if (event.amount > state.cashInHand) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Amount exceeds cash in hand.',
+        ),
+      );
+      return;
+    }
+
+    emit(state.copyWith(isSubmittingCash: true, clearError: true));
+    try {
+      final updatedState = await repository.submitCash(
+        amount: event.amount,
+        method: event.method,
+      );
+      emit(
+        updatedState.copyWith(
+          isSubmittingCash: false,
+          activeFilter: state.activeFilter,
+          selectedPeriod: state.selectedPeriod,
+          clearError: true,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmittingCash: false,
+          errorMessage: 'Cash submission failed. Please try again.',
+        ),
+      );
+    }
+  }
 }
+
+/// Standardized Feature-Architecture Alias for WalletBloc
+typedef WalletBloc = DeliveryWalletPageBloc;
+

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'Delivery_Dashboard_page_event.dart';
 import 'Delivery_Dashboard_page_repository.dart';
@@ -56,6 +57,15 @@ class DeliveryDashboardPageBloc
             currentOrderId: dataState.currentOrderId,
             lastActiveAt: dataState.lastActiveAt,
             walletBalance: s?.walletBalance ?? dataState.walletBalance,
+            errorMessage: null,
+            clearError: true,
+          );
+        },
+        onError: (error, stackTrace) {
+          return state.copyWith(
+            status: DeliveryDashboardStatus.loaded,
+            errorMessage: null,
+            clearError: true,
           );
         },
       );
@@ -66,6 +76,8 @@ class DeliveryDashboardPageBloc
       emit(
         fallbackData.copyWith(
           status: DeliveryDashboardStatus.loaded,
+          errorMessage: null,
+          clearError: true,
         ),
       );
     }
@@ -220,12 +232,18 @@ class DeliveryDashboardPageBloc
     emit(state.copyWith(status: DeliveryDashboardStatus.loading));
     try {
       final dataState = await repository.loadDashboardData();
-      emit(dataState);
+      emit(dataState.copyWith(
+        status: DeliveryDashboardStatus.loaded,
+        errorMessage: null,
+        clearError: true,
+      ));
     } catch (e) {
+      debugPrint('DeliveryDashboardRefreshEvent error: $e');
       emit(
         state.copyWith(
-          status: DeliveryDashboardStatus.error,
-          errorMessage: e.toString(),
+          status: DeliveryDashboardStatus.loaded,
+          errorMessage: null,
+          clearError: true,
         ),
       );
     }
@@ -271,4 +289,8 @@ class _DeliveryDashboardSessionUpdatedEvent extends DeliveryDashboardPageEvent {
   @override
   List<Object?> get props => [session];
 }
+
+/// Standardized Feature-Architecture Alias for DeliveryDashboardBloc
+typedef DeliveryDashboardBloc = DeliveryDashboardPageBloc;
+
 

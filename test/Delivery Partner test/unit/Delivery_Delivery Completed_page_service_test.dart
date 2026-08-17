@@ -1,19 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Delivery%20Completed_page/Delivery_Delivery%20Completed_page_service.dart';
 
-class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
 class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 void main() {
   group('DeliveryCompletedService Tests', () {
     late DeliveryCompletedService service;
+    late FakeFirebaseFirestore fakeFirestore;
 
     setUp(() {
+      fakeFirestore = FakeFirebaseFirestore();
       service = DeliveryCompletedService(
-        firestore: MockFirebaseFirestore(),
+        firestore: fakeFirestore,
         auth: MockFirebaseAuth(),
       );
     });
@@ -100,5 +102,10 @@ void main() {
         expect(await service.requestLocationPermission(), isTrue);
       },
     );
+
+    test('watchCompletedOrderData returns stream of order data', () async {
+      final stream = service.watchCompletedOrderData('#ORD12345');
+      expect(stream, isNotNull);
+    });
   });
 }

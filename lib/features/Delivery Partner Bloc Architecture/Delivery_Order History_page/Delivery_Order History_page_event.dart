@@ -32,6 +32,24 @@ class DeliveryOrderHistoryStatusFilterChangedEvent
   List<Object?> get props => [filter];
 }
 
+class DeliveryOrderHistoryDatePresetChangedEvent
+    extends DeliveryOrderHistoryPageEvent {
+  final DeliveryOrderHistoryDatePreset preset;
+  final int? startEpoch;
+  final int? endEpoch;
+  final String dateLabel;
+
+  const DeliveryOrderHistoryDatePresetChangedEvent(
+    this.preset, {
+    this.startEpoch,
+    this.endEpoch,
+    this.dateLabel = '',
+  });
+
+  @override
+  List<Object?> get props => [preset, startEpoch, endEpoch, dateLabel];
+}
+
 class DeliveryOrderHistoryDateRangeChangedEvent
     extends DeliveryOrderHistoryPageEvent {
   final int? startEpoch;
@@ -58,7 +76,8 @@ class DeliveryOrderHistoryPaymentFilterChangedEvent
   List<Object?> get props => [filter];
 }
 
-class DeliveryOrderHistoryPageChangedEvent extends DeliveryOrderHistoryPageEvent {
+class DeliveryOrderHistoryPageChangedEvent
+    extends DeliveryOrderHistoryPageEvent {
   final int page;
 
   const DeliveryOrderHistoryPageChangedEvent(this.page);

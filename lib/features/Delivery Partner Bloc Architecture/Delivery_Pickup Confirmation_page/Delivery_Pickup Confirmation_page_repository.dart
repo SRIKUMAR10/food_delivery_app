@@ -5,6 +5,9 @@ abstract class DeliveryPickupConfirmationRepositoryBase {
   Future<PickupConfirmationModel> fetchPickupConfirmationDetails(
     String orderId,
   );
+  Stream<PickupConfirmationModel> watchPickupConfirmationDetails(
+    String orderId,
+  );
   Future<PickupConfirmationModel> startDelivery(String orderId);
   Future<bool> arrivedAtStore(String orderId);
 }
@@ -41,6 +44,13 @@ class DeliveryPickupConfirmationRepository
   ) async {
     final raw = await _service.fetchPickupConfirmationData(orderId);
     return _mapDetails(raw);
+  }
+
+  @override
+  Stream<PickupConfirmationModel> watchPickupConfirmationDetails(
+    String orderId,
+  ) {
+    return _service.watchPickupConfirmationData(orderId).map(_mapDetails);
   }
 
   @override

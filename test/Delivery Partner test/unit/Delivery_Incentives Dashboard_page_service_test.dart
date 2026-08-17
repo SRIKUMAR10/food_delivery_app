@@ -1,20 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incentives%20Dashboard_page/Delivery_Incentives%20Dashboard_page_service.dart';
 
-class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
 class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 void main() {
   group('DeliveryIncentivesDashboardPage Service Tests', () {
     late DeliveryIncentivesDashboardService service;
+    late FakeFirebaseFirestore fakeFirestore;
 
     setUp(() {
+      fakeFirestore = FakeFirebaseFirestore();
       service = DeliveryIncentivesDashboardService(
-        firestore: MockFirebaseFirestore(),
+        firestore: fakeFirestore,
         auth: MockFirebaseAuth(),
       );
     });
@@ -94,6 +96,13 @@ void main() {
       expect(csv, startsWith('Reference,Title,Date,Amount,Type,Status'));
       expect(csv, contains('REF-1040'));
       expect(csv, contains('Peak Hour Bonus'));
+    });
+
+    test('watchIncentivesData returns a stream of metric data', () async {
+      final stream = service.watchIncentivesData();
+      final data = await stream.first;
+      expect(data, isNotNull);
+      expect(data['walletBalance'], isNotNull);
     });
   });
 }

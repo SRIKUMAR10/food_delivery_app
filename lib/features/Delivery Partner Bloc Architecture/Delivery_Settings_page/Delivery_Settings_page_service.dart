@@ -10,6 +10,10 @@ abstract class DeliverySettingsServiceBase {
   Future<bool> requestNotificationPermission();
   Future<bool> requestLocationPermission();
   double parseDeliveryRadius(String value, {double fallback = 5.0});
+  Future<bool> changePassword(String currentPassword, String newPassword);
+  Future<bool> deactivateAccount({String? reason});
+  Future<bool> deleteAccount({String? reason});
+  Future<bool> clearAppCache();
 }
 
 class DeliverySettingsService implements DeliverySettingsServiceBase {
@@ -72,4 +76,29 @@ class DeliverySettingsService implements DeliverySettingsServiceBase {
     if (parsed == null || parsed <= 0 || parsed > 50) return fallback;
     return parsed;
   }
+
+  @override
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    return newPassword.length >= 6;
+  }
+
+  @override
+  Future<bool> deactivateAccount({String? reason}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    return true;
+  }
+
+  @override
+  Future<bool> deleteAccount({String? reason}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    return true;
+  }
+
+  @override
+  Future<bool> clearAppCache() async {
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    return true;
+  }
 }
+

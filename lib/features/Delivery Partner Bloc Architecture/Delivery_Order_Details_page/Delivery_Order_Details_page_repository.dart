@@ -13,6 +13,12 @@ abstract class DeliveryOrderDetailsRepositoryBase {
     String orderId, {
     required double amountReceived,
   });
+  Future<Map<String, dynamic>> cancelOrderWithReason(
+    String orderId, {
+    required String reason,
+    String? notes,
+    bool isFailedDelivery = false,
+  });
 }
 
 class DeliveryOrderDetailsRepository
@@ -129,4 +135,20 @@ class DeliveryOrderDetailsRepository
       amountReceived: amountReceived,
     );
   }
+
+  @override
+  Future<Map<String, dynamic>> cancelOrderWithReason(
+    String orderId, {
+    required String reason,
+    String? notes,
+    bool isFailedDelivery = false,
+  }) async {
+    return await _service.cancelOrderWithReason(
+      orderId,
+      reason: reason,
+      notes: notes,
+      isFailedDelivery: isFailedDelivery,
+    );
+  }
 }
+

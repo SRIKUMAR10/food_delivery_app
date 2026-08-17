@@ -216,6 +216,10 @@ void main() {
       await tester.pumpWidget(buildPage());
       await tester.pump();
 
+      await tester.ensureVisible(
+        find.byKey(const Key('dp_earnings_media_upload_button')),
+      );
+      await tester.pump();
       await tester.tap(
         find.byKey(const Key('dp_earnings_media_upload_button')),
       );

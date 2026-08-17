@@ -418,5 +418,104 @@ void main() {
         ),
       ],
     );
+
+    blocTest<DeliveryNavigationBloc, DeliveryNavigationState>(
+      'collect COD cash marks order collected and stores change',
+      build: () {
+        when(
+          () => mockRepository.collectCodCash(
+            orderId: 'ORD-1234',
+            amountReceived: 1000.0,
+          ),
+        ).thenAnswer(
+          (_) async => {
+            'success': true,
+            'changeAmount': 500.0,
+            'collectedAmount': 500.0,
+            'message': 'COD collected',
+          },
+        );
+        return DeliveryNavigationBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => const DeliveryNavigationState(
+        status: DeliveryNavigationStatus.loaded,
+        paymentMethod: 'COD',
+        codAmount: 500.0,
+        isCodCollected: false,
+        activeOrderId: 'ORD-1234',
+      ),
+      act: (b) => b.add(
+        const DeliveryNavigationCollectCodCashEvent(
+          orderId: 'ORD-1234',
+          amountReceived: 1000.0,
+        ),
+      ),
+      expect: () => [
+        isA<DeliveryNavigationState>()
+            .having((s) => s.codCollectStatus, 'collecting',
+                CodCollectStatus.collecting),
+        isA<DeliveryNavigationState>()
+            .having((s) => s.codCollectStatus, 'success',
+                CodCollectStatus.success)
+            .having((s) => s.isCodCollected, 'collected', true)
+            .having((s) => s.collectedAmount, 'collectedAmount', 500.0)
+            .having((s) => s.codChangeAmount, 'change', 500.0),
+      ],
+      verify: (_) {
+        verify(
+          () => mockRepository.collectCodCash(
+            orderId: 'ORD-1234',
+            amountReceived: 1000.0,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<DeliveryNavigationBloc, DeliveryNavigationState>(
+      'collect COD cash reports failure when insufficient amount received',
+      build: () {
+        when(
+          () => mockRepository.collectCodCash(
+            orderId: 'ORD-1234',
+            amountReceived: 100.0,
+          ),
+        ).thenAnswer(
+          (_) async => {
+            'success': false,
+            'changeAmount': 0.0,
+            'message': 'Received amount is less than the COD amount to collect.',
+          },
+        );
+        return DeliveryNavigationBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => const DeliveryNavigationState(
+        status: DeliveryNavigationStatus.loaded,
+        paymentMethod: 'COD',
+        codAmount: 500.0,
+        isCodCollected: false,
+        activeOrderId: 'ORD-1234',
+      ),
+      act: (b) => b.add(
+        const DeliveryNavigationCollectCodCashEvent(
+          orderId: 'ORD-1234',
+          amountReceived: 100.0,
+        ),
+      ),
+      expect: () => [
+        isA<DeliveryNavigationState>()
+            .having((s) => s.codCollectStatus, 'collecting',
+                CodCollectStatus.collecting),
+        isA<DeliveryNavigationState>()
+            .having((s) => s.codCollectStatus, 'failed',
+                CodCollectStatus.failed)
+            .having((s) => s.isCodCollected, 'collected', false),
+      ],
+    );
   });
 }

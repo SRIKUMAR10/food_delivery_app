@@ -60,6 +60,12 @@ class DeliveryHelpSupportStrings {
       'feedbackThanks': 'Thank you for your feedback!',
       'retry': 'Retry',
       'somethingWentWrong': 'Something went wrong while loading help & support.',
+      'quickIssues': 'Quick Issue Reporting',
+      'reportOrderIssue': 'Report Order Issue',
+      'reportPaymentIssue': 'Report Payment Issue',
+      'reportRestaurantIssue': 'Report Restaurant Issue',
+      'reportCustomerIssue': 'Report Customer Issue',
+      'emergencyContact': 'Emergency SOS',
     },
     'ta': {
       'title': 'உதவி & ஆதரவு',
@@ -111,6 +117,12 @@ class DeliveryHelpSupportStrings {
       'feedbackThanks': 'உங்கள் கருத்துக்கு நன்றி!',
       'retry': 'மீண்டும் முயற்சிக்கவும்',
       'somethingWentWrong': 'உதவி & ஆதரவை ஏற்றுவதில் பிழை ஏற்பட்டது.',
+      'quickIssues': 'விரைவு சிக்கல் அறிக்கை',
+      'reportOrderIssue': 'ஆர்டர் சிக்கல் அறிக்கை',
+      'reportPaymentIssue': 'கட்டண சிக்கல் அறிக்கை',
+      'reportRestaurantIssue': 'உணவக சிக்கல் அறிக்கை',
+      'reportCustomerIssue': 'வாடிக்கையாளர் சிக்கல் அறிக்கை',
+      'emergencyContact': 'அவசர SOS',
     },
   };
 
@@ -214,6 +226,8 @@ class DeliveryHelpSupportPageView extends StatelessWidget {
                 const SizedBox(height: 16),
                 _SupportStatsRow(state: state),
                 const SizedBox(height: 20),
+                _QuickIssueActionsBar(state: state),
+                const SizedBox(height: 16),
                 _CreateTicketButton(state: state),
                 const SizedBox(height: 24),
                 _SupportTicketsSection(state: state),
@@ -541,6 +555,122 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+class _QuickIssueActionsBar extends StatelessWidget {
+  final DeliveryHelpSupportPageState state;
+
+  const _QuickIssueActionsBar({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = state.localeCode;
+
+    final issues = [
+      (
+        'Order Issue',
+        DeliveryHelpSupportStrings.of('reportOrderIssue', lang),
+        Icons.inventory_2_outlined,
+        const Color(0xFF38BDF8),
+        'dp_help_report_order_btn',
+      ),
+      (
+        'Payment Issue',
+        DeliveryHelpSupportStrings.of('reportPaymentIssue', lang),
+        Icons.payments_outlined,
+        const Color(0xFFFBBF24),
+        'dp_help_report_payment_btn',
+      ),
+      (
+        'Restaurant Issue',
+        DeliveryHelpSupportStrings.of('reportRestaurantIssue', lang),
+        Icons.storefront_outlined,
+        const Color(0xFF34D399),
+        'dp_help_report_restaurant_btn',
+      ),
+      (
+        'Customer Issue',
+        DeliveryHelpSupportStrings.of('reportCustomerIssue', lang),
+        Icons.person_pin_circle_outlined,
+        const Color(0xFFA78BFA),
+        'dp_help_report_customer_btn',
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          DeliveryHelpSupportStrings.of('quickIssues', lang),
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 10),
+        GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 2.6,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: issues.map((issue) {
+            final category = issue.$1;
+            final label = issue.$2;
+            final icon = issue.$3;
+            final color = issue.$4;
+            final keyName = issue.$5;
+
+            return InkWell(
+              key: Key(keyName),
+              onTap: () => _showCreateTicketDialog(
+                context,
+                state,
+                preselectedCategory: category,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D141C),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(icon, color: color, size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
 class _CreateTicketButton extends StatelessWidget {
   final DeliveryHelpSupportPageState state;
 
@@ -577,19 +707,26 @@ class _CreateTicketButton extends StatelessWidget {
 
 Future<void> _showCreateTicketDialog(
   BuildContext context,
-  DeliveryHelpSupportPageState state,
-) async {
+  DeliveryHelpSupportPageState state, {
+  String? preselectedCategory,
+}) async {
   await showDialog<void>(
     context: context,
-    builder: (dialogContext) =>
-        _CreateTicketDialog(state: state),
+    builder: (dialogContext) => _CreateTicketDialog(
+      state: state,
+      initialCategory: preselectedCategory,
+    ),
   );
 }
 
 class _CreateTicketDialog extends StatefulWidget {
   final DeliveryHelpSupportPageState state;
+  final String? initialCategory;
 
-  const _CreateTicketDialog({required this.state});
+  const _CreateTicketDialog({
+    required this.state,
+    this.initialCategory,
+  });
 
   @override
   State<_CreateTicketDialog> createState() => _CreateTicketDialogState();
@@ -600,7 +737,7 @@ class _CreateTicketDialogState extends State<_CreateTicketDialog> {
   late final TextEditingController _subjectController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _orderIdController;
-  String _category = kDeliverySupportCategories.first;
+  late String _category;
   String _priority = 'medium';
 
   @override
@@ -609,6 +746,10 @@ class _CreateTicketDialogState extends State<_CreateTicketDialog> {
     _subjectController = TextEditingController();
     _descriptionController = TextEditingController();
     _orderIdController = TextEditingController();
+    _category = (widget.initialCategory != null &&
+            kDeliverySupportCategories.contains(widget.initialCategory))
+        ? widget.initialCategory!
+        : kDeliverySupportCategories.first;
   }
 
   @override

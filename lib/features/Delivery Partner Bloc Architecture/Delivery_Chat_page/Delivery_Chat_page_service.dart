@@ -7,6 +7,8 @@ abstract class DeliveryChatServiceBase {
   String get currentUserId;
   String get currentUserName;
   Future<void> markMessagesRead(String conversationId, String riderId);
+  Future<Map<String, dynamic>?> fetchCustomerDetails(String customerId);
+  Future<Map<String, dynamic>?> fetchSellerDetails(String sellerId);
 }
 
 class DeliveryChatService implements DeliveryChatServiceBase {
@@ -29,9 +31,23 @@ class DeliveryChatService implements DeliveryChatServiceBase {
   @override
   String get currentUserName => auth.currentUser?.displayName ?? 'Delivery Partner';
 
+  @override
   Future<Map<String, dynamic>?> fetchCustomerDetails(String customerId) async {
     try {
+      if (customerId.isEmpty) return null;
       final doc = await firestore.collection('buyer_user').doc(customerId).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  @override
+  Future<Map<String, dynamic>?> fetchSellerDetails(String sellerId) async {
+    try {
+      if (sellerId.isEmpty) return null;
+      final doc = await firestore.collection('sellers').doc(sellerId).get();
       if (doc.exists) {
         return doc.data();
       }

@@ -7,6 +7,10 @@ abstract class DeliveryEarningsDashboardServiceBase {
   Future<Map<String, dynamic>> fetchEarningsData();
   Stream<Map<String, dynamic>> watchEarningsData();
   Future<Map<String, dynamic>> withdraw(double amount);
+  Future<Map<String, dynamic>> submitCash({
+    required double amount,
+    required String method,
+  });
   Stream<double> simulateMediaUpload();
 }
 
@@ -118,6 +122,51 @@ class DeliveryEarningsDashboardService
     return (data['amount'] as num?)?.toDouble() ?? 0.0;
   }
 
+  Map<String, dynamic> _orderBreakdown(Map<String, dynamic> data) {
+    final orderEarnings = _orderEarnings(data);
+    double? _num(String key) => (data[key] as num?)?.toDouble();
+
+    final baseFare = _num('baseFare');
+    final distanceFare = _num('distanceFare');
+    final surgeFare = _num('surgeFare');
+    final incentive = _num('incentiveAmount') ?? _num('incentive');
+    final bonus = _num('bonusAmount') ?? _num('bonus');
+    final tips = _num('tipsAmount') ?? _num('tipAmount') ?? _num('tips');
+    final cancellation = _num('cancellationCompensation');
+
+    final hasBreakdown =
+        baseFare != null ||
+        distanceFare != null ||
+        surgeFare != null ||
+        incentive != null ||
+        bonus != null ||
+        tips != null ||
+        cancellation != null;
+
+    final resolvedBase = hasBreakdown ? (baseFare ?? 0.0) : orderEarnings;
+    final resolvedTotal = _num('totalPartnerEarnings') ??
+        (hasBreakdown
+            ? resolvedBase +
+                (distanceFare ?? 0.0) +
+                (surgeFare ?? 0.0) +
+                (incentive ?? 0.0) +
+                (bonus ?? 0.0) +
+                (tips ?? 0.0) +
+                (cancellation ?? 0.0)
+            : orderEarnings);
+
+    return {
+      'baseFare': resolvedBase,
+      'distanceFare': distanceFare ?? 0.0,
+      'surgeFare': surgeFare ?? 0.0,
+      'incentive': incentive ?? 0.0,
+      'bonus': bonus ?? 0.0,
+      'tips': tips ?? 0.0,
+      'cancellationCompensation': cancellation ?? 0.0,
+      'totalEarnings': resolvedTotal,
+    };
+  }
+
   Map<String, dynamic> _mapEarningsData(
     DocumentSnapshot<Map<String, dynamic>> partnerDoc,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> completedDocs,
@@ -170,6 +219,45 @@ class DeliveryEarningsDashboardService
         })
         .fold<double>(0.0, (sum, doc) => sum + _orderEarnings(doc.data()));
 
+    final monthStart = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      1,
+    );
+    final monthOrders = completedDocs.where((doc) {
+      final ts = doc.data()['timestamp'] as Timestamp?;
+      return ts != null && ts.toDate().isAfter(monthStart);
+    }).length;
+
+    final monthEarnings = completedDocs
+        .where((doc) {
+          final ts = doc.data()['timestamp'] as Timestamp?;
+          return ts != null && ts.toDate().isAfter(monthStart);
+        })
+        .fold<double>(0.0, (sum, doc) => sum + _orderEarnings(doc.data()));
+
+    final sortedDocs = [...completedDocs]..sort((a, b) {
+        final ta = (a.data()['timestamp'] as Timestamp?)?.toDate();
+        final tb = (b.data()['timestamp'] as Timestamp?)?.toDate();
+        if (ta == null) return 1;
+        if (tb == null) return -1;
+        return tb.compareTo(ta);
+      });
+
+    final detailedEarnings = sortedDocs.take(100).map((doc) {
+      final docData = doc.data();
+      final breakdown = _orderBreakdown(docData);
+      final orderTimestamp = (docData['timestamp'] as Timestamp?)?.toDate();
+      return {
+        'orderId': doc.id,
+        'customerName': docData['customerName'] ?? '',
+        'timestamp': (orderTimestamp ?? DateTime.now()).toIso8601String(),
+        'paymentMethod': docData['paymentMethod'] ?? '',
+        'isCOD': (docData['paymentMethod'] as String? ?? '').toUpperCase() == 'COD',
+        ...breakdown,
+      };
+    }).toList();
+
     return {
       'totalEarnings': totalEarnings,
       'totalDeliveries': totalDeliveries,
@@ -178,10 +266,16 @@ class DeliveryEarningsDashboardService
       'earningsGrowth': earningsGrowth,
       'weeklyEarnings': weeklyEarnings,
       'weeklyDeliveries': weeklyOrders,
-      'monthlyEarnings': totalEarnings,
-      'monthlyDeliveries': totalDeliveries,
+      'monthlyEarnings': monthEarnings,
+      'monthlyDeliveries': monthOrders,
       'averagePerOrder': totalDeliveries > 0 ? totalEarnings / totalDeliveries : 0.0,
       'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
+      'pendingEarnings': (data['pendingEarnings'] as num?)?.toDouble() ?? 0.0,
+      'cashInHand': (data['cashInHand'] as num?)?.toDouble() ?? 0.0,
+      'cashCollected': (data['cashCollected'] as num?)?.toDouble() ?? 0.0,
+      'cashSubmitted': (data['cashSubmitted'] as num?)?.toDouble() ?? 0.0,
+      'reconciliationStatus': data['reconciliationStatus'] ?? 'balanced',
+      'detailedEarnings': detailedEarnings,
     };
   }
 
@@ -218,6 +312,65 @@ class DeliveryEarningsDashboardService
     }
 
     return {'success': false, 'message': 'Authentication required to withdraw.'};
+  }
+
+  @override
+  Future<Map<String, dynamic>> submitCash({
+    required double amount,
+    required String method,
+  }) async {
+    try {
+      final uid = _auth?.currentUser?.uid;
+      final fs = _firestore;
+      if (uid != null && fs != null) {
+        final docRef = fs.collection('delivery_partners').doc(uid);
+        return await fs.runTransaction((transaction) async {
+          final snap = await transaction.get(docRef);
+          if (!snap.exists) throw Exception('Account not found');
+          final currentCashInHand =
+              (snap.data()?['cashInHand'] as num?)?.toDouble() ?? 0.0;
+          final currentCashSubmitted =
+              (snap.data()?['cashSubmitted'] as num?)?.toDouble() ?? 0.0;
+          if (amount > currentCashInHand) {
+            throw Exception('Amount exceeds cash in hand');
+          }
+
+          final remaining = currentCashInHand - amount;
+          final newSubmitted = currentCashSubmitted + amount;
+          final status =
+              remaining <= 0 ? 'balanced' : 'pending_submission';
+
+          transaction.update(docRef, {
+            'cashInHand': remaining,
+            'cashSubmitted': newSubmitted,
+            'reconciliationStatus': status,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+          transaction.set(docRef.collection('transactions').doc(), {
+            'type': 'cash_submission',
+            'method': method,
+            'amount': amount,
+            'description': 'Cash submitted via $method',
+            'status': 'submitted',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          return {
+            'success': true,
+            'cashInHand': remaining,
+            'cashSubmitted': newSubmitted,
+            'reconciliationStatus': status,
+            'message':
+                'Cash of \u{20B9}${amount.toStringAsFixed(2)} submitted via $method.',
+          };
+        });
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+
+    return {'success': false, 'message': 'Authentication required to submit cash.'};
   }
 
   @override

@@ -22,6 +22,7 @@ class DeliveryEarningsDashboardPageBloc
     on<DeliveryEarningsRangeChangedEvent>(_onRangeChanged);
     on<DeliveryEarningsTabChangedEvent>(_onTabChanged);
     on<DeliveryEarningsWithdrawEvent>(_onWithdraw);
+    on<DeliveryEarningsSubmitCashEvent>(_onSubmitCash);
     on<DeliveryEarningsMediaUploadStartedEvent>(_onMediaUploadStarted);
     on<DeliveryEarningsMediaUploadProgressEvent>(_onMediaUploadProgress);
     on<DeliveryEarningsMediaUploadCompletedEvent>(_onMediaUploadCompleted);
@@ -34,19 +35,17 @@ class DeliveryEarningsDashboardPageBloc
     emit(state.copyWith(status: DeliveryEarningsStatus.loading));
     try {
       final stream = repository.watchEarningsData();
-      if (stream != null) {
-        await emit.forEach<DeliveryEarningsDashboardState>(
-          stream,
-          onData: (dataState) => dataState,
-          onError: (error, stackTrace) {
-            return state.copyWith(
-              status: DeliveryEarningsStatus.error,
-              errorMessage: error.toString(),
-            );
-          },
-        );
-        return;
-      }
+      await emit.forEach<DeliveryEarningsDashboardState>(
+        stream,
+        onData: (dataState) => dataState,
+        onError: (error, stackTrace) {
+          return state.copyWith(
+            status: DeliveryEarningsStatus.error,
+            errorMessage: error.toString(),
+          );
+        },
+      );
+      return;
     } catch (_) {}
 
     try {
@@ -137,6 +136,51 @@ class DeliveryEarningsDashboardPageBloc
     }
   }
 
+  Future<void> _onSubmitCash(
+    DeliveryEarningsSubmitCashEvent event,
+    Emitter<DeliveryEarningsDashboardState> emit,
+  ) async {
+    if (event.amount <= 0) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Please enter a valid cash amount.',
+        ),
+      );
+      return;
+    }
+    if (event.amount > state.cashInHand) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Amount exceeds cash in hand.',
+        ),
+      );
+      return;
+    }
+
+    emit(state.copyWith(isSubmittingCash: true, clearError: true));
+    try {
+      final updatedState = await repository.submitCash(
+        amount: event.amount,
+        method: event.method,
+      );
+      emit(
+        updatedState.copyWith(
+          isSubmittingCash: false,
+          selectedRange: state.selectedRange,
+          selectedTab: state.selectedTab,
+          clearError: true,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSubmittingCash: false,
+          errorMessage: 'Cash submission failed. Please try again.',
+        ),
+      );
+    }
+  }
+
   Future<void> _onMediaUploadStarted(
     DeliveryEarningsMediaUploadStartedEvent event,
     Emitter<DeliveryEarningsDashboardState> emit,
@@ -176,3 +220,7 @@ class DeliveryEarningsDashboardPageBloc
     emit(state.copyWith(isMediaUploading: false, mediaUploadProgress: 1.0));
   }
 }
+
+/// Standardized Feature-Architecture Alias for EarningsBloc
+typedef EarningsBloc = DeliveryEarningsDashboardPageBloc;
+

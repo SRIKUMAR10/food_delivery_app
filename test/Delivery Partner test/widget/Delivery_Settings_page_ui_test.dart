@@ -62,6 +62,12 @@ void main() {
     registerFallbackValue(const DeliverySettingsChangeLanguageEvent(''));
     registerFallbackValue(const DeliverySettingsSaveEvent());
     registerFallbackValue(const DeliverySettingsRetryEvent());
+    registerFallbackValue(const DeliverySettingsToggleBiometricLockEvent());
+    registerFallbackValue(const DeliverySettingsToggleTwoFactorAuthEvent());
+    registerFallbackValue(const DeliverySettingsToggleDataSharingEvent());
+    registerFallbackValue(const DeliverySettingsClearCacheEvent());
+    registerFallbackValue(const DeliverySettingsDeactivateAccountEvent());
+    registerFallbackValue(const DeliverySettingsDeleteAccountEvent());
   });
 
   setUp(() {
@@ -298,5 +304,94 @@ void main() {
 
       expect(find.text('டெலிவரி அமைப்புகள்'), findsOneWidget);
     });
+
+    testWidgets('renders security, account, system, and action cards', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dp_settings_security_card')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_account_card')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_system_card')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_actions_card')), findsOneWidget);
+
+      expect(find.byKey(const Key('dp_settings_toggle_biometric')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_toggle_2fa')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_toggle_data_sharing')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_change_password_btn')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_privacy_policy_btn')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_version_tag')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_clear_cache_btn')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_logout_btn')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_deactivate_btn')), findsOneWidget);
+      expect(find.byKey(const Key('dp_settings_delete_btn')), findsOneWidget);
+    });
+
+    testWidgets('taps biometric toggle and verifies event', (tester) async {
+      setDesktopSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pumpAndSettle();
+
+      final toggle = find.byKey(const Key('dp_settings_toggle_biometric'));
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      await tester.tap(toggle);
+      await tester.pump();
+
+      verify(
+        () => mockBloc.add(const DeliverySettingsToggleBiometricLockEvent()),
+      ).called(1);
+    });
+
+    testWidgets('taps 2FA toggle and verifies event', (tester) async {
+      setDesktopSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pumpAndSettle();
+
+      final toggle = find.byKey(const Key('dp_settings_toggle_2fa'));
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      await tester.tap(toggle);
+      await tester.pump();
+
+      verify(
+        () => mockBloc.add(const DeliverySettingsToggleTwoFactorAuthEvent()),
+      ).called(1);
+    });
+
+    testWidgets('taps clear cache button and verifies event', (tester) async {
+      setDesktopSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pumpAndSettle();
+
+      final btn = find.byKey(const Key('dp_settings_clear_cache_btn'));
+      await tester.ensureVisible(btn);
+      await tester.pumpAndSettle();
+      await tester.tap(btn);
+      await tester.pump();
+
+      verify(
+        () => mockBloc.add(const DeliverySettingsClearCacheEvent()),
+      ).called(1);
+    });
+
+    testWidgets('taps deactivate account button and verifies event', (tester) async {
+      setDesktopSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pumpAndSettle();
+
+      final btn = find.byKey(const Key('dp_settings_deactivate_btn'));
+      await tester.ensureVisible(btn);
+      await tester.pumpAndSettle();
+      await tester.tap(btn);
+      await tester.pump();
+
+      verify(
+        () => mockBloc.add(const DeliverySettingsDeactivateAccountEvent()),
+      ).called(1);
+    });
   });
 }
+

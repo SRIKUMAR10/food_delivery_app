@@ -24,6 +24,17 @@ abstract class DeliveryChatRepositoryBase {
     String? orderTitle,
     double? orderTotal,
   });
+  Future<String> uploadAttachment(
+    dynamic file,
+    String conversationId,
+    String fileName,
+  );
+  Future<void> setTypingStatus({
+    required String conversationId,
+    required String userId,
+    required bool isTyping,
+  });
+  Stream<Map<String, bool>> getTypingStatusStream(String conversationId);
 }
 
 class DeliveryChatRepository implements DeliveryChatRepositoryBase {
@@ -40,8 +51,6 @@ class DeliveryChatRepository implements DeliveryChatRepositoryBase {
 
   @override
   Stream<List<ConversationModel>> getDeliveryConversations(String riderId) {
-    // Delegate to the core repository's multi-party delivery query which
-    // merges legacy `sellerId` chats with `deliveryPartnerId`/`participants`.
     return chatRepository.getConversationsForUser(
       riderId,
       role: 'delivery_partner',
@@ -140,5 +149,32 @@ class DeliveryChatRepository implements DeliveryChatRepositoryBase {
       orderTitle: orderTitle,
       orderTotal: orderTotal,
     );
+  }
+
+  @override
+  Future<String> uploadAttachment(
+    dynamic file,
+    String conversationId,
+    String fileName,
+  ) {
+    return chatRepository.uploadChatAttachment(file, conversationId, fileName);
+  }
+
+  @override
+  Future<void> setTypingStatus({
+    required String conversationId,
+    required String userId,
+    required bool isTyping,
+  }) {
+    return chatRepository.setTypingStatus(
+      conversationId: conversationId,
+      userId: userId,
+      isTyping: isTyping,
+    );
+  }
+
+  @override
+  Stream<Map<String, bool>> getTypingStatusStream(String conversationId) {
+    return chatRepository.getTypingStatusStream(conversationId);
   }
 }

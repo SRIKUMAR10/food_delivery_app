@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
@@ -12,7 +13,12 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incentives%20Dashboard_page/Delivery_Incentives%20Dashboard_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incentives%20Dashboard_page/Delivery_Incentives%20Dashboard_page_ui.dart';
 
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../font_loader_helper.dart';
+
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 class MockDeliveryIncentivesDashboardRepository extends Mock
     implements DeliveryIncentivesDashboardRepositoryBase {}
@@ -59,6 +65,15 @@ void main() {
     DeliveryIncentivesDashboardRepositoryBase? repository,
     DeliveryIncentivesDashboardServiceBase? service,
   }) {
+    final s = service ??
+        DeliveryIncentivesDashboardService(
+          firestore: FakeFirebaseFirestore(),
+          auth: MockFirebaseAuth(),
+        );
+    final r = repository ??
+        DeliveryIncentivesDashboardRepository(
+          service: s,
+        );
     return MaterialApp(
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -66,8 +81,8 @@ void main() {
       ),
       home: Scaffold(
         body: DeliveryIncentivesDashboardPage(
-          repository: repository ?? DeliveryIncentivesDashboardRepository(),
-          service: service ?? DeliveryIncentivesDashboardService(),
+          repository: r,
+          service: s,
         ),
       ),
     );
@@ -138,14 +153,42 @@ void main() {
       tester,
     ) async {
       setDesktopSize(tester);
-      SharedPreferences.setMockInitialValues({});
+      final seedData = {
+        'walletBalance': 2450.00,
+        'todayBonus': 350.00,
+        'weeklyBonus': 1250.00,
+        'monthlyBonus': 4750.00,
+        'targetProgress': 76.0,
+        'targetEarned': 7650.00,
+        'targetGoal': 10000.00,
+        'targetDeadline': DateTime(2026, 8, 31).toIso8601String(),
+        'rangePoints': {},
+        'achievements': [],
+        'donutSlices': [
+          {'category': 'peakHour', 'value': 1850.00},
+        ],
+        'milestones': [],
+        'rewards': [
+          {
+            'id': 'inc_rw_1',
+            'title': 'Peak Hour Bonus',
+            'date': DateTime(2026, 7, 31).toIso8601String(),
+            'amount': 120.0,
+            'type': 'peakHour',
+            'status': 'completed',
+            'referenceId': 'REF-1040',
+          },
+        ],
+      };
+      SharedPreferences.setMockInitialValues({
+        'dp_incentives_cache_v1': jsonEncode(seedData),
+      });
       final prefs = await SharedPreferences.getInstance();
 
-      await tester.pumpWidget(buildPage());
-      await loadDashboard(tester);
-      expect(find.text('₹2450.00'), findsWidgets);
-
       final failingService = MockDeliveryIncentivesDashboardService();
+      when(
+        () => failingService.watchIncentivesData(),
+      ).thenAnswer((_) => Stream.error(Exception('offline')));
       when(
         () => failingService.fetchIncentivesData(),
       ).thenThrow(Exception('offline'));
@@ -156,7 +199,7 @@ void main() {
             service: failingService,
             prefs: prefs,
           ),
-          service: DeliveryIncentivesDashboardService(),
+          service: failingService,
         ),
       );
       await loadDashboard(tester);
