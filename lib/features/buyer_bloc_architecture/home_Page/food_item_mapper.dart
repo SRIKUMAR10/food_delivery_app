@@ -25,6 +25,7 @@ class FoodItemMapper {
       portionSize: product.portionSize,
       calories: product.calories > 0 ? '${product.calories} kcal' : '',
       addons: product.addons,
+      ingredients: product.ingredients,
       // Map visibility based on the business logic hierarchy
       isActive: product.isActive && !product.isArchived,
       status: product.status.name,

@@ -1,9 +1,4 @@
-// lib/Buyer Bloc Architecture/home_Page/home_Page_Bloc.dart
-//
-// Business logic layer for the Home Page.
-// Orchestrates Firestore stream subscriptions, category switching,
-// and in-memory search filtering. The UI layer has zero business logic.
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,6 +9,8 @@ import '../../../repositories/category_repository.dart';
 import 'home_page_models.dart';
 import 'food_item_mapper.dart';
 
+import 'seller_model.dart';
+
 // Pull in event and state definitions via Dart's part mechanism.
 part 'home_Page_Event.dart';
 part 'home_Page_State.dart';
@@ -22,16 +19,30 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
   final IProductRepository _productRepository;
   final CategoryRepository _categoryRepository;
   final SellerStatusService _sellerStatusService;
+  final FirebaseFirestore? _firestore;
 
   List<FoodItem> _allItems = [];
   List<FoodCategory> _categories = [];
   Map<String, SellerAvailability> _sellerAvailabilities = {};
+  String _currentAddress = 'Fetching location...';
+  List<PromotionBanner> _banners = kDefaultBanners;
+  List<Seller> _featuredSellers = const [];
+  List<FoodItem> _popularProducts = const [];
+  List<FoodItem> _recentlyOrderedItems = const [];
+  List<Seller> _searchedSellers = const [];
+
+  RestaurantSortOption _activeSortOption = RestaurantSortOption.rating;
+  String _selectedCuisine = '';
+  double _userLat = 0.0;
+  double _userLng = 0.0;
+  Map<String, double> _distancesMap = {};
 
   String _selectedCategoryId = '';
   String _searchQuery = '';
 
   StreamSubscription<List<FoodCategory>>? _categorySubscription;
   StreamSubscription<List<Product>>? _productSubscription;
+  StreamSubscription<QuerySnapshot>? _sellersSubscription;
   final Map<String, StreamSubscription<SellerAvailability>> _sellerStatusSubscriptions = {};
   Timer? _batchTimer;
   Timer? _loadingTimeoutTimer;
@@ -40,9 +51,11 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     required IProductRepository productRepository,
     required CategoryRepository categoryRepository,
     SellerStatusService? sellerStatusService,
+    FirebaseFirestore? firestore,
   }) : _productRepository = productRepository,
        _categoryRepository = categoryRepository,
        _sellerStatusService = sellerStatusService ?? SellerStatusService(),
+       _firestore = firestore,
        super(const HomePageInitial('', [])) {
     on<HomePageStarted>(_onStarted);
     on<CategorySelected>(_onCategorySelected);
@@ -52,12 +65,22 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     on<_ProductsReceived>(_onProductsReceived);
     on<_ProductErrorReceived>(_onProductErrorReceived);
     on<_SellerAvailabilitiesUpdated>(_onSellerAvailabilitiesUpdated);
+    on<FetchUserLocation>(_onFetchUserLocation);
+    on<LocationUpdated>(_onLocationUpdated);
+    on<FeaturedSellersUpdated>(_onFeaturedSellersUpdated);
+    on<RecentOrdersUpdated>(_onRecentOrdersUpdated);
+    on<PromotionsUpdated>(_onPromotionsUpdated);
+    on<RestaurantSortChanged>(_onRestaurantSortChanged);
+    on<BuyerLocationUpdated>(_onBuyerLocationUpdated);
+    on<CuisineFilterChanged>(_onCuisineFilterChanged);
   }
+
 
   @override
   Future<void> close() {
     _categorySubscription?.cancel();
     _productSubscription?.cancel();
+    _sellersSubscription?.cancel();
     _cancelSellerStatusSubscriptions();
     _batchTimer?.cancel();
     _loadingTimeoutTimer?.cancel();
@@ -78,20 +101,126 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
 
   void _emitFilteredState(Emitter<HomePageState> emit) {
     if (_allItems.isEmpty) {
-      emit(
-        HomePageEmpty(_selectedCategoryName, _selectedCategoryId, _categories),
-      );
+      emit(_buildEmptyState(_selectedCategoryName));
       return;
     }
-    emit(
-      HomePageLoaded(
-        allItems: _allItems,
-        filteredItems: _allItems,
-        selectedCategoryId: _selectedCategoryId,
-        categories: _categories,
-        searchQuery: _searchQuery,
-        sellerAvailabilities: Map.from(_sellerAvailabilities),
-      ),
+    emit(_buildLoadedState());
+  }
+
+  /// Recomputes the seller distance map using the buyer's current coordinates.
+  void _computeDistances() {
+    if (_userLat == 0.0 && _userLng == 0.0) {
+      _distancesMap = {};
+      return;
+    }
+    final map = <String, double>{};
+    for (final seller in _featuredSellers) {
+      if (seller.latitude == 0.0 && seller.longitude == 0.0) continue;
+      map[seller.id] = calculateDistanceKm(
+        _userLat,
+        _userLng,
+        seller.latitude,
+        seller.longitude,
+      );
+    }
+    _distancesMap = map;
+  }
+
+  /// Applies the active cuisine filter and sort strategy to the featured
+  /// sellers entirely in memory (no additional Firestore reads).
+  List<Seller> _computeDisplayedSellers() {
+    var sellers = List<Seller>.from(_featuredSellers);
+
+    if (_selectedCuisine.isNotEmpty) {
+      final cuisine = _selectedCuisine.toLowerCase();
+      sellers = sellers
+          .where((s) => s.cuisines.any((c) => c.toLowerCase() == cuisine))
+          .toList();
+    }
+
+    switch (_activeSortOption) {
+      case RestaurantSortOption.rating:
+        sellers.sort((a, b) => b.rating.compareTo(a.rating));
+        break;
+      case RestaurantSortOption.distance:
+        sellers.sort((a, b) {
+          final da = _distancesMap[a.id] ?? double.infinity;
+          final db = _distancesMap[b.id] ?? double.infinity;
+          return da.compareTo(db);
+        });
+        break;
+      case RestaurantSortOption.deliveryTime:
+        sellers.sort((a, b) {
+          final da = _distancesMap[a.id] ?? double.infinity;
+          final db = _distancesMap[b.id] ?? double.infinity;
+          return estimateDeliveryTimeMinutes(da)
+              .compareTo(estimateDeliveryTimeMinutes(db));
+        });
+        break;
+    }
+    return sellers;
+  }
+
+  HomePageLoaded _buildLoadedState({
+    List<FoodItem>? filteredItems,
+    String? searchQuery,
+  }) {
+    return HomePageLoaded(
+      allItems: _allItems,
+      filteredItems: filteredItems ?? _allItems,
+      selectedCategoryId: _selectedCategoryId,
+      categories: _categories,
+      currentAddress: _currentAddress,
+      searchQuery: searchQuery ?? _searchQuery,
+      sellerAvailabilities: Map.from(_sellerAvailabilities),
+      banners: _banners,
+      featuredSellers: _computeDisplayedSellers(),
+      popularProducts: _popularProducts,
+      recentlyOrderedItems: _recentlyOrderedItems,
+      searchedSellers: _searchedSellers,
+      activeSortOption: _activeSortOption,
+      selectedCuisine: _selectedCuisine,
+      userLat: _userLat,
+      userLng: _userLng,
+      distancesMap: Map.from(_distancesMap),
+    );
+  }
+
+  HomePageEmpty _buildEmptyState(String categoryName) {
+    return HomePageEmpty(
+      categoryName,
+      _selectedCategoryId,
+      _categories,
+      currentAddress: _currentAddress,
+      banners: _banners,
+      featuredSellers: _computeDisplayedSellers(),
+      recentlyOrderedItems: _recentlyOrderedItems,
+      popularProducts: _popularProducts,
+      activeSortOption: _activeSortOption,
+      distancesMap: Map.from(_distancesMap),
+      sellerAvailabilities: Map.from(_sellerAvailabilities),
+      selectedCuisine: _selectedCuisine,
+      userLat: _userLat,
+      userLng: _userLng,
+    );
+  }
+
+  HomePageSearchEmpty _buildSearchEmptyState(String query) {
+    return HomePageSearchEmpty(
+      query,
+      _selectedCategoryId,
+      _categories,
+      currentAddress: _currentAddress,
+      banners: _banners,
+      featuredSellers: _computeDisplayedSellers(),
+      recentlyOrderedItems: _recentlyOrderedItems,
+      popularProducts: _popularProducts,
+      activeSortOption: _activeSortOption,
+      distancesMap: Map.from(_distancesMap),
+      sellerAvailabilities: Map.from(_sellerAvailabilities),
+      selectedCuisine: _selectedCuisine,
+      userLat: _userLat,
+      userLng: _userLng,
     );
   }
 
@@ -164,6 +293,33 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
         }
       },
     );
+
+    // Subscribe to sellers from Firestore in real-time
+    _sellersSubscription?.cancel();
+    try {
+      final db = _firestore ?? FirebaseFirestore.instance;
+      _sellersSubscription = db
+          .collection('sellers')
+          .snapshots()
+          .listen((snapshot) {
+        final sellers = <Seller>[];
+        for (final doc in snapshot.docs) {
+          try {
+            sellers.add(Seller.fromFirestore(doc));
+          } catch (e) {
+            // Log individual parsing error without crashing the stream
+            print('Error parsing seller doc ID ${doc.id}: $e');
+          }
+        }
+        if (!isClosed) {
+          add(FeaturedSellersUpdated(sellers));
+        }
+      }, onError: (error) {
+        print('Firestore sellers stream error: $error');
+      });
+    } catch (e) {
+      print('Firebase not initialized in tests or fallback triggered: $e');
+    }
   }
 
   Future<void> _onCategoriesUpdated(
@@ -175,7 +331,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     }
 
     if (_categories.isEmpty) {
-      emit(HomePageEmpty('', '', []));
+      emit(_buildEmptyState(''));
       return;
     }
 
@@ -196,9 +352,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     if (state is HomePageLoaded) {
       emit((state as HomePageLoaded).copyWith(categories: _categories));
     } else if (state is HomePageEmpty) {
-      emit(
-        HomePageEmpty(_selectedCategoryName, _selectedCategoryId, _categories),
-      );
+      emit(_buildEmptyState(_selectedCategoryName));
     }
   }
 
@@ -292,54 +446,38 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
 
     if (event.isSearch) {
       if (event.items.isEmpty) {
-        emit(
-          HomePageSearchEmpty(
-            event.query,
-            _selectedCategoryId,
-            _categories,
-          ),
-        );
+        emit(_buildSearchEmptyState(event.query));
         return;
       }
       emit(
-        HomePageLoaded(
-          allItems: _allItems,
+        _buildLoadedState(
           filteredItems: event.items,
-          selectedCategoryId: _selectedCategoryId,
-          categories: _categories,
           searchQuery: event.query,
-          sellerAvailabilities: Map.from(_sellerAvailabilities),
         ),
       );
       return;
     }
 
     _allItems = event.items;
+    _popularProducts = _allItems.where((item) => item.isBestSeller || item.rating >= 4.0).toList();
+    if (_popularProducts.isEmpty && _allItems.isNotEmpty) {
+      _popularProducts = _allItems.take(5).toList();
+    }
+    if (_recentlyOrderedItems.isEmpty && _allItems.isNotEmpty) {
+      _recentlyOrderedItems = _allItems.take(3).toList();
+    }
+
     final sellerIds = event.items.map((i) => i.sellerId).toSet().toList();
     _subscribeToSellerStatuses(sellerIds);
 
     if (_allItems.isEmpty) {
       _cancelSellerStatusSubscriptions();
-      emit(
-        HomePageEmpty(
-          _selectedCategoryName,
-          _selectedCategoryId,
-          _categories,
-        ),
-      );
+      emit(_buildEmptyState(_selectedCategoryName));
       return;
     }
 
-    emit(
-      HomePageLoaded(
-        allItems: _allItems,
-        filteredItems: _allItems,
-        selectedCategoryId: _selectedCategoryId,
-        categories: _categories,
-        searchQuery: '',
-        sellerAvailabilities: Map.from(_sellerAvailabilities),
-      ),
-    );
+    _searchQuery = '';
+    emit(_buildLoadedState());
   }
 
   void _onProductErrorReceived(
@@ -352,6 +490,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
         event.message,
         _selectedCategoryId,
         _categories,
+        currentAddress: _currentAddress,
       ),
     );
   }
@@ -369,6 +508,126 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
       emit((state as HomePageLoaded).copyWith(
         sellerAvailabilities: event.availabilities,
       ));
+    } else if (state is HomePageEmpty) {
+      emit(_buildEmptyState((state as HomePageEmpty).categoryName));
+    } else if (state is HomePageSearchEmpty) {
+      emit(_buildSearchEmptyState((state as HomePageSearchEmpty).query));
+    }
+  }
+
+  void _onFetchUserLocation(FetchUserLocation event, Emitter<HomePageState> emit) {
+    _currentAddress = 'No. 12, Main Street, Central Park, City';
+    _userLat = 28.6139;
+    _userLng = 77.2090;
+    _computeDistances();
+    if (state is HomePageLoaded) {
+      emit((state as HomePageLoaded).copyWith(
+        currentAddress: _currentAddress,
+        userLat: _userLat,
+        userLng: _userLng,
+        distancesMap: Map.from(_distancesMap),
+        featuredSellers: _computeDisplayedSellers(),
+      ));
+    } else if (state is HomePageEmpty) {
+      emit(_buildEmptyState((state as HomePageEmpty).categoryName));
+    } else if (state is HomePageSearchEmpty) {
+      emit(_buildSearchEmptyState((state as HomePageSearchEmpty).query));
+    }
+  }
+
+  void _onLocationUpdated(LocationUpdated event, Emitter<HomePageState> emit) {
+    _currentAddress = event.address;
+    if (state is HomePageLoaded) {
+      emit((state as HomePageLoaded).copyWith(currentAddress: _currentAddress));
+    } else if (state is HomePageEmpty) {
+      emit(_buildEmptyState((state as HomePageEmpty).categoryName));
+    } else if (state is HomePageSearchEmpty) {
+      emit(_buildSearchEmptyState((state as HomePageSearchEmpty).query));
+    }
+  }
+
+  void _onFeaturedSellersUpdated(FeaturedSellersUpdated event, Emitter<HomePageState> emit) {
+    _featuredSellers = event.sellers;
+    _computeDistances();
+    if (state is HomePageLoaded) {
+      emit((state as HomePageLoaded).copyWith(
+        featuredSellers: _computeDisplayedSellers(),
+        distancesMap: Map.from(_distancesMap),
+      ));
+    } else if (state is HomePageEmpty) {
+      emit(_buildEmptyState((state as HomePageEmpty).categoryName));
+    } else if (state is HomePageSearchEmpty) {
+      emit(_buildSearchEmptyState((state as HomePageSearchEmpty).query));
+    }
+  }
+
+  void _onRecentOrdersUpdated(RecentOrdersUpdated event, Emitter<HomePageState> emit) {
+    _recentlyOrderedItems = event.items;
+    if (state is HomePageLoaded) {
+      emit((state as HomePageLoaded).copyWith(recentlyOrderedItems: _recentlyOrderedItems));
+    } else if (state is HomePageEmpty) {
+      emit(_buildEmptyState((state as HomePageEmpty).categoryName));
+    } else if (state is HomePageSearchEmpty) {
+      emit(_buildSearchEmptyState((state as HomePageSearchEmpty).query));
+    }
+  }
+
+  void _onPromotionsUpdated(PromotionsUpdated event, Emitter<HomePageState> emit) {
+    _banners = event.banners;
+    if (state is HomePageLoaded) {
+      emit((state as HomePageLoaded).copyWith(banners: _banners));
+    } else if (state is HomePageEmpty) {
+      emit(_buildEmptyState((state as HomePageEmpty).categoryName));
+    } else if (state is HomePageSearchEmpty) {
+      emit(_buildSearchEmptyState((state as HomePageSearchEmpty).query));
+    }
+  }
+
+  void _onRestaurantSortChanged(RestaurantSortChanged event, Emitter<HomePageState> emit) {
+    _activeSortOption = event.sortOption;
+    if (state is HomePageLoaded) {
+      emit((state as HomePageLoaded).copyWith(
+        activeSortOption: _activeSortOption,
+        featuredSellers: _computeDisplayedSellers(),
+      ));
+    } else if (state is HomePageEmpty) {
+      emit(_buildEmptyState((state as HomePageEmpty).categoryName));
+    } else if (state is HomePageSearchEmpty) {
+      emit(_buildSearchEmptyState((state as HomePageSearchEmpty).query));
+    }
+  }
+
+  void _onBuyerLocationUpdated(BuyerLocationUpdated event, Emitter<HomePageState> emit) {
+    _userLat = event.lat;
+    _userLng = event.lng;
+    _currentAddress = event.address;
+    _computeDistances();
+    if (state is HomePageLoaded) {
+      emit((state as HomePageLoaded).copyWith(
+        currentAddress: _currentAddress,
+        userLat: _userLat,
+        userLng: _userLng,
+        distancesMap: Map.from(_distancesMap),
+        featuredSellers: _computeDisplayedSellers(),
+      ));
+    } else if (state is HomePageEmpty) {
+      emit(_buildEmptyState((state as HomePageEmpty).categoryName));
+    } else if (state is HomePageSearchEmpty) {
+      emit(_buildSearchEmptyState((state as HomePageSearchEmpty).query));
+    }
+  }
+
+  void _onCuisineFilterChanged(CuisineFilterChanged event, Emitter<HomePageState> emit) {
+    _selectedCuisine = event.cuisine.trim();
+    if (state is HomePageLoaded) {
+      emit((state as HomePageLoaded).copyWith(
+        selectedCuisine: _selectedCuisine,
+        featuredSellers: _computeDisplayedSellers(),
+      ));
+    } else if (state is HomePageEmpty) {
+      emit(_buildEmptyState((state as HomePageEmpty).categoryName));
+    } else if (state is HomePageSearchEmpty) {
+      emit(_buildSearchEmptyState((state as HomePageSearchEmpty).query));
     }
   }
 }
@@ -377,3 +636,4 @@ final class _SellerAvailabilitiesUpdated extends HomePageEvent {
   final Map<String, SellerAvailability> availabilities;
   const _SellerAvailabilitiesUpdated(this.availabilities);
 }
+

@@ -4,7 +4,7 @@ service firebase.storage {
     
     // Helper functions
     function isAuthenticated() {
-      return request.auth != null;
+      return request.auth != null && request.auth.uid != null;
     }
     
     function isImage() {
@@ -15,48 +15,57 @@ service firebase.storage {
       return request.resource.size < 5 * 1024 * 1024;
     }
 
+    // ── Seller Product Images ─────────────────────────────────────────────
+    // Isolated per seller UID: only the owning seller can upload, update, or delete.
     match /product_images/{sellerId}/{imageId} {
-      // Only the authenticated seller can upload images to their own folder.
-      // Image must be less than 5MB and must be an image type.
+      allow read: if true;
       allow create, update: if isAuthenticated() && 
-                      request.auth.uid == sellerId &&
-                      isImage() && 
-                      isUnder5MB();
+                            request.auth.uid == sellerId &&
+                            isImage() && 
+                            isUnder5MB();
       allow delete: if isAuthenticated() && request.auth.uid == sellerId;
-      // Anyone can read product images
-      allow read: if true;
     }
 
+    // ── Seller Restaurant Banners & Logos ─────────────────────────────────
+    match /seller_banners/{sellerId}/{imageId} {
+      allow read: if true;
+      allow create, update: if isAuthenticated() && 
+                            request.auth.uid == sellerId &&
+                            isImage() && 
+                            isUnder5MB();
+      allow delete: if isAuthenticated() && request.auth.uid == sellerId;
+    }
+
+    // ── User Profile Images ───────────────────────────────────────────────
     match /profile_images/{userId}/{imageId} {
+      allow read: if true;
       allow create, update: if isAuthenticated() && 
-                      request.auth.uid == userId &&
-                      isImage() && 
-                      isUnder5MB();
+                            request.auth.uid == userId &&
+                            isImage() && 
+                            isUnder5MB();
       allow delete: if isAuthenticated() && request.auth.uid == userId;
-      allow read: if true;
     }
 
+    // ── Legacy User Image Uploads ─────────────────────────────────────────
     match /user/image/{filename} {
-      allow create, update: if isAuthenticated() && 
-                      isImage() && 
-                      isUnder5MB();
-      allow delete: if isAuthenticated() &&
-                      filename.matches('^' + request.auth.uid + '.*');
       allow read: if true;
+      allow create, update: if isAuthenticated() && 
+                            isImage() && 
+                            isUnder5MB() &&
+                            filename.matches('^' + request.auth.uid + '.*');
+      allow delete: if isAuthenticated() &&
+                            filename.matches('^' + request.auth.uid + '.*');
     }
 
+    // ── Chat Media & Attachments ──────────────────────────────────────────
     match /chat_attachments/{conversationId}/{filename} {
-      // For chat attachments, any authenticated user can upload.
-      // Ideal security would check if the user is part of the conversation via firestore,
-      // but since storage rules can't easily cross-check complex firestore documents without custom claims,
-      // we restrict to authenticated users only with content type allowlist.
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated() &&
         request.resource.size < 25 * 1024 * 1024 &&
         (request.resource.contentType.matches('image/.*') ||
          request.resource.contentType.matches('audio/.*') ||
          request.resource.contentType.matches('video/.*') ||
          request.resource.contentType == 'application/pdf');
-      allow read: if true;
     }
   }
 }

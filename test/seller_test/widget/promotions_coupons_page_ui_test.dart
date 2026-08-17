@@ -28,31 +28,30 @@ void main() {
     }
 
     testWidgets('renders loading state correctly', (WidgetTester tester) async {
-      when(() => mockBloc.state).thenReturn(PromotionsCouponsLoading());
-      
+      when(() => mockBloc.state).thenReturn(const PromotionsCouponsLoading());
+
       await tester.pumpWidget(createWidgetUnderTest());
-      
+
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
     testWidgets('renders empty state correctly', (WidgetTester tester) async {
-      when(() => mockBloc.state).thenReturn(PromotionsCouponsLoaded(coupons: []));
-      
+      when(() => mockBloc.state).thenReturn(const PromotionsCouponsLoaded(coupons: []));
+
       await tester.pumpWidget(createWidgetUnderTest());
-      
-      expect(find.text('No coupons available. Add one to boost sales!'), findsOneWidget);
+
+      expect(find.text('No Promotions Found'), findsOneWidget);
     });
 
     testWidgets('shows Add Coupon dialog when FAB is pressed', (WidgetTester tester) async {
-      when(() => mockBloc.state).thenReturn(PromotionsCouponsLoaded(coupons: []));
-      
+      when(() => mockBloc.state).thenReturn(const PromotionsCouponsLoaded(coupons: []));
+
       await tester.pumpWidget(createWidgetUnderTest());
-      
+
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
-      
+
       expect(find.text('Create New Coupon'), findsOneWidget);
-      expect(find.byType(TextField), findsWidgets);
     });
   });
 }

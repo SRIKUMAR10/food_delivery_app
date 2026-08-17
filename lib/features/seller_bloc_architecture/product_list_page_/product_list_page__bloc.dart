@@ -27,6 +27,7 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
   String _sortBy = 'Recently Added';
   double? _ratingFilter;
   String? _categoryFilter;
+  String? _subcategoryFilter;
   double? _priceRangeMin;
   double? _priceRangeMax;
   StreamSubscription<List<Product>>? _subscription;
@@ -40,6 +41,9 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
     on<DeleteProductEvent>(_onDeleteProduct);
     on<ToggleProductStatusEvent>(_onToggleProductStatus);
     on<DuplicateProductEvent>(_onDuplicateProduct);
+    on<QuickUpdateStockEvent>(_onQuickUpdateStock);
+    on<QuickUpdatePriceEvent>(_onQuickUpdatePrice);
+    on<MarkProductOutOfStockEvent>(_onMarkProductOutOfStock);
     on<ArchiveProductEvent>(_onArchiveProduct);
     on<UnarchiveProductEvent>(_onUnarchiveProduct);
   }
@@ -104,6 +108,7 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
     _sortBy = event.sortBy;
     _ratingFilter = event.ratingFilter;
     _categoryFilter = event.categoryFilter;
+    _subcategoryFilter = event.subcategoryFilter;
     _priceRangeMin = event.priceRangeMin;
     _priceRangeMax = event.priceRangeMax;
     
@@ -147,6 +152,46 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
     }
   }
 
+  Future<void> _onQuickUpdateStock(QuickUpdateStockEvent event, Emitter<ProductListPageState> emit) async {
+    try {
+      if (_sellerId.isNotEmpty) {
+        await repository.updateProductStock(
+          event.productId,
+          event.stockQuantity,
+          event.hasUnlimitedStock,
+          _sellerId,
+        );
+      }
+    } catch (e) {
+      emit(ProductListError(e.toString()));
+    }
+  }
+
+  Future<void> _onQuickUpdatePrice(QuickUpdatePriceEvent event, Emitter<ProductListPageState> emit) async {
+    try {
+      if (_sellerId.isNotEmpty) {
+        await repository.updateProductPrice(
+          event.productId,
+          event.price,
+          event.discountPrice,
+          _sellerId,
+        );
+      }
+    } catch (e) {
+      emit(ProductListError(e.toString()));
+    }
+  }
+
+  Future<void> _onMarkProductOutOfStock(MarkProductOutOfStockEvent event, Emitter<ProductListPageState> emit) async {
+    try {
+      if (_sellerId.isNotEmpty) {
+        await repository.markProductOutOfStock(event.productId, _sellerId);
+      }
+    } catch (e) {
+      emit(ProductListError(e.toString()));
+    }
+  }
+
   Future<void> _onArchiveProduct(ArchiveProductEvent event, Emitter<ProductListPageState> emit) async {
     try {
       if (_sellerId.isNotEmpty) {
@@ -182,8 +227,12 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
       filteredList = baseProducts.where((p) => p.isActive).toList();
     } else if (filterType == 'Inactive') {
       filteredList = baseProducts.where((p) => !p.isActive).toList();
+    } else if (filterType == 'In Stock') {
+      filteredList = baseProducts.where((p) => p.status == ProductStatus.inStock).toList();
     } else if (filterType == 'Low Stock') {
       filteredList = baseProducts.where((p) => p.status == ProductStatus.lowStock).toList();
+    } else if (filterType == 'Out of Stock') {
+      filteredList = baseProducts.where((p) => p.status == ProductStatus.outOfStock).toList();
     } else if (filterType == 'Veg') {
       filteredList = baseProducts.where((p) => p.foodType.toLowerCase() == 'veg' || p.foodType.toLowerCase() == 'vegetarian').toList();
     } else if (filterType == 'Non-Veg') {
@@ -196,15 +245,27 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
       if (filterType != 'Archived') filterType = 'All Products';
     }
 
-    // Step 2: Search filter
+    // Step 2: Search filter (across Name, SKU, Description, Category, Subcategory, Ingredients, Addons)
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
-      filteredList = filteredList.where((p) => p.name.toLowerCase().contains(query)).toList();
+      filteredList = filteredList.where((p) {
+        final nameMatch = p.name.toLowerCase().contains(query);
+        final skuMatch = p.sku.toLowerCase().contains(query);
+        final descMatch = p.description.toLowerCase().contains(query);
+        final catMatch = p.category.toLowerCase().contains(query);
+        final subcatMatch = p.subcategory.toLowerCase().contains(query);
+        final ingMatch = p.ingredients.any((ing) => ing.toLowerCase().contains(query));
+        final addonMatch = p.addons.any((add) => add.toLowerCase().contains(query));
+        return nameMatch || skuMatch || descMatch || catMatch || subcatMatch || ingMatch || addonMatch;
+      }).toList();
     }
 
     // Step 3: Advanced filters
     if (_categoryFilter != null && _categoryFilter!.isNotEmpty) {
       filteredList = filteredList.where((p) => p.category.toLowerCase() == _categoryFilter!.toLowerCase()).toList();
+    }
+    if (_subcategoryFilter != null && _subcategoryFilter!.isNotEmpty) {
+      filteredList = filteredList.where((p) => p.subcategory.toLowerCase() == _subcategoryFilter!.toLowerCase()).toList();
     }
     if (_ratingFilter != null) {
       filteredList = filteredList.where((p) => p.rating >= _ratingFilter!).toList();
@@ -223,6 +284,10 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
       filteredList.sort((a, b) => b.price.compareTo(a.price));
     } else if (_sortBy == 'Best Selling') {
       filteredList.sort((a, b) => b.salesCount.compareTo(a.salesCount));
+    } else if (_sortBy == 'Top Rated') {
+      filteredList.sort((a, b) => b.rating.compareTo(a.rating));
+    } else if (_sortBy == 'Name: A to Z') {
+      filteredList.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     } else {
       // Default to Recently Added
       filteredList.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -233,7 +298,9 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
     final allCount = activeBase.length;
     final activeCount = activeBase.where((p) => p.isActive).length;
     final inactiveCount = activeBase.where((p) => !p.isActive).length;
+    final inStockCount = activeBase.where((p) => p.status == ProductStatus.inStock).length;
     final lowStockCount = activeBase.where((p) => p.status == ProductStatus.lowStock).length;
+    final outOfStockCount = activeBase.where((p) => p.status == ProductStatus.outOfStock).length;
     final vegCount = activeBase.where((p) => p.foodType.toLowerCase() == 'veg' || p.foodType.toLowerCase() == 'vegetarian').length;
     final nonVegCount = activeBase.where((p) {
       final ft = p.foodType.trim().toLowerCase();
@@ -262,7 +329,9 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
       allCount: allCount,
       activeCount: activeCount,
       inactiveCount: inactiveCount,
+      inStockCount: inStockCount,
       lowStockCount: lowStockCount,
+      outOfStockCount: outOfStockCount,
       vegCount: vegCount,
       nonVegCount: nonVegCount,
       archivedCount: archivedCount,
@@ -271,6 +340,7 @@ class ProductListBloc extends Bloc<ProductListPageEvent, ProductListPageState> {
       sortBy: _sortBy,
       ratingFilter: _ratingFilter,
       categoryFilter: _categoryFilter,
+      subcategoryFilter: _subcategoryFilter,
       priceRangeMin: _priceRangeMin,
       priceRangeMax: _priceRangeMax,
     ));

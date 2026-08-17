@@ -11,21 +11,33 @@ class Seller extends Equatable {
   final String pincode;
   final String contactNumber;
   final String profileImageUrl;
+  final String coverImageUrl;
   final String name;
   final String businessDetails;
   final String phoneNumber;
   final String openingHours;
+  final String closingTime;
   final String deliveryTime;
   final String deliveryArea;
   final String gstNumber;
   final String fssaiNumber;
   final String panNumber;
   final bool isOnline;
+  final bool isOpen;
+  final bool isAcceptingOrders;
   final double gstPercentage;
   final double minimumOrderValue;
   final double packagingCharges;
+  final double deliveryRadius;
   final String bankAccountNumber;
   final String bankName;
+  final double latitude;
+  final double longitude;
+  final List<String> cuisines;
+  final List<String> weeklyHoliday;
+  final int estimatedPrepTimeMinutes;
+  final double rating;
+  final int reviewCount;
 
   const Seller({
     required this.id,
@@ -37,28 +49,43 @@ class Seller extends Equatable {
     this.pincode = '',
     this.contactNumber = '',
     this.profileImageUrl = '',
+    this.coverImageUrl = '',
     this.name = '',
     this.businessDetails = '',
     this.phoneNumber = '',
     this.openingHours = '',
+    this.closingTime = '',
     this.deliveryTime = '',
     this.deliveryArea = '',
     this.gstNumber = '',
     this.fssaiNumber = '',
     this.panNumber = '',
     this.isOnline = false,
+    this.isOpen = true,
+    this.isAcceptingOrders = true,
     this.gstPercentage = 0.0,
     this.minimumOrderValue = 0.0,
     this.packagingCharges = 0.0,
+    this.deliveryRadius = 10.0,
     this.bankAccountNumber = '',
     this.bankName = '',
+    this.latitude = 0.0,
+    this.longitude = 0.0,
+    this.cuisines = const [],
+    this.weeklyHoliday = const [],
+    this.estimatedPrepTimeMinutes = 25,
+    this.rating = 0.0,
+    this.reviewCount = 0,
   });
 
   @override
   List<Object?> get props => [
     id, shopName, sellerName, fullAddress, city, state, pincode, contactNumber, profileImageUrl,
-    name, businessDetails, phoneNumber, openingHours, deliveryTime, deliveryArea, gstNumber, fssaiNumber,
-    panNumber, isOnline, gstPercentage, minimumOrderValue, packagingCharges, bankAccountNumber, bankName,
+    coverImageUrl, name, businessDetails, phoneNumber, openingHours, closingTime, deliveryTime,
+    deliveryArea, gstNumber, fssaiNumber, panNumber, isOnline, isOpen, isAcceptingOrders,
+    gstPercentage, minimumOrderValue, packagingCharges, deliveryRadius, bankAccountNumber,
+    bankName, latitude, longitude, cuisines, weeklyHoliday, estimatedPrepTimeMinutes,
+    rating, reviewCount,
   ];
 
   factory Seller.fromFirestore(DocumentSnapshot doc) {
@@ -66,29 +93,42 @@ class Seller extends Equatable {
 
     return Seller(
       id: doc.id,
-      shopName: data['shopName'] as String? ?? '',
-      sellerName: data['sellerName'] as String? ?? '',
-      fullAddress: data['address'] as String? ?? '',
+      shopName: data['shopName'] as String? ?? data['restaurantName'] as String? ?? '',
+      sellerName: data['sellerName'] as String? ?? data['ownerName'] as String? ?? data['name'] as String? ?? '',
+      fullAddress: data['address'] as String? ?? data['fullAddress'] as String? ?? '',
       city: data['city'] as String? ?? '',
       state: data['state'] as String? ?? '',
       pincode: data['pincode'] as String? ?? '',
-      contactNumber: data['contactNumber'] as String? ?? '',
-      profileImageUrl: data['profileImageUrl'] as String? ?? '',
+      contactNumber: data['contactNumber'] as String? ?? data['phoneNumber'] as String? ?? '',
+      profileImageUrl: data['profileImageUrl'] as String? ?? data['logoUrl'] as String? ?? '',
+      coverImageUrl: data['coverImageUrl'] as String? ?? '',
       name: data['name'] as String? ?? '',
-      businessDetails: data['businessDetails'] as String? ?? '',
+      businessDetails: data['businessDetails'] as String? ?? data['restaurantDescription'] as String? ?? '',
       phoneNumber: data['phoneNumber'] as String? ?? data['contactNumber'] as String? ?? '',
-      openingHours: data['openingHours'] as String? ?? '',
+      openingHours: data['openingHours'] as String? ?? data['openingTime'] as String? ?? '',
+      closingTime: data['closingTime'] as String? ?? '',
       deliveryTime: data['deliveryTime'] as String? ?? '',
       deliveryArea: data['deliveryArea'] as String? ?? '',
       gstNumber: data['gstNumber'] as String? ?? '',
       fssaiNumber: data['fssaiNumber'] as String? ?? '',
       panNumber: data['panNumber'] as String? ?? '',
       isOnline: data['isOnline'] as bool? ?? false,
+      isOpen: data['isOpen'] as bool? ?? true,
+      isAcceptingOrders: data['isAcceptingOrders'] as bool? ?? true,
       gstPercentage: (data['gstPercentage'] as num?)?.toDouble() ?? 0.0,
       minimumOrderValue: (data['minimumOrderValue'] as num?)?.toDouble() ?? 0.0,
       packagingCharges: (data['packagingCharges'] as num?)?.toDouble() ?? 0.0,
+      deliveryRadius: (data['deliveryRadius'] as num?)?.toDouble() ?? 10.0,
       bankAccountNumber: data['bankAccountNumber'] as String? ?? '',
       bankName: data['bankName'] as String? ?? '',
+      latitude: _parseLatitude(data),
+      longitude: _parseLongitude(data),
+      cuisines: _parseCuisines(data),
+      weeklyHoliday: _parseWeeklyHoliday(data),
+      estimatedPrepTimeMinutes: (data['estimatedPrepTimeMinutes'] as num?)?.toInt() ??
+          (data['prepTimeMinutes'] as num?)?.toInt() ?? 25,
+      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
+      reviewCount: (data['reviewCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -102,23 +142,75 @@ class Seller extends Equatable {
       'pincode': pincode,
       'contactNumber': contactNumber,
       'profileImageUrl': profileImageUrl,
+      'coverImageUrl': coverImageUrl,
       'name': name,
       'businessDetails': businessDetails,
       'phoneNumber': phoneNumber,
       'openingHours': openingHours,
+      'closingTime': closingTime,
       'deliveryTime': deliveryTime,
       'deliveryArea': deliveryArea,
       'gstNumber': gstNumber,
       'fssaiNumber': fssaiNumber,
       'panNumber': panNumber,
       'isOnline': isOnline,
+      'isOpen': isOpen,
+      'isAcceptingOrders': isAcceptingOrders,
       'gstPercentage': gstPercentage,
       'minimumOrderValue': minimumOrderValue,
       'packagingCharges': packagingCharges,
+      'deliveryRadius': deliveryRadius,
       'bankAccountNumber': bankAccountNumber,
       'bankName': bankName,
+      'latitude': latitude,
+      'longitude': longitude,
+      'cuisines': cuisines,
+      'weeklyHoliday': weeklyHoliday,
+      'estimatedPrepTimeMinutes': estimatedPrepTimeMinutes,
+      'rating': rating,
+      'reviewCount': reviewCount,
     };
   }
 
   static const empty = Seller(id: '');
+
+  static double _parseLatitude(Map<String, dynamic> data) {
+    final location = data['location'] ?? data['geoPoint'] ?? data['coordinates'];
+    if (location is GeoPoint) return location.latitude;
+    final lat = data['latitude'] ?? data['lat'];
+    if (lat is num) return lat.toDouble();
+    if (lat is String) return double.tryParse(lat) ?? 0.0;
+    return 0.0;
+  }
+
+  static double _parseLongitude(Map<String, dynamic> data) {
+    final location = data['location'] ?? data['geoPoint'] ?? data['coordinates'];
+    if (location is GeoPoint) return location.longitude;
+    final lng = data['longitude'] ?? data['lng'] ?? data['lon'];
+    if (lng is num) return lng.toDouble();
+    if (lng is String) return double.tryParse(lng) ?? 0.0;
+    return 0.0;
+  }
+
+  static List<String> _parseCuisines(Map<String, dynamic> data) {
+    final raw = data['cuisines'] ?? data['cuisine'];
+    if (raw is List) {
+      return raw.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+    }
+    if (raw is String && raw.isNotEmpty) {
+      return raw.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    }
+    return const [];
+  }
+
+  static List<String> _parseWeeklyHoliday(Map<String, dynamic> data) {
+    final raw = data['weeklyHoliday'];
+    if (raw is List) {
+      return raw.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+    }
+    if (raw is String && raw.isNotEmpty) {
+      return raw.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    }
+    return const [];
+  }
 }

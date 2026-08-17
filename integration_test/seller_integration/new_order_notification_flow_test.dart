@@ -13,7 +13,7 @@ void main() {
         // Build the app
         await tester.pumpWidget(
           const MaterialApp(
-            home: Scaffold(body: NewOrderNotificationPage(orderId: '1025')),
+            home: Scaffold(body: NewOrderNotificationPage()),
           ),
         );
 

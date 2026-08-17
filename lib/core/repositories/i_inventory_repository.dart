@@ -3,6 +3,8 @@ import '../models/inventory_history_log_model.dart';
 
 abstract interface class IInventoryRepository {
   Stream<List<InventoryItemModel>> getInventoryStream(String sellerId);
+
+  Stream<List<InventoryHistoryLogModel>> watchInventoryHistory(String sellerId, {String? productId});
   
   Future<void> updateStock({
     required String sellerId,
@@ -10,6 +12,20 @@ abstract interface class IInventoryRepository {
     required double quantityChange,
     required String reason,
     String? note,
+  });
+
+  Future<void> setAbsoluteStock({
+    required String sellerId,
+    required String productId,
+    required double newQuantity,
+    required String reason,
+    String? note,
+  });
+
+  Future<void> updateLowStockThreshold({
+    required String sellerId,
+    required String productId,
+    required int threshold,
   });
 
   Future<void> bulkUpdateStock({

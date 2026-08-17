@@ -60,6 +60,18 @@ class DeliveryCompletedStrings {
       'back': 'Back',
       'profileName': 'Ravi Kumar',
       'vehicleNo': 'TN 01 AB 1234',
+      'codCollectedLabel': 'COLLECTED',
+      'codPendingLabel': 'PENDING',
+      'codAmountCollected': 'COD Amount Collected',
+      'earningsBreakdownTitle': 'Partner Earnings Breakdown',
+      'baseFare': 'Base Fare',
+      'distanceFare': 'Distance Fare',
+      'surgeFare': 'Surge',
+      'incentive': 'Incentive',
+      'bonus': 'Bonus',
+      'tips': 'Tips',
+      'cancellationCompensation': 'Cancellation Compensation',
+      'totalEarned': 'Total Earned',
     },
     'ta': {
       'brand': 'டெலிவரி பார்ட்னர்',
@@ -110,6 +122,18 @@ class DeliveryCompletedStrings {
       'back': 'பின்',
       'profileName': 'ரவி குமார்',
       'vehicleNo': 'TN 01 AB 1234',
+      'codCollectedLabel': 'வசூலிக்கப்பட்டது',
+      'codPendingLabel': 'நிலுவையில்',
+      'codAmountCollected': 'COD வசூலிக்கப்பட்ட தொகை',
+      'earningsBreakdownTitle': 'பார்ட்னர் வருவாய் விவரம்',
+      'baseFare': 'அடிப்படை கட்டணம்',
+      'distanceFare': 'தூர கட்டணம்',
+      'surgeFare': 'சர்ஜ் கட்டணம்',
+      'incentive': 'ஊக்கத்தொகை',
+      'bonus': 'போனஸ்',
+      'tips': 'டிப்ஸ்',
+      'cancellationCompensation': 'ரத்து இழப்பீடு',
+      'totalEarned': 'மொத்த வருவாய்',
     },
   };
 
@@ -1218,9 +1242,232 @@ class _RightColumn extends StatelessWidget {
     return Column(
       children: [
         _DeliverySummaryCard(state: state),
+        if (state.model?.isCOD ?? false) ...[
+          const SizedBox(height: 20),
+          _CodPaymentCard(state: state),
+        ],
+        const SizedBox(height: 20),
+        _EarningsBreakdownCard(state: state),
         const SizedBox(height: 20),
         _CustomerActionsCard(state: state),
       ],
+    );
+  }
+}
+
+class _CodPaymentCard extends StatelessWidget {
+  final DeliveryCompletedPageState state;
+
+  const _CodPaymentCard({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = state.localeCode;
+    final model = state.model;
+    final collected = model?.isCodCollected ?? false;
+    final collectedAmount = model?.collectedAmount ?? 0.0;
+    final statusColor =
+        collected ? DeliveryAppColors.primary : DeliveryAppColors.warning;
+
+    return Container(
+      key: const Key('dp_completed_cod_card'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.payments_outlined,
+                color: DeliveryAppColors.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  DeliveryCompletedStrings.of('paymentStatus', locale),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  collected ? Icons.check_circle : Icons.hourglass_top,
+                  color: statusColor,
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  collected
+                      ? DeliveryCompletedStrings.of('codCollectedLabel', locale)
+                      : DeliveryCompletedStrings.of('codPendingLabel', locale),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (collectedAmount > 0) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(
+                  Icons.currency_rupee,
+                  color: Colors.white70,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    '${DeliveryCompletedStrings.of('codAmountCollected', locale)}: \u{20B9}${collectedAmount.toStringAsFixed(2)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EarningsBreakdownCard extends StatelessWidget {
+  final DeliveryCompletedPageState state;
+
+  const _EarningsBreakdownCard({required this.state});
+
+  String _labelKey(String label) {
+    return switch (label) {
+      'Base Fare' => 'baseFare',
+      'Distance Fare' => 'distanceFare',
+      'Surge' => 'surgeFare',
+      'Incentive' => 'incentive',
+      'Bonus' => 'bonus',
+      'Tips' => 'tips',
+      'Cancellation Compensation' => 'cancellationCompensation',
+      _ => 'totalEarned',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = state.localeCode;
+    final model = state.model;
+    final rows = model?.earningsBreakdownRows ??
+        const <(String, double)>[('Total', 0.0)];
+
+    return Container(
+      key: const Key('dp_completed_earnings_breakdown_card'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.account_balance_wallet_outlined,
+                color: DeliveryAppColors.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  DeliveryCompletedStrings.of(
+                      'earningsBreakdownTitle', locale),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Text(
+                      DeliveryCompletedStrings.of(
+                          _labelKey(row.$1), locale),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: row.$1 == 'Total'
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.65),
+                        fontSize: row.$1 == 'Total' ? 14 : 12,
+                        fontWeight: row.$1 == 'Total'
+                            ? FontWeight.w800
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '\u{20B9}${row.$2.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: row.$1 == 'Total'
+                          ? DeliveryAppColors.primary
+                          : Colors.white,
+                      fontSize: row.$1 == 'Total' ? 15 : 12,
+                      fontWeight: row.$1 == 'Total'
+                          ? FontWeight.w800
+                          : FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 6),
+          const Divider(color: Colors.white12, height: 1),
+        ],
+      ),
     );
   }
 }

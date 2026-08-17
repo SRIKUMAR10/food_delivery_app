@@ -73,3 +73,26 @@ class DeliveryOrdersAutoRefreshToggledEvent extends DeliveryOrdersPageEvent {
   @override
   List<Object?> get props => [enabled];
 }
+
+class DeliveryOrdersAcceptOrderEvent extends DeliveryOrdersPageEvent {
+  final String orderId;
+
+  const DeliveryOrdersAcceptOrderEvent(this.orderId);
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
+class DeliveryOrdersRejectOrderEvent extends DeliveryOrdersPageEvent {
+  final String orderId;
+  final String? reason;
+
+  const DeliveryOrdersRejectOrderEvent(this.orderId, {this.reason});
+
+  @override
+  List<Object?> get props => [orderId, reason];
+}
+
+class DeliveryOrdersClearConflictEvent extends DeliveryOrdersPageEvent {
+  const DeliveryOrdersClearConflictEvent();
+}

@@ -152,6 +152,43 @@ void main() {
       expect(copied, model);
     });
 
+    test('receiverId and readAt serialize in toMap and fromMap', () {
+      final readAt = DateTime(2026, 7, 20, 11, 0);
+      final model = ChatMessageModel(
+        id: testId,
+        conversationId: testConversationId,
+        text: testText,
+        senderId: testSenderId,
+        senderRole: testSenderRole,
+        timestamp: testTimestamp,
+        receiverId: 'user_2',
+        readAt: readAt,
+      );
+
+      final map = model.toMap();
+      expect(map['receiverId'], 'user_2');
+      expect((map['readAt'] as Timestamp).toDate(), readAt);
+
+      final parsed = ChatMessageModel.fromMap(map, testId);
+      expect(parsed.receiverId, 'user_2');
+      expect(parsed.readAt, readAt);
+    });
+
+    test('copyWith preserves receiverId and readAt', () {
+      final model = ChatMessageModel(
+        id: testId,
+        conversationId: testConversationId,
+        text: testText,
+        senderId: testSenderId,
+        senderRole: testSenderRole,
+        timestamp: testTimestamp,
+      );
+
+      final updated = model.copyWith(receiverId: 'user_2', isRead: true);
+      expect(updated.receiverId, 'user_2');
+      expect(updated.isRead, true);
+    });
+
     test('Equatable props contain all fields', () {
       final model = ChatMessageModel(
         id: testId,
@@ -177,6 +214,8 @@ void main() {
         null,
         const <String>[],
         false,
+        null,
+        null,
       ]);
     });
 

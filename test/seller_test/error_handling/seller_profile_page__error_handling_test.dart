@@ -11,7 +11,7 @@ class MockAuthService extends Mock implements IAuthService {}
 class MockProfileRepository extends Mock implements ISellerProfileRepository {}
 
 void main() {
-  group('Error Handling Test', () {
+  group('Seller Profile Error Handling Tests', () {
     late SellerProfilePageBloc bloc;
     late MockAuthService mockAuthService;
     late MockProfileRepository mockProfileRepository;
@@ -20,6 +20,9 @@ void main() {
       mockAuthService = MockAuthService();
       mockProfileRepository = MockProfileRepository();
       when(() => mockAuthService.currentUserId).thenReturn('seller_1');
+      when(() => mockProfileRepository.watchProfile(any()))
+          .thenAnswer((_) => const Stream.empty());
+
       bloc = SellerProfilePageBloc(
         authService: mockAuthService,
         profileRepository: mockProfileRepository,
@@ -31,16 +34,52 @@ void main() {
     });
 
     blocTest<SellerProfilePageBloc, SellerProfilePageState>(
-      'emits ProfileError when repository throws exception',
+      'emits ProfileError when user is not authenticated',
       build: () {
-        when(() => mockProfileRepository.loadProfile('seller_1'))
-            .thenThrow(Exception('Simulated Failure'));
+        when(() => mockAuthService.currentUserId).thenReturn(null);
         return bloc;
       },
       act: (bloc) => bloc.add(LoadProfile()),
       expect: () => [
         isA<ProfileLoading>(),
-        isA<ProfileError>(),
+        isA<ProfileError>().having((e) => e.message, 'message', 'User not authenticated'),
+      ],
+    );
+
+    blocTest<SellerProfilePageBloc, SellerProfilePageState>(
+      'emits ProfileError when repository throws on loadProfile',
+      build: () {
+        when(() => mockProfileRepository.loadProfile('seller_1'))
+            .thenThrow(Exception('Network timeout while connecting to Firestore'));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(LoadProfile()),
+      expect: () => [
+        isA<ProfileLoading>(),
+        isA<ProfileError>().having((e) => e.message, 'message', contains('Network timeout')),
+      ],
+    );
+
+    blocTest<SellerProfilePageBloc, SellerProfilePageState>(
+      'handles updateProfile exception gracefully without crash',
+      build: () {
+        when(() => mockProfileRepository.updateProfile('seller_1', any()))
+            .thenThrow(Exception('Firestore write permission denied'));
+        return bloc;
+      },
+      seed: () => ProfileLoaded(
+        storeName: 'Spice Bar',
+        email: 'test@spice.com',
+        phone: '1234567890',
+        profileImageUrl: '',
+        notificationsEnabled: true,
+        role: 'seller',
+        createdAt: DateTime(2025, 1, 1),
+        isVerified: true,
+      ),
+      act: (bloc) => bloc.add(const UpdateCuisines(['Biryani'])),
+      expect: () => [
+        isA<ProfileLoaded>().having((s) => s.cuisines, 'cuisines', ['Biryani']), // optimistic update
       ],
     );
   });

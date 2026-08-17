@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_bloc.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_ui.dart';
 
@@ -18,15 +15,27 @@ class _FakeDeliveryOrderDetailsBloc extends Fake
 }
 
 const testOrder = OrderModel(
-  id: '#ORD12345',
-  customerPhone: '+1234567890',
-  merchantPhone: '+0987654321',
-  pickupAddress: '123 Pickup St',
-  dropoffAddress: '456 Dropoff Ave',
-  distance: 5.2,
+  id: 'ORD12345',
+  customerName: 'Arun Kumar',
+  customerPhone: '+919876543210',
+  merchantPhone: '+918888888888',
+  restaurantName: 'ahbi Store',
+  pickupAddress: '123 Pickup St, Erode',
+  dropoffAddress: '456 Dropoff Ave, Erode',
+  distance: 2.4,
   orderValue: 620.00,
-  earnings: 150.00,
-  status: 'Pending',
+  totalAmount: 620.00,
+  earnings: 120.00,
+  status: 'ASSIGNED',
+  pickupStatus: 'ASSIGNED',
+  orderDate: '17 Aug 2026',
+  orderTime: '11:35 AM',
+  paymentMethod: 'Cash on Delivery',
+  paymentStatus: 'Pending',
+  items: [
+    OrderItemDetail(id: '1', name: 'Special Masala Dosa', quantity: 2, price: 160.0),
+    OrderItemDetail(id: '2', name: 'Filter Coffee', quantity: 2, price: 60.0),
+  ],
 );
 
 const successState = DeliveryOrderDetailsPageState(
@@ -43,13 +52,13 @@ void setDesktopSize(WidgetTester tester) {
 void main() {
   group('DeliveryOrderDetailsPageUi Widget Tests', () {
     testWidgets(
-      'Renders DeliveryOrderDetailsPageUi correctly with order detail card',
+      'Renders DeliveryOrderDetailsPageUi correctly with order detail card and pickup lifecycle',
       (WidgetTester tester) async {
         setDesktopSize(tester);
         await tester.pumpWidget(
           MaterialApp(
             home: DeliveryOrderDetailsPageUi(
-              orderId: '#ORD12345',
+              orderId: 'ORD12345',
               bloc: _FakeDeliveryOrderDetailsBloc(),
             ),
           ),
@@ -57,14 +66,24 @@ void main() {
 
         await tester.pump();
 
-        // Verify header / title presence
-        expect(find.text('LOGISTICS ORDER PANEL'), findsOneWidget);
+        // Verify title
+        expect(find.text('ORDER DETAILS & PICKUP'), findsOneWidget);
 
-        // Verify elements loaded - check for actual UI content
-        expect(find.text('Customer Details'), findsOneWidget);
-        expect(find.text('PENDING'), findsOneWidget);
-        expect(find.text('Pickup Details (Merchant)'), findsOneWidget);
-        expect(find.text('Drop Details (Customer)'), findsOneWidget);
+        // Verify Order Information
+        expect(find.text('ORDER INFORMATION'), findsOneWidget);
+        expect(find.text('₹620.00'), findsOneWidget);
+
+        // Verify Restaurant Information
+        expect(find.text('RESTAURANT INFORMATION'), findsOneWidget);
+        expect(find.text('ahbi Store'), findsOneWidget);
+
+        // Verify Customer Information
+        expect(find.text('CUSTOMER INFORMATION'), findsOneWidget);
+        expect(find.text('Arun Kumar'), findsOneWidget);
+
+        // Verify Order Verification Checklist
+        expect(find.text('ORDER ITEMS VERIFICATION'), findsOneWidget);
+        expect(find.text('Special Masala Dosa'), findsOneWidget);
       },
     );
   });

@@ -1,8 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/models/inventory_item_model.dart';
 import '../../../../core/models/inventory_history_log_model.dart';
+import '../../../../core/repositories/i_inventory_repository.dart';
 
-class InventoryRepository {
+class InventoryRepository implements IInventoryRepository {
   final FirebaseFirestore _firestore;
 
   InventoryRepository({FirebaseFirestore? firestore})
@@ -17,54 +18,42 @@ class InventoryRepository {
     return 0.0;
   }
 
-  int _parseIntSafely(dynamic value) {
-    if (value == null) return 0;
-    if (value is num) return value.toInt();
-    if (value is String) {
-      final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-      if (digits.isNotEmpty) {
-        return int.tryParse(digits) ?? 0;
-      }
-    }
-    return 0;
-  }
-
+  @override
   Stream<List<InventoryItemModel>> getInventoryStream(String sellerId) {
+    if (sellerId.isEmpty) return Stream.value([]);
     return _firestore
         .collection('products')
         .where('sellerId', isEqualTo: sellerId)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
-        final data = doc.data();
-        
-        // Handle images safely
-        String? imagePath;
-        if (data['imageUrls'] != null && data['imageUrls'] is List && (data['imageUrls'] as List).isNotEmpty) {
-          imagePath = (data['imageUrls'] as List).first.toString();
-        } else if (data['imageUrl'] != null) {
-          imagePath = data['imageUrl'].toString();
-        }
-
-        return InventoryItemModel(
-          id: doc.id,
-          name: data['name'] as String? ?? 'Unknown Product',
-          quantity: _parseDoubleSafely(data['availableStock']),
-          unit: data['unit'] as String? ?? 'pcs',
-          lowStockThreshold: data.containsKey('minimumAlert') 
-              ? _parseIntSafely(data['minimumAlert']) 
-              : _parseIntSafely(data['lowStockThreshold'] ?? 5),
-          imagePath: imagePath,
-          category: data['category'] as String? ?? 'General',
-          sku: data['sku'] as String? ?? 'SKU-${doc.id.substring(0, 4)}',
-          expiryDate: data['expiryDate'] != null 
-              ? (data['expiryDate'] as Timestamp).toDate() 
-              : null,
-        );
+        return InventoryItemModel.fromMap(doc.id, doc.data());
       }).toList();
     });
   }
 
+  @override
+  Stream<List<InventoryHistoryLogModel>> watchInventoryHistory(String sellerId, {String? productId}) {
+    if (sellerId.isEmpty) return Stream.value([]);
+
+    Query query = _firestore.collection('inventory_logs').where('sellerId', isEqualTo: sellerId);
+
+    if (productId != null && productId.isNotEmpty) {
+      query = query.where('productId', isEqualTo: productId);
+    }
+
+    return query
+        .orderBy('timestamp', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return InventoryHistoryLogModel.fromMap(doc.id, doc.data() as Map<String, dynamic>);
+      }).toList();
+    });
+  }
+
+  @override
   Future<void> updateStock({
     required String sellerId,
     required String productId,
@@ -88,7 +77,7 @@ class InventoryRepository {
         throw Exception('Unauthorized to update this product');
       }
 
-      final currentQuantity = (data['availableStock'] as num?)?.toDouble() ?? 0.0;
+      final currentQuantity = _parseDoubleSafely(data['availableStock'] ?? data['quantity'] ?? data['stock']);
       final newQuantity = currentQuantity + quantityChange;
 
       if (newQuantity < 0) {
@@ -96,13 +85,20 @@ class InventoryRepository {
       }
 
       final actionType = quantityChange > 0 ? 'Increase' : 'Decrease';
+      final status = newQuantity <= 0 ? 'outOfStock' : 'available';
 
       // Update product
-      transaction.update(productRef, {'availableStock': newQuantity.toInt()});
+      transaction.update(productRef, {
+        'availableStock': newQuantity.toInt(),
+        'quantity': newQuantity,
+        'status': status,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
       // Create log
       transaction.set(logRef, {
         'productId': productId,
+        'productName': data['name'] ?? 'Product',
         'sellerId': sellerId,
         'previousQuantity': currentQuantity,
         'newQuantity': newQuantity,
@@ -116,6 +112,83 @@ class InventoryRepository {
     });
   }
 
+  @override
+  Future<void> setAbsoluteStock({
+    required String sellerId,
+    required String productId,
+    required double newQuantity,
+    required String reason,
+    String? note,
+  }) async {
+    if (newQuantity < 0) {
+      throw Exception('Negative stock is not allowed.');
+    }
+
+    final productRef = _firestore.collection('products').doc(productId);
+    final logRef = _firestore.collection('inventory_logs').doc();
+
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(productRef);
+      if (!snapshot.exists) {
+        throw Exception('Product not found');
+      }
+
+      final data = snapshot.data()!;
+      if (data['sellerId'] != sellerId) {
+        throw Exception('Unauthorized to update this product');
+      }
+
+      final currentQuantity = _parseDoubleSafely(data['availableStock'] ?? data['quantity'] ?? data['stock']);
+      final quantityChanged = newQuantity - currentQuantity;
+      final status = newQuantity <= 0 ? 'outOfStock' : 'available';
+
+      // Update product
+      transaction.update(productRef, {
+        'availableStock': newQuantity.toInt(),
+        'quantity': newQuantity,
+        'status': status,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Create log
+      transaction.set(logRef, {
+        'productId': productId,
+        'productName': data['name'] ?? 'Product',
+        'sellerId': sellerId,
+        'previousQuantity': currentQuantity,
+        'newQuantity': newQuantity,
+        'quantityChanged': quantityChanged,
+        'actionType': 'Set',
+        'reason': reason,
+        'note': note,
+        'timestamp': FieldValue.serverTimestamp(),
+        'updatedBy': sellerId,
+      });
+    });
+  }
+
+  @override
+  Future<void> updateLowStockThreshold({
+    required String sellerId,
+    required String productId,
+    required int threshold,
+  }) async {
+    final productRef = _firestore.collection('products').doc(productId);
+    final snapshot = await productRef.get();
+    if (!snapshot.exists) throw Exception('Product not found');
+    final data = snapshot.data()!;
+    if (data['sellerId'] != sellerId) {
+      throw Exception('Unauthorized to update this product');
+    }
+
+    await productRef.update({
+      'lowStockThreshold': threshold,
+      'minimumAlert': threshold,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
   Future<void> bulkUpdateStock({
     required String sellerId,
     required List<String> productIds,
@@ -126,13 +199,6 @@ class InventoryRepository {
     if (productIds.isEmpty || quantityChange == 0) return;
 
     final batch = _firestore.batch();
-    
-    // We must read the current quantities to log them accurately.
-    // Batch doesn't allow reads, so we fetch them first, then batch write.
-    // For extreme concurrent safety, we could use runTransaction on multiple docs,
-    // but Firestore limits transactions to 500 reads. Batch is safer here for bulk.
-    // If strict serializability is needed for bulk, we'll fetch then batch.
-    
     final snapshots = await Future.wait(
       productIds.map((id) => _firestore.collection('products').doc(id).get())
     );
@@ -142,26 +208,34 @@ class InventoryRepository {
       final data = snapshot.data()!;
       if (data['sellerId'] != sellerId) continue;
 
-      final currentQuantity = (data['availableStock'] as num?)?.toDouble() ?? 0.0;
+      final currentQuantity = _parseDoubleSafely(data['availableStock'] ?? data['quantity'] ?? data['stock']);
       final newQuantity = currentQuantity + quantityChange;
-      
+
       if (newQuantity < 0) {
         throw Exception('Negative stock is not allowed for product: ${data['name']}');
       }
 
       final actionType = quantityChange > 0 ? 'Increase' : 'Decrease';
-      
+      final status = newQuantity <= 0 ? 'outOfStock' : 'available';
+
       final productRef = snapshot.reference;
       final logRef = _firestore.collection('inventory_logs').doc();
 
-      batch.update(productRef, {'availableStock': newQuantity.toInt()});
+      batch.update(productRef, {
+        'availableStock': newQuantity.toInt(),
+        'quantity': newQuantity,
+        'status': status,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
       batch.set(logRef, {
         'productId': snapshot.id,
+        'productName': data['name'] ?? 'Product',
         'sellerId': sellerId,
         'previousQuantity': currentQuantity,
         'newQuantity': newQuantity,
         'quantityChanged': quantityChange,
-        'actionType': actionType,
+        'actionType': 'Bulk Update ($actionType)',
         'reason': reason,
         'note': note,
         'timestamp': FieldValue.serverTimestamp(),
@@ -172,6 +246,7 @@ class InventoryRepository {
     await batch.commit();
   }
 
+  @override
   Future<void> addProduct({
     required String sellerId,
     required InventoryItemModel item,
@@ -184,16 +259,25 @@ class InventoryRepository {
         'sellerId': sellerId,
         'name': item.name,
         'availableStock': item.quantity.toInt(),
+        'quantity': item.quantity,
         'unit': item.unit,
         'category': item.category,
         'sku': item.sku,
         'lowStockThreshold': item.lowStockThreshold,
+        'minimumAlert': item.lowStockThreshold,
+        'price': item.price,
+        'isActive': item.isActive,
+        'status': item.isOutOfStock ? 'outOfStock' : 'available',
+        'hasUnlimitedStock': item.hasUnlimitedStock,
         if (item.imagePath != null) 'imageUrl': item.imagePath,
         if (item.expiryDate != null) 'expiryDate': Timestamp.fromDate(item.expiryDate!),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       transaction.set(logRef, {
         'productId': productRef.id,
+        'productName': item.name,
         'sellerId': sellerId,
         'previousQuantity': 0.0,
         'newQuantity': item.quantity,
@@ -206,6 +290,7 @@ class InventoryRepository {
     });
   }
 
+  @override
   Future<List<InventoryHistoryLogModel>> getInventoryHistory(String productId) async {
     final snapshot = await _firestore
         .collection('inventory_logs')
@@ -214,19 +299,7 @@ class InventoryRepository {
         .get();
 
     return snapshot.docs.map((doc) {
-      final data = doc.data();
-      return InventoryHistoryLogModel(
-        id: doc.id,
-        productId: data['productId'] ?? '',
-        previousQuantity: (data['previousQuantity'] as num?)?.toDouble() ?? 0.0,
-        newQuantity: (data['newQuantity'] as num?)?.toDouble() ?? 0.0,
-        quantityChanged: (data['quantityChanged'] as num?)?.toDouble() ?? 0.0,
-        actionType: data['actionType'] ?? 'Update',
-        reason: data['reason'] ?? 'Manual Adjustment',
-        timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        updatedBy: data['updatedBy'] ?? '',
-        note: data['note'],
-      );
+      return InventoryHistoryLogModel.fromMap(doc.id, doc.data());
     }).toList();
   }
 }

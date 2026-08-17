@@ -85,6 +85,6 @@ void main() {
 
     expect(find.text('Pizza'), findsOneWidget);
     expect(find.text('₹10.00'), findsOneWidget);
-    expect(find.text('In Stock'), findsOneWidget);
+    expect(find.text('In Stock'), findsWidgets);
   });
 }

@@ -63,12 +63,58 @@ class CartCleared extends CartEvent {
   const CartCleared();
 }
 
+/// Dispatched when the user switches payment method (Razorpay, COD, Wallet).
+class CartPaymentMethodSelected extends CartEvent {
+  final CartPaymentMethod method;
+  const CartPaymentMethodSelected(this.method);
+
+  @override
+  List<Object?> get props => [method];
+}
+
 /// Dispatched to trigger the checkout process (create order and clear cart).
 class CartCheckoutRequested extends CartEvent {
   final void Function(String? message)? onSuccess;
   final void Function(String? message)? onInsufficientBalance;
+  final void Function(String? orderId, double amount, String customerEmail, String customerPhone)? onOpenRazorpay;
+  final void Function(String? message)? onFailure;
 
-  const CartCheckoutRequested({this.onSuccess, this.onInsufficientBalance});
+  const CartCheckoutRequested({
+    this.onSuccess,
+    this.onInsufficientBalance,
+    this.onOpenRazorpay,
+    this.onFailure,
+  });
+}
+
+/// Dispatched when Razorpay client SDK returns payment success response.
+class CartRazorpaySuccessReceived extends CartEvent {
+  final PaymentSuccessResponse response;
+  final void Function(String? message)? onSuccess;
+  final void Function(String? message)? onFailure;
+
+  const CartRazorpaySuccessReceived({
+    required this.response,
+    this.onSuccess,
+    this.onFailure,
+  });
+
+  @override
+  List<Object?> get props => [response.paymentId, response.orderId, response.signature];
+}
+
+/// Dispatched when Razorpay client SDK returns payment error or cancellation response.
+class CartRazorpayFailedReceived extends CartEvent {
+  final PaymentFailureResponse response;
+  final void Function(String? message)? onFailure;
+
+  const CartRazorpayFailedReceived({
+    required this.response,
+    this.onFailure,
+  });
+
+  @override
+  List<Object?> get props => [response.code, response.message];
 }
 
 /// Dispatched when available coupons should be loaded for sellers in cart.
@@ -102,3 +148,38 @@ class CouponError extends CartEvent {
   @override
   List<Object?> get props => [message];
 }
+
+/// Dispatched when user enters a coupon code manually in the text field.
+class ApplyCouponCodeRequested extends CartEvent {
+  final String code;
+  const ApplyCouponCodeRequested(this.code);
+
+  @override
+  List<Object?> get props => [code];
+}
+
+/// Dispatched when the user switches delivery address type (Home, Work, Other).
+class DeliveryAddressTypeChanged extends CartEvent {
+  final String addressType;
+  const DeliveryAddressTypeChanged(this.addressType);
+
+  @override
+  List<Object?> get props => [addressType];
+}
+
+class _ProfileUpdated extends CartEvent {
+  final dynamic profile;
+  const _ProfileUpdated(this.profile);
+
+  @override
+  List<Object?> get props => [profile];
+}
+
+class _WalletBalanceUpdated extends CartEvent {
+  final double balance;
+  const _WalletBalanceUpdated(this.balance);
+
+  @override
+  List<Object?> get props => [balance];
+}
+

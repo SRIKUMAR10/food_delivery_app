@@ -30,6 +30,8 @@ class BuyerChatLoaded extends BuyerChatState {
   final bool isRecording;
   final Duration recordingDuration;
   final FoodItem? selectedProduct;
+  final String activeFilter; // 'all' | 'seller' | 'delivery'
+  final bool isMarkingRead;
 
   const BuyerChatLoaded({
     required this.currentUserId,
@@ -43,6 +45,8 @@ class BuyerChatLoaded extends BuyerChatState {
     this.isRecording = false,
     this.recordingDuration = Duration.zero,
     this.selectedProduct,
+    this.activeFilter = 'all',
+    this.isMarkingRead = false,
   });
 
   ConversationModel? get selectedConversation {
@@ -55,13 +59,20 @@ class BuyerChatLoaded extends BuyerChatState {
   }
 
   List<ConversationModel> get filteredConversations {
-    if (searchQuery.isEmpty) return conversations;
     final q = searchQuery.toLowerCase();
     return conversations.where((c) {
+      final matchesFilter = switch (activeFilter) {
+        'seller' => !c.isDeliveryChat,
+        'delivery' => c.isDeliveryChat,
+        _ => true,
+      };
+      if (!matchesFilter) return false;
+      if (searchQuery.isEmpty) return true;
       final shopMatch = c.shopName?.toLowerCase().contains(q) ?? false;
       final orderMatch = c.orderId?.toLowerCase().contains(q) ?? false;
       final nameMatch = c.sellerName.toLowerCase().contains(q) ||
-          c.buyerName.toLowerCase().contains(q);
+          c.buyerName.toLowerCase().contains(q) ||
+          (c.deliveryPartnerName?.toLowerCase().contains(q) ?? false);
       return shopMatch || orderMatch || nameMatch;
     }).toList();
   }
@@ -81,6 +92,8 @@ class BuyerChatLoaded extends BuyerChatState {
     Duration? recordingDuration,
     FoodItem? selectedProduct,
     bool clearSelectedProduct = false,
+    String? activeFilter,
+    bool? isMarkingRead,
   }) {
     return BuyerChatLoaded(
       currentUserId: currentUserId ?? this.currentUserId,
@@ -96,6 +109,8 @@ class BuyerChatLoaded extends BuyerChatState {
       isRecording: isRecording ?? this.isRecording,
       recordingDuration: recordingDuration ?? this.recordingDuration,
       selectedProduct: clearSelectedProduct ? null : (selectedProduct ?? this.selectedProduct),
+      activeFilter: activeFilter ?? this.activeFilter,
+      isMarkingRead: isMarkingRead ?? this.isMarkingRead,
     );
   }
 
@@ -103,7 +118,8 @@ class BuyerChatLoaded extends BuyerChatState {
   List<Object?> get props => [
     currentUserId, conversations, selectedConversationId, messages,
     isSendingMessage, errorMessage, searchQuery, showEmojiPicker,
-    isRecording, recordingDuration, selectedProduct,
+    isRecording, recordingDuration, selectedProduct, activeFilter,
+    isMarkingRead,
   ];
 }
 

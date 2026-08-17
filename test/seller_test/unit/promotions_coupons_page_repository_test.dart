@@ -13,6 +13,7 @@ void main() {
     
     final dummyCoupon = CouponModel(
       id: '1',
+      sellerId: 'seller_1',
       code: 'TEST10',
       description: 'Test coupon',
       discountAmount: 10,

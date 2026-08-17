@@ -13,6 +13,9 @@ abstract class ProductRepository {
   Future<void> archiveProduct(String id);
   Future<void> unarchiveProduct(String id);
   Future<void> duplicateProduct(String id);
+  Future<void> updateProductStock(String id, int stock, bool hasUnlimitedStock);
+  Future<void> updateProductPrice(String id, double price, double discountPrice);
+  Future<void> markProductOutOfStock(String id);
   Future<void> addProduct(Product product, List<XFile> images);
   Future<void> updateProduct(Product product, List<XFile> newImages, List<String> existingImages);
 }
@@ -99,8 +102,41 @@ class ProductRepositoryImpl implements ProductRepository {
       data['name'] = '${data['name']} (Copy)';
       data['isArchived'] = false; // duplicated product is active by default
       data['createdAt'] = FieldValue.serverTimestamp();
+      data['updatedAt'] = FieldValue.serverTimestamp();
       await _firestore.collection('products').add(data);
     }
+  }
+
+  @override
+  Future<void> updateProductStock(String id, int stock, bool hasUnlimitedStock) async {
+    String status = 'inStock';
+    if (stock <= 0 && !hasUnlimitedStock) {
+      status = 'outOfStock';
+    }
+    await _firestore.collection('products').doc(id).update({
+      'availableStock': stock,
+      'hasUnlimitedStock': hasUnlimitedStock,
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
+  Future<void> updateProductPrice(String id, double price, double discountPrice) async {
+    await _firestore.collection('products').doc(id).update({
+      'price': price,
+      'discountPrice': discountPrice,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
+  Future<void> markProductOutOfStock(String id) async {
+    await _firestore.collection('products').doc(id).update({
+      'availableStock': 0,
+      'status': 'outOfStock',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<List<String>> _uploadImages(List<XFile> images, String docId) async {

@@ -21,6 +21,14 @@ class DeliveryProfileBloc
     on<DeliveryProfileUploadDocumentEvent>(_onUploadDocument);
     on<DeliveryProfileSaveEvent>(_onSave);
     on<DeliveryProfileRetryEvent>(_onRetry);
+    on<DeliveryProfileUpdateAddressEvent>(_onUpdateAddress);
+    on<DeliveryProfileUpdateVehicleEvent>(_onUpdateVehicle);
+    on<DeliveryProfileUpdatePhoneEvent>(_onUpdatePhone);
+    on<DeliveryProfileUpdateEmailEvent>(_onUpdateEmail);
+    on<DeliveryProfileChangePasswordEvent>(_onChangePassword);
+    on<DeliveryProfileDeactivateAccountEvent>(_onDeactivateAccount);
+    on<DeliveryProfileLogoutEvent>(_onLogout);
+    on<DeliveryProfileLocaleChangedEvent>(_onLocaleChanged);
   }
 
   Future<void> _onInit(
@@ -31,6 +39,15 @@ class DeliveryProfileBloc
       status: DeliveryProfileStatus.loading,
       clearError: true,
     ));
+    try {
+      final initialData = await repository.fetchProfile();
+      emit(_recalculate(initialData.copyWith(
+        status: initialData.status,
+        localeCode: state.localeCode,
+        clearError: true,
+      )));
+    } catch (_) {}
+
     try {
       await emit.forEach<DeliveryProfileState>(
         repository.watchProfile(),
@@ -50,10 +67,12 @@ class DeliveryProfileBloc
         },
       );
     } catch (e) {
-      emit(state.copyWith(
-        status: DeliveryProfileStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
-      ));
+      if (state.status == DeliveryProfileStatus.loading) {
+        emit(state.copyWith(
+          status: DeliveryProfileStatus.error,
+          errorMessage: e.toString().replaceAll('Exception: ', ''),
+        ));
+      }
     }
   }
 
@@ -74,6 +93,11 @@ class DeliveryProfileBloc
         ),
       'email' => state.copyWith(
           email: event.value,
+          status: DeliveryProfileStatus.loaded,
+          clearError: true,
+        ),
+      'address' => state.copyWith(
+          address: event.value,
           status: DeliveryProfileStatus.loaded,
           clearError: true,
         ),
@@ -118,12 +142,13 @@ class DeliveryProfileBloc
   ) async {
     try {
       final path = await repository.pickProfileImage();
-      emit(state.copyWith(
-        avatarPath: path,
-        clearAvatar: path == null,
-        status: DeliveryProfileStatus.loaded,
-        clearError: true,
-      ));
+      if (path != null) {
+        emit(state.copyWith(
+          avatarPath: path,
+          status: DeliveryProfileStatus.loaded,
+          clearError: true,
+        ));
+      }
     } catch (e) {
       emit(state.copyWith(
         errorMessage: e.toString().replaceAll('Exception: ', ''),
@@ -177,6 +202,7 @@ class DeliveryProfileBloc
       completed[completedIndex] = completed[completedIndex].copyWith(
         status: DeliveryProfileDocumentStatus.uploaded,
         progress: 1.0,
+        documentUrl: event.filePath ?? 'uploaded_${event.documentId}',
       );
 
       final verificationStatuses =
@@ -184,6 +210,8 @@ class DeliveryProfileBloc
       if (completed.every((d) => d.isUploaded)) {
         verificationStatuses['document'] = true;
       }
+
+      await service.uploadDocument(event.documentId, event.filePath ?? 'uploaded_${event.documentId}');
 
       emit(_recalculate(state.copyWith(
         documents: completed,
@@ -220,6 +248,7 @@ class DeliveryProfileBloc
       emit(state.copyWith(
         saveStatus: DeliveryProfileSaveStatus.saved,
         status: DeliveryProfileStatus.loaded,
+        actionMessage: 'Profile saved successfully',
         clearError: true,
       ));
     } catch (e) {
@@ -237,12 +266,160 @@ class DeliveryProfileBloc
     add(const DeliveryProfileInitEvent());
   }
 
+  Future<void> _onUpdateAddress(
+    DeliveryProfileUpdateAddressEvent event,
+    Emitter<DeliveryProfileState> emit,
+  ) async {
+    try {
+      await repository.updateAddress(event.address);
+      emit(_recalculate(state.copyWith(
+        address: event.address,
+        actionMessage: 'Address updated successfully',
+        clearError: true,
+      )));
+    } catch (e) {
+      emit(state.copyWith(
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      ));
+    }
+  }
+
+  Future<void> _onUpdateVehicle(
+    DeliveryProfileUpdateVehicleEvent event,
+    Emitter<DeliveryProfileState> emit,
+  ) async {
+    try {
+      await repository.updateVehicle(
+        vehicleType: event.vehicleType,
+        vehicleNumber: event.vehicleNumber,
+      );
+      emit(_recalculate(state.copyWith(
+        vehicleType: event.vehicleType,
+        vehicleNumber: event.vehicleNumber,
+        actionMessage: 'Vehicle updated successfully',
+        clearError: true,
+      )));
+    } catch (e) {
+      emit(state.copyWith(
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      ));
+    }
+  }
+
+  Future<void> _onUpdatePhone(
+    DeliveryProfileUpdatePhoneEvent event,
+    Emitter<DeliveryProfileState> emit,
+  ) async {
+    try {
+      await repository.updatePhone(event.phone);
+      emit(state.copyWith(
+        phone: event.phone,
+        actionMessage: 'Phone number updated successfully',
+        clearError: true,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      ));
+    }
+  }
+
+  Future<void> _onUpdateEmail(
+    DeliveryProfileUpdateEmailEvent event,
+    Emitter<DeliveryProfileState> emit,
+  ) async {
+    try {
+      await repository.updateEmail(event.email);
+      emit(state.copyWith(
+        email: event.email,
+        actionMessage: 'Email updated successfully',
+        clearError: true,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      ));
+    }
+  }
+
+  Future<void> _onChangePassword(
+    DeliveryProfileChangePasswordEvent event,
+    Emitter<DeliveryProfileState> emit,
+  ) async {
+    emit(state.copyWith(isChangingPassword: true, clearError: true));
+    try {
+      await repository.changePassword(
+        currentPassword: event.currentPassword,
+        newPassword: event.newPassword,
+      );
+      emit(state.copyWith(
+        isChangingPassword: false,
+        actionMessage: 'Password changed successfully',
+        clearError: true,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        isChangingPassword: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      ));
+    }
+  }
+
+  Future<void> _onDeactivateAccount(
+    DeliveryProfileDeactivateAccountEvent event,
+    Emitter<DeliveryProfileState> emit,
+  ) async {
+    emit(state.copyWith(isDeactivating: true, clearError: true));
+    try {
+      await repository.deactivateAccount();
+      emit(state.copyWith(
+        isDeactivating: false,
+        isActive: false,
+        actionMessage: 'Account deactivated',
+        clearError: true,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        isDeactivating: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      ));
+    }
+  }
+
+  Future<void> _onLogout(
+    DeliveryProfileLogoutEvent event,
+    Emitter<DeliveryProfileState> emit,
+  ) async {
+    emit(state.copyWith(isLoggingOut: true, clearError: true));
+    try {
+      await repository.logout();
+      emit(state.copyWith(
+        isLoggingOut: false,
+        actionMessage: 'Logged out successfully',
+        clearError: true,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        isLoggingOut: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      ));
+    }
+  }
+
+  void _onLocaleChanged(
+    DeliveryProfileLocaleChangedEvent event,
+    Emitter<DeliveryProfileState> emit,
+  ) {
+    emit(state.copyWith(localeCode: event.localeCode));
+  }
+
   DeliveryProfileState _recalculate(DeliveryProfileState current) {
     final completion = computeDeliveryProfileCompletion(
       fullName: current.fullName,
       phone: current.phone,
       email: current.email,
       dob: current.dob,
+      address: current.address,
       vehicleType: current.vehicleType,
       vehicleNumber: current.vehicleNumber,
       licenseNumber: current.licenseNumber,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'out_for_delivery_page__event.dart';
 import 'out_for_delivery_page__state.dart';
 
@@ -190,7 +191,17 @@ class OutForDeliveryPageBloc extends Bloc<OutForDeliveryPageEvent, OutForDeliver
     }
   }
 
-  Future<void> _onCallRider(CallRider event, Emitter<OutForDeliveryPageState> emit) async {}
+  Future<void> _onCallRider(CallRider event, Emitter<OutForDeliveryPageState> emit) async {
+    final cleaned = event.phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    if (cleaned.isNotEmpty) {
+      final uri = Uri.parse('tel:$cleaned');
+      try {
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        }
+      } catch (_) {}
+    }
+  }
 
   Future<void> _onMessageRider(MessageRider event, Emitter<OutForDeliveryPageState> emit) async {}
 }

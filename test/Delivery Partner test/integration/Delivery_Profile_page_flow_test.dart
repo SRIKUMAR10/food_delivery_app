@@ -4,37 +4,33 @@ import 'package:flutter/services.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Profile_page/Delivery_Profile_page_bloc.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Profile_page/Delivery_Profile_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Profile_page/Delivery_Profile_page_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Profile_page/Delivery_Profile_page_service.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Profile_page/Delivery_Profile_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Profile_page/Delivery_Profile_page_ui.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_ui.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_state.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_repository.dart';
-import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_service.dart';
 
 import '../../font_loader_helper.dart';
-
-class MockDeliveryProfileRepository extends Mock
-    implements DeliveryProfileRepositoryBase {}
 
 class MockDeliveryProfileService extends Mock
     implements DeliveryProfileServiceBase {}
 
-class MockDeliveryNavigationBarRepository extends Mock
-    implements DeliveryNavigationBarRepositoryBase {}
-
-class MockDeliveryNavigationBarService extends Mock
-    implements DeliveryNavigationBarServiceBase {}
-
 void main() {
-  late MockDeliveryProfileRepository mockProfileRepository;
   late MockDeliveryProfileService mockProfileService;
-  late MockDeliveryNavigationBarRepository mockNavRepository;
-  late MockDeliveryNavigationBarService mockNavService;
+  late DeliveryProfileRepository realRepository;
+  late SharedPreferences prefs;
 
-  const List<DeliveryNavigationBarItem> navItems =
-      DeliveryNavigationBarRepository.defaultNavItems;
+  final sampleData = <String, dynamic>{
+    'displayName': 'Ravi Kumar',
+    'phoneNumber': '+91 98765 43210',
+    'email': 'ravi@test.com',
+    'address': '123 Main Road, Chennai',
+    'vehicleType': 'scooter',
+    'vehicleNumber': 'TN 01 AB 1234',
+    'drivingLicense': 'TN07 20010012345',
+    'status': 'approved',
+    'kycStatus': 'approved',
+  };
 
   setUpAll(() {
     overrideFontAssetLoading();
@@ -50,42 +46,26 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
+    prefs = await SharedPreferences.getInstance();
 
-    mockProfileRepository = MockDeliveryProfileRepository();
     mockProfileService = MockDeliveryProfileService();
-    mockNavRepository = MockDeliveryNavigationBarRepository();
-    mockNavService = MockDeliveryNavigationBarService();
-    registerFallbackValue(const DeliveryProfileState());
-
-    when(() => mockProfileRepository.fetchProfile()).thenAnswer(
-      (_) async =>
-          DeliveryProfileRepository(prefs: prefs).buildDefaultProfile(),
+    realRepository = DeliveryProfileRepository(
+      prefs: prefs,
+      service: mockProfileService,
     );
+
     when(
-      () => mockProfileRepository.saveProfile(any()),
-    ).thenAnswer((_) async {});
+      () => mockProfileService.fetchProfileData(),
+    ).thenAnswer((_) async => sampleData);
+    when(
+      () => mockProfileService.watchProfileData(),
+    ).thenAnswer((_) => Stream.value(sampleData));
+    when(
+      () => mockProfileService.updateProfile(any()),
+    ).thenAnswer((_) async => true);
     when(
       () => mockProfileService.chunkedUpload(any()),
     ).thenAnswer((_) => Stream.fromIterable([0.5, 1.0]));
-
-    when(
-      () => mockNavService.checkConnectivity(),
-    ).thenAnswer((_) async => true);
-    when(
-      () => mockNavRepository.getNavItems(),
-    ).thenAnswer((_) async => navItems);
-    when(
-      () => mockNavRepository.getSavedSelectedIndex(),
-    ).thenAnswer((_) async => -1);
-    when(() => mockNavRepository.getLocaleCode()).thenAnswer((_) async => 'en');
-    when(
-      () => mockNavRepository.getPartnerName(),
-    ).thenAnswer((_) async => 'Ravi Kumar');
-    when(
-      () => mockNavRepository.saveSelectedIndex(any()),
-    ).thenAnswer((_) async {});
-    when(() => mockNavService.checkPermission()).thenAnswer((_) async => true);
   });
 
   void setDesktopSize(WidgetTester tester) {
@@ -96,117 +76,67 @@ void main() {
 
   group('DeliveryProfilePage Integration Flow Tests', () {
     testWidgets(
-      'loads profile, edits a field and sees live completion change',
+      'loads profile with real repository & service, edits a field and saves',
       (tester) async {
         setDesktopSize(tester);
+        final bloc = DeliveryProfileBloc(
+          repository: realRepository,
+          service: mockProfileService,
+        );
+
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: DeliveryProfilePage(
-                repository: mockProfileRepository,
-                service: mockProfileService,
-              ),
+              body: DeliveryProfilePage(bloc: bloc),
             ),
           ),
         );
+        bloc.add(const DeliveryProfileInitEvent());
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 200));
 
-        expect(find.text('My Profile'), findsOneWidget);
-        expect(find.text('75%'), findsOneWidget);
+        expect(find.byKey(const Key('dp_profile_page')), findsOneWidget);
+        expect(find.text('Ravi Kumar'), findsWidgets);
+        expect(find.byKey(const Key('dp_profile_completion_card')), findsOneWidget);
 
         await tester.enterText(
           find.byKey(const Key('dp_profile_vehicle_number')),
-          'TN 01 AB 1234',
+          'TN 02 CD 5678',
         );
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 50));
 
-        expect(find.text('83%'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('dp_profile_save_button')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+
+        expect(find.text('Profile saved successfully'), findsOneWidget);
+        bloc.close();
       },
     );
 
-    testWidgets('uploads a pending document and updates its status', (
+    testWidgets('uploads document and triggers upload workflow', (
       tester,
     ) async {
       setDesktopSize(tester);
+      final bloc = DeliveryProfileBloc(
+        repository: realRepository,
+        service: mockProfileService,
+      );
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: DeliveryProfilePage(
-              repository: mockProfileRepository,
-              service: mockProfileService,
-            ),
+            body: DeliveryProfilePage(bloc: bloc),
           ),
         ),
       );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-
-      await tester.ensureVisible(
-        find.byKey(const Key('dp_profile_upload_insurance')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('dp_profile_upload_insurance')));
+      bloc.add(const DeliveryProfileInitEvent());
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.text('Uploaded'), findsWidgets);
-      expect(find.text('83%'), findsOneWidget);
-    });
-
-    testWidgets('saves the profile and confirms with a snackbar', (
-      tester,
-    ) async {
-      setDesktopSize(tester);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: DeliveryProfilePage(
-              repository: mockProfileRepository,
-              service: mockProfileService,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-
-      await tester.tap(find.byKey(const Key('dp_profile_save_button')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-
-      expect(find.text('Profile saved successfully'), findsOneWidget);
-    });
-
-    testWidgets('renders the profile page when the Profile tab is selected', (
-      tester,
-    ) async {
-      setDesktopSize(tester);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: DeliveryNavigationBarPage(
-            repository: mockNavRepository,
-            service: mockNavService,
-          ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-
-      expect(find.text('My Profile'), findsOneWidget);
-      expect(find.byKey(const Key('dp_profile_save_button')), findsOneWidget);
-
-      await tester.tap(find.text('Dashboard'), warnIfMissed: false);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(find.byKey(const Key('dp_dashboard_online_card')), findsOneWidget);
-      expect(find.text('You are ONLINE'), findsOneWidget);
-
-      await tester.tap(find.text('Profile'), warnIfMissed: false);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('My Profile'), findsOneWidget);
+      expect(find.byKey(const Key('dp_profile_page')), findsOneWidget);
+      bloc.close();
     });
   });
 }

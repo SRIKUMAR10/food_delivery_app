@@ -120,3 +120,65 @@ class SelectProductForSupport extends BuyerChatEvent {
   @override
   List<Object?> get props => [product];
 }
+
+class StartDeliveryPartnerConversation extends BuyerChatEvent {
+  final String deliveryPartnerId;
+  final String deliveryPartnerName;
+  final String buyerName;
+  final String? deliveryPartnerPhone;
+  final String? deliveryPartnerImageUrl;
+  final String? orderId;
+  final String? orderTitle;
+  final double? orderTotal;
+  final String? initialMessage;
+
+  const StartDeliveryPartnerConversation({
+    required this.deliveryPartnerId,
+    required this.deliveryPartnerName,
+    required this.buyerName,
+    this.deliveryPartnerPhone,
+    this.deliveryPartnerImageUrl,
+    this.orderId,
+    this.orderTitle,
+    this.orderTotal,
+    this.initialMessage,
+  });
+
+  @override
+  List<Object?> get props => [
+        deliveryPartnerId,
+        deliveryPartnerName,
+        buyerName,
+        deliveryPartnerPhone,
+        deliveryPartnerImageUrl,
+        orderId,
+        orderTitle,
+        orderTotal,
+        initialMessage,
+      ];
+}
+
+class MarkMessagesAsRead extends BuyerChatEvent {
+  final String conversationId;
+  const MarkMessagesAsRead(this.conversationId);
+
+  @override
+  List<Object?> get props => [conversationId];
+}
+
+class SendOrderQuickReply extends BuyerChatEvent {
+  final String conversationId;
+  final String text;
+  const SendOrderQuickReply(this.conversationId, this.text);
+
+  @override
+  List<Object?> get props => [conversationId, text];
+}
+
+class SetBuyerChatFilter extends BuyerChatEvent {
+  final String filter; // 'all' | 'seller' | 'delivery'
+  const SetBuyerChatFilter(this.filter);
+
+  @override
+  List<Object?> get props => [filter];
+}

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
@@ -7,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/models/order_status.dart';
 import '../../../../core/models/order_model.dart';
+import '../../../../core/models/delivery_partner_model.dart';
 import 'orders_list_page_bloc.dart';
 import 'orders_list_page_event.dart';
 import 'orders_list_page_state.dart';
@@ -17,17 +19,20 @@ import '../assign_delivery_page_/assign_delivery_page__bloc.dart';
 import '../assign_delivery_page_/assign_delivery_page__repository.dart';
 import '../assign_delivery_page_/assign_delivery_page__service.dart';
 import '../assign_delivery_page_/assign_delivery_page__event.dart';
+import '../out_for_delivery_page_/out_for_delivery_page__ui.dart';
+import '../chat_support_page_/chat_support_page_ui.dart';
 
 class OrdersListPage extends StatelessWidget {
   const OrdersListPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final sellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
     return BlocProvider(
       create: (context) => OrdersListBloc(
         repository: context.read<IOrderRepository>(),
         chatRepository: context.read<IChatRepository>(),
-      )..add(LoadOrdersStream(FirebaseAuth.instance.currentUser?.uid ?? '')),
+      )..add(LoadOrdersStream(sellerId)),
       child: const OrdersListView(),
     );
   }
@@ -46,18 +51,32 @@ class OrdersListView extends StatelessWidget {
             if (state.errorMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.errorMessage!),
+                  content: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(state.errorMessage!)),
+                    ],
+                  ),
                   backgroundColor: const Color(0xFFE52929),
                   behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               );
               context.read<OrdersListBloc>().add(ClearMessages());
             } else if (state.successMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.successMessage!),
-                  backgroundColor: const Color(0xFF22C55E),
+                  content: Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(state.successMessage!)),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFF16A34A),
                   behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               );
               context.read<OrdersListBloc>().add(ClearMessages());
@@ -68,10 +87,10 @@ class OrdersListView extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               double containerWidth = constraints.maxWidth;
-              if (constraints.maxWidth > 1024) {
-                containerWidth = 800;
-              } else if (constraints.maxWidth > 600) {
-                containerWidth = 600;
+              if (constraints.maxWidth > 1200) {
+                containerWidth = 1100;
+              } else if (constraints.maxWidth > 800) {
+                containerWidth = 850;
               }
 
               return Center(
@@ -80,69 +99,122 @@ class OrdersListView extends StatelessWidget {
                   child: RefreshIndicator(
                     color: const Color(0xFFE52929),
                     onRefresh: () async {
-                      context.read<OrdersListBloc>().add(
-                        LoadOrdersStream(
-                          FirebaseAuth.instance.currentUser?.uid ?? '',
-                        ),
-                      );
-                      await Future.delayed(const Duration(seconds: 1));
+                      final sellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                      context.read<OrdersListBloc>().add(LoadOrdersStream(sellerId));
+                      await Future.delayed(const Duration(milliseconds: 600));
                     },
                     child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
                       slivers: [
-                        SliverAppBar(
-                          backgroundColor: const Color(0xFFF8FAFC),
-                          surfaceTintColor: Colors.transparent,
-                          pinned: true,
-                          expandedHeight: 120,
-                          collapsedHeight: 60,
-                          flexibleSpace: FlexibleSpaceBar(
-                            titlePadding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                            title: const Text(
-                              'Orders',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                          ),
-                          actions: [],
-                        ),
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.only(
-                              left: 24,
-                              right: 24,
-                              bottom: 20,
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Order Management',
+                                      style: TextStyle(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF0F172A),
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    BlocBuilder<OrdersListBloc, OrdersListState>(
+                                      builder: (context, state) {
+                                        if (state is OrdersListLoaded) {
+                                          final total = state.allOrders.length;
+                                          final pending = state.getCount('New');
+                                          return Text(
+                                            '$total Orders total · $pending New orders pending',
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          );
+                                        }
+                                        return const Text(
+                                          'Real-time order updates',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF64748B),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF0FDF4),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 4,
+                                        backgroundColor: Color(0xFF16A34A),
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Live Stream',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF15803D),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
+                        ),
+
+                        // Search Bar
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                             child: Container(
                               height: 48,
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFFE2E8F0),
-                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
                               child: TextField(
                                 onChanged: (value) {
-                                  context.read<OrdersListBloc>().add(
-                                    SearchOrders(value),
-                                  );
+                                  context.read<OrdersListBloc>().add(SearchOrders(value));
                                 },
                                 decoration: const InputDecoration(
-                                  hintText: 'Search by Order ID or Name...',
+                                  hintText: 'Search by Order ID, Customer, Phone, or Items...',
                                   hintStyle: TextStyle(
                                     color: Color(0xFF94A3B8),
                                     fontSize: 14,
                                   ),
                                   prefixIcon: Icon(
                                     Icons.search_rounded,
-                                    color: Color(0xFF94A3B8),
+                                    color: Color(0xFF64748B),
+                                    size: 20,
                                   ),
                                   border: InputBorder.none,
                                   contentPadding: EdgeInsets.symmetric(
@@ -154,45 +226,39 @@ class OrdersListView extends StatelessWidget {
                             ),
                           ),
                         ),
+
+                        // Horizontal Segmented Status Filter Bar
                         SliverToBoxAdapter(
                           child: BlocBuilder<OrdersListBloc, OrdersListState>(
-                            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
+                            builder: (context, state) {
                               if (state is OrdersListLoaded) {
-                                return _SegmentedFilter(state: state);
+                                return _FilterChipsBar(state: state);
                               }
                               return const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 24),
-                                child: _SkeletonLoader(
-                                  height: 52,
-                                  borderRadius: 26,
-                                ),
+                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                child: _SkeletonLoader(height: 44, borderRadius: 22),
                               );
                             },
                           ),
                         ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+                        const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                        // Orders List Content
                         BlocBuilder<OrdersListBloc, OrdersListState>(
-                          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
-                            if (state is OrdersListLoading ||
-                                state is OrdersListInitial) {
-                              return SliverList(
-                                delegate: SliverChildBuilderDelegate((
-                                  context,
-                                  index,
-                                ) {
-                                  return const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 8,
+                          builder: (context, state) {
+                            if (state is OrdersListLoading || state is OrdersListInitial) {
+                              return SliverPadding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) => const Padding(
+                                      padding: EdgeInsets.only(bottom: 16),
+                                      child: _SkeletonLoader(height: 200, borderRadius: 16),
                                     ),
-                                    child: _SkeletonLoader(
-                                      height: 220,
-                                      borderRadius: 20,
-                                    ),
-                                  );
-                                }, childCount: 4),
+                                    childCount: 4,
+                                  ),
+                                ),
                               );
                             } else if (state is OrdersListError) {
                               return SliverFillRemaining(
@@ -216,25 +282,15 @@ class OrdersListView extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 16),
                                       ElevatedButton(
-                                        onPressed: () =>
-                                            context.read<OrdersListBloc>().add(
-                                              LoadOrdersStream(
-                                                FirebaseAuth
-                                                        .instance
-                                                        .currentUser
-                                                        ?.uid ??
-                                                    '',
-                                              ),
-                                            ),
+                                        onPressed: () {
+                                          final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+                                          context.read<OrdersListBloc>().add(LoadOrdersStream(uid));
+                                        },
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xFFE52929,
-                                          ),
+                                          backgroundColor: const Color(0xFFE52929),
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
+                                            borderRadius: BorderRadius.circular(12),
                                           ),
                                         ),
                                         child: const Text('Retry'),
@@ -245,68 +301,56 @@ class OrdersListView extends StatelessWidget {
                               );
                             } else if (state is OrdersListLoaded) {
                               if (state.filteredOrders.isEmpty) {
-                                return const SliverFillRemaining(
+                                return SliverFillRemaining(
                                   hasScrollBody: false,
-                                  child: _EmptyState(),
+                                  child: _EmptyState(activeFilter: state.activeFilter),
                                 );
                               }
-                              final screenWidth = MediaQuery.of(
-                                context,
-                              ).size.width;
+
+                              final screenWidth = MediaQuery.of(context).size.width;
                               final isDesktop = screenWidth >= 1024;
 
                               return SliverPadding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 8,
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                                 sliver: isDesktop
                                     ? SliverGrid(
-                                        gridDelegate:
-                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                              crossAxisCount: 2,
-                                              mainAxisExtent: 290,
-                                              mainAxisSpacing: 16,
-                                              crossAxisSpacing: 16,
-                                            ),
+                                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: 2,
+                                          mainAxisExtent: 310,
+                                          mainAxisSpacing: 16,
+                                          crossAxisSpacing: 16,
+                                        ),
                                         delegate: SliverChildBuilderDelegate(
                                           (context, index) {
                                             return _OrderListCard(
-                                              order:
-                                                  state.filteredOrders[index],
+                                              order: state.filteredOrders[index],
                                               index: index,
                                             );
                                           },
-                                          childCount:
-                                              state.filteredOrders.length,
+                                          childCount: state.filteredOrders.length,
                                         ),
                                       )
                                     : SliverList(
                                         delegate: SliverChildBuilderDelegate(
                                           (context, index) {
                                             return Padding(
-                                              padding: const EdgeInsets.only(
-                                                bottom: 16,
-                                              ),
+                                              padding: const EdgeInsets.only(bottom: 16),
                                               child: _OrderListCard(
-                                                order:
-                                                    state.filteredOrders[index],
+                                                order: state.filteredOrders[index],
                                                 index: index,
                                               ),
                                             );
                                           },
-                                          childCount:
-                                              state.filteredOrders.length,
+                                          childCount: state.filteredOrders.length,
                                         ),
                                       ),
                               );
                             }
-                            return const SliverToBoxAdapter(
-                              child: SizedBox.shrink(),
-                            );
+                            return const SliverToBoxAdapter(child: SizedBox.shrink());
                           },
                         ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+                        const SliverToBoxAdapter(child: SizedBox(height: 32)),
                       ],
                     ),
                   ),
@@ -320,129 +364,98 @@ class OrdersListView extends StatelessWidget {
   }
 }
 
-class _SegmentedFilter extends StatelessWidget {
+class _FilterChipsBar extends StatelessWidget {
   final OrdersListLoaded state;
-  const _SegmentedFilter({required this.state});
+  const _FilterChipsBar({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        height: 52,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9), // Lighter background for premium feel
-          borderRadius: BorderRadius.circular(26),
-        ),
-        child: Row(
-          children: [
-            _SegmentButton(
-              label: 'New',
-              count: state.getCount('New'),
-              state: state,
-              activeColor: const Color(0xFF3B82F6), // Blue for new
-            ),
-            _SegmentButton(
-              label: 'Preparing',
-              count: state.getCount('Preparing'),
-              state: state,
-              activeColor: const Color(0xFFF97316), // Orange for preparing
-            ),
-            _SegmentButton(
-              label: 'Ready',
-              count: state.getCount('Ready'),
-              state: state,
-              activeColor: const Color(0xFF22C55E), // Green for ready
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+    final filterOptions = [
+      {'label': 'All', 'filter': 'All'},
+      {'label': 'Placed (New)', 'filter': 'New'},
+      {'label': 'Accepted', 'filter': 'Accepted'},
+      {'label': 'Preparing', 'filter': 'Preparing'},
+      {'label': 'Ready for Pickup', 'filter': 'Ready'},
+      {'label': 'Picked Up', 'filter': 'PickedUp'},
+      {'label': 'Out for Delivery', 'filter': 'OutForDelivery'},
+      {'label': 'Delivered', 'filter': 'Delivered'},
+      {'label': 'Cancelled / Rejected', 'filter': 'Cancelled'},
+    ];
 
-class _SegmentButton extends StatelessWidget {
-  final String label;
-  final int count;
-  final OrdersListLoaded state;
-  final Color activeColor;
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        scrollDirection: Axis.horizontal,
+        itemCount: filterOptions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final item = filterOptions[index];
+          final filterKey = item['filter']!;
+          final label = item['label']!;
+          final count = state.getCount(filterKey);
+          final isSelected = state.activeFilter.toLowerCase() == filterKey.toLowerCase() ||
+              (filterKey == 'All' && state.activeFilter == 'All') ||
+              (filterKey == 'New' && state.activeFilter == 'Placed');
 
-  const _SegmentButton({
-    required this.label,
-    required this.count,
-    required this.state,
-    required this.activeColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final filterKey = label;
-    final isActive = state.activeFilter == filterKey;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () =>
-            context.read<OrdersListBloc>().add(FilterOrders(filterKey)),
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(
-            color: isActive ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: isActive
-                ? [
-                    BoxShadow(
-                      color: activeColor.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : [],
-          ),
-          child: Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 300),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color: isActive ? activeColor : const Color(0xFF64748B),
-                    letterSpacing: -0.2,
-                  ),
-                  child: Text(label),
+          return InkWell(
+            onTap: () {
+              context.read<OrdersListBloc>().add(FilterOrders(filterKey));
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
                 ),
-                if (count > 0) ...[
-                  const SizedBox(width: 6),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.15),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? Colors.white : const Color(0xFF475569),
                     ),
-                    decoration: BoxDecoration(
-                      color: isActive ? activeColor : const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      count.toString(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isActive
-                            ? Colors.white
-                            : const Color(0xFF64748B),
+                  ),
+                  if (count > 0) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFFE52929) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        count.toString(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected ? Colors.white : const Color(0xFF475569),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -458,414 +471,617 @@ class _OrderListCard extends StatefulWidget {
 }
 
 class _OrderListCardState extends State<_OrderListCard> {
-  bool _startAnimation = false;
   bool _isHovered = false;
 
   @override
-  void initState() {
-    super.initState();
-    Future.delayed(Duration(milliseconds: 50 + (widget.index * 50)), () {
-      if (mounted) {
-        setState(() {
-          _startAnimation = true;
-        });
-      }
-    });
+  Widget build(BuildContext context) {
+    return BlocBuilder<OrdersListBloc, OrdersListState>(
+      builder: (context, state) {
+        final isUpdating = state is OrdersListLoaded && state.updatingOrderIds.contains(widget.order.id);
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          transform: Matrix4.identity()
+            ..scaleByVector3(Vector3(
+              _isHovered ? 1.01 : 1.0,
+              _isHovered ? 1.01 : 1.0,
+              1.0,
+            )),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: _isHovered ? const Color(0xFFE52929).withValues(alpha: 0.3) : const Color(0xFFE2E8F0),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(alpha: _isHovered ? 0.08 : 0.03),
+                blurRadius: _isHovered ? 20 : 10,
+                offset: Offset(0, _isHovered ? 8 : 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onHover: (val) => setState(() => _isHovered = val),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BlocProvider.value(
+                      value: context.read<OrdersListBloc>(),
+                      child: OrderDetailsScreen(order: widget.order),
+                    ),
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header: Order ID + Status Badge + Amount
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '#${widget.order.id}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _StatusBadge(status: widget.order.status),
+                          ],
+                        ),
+                        Text(
+                          NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(widget.order.amount),
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Customer Details
+                    RealtimeOrderCustomerDetails(
+                      fallbackName: widget.order.customerName,
+                      fallbackPhone: widget.order.customerPhone,
+                      fallbackAddress: widget.order.deliveryAddress,
+                      customerId: widget.order.customerId,
+                      orderId: widget.order.id,
+                      builder: (context, profile) {
+                        final displayName = profile.name.isNotEmpty ? profile.name : widget.order.customerName;
+                        final displayPhone = profile.phone.isNotEmpty ? profile.phone : (widget.order.customerPhone ?? '');
+                        final displayAddress = profile.address.isNotEmpty ? profile.address : (widget.order.deliveryAddress ?? '');
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.person_outline_rounded, size: 16, color: Color(0xFF3B82F6)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    displayName.isNotEmpty ? displayName : 'Customer',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (displayPhone.isNotEmpty) ...[
+                                  InkWell(
+                                    onTap: () => _launchPhoneCall(displayPhone),
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEFF6FF),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.phone_rounded, size: 12, color: Color(0xFF2563EB)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            displayPhone,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF2563EB),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (displayAddress.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.location_on_outlined, size: 15, color: Color(0xFFEF4444)),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      displayAddress,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Order Items Summary
+                    Row(
+                      children: [
+                        const Icon(Icons.restaurant_menu_rounded, size: 15, color: Color(0xFF8B5CF6)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _getItemSummary(widget.order),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF334155),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Payment & Delivery Partner Tags
+                    Row(
+                      children: [
+                        _PaymentMethodChip(order: widget.order),
+                        const SizedBox(width: 8),
+                        if (widget.order.riderId != null && widget.order.riderId!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.delivery_dining_rounded, size: 13, color: Color(0xFF2563EB)),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Partner Assigned',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF2563EB),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (widget.order.status == OrderStatus.ready)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEB),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Assign Partner Needed',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFD97706),
+                              ),
+                            ),
+                          ),
+                        const Spacer(),
+                        Text(
+                          widget.order.timeAgo,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF94A3B8),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                    const SizedBox(height: 10),
+
+                    // Quick Actions Row
+                    _CardActionButtons(order: widget.order, isUpdating: isUpdating),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
+
+  String _getItemSummary(OrderModel order) {
+    final items = order.items;
+    if (items == null || items.isEmpty) return 'No items recorded';
+    final count = items.length;
+    final firstItem = items.first.name;
+    if (count == 1) return '1x $firstItem';
+    return '${items[0].quantity}x $firstItem + ${count - 1} more item${count > 2 ? 's' : ''}';
+  }
+}
+
+class _CardActionButtons extends StatelessWidget {
+  final OrderModel order;
+  final bool isUpdating;
+
+  const _CardActionButtons({required this.order, required this.isUpdating});
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 500),
-      opacity: _startAnimation ? 1.0 : 0.0,
-      child: AnimatedSlide(
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOutCubic,
-        offset: _startAnimation ? Offset.zero : const Offset(0, 0.1),
-        child: BlocBuilder<OrdersListBloc, OrdersListState>(
-          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
-            final isUpdating =
-                state is OrdersListLoaded &&
-                state.updatingOrderIds.contains(widget.order.id);
-            return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                transform: Matrix4.identity()
-                  ..scaleByVector3(Vector3(
-                    _isHovered ? 1.02 : 1.0,
-                    _isHovered ? 1.02 : 1.0,
-                    1.0,
-                  )),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _isHovered
-                        ? const Color(0xFFE52929).withValues(alpha: 0.3)
-                        : const Color(0xFFF1F5F9),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(
-                        0xFF0F172A,
-                      ).withValues(alpha: _isHovered ? 0.08 : 0.03),
-                      blurRadius: _isHovered ? 30 : 20,
-                      offset: Offset(0, _isHovered ? 12 : 8),
-                    ),
-                  ],
+    if (isUpdating) {
+      return const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE52929)),
+        ),
+      );
+    }
+
+    switch (order.status) {
+      case OrderStatus.newOrder:
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => _showRejectModal(context, order),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFDC2626),
+                  side: const BorderSide(color: Color(0xFFFCA5A5)),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onHover: (value) => setState(() => _isHovered = value),
-                    onTap: isUpdating
-                        ? null
-                        : () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BlocProvider.value(
-                                  value: context.read<OrdersListBloc>(),
-                                  child: OrderDetailsScreen(
-                                    order: widget.order,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Flexible(
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF8FAFC),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: const Color(0xFFE2E8F0),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '#${widget.order.id}',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                            color: Color(0xFF334155),
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    const Icon(
-                                      Icons.delivery_dining_rounded,
-                                      size: 20,
-                                      color: Color(0xFF64748B),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    const Text(
-                                      'Delivery',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF64748B),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (isUpdating)
-                                const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Color(0xFFE52929),
-                                  ),
-                                )
-                              else
-                                Text(
-                                  NumberFormat.currency(
-                                    locale: 'en_IN',
-                                    symbol: '₹',
-                                  ).format(widget.order.amount),
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF0F172A),
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          RealtimeOrderCustomerDetails(
-                            fallbackName: widget.order.customerName,
-                            fallbackPhone: widget.order.customerPhone,
-                            fallbackAddress: widget.order.deliveryAddress,
-                            customerId: widget.order.customerId,
-                            orderId: widget.order.id,
-                            builder: (context, buyerProfile) {
-                              final itemCount =
-                                  widget.order.items?.length ?? 0;
-                              String itemSummary = '';
-                              final items = widget.order.items;
-                              if (items != null && items.isNotEmpty) {
-                                final names = items
-                                    .where((item) =>
-                                        item.name.isNotEmpty &&
-                                        item.name != 'Unknown Item')
-                                    .map((item) => item.name)
-                                    .toList();
-                                if (names.length == 1) {
-                                  itemSummary = names.first;
-                                } else if (names.length == 2) {
-                                  itemSummary = '${names[0]} + ${names[1]}';
-                                } else if (names.length > 2) {
-                                  itemSummary =
-                                      '${names[0]}, ${names[1]}...';
-                                } else {
-                                  itemSummary = '$itemCount items';
-                                }
-                              }
-                              if (itemSummary.isEmpty) {
-                                itemSummary = '$itemCount items';
-                              }
+                child: const Text('Reject', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  context.read<OrdersListBloc>().add(
+                        UpdateOrderStatusEvent(order.id, OrderStatus.accepted),
+                      );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF16A34A),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Accept', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
+        );
 
-                              final displayName = buyerProfile.name.isNotEmpty
-                                  ? buyerProfile.name
-                                  : (widget.order.customerName.isNotEmpty && widget.order.customerName != 'Customer'
-                                      ? widget.order.customerName
-                                      : 'Customer');
+      case OrderStatus.accepted:
+        return Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  context.read<OrdersListBloc>().add(
+                        UpdateOrderStatusEvent(order.id, OrderStatus.preparing),
+                      );
+                },
+                icon: const Icon(Icons.soup_kitchen_rounded, size: 14),
+                label: const Text('Start Preparing', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF97316),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
+        );
 
-                              final displayPhone = buyerProfile.phone.isNotEmpty
-                                  ? buyerProfile.phone
-                                  : (widget.order.customerPhone ?? '');
+      case OrderStatus.preparing:
+        return Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  context.read<OrdersListBloc>().add(
+                        UpdateOrderStatusEvent(order.id, OrderStatus.ready),
+                      );
+                },
+                icon: const Icon(Icons.check_circle_outline, size: 14),
+                label: const Text('Mark Ready for Pickup', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
+        );
 
-                              final displayAddress = buyerProfile.address.isNotEmpty
-                                  ? buyerProfile.address
-                                  : (widget.order.deliveryAddress ?? '');
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              displayName,
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF0F172A),
-                                                letterSpacing: -0.3,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.phone_outlined,
-                                                  size: 13,
-                                                  color: Color(0xFF3B82F6),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: Text(
-                                                    displayPhone.isNotEmpty
-                                                        ? displayPhone
-                                                        : 'Phone not provided',
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight: displayPhone.isNotEmpty
-                                                          ? FontWeight.w600
-                                                          : FontWeight.w400,
-                                                      color: displayPhone.isNotEmpty
-                                                          ? const Color(0xFF3B82F6)
-                                                          : const Color(0xFF94A3B8),
-                                                      fontStyle: displayPhone.isNotEmpty
-                                                          ? FontStyle.normal
-                                                          : FontStyle.italic,
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      if (displayPhone.isNotEmpty)
-                                        Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            onTap: () => _launchPhoneCall(
-                                                displayPhone),
-                                            child: Container(
-                                              padding:
-                                                  const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    const Color(0xFFEFF6FF),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: const Icon(
-                                                Icons.call_rounded,
-                                                size: 18,
-                                                color: Color(0xFF3B82F6),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Padding(
-                                        padding: EdgeInsets.only(top: 2),
-                                        child: Icon(
-                                          Icons.location_on_outlined,
-                                          size: 14,
-                                          color: Color(0xFFEF4444),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          displayAddress.isNotEmpty
-                                              ? displayAddress
-                                              : 'Address not specified',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: displayAddress.isNotEmpty
-                                                ? FontWeight.w500
-                                                : FontWeight.w400,
-                                            color: displayAddress.isNotEmpty
-                                                ? const Color(0xFF475569)
-                                                : const Color(0xFF94A3B8),
-                                            fontStyle: displayAddress.isNotEmpty
-                                                ? FontStyle.normal
-                                                : FontStyle.italic,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              '$itemCount Item${itemCount != 1 ? 's' : ''} · $itemSummary',
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                color: Color(0xFF334155),
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 3),
-                                            Text(
-                                              '${widget.order.paymentMethod ?? "Wallet"} · ${NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(widget.order.amount)}',
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                                color: Color(0xFF64748B),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Divider(
-                              height: 1,
-                              color: Color(0xFFF1F5F9),
-                            ),
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _StatusBadge(
-                                  status: widget.order.status.value),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.schedule_rounded,
-                                    size: 16,
-                                    color: Color(0xFF94A3B8),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    widget.order.timeAgo,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
+      case OrderStatus.ready:
+        return Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: context.read<OrdersListBloc>(),
+                        child: BlocProvider(
+                          create: (context) => AssignDeliveryBloc(
+                            repository: AssignDeliveryRepository(service: AssignDeliveryService()),
+                            orderId: order.id,
+                          )..add(LoadRidersEvent(orderId: order.id)),
+                          child: AssignDeliveryPage(orderId: order.id),
+                        ),
                       ),
                     ),
-                  ),
+                  );
+                },
+                icon: const Icon(Icons.person_add_rounded, size: 14),
+                label: const Text('Assign Delivery Partner', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F172A),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-            );
-          },
+              ),
+            ),
+          ],
+        );
+
+      case OrderStatus.pickedUp:
+      case OrderStatus.outForDelivery:
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OutForDeliveryPageUI(orderId: order.id),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.navigation_rounded, size: 14),
+                label: const Text('Track Live Delivery', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2563EB),
+                  side: const BorderSide(color: Color(0xFF93C5FD)),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case OrderStatus.delivered:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 16),
+            SizedBox(width: 6),
+            Text(
+              'Order Completed',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
+            ),
+          ],
+        );
+
+      case OrderStatus.rejected:
+      case OrderStatus.cancelled:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cancel_rounded, color: Color(0xFFDC2626), size: 16),
+            const SizedBox(width: 6),
+            Text(
+              order.status == OrderStatus.rejected ? 'Order Rejected' : 'Order Cancelled',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFDC2626)),
+            ),
+          ],
+        );
+    }
+  }
+}
+
+class _PaymentMethodChip extends StatelessWidget {
+  final OrderModel order;
+  const _PaymentMethodChip({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg;
+    Color textColor;
+    String text;
+
+    if (order.isCOD) {
+      bg = const Color(0xFFFEF3C7);
+      textColor = const Color(0xFFD97706);
+      text = 'COD';
+    } else if (order.isRazorpay) {
+      bg = const Color(0xFFEFF6FF);
+      textColor = const Color(0xFF2563EB);
+      text = 'Razorpay (Paid)';
+    } else if ((order.paymentMethod ?? '').toLowerCase() == 'wallet') {
+      bg = const Color(0xFFF0FDF4);
+      textColor = const Color(0xFF16A34A);
+      text = 'Wallet';
+    } else {
+      bg = const Color(0xFFF1F5F9);
+      textColor = const Color(0xFF475569);
+      text = order.paymentMethod ?? 'Paid';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: textColor,
         ),
       ),
     );
   }
 }
 
+class _StatusBadge extends StatelessWidget {
+  final OrderStatus status;
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg;
+    Color textColor;
+    IconData icon;
+
+    switch (status) {
+      case OrderStatus.newOrder:
+        bg = const Color(0xFFEFF6FF);
+        textColor = const Color(0xFF2563EB);
+        icon = Icons.fiber_new_rounded;
+        break;
+      case OrderStatus.accepted:
+        bg = const Color(0xFFF0FDF4);
+        textColor = const Color(0xFF16A34A);
+        icon = Icons.thumb_up_rounded;
+        break;
+      case OrderStatus.preparing:
+        bg = const Color(0xFFFFF7ED);
+        textColor = const Color(0xFFF97316);
+        icon = Icons.soup_kitchen_rounded;
+        break;
+      case OrderStatus.ready:
+        bg = const Color(0xFFFEF9C3);
+        textColor = const Color(0xFFA16207);
+        icon = Icons.checklist_rounded;
+        break;
+      case OrderStatus.pickedUp:
+        bg = const Color(0xFFEDE9FE);
+        textColor = const Color(0xFF7C3AED);
+        icon = Icons.takeout_dining_rounded;
+        break;
+      case OrderStatus.outForDelivery:
+        bg = const Color(0xFFE0F2FE);
+        textColor = const Color(0xFF0369A1);
+        icon = Icons.delivery_dining_rounded;
+        break;
+      case OrderStatus.delivered:
+        bg = const Color(0xFFDCFCE7);
+        textColor = const Color(0xFF15803D);
+        icon = Icons.check_circle_rounded;
+        break;
+      case OrderStatus.rejected:
+      case OrderStatus.cancelled:
+        bg = const Color(0xFFFEE2E2);
+        textColor = const Color(0xFFDC2626);
+        icon = Icons.cancel_rounded;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: textColor),
+          const SizedBox(width: 4),
+          Text(
+            status.displayName,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// ORDER DETAILS SCREEN (COMPREHENSIVE VIEW)
+// -------------------------------------------------------------
 class OrderDetailsScreen extends StatefulWidget {
   final OrderModel order;
-  const OrderDetailsScreen({required this.order});
+  const OrderDetailsScreen({Key? key, required this.order}) : super(key: key);
 
   @override
   State<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
@@ -874,468 +1090,425 @@ class OrderDetailsScreen extends StatefulWidget {
 class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   @override
   Widget build(BuildContext context) {
-    return BlocListener<OrdersListBloc, OrdersListState>(
+    return BlocConsumer<OrdersListBloc, OrdersListState>(
       listener: (context, state) {
-        if (state is OrdersListError) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.message)));
+        if (state is OrdersListLoaded && state.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.errorMessage!),
+              backgroundColor: const Color(0xFFE52929),
+            ),
+          );
         }
       },
-      child: BlocBuilder<OrdersListBloc, OrdersListState>(
-        buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
-          // Find the most up to date order object from state
-          OrderModel order = widget.order;
-          bool isUpdating = false;
-          if (state is OrdersListLoaded) {
-            order = state.allOrders.firstWhere(
-              (o) => o.id == widget.order.id,
-              orElse: () => widget.order,
-            );
-            isUpdating = state.updatingOrderIds.contains(widget.order.id);
-          }
+      builder: (context, state) {
+        OrderModel order = widget.order;
+        bool isUpdating = false;
+        if (state is OrdersListLoaded) {
+          order = state.allOrders.firstWhere(
+            (o) => o.id == widget.order.id,
+            orElse: () => widget.order,
+          );
+          isUpdating = state.updatingOrderIds.contains(widget.order.id);
+        }
 
-          final isNew = order.status == OrderStatus.newOrder;
-          final isPreparing = order.status == OrderStatus.preparing || order.status == OrderStatus.accepted;
-          final isReady =
-              order.status == OrderStatus.ready ||
-              order.status ==
-                  OrderStatus
-                      .delivered; // 'Completed' mapped to 'Ready for pickup' / Delivered
-          final isOutForDelivery = order.status == OrderStatus.outForDelivery;
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8FAFC),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              'Order #${order.id}',
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            actions: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: _StatusBadge(status: order.status),
+                ),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 7-Stage Interactive Order Tracker Timeline
+                            _Order7StageTimeline(order: order),
+                            const SizedBox(height: 20),
 
-          return Scaffold(
-            backgroundColor: const Color(0xFFF8FAFC),
-            body: SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 800),
-                  child: Container(
-                    color: Colors.white,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Header
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () => Navigator.pop(context),
-                                    child: const Icon(
-                                      Icons.arrow_back_ios_new,
-                                      size: 20,
-                                      color: Color(0xFF1E293B),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'Order #${order.id}',
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF111827),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              _StatusBadge(status: order.status.value),
-                            ],
-                          ),
+                            // Customer Details Section
+                            _CustomerDetailsCard(order: order),
+                            const SizedBox(height: 20),
+
+                            // Delivery Address Section
+                            _DeliveryAddressCard(order: order),
+                            const SizedBox(height: 20),
+
+                            // Order Items Section
+                            _OrderItemsCard(order: order),
+                            const SizedBox(height: 20),
+
+                            // Price Breakdown Section
+                            _PriceBreakdownCard(order: order),
+                            const SizedBox(height: 20),
+
+                            // Payment Status Section
+                            _PaymentStatusCard(order: order),
+                            const SizedBox(height: 20),
+
+                            // Delivery Partner Section
+                            _DeliveryPartnerCard(order: order),
+                            const SizedBox(height: 20),
+                          ],
                         ),
-
-                        // Scrollable Content
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Customer & Delivery Details
-                                const _SectionTitle(title: 'Customer & Delivery Info'),
-                                RealtimeOrderCustomerDetails(
-                                  fallbackName: order.customerName,
-                                  fallbackPhone: order.customerPhone,
-                                  fallbackAddress: order.deliveryAddress,
-                                  customerId: order.customerId,
-                                  orderId: order.id,
-                                  builder: (context, buyerProfile) {
-                                    if (buyerProfile.name.isEmpty && buyerProfile.address.isEmpty && buyerProfile.phone.isEmpty) {
-                                      return const SizedBox.shrink();
-                                    }
-                                    return _InfoContainer(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          if (buyerProfile.name.isNotEmpty) ...[
-                                            Row(
-                                              children: [
-                                                CircleAvatar(
-                                                  radius: 18,
-                                                  backgroundColor: const Color(0xFFEFF6FF),
-                                                  child: const Icon(
-                                                    Icons.person_outline_rounded,
-                                                    color: Color(0xFF2563EB),
-                                                    size: 20,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 12),
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(
-                                                        buyerProfile.name,
-                                                        style: const TextStyle(
-                                                          fontSize: 16,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Color(0xFF0F172A),
-                                                        ),
-                                                      ),
-                                                      if (buyerProfile.phone.isNotEmpty) ...[
-                                                        const SizedBox(height: 2),
-                                                        SelectableText(
-                                                          buyerProfile.phone,
-                                                          style: const TextStyle(
-                                                            fontSize: 13,
-                                                            fontWeight: FontWeight.w500,
-                                                            color: Color(0xFF3B82F6),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                          if (buyerProfile.address.isNotEmpty) ...[
-                                            if (buyerProfile.name.isNotEmpty)
-                                              const Padding(
-                                                padding: EdgeInsets.symmetric(vertical: 10),
-                                                child: Divider(color: Color(0xFFE2E8F0)),
-                                              ),
-                                            Row(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                const Icon(
-                                                  Icons.location_on_outlined,
-                                                  size: 16,
-                                                  color: Color(0xFFEF4444),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: SelectableText(
-                                                    buyerProfile.address,
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight: FontWeight.w500,
-                                                      color: Color(0xFF334155),
-                                                      height: 1.4,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-
-                                // Items
-                                const _SectionTitle(title: 'Items'),
-                                _InfoContainer(
-                                  child: Column(
-                                    children: [
-                                      if (order.items != null)
-                                        ...order.items!
-                                            .map(
-                                              (item) => Padding(
-                                                padding: const EdgeInsets.only(
-                                                  bottom: 12,
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Text(
-                                                      '${item.quantity}x',
-                                                      style: const TextStyle(
-                                                        fontSize: 15,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: Color(
-                                                          0xFF334155,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 16),
-                                                    Expanded(
-                                                      child: Text(
-                                                        item.name,
-                                                        style: const TextStyle(
-                                                          fontSize: 15,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: Color(
-                                                            0xFF1E293B,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      NumberFormat.currency(
-                                                        locale: 'en_IN',
-                                                        symbol: '₹',
-                                                      ).format(item.price),
-                                                      style: const TextStyle(
-                                                        fontSize: 15,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: Color(
-                                                          0xFF1E293B,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: 8,
-                                        ),
-                                        child: Divider(
-                                          color: Color(0xFFE2E8F0),
-                                        ),
-                                      ),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          const Text(
-                                            'Total Amount',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(0xFF64748B),
-                                            ),
-                                          ),
-                                          Text(
-                                            NumberFormat.currency(
-                                              locale: 'en_IN',
-                                              symbol: '₹',
-                                            ).format(order.amount),
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF111827),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Timeline
-                                _OrderTimeline(
-                                  currentStatus: order.status.value,
-                                ),
-                                const SizedBox(height: 24),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // Action Buttons
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Row(
-                            children: [
-                              if (isNew) ...[
-                                Expanded(
-                                  child: _ActionButton(
-                                    label: 'Reject',
-                                    isPrimary: false,
-                                    isLoading: isUpdating,
-                                    onTap: () async {
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: const Text('Reject Order'),
-                                          content: const Text(
-                                            'Are you sure you want to reject this order? This action cannot be undone.',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, false),
-                                              child: const Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, true),
-                                              child: const Text(
-                                                'Reject',
-                                                style: TextStyle(
-                                                  color: Colors.red,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                      if (confirm == true && context.mounted) {
-                                        context.read<OrdersListBloc>().add(
-                                          UpdateOrderStatusEvent(
-                                            order.id,
-                                            OrderStatus.rejected,
-                                          ),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: _ActionButton(
-                                    label: 'Accept Order',
-                                    isPrimary: true,
-                                    isLoading: isUpdating,
-                                    onTap: () {
-                                      context.read<OrdersListBloc>().add(
-                                        UpdateOrderStatusEvent(
-                                          order.id,
-                                          OrderStatus.preparing,
-                                        ),
-                                      );
-                                      Navigator.pop(context);
-                                      context.read<OrdersListBloc>().add(
-                                        FilterOrders('Preparing'),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                              if (isPreparing) ...[
-                                Expanded(
-                                  child: _ActionButton(
-                                    label: 'Mark as Ready',
-                                    isPrimary: true,
-                                    isLoading: isUpdating,
-                                    onTap: () {
-                                      context.read<OrdersListBloc>().add(
-                                        UpdateOrderStatusEvent(
-                                          order.id,
-                                          OrderStatus.ready,
-                                        ),
-                                      );
-                                      Navigator.pop(context);
-                                      context.read<OrdersListBloc>().add(
-                                        FilterOrders('Ready'),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                              if (isReady &&
-                                  order.status != OrderStatus.delivered) ...[
-                                Expanded(
-                                  child: _ActionButton(
-                                    label: 'Assign Delivery',
-                                    isPrimary: true,
-                                    isLoading: isUpdating,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => BlocProvider.value(
-                                            value: context
-                                                .read<OrdersListBloc>(),
-                                            child: BlocProvider(
-                                              create: (context) =>
-                                                  AssignDeliveryBloc(
-                                                    repository:
-                                                        AssignDeliveryRepository(
-                                                          service:
-                                                              AssignDeliveryService(),
-                                                        ),
-                                                    orderId: order.id,
-                                                  )..add(
-                                                    LoadRidersEvent(
-                                                      orderId: order.id,
-                                                    ),
-                                                  ),
-                                              child: AssignDeliveryPage(
-                                                orderId: order.id,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                              if (isOutForDelivery) ...[
-                                Expanded(
-                                  child: _ActionButton(
-                                    label: 'Mark Delivered',
-                                    isPrimary: true,
-                                    isLoading: isUpdating,
-                                    onTap: () async {
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: const Text(
-                                            'Mark as Delivered',
-                                          ),
-                                          content: const Text(
-                                            'Are you sure the order has been delivered?',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, false),
-                                              child: const Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, true),
-                                              child: const Text('Confirm'),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                      if (confirm == true && context.mounted) {
-                                        context.read<OrdersListBloc>().add(
-                                          UpdateOrderStatusEvent(
-                                            order.id,
-                                            OrderStatus.delivered,
-                                          ),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+
+                    // Sticky Bottom Action Bar
+                    _OrderDetailsBottomBar(order: order, isUpdating: isUpdating),
+                  ],
                 ),
               ),
             ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// 7-STAGE TIMELINE COMPONENT
+// -------------------------------------------------------------
+class _Order7StageTimeline extends StatelessWidget {
+  final OrderModel order;
+  const _Order7StageTimeline({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    if (order.status.isCancelledOrRejected) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF2F2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFECACA)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.cancel_rounded, color: Color(0xFFDC2626), size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  order.status == OrderStatus.rejected ? 'Order Rejected' : 'Order Cancelled',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFDC2626),
+                  ),
+                ),
+              ],
+            ),
+            if (order.cancellationReason != null && order.cancellationReason!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Reason: ${order.cancellationReason}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF991B1B),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    final currentStep = order.status.stepIndex;
+
+    final stages = [
+      {'title': 'Placed', 'desc': 'Order received'},
+      {'title': 'Accepted', 'desc': 'Store confirmed'},
+      {'title': 'Preparing', 'desc': 'In the kitchen'},
+      {'title': 'Ready for Pickup', 'desc': 'Food packed'},
+      {'title': 'Picked Up', 'desc': 'Rider picked up'},
+      {'title': 'Out for Delivery', 'desc': 'On the way'},
+      {'title': 'Delivered', 'desc': 'Handed to buyer'},
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Order Progress',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Column(
+            children: List.generate(stages.length, (index) {
+              final isCompleted = index < currentStep;
+              final isActive = index == currentStep;
+              final isLast = index == stages.length - 1;
+
+              return IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isCompleted
+                                ? const Color(0xFF16A34A)
+                                : isActive
+                                    ? const Color(0xFF2563EB)
+                                    : const Color(0xFFE2E8F0),
+                          ),
+                          child: Center(
+                            child: isCompleted
+                                ? const Icon(Icons.check, size: 14, color: Colors.white)
+                                : isActive
+                                    ? const Icon(Icons.circle, size: 8, color: Colors.white)
+                                    : Text(
+                                        '${index + 1}',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                          ),
+                        ),
+                        if (!isLast)
+                          Expanded(
+                            child: Container(
+                              width: 2,
+                              color: isCompleted ? const Color(0xFF16A34A) : const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              stages[index]['title']!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: isActive || isCompleted ? FontWeight.w700 : FontWeight.w500,
+                                color: isActive
+                                    ? const Color(0xFF2563EB)
+                                    : isCompleted
+                                        ? const Color(0xFF0F172A)
+                                        : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                            Text(
+                              stages[index]['desc']!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isActive ? const Color(0xFF3B82F6) : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// CUSTOMER DETAILS CARD
+// -------------------------------------------------------------
+class _CustomerDetailsCard extends StatelessWidget {
+  final OrderModel order;
+  const _CustomerDetailsCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: RealtimeOrderCustomerDetails(
+        fallbackName: order.customerName,
+        fallbackPhone: order.customerPhone,
+        fallbackAddress: order.deliveryAddress,
+        customerId: order.customerId,
+        orderId: order.id,
+        builder: (context, profile) {
+          final displayName = profile.name.isNotEmpty ? profile.name : order.customerName;
+          final displayPhone = profile.phone.isNotEmpty ? profile.phone : (order.customerPhone ?? '');
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.person_rounded, color: Color(0xFF3B82F6), size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Customer Details',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: const Color(0xFFEFF6FF),
+                    child: Text(
+                      displayName.isNotEmpty ? displayName[0].toUpperCase() : 'C',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName.isNotEmpty ? displayName : 'Customer',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        if (displayPhone.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            displayPhone,
+                            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  if (displayPhone.isNotEmpty)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _launchPhoneCall(displayPhone),
+                        icon: const Icon(Icons.phone_rounded, size: 16),
+                        label: const Text('Call Customer'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEFF6FF),
+                          foregroundColor: const Color(0xFF2563EB),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  if (displayPhone.isNotEmpty) const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final sellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatSupportPage(
+                              sellerId: sellerId,
+                              initialOrderId: order.id,
+                              targetRole: 'buyer',
+                              partnerId: order.customerId,
+                              partnerName: displayName,
+                              partnerPhone: displayPhone,
+                              orderTitle: order.items?.isNotEmpty == true
+                                  ? order.items!.first.name
+                                  : null,
+                              orderTotal: order.amount,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                      label: const Text('Chat with Customer'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF1F5F9),
+                        foregroundColor: const Color(0xFF334155),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           );
         },
       ),
@@ -1343,378 +1516,1055 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  const _SectionTitle({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF0F172A),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoContainer extends StatelessWidget {
-  final Widget child;
-  const _InfoContainer({required this.child});
+// -------------------------------------------------------------
+// DELIVERY ADDRESS CARD
+// -------------------------------------------------------------
+class _DeliveryAddressCard extends StatelessWidget {
+  final OrderModel order;
+  const _DeliveryAddressCard({required this.order});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: child,
+      child: RealtimeOrderCustomerDetails(
+        fallbackName: order.customerName,
+        fallbackPhone: order.customerPhone,
+        fallbackAddress: order.deliveryAddress,
+        customerId: order.customerId,
+        orderId: order.id,
+        builder: (context, profile) {
+          final displayAddress = profile.address.isNotEmpty
+              ? profile.address
+              : (order.deliveryAddress ?? 'Address not specified');
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.location_on_rounded, color: Color(0xFFEF4444), size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Delivery Address',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SelectableText(
+                displayAddress,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF334155),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: displayAddress));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Address copied to clipboard')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_rounded, size: 14),
+                    label: const Text('Copy Address'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF475569),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: () => _openMaps(displayAddress),
+                    icon: const Icon(Icons.map_rounded, size: 14),
+                    label: const Text('Open in Maps'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEFF6FF),
+                      foregroundColor: const Color(0xFF2563EB),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _openMaps(String address) async {
+    final query = Uri.encodeComponent(address);
+    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// ORDER ITEMS CARD
+// -------------------------------------------------------------
+class _OrderItemsCard extends StatelessWidget {
+  final OrderModel order;
+  const _OrderItemsCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = order.items ?? [];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.restaurant_rounded, color: Color(0xFF8B5CF6), size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Order Items',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${items.length} Item${items.length != 1 ? 's' : ''}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (items.isEmpty)
+            const Text(
+              'No items recorded for this order.',
+              style: TextStyle(color: Color(0xFF94A3B8)),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+              ),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${item.quantity}x',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          if (item.selectedAddons.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 4,
+                              runSpacing: 4,
+                              children: item.selectedAddons.map((addon) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: Text(
+                                    '+ $addon',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Text(
+                      NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(item.price * item.quantity),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 }
 
-class _OrderTimeline extends StatelessWidget {
-  final String currentStatus;
-  const _OrderTimeline({required this.currentStatus});
+// -------------------------------------------------------------
+// PRICE BREAKDOWN CARD
+// -------------------------------------------------------------
+class _PriceBreakdownCard extends StatelessWidget {
+  final OrderModel order;
+  const _PriceBreakdownCard({required this.order});
 
   @override
   Widget build(BuildContext context) {
-    int activeStep = 0;
-    switch (currentStatus) {
-      case 'New':
-      case 'Accepted':
-        activeStep = 0;
-        break;
-      case 'Rejected':
-      case 'Cancelled':
-        activeStep = -1;
-        break;
-      case 'Preparing':
-        activeStep = 2;
-        break;
-      case 'Ready':
-        activeStep = 3;
-        break;
-      case 'OutForDelivery':
-        activeStep = 4;
-        break;
-      case 'Delivered':
-        activeStep = 5;
-        break;
-    }
+    final subtotal = order.subtotal ?? order.amount;
+    final deliveryFee = order.deliveryFee ?? 0.0;
+    final taxAmount = order.taxAmount ?? 0.0;
+    final discount = order.discountAmount ?? 0.0;
+    final platformFee = order.platformFee ?? 0.0;
 
-    final steps = [
-      {'title': 'Order accepted', 'subtitle': ''},
-      {'title': 'Payment received', 'subtitle': ''},
-      {'title': 'Preparing', 'subtitle': 'Kitchen is preparing your order'},
-      {
-        'title': 'Ready for pickup',
-        'subtitle': 'Order is ready to be picked up',
-      },
-      {'title': 'Out for delivery', 'subtitle': 'On the way'},
-      {'title': 'Delivered', 'subtitle': 'Order delivered to customer'},
-    ];
-
-    return Column(
-      children: List.generate(steps.length, (index) {
-        final isCompleted = index < activeStep;
-        final isActive = index == activeStep;
-
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
             children: [
-              Column(
+              Icon(Icons.receipt_long_rounded, color: Color(0xFF0D9488), size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Bill Details',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _billRow('Item Subtotal', subtotal),
+          if (deliveryFee > 0) _billRow('Delivery Fee', deliveryFee),
+          if (taxAmount > 0) _billRow('Taxes & GST', taxAmount),
+          if (platformFee > 0) _billRow('Platform Fee', platformFee),
+          if (discount > 0)
+            _billRow('Discount', -discount, isDiscount: true, extraNote: order.couponCode),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Total Payable',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+              ),
+              Text(
+                NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(order.amount),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFE52929),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _billRow(String title, double amount, {bool isDiscount = false, String? extraNote}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+              ),
+              if (extraNote != null) ...[
+                const SizedBox(width: 4),
+                Text(
+                  '($extraNote)',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF16A34A), fontWeight: FontWeight.w600),
+                ),
+              ],
+            ],
+          ),
+          Text(
+            '${isDiscount ? "-" : ""}${NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(amount.abs())}',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDiscount ? const Color(0xFF16A34A) : const Color(0xFF1E293B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// PAYMENT STATUS CARD
+// -------------------------------------------------------------
+class _PaymentStatusCard extends StatelessWidget {
+  final OrderModel order;
+  const _PaymentStatusCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
                 children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isCompleted
-                          ? const Color(0xFF22C55E) // Green for completed
-                          : isActive
-                          ? const Color(0xFFF97316) // Orange for active
-                          : Colors.transparent,
-                      border: Border.all(
-                        color: isCompleted || isActive
-                            ? Colors.transparent
-                            : const Color(0xFFCBD5E1),
-                        width: 2,
+                  Icon(Icons.payment_rounded, color: Color(0xFF2563EB), size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Payment Status',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  ),
+                ],
+              ),
+              _PaymentMethodChip(order: order),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (order.isCOD) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.attach_money_rounded, color: Color(0xFFD97706), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Collect ${NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(order.codAmount ?? order.amount)} in cash upon delivery/handover.',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF92400E),
                       ),
                     ),
-                    child: isCompleted || isActive
-                        ? Icon(
-                            isCompleted ? Icons.check : Icons.circle,
-                            size: 14,
-                            color: Colors.white,
-                          )
-                        : null,
                   ),
-                  if (index < steps.length - 1)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: SizedBox(
-                          width: 2,
-                          child: CustomPaint(
-                            size: Size.zero,
-                            painter: _DashedLinePainter(
-                              color: isCompleted
-                                  ? const Color(0xFF22C55E)
-                                  : const Color(0xFFCBD5E1),
+                ],
+              ),
+            ),
+          ] else if (order.isRazorpay) ...[
+            if (order.razorpayPaymentId != null) ...[
+              Text(
+                'Payment ID: ${order.razorpayPaymentId}',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+              ),
+            ],
+            if (order.razorpayOrderId != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Razorpay Order ID: ${order.razorpayOrderId}',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+              ),
+            ],
+          ] else ...[
+            Text(
+              order.paymentDisplayString,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF16A34A), fontWeight: FontWeight.w600),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// DELIVERY PARTNER CARD (REAL-TIME STREAM)
+// -------------------------------------------------------------
+class _DeliveryPartnerCard extends StatelessWidget {
+  final OrderModel order;
+  const _DeliveryPartnerCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final riderId = order.riderId;
+
+    if (riderId == null || riderId.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.delivery_dining_rounded, color: Color(0xFF64748B), size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Delivery Partner',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded, color: Color(0xFF64748B), size: 18),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'No delivery partner assigned yet.',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                    ),
+                  ),
+                  if (order.status == OrderStatus.ready || order.status == OrderStatus.preparing)
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: context.read<OrdersListBloc>(),
+                              child: BlocProvider(
+                                create: (context) => AssignDeliveryBloc(
+                                  repository: AssignDeliveryRepository(service: AssignDeliveryService()),
+                                  orderId: order.id,
+                                )..add(LoadRidersEvent(orderId: order.id)),
+                                child: AssignDeliveryPage(orderId: order.id),
+                              ),
                             ),
                           ),
-                        ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE52929),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
+                      child: const Text('Assign Now', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                     ),
                 ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('delivery_partners').doc(riderId).snapshots(),
+      builder: (context, snapshot) {
+        DeliveryPartnerModel? partner;
+        if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
+          partner = DeliveryPartnerModel.fromFirestore(snapshot.data!);
+        }
+
+        final partnerName = partner?.displayName.isNotEmpty == true ? partner!.displayName : 'Delivery Partner';
+        final partnerPhone = partner?.phoneNumber ?? '';
+        final vehicle = partner?.vehicleNumber != null ? '${partner?.vehicleType ?? "Vehicle"} (${partner?.vehicleNumber})' : (partner?.vehicleType ?? 'Bike');
+        final rating = partner?.rating != null && partner!.rating > 0 ? partner.rating.toStringAsFixed(1) : '5.0';
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
                     children: [
+                      Icon(Icons.delivery_dining_rounded, color: Color(0xFF2563EB), size: 18),
+                      SizedBox(width: 8),
                       Text(
-                        steps[index]['title']!,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: isActive || isCompleted
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                          color: isActive || isCompleted
-                              ? const Color(0xFF1E293B)
-                              : const Color(0xFF64748B),
-                        ),
+                        'Assigned Delivery Partner',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                       ),
-                      if (steps[index]['subtitle']!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.star_rounded, size: 13, color: Color(0xFF16A34A)),
+                        const SizedBox(width: 3),
                         Text(
-                          steps[index]['subtitle']!,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF94A3B8),
-                          ),
+                          rating,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
                         ),
                       ],
-                    ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: const Color(0xFFEFF6FF),
+                    child: const Icon(Icons.sports_motorsports_rounded, color: Color(0xFF2563EB), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          partnerName,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                        ),
+                        Text(
+                          vehicle,
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  if (partnerPhone.isNotEmpty)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _launchPhoneCall(partnerPhone),
+                        icon: const Icon(Icons.phone_rounded, size: 16),
+                        label: const Text('Call Partner'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEFF6FF),
+                          foregroundColor: const Color(0xFF2563EB),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  if (partnerPhone.isNotEmpty) const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => OutForDeliveryPageUI(orderId: order.id),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.location_searching_rounded, size: 16),
+                      label: const Text('Live Tracking'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F172A),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    final sellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatSupportPage(
+                          sellerId: sellerId,
+                          initialOrderId: order.id,
+                          targetRole: 'delivery_partner',
+                          partnerId: riderId,
+                          partnerName: partnerName,
+                          partnerPhone: partnerPhone,
+                          orderTitle: order.items?.isNotEmpty == true
+                              ? order.items!.first.name
+                              : null,
+                          orderTotal: order.amount,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                  label: const Text('Chat with Delivery Partner'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
               ),
             ],
           ),
         );
-      }),
+      },
     );
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  final String label;
-  final bool isPrimary;
-  final VoidCallback? onTap;
-  final bool isLoading;
+// -------------------------------------------------------------
+// STICKY BOTTOM ACTION BAR (ORDER DETAILS)
+// -------------------------------------------------------------
+class _OrderDetailsBottomBar extends StatelessWidget {
+  final OrderModel order;
+  final bool isUpdating;
 
-  const _ActionButton({
-    required this.label,
-    required this.isPrimary,
-    this.onTap,
-    this.isLoading = false,
-  });
+  const _OrderDetailsBottomBar({required this.order, required this.isUpdating});
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: isLoading ? null : onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isPrimary ? const Color(0xFFE52929) : Colors.white,
-        foregroundColor: isPrimary ? Colors.white : const Color(0xFF64748B),
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: isPrimary ? Colors.white : const Color(0xFFE52929),
+    if (order.status.isTerminal) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        ),
+        child: Center(
+          child: Text(
+            order.status == OrderStatus.delivered
+                ? 'This order has been successfully completed.'
+                : 'This order was cancelled / rejected.',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
+            ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final String status;
-
-  const _StatusBadge({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    Color bgColor;
-    Color textColor;
-    IconData iconData;
-    String label;
-
-    switch (status) {
-      case 'New':
-        bgColor = const Color(0xFFEFF6FF);
-        textColor = const Color(0xFF3B82F6);
-        iconData = Icons.auto_awesome_rounded;
-        label = 'New';
-        break;
-      case 'Accepted':
-        bgColor = const Color(0xFFEFF6FF);
-        textColor = const Color(0xFF3B82F6);
-        iconData = Icons.thumb_up_rounded;
-        label = 'Accepted';
-        break;
-      case 'Preparing':
-        bgColor = const Color(0xFFFFF7ED);
-        textColor = const Color(0xFFF97316);
-        iconData = Icons.soup_kitchen_rounded;
-        label = 'Preparing';
-        break;
-      case 'Ready':
-        bgColor = const Color(0xFFFEF9C3);
-        textColor = const Color(0xFFA16207);
-        iconData = Icons.checklist_rounded;
-        label = 'Ready';
-        break;
-      case 'OutForDelivery':
-        bgColor = const Color(0xFFE0F2FE);
-        textColor = const Color(0xFF0369A1);
-        iconData = Icons.delivery_dining_rounded;
-        label = 'Out for Delivery';
-        break;
-      case 'Delivered':
-        bgColor = const Color(0xFFF0FDF4);
-        textColor = const Color(0xFF22C55E);
-        iconData = Icons.check_circle_rounded;
-        label = 'Delivered';
-        break;
-      case 'Rejected':
-        bgColor = const Color(0xFFFEF2F2);
-        textColor = const Color(0xFFDC2626);
-        iconData = Icons.cancel_rounded;
-        label = 'Rejected';
-        break;
-      case 'Cancelled':
-        bgColor = const Color(0xFFFEF2F2);
-        textColor = const Color(0xFFDC2626);
-        iconData = Icons.cancel_rounded;
-        label = 'Cancelled';
-        break;
-      default:
-        bgColor = const Color(0xFFF8FAFC);
-        textColor = const Color(0xFF64748B);
-        iconData = Icons.info_outline_rounded;
-        label = 'Unknown';
+      );
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(iconData, size: 14, color: textColor),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-            ),
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, -4),
           ),
         ],
       ),
+      child: isUpdating
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFE52929)),
+            )
+          : _buildActionRow(context),
     );
   }
-}
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF1F5F9),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.inbox_rounded,
-              size: 64,
-              color: Color(0xFF94A3B8),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'No Orders Yet',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'New customer orders will appear here.',
-            style: TextStyle(
-              fontSize: 15,
-              color: Color(0xFF64748B),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () => context.read<OrdersListBloc>().add(
-              LoadOrdersStream(FirebaseAuth.instance.currentUser?.uid ?? ''),
-            ),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Refresh'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF334155),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: Color(0xFFE2E8F0)),
+  Widget _buildActionRow(BuildContext context) {
+    switch (order.status) {
+      case OrderStatus.newOrder:
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => _showRejectModal(context, order),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFDC2626),
+                  side: const BorderSide(color: Color(0xFFFCA5A5)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Reject Order', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  context.read<OrdersListBloc>().add(
+                        UpdateOrderStatusEvent(order.id, OrderStatus.accepted),
+                      );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF16A34A),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Accept Order', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        );
+
+      case OrderStatus.accepted:
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => _showCancelModal(context, order),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFDC2626),
+                  side: const BorderSide(color: Color(0xFFFCA5A5)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Cancel Order', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  context.read<OrdersListBloc>().add(
+                        UpdateOrderStatusEvent(order.id, OrderStatus.preparing),
+                      );
+                },
+                icon: const Icon(Icons.soup_kitchen_rounded),
+                label: const Text('Start Preparing', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF97316),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case OrderStatus.preparing:
+        return Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  context.read<OrdersListBloc>().add(
+                        UpdateOrderStatusEvent(order.id, OrderStatus.ready),
+                      );
+                },
+                icon: const Icon(Icons.check_circle_rounded),
+                label: const Text('Mark Ready for Pickup', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case OrderStatus.ready:
+        return Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: context.read<OrdersListBloc>(),
+                        child: BlocProvider(
+                          create: (context) => AssignDeliveryBloc(
+                            repository: AssignDeliveryRepository(service: AssignDeliveryService()),
+                            orderId: order.id,
+                          )..add(LoadRidersEvent(orderId: order.id)),
+                          child: AssignDeliveryPage(orderId: order.id),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.person_add_rounded),
+                label: const Text('Assign Delivery Partner', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F172A),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case OrderStatus.pickedUp:
+      case OrderStatus.outForDelivery:
+        return Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OutForDeliveryPageUI(orderId: order.id),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.navigation_rounded),
+                label: const Text('Track Live Delivery', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// REJECTION AND CANCELLATION MODALS
+// -------------------------------------------------------------
+Future<void> _showRejectModal(BuildContext context, OrderModel order) async {
+  final reasons = [
+    'Items out of stock',
+    'Kitchen too busy',
+    'Store closing soon',
+    'Unable to deliver to location',
+    'Other reason',
+  ];
+  String selectedReason = reasons.first;
+  final customController = TextEditingController();
+
+  final result = await showDialog<String>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (context, setModalState) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Reject Order', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Please select a reason for rejecting this order:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+            const SizedBox(height: 12),
+            ...reasons.map((r) => RadioListTile<String>(
+                  title: Text(r, style: const TextStyle(fontSize: 14)),
+                  value: r,
+                  groupValue: selectedReason,
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (val) {
+                    if (val != null) setModalState(() => selectedReason = val);
+                  },
+                )),
+            if (selectedReason == 'Other reason') ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: customController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter specific reason...',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final finalReason = selectedReason == 'Other reason' && customController.text.trim().isNotEmpty
+                  ? customController.text.trim()
+                  : selectedReason;
+              Navigator.pop(ctx, finalReason);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm Reject'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (result != null && context.mounted) {
+    context.read<OrdersListBloc>().add(
+          RejectOrderEvent(order.id, reason: result),
+        );
+  }
+}
+
+Future<void> _showCancelModal(BuildContext context, OrderModel order) async {
+  final controller = TextEditingController();
+
+  final result = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Cancel Order', style: TextStyle(fontWeight: FontWeight.bold)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Are you sure you want to cancel this order? Please provide a cancellation reason:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+          const SizedBox(height: 12),
+          TextField(
+            controller: controller,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              hintText: 'e.g. Customer requested cancellation / Kitchen equipment issue',
+              border: OutlineInputBorder(),
             ),
           ),
         ],
       ),
-    );
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Dismiss'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final reason = controller.text.trim().isNotEmpty ? controller.text.trim() : 'Cancelled by store';
+            Navigator.pop(ctx, reason);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFDC2626),
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Confirm Cancel'),
+        ),
+      ],
+    ),
+  );
+
+  if (result != null && context.mounted) {
+    context.read<OrdersListBloc>().add(
+          CancelOrderEvent(order.id, reason: result),
+        );
   }
 }
 
+// -------------------------------------------------------------
+// SKELETON LOADER & EMPTY STATE
+// -------------------------------------------------------------
 class _SkeletonLoader extends StatefulWidget {
   final double height;
   final double borderRadius;
@@ -1725,8 +2575,7 @@ class _SkeletonLoader extends StatefulWidget {
   State<_SkeletonLoader> createState() => _SkeletonLoaderState();
 }
 
-class _SkeletonLoaderState extends State<_SkeletonLoader>
-    with SingleTickerProviderStateMixin {
+class _SkeletonLoaderState extends State<_SkeletonLoader> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -1774,34 +2623,51 @@ class _SkeletonLoaderState extends State<_SkeletonLoader>
   }
 }
 
-class _DashedLinePainter extends CustomPainter {
-  final Color color;
-  const _DashedLinePainter({required this.color});
+class _EmptyState extends StatelessWidget {
+  final String activeFilter;
+  const _EmptyState({required this.activeFilter});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    const dashHeight = 4.0;
-    const dashSpace = 4.0;
-    double startY = 0.0;
-
-    while (startY < size.height) {
-      canvas.drawLine(
-        Offset(size.width / 2, startY),
-        Offset(size.width / 2, startY + dashHeight),
-        paint,
-      );
-      startY += dashHeight + dashSpace;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedLinePainter oldDelegate) {
-    return oldDelegate.color != color;
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.inbox_rounded,
+              size: 56,
+              color: Color(0xFF94A3B8),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'No $activeFilter Orders',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'New customer orders will appear here automatically in real time.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1812,6 +2678,9 @@ Future<void> _launchPhoneCall(String phoneNumber) async {
   }
 }
 
+// -------------------------------------------------------------
+// REAL-TIME BUYER PROFILE UTILITIES
+// -------------------------------------------------------------
 class BuyerProfile {
   final String name;
   final String phone;
@@ -1882,16 +2751,14 @@ class RealtimeOrderCustomerDetails extends StatelessWidget {
     final trimmed = address.trim();
     if (trimmed.isEmpty) return false;
     final lower = trimmed.toLowerCase();
-    if (lower == 'primary address' ||
-        lower == 'n/a' ||
-        lower == 'null' ||
-        lower == 'no address' ||
-        lower == 'none' ||
-        lower == 'select address' ||
-        lower == 'not set') {
-      return false;
-    }
-    return trimmed.length >= 1;
+    return lower != 'primary address' &&
+        lower != 'n/a' &&
+        lower != 'null' &&
+        lower != 'no address' &&
+        lower != 'none' &&
+        lower != 'select address' &&
+        lower != 'not set' &&
+        trimmed.isNotEmpty;
   }
 
   static String _extractName(Map<String, dynamic>? data) {
@@ -1910,9 +2777,7 @@ class RealtimeOrderCustomerDetails extends StatelessWidget {
       'first_name',
     ]) {
       final val = data[key];
-      if (val is String && _isValidName(val)) {
-        return val.trim();
-      }
+      if (val is String && _isValidName(val)) return val.trim();
     }
     final first = data['firstName'] ?? data['first_name'];
     final last = data['lastName'] ?? data['last_name'];
@@ -1923,8 +2788,8 @@ class RealtimeOrderCustomerDetails extends StatelessWidget {
     for (final key in ['customer', 'user', 'buyer', 'profile']) {
       final val = data[key];
       if (val is Map<String, dynamic>) {
-        final nestedName = _extractName(val);
-        if (_isValidName(nestedName)) return nestedName;
+        final nested = _extractName(val);
+        if (_isValidName(nested)) return nested;
       }
     }
     return '';
@@ -1945,15 +2810,13 @@ class RealtimeOrderCustomerDetails extends StatelessWidget {
       'phone_number',
     ]) {
       final val = data[key];
-      if (val is String && _isValidPhone(val)) {
-        return val.trim();
-      }
+      if (val is String && _isValidPhone(val)) return val.trim();
     }
     for (final key in ['customer', 'user', 'buyer', 'profile']) {
       final val = data[key];
       if (val is Map<String, dynamic>) {
-        final nestedPhone = _extractPhone(val);
-        if (_isValidPhone(nestedPhone)) return nestedPhone;
+        final nested = _extractPhone(val);
+        if (_isValidPhone(nested)) return nested;
       }
     }
     return '';
@@ -1961,27 +2824,9 @@ class RealtimeOrderCustomerDetails extends StatelessWidget {
 
   static String _extractAddress(Map<String, dynamic>? data) {
     if (data == null) return '';
-
-    final selectedType =
-        (data['selectedAddressType'] as String? ?? '').toLowerCase().trim();
-    final typeFieldMap = {
-      'home': 'homeAddress',
-      'work': 'workAddress',
-      'other': 'otherAddress',
-    };
-    final selectedKey = typeFieldMap[selectedType] ?? '';
-    if (selectedKey.isNotEmpty) {
-      final val = data[selectedKey];
-      if (val is String && _isValidAddress(val)) return val.trim();
-    }
-
-    final primaryAddr = data['address'];
-    if (primaryAddr is String && _isValidAddress(primaryAddr)) {
-      return primaryAddr.trim();
-    }
-
     for (final key in [
       'deliveryAddress',
+      'address',
       'primaryAddress',
       'homeAddress',
       'workAddress',
@@ -1997,51 +2842,17 @@ class RealtimeOrderCustomerDetails extends StatelessWidget {
       if (val is String && _isValidAddress(val)) {
         return val.trim();
       } else if (val is Map) {
-        final sub = val['address'] ??
-            val['fullAddress'] ??
-            val['street'] ??
-            val['formattedAddress'] ??
-            val['displayAddress'];
+        final sub = val['address'] ?? val['fullAddress'] ?? val['street'] ?? val['formattedAddress'] ?? val['displayAddress'];
         if (sub != null && _isValidAddress(sub.toString())) {
           return sub.toString().trim();
         }
-      }
-    }
-    if (data['addresses'] is List && (data['addresses'] as List).isNotEmpty) {
-      final first = (data['addresses'] as List).first;
-      if (first is Map) {
-        final sub = first['address'] ??
-            first['fullAddress'] ??
-            first['street'] ??
-            first['formattedAddress'];
-        if (sub != null && _isValidAddress(sub.toString())) {
-          return sub.toString().trim();
-        }
-      } else if (first is String && _isValidAddress(first)) {
-        return first.trim();
       }
     }
     for (final key in ['customer', 'user', 'buyer', 'profile']) {
       final val = data[key];
       if (val is Map<String, dynamic>) {
-        final nestedAddress = _extractAddress(val);
-        if (_isValidAddress(nestedAddress)) return nestedAddress;
-      }
-    }
-    return '';
-  }
-
-  static String _extractCustomerId(Map<String, dynamic>? data) {
-    if (data == null) return '';
-    for (final key in ['customerId', 'buyerId', 'userId', 'customer_id', 'buyer_id', 'user_id', 'uid']) {
-      final val = data[key];
-      if (val is String && val.trim().isNotEmpty) return val.trim();
-    }
-    for (final key in ['customer', 'user', 'buyer']) {
-      final val = data[key];
-      if (val is Map<String, dynamic>) {
-        final id = _extractCustomerId(val);
-        if (id.isNotEmpty) return id;
+        final nested = _extractAddress(val);
+        if (_isValidAddress(nested)) return nested;
       }
     }
     return '';
@@ -2085,94 +2896,9 @@ class RealtimeOrderCustomerDetails extends StatelessWidget {
           final uPhone = _extractPhone(uData);
           final uAddress = _extractAddress(uData);
 
-          if (orderId != null && orderId!.isNotEmpty) {
-            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance.collection('orders').doc(orderId).snapshots(),
-              builder: (context, orderSnap) {
-                Map<String, dynamic>? oData;
-                if (orderSnap.hasData && orderSnap.data != null && orderSnap.data!.exists) {
-                  oData = orderSnap.data!.data();
-                }
-
-                final oName = _extractName(oData);
-                final oPhone = _extractPhone(oData);
-                final oAddress = _extractAddress(oData);
-
-                final resolvedName = _isValidName(uName) ? uName : (_isValidName(oName) ? oName : initialProfile.name);
-                final resolvedPhone = _isValidPhone(uPhone) ? uPhone : (_isValidPhone(oPhone) ? oPhone : initialProfile.phone);
-                final resolvedAddress = _isValidAddress(uAddress) ? uAddress : (_isValidAddress(oAddress) ? oAddress : initialProfile.address);
-
-                final profile = BuyerProfile(
-                  name: resolvedName,
-                  phone: resolvedPhone,
-                  address: resolvedAddress,
-                );
-                _profileCache[cacheKey] = profile;
-                return builder(context, profile);
-              },
-            );
-          }
-
           final resolvedName = _isValidName(uName) ? uName : initialProfile.name;
           final resolvedPhone = _isValidPhone(uPhone) ? uPhone : initialProfile.phone;
           final resolvedAddress = _isValidAddress(uAddress) ? uAddress : initialProfile.address;
-
-          final profile = BuyerProfile(
-            name: resolvedName,
-            phone: resolvedPhone,
-            address: resolvedAddress,
-          );
-          _profileCache[cacheKey] = profile;
-          return builder(context, profile);
-        },
-      );
-    }
-
-    if (orderId != null && orderId!.isNotEmpty) {
-      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance.collection('orders').doc(orderId).snapshots(),
-        builder: (context, orderSnap) {
-          Map<String, dynamic>? oData;
-          if (orderSnap.hasData && orderSnap.data != null && orderSnap.data!.exists) {
-            oData = orderSnap.data!.data();
-          }
-
-          final oName = _extractName(oData);
-          final oPhone = _extractPhone(oData);
-          final oAddress = _extractAddress(oData);
-          final foundCustomerId = _extractCustomerId(oData);
-
-          if (foundCustomerId.isNotEmpty) {
-            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance.collection('buyer_user').doc(foundCustomerId).snapshots(),
-              builder: (context, userSnap) {
-                Map<String, dynamic>? uData;
-                if (userSnap.hasData && userSnap.data != null && userSnap.data!.exists) {
-                  uData = userSnap.data!.data();
-                }
-
-                final uName = _extractName(uData);
-                final uPhone = _extractPhone(uData);
-                final uAddress = _extractAddress(uData);
-
-                final resolvedName = _isValidName(uName) ? uName : (_isValidName(oName) ? oName : initialProfile.name);
-                final resolvedPhone = _isValidPhone(uPhone) ? uPhone : (_isValidPhone(oPhone) ? oPhone : initialProfile.phone);
-                final resolvedAddress = _isValidAddress(uAddress) ? uAddress : (_isValidAddress(oAddress) ? oAddress : initialProfile.address);
-
-                final profile = BuyerProfile(
-                  name: resolvedName,
-                  phone: resolvedPhone,
-                  address: resolvedAddress,
-                );
-                _profileCache[cacheKey] = profile;
-                return builder(context, profile);
-              },
-            );
-          }
-
-          final resolvedName = _isValidName(oName) ? oName : initialProfile.name;
-          final resolvedPhone = _isValidPhone(oPhone) ? oPhone : initialProfile.phone;
-          final resolvedAddress = _isValidAddress(oAddress) ? oAddress : initialProfile.address;
 
           final profile = BuyerProfile(
             name: resolvedName,
@@ -2193,16 +2919,14 @@ class RealtimeOrderCustomerNameText extends StatelessWidget {
   final String fallbackName;
   final String? customerId;
   final String? orderId;
-  final TextStyle style;
-  final Widget Function(BuildContext context, String resolvedName)? builder;
+  final TextStyle? style;
 
   const RealtimeOrderCustomerNameText({
     Key? key,
     required this.fallbackName,
     this.customerId,
     this.orderId,
-    required this.style,
-    this.builder,
+    this.style,
   }) : super(key: key);
 
   @override
@@ -2212,8 +2936,11 @@ class RealtimeOrderCustomerNameText extends StatelessWidget {
       customerId: customerId,
       orderId: orderId,
       builder: (context, profile) {
-        if (builder != null) return builder!(context, profile.name);
-        return Text(profile.name, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
+        return Text(
+          profile.name.isEmpty ? fallbackName : profile.name,
+          style: style,
+          overflow: TextOverflow.ellipsis,
+        );
       },
     );
   }

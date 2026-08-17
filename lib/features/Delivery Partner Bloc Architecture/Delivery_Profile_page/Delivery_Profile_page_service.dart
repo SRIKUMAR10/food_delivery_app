@@ -10,12 +10,15 @@ abstract class DeliveryProfileServiceBase {
   Future<bool> uploadDocument(String type, String filePath);
   Stream<double> chunkedUpload(String documentId);
   Future<bool> requestPermission(String type);
+  Future<void> changePassword({required String currentPassword, required String newPassword});
+  Future<void> deactivateAccount();
+  Future<void> logout();
 }
 
 class DeliveryProfileService implements DeliveryProfileServiceBase {
-  final FirebaseFirestore? _firestore;
-  final FirebaseAuth? _auth;
-  final DeliveryPartnerRepository? _partnerRepo;
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
+  final DeliveryPartnerRepository _partnerRepo;
 
   DeliveryProfileService({
     FirebaseFirestore? firestore,
@@ -28,9 +31,9 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
   @override
   Future<Map<String, dynamic>> fetchProfileData() async {
     try {
-      final uid = _auth?.currentUser?.uid;
-      if (uid != null && _firestore != null) {
-        final doc = await _firestore!
+      final uid = _auth.currentUser?.uid;
+      if (uid != null) {
+        final doc = await _firestore
             .collection('delivery_partners')
             .doc(uid)
             .get();
@@ -46,11 +49,11 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
 
   @override
   Stream<Map<String, dynamic>> watchProfileData() {
-    final uid = _auth?.currentUser?.uid;
-    if (uid == null || _firestore == null) {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
       return const Stream.empty();
     }
-    return _firestore!
+    return _firestore
         .collection('delivery_partners')
         .doc(uid)
         .snapshots()
@@ -61,35 +64,67 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
   }
 
   Map<String, dynamic> _mapProfileData(String uid, Map<String, dynamic> data) {
+    DateTime? createdAtDate;
+    final createdVal = data['createdAt'];
+    if (createdVal is Timestamp) {
+      createdAtDate = createdVal.toDate();
+    } else if (createdVal is String) {
+      createdAtDate = DateTime.tryParse(createdVal);
+    }
+
+    String formattedJoining = '';
+    if (createdAtDate != null) {
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      final monthName = months[(createdAtDate.month - 1).clamp(0, 11)];
+      formattedJoining = '${createdAtDate.day} $monthName ${createdAtDate.year}';
+    }
+
     return {
       'id': uid,
       'displayName': data['displayName'] ?? '',
       'phoneNumber': data['phoneNumber'] ?? '',
       'email': data['email'] ?? '',
       'photoUrl': data['photoUrl'] ?? '',
+      'address': data['address'] ?? '',
+      'dob': data['dob'] ?? '',
+      'gender': data['gender'] ?? '',
       'vehicleType': data['vehicleType'] ?? '',
       'vehicleNumber': data['vehicleNumber'] ?? '',
       'drivingLicense': data['drivingLicense'] ?? '',
       'aadhaarNumber': data['aadhaarNumber'] ?? '',
+      'idProofUrl': data['idProofUrl'] ?? data['aadhaarUrl'] ?? '',
+      'vehicleRcUrl': data['vehicleRcUrl'] ?? '',
+      'insuranceUrl': data['insuranceUrl'] ?? '',
+      'panNumber': data['panNumber'] ?? '',
+      'status': data['status'] ?? 'pending',
       'kycStatus': data['kycStatus'] ?? 'pending',
+      'isActive': data['isActive'] ?? true,
+      'isVerified': data['isVerified'] ?? false,
       'totalEarnings': (data['totalEarnings'] as num?)?.toDouble() ?? 0.0,
       'totalDeliveries': (data['totalDeliveries'] as num?)?.toInt() ?? 0,
-      'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
+      'rating': (data['rating'] as num?)?.toDouble() ?? 5.0,
       'isOnline': data['isOnline'] ?? false,
       'profileCompletion': (data['profileCompletion'] as num?)?.toInt() ?? 0,
-      'createdAt': (data['createdAt'] as Timestamp?)?.toDate()?.toIso8601String() ?? '',
+      'joiningDate': formattedJoining,
+      'createdAt': createdAtDate?.toIso8601String() ?? '',
     };
   }
 
   @override
   Future<bool> updateProfile(Map<String, dynamic> data) async {
     try {
-      final uid = _auth?.currentUser?.uid;
-      if (uid != null && _firestore != null) {
-        await _firestore!.collection('delivery_partners').doc(uid).set({
-          ...data,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+      final uid = _auth.currentUser?.uid;
+      if (uid != null) {
+        final sanitized = Map<String, dynamic>.from(data);
+        sanitized.remove('password');
+        sanitized['updatedAt'] = FieldValue.serverTimestamp();
+        await _firestore.collection('delivery_partners').doc(uid).set(
+          sanitized,
+          SetOptions(merge: true),
+        );
         return true;
       }
     } catch (_) {}
@@ -99,14 +134,17 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
   @override
   Future<bool> uploadDocument(String type, String filePath) async {
     try {
-      final uid = _auth?.currentUser?.uid;
-      if (uid != null && _firestore != null) {
-        final docField = type == 'drivingLicense'
-            ? 'drivingLicense'
-            : type == 'aadhaar'
-                ? 'aadhaarNumber'
-                : 'documentUrl';
-        await _firestore!.collection('delivery_partners').doc(uid).set({
+      final uid = _auth.currentUser?.uid;
+      if (uid != null) {
+        final docField = switch (type) {
+          'drivingLicense' => 'drivingLicense',
+          'vehicleRc' => 'vehicleRcUrl',
+          'insurance' => 'insuranceUrl',
+          'panCard' => 'panNumber',
+          'aadhaar' => 'aadhaarNumber',
+          _ => '${type}Url',
+        };
+        await _firestore.collection('delivery_partners').doc(uid).set({
           docField: filePath,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
@@ -114,6 +152,30 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
       }
     } catch (_) {}
     return false;
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _partnerRepo.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
+
+  @override
+  Future<void> deactivateAccount() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) {
+      await _partnerRepo.deactivateAccount(uid);
+    }
+  }
+
+  @override
+  Future<void> logout() async {
+    await _partnerRepo.signOut();
   }
 
   @override

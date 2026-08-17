@@ -259,9 +259,17 @@ class DeliveryWalletPageRepository implements DeliveryWalletPageRepositoryBase {
     return DeliveryWalletPageState(
       status: DeliveryWalletStatus.loaded,
       walletBalance: (raw['walletBalance'] as num?)?.toDouble() ?? 0.0,
+      availableBalance: (raw['availableBalance'] as num?)?.toDouble() ?? 0.0,
+      pendingBalance: (raw['pendingBalance'] as num?)?.toDouble() ??
+          (raw['pendingWithdrawal'] as num?)?.toDouble() ??
+          0.0,
+      withdrawableAmount:
+          (raw['withdrawableAmount'] as num?)?.toDouble() ?? 0.0,
+      codAdjustment: (raw['codAdjustment'] as num?)?.toDouble() ?? 0.0,
       totalEarnings: (raw['totalEarnings'] as num?)?.toDouble() ?? 0.0,
       totalWithdrawn: (raw['totalWithdrawn'] as num?)?.toDouble() ?? 0.0,
       bonusEarnings: (raw['bonusEarnings'] as num?)?.toDouble() ?? 0.0,
+      incentiveEarnings: (raw['incentiveEarnings'] as num?)?.toDouble() ?? 0.0,
       transactions: transactions,
       paymentMethods: paymentMethods,
       bankAccount: bankAccount,

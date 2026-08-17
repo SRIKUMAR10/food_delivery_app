@@ -18,8 +18,18 @@ void main() {
   const loadedState = DeliveryDashboardState(
     status: DeliveryDashboardStatus.loaded,
     isOnline: true,
+    isAvailable: true,
+    isBusy: false,
+    partnerStatus: DeliveryPartnerStatusType.available,
     todayEarnings: 2450.00,
     walletBalance: 2450.00,
+    todayTotalDeliveries: 18,
+    completedDeliveriesCount: 15,
+    pendingDeliveriesCount: 2,
+    cancelledDeliveriesCount: 1,
+    todayDistance: 42.5,
+    onlineHours: '5h 45m',
+    averageRating: 4.8,
     todayOrdersCount: 18,
     activeOrdersCount: 2,
     workingHours: '05h 45m',
@@ -89,13 +99,14 @@ void main() {
 
       expect(find.textContaining('Ravi Kumar'), findsWidgets);
       expect(find.text('You are'), findsOneWidget);
-      expect(find.text('ONLINE'), findsOneWidget);
+      expect(find.text('AVAILABLE'), findsOneWidget);
       expect(find.text('₹2450.00'), findsWidgets);
       expect(find.text('18'), findsOneWidget);
+      expect(find.text('15'), findsOneWidget);
       expect(find.text('2'), findsOneWidget);
-      expect(find.text('05h 45m'), findsOneWidget);
-      expect(find.text('92%'), findsOneWidget);
-      expect(find.text('4.8 / 5.0'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('42.5 km'), findsOneWidget);
+      expect(find.text('4.8 ★'), findsOneWidget);
     });
 
     testWidgets('renders notification bell badge with unread count', (
@@ -162,7 +173,7 @@ void main() {
       expect(delegate.crossAxisCount, equals(2));
     });
 
-    testWidgets('renders recent activities and map preview cards', (
+    testWidgets('renders recent activities and quick actions cards', (
       tester,
     ) async {
       setDesktopSize(tester);
@@ -181,7 +192,7 @@ void main() {
     ) async {
       setMobileSize(tester);
       when(() => mockBloc.state).thenReturn(
-        loadedState.copyWith(isOnline: false),
+        loadedState.copyWith(isOnline: false, partnerStatus: DeliveryPartnerStatusType.offline),
       );
 
       await tester.pumpWidget(buildPage());

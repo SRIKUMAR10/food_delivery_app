@@ -499,5 +499,191 @@ void main() {
       expect(state.activeOrder?.orderId, 'ORD12346');
       expect(state.isEmpty, isTrue);
     });
+
+    test('state availableCount counts orders flagged as available', () {
+      const state = DeliveryOrdersPageState(orders: [
+        DeliveryOrderCardModel(
+          orderId: 'ORD1',
+          customerName: 'A',
+          restaurantName: 'R',
+          pickupAddress: '',
+          deliveryAddress: '',
+          amount: 0,
+          itemsCount: 1,
+          status: DeliveryOrderStatus.pending,
+          distance: 1,
+          time: '',
+          paymentType: 'Cash',
+          isAvailable: true,
+        ),
+        DeliveryOrderCardModel(
+          orderId: 'ORD2',
+          customerName: 'B',
+          restaurantName: 'S',
+          pickupAddress: '',
+          deliveryAddress: '',
+          amount: 0,
+          itemsCount: 1,
+          status: DeliveryOrderStatus.pending,
+          distance: 1,
+          time: '',
+          paymentType: 'Cash',
+        ),
+      ]);
+      expect(state.availableCount, 1);
+    });
+
+    blocTest<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
+      'accepts an available order atomically and shows a confirmation',
+      build: () {
+        when(
+          () => mockRepository.acceptOrderAtomic('ORD12345'),
+        ).thenAnswer((_) async => true);
+        return buildBloc();
+      },
+      seed: () => const DeliveryOrdersPageState(
+        status: DeliveryOrdersPageStatus.loaded,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+      ),
+      act: (bloc) =>
+          bloc.add(const DeliveryOrdersAcceptOrderEvent('ORD12345')),
+      expect: () => [
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+          acceptingOrderId: 'ORD12345',
+        ),
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+          acceptingOrderId: null,
+          notificationMessage: 'Order accepted. Heading to the store.',
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockRepository.acceptOrderAtomic('ORD12345')).called(1);
+      },
+    );
+
+    blocTest<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
+      'surfaces a conflict notice when the order was already claimed',
+      build: () {
+        when(
+          () => mockRepository.acceptOrderAtomic('ORD12345'),
+        ).thenAnswer((_) async => false);
+        return buildBloc();
+      },
+      seed: () => const DeliveryOrdersPageState(
+        status: DeliveryOrdersPageStatus.loaded,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+      ),
+      act: (bloc) =>
+          bloc.add(const DeliveryOrdersAcceptOrderEvent('ORD12345')),
+      expect: () => [
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+          acceptingOrderId: 'ORD12345',
+        ),
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+          errorMessage: 'Order already accepted by another delivery partner',
+        ),
+      ],
+    );
+
+    blocTest<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
+      'surfaces a conflict notice when acceptance throws',
+      build: () {
+        when(
+          () => mockRepository.acceptOrderAtomic('ORD12345'),
+        ).thenThrow(Exception('claim failed'));
+        return buildBloc();
+      },
+      seed: () => const DeliveryOrdersPageState(
+        status: DeliveryOrdersPageStatus.loaded,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+      ),
+      act: (bloc) =>
+          bloc.add(const DeliveryOrdersAcceptOrderEvent('ORD12345')),
+      expect: () => [
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+          acceptingOrderId: 'ORD12345',
+        ),
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+          errorMessage: 'Order already accepted by another delivery partner',
+        ),
+      ],
+    );
+
+    blocTest<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
+      'rejects an order and removes it from the list',
+      build: () {
+        when(
+          () => mockRepository.rejectOrder(
+            'ORD12345',
+            reason: any(named: 'reason'),
+          ),
+        ).thenAnswer((_) async => true);
+        return buildBloc();
+      },
+      seed: () => const DeliveryOrdersPageState(
+        status: DeliveryOrdersPageStatus.loaded,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+      ),
+      act: (bloc) => bloc.add(
+        const DeliveryOrdersRejectOrderEvent('ORD12345', reason: 'too far'),
+      ),
+      expect: () => [
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: [pendingOrder, completedOrder],
+          filteredOrders: [pendingOrder, completedOrder],
+          notificationMessage: 'Order declined.',
+        ),
+      ],
+      verify: (_) {
+        verify(
+          () => mockRepository.rejectOrder(
+            'ORD12345',
+            reason: 'too far',
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
+      'clears the conflict notice on DeliveryOrdersClearConflictEvent',
+      build: () => buildBloc(),
+      seed: () => const DeliveryOrdersPageState(
+        status: DeliveryOrdersPageStatus.loaded,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+        errorMessage: 'Order already accepted by another delivery partner',
+      ),
+      act: (bloc) => bloc.add(const DeliveryOrdersClearConflictEvent()),
+      expect: () => [
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+        ),
+      ],
+    );
   });
 }

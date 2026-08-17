@@ -272,12 +272,12 @@ class DeliveryIncomingOrderService
         }
 
         await fs.collection('orders').doc(orderId).update({
-          'status': 'OutForDelivery',
           'riderId': uid,
           'deliveryPartnerId': uid,
           'deliveryPartnerName': driverName,
           'deliveryPartnerPhone': driverPhone,
           'deliveryPartnerStatus': 'accepted',
+          'pickupStatus': 'heading_to_store',
           'acceptedAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         });

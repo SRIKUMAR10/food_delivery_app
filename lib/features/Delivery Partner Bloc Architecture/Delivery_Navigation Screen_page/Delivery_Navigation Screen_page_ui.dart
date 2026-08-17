@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'Delivery_Navigation Screen_page_bloc.dart';
@@ -41,17 +42,38 @@ class DeliveryNavigationStrings {
       'recenter': 'Recenter map',
       'retry': 'Retry',
       'errorTitle': 'Something went wrong',
-      'errorSub':
-          'We could not load your navigation. Please try again.',
+      'errorSub': 'We could not load your navigation. Please try again.',
       'emptyTitle': 'No Active Delivery',
-      'emptySub':
-          'You have no active delivery to navigate to right now.',
-      'offlineBanner':
-          'You are offline. Live navigation may be limited.',
+      'emptySub': 'You have no active delivery to navigate to right now.',
+      'offlineBanner': 'You are offline. Live navigation may be limited.',
       'orderId': 'Order',
       'mapSemantics': 'Live navigation map',
       'currentLocationSemantics': 'Current location',
       'darkThemeActive': 'Dark theme active',
+      'stage1Title': 'Stage 1: Pickup',
+      'stage1Subtitle': 'Heading to Restaurant',
+      'stage2Title': 'Stage 2: Delivery',
+      'stage2Subtitle': 'Heading to Customer',
+      'stageCompleted': 'Delivery Completed',
+      'callRestaurant': 'Call Restaurant',
+      'callCustomer': 'Call Customer',
+      'arrivedAtRestaurant': 'Arrived at Restaurant',
+      'confirmPickup': 'Confirm Pickup',
+      'arrivedAtCustomer': 'Arrived at Customer',
+      'confirmDelivery': 'Confirm Delivery',
+      'gpsActive': 'GPS Active · High Accuracy',
+      'gpsSearching': 'GPS Searching',
+      'gpsDisabled': 'GPS Disabled',
+      'gpsPermissionDenied': 'Location Permission Denied',
+      'batterySaver': 'Battery Saver On',
+      'dataSaver': 'Data Saver On',
+      'speed': 'Speed',
+      'heading': 'Heading',
+      'kmh': 'km/h',
+      'vehicle': 'Vehicle',
+      'destination': 'Destination',
+      'customerNotes': 'Notes',
+      'liveTelemetry': 'Live Telemetry',
     },
     'ta': {
       'liveNavigation': 'நேரடி வழிசெலுத்தல்',
@@ -95,6 +117,30 @@ class DeliveryNavigationStrings {
       'mapSemantics': 'நேரடி வழிசெலுத்தல் வரைபடம்',
       'currentLocationSemantics': 'தற்போதைய இடம்',
       'darkThemeActive': 'இருண்ட தீம் செயலில்',
+      'stage1Title': 'நிலை 1: பிக்கப்',
+      'stage1Subtitle': 'உணவகத்திற்கு செல்லுதல்',
+      'stage2Title': 'நிலை 2: டெலிவரி',
+      'stage2Subtitle': 'வாடிக்கையாளருக்கு செல்லுதல்',
+      'stageCompleted': 'டெலிவரி முடிந்தது',
+      'callRestaurant': 'உணவகத்தை அழைக்கவும்',
+      'callCustomer': 'வாடிக்கையாளரை அழைக்கவும்',
+      'arrivedAtRestaurant': 'உணவகத்தை அடைந்தது',
+      'confirmPickup': 'பிக்கப்பை உறுதிப்படுத்து',
+      'arrivedAtCustomer': 'வாடிக்கையாளரை அடைந்தது',
+      'confirmDelivery': 'டெலிவரியை உறுதிப்படுத்து',
+      'gpsActive': 'GPS செயலில் · உயர் துல்லியம்',
+      'gpsSearching': 'GPS தேடுகிறது',
+      'gpsDisabled': 'GPS முடக்கப்பட்டது',
+      'gpsPermissionDenied': 'இட அனுமதி மறுக்கப்பட்டது',
+      'batterySaver': 'பேட்டரி சேமிப்பு இயக்கத்தில்',
+      'dataSaver': 'டேட்டா சேமிப்பு இயக்கத்தில்',
+      'speed': 'வேகம்',
+      'heading': 'திசை',
+      'kmh': 'கி.மீ/மணி',
+      'vehicle': 'வாகனம்',
+      'destination': 'இலக்கு',
+      'customerNotes': 'குறிப்புகள்',
+      'liveTelemetry': 'நேரடி டெலிமெட்ரி',
     },
   };
 
@@ -258,11 +304,41 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
     );
   }
 
+  void _handleStageArrived() {
+    final bloc = context.read<DeliveryNavigationBloc>();
+    if (widget.state.isStageToRestaurant) {
+      bloc.add(const DeliveryNavigationArrivedAtPickupEvent());
+    } else {
+      bloc.add(const DeliveryNavigationArrivedAtCustomerEvent());
+    }
+  }
+
+  void _handleStageConfirm() {
+    final bloc = context.read<DeliveryNavigationBloc>();
+    if (widget.state.isStageToRestaurant) {
+      bloc.add(const DeliveryNavigationConfirmPickupEvent());
+    } else {
+      bloc.add(const DeliveryNavigationConfirmDeliveryEvent());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localeCode = widget.state.localeCode;
     return LayoutBuilder(
       builder: (context, constraints) {
+        final stagePanel = _StageBanner(
+          state: widget.state,
+          localeCode: localeCode,
+          onCall: () => _showContactSnackBar(context, localeCode),
+          onArrived: _handleStageArrived,
+          onConfirm: _handleStageConfirm,
+        );
+        final telemetryPanel = _TelemetryPanel(
+          state: widget.state,
+          localeCode: localeCode,
+        );
+
         return Column(
           children: [
             _NavigationTopBar(
@@ -279,7 +355,8 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
                         if (widget.state.showMap)
                           SizedBox(
                             height: _isMapFullScreen
-                                ? (constraints.maxHeight - 80).clamp(320.0, double.infinity)
+                                ? (constraints.maxHeight - 80)
+                                    .clamp(320.0, double.infinity)
                                 : 320.0,
                             child: _MapArea(
                               state: widget.state,
@@ -295,9 +372,14 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
                           if (widget.state.showMap) const SizedBox(height: 8),
                           Expanded(
                             child: SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               child: Column(
                                 children: [
+                                  stagePanel,
+                                  const SizedBox(height: 12),
+                                  telemetryPanel,
+                                  const SizedBox(height: 12),
                                   _OrderSummaryPanel(
                                     state: widget.state,
                                     localeCode: localeCode,
@@ -347,7 +429,10 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
                                   const SizedBox(height: 12),
                                   Align(
                                     alignment: Alignment.centerLeft,
-                                    child: _CurrentLocationBadge(localeCode: localeCode),
+                                    child: _CurrentLocationBadge(
+                                      state: widget.state,
+                                      localeCode: localeCode,
+                                    ),
                                   ),
                                   const SizedBox(height: 12),
                                 ],
@@ -371,24 +456,25 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
                             ),
                             const SizedBox(width: 12),
                           ],
-                          widget.state.showMap
-                              ? SizedBox(
-                                  width: 360,
-                                  child: _OrderSummaryPanel(
+                          SizedBox(
+                            width: 380,
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  stagePanel,
+                                  const SizedBox(height: 12),
+                                  telemetryPanel,
+                                  const SizedBox(height: 12),
+                                  _OrderSummaryPanel(
                                     state: widget.state,
                                     localeCode: localeCode,
                                     onContactCustomer: () =>
                                         _showContactSnackBar(context, localeCode),
                                   ),
-                                )
-                              : Expanded(
-                                  child: _OrderSummaryPanel(
-                                    state: widget.state,
-                                    localeCode: localeCode,
-                                    onContactCustomer: () =>
-                                        _showContactSnackBar(context, localeCode),
-                                  ),
-                                ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -562,7 +648,7 @@ class _NavigationTopBar extends StatelessWidget {
           ),
           if (!isMobile) ...[
             const SizedBox(width: 4),
-            const _PartnerBadge(),
+            _PartnerBadge(state: state),
           ],
         ],
       ),
@@ -571,12 +657,17 @@ class _NavigationTopBar extends StatelessWidget {
 }
 
 class _PartnerBadge extends StatelessWidget {
-  const _PartnerBadge();
+  final DeliveryNavigationState state;
+
+  const _PartnerBadge({required this.state});
 
   @override
   Widget build(BuildContext context) {
+    final name = state.partnerName.isNotEmpty
+        ? state.partnerName
+        : 'Delivery Partner';
     return Semantics(
-      label: 'Dinesh Kumar - Delivery Partner',
+      label: '$name - Delivery Partner',
       child: Container(
         key: const Key('dp_navscreen_partner_badge'),
         padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
@@ -587,33 +678,40 @@ class _PartnerBadge extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 14,
-              backgroundColor: Color(0xFF1A2530),
-              child: Icon(
-                Icons.person,
-                color: Color(0xFF94A3B8),
-                size: 16,
-              ),
+              backgroundColor: const Color(0xFF1A2530),
+              backgroundImage: state.partnerPhotoUrl.isNotEmpty
+                  ? NetworkImage(state.partnerPhotoUrl)
+                  : null,
+              child: state.partnerPhotoUrl.isEmpty
+                  ? const Icon(
+                      Icons.person,
+                      color: Color(0xFF94A3B8),
+                      size: 16,
+                    )
+                  : null,
             ),
             const SizedBox(width: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Dinesh Kumar',
-                  style: TextStyle(
+                Text(
+                  name,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 Text(
-                  DeliveryNavigationStrings.of(
-                    'deliveryPartnerRole',
-                    'en',
-                  ),
+                  state.partnerVehicleNumber.isNotEmpty
+                      ? state.partnerVehicleNumber
+                      : DeliveryNavigationStrings.of(
+                          'deliveryPartnerRole',
+                          state.localeCode,
+                        ),
                   style: const TextStyle(
                     color: Color(0xFF64748B),
                     fontSize: 9,
@@ -687,7 +785,9 @@ class _MapAreaState extends State<_MapArea> {
                 Positioned(
                   top: 14,
                   left: 14,
-                  right: (widget.isFullScreen || constraints.maxWidth >= 600) ? 14 : 70,
+                  right: (widget.isFullScreen || constraints.maxWidth >= 600)
+                      ? 14
+                      : 70,
                   child: _TurnByTurnCard(state: widget.state),
                 ),
                 Positioned(
@@ -711,9 +811,15 @@ class _MapAreaState extends State<_MapArea> {
                   ),
                 ),
                 Positioned(
-                  left: w * _MapCoords.currentX - 12,
-                  top: h * _MapCoords.currentY - 12,
-                  child: _CurrentLocationMarker(
+                  left: w * _MapCoords.currentX - 40,
+                  top: h * _MapCoords.currentY - 40,
+                  child: const _RadarPulse(color: Color(0xFF2196F3)),
+                ),
+                Positioned(
+                  left: w * _MapCoords.currentX - 14,
+                  top: h * _MapCoords.currentY - 14,
+                  child: _DriverMarker(
+                    heading: widget.state.driverHeading,
                     label: DeliveryNavigationStrings.of(
                       'currentLocationSemantics',
                       localeCode,
@@ -750,6 +856,12 @@ class _NavigationMapCanvas extends CustomPainter {
   final double zoom;
 
   _NavigationMapCanvas({required this.state, required this.zoom});
+
+  Color get _trafficColor => switch (state.trafficLevel) {
+        DeliveryNavigationTrafficLevel.clear => DeliveryAppColors.primaryLight,
+        DeliveryNavigationTrafficLevel.moderate => const Color(0xFFFBBF24),
+        DeliveryNavigationTrafficLevel.heavy => const Color(0xFFEF4444),
+      };
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -816,6 +928,8 @@ class _NavigationMapCanvas extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawPath(route, routePaint);
 
+    _drawTrafficHeat(canvas, route);
+
     _drawPickupPin(
       canvas,
       Offset(size.width * _MapCoords.pickupX, size.height * _MapCoords.pickupY),
@@ -824,14 +938,28 @@ class _NavigationMapCanvas extends CustomPainter {
       canvas,
       Offset(size.width * _MapCoords.dropX, size.height * _MapCoords.dropY),
     );
-    _drawCurrentLocation(
-      canvas,
-      Offset(
-        size.width * _MapCoords.currentX,
-        size.height * _MapCoords.currentY,
-      ),
-    );
     canvas.restore();
+  }
+
+  void _drawTrafficHeat(Canvas canvas, Path route) {
+    final heatPaint = Paint()
+      ..color = _trafficColor.withValues(alpha: 0.9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+    for (final metric in route.computeMetrics()) {
+      double distance = 0;
+      bool on = true;
+      while (distance < metric.length) {
+        final segmentLength = on ? 14.0 : 9.0;
+        final end = math.min(distance + segmentLength, metric.length);
+        if (on) {
+          canvas.drawPath(metric.extractPath(distance, end), heatPaint);
+        }
+        distance = end;
+        on = !on;
+      }
+    }
   }
 
   void _drawPickupPin(Canvas canvas, Offset center) {
@@ -877,19 +1005,109 @@ class _NavigationMapCanvas extends CustomPainter {
     canvas.drawPath(triangle, Paint()..color = DeliveryAppColors.primaryLight);
   }
 
-  void _drawCurrentLocation(Canvas canvas, Offset center) {
-    canvas.drawCircle(
-      center,
-      18,
-      Paint()..color = const Color(0xFF2196F3).withValues(alpha: 0.25),
+  @override
+  bool shouldRepaint(_NavigationMapCanvas oldDelegate) =>
+      oldDelegate.state != state || oldDelegate.zoom != zoom;
+}
+
+class _DriverMarker extends StatelessWidget {
+  final double heading;
+  final String label;
+
+  const _DriverMarker({required this.heading, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: label,
+      image: true,
+      child: Transform.rotate(
+        angle: heading * math.pi / 180.0,
+        child: Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E88E5),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 3),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.navigation,
+            color: Colors.white,
+            size: 15,
+          ),
+        ),
+      ),
     );
-    canvas.drawCircle(center, 12, Paint()..color = Colors.white);
-    canvas.drawCircle(center, 8, Paint()..color = const Color(0xFF1E88E5));
+  }
+}
+
+class _RadarPulse extends StatefulWidget {
+  final Color color;
+
+  const _RadarPulse({required this.color});
+
+  @override
+  State<_RadarPulse> createState() => _RadarPulseState();
+}
+
+class _RadarPulseState extends State<_RadarPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 2),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
-  bool shouldRepaint(_NavigationMapCanvas oldDelegate) =>
-      oldDelegate.state != state;
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return CustomPaint(
+          size: const Size(80, 80),
+          painter: _RadarPulsePainter(
+            progress: _controller.value,
+            color: widget.color,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RadarPulsePainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _RadarPulsePainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = size.width / 2;
+    final radius = maxRadius * progress;
+    final alpha = (1 - progress).clamp(0.0, 1.0);
+    final paint = Paint()
+      ..color = color.withValues(alpha: alpha * 0.4)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(_RadarPulsePainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.color != color;
 }
 
 class _TurnByTurnCard extends StatelessWidget {
@@ -897,14 +1115,34 @@ class _TurnByTurnCard extends StatelessWidget {
 
   const _TurnByTurnCard({required this.state});
 
+  IconData _turnIcon(String instruction) {
+    final normalized = instruction.toLowerCase();
+    if (normalized.contains('u-turn') || normalized.contains('uturn')) {
+      return Icons.u_turn_left;
+    }
+    if (normalized.contains('slight left')) {
+      return Icons.turn_slight_left;
+    }
+    if (normalized.contains('sharp left')) {
+      return Icons.turn_sharp_left;
+    }
+    if (normalized.contains('slight right')) {
+      return Icons.turn_slight_right;
+    }
+    if (normalized.contains('sharp right')) {
+      return Icons.turn_sharp_right;
+    }
+    if (normalized.contains('arrived') || normalized.contains('reached')) {
+      return Icons.flag;
+    }
+    if (normalized.contains('left')) return Icons.turn_left;
+    if (normalized.contains('right')) return Icons.turn_right;
+    return Icons.navigation;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final instruction = state.nextTurnInstruction.toLowerCase();
-    final IconData turnIcon = instruction.contains('left')
-        ? Icons.turn_left
-        : instruction.contains('right')
-            ? Icons.turn_right
-            : Icons.navigation;
+    final turnIcon = _turnIcon(state.nextTurnInstruction);
 
     return Container(
       key: const Key('dp_navscreen_turn_card'),
@@ -1120,30 +1358,511 @@ class _MapMarker extends StatelessWidget {
   }
 }
 
-class _CurrentLocationMarker extends StatelessWidget {
-  final String label;
+class _StageBanner extends StatelessWidget {
+  final DeliveryNavigationState state;
+  final String localeCode;
+  final VoidCallback onCall;
+  final VoidCallback onArrived;
+  final VoidCallback onConfirm;
 
-  const _CurrentLocationMarker({required this.label});
+  const _StageBanner({
+    required this.state,
+    required this.localeCode,
+    required this.onCall,
+    required this.onArrived,
+    required this.onConfirm,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: label,
-      image: true,
-      child: Container(
-        width: 24,
-        height: 24,
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E88E5),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 3),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 8,
+    final isStage1 = state.isStageToRestaurant;
+    final isStage2 = state.isStageToCustomer;
+
+    final String title;
+    final String subtitle;
+    final String callLabel;
+    final String arrivedLabel;
+    final String confirmLabel;
+    final IconData destIcon;
+
+    if (isStage2) {
+      title = DeliveryNavigationStrings.of('stage2Title', localeCode);
+      subtitle = DeliveryNavigationStrings.of('stage2Subtitle', localeCode);
+      callLabel = DeliveryNavigationStrings.of('callCustomer', localeCode);
+      arrivedLabel =
+          DeliveryNavigationStrings.of('arrivedAtCustomer', localeCode);
+      confirmLabel = DeliveryNavigationStrings.of('confirmDelivery', localeCode);
+      destIcon = Icons.person_pin_circle;
+    } else if (isStage1) {
+      title = DeliveryNavigationStrings.of('stage1Title', localeCode);
+      subtitle = DeliveryNavigationStrings.of('stage1Subtitle', localeCode);
+      callLabel = DeliveryNavigationStrings.of('callRestaurant', localeCode);
+      arrivedLabel =
+          DeliveryNavigationStrings.of('arrivedAtRestaurant', localeCode);
+      confirmLabel = DeliveryNavigationStrings.of('confirmPickup', localeCode);
+      destIcon = Icons.storefront;
+    } else {
+      title = DeliveryNavigationStrings.of('stageCompleted', localeCode);
+      subtitle = DeliveryNavigationStrings.of('stage2Subtitle', localeCode);
+      callLabel = DeliveryNavigationStrings.of('callCustomer', localeCode);
+      arrivedLabel =
+          DeliveryNavigationStrings.of('arrivedAtCustomer', localeCode);
+      confirmLabel = DeliveryNavigationStrings.of('confirmDelivery', localeCode);
+      destIcon = Icons.flag;
+    }
+
+    return Container(
+      key: const Key('dp_navscreen_stage_banner'),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            DeliveryAppColors.primaryDark.withValues(alpha: 0.16),
+            const Color(0xFF0D141C),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: DeliveryAppColors.primaryDark.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: DeliveryAppColors.primaryDark.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(destIcon, color: DeliveryAppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: DeliveryAppColors.primaryDark.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'LIVE',
+                  style: TextStyle(
+                    color: DeliveryAppColors.primary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _LocationRow(
+            icon: destIcon,
+            color: DeliveryAppColors.primaryDark,
+            title: state.destinationName.isEmpty
+                ? (isStage1 ? state.restaurantName : state.customerName)
+                : state.destinationName,
+            subtitle: state.destinationAddress,
+          ),
+          if (isStage2 && state.customerNotes.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.note_alt_outlined,
+                    color: Color(0xFF94A3B8), size: 14),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${DeliveryNavigationStrings.of('customerNotes', localeCode)}: ${state.customerNotes}',
+                    style: const TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onCall,
+                  icon: const Icon(Icons.call, size: 16),
+                  label: Text(callLabel, overflow: TextOverflow.ellipsis),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: DeliveryAppColors.primaryDark,
+                    side: BorderSide(
+                      color: DeliveryAppColors.primaryDark.withValues(alpha: 0.6),
+                    ),
+                    minimumSize: const Size(0, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onConfirm,
+                  icon: const Icon(Icons.check_circle, size: 16),
+                  label: Text(confirmLabel, overflow: TextOverflow.ellipsis),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: DeliveryAppColors.primaryDark,
+                    foregroundColor: const Color(0xFF06120B),
+                    minimumSize: const Size(0, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: onArrived,
+              icon: const Icon(Icons.near_me, size: 16),
+              label: Text(arrivedLabel),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF94A3B8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TelemetryPanel extends StatelessWidget {
+  final DeliveryNavigationState state;
+  final String localeCode;
+
+  const _TelemetryPanel({required this.state, required this.localeCode});
+
+  (String, Color, IconData) _gpsBadge() {
+    return switch (state.gpsStatus) {
+      DeliveryGpsStatus.active => (
+          DeliveryNavigationStrings.of('gpsActive', localeCode),
+          DeliveryAppColors.primary,
+          Icons.gps_fixed,
         ),
+      DeliveryGpsStatus.searching => (
+          DeliveryNavigationStrings.of('gpsSearching', localeCode),
+          const Color(0xFFFBBF24),
+          Icons.gps_not_fixed,
+        ),
+      DeliveryGpsStatus.disabled => (
+          DeliveryNavigationStrings.of('gpsDisabled', localeCode),
+          const Color(0xFF94A3B8),
+          Icons.gps_off,
+        ),
+      DeliveryGpsStatus.permissionDenied => (
+          DeliveryNavigationStrings.of('gpsPermissionDenied', localeCode),
+          const Color(0xFFEF4444),
+          Icons.location_disabled,
+        ),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (gpsLabel, gpsColor, gpsIcon) = _gpsBadge();
+    final savingMode = !state.isNavigating;
+
+    return Container(
+      key: const Key('dp_navscreen_telemetry'),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D141C),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                DeliveryNavigationStrings.of('liveTelemetry', localeCode),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: gpsColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(gpsIcon, color: gpsColor, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      gpsLabel,
+                      style: TextStyle(
+                        color: gpsColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _SpeedometerGauge(
+                  speedKmh: state.driverSpeedKmh,
+                  localeCode: localeCode,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  children: [
+                    _HeadingCard(
+                      heading: state.driverHeading,
+                      localeCode: localeCode,
+                    ),
+                    const SizedBox(height: 10),
+                    _MetricCard(
+                      label: DeliveryNavigationStrings.of('distanceLeft', localeCode),
+                      value: '${state.distanceToDestinationKm.toStringAsFixed(1)} km',
+                      icon: Icons.route_outlined,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _MetricCard(
+                  label: DeliveryNavigationStrings.of('eta', localeCode),
+                  value: '${state.etaToDestinationMinutes} min',
+                  icon: Icons.timer_outlined,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _BatterySaverCard(
+                  active: savingMode,
+                  localeCode: localeCode,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SpeedometerGauge extends StatelessWidget {
+  final double speedKmh;
+  final String localeCode;
+
+  const _SpeedometerGauge({required this.speedKmh, required this.localeCode});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.speed, color: Color(0xFF64748B), size: 14),
+              const SizedBox(width: 6),
+              Text(
+                DeliveryNavigationStrings.of('speed', localeCode),
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text.rich(
+            TextSpan(
+              text: speedKmh.toStringAsFixed(0),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+              ),
+              children: [
+                TextSpan(
+                  text: ' ${DeliveryNavigationStrings.of('kmh', localeCode)}',
+                  style: const TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeadingCard extends StatelessWidget {
+  final double heading;
+  final String localeCode;
+
+  const _HeadingCard({required this.heading, required this.localeCode});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+      ),
+      child: Row(
+        children: [
+          Transform.rotate(
+            angle: heading * math.pi / 180.0,
+            child: const Icon(
+              Icons.navigation,
+              color: DeliveryAppColors.primary,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                DeliveryNavigationStrings.of('heading', localeCode),
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                '${heading.toStringAsFixed(0)}°',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BatterySaverCard extends StatelessWidget {
+  final bool active;
+  final String localeCode;
+
+  const _BatterySaverCard({required this.active, required this.localeCode});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? DeliveryAppColors.primary : const Color(0xFF64748B);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.battery_saver, color: color, size: 14),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  active
+                      ? DeliveryNavigationStrings.of('batterySaver', localeCode)
+                      : DeliveryNavigationStrings.of('dataSaver', localeCode),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            active ? 'ON' : 'ON',
+            style: TextStyle(
+              color: color,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1206,29 +1925,6 @@ class _OrderSummaryPanel extends StatelessWidget {
               color: DeliveryAppColors.primaryDark,
               title: state.order.dropLabel,
               subtitle: state.order.dropAddress,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _MetricCard(
-                    label: DeliveryNavigationStrings.of('eta', localeCode),
-                    value: '${state.etaMinutes} min',
-                    icon: Icons.timer_outlined,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _MetricCard(
-                    label: DeliveryNavigationStrings.of(
-                      'distanceLeft',
-                      localeCode,
-                    ),
-                    value: '${state.distanceKm.toStringAsFixed(1)} km',
-                    icon: Icons.route_outlined,
-                  ),
-                ),
-              ],
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -1424,20 +2120,20 @@ class _LiveTrafficBar extends StatelessWidget {
     final (String levelLabel, Color levelColor, List<int> heights) =
         switch (state.trafficLevel) {
       DeliveryNavigationTrafficLevel.clear => (
-        DeliveryNavigationStrings.of('trafficClear', localeCode),
-        DeliveryAppColors.primary,
-        const [10, 12, 10, 14, 10, 12, 16],
-      ),
+          DeliveryNavigationStrings.of('trafficClear', localeCode),
+          DeliveryAppColors.primary,
+          const [10, 12, 10, 14, 10, 12, 16],
+        ),
       DeliveryNavigationTrafficLevel.moderate => (
-        DeliveryNavigationStrings.of('trafficModerate', localeCode),
-        const Color(0xFFFBBF24),
-        const [10, 14, 12, 16, 12, 10, 18],
-      ),
+          DeliveryNavigationStrings.of('trafficModerate', localeCode),
+          const Color(0xFFFBBF24),
+          const [10, 14, 12, 16, 12, 10, 18],
+        ),
       DeliveryNavigationTrafficLevel.heavy => (
-        DeliveryNavigationStrings.of('trafficHeavy', localeCode),
-        const Color(0xFFEF4444),
-        const [10, 16, 12, 20, 16, 14, 22],
-      ),
+          DeliveryNavigationStrings.of('trafficHeavy', localeCode),
+          const Color(0xFFEF4444),
+          const [10, 16, 12, 20, 16, 14, 22],
+        ),
     };
 
     return Container(
@@ -1556,7 +2252,7 @@ class _BottomControlBar extends StatelessWidget {
                   const SizedBox(width: 12),
                   exitButton,
                   const SizedBox(width: 12),
-                  _CurrentLocationBadge(localeCode: localeCode),
+                  _CurrentLocationBadge(state: state, localeCode: localeCode),
                 ],
               );
             }
@@ -1576,7 +2272,7 @@ class _BottomControlBar extends StatelessWidget {
                 const SizedBox(height: 10),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: _CurrentLocationBadge(localeCode: localeCode),
+                  child: _CurrentLocationBadge(state: state, localeCode: localeCode),
                 ),
               ],
             );
@@ -1757,12 +2453,17 @@ class _ExitButton extends StatelessWidget {
 }
 
 class _CurrentLocationBadge extends StatelessWidget {
+  final DeliveryNavigationState state;
   final String localeCode;
 
-  const _CurrentLocationBadge({required this.localeCode});
+  const _CurrentLocationBadge({required this.state, required this.localeCode});
 
   @override
   Widget build(BuildContext context) {
+    final coords = state.hasDriverPosition
+        ? '${state.driverLat.toStringAsFixed(5)}, ${state.driverLng.toStringAsFixed(5)}'
+        : DeliveryNavigationStrings.of('locationAddress', localeCode);
+
     return Container(
       key: const Key('dp_navscreen_location_badge'),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1789,11 +2490,11 @@ class _CurrentLocationBadge extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Text(
-                  'Nungambakkam High Rd, Chennai',
+                Text(
+                  coords,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

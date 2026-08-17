@@ -29,7 +29,7 @@ void main() {
             .thenThrow(Exception('TimeoutException'));
         return bloc;
       },
-      act: (bloc) => bloc.add(LoadCouponsEvent('seller_1')),
+      act: (bloc) => bloc.add(const LoadCouponsEvent('seller_1')),
       expect: () => [
         isA<PromotionsCouponsLoading>(),
         isA<PromotionsCouponsError>().having((s) => s.message, 'message', contains('TimeoutException')),

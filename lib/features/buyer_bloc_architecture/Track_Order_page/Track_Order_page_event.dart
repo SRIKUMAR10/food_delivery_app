@@ -27,11 +27,11 @@ class RefreshTrackOrder extends TrackOrderEvent {
 }
 
 class StartTracking extends TrackOrderEvent {
-  final String orderId;
-  const StartTracking({required this.orderId});
+  final String riderId;
+  const StartTracking({required this.riderId});
 
   @override
-  List<Object> get props => [orderId];
+  List<Object> get props => [riderId];
 }
 
 class UpdateDriverLocation extends TrackOrderEvent {
@@ -47,18 +47,31 @@ class UpdateDriverLocation extends TrackOrderEvent {
 class OrderStatusUpdated extends TrackOrderEvent {
   final String orderId;
   final DateTime orderDate;
+  final Map<String, dynamic>? orderData;
 
-  const OrderStatusUpdated({required this.orderId, required this.orderDate});
+  const OrderStatusUpdated({
+    required this.orderId,
+    required this.orderDate,
+    this.orderData,
+  });
 
   @override
-  List<Object> get props => [orderId, orderDate];
+  List<Object> get props => [orderId, orderDate, orderData ?? const {}];
 }
 
 class CancelOrderEvent extends TrackOrderEvent {
   final String orderId;
-  const CancelOrderEvent(this.orderId);
+  final String? reason;
+
+  const CancelOrderEvent(this.orderId, {this.reason});
 
   @override
-  List<Object> get props => [orderId];
+  List<Object> get props => [orderId, reason ?? ''];
 }
 
+class ToggleMapFullScreen extends TrackOrderEvent {
+  const ToggleMapFullScreen();
+
+  @override
+  List<Object> get props => [];
+}

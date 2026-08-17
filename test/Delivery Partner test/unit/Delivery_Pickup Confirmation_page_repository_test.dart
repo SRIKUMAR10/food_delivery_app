@@ -100,6 +100,20 @@ void main() {
       expect(model.paymentType, isEmpty);
     });
 
+    test('arrivedAtStore delegates to service', () async {
+      when(
+        () => mockService.arrivedAtStore(any()),
+      ).thenAnswer((_) async => true);
+
+      final repository = DeliveryPickupConfirmationRepository(
+        service: mockService,
+      );
+      final result = await repository.arrivedAtStore('#ORD12345');
+
+      expect(result, isTrue);
+      verify(() => mockService.arrivedAtStore('#ORD12345')).called(1);
+    });
+
     test('uses an empty order id when raw payload omits it', () async {
       when(
         () => mockService.fetchPickupConfirmationData(any()),

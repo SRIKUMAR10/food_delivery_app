@@ -60,6 +60,8 @@ class AddProductView extends StatefulWidget {
 class _AddProductViewState extends State<AddProductView> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _skuController = TextEditingController();
+  final _subcategoryController = TextEditingController();
   final _priceController = TextEditingController();
   final _discountController = TextEditingController();
   final _descController = TextEditingController();
@@ -67,6 +69,7 @@ class _AddProductViewState extends State<AddProductView> {
   final _caloriesController = TextEditingController();
   final _portionSizeController = TextEditingController();
   final _addonsController = TextEditingController();
+  final _ingredientsController = TextEditingController();
   final _stockController = TextEditingController(text: '0');
   final _alertController = TextEditingController(text: '10');
 
@@ -107,6 +110,12 @@ class _AddProductViewState extends State<AddProductView> {
     _nameController.addListener(
       () => _updateField('name', _nameController.text),
     );
+    _skuController.addListener(
+      () => _updateField('sku', _skuController.text),
+    );
+    _subcategoryController.addListener(
+      () => _updateField('subcategory', _subcategoryController.text),
+    );
     _priceController.addListener(
       () =>
           _updateField('price', double.tryParse(_priceController.text) ?? 0.0),
@@ -134,6 +143,14 @@ class _AddProductViewState extends State<AddProductView> {
     );
   }
 
+  void _autoGenerateSku(String? category) {
+    final cat = (category ?? 'PRD').toUpperCase().replaceAll(RegExp(r'[^A-Z]'), '');
+    final shortCat = cat.length >= 3 ? cat.substring(0, 3) : cat.padRight(3, 'X');
+    final randomSuffix = (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
+    _skuController.text = 'SKU-$shortCat-$randomSuffix';
+    _updateField('sku', _skuController.text);
+  }
+
   void _updateField(String field, dynamic value) {
     setState(() => _isUpdating = true);
     _updateTimer?.cancel();
@@ -146,6 +163,8 @@ class _AddProductViewState extends State<AddProductView> {
   void dispose() {
     _updateTimer?.cancel();
     _nameController.dispose();
+    _skuController.dispose();
+    _subcategoryController.dispose();
     _priceController.dispose();
     _discountController.dispose();
     _descController.dispose();
@@ -153,6 +172,7 @@ class _AddProductViewState extends State<AddProductView> {
     _caloriesController.dispose();
     _portionSizeController.dispose();
     _addonsController.dispose();
+    _ingredientsController.dispose();
     _stockController.dispose();
     _alertController.dispose();
     super.dispose();
@@ -186,10 +206,13 @@ class _AddProductViewState extends State<AddProductView> {
               _discountController.text = pct > 0 ? pct.toStringAsFixed(0) : '';
 
               _descController.text = p.description;
+              _skuController.text = p.sku;
+              _subcategoryController.text = p.subcategory;
               _prepTimeController.text = p.prepTime.toString();
               _caloriesController.text = p.calories.toString();
               _portionSizeController.text = p.portionSize;
               _addonsController.text = p.addons.join(', ');
+              _ingredientsController.text = p.ingredients.join(', ');
               _stockController.text = p.availableStock.toString();
               _alertController.text = p.minimumAlert.toString();
               _isInitialized = true;
@@ -606,6 +629,35 @@ class _AddProductViewState extends State<AddProductView> {
                   maxLength: 60,
                 ),
                 const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: _buildTextField(
+                        controller: _skuController,
+                        label: 'SKU / Product ID',
+                        hint: 'e.g. SKU-BUR-1001',
+                        icon: Icons.qr_code_outlined,
+                        suffixWidget: IconButton(
+                          tooltip: 'Auto Generate SKU',
+                          icon: const Icon(Icons.autorenew, color: _primaryColor),
+                          onPressed: () => _autoGenerateSku(state.category),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 3,
+                      child: _buildTextField(
+                        controller: _subcategoryController,
+                        label: 'Subcategory',
+                        hint: 'e.g. Gourmet Burgers',
+                        icon: Icons.category_outlined,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
                 _buildCategorySelector(context, state),
                 const SizedBox(height: 24),
                 _buildFoodTypeSelector(context, state),
@@ -679,13 +731,28 @@ class _AddProductViewState extends State<AddProductView> {
                 _buildTextField(
                   controller: _addonsController,
                   label: 'Add-ons / Customizations',
-                  hint: 'e.g. Extra Cheese, Extra Mayo',
+                  hint: 'e.g. Extra Cheese (+₹30), Extra Mayo (+₹15), Fries (+₹40)',
                   icon: Icons.add_circle_outline,
-                  helperText: 'Optional',
+                  helperText: 'Optional (e.g. Name (+₹Price) or Name:Price)',
+                ),
+                const SizedBox(height: 24),
+                _buildTextField(
+                  controller: _ingredientsController,
+                  label: 'Ingredients',
+                  hint: 'e.g. Bun, Chicken Patty, Cheese, Lettuce',
+                  icon: Icons.eco_outlined,
+                  helperText: 'Optional (comma-separated)',
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 32),
+
+          _buildSectionHeader(
+            'Variants & Customizations',
+            'Add size variants and add-on groups with pricing',
+          ),
+          _buildVariantsAndCustomizationSection(context, state),
           const SizedBox(height: 32),
 
           _buildSectionHeader(
@@ -765,6 +832,517 @@ class _AddProductViewState extends State<AddProductView> {
         ],
       ),
       child: child,
+    );
+  }
+
+  Widget _buildVariantsAndCustomizationSection(
+    BuildContext context,
+    AddProductPageState state,
+  ) {
+    return _buildCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Variants
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Product Variants / Sizes',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Different sizes or portions (e.g., Small, Medium, Large)',
+                      style: TextStyle(fontSize: 12, color: _textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _showAddVariantDialog(context, state),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Variant'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _primaryColor,
+                  side: const BorderSide(color: _primaryColor),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (state.variants.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ...state.variants.map((v) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _borderColor),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.straighten, size: 16, color: _primaryColor),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            v.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          Text(
+                            'Price: ₹${v.price.toStringAsFixed(0)} • Stock: ${v.stock} ${v.sku.isNotEmpty ? '• SKU: ${v.sku}' : ''}',
+                            style: const TextStyle(fontSize: 12, color: _textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                      onPressed: () {
+                        final updated = List<ProductVariant>.from(state.variants)
+                          ..removeWhere((item) => item.id == v.id);
+                        context.read<AddProductPageBloc>().add(
+                          VariantsUpdatedEvent(updated),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ] else ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _borderColor),
+              ),
+              child: const Center(
+                child: Text(
+                  'No variants added yet. Click "Add Variant" if this item has multiple sizes.',
+                  style: TextStyle(fontSize: 13, color: _textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 24),
+          const Divider(color: _borderColor),
+          const SizedBox(height: 24),
+
+          // Header: Customization Groups
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Customization / Add-on Groups',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Grouped choices (e.g., Choice of Crust, Extra Cheese)',
+                      style: TextStyle(fontSize: 12, color: _textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _showAddCustomizationGroupDialog(context, state),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Group'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _primaryColor,
+                  side: const BorderSide(color: _primaryColor),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (state.customizationGroups.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ...state.customizationGroups.map((group) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          group.groupName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: group.isRequired
+                                ? Colors.red.withValues(alpha: 0.1)
+                                : Colors.blue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            group.isRequired ? 'Required' : 'Optional',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: group.isRequired ? Colors.red : Colors.blue,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          onPressed: () {
+                            final updated = List<ProductCustomizationGroup>.from(state.customizationGroups)
+                              ..removeWhere((g) => g.groupName == group.groupName);
+                            context.read<AddProductPageBloc>().add(
+                              CustomizationGroupsUpdatedEvent(updated),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: group.options.map((opt) {
+                        return Chip(
+                          label: Text(
+                            '${opt.name} (+₹${opt.price.toStringAsFixed(0)})',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          backgroundColor: Colors.white,
+                          side: const BorderSide(color: _borderColor),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ] else ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _borderColor),
+              ),
+              child: const Center(
+                child: Text(
+                  'No add-on groups added yet. Click "Add Group" to add required or optional extras.',
+                  style: TextStyle(fontSize: 13, color: _textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showAddVariantDialog(BuildContext context, AddProductPageState state) {
+    final nameCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+    final stockCtrl = TextEditingController(text: '50');
+    final skuCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Add Product Variant'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Variant / Size Name',
+                    hintText: 'e.g. Regular, Large, 500ml',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: priceCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Price (₹)',
+                    hintText: '0.00',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: stockCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Stock Quantity',
+                    hintText: '50',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: skuCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Variant SKU (Optional)',
+                    hintText: 'e.g. SKU-BUR-REG',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                final name = nameCtrl.text.trim();
+                final price = double.tryParse(priceCtrl.text) ?? 0.0;
+                final stock = int.tryParse(stockCtrl.text) ?? 0;
+                final sku = skuCtrl.text.trim();
+
+                if (name.isEmpty || price <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter variant name and valid price')),
+                  );
+                  return;
+                }
+
+                final newVariant = ProductVariant(
+                  id: 'var_${DateTime.now().millisecondsSinceEpoch}',
+                  name: name,
+                  price: price,
+                  stock: stock,
+                  sku: sku,
+                  isAvailable: true,
+                );
+
+                final updated = List<ProductVariant>.from(state.variants)..add(newVariant);
+                context.read<AddProductPageBloc>().add(VariantsUpdatedEvent(updated));
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Add Variant', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddCustomizationGroupDialog(
+    BuildContext context,
+    AddProductPageState state,
+  ) {
+    final groupNameCtrl = TextEditingController();
+    bool isRequired = false;
+    final List<ProductAddon> options = [];
+    final optNameCtrl = TextEditingController();
+    final optPriceCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text('Add Customization Group'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: groupNameCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Group Name',
+                        hintText: 'e.g. Choose Crust, Extra Toppings',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Required Selection'),
+                      subtitle: const Text('Customer must select an option'),
+                      value: isRequired,
+                      onChanged: (val) {
+                        setDialogState(() => isRequired = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Options in this Group:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    if (options.isNotEmpty) ...[
+                      Wrap(
+                        spacing: 8,
+                        children: options.map((opt) {
+                          return Chip(
+                            label: Text('${opt.name} (+₹${opt.price.toStringAsFixed(0)})'),
+                            onDeleted: () {
+                              setDialogState(() {
+                                options.removeWhere((o) => o.name == opt.name);
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TextField(
+                            controller: optNameCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Option Name',
+                              hintText: 'e.g. Cheese Burst',
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: optPriceCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: InputDecoration(
+                              labelText: 'Price (₹)',
+                              hintText: '40',
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle, color: _primaryColor),
+                          onPressed: () {
+                            final name = optNameCtrl.text.trim();
+                            final price = double.tryParse(optPriceCtrl.text) ?? 0.0;
+                            if (name.isNotEmpty) {
+                              setDialogState(() {
+                                options.add(
+                                  ProductAddon(
+                                    id: 'opt_${DateTime.now().millisecondsSinceEpoch}_${options.length}',
+                                    name: name,
+                                    price: price,
+                                    isAvailable: true,
+                                  ),
+                                );
+                                optNameCtrl.clear();
+                                optPriceCtrl.clear();
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    final groupName = groupNameCtrl.text.trim();
+                    if (groupName.isEmpty || options.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter group name and at least one option')),
+                      );
+                      return;
+                    }
+
+                    final newGroup = ProductCustomizationGroup(
+                      groupName: groupName,
+                      isRequired: isRequired,
+                      minSelect: isRequired ? 1 : 0,
+                      maxSelect: 5,
+                      options: options,
+                    );
+
+                    final updated = List<ProductCustomizationGroup>.from(state.customizationGroups)..add(newGroup);
+                    context.read<AddProductPageBloc>().add(CustomizationGroupsUpdatedEvent(updated));
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('Save Group', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1693,6 +2271,7 @@ class _AddProductViewState extends State<AddProductView> {
     int? maxLength,
     bool enabled = true,
     VoidCallback? onTap,
+    Widget? suffixWidget,
   }) {
     return TextFormField(
       controller: controller,
@@ -1711,9 +2290,10 @@ class _AddProductViewState extends State<AddProductView> {
         hintText: hint,
         helperText: helperText,
         floatingLabelBehavior: FloatingLabelBehavior.always,
-        suffixIcon: controller.text.isNotEmpty && enabled
-            ? const Icon(Icons.check_circle, color: _successColor, size: 20)
-            : null,
+        suffixIcon: suffixWidget ??
+            (controller.text.isNotEmpty && enabled
+                ? const Icon(Icons.check_circle, color: _successColor, size: 20)
+                : null),
         prefixIcon: Padding(
           padding: EdgeInsets.only(
             bottom: maxLines > 1 ? (maxLines * 20.0) : 0,
@@ -1954,6 +2534,10 @@ class _AddProductViewState extends State<AddProductView> {
     final previewProduct = Product(
       id: state.initialProduct?.id ?? 'preview-id',
       name: _nameController.text,
+      sku: _skuController.text,
+      subcategory: _subcategoryController.text,
+      variants: state.variants,
+      customizationGroups: state.customizationGroups,
       price: roundedBasePriceWithGst,
       discountPrice: roundedFinalPrice,
       description: _descController.text,
@@ -2027,6 +2611,10 @@ class _AddProductViewState extends State<AddProductView> {
                     context.read<AddProductPageBloc>().add(
                       SubmitProductEvent(
                         name: _nameController.text,
+                        sku: _skuController.text,
+                        subcategory: _subcategoryController.text,
+                        variants: state.variants,
+                        customizationGroups: state.customizationGroups,
                         price: roundedBasePriceWithGst,
                         basePrice: basePrice,
                         gstPercentage: state.gstPercentage,
@@ -2036,6 +2624,7 @@ class _AddProductViewState extends State<AddProductView> {
                         calories: _caloriesController.text,
                         portionSize: _portionSizeController.text,
                         addons: _addonsController.text,
+                        ingredients: _ingredientsController.text,
                         availableStock: int.tryParse(_stockController.text),
                         minimumAlert: int.tryParse(_alertController.text),
                       ),
@@ -2130,6 +2719,10 @@ class _AddProductViewState extends State<AddProductView> {
                           context.read<AddProductPageBloc>().add(
                             SubmitProductEvent(
                               name: _nameController.text,
+                              sku: _skuController.text,
+                              subcategory: _subcategoryController.text,
+                              variants: state.variants,
+                              customizationGroups: state.customizationGroups,
                               price: roundedBasePriceWithGst,
                               basePrice: basePrice,
                               gstPercentage: state.gstPercentage,
@@ -2139,6 +2732,7 @@ class _AddProductViewState extends State<AddProductView> {
                               calories: _caloriesController.text,
                               portionSize: _portionSizeController.text,
                               addons: _addonsController.text,
+                              ingredients: _ingredientsController.text,
                               availableStock: int.tryParse(_stockController.text),
                               minimumAlert: int.tryParse(_alertController.text),
                             ),

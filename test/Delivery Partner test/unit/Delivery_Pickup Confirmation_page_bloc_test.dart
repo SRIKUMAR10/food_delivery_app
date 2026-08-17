@@ -185,6 +185,32 @@ void main() {
       DeliveryPickupConfirmationPageBloc,
       DeliveryPickupConfirmationPageState
     >(
+      'emits success with updated model when ArrivedAtStoreEvent is added',
+      build: () {
+        when(
+          () => mockRepository.arrivedAtStore(any()),
+        ).thenAnswer((_) async => true);
+        when(
+          () => mockRepository.fetchPickupConfirmationDetails(any()),
+        ).thenAnswer((_) async => mockModel);
+        return DeliveryPickupConfirmationPageBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      act: (bloc) => bloc.add(const ArrivedAtStoreEvent('#ORD12345')),
+      expect: () => [
+        const DeliveryPickupConfirmationPageState(
+          status: PickupConfirmationStatus.success,
+          model: mockModel,
+        ),
+      ],
+    );
+
+    blocTest<
+      DeliveryPickupConfirmationPageBloc,
+      DeliveryPickupConfirmationPageState
+    >(
       'CallCustomerEvent, OpenWhatsAppEvent and CallStoreEvent do not change state',
       build: () => DeliveryPickupConfirmationPageBloc(
         repository: mockRepository,

@@ -79,13 +79,20 @@ class SellerAnalyticsBloc extends Bloc<SellerAnalyticsEvent, SellerAnalyticsStat
     _AnalyticsDataUpdated event,
     Emitter<SellerAnalyticsState> emit,
   ) {
-    if (state is AnalyticsLoaded) {
-      final loaded = state as AnalyticsLoaded;
+    final currentTimeRange = state is AnalyticsLoaded
+        ? (state as AnalyticsLoaded).selectedTimeRange
+        : (state is AnalyticsEmpty
+            ? (state as AnalyticsEmpty).selectedTimeRange
+            : 'Weekly');
+
+    if (event.data.isEmpty) {
+      emit(AnalyticsEmpty(selectedTimeRange: currentTimeRange));
+    } else {
       emit(AnalyticsLoaded(
         data: event.data,
-        selectedTimeRange: loaded.selectedTimeRange,
-        favorites: loaded.favorites,
-        ratingAnalytics: loaded.ratingAnalytics,
+        selectedTimeRange: currentTimeRange,
+        favorites: _lastFavorites,
+        ratingAnalytics: _lastRatingAnalytics,
       ));
     }
   }

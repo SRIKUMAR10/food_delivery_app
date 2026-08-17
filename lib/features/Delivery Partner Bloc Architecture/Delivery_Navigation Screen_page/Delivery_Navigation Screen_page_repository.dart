@@ -6,6 +6,10 @@ abstract class DeliveryNavigationRepositoryBase {
   Future<DeliveryNavigationOrderSummary> fetchOrderSummary();
   Future<DeliveryNavigationRoutePoint> fetchPickup();
   Future<DeliveryNavigationRoutePoint> fetchDrop();
+  Future<Map<String, dynamic>?> fetchActiveOrderData();
+  Stream<Map<String, dynamic>?> watchActiveOrder();
+  Future<Map<String, dynamic>?> fetchPartnerProfile();
+  Stream<Map<String, dynamic>?> watchPartnerProfile();
   Future<bool> getAudioEnabled();
   Future<void> saveAudioEnabled(bool enabled);
   Future<bool> getEmergencyMode();
@@ -16,12 +20,38 @@ abstract class DeliveryNavigationRepositoryBase {
   Future<void> saveLocaleCode(String localeCode);
 }
 
-class DeliveryNavigationRepository
-    implements DeliveryNavigationRepositoryBase {
+class DeliveryNavigationRepository implements DeliveryNavigationRepositoryBase {
   static const String _audioKey = 'dp_nav_audio_enabled';
   static const String _emergencyKey = 'dp_nav_emergency_mode';
   static const String _permissionKey = 'dp_nav_location_permission';
   static const String _localeKey = 'dp_nav_locale';
+
+  // Static default test models for test compatibility.
+  static const DeliveryNavigationOrderSummary defaultOrder =
+      DeliveryNavigationOrderSummary(
+    orderId: '#ORD-789456',
+    pickupLabel: 'Reliance Digital Store',
+    pickupAddress: '23, Whites Road, Royapettah, Chennai',
+    dropLabel: 'Arun Kumar',
+    dropAddress: '45, 3rd Cross Street, Anna Nagar West, Chennai',
+    customerName: 'Arun Kumar',
+    customerPhone: '+91 98765 43210',
+    status: 'On the Way',
+  );
+
+  static const DeliveryNavigationRoutePoint defaultPickup =
+      DeliveryNavigationRoutePoint(
+    label: 'Pickup',
+    address: 'Reliance Digital Store, 23, Whites Road, Royapettah, Chennai',
+    iconKey: 'pickup',
+  );
+
+  static const DeliveryNavigationRoutePoint defaultDrop =
+      DeliveryNavigationRoutePoint(
+    label: 'Drop',
+    address: '45, 3rd Cross Street, Anna Nagar West, Chennai',
+    iconKey: 'drop',
+  );
 
   final SharedPreferences? _prefs;
   final DeliveryNavigationServiceBase _service;
@@ -42,6 +72,29 @@ class DeliveryNavigationRepository
 
   Future<Map<String, dynamic>?> _fetchOrderData() async {
     return await _service.fetchActiveOrder();
+  }
+
+  @override
+  Future<Map<String, dynamic>?> fetchActiveOrderData() async {
+    return await _service.fetchActiveOrder();
+  }
+
+  @override
+  Stream<Map<String, dynamic>?> watchActiveOrder() {
+    return Stream.fromFuture(_service.currentDriverId()).asyncExpand((uid) {
+      if (uid == null || uid.isEmpty) return Stream.value(null);
+      return _service.watchActiveOrder(uid);
+    });
+  }
+
+  @override
+  Future<Map<String, dynamic>?> fetchPartnerProfile() async {
+    return await _service.fetchPartnerProfile();
+  }
+
+  @override
+  Stream<Map<String, dynamic>?> watchPartnerProfile() {
+    return _service.watchPartnerProfile();
   }
 
   @override

@@ -66,6 +66,7 @@ class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
         await _ratingRepository.addSellerReview(
           sellerId: sellerId,
           productId: event.foodId,
+          productName: event.foodName,
           customerId: userId,
           customerName: _authService.currentUserDisplayName ?? 'Anonymous User',
           customerAvatarUrl: _authService.currentUserPhotoUrl ?? '',

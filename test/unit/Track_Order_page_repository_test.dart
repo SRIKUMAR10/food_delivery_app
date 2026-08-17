@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Track_Order_page/Track_Order_page_repository.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Track_Order_page/Track_Order_page_service.dart';
 import 'package:mocktail/mocktail.dart';
+
 
 class MockTrackOrderService extends Mock implements TrackOrderService {}
 
@@ -36,18 +38,13 @@ void main() {
     });
 
     group('startTracking and locationStream', () {
-      const orderId = '456';
-
       test('emits DriverLocation from riderLocationStream', () async {
         final locationController = StreamController<Map<String, dynamic>>();
-        when(() => mockService.getOrderDetails(orderId)).thenAnswer(
-          (_) async => {'riderId': 'rider1'},
-        );
         when(() => mockService.riderLocationStream('rider1')).thenAnswer(
           (_) => locationController.stream,
         );
 
-        await repository.startTracking(orderId);
+        await repository.startTracking('rider1');
 
         locationController.add({'lat': 12.97, 'lng': 77.59});
         locationController.add({'lat': 12.98, 'lng': 77.60});
@@ -64,12 +61,8 @@ void main() {
         await repository.stopTracking();
       });
 
-      test('handles null riderId gracefully', () async {
-        when(() => mockService.getOrderDetails(orderId)).thenAnswer(
-          (_) async => {},
-        );
-
-        await repository.startTracking(orderId);
+      test('handles empty riderId gracefully', () async {
+        await repository.startTracking('');
 
         verifyNever(() => mockService.riderLocationStream(any()));
       });

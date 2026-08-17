@@ -1,5 +1,6 @@
 // Real-Time Firestore Stream Provider Standardized
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
 import 'Track_Order_page_service.dart';
 
@@ -8,11 +9,17 @@ abstract class TrackOrderRepository {
 
   Future<Map<String, dynamic>> fetchOrderDetails(String orderId);
 
-  Future<void> startTracking(String orderId);
+  /// Real-time stream of the order document.
+  Stream<DocumentSnapshot> watchOrder(String orderId);
+
+  /// Real-time stream of the assigned rider / delivery partner location.
+  Stream<Map<String, dynamic>> driverLocationStream(String riderId);
+
+  Future<void> startTracking(String riderId);
 
   Future<void> stopTracking();
 
-  Future<void> cancelOrder(String orderId);
+  Future<void> cancelOrder(String orderId, {String? reason});
 }
 
 class TrackOrderRepositoryImpl implements TrackOrderRepository {
@@ -30,17 +37,25 @@ class TrackOrderRepositoryImpl implements TrackOrderRepository {
   }
 
   @override
+  Stream<DocumentSnapshot> watchOrder(String orderId) {
+    return service.watchOrder(orderId);
+  }
+
+  @override
+  Stream<Map<String, dynamic>> driverLocationStream(String riderId) {
+    return service.riderLocationStream(riderId);
+  }
+
+  @override
   Stream<DriverLocation> get locationStream => _locationController.stream;
 
   @override
-  Future<void> startTracking(String orderId) async {
-    final details = await service.getOrderDetails(orderId);
-    final riderId = details['riderId'] as String?;
-    if (riderId == null || riderId.isEmpty) return;
+  Future<void> startTracking(String riderId) async {
+    if (riderId.isEmpty) return;
 
     await _locationSub?.cancel();
 
-    _locationSub = service.riderLocationStream(riderId).listen(
+    _locationSub = driverLocationStream(riderId).listen(
       (data) {
         if (!_locationController.isClosed) {
           _locationController.add(DriverLocation(
@@ -64,8 +79,8 @@ class TrackOrderRepositoryImpl implements TrackOrderRepository {
   }
 
   @override
-  Future<void> cancelOrder(String orderId) {
-    return service.cancelOrder(orderId);
+  Future<void> cancelOrder(String orderId, {String? reason}) {
+    return service.cancelOrder(orderId, reason: reason);
   }
 
   void dispose() {
@@ -73,4 +88,3 @@ class TrackOrderRepositoryImpl implements TrackOrderRepository {
     _locationController.close();
   }
 }
-

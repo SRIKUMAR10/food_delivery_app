@@ -7,8 +7,6 @@ import 'Delivery_Profile_page_repository.dart';
 import 'Delivery_Profile_page_service.dart';
 import 'Delivery_Profile_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
-import '../../../core/theme/delivery_app_theme.dart';
-import '../../../core/theme/delivery_app_typography.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_bloc.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_event.dart';
 
@@ -23,8 +21,10 @@ class DeliveryProfileStrings {
       'fullName': 'Full Name',
       'phone': 'Phone Number',
       'email': 'Email Address',
+      'address': 'Residential Address',
       'dob': 'Date of Birth',
       'gender': 'Gender',
+      'vehicleInfo': 'Vehicle Information',
       'vehicleType': 'Vehicle Type',
       'vehicleNumber': 'Vehicle Number',
       'licenseNumber': 'License Number',
@@ -58,6 +58,34 @@ class DeliveryProfileStrings {
           'Your profile appears to be empty. Refresh to load your details.',
       'saving': 'Saving...',
       'saved': 'Profile saved successfully',
+      'partnerId': 'Partner ID',
+      'joined': 'Joined',
+      'rating': 'Rating',
+      'deliveries': 'Deliveries',
+      'actions': 'Account Actions',
+      'editProfile': 'Edit Profile',
+      'changePhoto': 'Change Photo',
+      'updateVehicle': 'Update Vehicle',
+      'updatePhone': 'Update Phone',
+      'updateEmail': 'Update Email',
+      'changePassword': 'Change Password',
+      'logout': 'Log Out',
+      'deactivate': 'Deactivate Account',
+      'logoutConfirm': 'Are you sure you want to log out?',
+      'deactivateConfirm':
+          'Are you sure you want to deactivate your delivery account?',
+      'cancel': 'Cancel',
+      'confirm': 'Confirm',
+      'update': 'Update',
+      'currentPassword': 'Current Password',
+      'newPassword': 'New Password',
+      'confirmNewPassword': 'Confirm New Password',
+      'active': 'Active',
+      'inactive': 'Inactive',
+      'approved': 'Approved',
+      'pendingApproval': 'Pending',
+      'inReview': 'In Review',
+      'rejected': 'Rejected',
       'checklist_personalDetails': 'Personal details completed',
       'checklist_vehicleInfo': 'Vehicle information provided',
       'checklist_drivingLicense': 'Driving license uploaded',
@@ -79,8 +107,10 @@ class DeliveryProfileStrings {
       'fullName': 'முழு பெயர்',
       'phone': 'தொலைபேசி எண்',
       'email': 'மின்னஞ்சல்',
+      'address': 'முகவரி',
       'dob': 'பிறந்த தேதி',
       'gender': 'பாலினம்',
+      'vehicleInfo': 'வாகன தகவல்கள்',
       'vehicleType': 'வாகன வகை',
       'vehicleNumber': 'வாகன எண்',
       'licenseNumber': 'உரிம எண்',
@@ -113,6 +143,33 @@ class DeliveryProfileStrings {
       'emptySub': 'உங்கள் சுயவிவரம் காலியாக உள்ளது. விவரங்களை ஏற்ற புதுப்பிக்கவும்.',
       'saving': 'சேமிக்கிறது...',
       'saved': 'சுயவிவரம் வெற்றிகரமாக சேமிக்கப்பட்டது',
+      'partnerId': 'பங்குதாரர் ஐடி',
+      'joined': 'இணைந்தது',
+      'rating': 'மதிப்பீடு',
+      'deliveries': 'டெலிவரிகள்',
+      'actions': 'கணக்கு நடவடிக்கைகள்',
+      'editProfile': 'சுயவிவரத்தைத் திருத்து',
+      'changePhoto': 'புகைப்படத்தை மாற்றவும்',
+      'updateVehicle': 'வாகனத்தை மாற்றவும்',
+      'updatePhone': 'தொலைபேசி எண்ணை மாற்றவும்',
+      'updateEmail': 'மின்னஞ்சலை மாற்றவும்',
+      'changePassword': 'கடவுச்சொல்லை மாற்றவும்',
+      'logout': 'வெளியேறு',
+      'deactivate': 'கணக்கை முடக்கவும்',
+      'logoutConfirm': 'நிச்சயமாக வெளியேற விரும்புகிறீர்களா?',
+      'deactivateConfirm': 'உங்கள் டெலிவரி கணக்கை நிச்சயமாக முடக்க விரும்புகிறீர்களா?',
+      'cancel': 'ரத்துசெய்',
+      'confirm': 'உறுதிப்படுத்து',
+      'update': 'புதுப்பி',
+      'currentPassword': 'தற்போதைய கடவுச்சொல்',
+      'newPassword': 'புதிய கடவுச்சொல்',
+      'confirmNewPassword': 'புதிய கடவுச்சொல்லை உறுதிப்படுத்து',
+      'active': 'செயலில்',
+      'inactive': 'செயலற்றது',
+      'approved': 'அங்கீகரிக்கப்பட்டது',
+      'pendingApproval': 'நிலுவையில்',
+      'inReview': 'பரிசீலனையில்',
+      'rejected': 'நிராகரிக்கப்பட்டது',
       'checklist_personalDetails': 'தனிப்பட்ட விவரங்கள் முடிந்தது',
       'checklist_vehicleInfo': 'வாகன தகவல்கள் வழங்கப்பட்டது',
       'checklist_drivingLicense': 'ஓட்டுநர் உரிமம் பதிவேற்றப்பட்டது',
@@ -129,7 +186,7 @@ class DeliveryProfileStrings {
 
   static String of(String key, String localeCode) {
     final localeMap = _strings[localeCode] ?? _strings['en']!;
-    return localeMap[key] ?? _strings['en']![key]!;
+    return localeMap[key] ?? _strings['en']![key] ?? key;
   }
 }
 
@@ -172,6 +229,7 @@ class DeliveryProfilePageView extends StatelessWidget {
     return BlocConsumer<DeliveryProfileBloc, DeliveryProfileState>(
       listenWhen: (previous, current) =>
           previous.saveStatus != current.saveStatus ||
+          previous.actionMessage != current.actionMessage ||
           (previous.errorMessage != current.errorMessage &&
               current.errorMessage != null),
       listener: (context, state) {
@@ -199,6 +257,14 @@ class DeliveryProfilePageView extends StatelessWidget {
                   .add(const DeliveryNavigationBarTabChangedEvent(0));
             } catch (_) {}
           }
+        } else if (state.actionMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.actionMessage!),
+              backgroundColor: DeliveryAppColors.primaryDark,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         } else if (state.errorMessage != null &&
             state.status != DeliveryProfileStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -240,7 +306,7 @@ class _ProfileLoadedView extends StatelessWidget {
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -258,6 +324,8 @@ class _ProfileLoadedView extends StatelessWidget {
                         const SizedBox(height: 20),
                         _PersonalInfoCard(state: state),
                         const SizedBox(height: 20),
+                        _VehicleInfoCard(state: state),
+                        const SizedBox(height: 20),
                         _DocumentsCard(state: state),
                       ],
                     );
@@ -267,6 +335,8 @@ class _ProfileLoadedView extends StatelessWidget {
                         _CompletionCard(state: state),
                         const SizedBox(height: 20),
                         _VerificationCard(state: state),
+                        const SizedBox(height: 20),
+                        _ProfileActionsCard(state: state),
                         const SizedBox(height: 20),
                         _ChecklistCard(state: state),
                       ],
@@ -278,7 +348,7 @@ class _ProfileLoadedView extends StatelessWidget {
                         children: [
                           Expanded(child: mainColumn),
                           const SizedBox(width: 24),
-                          SizedBox(width: 340, child: sideColumn),
+                          SizedBox(width: 360, child: sideColumn),
                         ],
                       );
                     }
@@ -303,6 +373,8 @@ class _ProfileLoadedView extends StatelessWidget {
                         const SizedBox(height: 20),
                         _VerificationCard(state: state),
                         const SizedBox(height: 20),
+                        _ProfileActionsCard(state: state),
+                        const SizedBox(height: 20),
                         _ChecklistCard(state: state),
                       ],
                     );
@@ -326,23 +398,160 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          DeliveryProfileStrings.of('title', state.localeCode),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
+    final localeCode = state.localeCode;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      DeliveryProfileStrings.of('title', localeCode),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      DeliveryProfileStrings.of('subtitle', localeCode),
+                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _LanguageToggle(state: state),
+            ],
           ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              _HeaderBadge(
+                icon: Icons.badge_outlined,
+                label: state.partnerCode,
+                color: DeliveryAppColors.info,
+              ),
+              _HeaderBadge(
+                icon: Icons.star,
+                label: '${state.rating.toStringAsFixed(1)} ★',
+                color: Colors.amber,
+              ),
+              _HeaderBadge(
+                icon: Icons.moped,
+                label:
+                    '${state.totalDeliveries} ${DeliveryProfileStrings.of('deliveries', localeCode)}',
+                color: DeliveryAppColors.primary,
+              ),
+              if (state.joiningDate.isNotEmpty)
+                _HeaderBadge(
+                  icon: Icons.calendar_today,
+                  label:
+                      '${DeliveryProfileStrings.of('joined', localeCode)}: ${state.joiningDate}',
+                  color: Colors.purpleAccent,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LanguageToggle extends StatelessWidget {
+  final DeliveryProfileState state;
+
+  const _LanguageToggle({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final isTamil = state.localeCode == 'ta';
+    return InkWell(
+      onTap: () {
+        context.read<DeliveryProfileBloc>().add(
+              DeliveryProfileLocaleChangedEvent(isTamil ? 'en' : 'ta'),
+            );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: DeliveryAppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(12),
+          border:
+              Border.all(color: DeliveryAppColors.primary.withValues(alpha: 0.3)),
         ),
-        const SizedBox(height: 6),
-        Text(
-          DeliveryProfileStrings.of('subtitle', state.localeCode),
-          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.language, size: 16, color: DeliveryAppColors.primary),
+            const SizedBox(width: 6),
+            Text(
+              isTamil ? 'தமிழ்' : 'English',
+              style: const TextStyle(
+                color: DeliveryAppColors.primary,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _HeaderBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _HeaderBadge({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -413,7 +622,17 @@ class _ProfileImageSection extends StatelessWidget {
                               fit: BoxFit.cover,
                               width: 92,
                               height: 92,
-                              memCacheWidth: 184, memCacheHeight: 184, placeholder: (_, __) => const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: DeliveryAppColors.primary)), errorWidget: (_, __, ___) => const Icon(
+                              memCacheWidth: 184,
+                              memCacheHeight: 184,
+                              placeholder: (_, __) => const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: DeliveryAppColors.primary,
+                                ),
+                              ),
+                              errorWidget: (_, __, ___) => const Icon(
                                 Icons.person,
                                 color: Color(0xFF061208),
                                 size: 40,
@@ -451,14 +670,26 @@ class _ProfileImageSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  state.fullName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        state.fullName.isEmpty ? 'Delivery Partner' : state.fullName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    _StatusPill(
+                      label: state.isActive
+                          ? DeliveryProfileStrings.of('active', localeCode)
+                          : DeliveryProfileStrings.of('inactive', localeCode),
+                      isActive: state.isActive,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -486,7 +717,7 @@ class _ProfileImageSection extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: DeliveryAppColors.primary,
                     side: const BorderSide(color: DeliveryAppColors.primaryDark),
-                    minimumSize: const Size(140, 48),
+                    minimumSize: const Size(140, 44),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -496,6 +727,34 @@ class _ProfileImageSection extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final String label;
+  final bool isActive;
+
+  const _StatusPill({required this.label, required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isActive ? DeliveryAppColors.success : DeliveryAppColors.error;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -625,6 +884,7 @@ class _PersonalInfoCard extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -656,6 +916,14 @@ class _PersonalInfoCard extends StatelessWidget {
                 field: 'email',
                 keyboardType: TextInputType.emailAddress,
               );
+              final Widget addressField = _textField(
+                context,
+                key: 'dp_profile_address',
+                label: 'address',
+                value: state.address,
+                field: 'address',
+                hint: 'House/Street, Area, City',
+              );
               final Widget dobField = _textField(
                 context,
                 key: 'dp_profile_dob',
@@ -671,36 +939,6 @@ class _PersonalInfoCard extends StatelessWidget {
                 value: state.gender,
                 field: 'gender',
                 options: const ['male', 'female'],
-              );
-              final Widget vehicleTypeField = _dropdown(
-                context,
-                key: 'dp_profile_vehicle_type',
-                label: 'vehicleType',
-                value: state.vehicleType,
-                field: 'vehicleType',
-                options: const ['scooter', 'bike', 'car'],
-              );
-              final Widget vehicleNumberField = _textField(
-                context,
-                key: 'dp_profile_vehicle_number',
-                label: 'vehicleNumber',
-                value: state.vehicleNumber,
-                field: 'vehicleNumber',
-              );
-              final Widget licenseNumberField = _textField(
-                context,
-                key: 'dp_profile_license_number',
-                label: 'licenseNumber',
-                value: state.licenseNumber,
-                field: 'licenseNumber',
-              );
-              final Widget licenseValidTillField = _textField(
-                context,
-                key: 'dp_profile_license_valid_till',
-                label: 'licenseValidTill',
-                value: state.licenseValidTill,
-                field: 'licenseValidTill',
-                hint: 'DD-MM-YYYY',
               );
 
               if (twoColumns) {
@@ -718,31 +956,15 @@ class _PersonalInfoCard extends StatelessWidget {
                       children: [
                         Expanded(child: emailField),
                         const SizedBox(width: 12),
+                        Expanded(child: addressField),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
                         Expanded(child: dobField),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
+                        const SizedBox(width: 12),
                         Expanded(child: genderField),
-                        const SizedBox(width: 12),
-                        Expanded(child: vehicleTypeField),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(child: vehicleNumberField),
-                        const SizedBox(width: 12),
-                        Expanded(child: licenseNumberField),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(child: licenseValidTillField),
-                        const SizedBox(width: 12),
-                        Expanded(child: const SizedBox()),
                       ],
                     ),
                   ],
@@ -757,10 +979,209 @@ class _PersonalInfoCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   emailField,
                   const SizedBox(height: 12),
+                  addressField,
+                  const SizedBox(height: 12),
                   dobField,
                   const SizedBox(height: 12),
                   genderField,
-                  const SizedBox(height: 12),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VehicleInfoCard extends StatelessWidget {
+  final DeliveryProfileState state;
+
+  const _VehicleInfoCard({required this.state});
+
+  void _dispatch(BuildContext context, String field, String value) {
+    context
+        .read<DeliveryProfileBloc>()
+        .add(DeliveryProfileUpdateFieldEvent(field: field, value: value));
+  }
+
+  Widget _textField(
+    BuildContext context, {
+    required String key,
+    required String label,
+    required String value,
+    required String field,
+    String? hint,
+  }) {
+    final String localeCode = state.localeCode;
+    return TextFormField(
+      key: Key(key),
+      initialValue: value,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: DeliveryProfileStrings.of(label, localeCode),
+        hintText: hint,
+        hintStyle: const TextStyle(color: Color(0xFF64748B)),
+        labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+        filled: true,
+        fillColor: const Color(0xFF0B1219),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: DeliveryAppColors.primaryDark),
+        ),
+      ),
+      onChanged: (value) => _dispatch(context, field, value),
+    );
+  }
+
+  Widget _dropdown(
+    BuildContext context, {
+    required String key,
+    required String label,
+    required String value,
+    required String field,
+    required List<String> options,
+  }) {
+    final String localeCode = state.localeCode;
+    final String? normalizedValue = value.isEmpty
+        ? null
+        : options.firstWhere(
+            (opt) => opt.toLowerCase() == value.toLowerCase(),
+            orElse: () => options.first,
+          );
+
+    return DropdownButtonFormField<String>(
+      key: Key(key),
+      initialValue: normalizedValue,
+      dropdownColor: const Color(0xFF0D141C),
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: DeliveryProfileStrings.of(label, localeCode),
+        labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+        filled: true,
+        fillColor: const Color(0xFF0B1219),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: DeliveryAppColors.primaryDark),
+        ),
+      ),
+      items: [
+        for (final option in options)
+          DropdownMenuItem(
+            value: option,
+            child: Text(
+              DeliveryProfileStrings.of(option, localeCode),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+      ],
+      onChanged: (value) {
+        if (value != null) _dispatch(context, field, value);
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String localeCode = state.localeCode;
+    return Container(
+      key: const Key('dp_profile_vehicle_info'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.two_wheeler,
+                  color: DeliveryAppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  DeliveryProfileStrings.of('vehicleInfo', localeCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final bool twoColumns = constraints.maxWidth >= 600;
+              final Widget vehicleTypeField = _dropdown(
+                context,
+                key: 'dp_profile_vehicle_type',
+                label: 'vehicleType',
+                value: state.vehicleType,
+                field: 'vehicleType',
+                options: const ['scooter', 'bike', 'car'],
+              );
+              final Widget vehicleNumberField = _textField(
+                context,
+                key: 'dp_profile_vehicle_number',
+                label: 'vehicleNumber',
+                value: state.vehicleNumber,
+                field: 'vehicleNumber',
+                hint: 'e.g. TN 01 AB 1234',
+              );
+              final Widget licenseNumberField = _textField(
+                context,
+                key: 'dp_profile_license_number',
+                label: 'licenseNumber',
+                value: state.licenseNumber,
+                field: 'licenseNumber',
+                hint: 'DL number',
+              );
+              final Widget licenseValidTillField = _textField(
+                context,
+                key: 'dp_profile_license_valid_till',
+                label: 'licenseValidTill',
+                value: state.licenseValidTill,
+                field: 'licenseValidTill',
+                hint: 'DD-MM-YYYY',
+              );
+
+              if (twoColumns) {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: vehicleTypeField),
+                        const SizedBox(width: 12),
+                        Expanded(child: vehicleNumberField),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: licenseNumberField),
+                        const SizedBox(width: 12),
+                        Expanded(child: licenseValidTillField),
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              return Column(
+                children: [
                   vehicleTypeField,
                   const SizedBox(height: 12),
                   vehicleNumberField,
@@ -813,6 +1234,7 @@ class _DocumentsCard extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -821,6 +1243,7 @@ class _DocumentsCard extends StatelessWidget {
                         color: Color(0xFF94A3B8),
                         fontSize: 12,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -916,6 +1339,7 @@ class _DocumentTile extends StatelessWidget {
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -937,17 +1361,17 @@ class _DocumentTile extends StatelessWidget {
                   onPressed: () => context
                       .read<DeliveryProfileBloc>()
                       .add(DeliveryProfileUploadDocumentEvent(document.id)),
-                  child: Text(
-                    DeliveryProfileStrings.of('upload', localeCode),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: DeliveryAppColors.primary,
                     side: const BorderSide(color: DeliveryAppColors.primaryDark),
-                    minimumSize: const Size(76, 48),
+                    minimumSize: const Size(76, 44),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
+                  ),
+                  child: Text(
+                    DeliveryProfileStrings.of('upload', localeCode),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 )
               else
@@ -983,6 +1407,313 @@ class _DocumentTile extends StatelessWidget {
   }
 }
 
+class _ProfileActionsCard extends StatelessWidget {
+  final DeliveryProfileState state;
+
+  const _ProfileActionsCard({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final localeCode = state.localeCode;
+    return Container(
+      key: const Key('dp_profile_actions_card'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.settings_outlined,
+                  color: DeliveryAppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  DeliveryProfileStrings.of('actions', localeCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _ActionRow(
+            keyName: 'dp_profile_action_change_password',
+            icon: Icons.lock_outline,
+            title: DeliveryProfileStrings.of('changePassword', localeCode),
+            color: Colors.white,
+            onTap: () => _showChangePasswordDialog(context, localeCode),
+          ),
+          const SizedBox(height: 8),
+          _ActionRow(
+            keyName: 'dp_profile_action_logout',
+            icon: Icons.logout,
+            title: DeliveryProfileStrings.of('logout', localeCode),
+            color: Colors.amber,
+            onTap: () => _showLogoutDialog(context, localeCode),
+          ),
+          const SizedBox(height: 8),
+          _ActionRow(
+            keyName: 'dp_profile_action_deactivate',
+            icon: Icons.power_settings_new,
+            title: DeliveryProfileStrings.of('deactivate', localeCode),
+            color: DeliveryAppColors.error,
+            onTap: () => _showDeactivateDialog(context, localeCode),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog(BuildContext context, String localeCode) {
+    final currentPassController = TextEditingController();
+    final newPassController = TextEditingController();
+    final confirmPassController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF161B22),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          DeliveryProfileStrings.of('changePassword', localeCode),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: const Key('dp_change_pass_current'),
+              controller: currentPassController,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: DeliveryProfileStrings.of('currentPassword', localeCode),
+                labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                filled: true,
+                fillColor: const Color(0xFF0B1219),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('dp_change_pass_new'),
+              controller: newPassController,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: DeliveryProfileStrings.of('newPassword', localeCode),
+                labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                filled: true,
+                fillColor: const Color(0xFF0B1219),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('dp_change_pass_confirm'),
+              controller: confirmPassController,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText:
+                    DeliveryProfileStrings.of('confirmNewPassword', localeCode),
+                labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                filled: true,
+                fillColor: const Color(0xFF0B1219),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(
+              DeliveryProfileStrings.of('cancel', localeCode),
+              style: const TextStyle(color: Color(0xFF94A3B8)),
+            ),
+          ),
+          ElevatedButton(
+            key: const Key('dp_change_pass_submit'),
+            onPressed: () {
+              if (newPassController.text != confirmPassController.text) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Passwords do not match'),
+                    backgroundColor: DeliveryAppColors.error,
+                  ),
+                );
+                return;
+              }
+              context.read<DeliveryProfileBloc>().add(
+                    DeliveryProfileChangePasswordEvent(
+                      currentPassword: currentPassController.text.trim(),
+                      newPassword: newPassController.text.trim(),
+                    ),
+                  );
+              Navigator.pop(dialogCtx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DeliveryAppColors.primary,
+              foregroundColor: Colors.black,
+            ),
+            child: Text(
+              DeliveryProfileStrings.of('update', localeCode),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, String localeCode) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF161B22),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          DeliveryProfileStrings.of('logout', localeCode),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          DeliveryProfileStrings.of('logoutConfirm', localeCode),
+          style: const TextStyle(color: Color(0xFF94A3B8)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(
+              DeliveryProfileStrings.of('cancel', localeCode),
+              style: const TextStyle(color: Color(0xFF94A3B8)),
+            ),
+          ),
+          ElevatedButton(
+            key: const Key('dp_logout_confirm_btn'),
+            onPressed: () {
+              context
+                  .read<DeliveryProfileBloc>()
+                  .add(const DeliveryProfileLogoutEvent());
+              Navigator.pop(dialogCtx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
+            ),
+            child: Text(
+              DeliveryProfileStrings.of('logout', localeCode),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeactivateDialog(BuildContext context, String localeCode) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF161B22),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          DeliveryProfileStrings.of('deactivate', localeCode),
+          style: const TextStyle(
+              color: DeliveryAppColors.error, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          DeliveryProfileStrings.of('deactivateConfirm', localeCode),
+          style: const TextStyle(color: Color(0xFF94A3B8)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(
+              DeliveryProfileStrings.of('cancel', localeCode),
+              style: const TextStyle(color: Color(0xFF94A3B8)),
+            ),
+          ),
+          ElevatedButton(
+            key: const Key('dp_deactivate_confirm_btn'),
+            onPressed: () {
+              context
+                  .read<DeliveryProfileBloc>()
+                  .add(const DeliveryProfileDeactivateAccountEvent());
+              Navigator.pop(dialogCtx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DeliveryAppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              DeliveryProfileStrings.of('deactivate', localeCode),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  final String keyName;
+  final IconData icon;
+  final String title;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionRow({
+    required this.keyName,
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: Key(keyName),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0B1219),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right,
+                size: 18, color: color.withValues(alpha: 0.6)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CompletionCard extends StatelessWidget {
   final DeliveryProfileState state;
 
@@ -998,62 +1729,46 @@ class _CompletionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF0D141C),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: DeliveryAppColors.primaryDark.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            DeliveryProfileStrings.of('profileCompletion', localeCode),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Semantics(
-            label: 'Profile completion ${state.completionPercentage}%',
-            child: SizedBox(
-              key: const Key('dp_profile_completion_ring'),
-              width: 116,
-              height: 116,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CircularProgressIndicator(
-                    value: value,
-                    strokeWidth: 10,
-                    strokeCap: StrokeCap.round,
-                    backgroundColor: DeliveryAppColors.surfaceLight,
-                    valueColor:
-                        const AlwaysStoppedAnimation(DeliveryAppColors.primary),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  DeliveryProfileStrings.of('profileCompletion', localeCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${state.completionPercentage}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const Text(
-                          'complete',
-                          style: TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
+              Text(
+                '${state.completionPercentage}%',
+                style: const TextStyle(
+                  color: DeliveryAppColors.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              key: const Key('dp_profile_progress_bar'),
+              value: value,
+              minHeight: 8,
+              backgroundColor: const Color(0xFF1E2631),
+              valueColor:
+                  const AlwaysStoppedAnimation(DeliveryAppColors.primary),
             ),
           ),
         ],
@@ -1070,94 +1785,143 @@ class _VerificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String localeCode = state.localeCode;
-    final rows = <(String, bool, IconData)>[
-      ('phone', state.isPhoneVerified, Icons.phone_outlined),
-      ('email', state.isEmailVerified, Icons.email_outlined),
-      ('identity', state.isIdentityVerified, Icons.verified_user_outlined),
-      ('document', state.isDocumentVerified, Icons.description_outlined),
+    final List<_VerificationItemData> items = [
+      _VerificationItemData(
+        id: 'phone',
+        icon: Icons.phone_android,
+        label: DeliveryProfileStrings.of('phone', localeCode),
+        isVerified: state.isPhoneVerified,
+      ),
+      _VerificationItemData(
+        id: 'email',
+        icon: Icons.alternate_email,
+        label: DeliveryProfileStrings.of('email', localeCode),
+        isVerified: state.isEmailVerified,
+      ),
+      _VerificationItemData(
+        id: 'identity',
+        icon: Icons.person_search,
+        label: DeliveryProfileStrings.of('identity', localeCode),
+        isVerified: state.isIdentityVerified,
+      ),
+      _VerificationItemData(
+        id: 'document',
+        icon: Icons.verified_user,
+        label: DeliveryProfileStrings.of('document', localeCode),
+        isVerified: state.isDocumentVerified,
+      ),
     ];
+
     return Container(
       key: const Key('dp_profile_verification_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            DeliveryProfileStrings.of('verificationStatus', localeCode),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              const Icon(Icons.shield_outlined,
+                  color: DeliveryAppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  DeliveryProfileStrings.of('verificationStatus', localeCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          for (final (key, verified, icon) in rows)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  Icon(
-                    verified ? Icons.check_circle : Icons.cancel,
-                    color: verified
-                        ? DeliveryAppColors.primary
-                        : const Color(0xFFEF4444),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Icon(icon, color: const Color(0xFF94A3B8), size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      DeliveryProfileStrings.of(key, localeCode),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  Flexible(
-                    child: Container(
-                      key: Key('dp_profile_verification_$key'),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: verified
-                            ? DeliveryAppColors.primaryDark.withValues(alpha: 0.12)
-                            : DeliveryAppColors.error.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        verified
-                            ? DeliveryProfileStrings.of(
-                                'verifiedTag',
-                                localeCode,
-                              )
-                            : DeliveryProfileStrings.of(
-                                'notVerifiedTag',
-                                localeCode,
-                              ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: verified
-                              ? DeliveryAppColors.primary
-                              : const Color(0xFFFCA5A5),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+          const SizedBox(height: 14),
+          for (var i = 0; i < items.length; i++) ...[
+            _VerificationRow(item: items[i], localeCode: localeCode),
+            if (i != items.length - 1) const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _VerificationItemData {
+  final String id;
+  final IconData icon;
+  final String label;
+  final bool isVerified;
+
+  const _VerificationItemData({
+    required this.id,
+    required this.icon,
+    required this.label,
+    required this.isVerified,
+  });
+}
+
+class _VerificationRow extends StatelessWidget {
+  final _VerificationItemData item;
+  final String localeCode;
+
+  const _VerificationRow({
+    required this.item,
+    required this.localeCode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isVerified = item.isVerified;
+    final Color badgeColor =
+        isVerified ? DeliveryAppColors.primary : const Color(0xFF64748B);
+    final String badgeText = isVerified
+        ? DeliveryProfileStrings.of('verifiedTag', localeCode)
+        : DeliveryProfileStrings.of('notVerifiedTag', localeCode);
+
+    return Container(
+      key: Key('dp_profile_verif_${item.id}'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1219),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          Icon(item.icon, size: 18, color: badgeColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              item.label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: badgeColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              badgeText,
+              style: TextStyle(
+                color: badgeColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1176,67 +1940,81 @@ class _ChecklistCard extends StatelessWidget {
       key: const Key('dp_profile_checklist_card'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
+        color: DeliveryAppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            DeliveryProfileStrings.of('checklist', localeCode),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          for (final item in state.checklist)
-            Semantics(
-              checked: item.isComplete,
-              label: DeliveryProfileStrings.of(
-                'checklist_${item.id}',
-                localeCode,
-              ),
-              child: Padding(
-                key: Key('dp_profile_checklist_${item.id}'),
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Icon(
-                      item.isComplete
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
-                      color: item.isComplete
-                          ? DeliveryAppColors.primary
-                          : const Color(0xFF64748B),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        DeliveryProfileStrings.of(
-                          'checklist_${item.id}',
-                          localeCode,
-                        ),
-                        style: TextStyle(
-                          color: item.isComplete
-                              ? const Color(0xFFE8FFF3)
-                              : const Color(0xFF94A3B8),
-                          fontSize: 13,
-                          fontWeight: item.isComplete
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  ],
+          Row(
+            children: [
+              const Icon(Icons.fact_check_outlined,
+                  color: DeliveryAppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  DeliveryProfileStrings.of('checklist', localeCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          for (var i = 0; i < state.checklist.length; i++) ...[
+            _ChecklistTile(
+              item: state.checklist[i],
+              localeCode: localeCode,
             ),
+            if (i != state.checklist.length - 1) const SizedBox(height: 8),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _ChecklistTile extends StatelessWidget {
+  final DeliveryProfileChecklistItem item;
+  final String localeCode;
+
+  const _ChecklistTile({
+    required this.item,
+    required this.localeCode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDone = item.isComplete;
+    final String label = DeliveryProfileStrings.of(
+      'checklist_${item.id}',
+      localeCode,
+    );
+    return Row(
+      key: Key('dp_profile_check_${item.id}'),
+      children: [
+        Icon(
+          isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+          color: isDone ? DeliveryAppColors.primary : const Color(0xFF475569),
+          size: 18,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isDone ? Colors.white : const Color(0xFF64748B),
+              fontSize: 12,
+              fontWeight: isDone ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1249,60 +2027,64 @@ class _SaveBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool saving = state.saveStatus == DeliveryProfileSaveStatus.saving;
+    final isSaving = state.saveStatus == DeliveryProfileSaveStatus.saving;
     return Container(
       key: const Key('dp_profile_save_bar'),
-      padding: EdgeInsets.fromLTRB(
-        24,
-        12,
-        24,
-        MediaQuery.of(context).viewPadding.bottom > 0 ? 12 : 16,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF060B11),
+        color: const Color(0xFF0D141C),
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FilledButton.icon(
-            key: const Key('dp_profile_save_button'),
-            onPressed: saving
-                ? null
-                : () =>
-                    context.read<DeliveryProfileBloc>().add(
-                          const DeliveryProfileSaveEvent(),
-                        ),
-            style: FilledButton.styleFrom(
-              backgroundColor: DeliveryAppColors.primaryDark,
-              disabledBackgroundColor: DeliveryAppColors.buttonSecondary,
-              foregroundColor: const Color(0xFF06120B),
-              disabledForegroundColor: const Color(0xFF64748B),
-              minimumSize: const Size(180, 48),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+      child: SafeArea(
+        top: false,
+        child: ElevatedButton(
+          key: const Key('dp_profile_save_button'),
+          onPressed: isSaving
+              ? null
+              : () => context
+                  .read<DeliveryProfileBloc>()
+                  .add(const DeliveryProfileSaveEvent()),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: DeliveryAppColors.primary,
+            foregroundColor: const Color(0xFF061208),
+            minimumSize: const Size.fromHeight(52),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
             ),
-            icon: saving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Color(0xFF64748B),
-                    ),
-                  )
-                : const Icon(Icons.arrow_forward, size: 18),
-            label: Text(
-              saving
-                  ? DeliveryProfileStrings.of('saving', localeCode)
-                  : DeliveryProfileStrings.of('saveContinue', localeCode),
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
+            elevation: 0,
           ),
-        ],
+          child: isSaving
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF061208),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      DeliveryProfileStrings.of('saving', localeCode),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                )
+              : Text(
+                  DeliveryProfileStrings.of('saveContinue', localeCode),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+        ),
       ),
     );
   }
@@ -1310,21 +2092,6 @@ class _SaveBar extends StatelessWidget {
 
 class _ProfileSkeleton extends StatelessWidget {
   const _ProfileSkeleton();
-
-  Widget _box({
-    required double width,
-    required double height,
-    BorderRadius radius = const BorderRadius.all(Radius.circular(10)),
-  }) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
-        borderRadius: radius,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1334,20 +2101,29 @@ class _ProfileSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _box(width: 180, height: 24),
-          const SizedBox(height: 12),
-          _box(width: 300, height: 12),
+          Container(
+            width: 160,
+            height: 24,
+            decoration: BoxDecoration(
+              color: const Color(0xFF161B22),
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
           const SizedBox(height: 24),
-          _box(
-            width: double.infinity,
-            height: 132,
-            radius: BorderRadius.circular(20),
+          Container(
+            height: 120,
+            decoration: BoxDecoration(
+              color: const Color(0xFF161B22),
+              borderRadius: BorderRadius.circular(20),
+            ),
           ),
           const SizedBox(height: 20),
-          _box(
-            width: double.infinity,
-            height: 320,
-            radius: BorderRadius.circular(20),
+          Container(
+            height: 260,
+            decoration: BoxDecoration(
+              color: const Color(0xFF161B22),
+              borderRadius: BorderRadius.circular(20),
+            ),
           ),
         ],
       ),
@@ -1365,52 +2141,44 @@ class _ErrorView extends StatelessWidget {
     final String localeCode = state.localeCode;
     return Center(
       key: const Key('dp_profile_error'),
-      child: SingleChildScrollView(
+      child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: Color(0xFFF87171),
-              size: 48,
-            ),
+            const Icon(Icons.error_outline,
+                color: DeliveryAppColors.error, size: 54),
             const SizedBox(height: 16),
             Text(
               DeliveryProfileStrings.of('errorTitle', localeCode),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                state.errorMessage ?? '',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-              ),
+            Text(
+              state.errorMessage ?? '',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
             ),
             const SizedBox(height: 20),
-            ElevatedButton.icon(
+            ElevatedButton(
               key: const Key('dp_profile_retry'),
               onPressed: () => context
                   .read<DeliveryProfileBloc>()
                   .add(const DeliveryProfileRetryEvent()),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: Text(
-                DeliveryProfileStrings.of('retry', localeCode),
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DeliveryAppColors.primaryDark,
-                foregroundColor: const Color(0xFF06120B),
-                minimumSize: const Size(160, 48),
+                backgroundColor: DeliveryAppColors.primary,
+                foregroundColor: const Color(0xFF061208),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+              ),
+              child: Text(
+                DeliveryProfileStrings.of('retry', localeCode),
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -1430,31 +2198,20 @@ class _EmptyView extends StatelessWidget {
     final String localeCode = state.localeCode;
     return Center(
       key: const Key('dp_profile_empty'),
-      child: SingleChildScrollView(
+      child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0D141C),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.person_off_outlined,
-                color: Color(0xFF64748B),
-                size: 34,
-              ),
-            ),
+            const Icon(Icons.person_off_outlined,
+                color: Color(0xFF64748B), size: 54),
             const SizedBox(height: 16),
             Text(
               DeliveryProfileStrings.of('emptyTitle', localeCode),
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
@@ -1464,23 +2221,21 @@ class _EmptyView extends StatelessWidget {
               style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
             ),
             const SizedBox(height: 20),
-            ElevatedButton.icon(
+            ElevatedButton(
               key: const Key('dp_profile_refresh'),
               onPressed: () => context
                   .read<DeliveryProfileBloc>()
                   .add(const DeliveryProfileRetryEvent()),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: Text(
-                DeliveryProfileStrings.of('refresh', localeCode),
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DeliveryAppColors.primaryDark,
-                foregroundColor: const Color(0xFF06120B),
-                minimumSize: const Size(160, 48),
+                backgroundColor: DeliveryAppColors.primary,
+                foregroundColor: const Color(0xFF061208),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+              ),
+              child: Text(
+                DeliveryProfileStrings.of('refresh', localeCode),
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
           ],

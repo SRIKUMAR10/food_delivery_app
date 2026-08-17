@@ -10,17 +10,26 @@ abstract class DeliveryOrdersRepositoryBase {
     String orderId,
     DeliveryOrderStatus status,
   );
+  Future<bool> acceptOrderAtomic(String orderId);
+  Future<bool> rejectOrder(String orderId, {String? reason});
   Stream<List<DeliveryOrderCardModel>> watchOrders();
 }
 
 class DeliveryOrdersRepository implements DeliveryOrdersRepositoryBase {
   final DeliveryOrdersServiceBase _service;
+  final FirebaseFirestore? _firestore;
+  final FirebaseAuth? _auth;
 
-  DeliveryOrdersRepository({DeliveryOrdersServiceBase? service})
-      : _service = service ?? DeliveryOrdersService(
-          firestore: FirebaseFirestore.instance,
-          auth: FirebaseAuth.instance,
-        );
+  DeliveryOrdersRepository({
+    DeliveryOrdersServiceBase? service,
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : _service = service ?? DeliveryOrdersService(
+          firestore: firestore ?? FirebaseFirestore.instance,
+          auth: auth ?? FirebaseAuth.instance,
+        ),
+        _firestore = firestore,
+        _auth = auth;
 
   List<DeliveryOrderCardModel> _mapOrders(Map<String, dynamic> raw) {
     final rawOrders = raw['orders'] as List? ?? [];
@@ -46,6 +55,18 @@ class DeliveryOrdersRepository implements DeliveryOrdersRepositoryBase {
         expectedTip: (map['expectedTip'] as num?)?.toDouble() ?? 0.0,
         preparationTimeMins: map['preparationTimeMins'] ?? 0,
         deliveryBonus: (map['deliveryBonus'] as num?)?.toDouble() ?? 0.0,
+        restaurantLocation: map['restaurantLocation'] ?? '',
+        customerArea: map['customerArea'] ?? '',
+        estimatedEarnings: (map['estimatedEarnings'] as num?)?.toDouble() ?? 0.0,
+        pickupDistance: (map['pickupDistance'] as num?)?.toDouble() ?? 0.0,
+        deliveryDistance: (map['deliveryDistance'] as num?)?.toDouble() ?? 0.0,
+        sellerId: map['sellerId'] ?? '',
+        customerId: map['customerId'] ?? '',
+        assignedTime: map['assignedTime'] ?? '',
+        acceptedTime: map['acceptedTime'] ?? '',
+        assignmentStatus: map['assignmentStatus'] ?? '',
+        rejectedBy: (map['rejectedBy'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+        isAvailable: map['isAvailable'] ?? false,
       );
     }).toList();
   }
@@ -97,7 +118,8 @@ class DeliveryOrdersRepository implements DeliveryOrdersRepositoryBase {
     };
 
     try {
-      await FirebaseFirestore.instance.collection('orders').doc(orderId).update({
+      final currentFirestore = _firestore ?? FirebaseFirestore.instance;
+      await currentFirestore.collection('orders').doc(orderId).update({
         'status': firestoreStatus,
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -121,6 +143,126 @@ class DeliveryOrdersRepository implements DeliveryOrdersRepositoryBase {
       ),
     );
     return order.copyWith(status: status);
+  }
+
+  @override
+  Future<bool> acceptOrderAtomic(String orderId) async {
+    final currentFirestore = _firestore ?? FirebaseFirestore.instance;
+    final currentAuth = _auth ?? FirebaseAuth.instance;
+    final partnerUid = currentAuth.currentUser?.uid;
+
+    if (partnerUid == null || partnerUid.trim().isEmpty) {
+      throw Exception('You must be signed in to accept an order.');
+    }
+
+    final partnerName = currentAuth.currentUser?.displayName ?? '';
+    final partnerPhone = currentAuth.currentUser?.phoneNumber ?? '';
+
+    final orderRef = currentFirestore.collection('orders').doc(orderId);
+
+    return currentFirestore.runTransaction<bool>((transaction) async {
+      final snapshot = await transaction.get(orderRef);
+      if (!snapshot.exists) return false;
+
+      final data = snapshot.data()!;
+
+      final existingRider =
+          data['riderId'] ?? data['deliveryPartnerId'] ?? data['driverId'];
+      final isHeldByOther = existingRider != null &&
+          existingRider.toString().trim().isNotEmpty &&
+          existingRider.toString() != partnerUid;
+      if (isHeldByOther) return false;
+
+      final rawStatus = data['status']?.toString() ?? '';
+      if (!_isEligibleForAcceptance(rawStatus)) return false;
+
+      transaction.update(orderRef, {
+        'riderId': partnerUid,
+        'riderName': partnerName,
+        'riderPhone': partnerPhone,
+        'deliveryPartnerId': partnerUid,
+        'deliveryPartnerName': partnerName,
+        'deliveryPartnerPhone': partnerPhone,
+        'status': 'OutForDelivery',
+        'deliveryPartnerStatus': 'accepted',
+        'pickupStatus': 'heading_to_store',
+        'deliveryAssignmentStatus': 'assigned',
+        'assignedAt': FieldValue.serverTimestamp(),
+        'acceptedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      final sellerId = (data['sellerId'] ?? data['seller_id'] ?? '').toString();
+      final customerId =
+          (data['customerId'] ?? data['customer_id'] ?? '').toString();
+
+      final assignmentId =
+          currentFirestore.collection('order_assignments').doc().id;
+      transaction.set(
+        currentFirestore.collection('order_assignments').doc(assignmentId),
+        {
+          'assignmentId': assignmentId,
+          'partnerId': partnerUid,
+          'orderId': orderId,
+          'restaurantId': sellerId,
+          'customerId': customerId,
+          'assignedTime': FieldValue.serverTimestamp(),
+          'acceptedTime': FieldValue.serverTimestamp(),
+          'assignmentStatus': 'accepted',
+          'createdAt': FieldValue.serverTimestamp(),
+        },
+      );
+
+      transaction.set(orderRef.collection('assignments').doc(partnerUid), {
+        'partnerId': partnerUid,
+        'orderId': orderId,
+        'restaurantId': sellerId,
+        'customerId': customerId,
+        'assignedTime': FieldValue.serverTimestamp(),
+        'acceptedTime': FieldValue.serverTimestamp(),
+        'assignmentStatus': 'accepted',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      return true;
+    });
+  }
+
+  bool _isEligibleForAcceptance(String status) {
+    switch (status.toLowerCase()) {
+      case 'ready':
+      case 'ready_for_pickup':
+      case 'order_ready':
+      case 'searching_driver':
+      case 'pending':
+      case 'new':
+      case 'neworder':
+      case 'confirmed':
+      case 'preparing':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  @override
+  Future<bool> rejectOrder(String orderId, {String? reason}) async {
+    final currentFirestore = _firestore ?? FirebaseFirestore.instance;
+    final currentAuth = _auth ?? FirebaseAuth.instance;
+    final partnerUid = currentAuth.currentUser?.uid;
+
+    if (partnerUid == null || partnerUid.trim().isEmpty) {
+      throw Exception('You must be signed in to reject an order.');
+    }
+
+    final orderRef = currentFirestore.collection('orders').doc(orderId);
+    await orderRef.update({
+      'rejectedBy': FieldValue.arrayUnion([partnerUid]),
+      'rejectedAt': FieldValue.serverTimestamp(),
+      if (reason != null && reason.trim().isNotEmpty) 'rejectionReason': reason,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return true;
   }
 
   @override

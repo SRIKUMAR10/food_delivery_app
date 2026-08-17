@@ -390,5 +390,137 @@ void main() {
         expect(convData['sellerUnreadCount'], 0);
       });
     });
+
+    group('multi-party delivery conversations', () {
+      test('createConversation writes delivery fields and participants', () async {
+        final conversationId = await repository.createConversation(
+          buyerId: buyerId,
+          buyerName: buyerName,
+          sellerId: '',
+          sellerName: '',
+          deliveryPartnerId: 'rider_1',
+          deliveryPartnerName: 'Ravi Rider',
+          conversationType: 'buyer_delivery',
+        );
+
+        final doc = await fakeFirestore
+            .collection('conversations')
+            .doc(conversationId)
+            .get();
+        final data = doc.data()!;
+
+        expect(data['deliveryPartnerId'], 'rider_1');
+        expect(data['conversationType'], 'buyer_delivery');
+        expect(data['participants'], containsAll([buyerId, 'rider_1']));
+      });
+
+      test('getConversationsForUser with role delivery_partner returns chat', () async {
+        await repository.createConversation(
+          buyerId: buyerId,
+          buyerName: buyerName,
+          sellerId: '',
+          sellerName: '',
+          deliveryPartnerId: 'rider_1',
+          deliveryPartnerName: 'Ravi Rider',
+          conversationType: 'buyer_delivery',
+        );
+
+        final conversations = await repository
+            .getConversationsForUser('rider_1', role: 'delivery_partner')
+            .first;
+
+        expect(conversations.length, 1);
+        expect(conversations.first.deliveryPartnerId, 'rider_1');
+      });
+
+      test('getConversationBetween finds delivery chat by participants', () async {
+        await repository.createConversation(
+          buyerId: buyerId,
+          buyerName: buyerName,
+          sellerId: '',
+          sellerName: '',
+          deliveryPartnerId: 'rider_1',
+          deliveryPartnerName: 'Ravi Rider',
+          conversationType: 'buyer_delivery',
+        );
+
+        final result = await repository.getConversationBetween(
+          user1Id: buyerId,
+          user2Id: 'rider_1',
+          type: 'buyer_delivery',
+        );
+
+        expect(result, isNotNull);
+        expect(result!.conversationType, 'buyer_delivery');
+      });
+
+      test('sendMessage sets receiverId and increments delivery unread count', () async {
+        final conversationId = await repository.createConversation(
+          buyerId: buyerId,
+          buyerName: buyerName,
+          sellerId: '',
+          sellerName: '',
+          deliveryPartnerId: 'rider_1',
+          deliveryPartnerName: 'Ravi Rider',
+          conversationType: 'buyer_delivery',
+        );
+
+        await repository.sendMessage(
+          conversationId: conversationId,
+          text: 'Where are you?',
+          senderId: buyerId,
+          senderRole: 'buyer',
+        );
+
+        final messages = await fakeFirestore
+            .collection('conversations')
+            .doc(conversationId)
+            .collection('messages')
+            .get();
+        expect(messages.docs.single.data()['receiverId'], 'rider_1');
+
+        final convDoc = await fakeFirestore
+            .collection('conversations')
+            .doc(conversationId)
+            .get();
+        expect(convDoc.data()!['deliveryUnreadCount'], 1);
+      });
+    });
+
+    group('markMessagesAsRead', () {
+      test('marks incoming messages read and resets counter', () async {
+        final conversationId = await repository.createConversation(
+          buyerId: buyerId,
+          buyerName: buyerName,
+          sellerId: sellerId,
+          sellerName: sellerName,
+        );
+
+        await repository.sendMessage(
+          conversationId: conversationId,
+          text: 'Hello buyer',
+          senderId: sellerId,
+          senderRole: 'seller',
+        );
+
+        await repository.markMessagesAsRead(
+          conversationId: conversationId,
+          readerId: buyerId,
+        );
+
+        final messages = await fakeFirestore
+            .collection('conversations')
+            .doc(conversationId)
+            .collection('messages')
+            .get();
+        expect(messages.docs.single.data()['isRead'], isTrue);
+
+        final convDoc = await fakeFirestore
+            .collection('conversations')
+            .doc(conversationId)
+            .get();
+        expect(convDoc.data()!['buyerUnreadCount'], 0);
+      });
+    });
   });
 }

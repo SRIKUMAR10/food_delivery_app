@@ -73,6 +73,26 @@ void main() {
     );
 
     blocTest<AddProductPageBloc, AddProductPageState>(
+      'emits sku when SkuChangedEvent is added',
+      build: () => AddProductPageBloc(repository: mockRepository, authService: mockAuthService, sellerRepository: mockSellerRepository),
+      act: (bloc) => bloc.add(const SkuChangedEvent('SKU-PIZ-001')),
+      expect: () => [
+        isA<AddProductPageState>()
+            .having((s) => s.sku, 'sku', 'SKU-PIZ-001'),
+      ],
+    );
+
+    blocTest<AddProductPageBloc, AddProductPageState>(
+      'emits subcategory when SubcategoryChangedEvent is added',
+      build: () => AddProductPageBloc(repository: mockRepository, authService: mockAuthService, sellerRepository: mockSellerRepository),
+      act: (bloc) => bloc.add(const SubcategoryChangedEvent('Gourmet Pizza')),
+      expect: () => [
+        isA<AddProductPageState>()
+            .having((s) => s.subcategory, 'subcategory', 'Gourmet Pizza'),
+      ],
+    );
+
+    blocTest<AddProductPageBloc, AddProductPageState>(
       'emits validation error if SubmitProductEvent is missing fields',
       build: () => AddProductPageBloc(repository: mockRepository, authService: mockAuthService, sellerRepository: mockSellerRepository),
       act: (bloc) => bloc.add(

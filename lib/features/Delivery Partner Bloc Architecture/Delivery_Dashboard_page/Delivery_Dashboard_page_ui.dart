@@ -23,16 +23,37 @@ class DeliveryDashboardStrings {
       'walletBalance': 'Wallet Balance',
       'youAreOnline': 'You are ONLINE',
       'youAreOffline': 'You are OFFLINE',
+      'youAreAvailable': 'You are AVAILABLE',
+      'youAreBusy': 'You are BUSY',
       'youAre': 'You are',
       'onlineStatus': 'ONLINE',
       'offlineStatus': 'OFFLINE',
+      'availableStatus': 'AVAILABLE',
+      'busyStatus': 'BUSY',
+      'statusOffline': 'OFFLINE',
+      'statusOnline': 'ONLINE',
+      'statusAvailable': 'AVAILABLE',
+      'statusBusy': 'BUSY',
       'onlineSub': 'You are visible to receive new delivery requests',
       'offlineSub': 'You will not receive any new order requests',
+      'availableSub': 'Ready & waiting for nearby delivery assignments',
+      'busySub': 'Currently delivering or attending an active order',
       'goOfflineHint': 'Go offline to stop receiving new orders',
       'goOnlineHint': 'Go online to start receiving delivery requests',
       'goOffline': 'Go Offline',
       'goOnline': 'Go Online',
+      'autoOffline': 'Auto Offline',
+      'availableForOrders': 'Available for Orders',
+      'currentlyDelivering': 'Currently Delivering',
+      'todaysSummary': "Today's Summary",
+      'todaysDeliveries': "Today's Deliveries",
+      'completedDeliveries': 'Completed Deliveries',
+      'pendingDeliveries': 'Pending Deliveries',
+      'cancelledDeliveries': 'Cancelled Deliveries',
       'todaysEarnings': "Today's Earnings",
+      'todaysDistance': "Today's Distance",
+      'onlineHours': 'Online Hours',
+      'averageRating': 'Average Rating',
       'completedOrders': 'Completed Orders',
       'activeOrders': 'Active Orders',
       'workingHours': 'Working Hours',
@@ -55,6 +76,13 @@ class DeliveryDashboardStrings {
       'recentActivity': 'Recent Activity',
       'viewAll': 'View All',
       'quickActions': 'Quick Actions',
+      'goOnlineOfflineAction': 'Go Online / Offline',
+      'availableOrdersAction': 'Available Orders',
+      'currentOrderAction': 'Current Order',
+      'earningsAction': 'Earnings',
+      'walletAction': 'Wallet',
+      'incentivesAction': 'Incentives',
+      'profileAction': 'Profile',
       'mapPreview': 'Active Zone Map',
       'liveBadge': 'LIVE',
       'currentLocation': 'Current Location',
@@ -115,17 +143,38 @@ class DeliveryDashboardStrings {
       'walletBalance': 'வாலட் இருப்பு',
       'youAreOnline': 'நீங்கள் ஆன்லைனில் உள்ளீர்கள்',
       'youAreOffline': 'நீங்கள் ஆஃப்லைனில் உள்ளீர்கள்',
+      'youAreAvailable': 'நீங்கள் ஆர்டர்களுக்கு தயாராக உள்ளீர்கள்',
+      'youAreBusy': 'நீங்கள் டெலிவரியில் உள்ளீர்கள்',
       'youAre': 'நீங்கள்',
       'onlineStatus': 'ஆன்லைன்',
       'offlineStatus': 'ஆஃப்லைன்',
+      'availableStatus': 'ஆர்டர்களுக்கு தயார்',
+      'busyStatus': 'வேலையில் உள்ளார்',
+      'statusOffline': 'ஆஃப்லைன்',
+      'statusOnline': 'ஆன்லைன்',
+      'statusAvailable': 'ஆர்டர்களுக்கு தயார்',
+      'statusBusy': 'டெலிவரி செய்கிறார்',
       'onlineSub': 'புதிய டெலிவரி கோரிக்கைகளைப் பெற நீங்கள் தயாராக உள்ளீர்கள்',
       'offlineSub': 'புதிய ஆர்டர் கோரிக்கைகள் எதுவும் உங்களுக்கு வராது',
+      'availableSub': 'அருகிலுள்ள புதிய டெலிவரி ஆர்டர்களுக்கு தயாராக உள்ளார்',
+      'busySub': 'தற்போது செயலில் உள்ள டெலிவரியை முடித்துக் கொண்டிருக்கிறார்',
       'goOfflineHint':
           'புதிய ஆர்டர்களைப் பெறுவதை நிறுத்த ஆஃப்லைனுக்குச் செல்லவும்',
       'goOnlineHint': 'டெலிவரி கோரிக்கைகளைப் பெற ஆன்லைனுக்குச் செல்லவும்',
       'goOffline': 'ஆஃப்லைனுக்குச் செல்',
       'goOnline': 'ஆன்லைனுக்குச் செல்',
+      'autoOffline': 'தானியங்கி ஆஃப்லைன்',
+      'availableForOrders': 'ஆர்டர்கள் பெற தயார்',
+      'currentlyDelivering': 'டெலிவரி செய்கிறார்',
+      'todaysSummary': 'இன்றைய சுருக்கம்',
+      'todaysDeliveries': 'இன்றைய டெலிவரிகள்',
+      'completedDeliveries': 'முடிக்கப்பட்ட டெலிவரிகள்',
+      'pendingDeliveries': 'நிலுவையில் உள்ளவை',
+      'cancelledDeliveries': 'ரத்து செய்யப்பட்டவை',
       'todaysEarnings': 'இன்றைய வருமானம்',
+      'todaysDistance': 'இன்றைய தூரம்',
+      'onlineHours': 'ஆன்லைன் நேரம்',
+      'averageRating': 'சராசரி மதிப்பீடு',
       'completedOrders': 'நிறைவடைந்த ஆர்டர்கள்',
       'activeOrders': 'செயலில் உள்ள ஆர்டர்கள்',
       'workingHours': 'வேலை நேரம்',
@@ -148,6 +197,13 @@ class DeliveryDashboardStrings {
       'recentActivity': 'சமீபத்திய நடவடிக்கைகள்',
       'viewAll': 'அனைத்தையும் பார்',
       'quickActions': 'விரைவு செயல்கள்',
+      'goOnlineOfflineAction': 'ஆன்லைன் / ஆஃப்லைன்',
+      'availableOrdersAction': 'கிடைக்கும் ஆர்டர்கள்',
+      'currentOrderAction': 'தற்போதைய ஆர்டர்',
+      'earningsAction': 'வருமானம்',
+      'walletAction': 'வாலட்',
+      'incentivesAction': 'ஊக்குவிப்புகள்',
+      'profileAction': 'சுயவிவரம்',
       'mapPreview': 'டெலிவரி மண்டல வரைபடம்',
       'liveBadge': 'நேரடி',
       'currentLocation': 'தற்போதைய இடம்',
@@ -928,10 +984,53 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
     required this.pulseAnim,
   });
 
+  Color _getStatusColor(DeliveryPartnerStatusType status) {
+    switch (status) {
+      case DeliveryPartnerStatusType.available:
+        return DeliveryAppColors.primary;
+      case DeliveryPartnerStatusType.busy:
+        return DeliveryAppColors.warning;
+      case DeliveryPartnerStatusType.online:
+        return const Color(0xFF00E5FF);
+      case DeliveryPartnerStatusType.offline:
+        return DeliveryAppColors.error;
+    }
+  }
+
+  String _getStatusText(DeliveryPartnerStatusType status, String lang) {
+    switch (status) {
+      case DeliveryPartnerStatusType.available:
+        return DeliveryDashboardStrings.of('statusAvailable', lang);
+      case DeliveryPartnerStatusType.busy:
+        return DeliveryDashboardStrings.of('statusBusy', lang);
+      case DeliveryPartnerStatusType.online:
+        return DeliveryDashboardStrings.of('statusOnline', lang);
+      case DeliveryPartnerStatusType.offline:
+        return DeliveryDashboardStrings.of('statusOffline', lang);
+    }
+  }
+
+  String _getStatusSubtitle(DeliveryPartnerStatusType status, String lang) {
+    switch (status) {
+      case DeliveryPartnerStatusType.available:
+        return DeliveryDashboardStrings.of('availableSub', lang);
+      case DeliveryPartnerStatusType.busy:
+        return DeliveryDashboardStrings.of('busySub', lang);
+      case DeliveryPartnerStatusType.online:
+        return DeliveryDashboardStrings.of('onlineSub', lang);
+      case DeliveryPartnerStatusType.offline:
+        return DeliveryDashboardStrings.of('offlineSub', lang);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = state.localeCode;
     final isOnline = state.isOnline;
+    final status = state.partnerStatus;
+    final statusColor = _getStatusColor(status);
+    final statusText = _getStatusText(status, lang);
+    final statusSub = _getStatusSubtitle(status, lang);
 
     return Container(
       key: const Key('dp_dashboard_online_card'),
@@ -940,16 +1039,14 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isOnline
-              ? [DeliveryAppColors.successBg, const Color(0xFF07140E)]
+              ? [statusColor.withValues(alpha: 0.12), const Color(0xFF07140E)]
               : [DeliveryAppColors.errorBg, const Color(0xFF140B0D)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(DeliveryAppSpacing.radiusXl),
         border: Border.all(
-          color: isOnline
-              ? DeliveryAppColors.primary.withValues(alpha: 0.3)
-              : DeliveryAppColors.error.withValues(alpha: 0.3),
+          color: statusColor.withValues(alpha: 0.35),
         ),
       ),
       child: Column(
@@ -958,26 +1055,20 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
             scale: isOnline ? pulseAnim : const AlwaysStoppedAnimation(1.0),
             child: Container(
               key: const Key('dp_dashboard_glow_ring'),
-              width: 128,
-              height: 128,
+              width: 136,
+              height: 136,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isOnline
-                    ? DeliveryAppColors.primary.withValues(alpha: 0.1)
-                    : DeliveryAppColors.error.withValues(alpha: 0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 boxShadow: [
                   BoxShadow(
-                    color: isOnline
-                        ? DeliveryAppColors.primary.withValues(alpha: 0.25)
-                        : DeliveryAppColors.error.withValues(alpha: 0.25),
+                    color: statusColor.withValues(alpha: 0.25),
                     blurRadius: 30,
                     spreadRadius: 2,
                   ),
                 ],
                 border: Border.all(
-                  color: isOnline
-                      ? DeliveryAppColors.primary
-                      : DeliveryAppColors.error,
+                  color: statusColor,
                   width: 3,
                 ),
               ),
@@ -997,21 +1088,11 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          isOnline
-                              ? DeliveryDashboardStrings.of(
-                                  'onlineStatus',
-                                  lang,
-                                )
-                              : DeliveryDashboardStrings.of(
-                                  'offlineStatus',
-                                  lang,
-                                ),
-                          style: DeliveryAppTypography.h2.copyWith(
-                            color: isOnline
-                                ? DeliveryAppColors.primary
-                                : DeliveryAppColors.error,
+                          statusText,
+                          style: DeliveryAppTypography.h3.copyWith(
+                            color: statusColor,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: 1.2,
+                            letterSpacing: 1.1,
                           ),
                         ),
                       ],
@@ -1027,7 +1108,7 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
                     child: Switch(
                       value: isOnline,
                       activeThumbColor: DeliveryAppColors.buttonPrimaryText,
-                      activeTrackColor: DeliveryAppColors.primary,
+                      activeTrackColor: statusColor,
                       inactiveThumbColor: DeliveryAppColors.textMuted,
                       inactiveTrackColor: DeliveryAppColors.surfaceLight,
                       onChanged: (val) {
@@ -1043,9 +1124,7 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            isOnline
-                ? DeliveryDashboardStrings.of('onlineSub', lang)
-                : DeliveryDashboardStrings.of('offlineSub', lang),
+            statusSub,
             textAlign: TextAlign.center,
             style: DeliveryAppTypography.bodyMedium.copyWith(
               color: DeliveryAppColors.textSecondary,
@@ -1053,6 +1132,38 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
+          if (isOnline) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                _StatusActionButton(
+                  icon: Icons.check_circle_outline,
+                  label: DeliveryDashboardStrings.of('availableForOrders', lang),
+                  isActive: state.isAvailable && !state.isBusy,
+                  color: DeliveryAppColors.primary,
+                  onTap: () {
+                    context.read<DeliveryDashboardPageBloc>().add(
+                      const DeliveryDashboardSetAvailableEvent(true),
+                    );
+                  },
+                ),
+                _StatusActionButton(
+                  icon: Icons.timelapse,
+                  label: DeliveryDashboardStrings.of('busyStatus', lang),
+                  isActive: state.isBusy,
+                  color: DeliveryAppColors.warning,
+                  onTap: () {
+                    context.read<DeliveryDashboardPageBloc>().add(
+                      DeliveryDashboardSetBusyEvent(!state.isBusy),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -1061,9 +1172,7 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
               Center(
                 child: Icon(
                   isOnline ? Icons.sensors : Icons.sensors_off,
-                  color: isOnline
-                      ? DeliveryAppColors.primary
-                      : DeliveryAppColors.error,
+                  color: statusColor,
                   size: 24,
                 ),
               ),
@@ -1080,9 +1189,9 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
               _StatusChip(
                 icon: Icons.timer_outlined,
                 label: DeliveryDashboardStrings.of('onlineDuration', lang),
-                value: state.workingHours.isEmpty
-                    ? '-'
-                    : state.workingHours,
+                value: state.onlineHours.isEmpty
+                    ? (state.workingHours.isEmpty ? '-' : state.workingHours)
+                    : state.onlineHours,
                 color: isOnline
                     ? DeliveryAppColors.primary
                     : DeliveryAppColors.error,
@@ -1095,109 +1204,227 @@ class _OnlineStatusCenterpiece extends StatelessWidget {
   }
 }
 
+class _StatusActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _StatusActionButton({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? color.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive ? color : Colors.white.withValues(alpha: 0.15),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: isActive ? color : Colors.white.withValues(alpha: 0.6)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: DeliveryAppTypography.caption.copyWith(
+                color: isActive ? color : Colors.white.withValues(alpha: 0.7),
+                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _OnlineStatusMini extends StatelessWidget {
   final DeliveryDashboardState state;
   final Animation<double> pulseAnim;
 
   const _OnlineStatusMini({required this.state, required this.pulseAnim});
 
+  Color _getStatusColor(DeliveryPartnerStatusType status) {
+    switch (status) {
+      case DeliveryPartnerStatusType.available:
+        return DeliveryAppColors.primary;
+      case DeliveryPartnerStatusType.busy:
+        return DeliveryAppColors.warning;
+      case DeliveryPartnerStatusType.online:
+        return const Color(0xFF00E5FF);
+      case DeliveryPartnerStatusType.offline:
+        return DeliveryAppColors.error;
+    }
+  }
+
+  String _getStatusText(DeliveryPartnerStatusType status, String lang) {
+    switch (status) {
+      case DeliveryPartnerStatusType.available:
+        return DeliveryDashboardStrings.of('statusAvailable', lang);
+      case DeliveryPartnerStatusType.busy:
+        return DeliveryDashboardStrings.of('statusBusy', lang);
+      case DeliveryPartnerStatusType.online:
+        return DeliveryDashboardStrings.of('statusOnline', lang);
+      case DeliveryPartnerStatusType.offline:
+        return DeliveryDashboardStrings.of('statusOffline', lang);
+    }
+  }
+
+  String _getStatusSubtitle(DeliveryPartnerStatusType status, String lang) {
+    switch (status) {
+      case DeliveryPartnerStatusType.available:
+        return DeliveryDashboardStrings.of('availableSub', lang);
+      case DeliveryPartnerStatusType.busy:
+        return DeliveryDashboardStrings.of('busySub', lang);
+      case DeliveryPartnerStatusType.online:
+        return DeliveryDashboardStrings.of('onlineSub', lang);
+      case DeliveryPartnerStatusType.offline:
+        return DeliveryDashboardStrings.of('offlineSub', lang);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = state.localeCode;
     final isOnline = state.isOnline;
+    final status = state.partnerStatus;
+    final statusColor = _getStatusColor(status);
+    final statusText = _getStatusText(status, lang);
+    final statusSub = _getStatusSubtitle(status, lang);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isOnline
-              ? [DeliveryAppColors.successBg, const Color(0xFF07140E)]
+              ? [statusColor.withValues(alpha: 0.12), const Color(0xFF07140E)]
               : [DeliveryAppColors.errorBg, const Color(0xFF140B0D)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(DeliveryAppSpacing.radiusXl),
         border: Border.all(
-          color: isOnline
-              ? DeliveryAppColors.primary.withValues(alpha: 0.3)
-              : DeliveryAppColors.error.withValues(alpha: 0.3),
+          color: statusColor.withValues(alpha: 0.35),
         ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          ScaleTransition(
-            scale: isOnline ? pulseAnim : const AlwaysStoppedAnimation(1.0),
-            child: Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isOnline
-                    ? DeliveryAppColors.primary.withValues(alpha: 0.1)
-                    : DeliveryAppColors.error.withValues(alpha: 0.1),
-                border: Border.all(
-                  color: isOnline
-                      ? DeliveryAppColors.primary
-                      : DeliveryAppColors.error,
-                  width: 2,
+          Row(
+            children: [
+              ScaleTransition(
+                scale: isOnline ? pulseAnim : const AlwaysStoppedAnimation(1.0),
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: statusColor.withValues(alpha: 0.1),
+                    border: Border.all(
+                      color: statusColor,
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      isOnline ? Icons.sensors : Icons.sensors_off,
+                      color: statusColor,
+                      size: 24,
+                    ),
+                  ),
                 ),
               ),
-              child: Center(
-                child: Icon(
-                  isOnline ? Icons.sensors : Icons.sensors_off,
-                  color: isOnline
-                      ? DeliveryAppColors.primary
-                      : DeliveryAppColors.error,
-                  size: 24,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      statusText,
+                      style: DeliveryAppTypography.titleMedium.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      statusSub,
+                      style: DeliveryAppTypography.caption.copyWith(
+                        color: DeliveryAppColors.textMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Semantics(
+                label: isOnline ? 'Go offline' : 'Go online',
+                button: true,
+                child: Switch(
+                  value: isOnline,
+                  activeThumbColor: DeliveryAppColors.buttonPrimaryText,
+                  activeTrackColor: statusColor,
+                  inactiveThumbColor: DeliveryAppColors.textMuted,
+                  inactiveTrackColor: DeliveryAppColors.surfaceLight,
+                  onChanged: (val) {
+                    context.read<DeliveryDashboardPageBloc>().add(
+                      DeliveryDashboardToggleOnlineEvent(val),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (isOnline) ...[
+            const SizedBox(height: 12),
+            Row(
               children: [
-                Text(
-                  isOnline
-                      ? DeliveryDashboardStrings.of('youAreOnline', lang)
-                      : DeliveryDashboardStrings.of('youAreOffline', lang),
-                  style: DeliveryAppTypography.titleMedium.copyWith(
-                    color: DeliveryAppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
+                Expanded(
+                  child: _StatusActionButton(
+                    icon: Icons.check_circle_outline,
+                    label: DeliveryDashboardStrings.of('availableForOrders', lang),
+                    isActive: state.isAvailable && !state.isBusy,
+                    color: DeliveryAppColors.primary,
+                    onTap: () {
+                      context.read<DeliveryDashboardPageBloc>().add(
+                        const DeliveryDashboardSetAvailableEvent(true),
+                      );
+                    },
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  isOnline
-                      ? DeliveryDashboardStrings.of('onlineSub', lang)
-                      : DeliveryDashboardStrings.of('offlineSub', lang),
-                  style: DeliveryAppTypography.caption.copyWith(
-                    color: DeliveryAppColors.textMuted,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _StatusActionButton(
+                    icon: Icons.timelapse,
+                    label: DeliveryDashboardStrings.of('busyStatus', lang),
+                    isActive: state.isBusy,
+                    color: DeliveryAppColors.warning,
+                    onTap: () {
+                      context.read<DeliveryDashboardPageBloc>().add(
+                        DeliveryDashboardSetBusyEvent(!state.isBusy),
+                      );
+                    },
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Semantics(
-            label: isOnline ? 'Go offline' : 'Go online',
-            button: true,
-            child: Switch(
-              value: isOnline,
-              activeThumbColor: DeliveryAppColors.buttonPrimaryText,
-              activeTrackColor: DeliveryAppColors.primary,
-              inactiveThumbColor: DeliveryAppColors.textMuted,
-              inactiveTrackColor: DeliveryAppColors.surfaceLight,
-              onChanged: (val) {
-                context.read<DeliveryDashboardPageBloc>().add(
-                  DeliveryDashboardToggleOnlineEvent(val),
-                );
-              },
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -1408,62 +1635,71 @@ class _MetricsGrid extends StatelessWidget {
 
     final cards = [
       _MetricCard(
+        key: const Key('dp_dashboard_metric_todays_deliveries'),
+        title: DeliveryDashboardStrings.of('todaysDeliveries', lang),
+        value: '${state.todayTotalDeliveries}',
+        subtext: '${state.completedDeliveriesCount} ${DeliveryDashboardStrings.of('completedDeliveries', lang)}',
+        icon: Icons.delivery_dining,
+        color: DeliveryAppColors.primary,
+      ),
+      _MetricCard(
+        key: const Key('dp_dashboard_metric_completed'),
+        title: DeliveryDashboardStrings.of('completedDeliveries', lang),
+        value: '${state.completedDeliveriesCount}',
+        subtext: DeliveryDashboardStrings.of('completedDeliveries', lang),
+        icon: Icons.assignment_turned_in,
+        color: DeliveryAppColors.info,
+      ),
+      _MetricCard(
+        key: const Key('dp_dashboard_metric_pending'),
+        title: DeliveryDashboardStrings.of('pendingDeliveries', lang),
+        value: '${state.pendingDeliveriesCount}',
+        subtext: DeliveryDashboardStrings.of('currentlyInProgress', lang),
+        icon: Icons.pending_actions,
+        color: DeliveryAppColors.warning,
+      ),
+      _MetricCard(
+        key: const Key('dp_dashboard_metric_cancelled'),
+        title: DeliveryDashboardStrings.of('cancelledDeliveries', lang),
+        value: '${state.cancelledDeliveriesCount}',
+        subtext: DeliveryDashboardStrings.of('cancelledDeliveries', lang),
+        icon: Icons.cancel_outlined,
+        color: DeliveryAppColors.error,
+      ),
+      _MetricCard(
         key: const Key('dp_dashboard_metric_earnings'),
         title: DeliveryDashboardStrings.of('todaysEarnings', lang),
         value: '₹${state.todayEarnings.toStringAsFixed(2)}',
         subtext:
             '▲ ${state.earningsGrowth}% ${DeliveryDashboardStrings.of('vsYesterday', lang)}',
         icon: Icons.account_balance_wallet,
-        color: DeliveryAppColors.primary,
+        color: const Color(0xFF00E676),
       ),
       _MetricCard(
-        title: DeliveryDashboardStrings.of('completedOrders', lang),
-        value: '${state.todayOrdersCount}',
-        subtext: DeliveryDashboardStrings.of('completedOrders', lang),
-        icon: Icons.assignment_turned_in,
-        color: DeliveryAppColors.info,
-      ),
-      _MetricCard(
-        title: DeliveryDashboardStrings.of('activeOrders', lang),
-        value: '${state.activeOrdersCount}',
-        subtext: DeliveryDashboardStrings.of('currentlyInProgress', lang),
-        icon: Icons.shopping_bag,
-        color: DeliveryAppColors.warning,
-      ),
-      _MetricCard(
-        title: DeliveryDashboardStrings.of('acceptanceRate', lang),
-        value: '${state.acceptanceRate}%',
-        subtext: DeliveryDashboardStrings.of('acceptanceRate', lang),
-        icon: Icons.shield,
-        color: const Color(0xFF26A69A),
-      ),
-      _MetricCard(
-        title: DeliveryDashboardStrings.of('workingHours', lang),
-        value: state.workingHours,
-        subtext: DeliveryDashboardStrings.of('todaysDuration', lang),
-        icon: Icons.access_time_filled,
-        color: const Color(0xFFAB47BC),
-      ),
-      _MetricCard(
-        title: DeliveryDashboardStrings.of('rating', lang),
-        value: '${state.performanceScore} / 5.0',
-        subtext: DeliveryDashboardStrings.of('excellentPerf', lang),
-        icon: Icons.star,
-        color: const Color(0xFFFFD700),
-      ),
-      _MetricCard(
-        title: DeliveryDashboardStrings.of('distanceTravelled', lang),
-        value: '${state.distanceTravelled.toStringAsFixed(1)} km',
+        key: const Key('dp_dashboard_metric_distance'),
+        title: DeliveryDashboardStrings.of('todaysDistance', lang),
+        value: '${state.todayDistance.toStringAsFixed(1)} km',
         subtext: DeliveryDashboardStrings.of('totalDistance', lang),
         icon: Icons.directions_bike,
         color: const Color(0xFF00E5FF),
       ),
       _MetricCard(
-        title: DeliveryDashboardStrings.of('weeklyEarnings', lang),
-        value: '₹${state.weeklyEarnings.toStringAsFixed(0)}',
-        subtext: '${state.weeklyEarnings.toStringAsFixed(0)} ${DeliveryDashboardStrings.of('totalEarnings', lang)}',
-        icon: Icons.trending_up,
-        color: const Color(0xFF7C4DFF),
+        key: const Key('dp_dashboard_metric_online_hours'),
+        title: DeliveryDashboardStrings.of('onlineHours', lang),
+        value: state.onlineHours.isEmpty
+            ? (state.workingHours.isEmpty ? '0h 0m' : state.workingHours)
+            : state.onlineHours,
+        subtext: DeliveryDashboardStrings.of('todaysDuration', lang),
+        icon: Icons.access_time_filled,
+        color: const Color(0xFFAB47BC),
+      ),
+      _MetricCard(
+        key: const Key('dp_dashboard_metric_rating'),
+        title: DeliveryDashboardStrings.of('averageRating', lang),
+        value: '${state.averageRating.toStringAsFixed(1)} ★',
+        subtext: DeliveryDashboardStrings.of('excellentPerf', lang),
+        icon: Icons.star,
+        color: const Color(0xFFFFD700),
       ),
     ];
 
@@ -2518,34 +2754,74 @@ class _QuickActionsCard extends StatelessWidget {
 
     final actions = [
       (
-        icon: Icons.navigation,
-        label: DeliveryDashboardStrings.of('navigate', lang),
-        color: DeliveryAppColors.primary,
+        icon: state.isOnline ? Icons.power_settings_new : Icons.power,
+        label: DeliveryDashboardStrings.of('goOnlineOfflineAction', lang),
+        color: state.isOnline ? DeliveryAppColors.error : DeliveryAppColors.primary,
+        onTap: () {
+          context.read<DeliveryDashboardPageBloc>().add(
+            DeliveryDashboardToggleOnlineEvent(!state.isOnline),
+          );
+        },
       ),
       (
-        icon: Icons.qr_code_scanner,
-        label: DeliveryDashboardStrings.of('scanQr', lang),
+        icon: Icons.list_alt_rounded,
+        label: DeliveryDashboardStrings.of('availableOrdersAction', lang),
         color: DeliveryAppColors.info,
+        onTap: () {
+          context.read<DeliveryDashboardPageBloc>().add(
+            const DeliveryDashboardQuickActionExecutedEvent('available_orders'),
+          );
+        },
+      ),
+      (
+        icon: Icons.delivery_dining_outlined,
+        label: DeliveryDashboardStrings.of('currentOrderAction', lang),
+        color: DeliveryAppColors.warning,
+        onTap: () {
+          context.read<DeliveryDashboardPageBloc>().add(
+            const DeliveryDashboardQuickActionExecutedEvent('current_order'),
+          );
+        },
       ),
       (
         icon: Icons.account_balance_wallet_outlined,
-        label: DeliveryDashboardStrings.of('wallet', lang),
-        color: DeliveryAppColors.warning,
+        label: DeliveryDashboardStrings.of('earningsAction', lang),
+        color: const Color(0xFF7C4DFF),
+        onTap: () {
+          context.read<DeliveryDashboardPageBloc>().add(
+            const DeliveryDashboardQuickActionExecutedEvent('earnings'),
+          );
+        },
       ),
       (
-        icon: Icons.support_agent,
-        label: DeliveryDashboardStrings.of('support', lang),
+        icon: Icons.account_balance,
+        label: DeliveryDashboardStrings.of('walletAction', lang),
+        color: const Color(0xFF00E676),
+        onTap: () {
+          context.read<DeliveryDashboardPageBloc>().add(
+            const DeliveryDashboardQuickActionExecutedEvent('wallet'),
+          );
+        },
+      ),
+      (
+        icon: Icons.stars_rounded,
+        label: DeliveryDashboardStrings.of('incentivesAction', lang),
         color: const Color(0xFFAB47BC),
+        onTap: () {
+          context.read<DeliveryDashboardPageBloc>().add(
+            const DeliveryDashboardQuickActionExecutedEvent('incentives'),
+          );
+        },
       ),
       (
-        icon: Icons.history,
-        label: DeliveryDashboardStrings.of('history', lang),
-        color: const Color(0xFF26A69A),
-      ),
-      (
-        icon: Icons.folder_open,
-        label: DeliveryDashboardStrings.of('documents', lang),
+        icon: Icons.person_outline_rounded,
+        label: DeliveryDashboardStrings.of('profileAction', lang),
         color: const Color(0xFF00E5FF),
+        onTap: () {
+          context.read<DeliveryDashboardPageBloc>().add(
+            const DeliveryDashboardQuickActionExecutedEvent('profile'),
+          );
+        },
       ),
     ];
 
@@ -2566,7 +2842,7 @@ class _QuickActionsCard extends StatelessWidget {
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
-              final itemWidth = (constraints.maxWidth / 6).clamp(96.0, 140.0);
+              final itemWidth = (constraints.maxWidth / 4).clamp(96.0, 150.0);
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -2578,7 +2854,7 @@ class _QuickActionsCard extends StatelessWidget {
                         icon: action.icon,
                         label: action.label,
                         color: action.color,
-                        onTap: () {},
+                        onTap: action.onTap,
                       ),
                     ),
                 ],

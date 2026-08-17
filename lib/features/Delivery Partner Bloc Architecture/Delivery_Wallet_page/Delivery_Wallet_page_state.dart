@@ -2,7 +2,15 @@ import 'package:equatable/equatable.dart';
 
 enum DeliveryWalletStatus { initial, loading, loaded, error, refreshing }
 
-enum DeliveryWalletTransactionFilter { all, income, withdrawals, bonuses }
+enum DeliveryWalletTransactionFilter {
+  all,
+  income,
+  withdrawals,
+  bonuses,
+  incentives,
+  penalties,
+  adjustments,
+}
 
 enum DeliveryWalletPeriod { thisWeek, thisMonth, lastMonth, last3Months }
 
@@ -13,6 +21,8 @@ class DeliveryWalletTransaction extends Equatable {
   final double amount;
   final String type;
   final String status;
+  final String? orderId;
+  final String? description;
 
   const DeliveryWalletTransaction({
     required this.id,
@@ -21,10 +31,23 @@ class DeliveryWalletTransaction extends Equatable {
     required this.amount,
     required this.type,
     required this.status,
+    this.orderId,
+    this.description,
   });
 
+  DateTime get timestamp => date;
+
   @override
-  List<Object?> get props => [id, title, date, amount, type, status];
+  List<Object?> get props => [
+        id,
+        title,
+        date,
+        amount,
+        type,
+        status,
+        orderId,
+        description,
+      ];
 }
 
 class DeliveryPaymentMethod extends Equatable {
@@ -120,10 +143,15 @@ class DeliveryWalletBreakdownSlice extends Equatable {
 
 class DeliveryWalletPageState extends Equatable {
   final DeliveryWalletStatus status;
-  final double walletBalance;
-  final double totalEarnings;
+  final double walletBalance; // Current Balance
+  final double availableBalance;
+  final double pendingBalance;
+  final double withdrawableAmount;
+  final double codAdjustment;
+  final double totalEarnings; // Earnings Credit
   final double totalWithdrawn;
   final double bonusEarnings;
+  final double incentiveEarnings;
   final DeliveryWalletTransactionFilter activeFilter;
   final DeliveryWalletPeriod selectedPeriod;
   final List<DeliveryWalletTransaction> transactions;
@@ -141,9 +169,14 @@ class DeliveryWalletPageState extends Equatable {
   const DeliveryWalletPageState({
     this.status = DeliveryWalletStatus.initial,
     this.walletBalance = 0.0,
+    this.availableBalance = 0.0,
+    this.pendingBalance = 0.0,
+    this.withdrawableAmount = 0.0,
+    this.codAdjustment = 0.0,
     this.totalEarnings = 0.0,
     this.totalWithdrawn = 0.0,
     this.bonusEarnings = 0.0,
+    this.incentiveEarnings = 0.0,
     this.activeFilter = DeliveryWalletTransactionFilter.all,
     this.selectedPeriod = DeliveryWalletPeriod.thisMonth,
     this.transactions = const [],
@@ -158,15 +191,32 @@ class DeliveryWalletPageState extends Equatable {
     this.localeCode = 'en',
   });
 
+  double get currentBalance => walletBalance;
+  double get earningsCredit => totalEarnings;
+
   List<DeliveryWalletTransaction> get filteredTransactions {
     return switch (activeFilter) {
       DeliveryWalletTransactionFilter.all => transactions,
-      DeliveryWalletTransactionFilter.income =>
-        transactions.where((t) => t.type == 'income').toList(),
+      DeliveryWalletTransactionFilter.income => transactions
+          .where((t) =>
+              t.type == 'income' ||
+              t.type == 'delivery_earning' ||
+              t.type == 'earning')
+          .toList(),
       DeliveryWalletTransactionFilter.withdrawals =>
         transactions.where((t) => t.type == 'withdrawal').toList(),
       DeliveryWalletTransactionFilter.bonuses =>
         transactions.where((t) => t.type == 'bonus').toList(),
+      DeliveryWalletTransactionFilter.incentives =>
+        transactions.where((t) => t.type == 'incentive').toList(),
+      DeliveryWalletTransactionFilter.penalties =>
+        transactions.where((t) => t.type == 'penalty').toList(),
+      DeliveryWalletTransactionFilter.adjustments => transactions
+          .where((t) =>
+              t.type == 'adjustment' ||
+              t.type == 'cod_adjustment' ||
+              t.type == 'cod')
+          .toList(),
     };
   }
 
@@ -176,9 +226,14 @@ class DeliveryWalletPageState extends Equatable {
   DeliveryWalletPageState copyWith({
     DeliveryWalletStatus? status,
     double? walletBalance,
+    double? availableBalance,
+    double? pendingBalance,
+    double? withdrawableAmount,
+    double? codAdjustment,
     double? totalEarnings,
     double? totalWithdrawn,
     double? bonusEarnings,
+    double? incentiveEarnings,
     DeliveryWalletTransactionFilter? activeFilter,
     DeliveryWalletPeriod? selectedPeriod,
     List<DeliveryWalletTransaction>? transactions,
@@ -197,9 +252,14 @@ class DeliveryWalletPageState extends Equatable {
     return DeliveryWalletPageState(
       status: status ?? this.status,
       walletBalance: walletBalance ?? this.walletBalance,
+      availableBalance: availableBalance ?? this.availableBalance,
+      pendingBalance: pendingBalance ?? this.pendingBalance,
+      withdrawableAmount: withdrawableAmount ?? this.withdrawableAmount,
+      codAdjustment: codAdjustment ?? this.codAdjustment,
       totalEarnings: totalEarnings ?? this.totalEarnings,
       totalWithdrawn: totalWithdrawn ?? this.totalWithdrawn,
       bonusEarnings: bonusEarnings ?? this.bonusEarnings,
+      incentiveEarnings: incentiveEarnings ?? this.incentiveEarnings,
       activeFilter: activeFilter ?? this.activeFilter,
       selectedPeriod: selectedPeriod ?? this.selectedPeriod,
       transactions: transactions ?? this.transactions,
@@ -219,9 +279,14 @@ class DeliveryWalletPageState extends Equatable {
   List<Object?> get props => [
     status,
     walletBalance,
+    availableBalance,
+    pendingBalance,
+    withdrawableAmount,
+    codAdjustment,
     totalEarnings,
     totalWithdrawn,
     bonusEarnings,
+    incentiveEarnings,
     activeFilter,
     selectedPeriod,
     transactions,
@@ -236,3 +301,4 @@ class DeliveryWalletPageState extends Equatable {
     localeCode,
   ];
 }
+

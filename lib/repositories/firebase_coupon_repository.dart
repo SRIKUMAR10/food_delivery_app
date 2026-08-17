@@ -30,11 +30,12 @@ class FirebaseCouponRepository implements ICouponRepository {
   @override
   Future<CouponModel?> validateAndApplyCoupon(
       String couponCode, String sellerId, double orderTotal) async {
+    final cleanCode = couponCode.trim().toUpperCase();
     final snapshot = await _firestore
         .collection('sellers')
         .doc(sellerId)
         .collection('coupons')
-        .where('code', isEqualTo: couponCode)
+        .where('code', isEqualTo: cleanCode)
         .where('isActive', isEqualTo: true)
         .limit(1)
         .get();

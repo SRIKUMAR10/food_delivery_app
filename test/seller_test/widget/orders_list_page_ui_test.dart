@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/core/models/order_status.dart';
+import 'package:food_delivery_app/core/models/order_model.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_ui.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/orders_list/orders_list_page_event.dart';
@@ -21,30 +23,63 @@ void main() {
 
   group('OrdersListPage UI Tests', () {
     late MockOrdersListRepository mockRepository;
+    late MockChatRepository mockChatRepository;
+
+    final testOrders = [
+      OrderModel(
+        id: 'ord_101',
+        customerId: 'cust_1',
+        customerName: 'Aarav Patel',
+        sellerId: 'seller_id',
+        status: OrderStatus.newOrder,
+        amount: 450.0,
+        timestamp: DateTime.now(),
+      ),
+    ];
 
     setUp(() {
       mockRepository = MockOrdersListRepository();
-      when(() => mockRepository.getSellerOrdersStream(any())).thenAnswer((_) => Stream.value([]));
+      mockChatRepository = MockChatRepository();
+      when(() => mockRepository.getSellerOrdersStream(any())).thenAnswer((_) => Stream.value(testOrders));
     });
 
     Widget createWidgetUnderTest() {
       return MaterialApp(
-        home: BlocProvider<OrdersListBloc>(
-          create: (_) => OrdersListBloc(
-            repository: mockRepository,
-            chatRepository: MockChatRepository(),
-          )..add(const LoadOrdersStream('seller_id')),
-          child: const OrdersListView(),
+        home: MultiRepositoryProvider(
+          providers: [
+            RepositoryProvider<IOrderRepository>.value(value: mockRepository),
+            RepositoryProvider<IChatRepository>.value(value: mockChatRepository),
+          ],
+          child: BlocProvider<OrdersListBloc>(
+            create: (_) => OrdersListBloc(
+              repository: mockRepository,
+              chatRepository: mockChatRepository,
+            )..add(const LoadOrdersStream('seller_id')),
+            child: const OrdersListView(),
+          ),
         ),
       );
     }
 
-    testWidgets('renders Orders List title and Bottom Nav', (tester) async {
+    testWidgets('renders Order Management header and Filter Chips', (tester) async {
       await tester.pumpWidget(createWidgetUnderTest());
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('Orders'), findsWidgets);
+      expect(find.text('Order Management'), findsOneWidget);
+      expect(find.text('Placed (New)'), findsOneWidget);
+      expect(find.text('Accepted'), findsOneWidget);
+      expect(find.text('Preparing'), findsOneWidget);
+    });
+
+    testWidgets('renders order card with action buttons', (tester) async {
+      await tester.pumpWidget(createWidgetUnderTest());
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('#ord_101'), findsOneWidget);
+      expect(find.text('Accept'), findsOneWidget);
+      expect(find.text('Reject'), findsOneWidget);
     });
   });
 }

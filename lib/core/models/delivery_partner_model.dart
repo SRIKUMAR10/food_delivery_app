@@ -13,6 +13,11 @@ class DeliveryPartnerModel {
   final bool isVerified;
   final bool isPhoneVerified;
   final bool isOnline;
+  final bool isAvailable;
+  final bool isBusy;
+  final String? currentOrderId;
+  final DateTime? lastActiveAt;
+  final Map<String, dynamic>? lastLocation;
   final String? vehicleType;
   final String? vehicleNumber;
   final String? drivingLicense;
@@ -20,11 +25,20 @@ class DeliveryPartnerModel {
   final String kycStatus;
   final double totalEarnings;
   final int totalDeliveries;
+  final double cashCollected;
+  final double cashInHand;
+  final double cashSubmitted;
+  final String reconciliationStatus;
   final double rating;
   final String? deviceToken;
   final String? appVersion;
   final bool isEmailVerified;
   final int profileCompletion;
+  final String? address;
+  final String? idProofUrl;
+  final String? vehicleRcUrl;
+  final String? insuranceUrl;
+  final String? panNumber;
   final String? password;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -38,6 +52,11 @@ class DeliveryPartnerModel {
     this.displayName = '',
     this.email,
     this.photoUrl,
+    this.address,
+    this.idProofUrl,
+    this.vehicleRcUrl,
+    this.insuranceUrl,
+    this.panNumber,
     this.password,
     this.role = 'delivery_partner',
     this.status = 'pending',
@@ -47,6 +66,11 @@ class DeliveryPartnerModel {
     this.isEmailVerified = false,
     this.profileCompletion = 0,
     this.isOnline = false,
+    this.isAvailable = false,
+    this.isBusy = false,
+    this.currentOrderId,
+    this.lastActiveAt,
+    this.lastLocation,
     this.vehicleType,
     this.vehicleNumber,
     this.drivingLicense,
@@ -54,6 +78,10 @@ class DeliveryPartnerModel {
     this.kycStatus = 'pending',
     this.totalEarnings = 0.0,
     this.totalDeliveries = 0,
+    this.cashCollected = 0.0,
+    this.cashInHand = 0.0,
+    this.cashSubmitted = 0.0,
+    this.reconciliationStatus = 'balanced',
     this.rating = 0.0,
     this.deviceToken,
     this.appVersion,
@@ -62,6 +90,34 @@ class DeliveryPartnerModel {
     this.lastLogin,
     this.lastLogout,
   });
+
+  /// Partner identification code formatted for UI (e.g. DP-1A2B3C)
+  String get partnerCode {
+    if (id.isEmpty) return 'DP-000000';
+    final cleanId = id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    final code = cleanId.length >= 6 ? cleanId.substring(0, 6) : cleanId.padRight(6, '0');
+    return 'DP-${code.toUpperCase()}';
+  }
+
+  /// Formatted joining date for UI (e.g. 15 Aug 2024)
+  String get formattedJoiningDate {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final monthName = months[(createdAt.month - 1).clamp(0, 11)];
+    return '${createdAt.day} $monthName ${createdAt.year}';
+  }
+
+  bool get isApproved => status == 'approved' || kycStatus == 'approved';
+  bool get isKycPending => kycStatus == 'pending';
+  bool get isKycInReview => kycStatus == 'in_review';
+  bool get isKycApproved => kycStatus == 'approved';
+  bool get isKycRejected => kycStatus == 'rejected';
+
+  bool get hasPendingCashSubmission => cashInHand > 0;
+  bool get isReconciliationBalanced => reconciliationStatus == 'balanced';
+  bool get isReconciliationOverdue => reconciliationStatus == 'overdue';
 
   /// Safely parses Firestore `Timestamp`, ISO-8601 `String`, or `int`
   /// (milliseconds since epoch) values into [DateTime] without runtime casts.
@@ -79,6 +135,10 @@ class DeliveryPartnerModel {
 
   factory DeliveryPartnerModel.fromFirestore(DocumentSnapshot snapshot) {
     final data = snapshot.data() as Map<String, dynamic>?;
+    final isOnlineVal = data?['isOnline'] ?? false;
+    final isAvailableVal = data?['isAvailable'] ?? isOnlineVal;
+    final isBusyVal = data?['isBusy'] ?? false;
+
     return DeliveryPartnerModel(
       id: snapshot.id,
       phoneNumber: data?['phoneNumber'] ?? '',
@@ -86,15 +146,27 @@ class DeliveryPartnerModel {
       displayName: data?['displayName'] ?? '',
       email: data?['email'],
       photoUrl: data?['photoUrl'],
-      password: data?['password'],
+      address: data?['address'],
+      idProofUrl: data?['idProofUrl'] ?? data?['aadhaarUrl'],
+      vehicleRcUrl: data?['vehicleRcUrl'],
+      insuranceUrl: data?['insuranceUrl'],
+      panNumber: data?['panNumber'],
+      password: null, // Zero plain text password storage in Firestore
       role: data?['role'] ?? 'delivery_partner',
-      status: data?['status'] ?? 'pending',
+      status: data?['status'] ?? (isOnlineVal ? (isBusyVal ? 'busy' : 'available') : 'offline'),
       isActive: data?['isActive'] ?? false,
       isVerified: data?['isVerified'] ?? false,
       isPhoneVerified: data?['isPhoneVerified'] ?? true,
       isEmailVerified: data?['isEmailVerified'] ?? false,
       profileCompletion: (data?['profileCompletion'] as num?)?.toInt() ?? 0,
-      isOnline: data?['isOnline'] ?? false,
+      isOnline: isOnlineVal,
+      isAvailable: isAvailableVal,
+      isBusy: isBusyVal,
+      currentOrderId: data?['currentOrderId'],
+      lastActiveAt: _parseDateTime(data?['lastActiveAt']),
+      lastLocation: data?['lastLocation'] is Map<String, dynamic>
+          ? data!['lastLocation'] as Map<String, dynamic>
+          : null,
       vehicleType: data?['vehicleType'],
       vehicleNumber: data?['vehicleNumber'],
       drivingLicense: data?['drivingLicense'],
@@ -102,6 +174,10 @@ class DeliveryPartnerModel {
       kycStatus: data?['kycStatus'] ?? 'pending',
       totalEarnings: (data?['totalEarnings'] as num?)?.toDouble() ?? 0.0,
       totalDeliveries: (data?['totalDeliveries'] as num?)?.toInt() ?? 0,
+      cashCollected: (data?['cashCollected'] as num?)?.toDouble() ?? 0.0,
+      cashInHand: (data?['cashInHand'] as num?)?.toDouble() ?? 0.0,
+      cashSubmitted: (data?['cashSubmitted'] as num?)?.toDouble() ?? 0.0,
+      reconciliationStatus: data?['reconciliationStatus'] ?? 'balanced',
       rating: (data?['rating'] as num?)?.toDouble() ?? 0.0,
       deviceToken: data?['deviceToken'],
       appVersion: data?['appVersion'],
@@ -119,7 +195,12 @@ class DeliveryPartnerModel {
       'displayName': displayName,
       'email': email,
       'photoUrl': photoUrl,
-      'password': password,
+      'address': address,
+      'idProofUrl': idProofUrl,
+      'vehicleRcUrl': vehicleRcUrl,
+      'insuranceUrl': insuranceUrl,
+      'panNumber': panNumber,
+      // Note: password is never serialized to Firestore for security
       'role': role,
       'status': status,
       'isActive': isActive,
@@ -128,6 +209,11 @@ class DeliveryPartnerModel {
       'isEmailVerified': isEmailVerified,
       'profileCompletion': profileCompletion,
       'isOnline': isOnline,
+      'isAvailable': isAvailable,
+      'isBusy': isBusy,
+      if (currentOrderId != null) 'currentOrderId': currentOrderId,
+      if (lastActiveAt != null) 'lastActiveAt': Timestamp.fromDate(lastActiveAt!),
+      if (lastLocation != null) 'lastLocation': lastLocation,
       'vehicleType': vehicleType,
       'vehicleNumber': vehicleNumber,
       'drivingLicense': drivingLicense,
@@ -135,13 +221,17 @@ class DeliveryPartnerModel {
       'kycStatus': kycStatus,
       'totalEarnings': totalEarnings,
       'totalDeliveries': totalDeliveries,
+      'cashCollected': cashCollected,
+      'cashInHand': cashInHand,
+      'cashSubmitted': cashSubmitted,
+      'reconciliationStatus': reconciliationStatus,
       'rating': rating,
       'deviceToken': deviceToken,
       'appVersion': appVersion,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
-      'lastLogin': lastLogin != null ? Timestamp.fromDate(lastLogin!) : null,
-      'lastLogout': lastLogout != null ? Timestamp.fromDate(lastLogout!) : null,
+      if (lastLogin != null) 'lastLogin': Timestamp.fromDate(lastLogin!),
+      if (lastLogout != null) 'lastLogout': Timestamp.fromDate(lastLogout!),
     };
   }
 
@@ -152,6 +242,11 @@ class DeliveryPartnerModel {
     String? displayName,
     String? email,
     String? photoUrl,
+    String? address,
+    String? idProofUrl,
+    String? vehicleRcUrl,
+    String? insuranceUrl,
+    String? panNumber,
     String? password,
     String? role,
     String? status,
@@ -161,6 +256,11 @@ class DeliveryPartnerModel {
     bool? isEmailVerified,
     int? profileCompletion,
     bool? isOnline,
+    bool? isAvailable,
+    bool? isBusy,
+    String? currentOrderId,
+    DateTime? lastActiveAt,
+    Map<String, dynamic>? lastLocation,
     String? vehicleType,
     String? vehicleNumber,
     String? drivingLicense,
@@ -168,6 +268,10 @@ class DeliveryPartnerModel {
     String? kycStatus,
     double? totalEarnings,
     int? totalDeliveries,
+    double? cashCollected,
+    double? cashInHand,
+    double? cashSubmitted,
+    String? reconciliationStatus,
     double? rating,
     String? deviceToken,
     String? appVersion,
@@ -183,6 +287,11 @@ class DeliveryPartnerModel {
       displayName: displayName ?? this.displayName,
       email: email ?? this.email,
       photoUrl: photoUrl ?? this.photoUrl,
+      address: address ?? this.address,
+      idProofUrl: idProofUrl ?? this.idProofUrl,
+      vehicleRcUrl: vehicleRcUrl ?? this.vehicleRcUrl,
+      insuranceUrl: insuranceUrl ?? this.insuranceUrl,
+      panNumber: panNumber ?? this.panNumber,
       password: password ?? this.password,
       role: role ?? this.role,
       status: status ?? this.status,
@@ -192,6 +301,11 @@ class DeliveryPartnerModel {
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       profileCompletion: profileCompletion ?? this.profileCompletion,
       isOnline: isOnline ?? this.isOnline,
+      isAvailable: isAvailable ?? this.isAvailable,
+      isBusy: isBusy ?? this.isBusy,
+      currentOrderId: currentOrderId ?? this.currentOrderId,
+      lastActiveAt: lastActiveAt ?? this.lastActiveAt,
+      lastLocation: lastLocation ?? this.lastLocation,
       vehicleType: vehicleType ?? this.vehicleType,
       vehicleNumber: vehicleNumber ?? this.vehicleNumber,
       drivingLicense: drivingLicense ?? this.drivingLicense,
@@ -199,6 +313,10 @@ class DeliveryPartnerModel {
       kycStatus: kycStatus ?? this.kycStatus,
       totalEarnings: totalEarnings ?? this.totalEarnings,
       totalDeliveries: totalDeliveries ?? this.totalDeliveries,
+      cashCollected: cashCollected ?? this.cashCollected,
+      cashInHand: cashInHand ?? this.cashInHand,
+      cashSubmitted: cashSubmitted ?? this.cashSubmitted,
+      reconciliationStatus: reconciliationStatus ?? this.reconciliationStatus,
       rating: rating ?? this.rating,
       deviceToken: deviceToken ?? this.deviceToken,
       appVersion: appVersion ?? this.appVersion,

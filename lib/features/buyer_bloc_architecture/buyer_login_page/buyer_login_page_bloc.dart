@@ -21,14 +21,22 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
     BuyerLoginPhoneChanged event,
     Emitter<BuyerLoginState> emit,
   ) {
-    emit(state.copyWith(phone: event.phone));
+    emit(state.copyWith(
+      phone: event.phone,
+      status: BuyerLoginStatus.initial,
+      errorMessage: null,
+    ));
   }
 
   void _onPasswordChanged(
     BuyerLoginPasswordChanged event,
     Emitter<BuyerLoginState> emit,
   ) {
-    emit(state.copyWith(password: event.password));
+    emit(state.copyWith(
+      password: event.password,
+      status: BuyerLoginStatus.initial,
+      errorMessage: null,
+    ));
   }
 
   void _onTogglePasswordVisibility(

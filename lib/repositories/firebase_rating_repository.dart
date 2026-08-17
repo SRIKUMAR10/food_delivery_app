@@ -72,10 +72,14 @@ class FirebaseRatingRepository implements IRatingRepository {
     required String customerAvatarUrl,
     required double rating,
     required String content,
+    required String productName,
   }) async {
+    // The seller notification + aggregate rating recalculation is delegated to
+    // the `onReviewCreated` Cloud Function to keep a single authoritative path.
     await firestore.collection('reviews').add({
       'sellerId': sellerId,
       'productId': productId,
+      'productName': productName,
       'customerId': customerId,
       'customerName': customerName,
       'customerAvatarUrl': customerAvatarUrl,
@@ -99,10 +103,147 @@ class FirebaseRatingRepository implements IRatingRepository {
         .collection('reviews')
         .orderBy('timestamp', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-              final data = doc.data();
-              data['reviewerId'] = doc.id;
-              return data;
-            }).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => _normalizeProductReview(doc.id, doc.data()))
+            .toList());
   }
+
+  @override
+  Stream<Map<String, dynamic>> watchProductRatingSummary(String productId) {
+    return firestore
+        .collection('products')
+        .doc(productId)
+        .collection('reviews')
+        .snapshots()
+        .map((snapshot) {
+      final ratings = snapshot.docs
+          .map((doc) => _toDouble(doc.data()['rating']))
+          .toList();
+
+      var five = 0;
+      var four = 0;
+      var three = 0;
+      var two = 0;
+      var one = 0;
+      for (final rating in ratings) {
+        final star = rating.round().clamp(1, 5);
+        switch (star) {
+          case 5:
+            five++;
+            break;
+          case 4:
+            four++;
+            break;
+          case 3:
+            three++;
+            break;
+          case 2:
+            two++;
+            break;
+          case 1:
+            one++;
+            break;
+        }
+      }
+
+      final total = ratings.length;
+      final overall = total == 0
+          ? 0.0
+          : double.parse(
+              (ratings.fold<double>(0, (a, b) => a + b) / total).toStringAsFixed(1));
+
+      return {
+        'overallRating': overall,
+        'totalReviews': total,
+        'fiveStar': five,
+        'fourStar': four,
+        'threeStar': three,
+        'twoStar': two,
+        'oneStar': one,
+      };
+    });
+  }
+
+  @override
+  Future<void> submitSellerReply({
+    required String productId,
+    required String reviewId,
+    required String replyText,
+    required String authorName,
+  }) async {
+    await firestore
+        .collection('products')
+        .doc(productId)
+        .collection('reviews')
+        .doc(reviewId)
+        .set({
+      'sellerReply': replyText,
+      'sellerRepliedAt': FieldValue.serverTimestamp(),
+      'sellerReplyAuthor': authorName,
+    }, SetOptions(merge: true));
+  }
+
+  @override
+  Future<void> reportReview({
+    required String productId,
+    required String reviewId,
+    required String reason,
+    String? details,
+    required String reporterId,
+  }) async {
+    final batch = firestore.batch();
+
+    batch.set(firestore.collection('review_reports').doc(), {
+      'reviewId': reviewId,
+      'productId': productId,
+      'reason': reason,
+      'details': details ?? '',
+      'reporterId': reporterId,
+      'status': 'pending',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    batch.set(
+        firestore
+            .collection('products')
+            .doc(productId)
+            .collection('reviews')
+            .doc(reviewId),
+        {
+          'isReported': true,
+          'reportReason': reason,
+          'reportStatus': 'pending',
+          'reportedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true));
+
+    await batch.commit();
+  }
+
+  Map<String, dynamic> _normalizeProductReview(
+      String id, Map<String, dynamic> data) {
+    final timestamp = data['timestamp'] ?? data['createdAt'];
+    return <String, dynamic>{
+      ...data,
+      'reviewerId': id,
+      'createdAt': _toIsoString(timestamp),
+      'sellerReply': data['sellerReply'],
+      'sellerRepliedAt': _toIsoString(data['sellerRepliedAt']),
+      'sellerReplyAuthor': data['sellerReplyAuthor'],
+      'isReported': data['isReported'] ?? false,
+      'reportReason': data['reportReason'],
+      'reportStatus': data['reportStatus'],
+      'reportedAt': _toIsoString(data['reportedAt']),
+    };
+  }
+
+  String? _toIsoString(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate().toIso8601String();
+    if (value is DateTime) return value.toIso8601String();
+    if (value is String) return value;
+    return null;
+  }
+
+  double _toDouble(dynamic value) => (value as num?)?.toDouble() ?? 0.0;
 }

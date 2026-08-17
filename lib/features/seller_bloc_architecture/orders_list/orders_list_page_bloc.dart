@@ -17,7 +17,7 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
   final AudioNotificationService _audioService = AudioNotificationService();
   
   List<OrderModel> _allOrders = [];
-  String _activeFilter = 'New';
+  String _activeFilter = 'All';
   String _searchQuery = '';
   int _previousNewOrderCount = 0;
 
@@ -27,6 +27,8 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
     on<SearchOrders>(_onSearchOrders);
     on<ClearMessages>(_onClearMessages);
     on<UpdateOrderStatusEvent>(_onUpdateOrderStatus);
+    on<CancelOrderEvent>(_onCancelOrder);
+    on<RejectOrderEvent>(_onRejectOrder);
   }
 
   Future<void> _onLoadOrdersStream(LoadOrdersStream event, Emitter<OrdersListState> emit) async {
@@ -57,6 +59,10 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
 
   void _onFilterOrders(FilterOrders event, Emitter<OrdersListState> emit) {
     if (state is OrdersListLoaded) {
+      final loaded = state as OrdersListLoaded;
+      if (_allOrders.isEmpty && loaded.allOrders.isNotEmpty) {
+        _allOrders = List.from(loaded.allOrders);
+      }
       _activeFilter = event.status;
       emit(_createFilteredState());
     }
@@ -64,6 +70,10 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
 
   void _onSearchOrders(SearchOrders event, Emitter<OrdersListState> emit) {
     if (state is OrdersListLoaded) {
+      final loaded = state as OrdersListLoaded;
+      if (_allOrders.isEmpty && loaded.allOrders.isNotEmpty) {
+        _allOrders = List.from(loaded.allOrders);
+      }
       _searchQuery = event.query;
       emit(_createFilteredState(
         updatingOrderIds: (state as OrdersListLoaded).updatingOrderIds,
@@ -81,6 +91,10 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
     final currentState = state;
     if (currentState is! OrdersListLoaded) return;
 
+    if (_allOrders.isEmpty && currentState.allOrders.isNotEmpty) {
+      _allOrders = List.from(currentState.allOrders);
+    }
+
     final orderIndex = _allOrders.indexWhere((o) => o.id == event.orderId);
     if (orderIndex == -1) {
       emit(currentState.copyWith(
@@ -93,7 +107,7 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
 
     if (!order.canTransitionTo(event.newStatus)) {
       emit(currentState.copyWith(
-        errorMessage: 'Invalid status transition.',
+        errorMessage: 'Invalid status transition from ${order.status.displayName} to ${event.newStatus.displayName}.',
       ));
       return;
     }
@@ -102,7 +116,7 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
     emit(currentState.copyWith(updatingOrderIds: newUpdating));
 
     try {
-      await repository.updateOrderStatus(event.orderId, event.newStatus);
+      await repository.updateOrderStatus(event.orderId, event.newStatus, reason: event.reason);
       
       // Auto-create chat conversation when an order is accepted or preparing
       if (event.newStatus == OrderStatus.accepted || event.newStatus == OrderStatus.preparing) {
@@ -111,7 +125,7 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
             buyerId: order.customerId,
             buyerName: order.customerName,
             sellerId: order.sellerId,
-            sellerName: 'Store',
+            sellerName: order.sellerName ?? 'Store',
             orderId: order.id,
             initialMessage: 'Your order #${order.id} has been accepted and is being processed.',
           );
@@ -139,7 +153,7 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
         final nextUpdating = Set<String>.from(st.updatingOrderIds)..remove(event.orderId);
         emit(st.copyWith(
           updatingOrderIds: nextUpdating,
-          successMessage: 'Order status updated successfully.',
+          successMessage: 'Order status updated to ${event.newStatus.displayName}.',
         ));
       }
     } catch (e) {
@@ -154,15 +168,49 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
     }
   }
 
+  Future<void> _onCancelOrder(CancelOrderEvent event, Emitter<OrdersListState> emit) async {
+    add(UpdateOrderStatusEvent(event.orderId, OrderStatus.cancelled, reason: event.reason));
+  }
+
+  Future<void> _onRejectOrder(RejectOrderEvent event, Emitter<OrdersListState> emit) async {
+    add(UpdateOrderStatusEvent(event.orderId, OrderStatus.rejected, reason: event.reason));
+  }
+
   OrdersListLoaded _createFilteredState({Set<String> updatingOrderIds = const {}}) {
     final filtered = _allOrders.where((order) {
-      final matchesFilter = _activeFilter == 'Preparing'
-          ? (order.status == OrderStatus.preparing || order.status == OrderStatus.accepted)
-          : order.status.value == _activeFilter;
-      final query = _searchQuery.toLowerCase();
-      final matchesSearch = _searchQuery.isEmpty || 
+      final cleanFilter = _activeFilter.toLowerCase().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
+      bool matchesFilter = false;
+
+      if (cleanFilter == 'all' || cleanFilter.isEmpty) {
+        matchesFilter = true;
+      } else if (cleanFilter == 'new' || cleanFilter == 'placed' || cleanFilter == 'neworder') {
+        matchesFilter = order.status == OrderStatus.newOrder;
+      } else if (cleanFilter == 'accepted') {
+        matchesFilter = order.status == OrderStatus.accepted;
+      } else if (cleanFilter == 'preparing') {
+        matchesFilter = order.status == OrderStatus.preparing;
+      } else if (cleanFilter == 'ready' || cleanFilter == 'readyforpickup') {
+        matchesFilter = order.status == OrderStatus.ready;
+      } else if (cleanFilter == 'pickedup') {
+        matchesFilter = order.status == OrderStatus.pickedUp;
+      } else if (cleanFilter == 'outfordelivery') {
+        matchesFilter = order.status == OrderStatus.outForDelivery;
+      } else if (cleanFilter == 'delivered') {
+        matchesFilter = order.status == OrderStatus.delivered;
+      } else if (cleanFilter == 'cancelled' || cleanFilter == 'canceled' || cleanFilter == 'rejected') {
+        matchesFilter = order.status == OrderStatus.cancelled || order.status == OrderStatus.rejected;
+      } else {
+        matchesFilter = order.status.value.toLowerCase() == cleanFilter;
+      }
+
+      final query = _searchQuery.toLowerCase().trim();
+      final matchesSearch = query.isEmpty || 
                             order.id.toLowerCase().contains(query) || 
-                            order.customerName.toLowerCase().contains(query);
+                            order.customerName.toLowerCase().contains(query) ||
+                            (order.customerPhone ?? '').toLowerCase().contains(query) ||
+                            (order.deliveryAddress ?? '').toLowerCase().contains(query) ||
+                            (order.items?.any((item) => item.name.toLowerCase().contains(query)) ?? false);
+
       return matchesFilter && matchesSearch;
     }).toList();
 

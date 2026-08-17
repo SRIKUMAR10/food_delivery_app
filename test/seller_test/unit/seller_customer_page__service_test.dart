@@ -33,13 +33,22 @@ void main() {
       await fakeFirestore.collection('buyer_user').doc('buyer_456').set({
         'name': 'John Doe',
         'imageUrl': 'https://example.com/john.jpg',
+        'phone': '+919876543210',
       });
 
       await fakeFirestore.collection('orders').add({
         'sellerId': 'seller_123',
         'customerId': 'buyer_456',
         'customerName': 'Customer',
+        'amount': 450.0,
         'timestamp': Timestamp.now(),
+        'items': [
+          {
+            'name': 'Paneer Butter Masala',
+            'quantity': 2,
+            'price': 225.0,
+          }
+        ],
       });
 
       final customers = await service.fetchCustomerList(offset: 0, limit: 10);
@@ -49,26 +58,33 @@ void main() {
       expect(customers[0]['name'], 'John Doe');
       expect(customers[0]['avatarUrl'], 'https://example.com/john.jpg');
       expect(customers[0]['orderCount'], 1);
+      expect(customers[0]['totalSpent'], 450.0);
+      expect(customers[0]['phone'], isNotEmpty);
     });
 
-    test('fetchCustomerStats returns correct total and repeat customer counts', () async {
+    test('fetchCustomerStats returns correct total and repeat customer counts and revenue', () async {
       await fakeFirestore.collection('orders').add({
         'sellerId': 'seller_123',
         'customerId': 'buyer_1',
+        'amount': 200.0,
       });
       await fakeFirestore.collection('orders').add({
         'sellerId': 'seller_123',
         'customerId': 'buyer_1',
+        'amount': 300.0,
       });
       await fakeFirestore.collection('orders').add({
         'sellerId': 'seller_123',
         'customerId': 'buyer_2',
+        'amount': 500.0,
       });
 
       final stats = await service.fetchCustomerStats();
 
       expect(stats['totalCustomers'], 2);
       expect(stats['repeatCustomers'], 1);
+      expect(stats['totalRevenue'], 1000.0);
+      expect(stats['averageOrderValue'], closeTo(333.33, 0.1));
     });
   });
 }

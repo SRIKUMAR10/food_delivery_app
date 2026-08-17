@@ -174,7 +174,7 @@ void main() {
           bloc.add(
             LoadTrackOrderDetails(orderId: '123', orderDate: DateTime.now()),
           );
-          bloc.add(const StartTracking(orderId: '123'));
+          bloc.add(const StartTracking(riderId: 'rider1'));
           await expectation;
         },
       );
@@ -186,7 +186,7 @@ void main() {
         ).thenThrow(Exception('Socket connection failed'));
 
         // Act
-        bloc.add(const StartTracking(orderId: '123'));
+        bloc.add(const StartTracking(riderId: 'rider1'));
         await Future<void>.delayed(Duration.zero);
         await Future<void>.delayed(Duration.zero);
 

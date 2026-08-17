@@ -22,9 +22,29 @@ class DeliveryPickupConfirmationPageBloc
         super(const DeliveryPickupConfirmationPageState()) {
     on<FetchPickupConfirmationDetailsEvent>(_onFetchDetails);
     on<StartDeliveryEvent>(_onStartDelivery);
+    on<ArrivedAtStoreEvent>(_onArrivedAtStore);
     on<CallCustomerEvent>(_onCallCustomer);
     on<OpenWhatsAppEvent>(_onOpenWhatsApp);
     on<CallStoreEvent>(_onCallStore);
+  }
+
+  Future<void> _onArrivedAtStore(
+    ArrivedAtStoreEvent event,
+    Emitter<DeliveryPickupConfirmationPageState> emit,
+  ) async {
+    try {
+      await repository.arrivedAtStore(event.orderId);
+      final model = await repository.fetchPickupConfirmationDetails(event.orderId);
+      emit(state.copyWith(
+        status: PickupConfirmationStatus.success,
+        model: model,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        status: PickupConfirmationStatus.error,
+        errorMessage: e.toString(),
+      ));
+    }
   }
 
   Future<void> _onFetchDetails(

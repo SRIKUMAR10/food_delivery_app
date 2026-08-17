@@ -27,15 +27,17 @@ class LoadRating extends RatingPageEvent {
 
 class SubmitRating extends RatingPageEvent {
   final String foodId;
+  final String foodName;
   final double rating;
   final String reviewText;
 
   const SubmitRating({
     required this.foodId,
+    this.foodName = '',
     required this.rating,
     this.reviewText = '',
   });
 
   @override
-  List<Object?> get props => [foodId, rating, reviewText];
+  List<Object?> get props => [foodId, foodName, rating, reviewText];
 }

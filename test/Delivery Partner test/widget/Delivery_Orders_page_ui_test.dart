@@ -54,7 +54,37 @@ const completedOrder = DeliveryOrderCardModel(
   paymentType: 'Online',
 );
 
+const availableOrder = DeliveryOrderCardModel(
+  orderId: 'ORD20001',
+  customerName: 'Kavya Raman',
+  restaurantName: 'Crispy Dosa House',
+  pickupAddress: '12 T Nagar, Chennai',
+  deliveryAddress: '45 Kodambakkam, Chennai',
+  amount: 520.00,
+  itemsCount: 3,
+  status: DeliveryOrderStatus.pending,
+  distance: 6.0,
+  time: '10:30 AM',
+  paymentType: 'Cash',
+  etaMins: 25,
+  restaurantLocation: '12 T Nagar, Chennai',
+  customerArea: '45 Kodambakkam, Chennai',
+  estimatedEarnings: 85.0,
+  pickupDistance: 1.8,
+  deliveryDistance: 4.2,
+  sellerId: 'seller-1',
+  customerId: 'buyer-1',
+  assignmentStatus: 'available',
+  isAvailable: true,
+);
+
 const sampleOrders = [pendingOrder, activeOrder, completedOrder];
+
+const availableState = DeliveryOrdersPageState(
+  status: DeliveryOrdersPageStatus.loaded,
+  orders: [availableOrder],
+  filteredOrders: [availableOrder],
+);
 
 const loadedState = DeliveryOrdersPageState(
   status: DeliveryOrdersPageStatus.loaded,
@@ -567,5 +597,97 @@ void main() {
         );
       },
     );
+
+    testWidgets('renders the available order card with all required fields', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(availableState);
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      final card = find.byKey(const Key('dp_orders_available_card_ORD20001'));
+      expect(card, findsOneWidget);
+
+      Finder inCard(String text) =>
+          find.descendant(of: card, matching: find.text(text));
+
+      expect(inCard('#ORD20001'), findsOneWidget);
+      expect(inCard('Crispy Dosa House'), findsOneWidget);
+      expect(inCard('Restaurant Location'), findsOneWidget);
+      expect(inCard('Customer Area'), findsOneWidget);
+      expect(inCard('6.0 km'), findsOneWidget);
+      expect(inCard('25 min'), findsOneWidget);
+      expect(inCard('Estimated Earnings'), findsOneWidget);
+      expect(inCard('₹85.00'), findsOneWidget);
+      expect(inCard('3 items'), findsOneWidget);
+      expect(inCard('1.8 km to restaurant'), findsOneWidget);
+      expect(inCard('4.2 km to customer'), findsOneWidget);
+      expect(
+        find.byKey(const Key('dp_orders_accept_ORD20001')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('dp_orders_reject_ORD20001')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('dp_orders_copy_ORD20001')), findsOneWidget);
+    });
+
+    testWidgets('dispatches accept event when the accept button is tapped', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(availableState);
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('dp_orders_accept_ORD20001')));
+      await tester.pump();
+
+      verify(
+        () => mockBloc.add(const DeliveryOrdersAcceptOrderEvent('ORD20001')),
+      ).called(1);
+    });
+
+    testWidgets('dispatches reject event when the reject button is tapped', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(availableState);
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('dp_orders_reject_ORD20001')));
+      await tester.pump();
+
+      verify(
+        () => mockBloc.add(const DeliveryOrdersRejectOrderEvent('ORD20001')),
+      ).called(1);
+    });
+
+    testWidgets('shows a spinner while an available order is being accepted', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: [availableOrder],
+          filteredOrders: [availableOrder],
+          acceptingOrderId: 'ORD20001',
+        ),
+      );
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('dp_orders_accept_ORD20001')),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }

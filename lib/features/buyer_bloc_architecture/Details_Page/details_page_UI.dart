@@ -1,16 +1,20 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/core/repositories/i_seller_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_rating_repository.dart';
+import 'package:food_delivery_app/core/models/product_model.dart';
 import '../Cart Page/cart_page.dart';
 import '../Favorites_Page/favorites_bloc.dart';
 import '../Favorites_Page/favorites_event.dart';
 import '../Favorites_Page/favorites_state.dart';
 import '../Favorites_Page/favorites_models.dart';
-import '../home_Page/home_page_models.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/food_item_mapper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../Rating_page/reviews_list_screen.dart';
 import '../../seller_bloc_architecture/product_list_page_/product_image_carousel.dart';
@@ -31,23 +35,32 @@ class DetailsPageUI extends StatelessWidget {
   final String sellerId;
   final List<String>? imageUrls;
   final FoodItem? foodItem;
+  final VoidCallback? onNavigateToCart;
+  final DetailsBloc? detailsBloc;
+  final double? distanceKm;
 
   const DetailsPageUI({
     super.key,
-    required this.id,
-    required this.name,
-    required this.price,
-    required this.description,
-    required this.sellerId,
+    this.id = '',
+    this.name = '',
+    this.price = 0.0,
+    this.description = '',
+    this.sellerId = '',
     this.imageUrls,
     this.foodItem,
+    this.onNavigateToCart,
     this.detailsBloc,
+    this.distanceKm,
   });
-
-  final DetailsBloc? detailsBloc;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveId = id.isNotEmpty ? id : (foodItem?.id ?? '');
+    final effectiveName = name.isNotEmpty ? name : (foodItem?.name ?? '');
+    final effectivePrice = price > 0 ? price : (foodItem?.price ?? 0.0);
+    final effectiveDescription = description.isNotEmpty ? description : (foodItem?.description ?? '');
+    final effectiveSellerId = sellerId.isNotEmpty ? sellerId : (foodItem?.sellerId ?? '');
+
     final urls = imageUrls ??
         (foodItem != null && foodItem!.imageUrls.isNotEmpty
             ? foodItem!.imageUrls
@@ -59,27 +72,31 @@ class DetailsPageUI extends StatelessWidget {
       return BlocProvider<DetailsBloc>.value(
         value: detailsBloc!,
         child: _DetailsPageContent(
-          id: id,
-          name: name,
-          price: price,
-          description: description,
-          sellerId: sellerId,
+          id: effectiveId,
+          name: effectiveName,
+          price: effectivePrice,
+          description: effectiveDescription,
+          sellerId: effectiveSellerId,
           imageUrls: urls,
           foodItem: foodItem,
+          onNavigateToCart: onNavigateToCart,
+          distanceKm: distanceKm,
         ),
       );
     }
 
     return BlocProvider(
-      create: (_) => DetailsBloc()..add(LoadDetailsRating(foodId: id)),
+      create: (_) => DetailsBloc()..add(LoadDetailsRating(foodId: effectiveId)),
       child: _DetailsPageContent(
-        id: id,
-        name: name,
-        price: price,
-        description: description,
-        sellerId: sellerId,
+        id: effectiveId,
+        name: effectiveName,
+        price: effectivePrice,
+        description: effectiveDescription,
+        sellerId: effectiveSellerId,
         imageUrls: urls,
         foodItem: foodItem,
+        onNavigateToCart: onNavigateToCart,
+        distanceKm: distanceKm,
       ),
     );
   }
@@ -93,6 +110,8 @@ class _DetailsPageContent extends StatefulWidget {
   final String sellerId;
   final List<String>? imageUrls;
   final FoodItem? foodItem;
+  final VoidCallback? onNavigateToCart;
+  final double? distanceKm;
 
   const _DetailsPageContent({
     required this.id,
@@ -102,6 +121,8 @@ class _DetailsPageContent extends StatefulWidget {
     required this.sellerId,
     this.imageUrls,
     this.foodItem,
+    this.onNavigateToCart,
+    this.distanceKm,
   });
 
   @override
@@ -120,6 +141,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   bool _isLoadingSeller = true;
   SellerAvailability? _sellerAvailability;
   StreamSubscription<SellerAvailability>? _sellerStatusSub;
+  StreamSubscription<DocumentSnapshot>? _productDocSub;
+  FoodItem? _liveFoodItem;
 
   static const _primaryRed = Color(0xFFEF2A39);
   static const _bgColor = Color(0xFFF8F8F8);
@@ -129,6 +152,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     symbol: '₹',
     decimalDigits: 0,
   );
+
+  FoodItem? get _currentFoodItem => _liveFoodItem ?? widget.foodItem;
 
   @override
   void initState() {
@@ -149,6 +174,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOut));
     _fetchSeller();
     _watchSellerStatus();
+    _watchProductDoc();
   }
 
   @override
@@ -156,7 +182,31 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     _fadeCtrl.dispose();
     _slideCtrl.dispose();
     _sellerStatusSub?.cancel();
+    _productDocSub?.cancel();
     super.dispose();
+  }
+
+  void _watchProductDoc() {
+    final effectiveId = widget.id.isNotEmpty ? widget.id : (widget.foodItem?.id ?? '');
+    if (effectiveId.isEmpty) return;
+
+    try {
+      _productDocSub?.cancel();
+      _productDocSub = FirebaseFirestore.instance
+          .collection('products')
+          .doc(effectiveId)
+          .snapshots()
+          .listen((doc) {
+        if (doc.exists && doc.data() != null && mounted) {
+          final p = Product.fromMap(doc.id, doc.data()!);
+          setState(() {
+            _liveFoodItem = FoodItemMapper.toViewModel(p);
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Product doc stream note: $e');
+    }
   }
 
   Future<void> _fetchSeller() async {
@@ -176,32 +226,62 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   }
 
   void _watchSellerStatus() {
-    _sellerStatusSub?.cancel();
-    final service = SellerStatusService();
-    _sellerStatusSub = service.watchSellerStatus(widget.sellerId).listen((status) {
-      if (mounted) {
-        setState(() => _sellerAvailability = status);
-      }
-    });
+    try {
+      _sellerStatusSub?.cancel();
+      final service = SellerStatusService();
+      _sellerStatusSub = service.watchSellerStatus(widget.sellerId).listen((status) {
+        if (mounted) {
+          setState(() => _sellerAvailability = status);
+        }
+      });
+    } catch (e) {
+      debugPrint('Failed to watch seller status: $e');
+    }
+  }
+
+  double _parseAddonPrice(String addon) {
+    final match = RegExp(r'(?:\+|\:|\₹)\s*(\d+(?:\.\d+)?)').firstMatch(addon);
+    if (match != null) {
+      return double.tryParse(match.group(1) ?? '0') ?? 0.0;
+    }
+    return 0.0;
+  }
+
+  double get _totalAddonsPrice {
+    double total = 0.0;
+    for (final addon in _selectedAddons) {
+      total += _parseAddonPrice(addon);
+    }
+    return total;
+  }
+
+  double get _baseProductPrice {
+    final food = _currentFoodItem;
+    if (food != null &&
+        food.discountPrice > 0 &&
+        food.discountPrice < (food.price > 0 ? food.price : widget.price)) {
+      return food.discountPrice;
+    }
+    return (food != null && food.price > 0) ? food.price : widget.price;
   }
 
   double get _effectivePrice {
-    if (widget.foodItem != null &&
-        widget.foodItem!.discountPrice > 0 &&
-        widget.foodItem!.discountPrice < widget.price) {
-      return widget.foodItem!.discountPrice;
-    }
-    return widget.price;
+    return _baseProductPrice + _totalAddonsPrice;
   }
 
   bool get _isActive {
-    final productActive = widget.foodItem?.isActive ?? true;
+    final food = _currentFoodItem;
+    final productActive = (food?.status != 'outOfStock') && (food?.isActive ?? true);
     final sellerAvailable = _sellerAvailability?.isAvailable ?? true;
     return productActive && sellerAvailable;
   }
 
-  String? get _primaryImage =>
-      widget.imageUrls?.isNotEmpty == true ? widget.imageUrls!.first : null;
+  String? get _primaryImage {
+    final food = _currentFoodItem;
+    if (widget.imageUrls?.isNotEmpty == true) return widget.imageUrls!.first;
+    if (food?.imageUrls.isNotEmpty == true) return food!.imageUrls.first;
+    return food?.image;
+  }
 
   void _addToCart(int quantity) {
     if (!_isActive) return;
@@ -263,6 +343,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
       ),
     );
 
+    widget.onNavigateToCart?.call();
     if (Navigator.canPop(context)) Navigator.pop(context, true);
   }
 
@@ -405,10 +486,16 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                             ),
                           ),
                           _buildTitleAndRating(),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 10),
                           _buildRestaurantInfo(),
                           const SizedBox(height: 16),
+                          _buildAvailabilityCard(),
+                          const SizedBox(height: 18),
                           _buildDescription(),
+                          const SizedBox(height: 20),
+                          _buildIngredientsSection(),
+                          const SizedBox(height: 20),
+                          _buildAddonsSection(),
                           const SizedBox(height: 28),
                           _buildPriceAndQuantityRow(),
                           const SizedBox(height: 28),
@@ -515,8 +602,14 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                         _buildTitleAndRating(),
                         const SizedBox(height: 12),
                         _buildRestaurantInfo(),
+                        const SizedBox(height: 18),
+                        _buildAvailabilityCard(),
                         const SizedBox(height: 20),
                         _buildDescription(),
+                        const SizedBox(height: 20),
+                        _buildIngredientsSection(),
+                        const SizedBox(height: 20),
+                        _buildAddonsSection(),
                         const SizedBox(height: 28),
                         _buildRatingsAndReviewsButton(),
                         const SizedBox(height: 24),
@@ -538,10 +631,14 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   // ── Shared UI Components ─────────────────────────────────────────────────
 
   Widget _buildTitleAndRating() {
+    final food = _currentFoodItem;
+    final foodType = food?.foodType ?? '';
+    final isVeg = foodType.toLowerCase() == 'veg' || foodType.toLowerCase() == 'vegetarian';
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.foodItem != null && widget.foodItem!.foodType.isNotEmpty)
+        if (foodType.isNotEmpty)
           Container(
             margin: const EdgeInsets.only(top: 4, right: 8),
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -549,8 +646,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
               color: Colors.white,
               borderRadius: BorderRadius.circular(4),
               border: Border.all(
-                color: (widget.foodItem!.foodType.toLowerCase() == 'veg' || widget.foodItem!.foodType.toLowerCase() == 'vegetarian') ? Colors.green : Colors.red, 
-                width: 1.2
+                color: isVeg ? Colors.green : Colors.red, 
+                width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
@@ -558,32 +655,32 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                   blurRadius: 2,
                   offset: const Offset(0, 1),
                 ),
-              ]
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  (widget.foodItem!.foodType.toLowerCase() == 'veg' || widget.foodItem!.foodType.toLowerCase() == 'vegetarian') ? Icons.circle : Icons.change_history,
+                  isVeg ? Icons.circle : Icons.change_history,
                   size: 8,
-                  color: (widget.foodItem!.foodType.toLowerCase() == 'veg' || widget.foodItem!.foodType.toLowerCase() == 'vegetarian') ? Colors.green : Colors.red,
+                  color: isVeg ? Colors.green : Colors.red,
                 ),
                 const SizedBox(width: 3),
                 Text(
-                  (widget.foodItem!.foodType.toLowerCase() == 'veg' || widget.foodItem!.foodType.toLowerCase() == 'vegetarian') ? 'VEG' : 'NON-VEG',
+                  isVeg ? 'VEG' : 'NON-VEG',
                   style: TextStyle(
                     fontSize: 8,
                     fontWeight: FontWeight.w900,
-                    color: (widget.foodItem!.foodType.toLowerCase() == 'veg' || widget.foodItem!.foodType.toLowerCase() == 'vegetarian') ? Colors.green : Colors.red,
+                    color: isVeg ? Colors.green : Colors.red,
                     letterSpacing: 0.5,
                   ),
-                )
+                ),
               ],
-            )
+            ),
           ),
         Expanded(
           child: Text(
-            widget.name,
+            food?.name.isNotEmpty == true ? food!.name : widget.name,
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -738,14 +835,24 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                     Icon(Icons.access_time_rounded, size: 12, color: Colors.grey.shade500),
                     const SizedBox(width: 4),
                     Text(
-                      seller.deliveryTime?.isNotEmpty == true
-                          ? seller.deliveryTime!
-                          : (widget.foodItem?.prepTime.isNotEmpty == true
-                              ? widget.foodItem!.prepTime
-                              : '25-35 min'),
+                      widget.distanceKm != null
+                          ? '${estimateDeliveryTimeMinutes(widget.distanceKm!)} min delivery'
+                          : (seller.deliveryTime?.isNotEmpty == true
+                              ? '${seller.deliveryTime!} delivery'
+                              : (widget.foodItem?.prepTime.isNotEmpty == true
+                                  ? '${widget.foodItem!.prepTime} prep'
+                                  : '25-35 min delivery')),
                       style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                     ),
-                    if (seller.businessDetails?.isNotEmpty == true) ...[
+                    if (widget.distanceKm != null) ...[
+                      const SizedBox(width: 12),
+                      Icon(Icons.location_on_outlined, size: 12, color: Colors.grey.shade500),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${widget.distanceKm!.toStringAsFixed(1)} km away',
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                    ] else if (seller.businessDetails?.isNotEmpty == true) ...[
                       const SizedBox(width: 12),
                       Icon(Icons.location_on_outlined, size: 12, color: Colors.grey.shade500),
                       const SizedBox(width: 4),
@@ -791,91 +898,331 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     );
   }
 
+  Widget _buildAvailabilityCard() {
+    final food = _currentFoodItem;
+    final isProductInStock = (food?.status != 'outOfStock') && (food?.isActive ?? true);
+    final isSellerOpen = _sellerAvailability?.isAvailable ?? true;
+    final isAvailableNow = isProductInStock && isSellerOpen;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isAvailableNow ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isAvailableNow ? const Color(0xFFBBF7D0) : const Color(0xFFFECACA),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: isAvailableNow ? Colors.green.shade600 : Colors.red.shade600,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isAvailableNow ? Icons.check_rounded : Icons.close_rounded,
+              color: Colors.white,
+              size: 14,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      isAvailableNow ? 'Available for Ordering' : 'Currently Unavailable',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isAvailableNow ? Colors.green.shade900 : Colors.red.shade900,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isAvailableNow ? Colors.green.shade100 : Colors.red.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        isAvailableNow ? 'In Stock' : 'Out of Stock',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: isAvailableNow ? Colors.green.shade800 : Colors.red.shade800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  !isSellerOpen
+                      ? 'Restaurant is currently closed for orders'
+                      : (!isProductInStock
+                          ? 'This dish is temporarily out of stock'
+                          : 'Freshly prepared upon your order confirmation'),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isAvailableNow ? Colors.green.shade700 : Colors.red.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDescription() {
+    final food = _currentFoodItem;
+    final hasMetrics = food != null &&
+        (food.calories.isNotEmpty || food.spicyLevel.isNotEmpty || food.portionSize.isNotEmpty);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.foodItem != null && (widget.foodItem!.calories.isNotEmpty || widget.foodItem!.spicyLevel.isNotEmpty || widget.foodItem!.portionSize.isNotEmpty)) ...[
+        if (hasMetrics) ...[
           Wrap(
             spacing: 12,
             runSpacing: 8,
             children: [
-              if (widget.foodItem!.calories.isNotEmpty)
-                _buildInfoChip(Icons.local_fire_department_outlined, '${widget.foodItem!.calories} Cal'),
-              if (widget.foodItem!.spicyLevel.isNotEmpty)
-                _buildInfoChip(Icons.whatshot_rounded, widget.foodItem!.spicyLevel, color: Colors.deepOrange),
-              if (widget.foodItem!.portionSize.isNotEmpty)
-                _buildInfoChip(Icons.restaurant_menu_rounded, widget.foodItem!.portionSize),
+              if (food.calories.isNotEmpty)
+                _buildInfoChip(Icons.local_fire_department_outlined, '${food.calories} Cal'),
+              if (food.spicyLevel.isNotEmpty)
+                _buildInfoChip(Icons.whatshot_rounded, food.spicyLevel, color: Colors.deepOrange),
+              if (food.portionSize.isNotEmpty)
+                _buildInfoChip(Icons.restaurant_menu_rounded, food.portionSize),
             ],
           ),
           const SizedBox(height: 16),
         ],
-        Text(
+        const Text(
           'Description',
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF1C1C1C),
+            color: Color(0xFF1C1C1C),
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          widget.description.isNotEmpty
-              ? widget.description
-              : 'A delicious, freshly prepared dish made with premium ingredients. Perfect for any time of the day!',
+          food?.description.isNotEmpty == true
+              ? food!.description
+              : (widget.description.isNotEmpty
+                  ? widget.description
+                  : 'A delicious, freshly prepared dish made with premium ingredients. Perfect for any time of the day!'),
           style: TextStyle(
             fontSize: 13.5,
             color: Colors.grey.shade600,
             height: 1.65,
           ),
         ),
-        if (widget.foodItem != null && widget.foodItem!.addons.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text(
-            'Add-ons Available',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF1C1C1C),
+      ],
+    );
+  }
+
+  List<String> get _effectiveIngredients {
+    final food = _currentFoodItem;
+    if (food != null && food.ingredients.isNotEmpty) {
+      return food.ingredients;
+    }
+    final nameLower = (food?.name ?? widget.name).toLowerCase();
+    final catLower = (food?.category ?? '').toLowerCase();
+    if (nameLower.contains('burger') || catLower.contains('burger')) {
+      return const ['Brioche Bun', 'Grilled Patty', 'Cheddar Cheese', 'Fresh Lettuce', 'Signature Sauce', 'Pickles'];
+    } else if (nameLower.contains('pizza') || catLower.contains('pizza')) {
+      return const ['Hand-tossed Dough', 'Mozzarella Cheese', 'San Marzano Sauce', 'Fresh Basil', 'Extra Virgin Olive Oil'];
+    } else if (nameLower.contains('chicken') || catLower.contains('chicken')) {
+      return const ['Tender Chicken', 'Aromatic Spices', 'Garlic Butter', 'Herbs', 'Crispy Batter'];
+    } else if (nameLower.contains('pasta') || catLower.contains('pasta')) {
+      return const ['Durum Wheat Pasta', 'Parmesan Cheese', 'Garlic & Olive Oil', 'Fresh Basil', 'Creamy Sauce'];
+    } else if (nameLower.contains('shake') || nameLower.contains('drink') || catLower.contains('beverage')) {
+      return const ['Whole Milk', 'Rich Cocoa / Fruit Blend', 'Natural Sweetener', 'Whipped Cream'];
+    }
+    return const ['Fresh Farm Ingredients', 'Organic Seasoning', 'Natural Herbs', 'Chef Special Blend'];
+  }
+
+  Widget _buildIngredientsSection() {
+    final list = _effectiveIngredients;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Icon(Icons.eco_rounded, size: 18, color: Colors.green),
+            SizedBox(width: 6),
+            Text(
+              'Ingredients & Recipe',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1C1C1C),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: widget.foodItem!.addons.map((addon) {
-              final isSelected = _selectedAddons.contains(addon);
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (isSelected) {
-                      _selectedAddons.remove(addon);
-                    } else {
-                      _selectedAddons.add(addon);
-                    }
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isSelected ? _primaryRed : Colors.white,
-                    border: Border.all(color: isSelected ? _primaryRed : Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    addon,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isSelected ? Colors.white : Colors.grey.shade700,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: list.map((ingredient) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  Text(
+                    ingredient,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF374151),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  List<String> get _effectiveAddons {
+    final food = _currentFoodItem;
+    if (food != null && food.addons.isNotEmpty) {
+      return food.addons;
+    }
+    final nameLower = (food?.name ?? widget.name).toLowerCase();
+    final catLower = (food?.category ?? '').toLowerCase();
+    if (nameLower.contains('burger') || catLower.contains('burger')) {
+      return const ['Extra Cheese (+₹30)', 'Spicy Jalapenos (+₹20)', 'Extra Patty (+₹60)', 'Crispy Bacon (+₹40)'];
+    } else if (nameLower.contains('pizza') || catLower.contains('pizza')) {
+      return const ['Extra Mozzarella (+₹40)', 'Stuffed Crust (+₹50)', 'Oregano & Chilli Flakes (Free)', 'Garlic Dip (+₹25)'];
+    } else if (nameLower.contains('drink') || nameLower.contains('beverage')) {
+      return const ['Extra Ice (Free)', 'Less Sugar (Free)', 'Whipped Cream (+₹20)', 'Boba Pearls (+₹30)'];
+    }
+    return const ['Extra Cheese (+₹30)', 'Spicy Dip Sauce (+₹20)', 'Chef Special Topping (+₹35)', 'Cutlery & Napkins (Free)'];
+  }
+
+  Widget _buildAddonsSection() {
+    final list = _effectiveAddons;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.tune_rounded, size: 18, color: _primaryRed),
+            const SizedBox(width: 6),
+            const Text(
+              'Add-ons & Customizations',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1C1C1C),
+              ),
+            ),
+            const Spacer(),
+            if (_selectedAddons.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _primaryRed.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              );
-            }).toList(),
-          ),
-        ],
+                child: Text(
+                  '${_selectedAddons.length} selected',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryRed,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: list.map((addon) {
+            final isSelected = _selectedAddons.contains(addon);
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  if (isSelected) {
+                    _selectedAddons.remove(addon);
+                  } else {
+                    _selectedAddons.add(addon);
+                  }
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? _primaryRed : Colors.white,
+                  border: Border.all(
+                    color: isSelected ? _primaryRed : Colors.grey.shade300,
+                    width: isSelected ? 1.5 : 1.0,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: _primaryRed.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isSelected ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
+                      size: 15,
+                      color: isSelected ? Colors.white : Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      addon,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isSelected ? Colors.white : const Color(0xFF1C1C1C),
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ],
     );
   }
@@ -955,13 +1302,24 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
             ],
             SizedBox(height: hasDiscount ? 0 : 2),
             Text(
-              _currFmt.format(hasDiscount ? discountPrice : _effectivePrice),
-              style: TextStyle(
+              _currFmt.format(_effectivePrice),
+              style: const TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
                 color: _primaryRed,
               ),
             ),
+            if (_totalAddonsPrice > 0) ...[
+              const SizedBox(height: 2),
+              Text(
+                '+ ${_currFmt.format(_totalAddonsPrice)} add-ons',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.green.shade700,
+                ),
+              ),
+            ],
           ],
         ),
 
@@ -1297,12 +1655,20 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   }
 
   void _showReviewsBottomSheet() {
+    IRatingRepository? ratingRepo;
+    try {
+      ratingRepo = context.read<IRatingRepository>();
+    } catch (_) {}
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) =>
-          ReviewsListScreen(productId: widget.id, productName: widget.name),
+      builder: (_) => ReviewsListScreen(
+        productId: widget.id,
+        productName: widget.name,
+        ratingRepository: ratingRepo,
+      ),
     );
   }
 

@@ -15,5 +15,18 @@ abstract interface class ICartRepository {
     String deliveryAddress, {
     String? customerPhone,
     AppliedCoupon? appliedCoupon,
+    String paymentMethod = 'COD',
+  });
+
+  Future<void> verifyAndCheckoutRazorpay({
+    required String buyerId,
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+    required List<CartItem> selectedItems,
+    required String customerName,
+    required String deliveryAddress,
+    String? customerPhone,
+    AppliedCoupon? appliedCoupon,
   });
 }

@@ -68,7 +68,7 @@ void main() {
       ).thenThrow(Exception('Socket Error'));
 
       // Act
-      bloc.add(const StartTracking(orderId: '123'));
+      bloc.add(const StartTracking(riderId: 'rider1'));
       await Future<void>.delayed(Duration.zero);
       await Future<void>.delayed(Duration.zero);
 

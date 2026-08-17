@@ -21,8 +21,18 @@ void main() {
   const loadedState = DeliveryDashboardState(
     status: DeliveryDashboardStatus.loaded,
     isOnline: true,
+    isAvailable: true,
+    isBusy: false,
+    partnerStatus: DeliveryPartnerStatusType.available,
     todayEarnings: 2450.00,
     walletBalance: 2450.00,
+    todayTotalDeliveries: 18,
+    completedDeliveriesCount: 15,
+    pendingDeliveriesCount: 2,
+    cancelledDeliveriesCount: 1,
+    todayDistance: 42.5,
+    onlineHours: '5h 45m',
+    averageRating: 4.8,
     todayOrdersCount: 18,
     activeOrdersCount: 2,
     workingHours: '05h 45m',
@@ -64,13 +74,15 @@ void main() {
       );
       expect(bloc.state.status, DeliveryDashboardStatus.initial);
       expect(bloc.state.isOnline, isFalse);
+      expect(bloc.state.isAvailable, isFalse);
+      expect(bloc.state.isBusy, isFalse);
+      expect(bloc.state.partnerStatus, DeliveryPartnerStatusType.offline);
+      expect(bloc.state.todayTotalDeliveries, 0);
+      expect(bloc.state.completedDeliveriesCount, 0);
+      expect(bloc.state.pendingDeliveriesCount, 0);
+      expect(bloc.state.cancelledDeliveriesCount, 0);
       expect(bloc.state.todayEarnings, 0.0);
       expect(bloc.state.walletBalance, 0.0);
-      expect(bloc.state.activeOrdersCount, 0);
-      expect(bloc.state.todayOrdersCount, 0);
-      expect(bloc.state.workingHours, '');
-      expect(bloc.state.acceptanceRate, 0);
-      expect(bloc.state.performanceScore, 0.0);
       expect(bloc.state.unreadNotificationCount, 0);
       expect(bloc.state.incomingSellerOrders, isEmpty);
       bloc.close();
@@ -100,66 +112,93 @@ void main() {
     );
 
     blocTest<DeliveryDashboardPageBloc, DeliveryDashboardState>(
-      'emits loaded state with correct unreadNotificationCount',
+      'emits updated status on DeliveryDashboardToggleOnlineEvent',
       build: () {
-        when(() => mockRepository.loadDashboardData())
-            .thenAnswer((_) async => loadedState);
         when(
-          () => mockRepository.watchDashboard(),
-        ).thenAnswer((_) => Stream.value(loadedState));
+          () => mockRepository.updatePartnerStatus(
+            isOnline: true,
+            isAvailable: true,
+            isBusy: false,
+          ),
+        ).thenAnswer((_) async {});
         return DeliveryDashboardPageBloc(
           repository: mockRepository,
           service: mockService,
         );
       },
-      act: (bloc) => bloc.add(const DeliveryDashboardInitEvent()),
+      act: (bloc) => bloc.add(const DeliveryDashboardToggleOnlineEvent(true)),
       expect: () => [
-        const DeliveryDashboardState(status: DeliveryDashboardStatus.loading),
-        loadedState,
+        const DeliveryDashboardState(
+          isOnline: true,
+          isAvailable: true,
+          isBusy: false,
+          partnerStatus: DeliveryPartnerStatusType.available,
+        ),
       ],
       verify: (_) {
-        verify(() => mockRepository.watchDashboard()).called(1);
+        verify(
+          () => mockRepository.updatePartnerStatus(
+            isOnline: true,
+            isAvailable: true,
+            isBusy: false,
+          ),
+        ).called(1);
       },
     );
 
     blocTest<DeliveryDashboardPageBloc, DeliveryDashboardState>(
-      'emits [loading, loaded] when the dashboard stream fails but fallback succeeds',
+      'emits busy state on DeliveryDashboardSetBusyEvent',
       build: () {
-        when(() => mockRepository.loadDashboardData())
-            .thenAnswer((_) async => loadedState);
         when(
-          () => mockRepository.watchDashboard(),
-        ).thenAnswer(
-          (_) => Stream.error(Exception('Database offline')),
-        );
+          () => mockRepository.updatePartnerStatus(
+            isOnline: any(named: 'isOnline'),
+            isAvailable: false,
+            isBusy: true,
+            currentOrderId: 'order_123',
+          ),
+        ).thenAnswer((_) async {});
         return DeliveryDashboardPageBloc(
           repository: mockRepository,
           service: mockService,
         );
       },
-      act: (bloc) => bloc.add(const DeliveryDashboardInitEvent()),
+      act: (bloc) => bloc.add(
+        const DeliveryDashboardSetBusyEvent(true, currentOrderId: 'order_123'),
+      ),
       expect: () => [
-        const DeliveryDashboardState(status: DeliveryDashboardStatus.loading),
-        loadedState,
+        const DeliveryDashboardState(
+          isBusy: true,
+          isAvailable: false,
+          partnerStatus: DeliveryPartnerStatusType.busy,
+          currentOrderId: 'order_123',
+        ),
       ],
     );
 
     blocTest<DeliveryDashboardPageBloc, DeliveryDashboardState>(
-      'emits updated online state when DeliveryDashboardToggleOnlineEvent is added',
+      'emits offline state on DeliveryDashboardAutoOfflineEvent',
       build: () {
         when(
-          () => mockRepository.saveOnlineStatus(false),
-        ).thenAnswer((_) async => false);
+          () => mockRepository.updatePartnerStatus(
+            isOnline: false,
+            isAvailable: false,
+            isBusy: false,
+          ),
+        ).thenAnswer((_) async {});
         return DeliveryDashboardPageBloc(
           repository: mockRepository,
           service: mockService,
         );
       },
-      act: (bloc) => bloc.add(const DeliveryDashboardToggleOnlineEvent(false)),
-      expect: () => [const DeliveryDashboardState(isOnline: false)],
-      verify: (_) {
-        verify(() => mockRepository.saveOnlineStatus(false)).called(1);
-      },
+      act: (bloc) => bloc.add(const DeliveryDashboardAutoOfflineEvent()),
+      expect: () => [
+        const DeliveryDashboardState(
+          isOnline: false,
+          isAvailable: false,
+          isBusy: false,
+          partnerStatus: DeliveryPartnerStatusType.offline,
+        ),
+      ],
     );
   });
 }

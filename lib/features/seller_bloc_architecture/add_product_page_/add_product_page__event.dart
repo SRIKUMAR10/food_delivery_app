@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/models/product_model.dart';
 
 abstract class AddProductPageEvent extends Equatable {
   const AddProductPageEvent();
@@ -48,6 +49,38 @@ class CategoryChangedEvent extends AddProductPageEvent {
   List<Object?> get props => [category];
 }
 
+class SubcategoryChangedEvent extends AddProductPageEvent {
+  final String subcategory;
+  const SubcategoryChangedEvent(this.subcategory);
+
+  @override
+  List<Object?> get props => [subcategory];
+}
+
+class SkuChangedEvent extends AddProductPageEvent {
+  final String sku;
+  const SkuChangedEvent(this.sku);
+
+  @override
+  List<Object?> get props => [sku];
+}
+
+class VariantsUpdatedEvent extends AddProductPageEvent {
+  final List<ProductVariant> variants;
+  const VariantsUpdatedEvent(this.variants);
+
+  @override
+  List<Object?> get props => [variants];
+}
+
+class CustomizationGroupsUpdatedEvent extends AddProductPageEvent {
+  final List<ProductCustomizationGroup> customizationGroups;
+  const CustomizationGroupsUpdatedEvent(this.customizationGroups);
+
+  @override
+  List<Object?> get props => [customizationGroups];
+}
+
 class StatusChangedEvent extends AddProductPageEvent {
   final bool isActive;
   const StatusChangedEvent(this.isActive);
@@ -83,6 +116,7 @@ class FieldChangedEvent extends AddProductPageEvent {
 
 class SubmitProductEvent extends AddProductPageEvent {
   final String name;
+  final String sku;
   final double price; // GST-inclusive
   final double basePrice;
   final double gstPercentage;
@@ -91,12 +125,17 @@ class SubmitProductEvent extends AddProductPageEvent {
   final String? prepTime;
   final String? portionSize;
   final String? addons;
+  final String? ingredients;
   final String? calories;
   final int? availableStock;
   final int? minimumAlert;
+  final String? subcategory;
+  final List<ProductVariant>? variants;
+  final List<ProductCustomizationGroup>? customizationGroups;
 
   const SubmitProductEvent({
     required this.name,
+    this.sku = '',
     required this.price,
     required this.basePrice,
     required this.gstPercentage,
@@ -105,13 +144,35 @@ class SubmitProductEvent extends AddProductPageEvent {
     this.prepTime,
     this.portionSize,
     this.addons,
+    this.ingredients,
     this.calories,
     this.availableStock,
     this.minimumAlert,
+    this.subcategory,
+    this.variants,
+    this.customizationGroups,
   });
 
   @override
-  List<Object?> get props => [name, price, basePrice, gstPercentage, discountPrice, description, prepTime, portionSize, addons, calories, availableStock, minimumAlert];
+  List<Object?> get props => [
+    name,
+    sku,
+    price,
+    basePrice,
+    gstPercentage,
+    discountPrice,
+    description,
+    prepTime,
+    portionSize,
+    addons,
+    ingredients,
+    calories,
+    availableStock,
+    minimumAlert,
+    subcategory,
+    variants,
+    customizationGroups,
+  ];
 }
 
 class ResetFormEvent extends AddProductPageEvent {}

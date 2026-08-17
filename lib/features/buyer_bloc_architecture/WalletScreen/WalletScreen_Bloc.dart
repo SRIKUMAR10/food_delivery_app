@@ -187,7 +187,8 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
         amount: (event.amount * 100).toInt(),
         receipt: 'receipt_${DateTime.now().millisecondsSinceEpoch}',
       );
-      final orderId = orderResponse['id'];
+      final orderId = orderResponse['orderId'] as String? ??
+          orderResponse['id'] as String?;
 
       emit(
         state.copyWith(

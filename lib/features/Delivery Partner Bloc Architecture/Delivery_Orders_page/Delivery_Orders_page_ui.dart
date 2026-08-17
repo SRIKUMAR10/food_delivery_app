@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'Delivery_Orders_page_bloc.dart';
@@ -107,6 +108,26 @@ class DeliveryOrdersStrings {
       'updateFailed': 'Failed to update order status. Please try again.',
       'liveMap': 'Live Map',
       'liveTrackingSoon': 'Live tracking coming soon',
+      'available': 'Available',
+      'accept': 'Accept',
+      'reject': 'Reject',
+      'accepting': 'Accepting…',
+      'conflict': 'Order already accepted by another delivery partner',
+      'acceptedToast': 'Order accepted. Heading to the store.',
+      'rejectedToast': 'Order declined.',
+      'rejectFailed': 'Failed to reject order. Please try again.',
+      'orderIdLabel': 'Order ID',
+      'copy': 'Copy',
+      'copied': 'Order ID copied',
+      'restaurantLocation': 'Restaurant Location',
+      'customerArea': 'Customer Area',
+      'estimatedDeliveryTime': 'Estimated Delivery Time',
+      'estimatedEarnings': 'Estimated Earnings',
+      'numberOfItems': 'Items',
+      'pickupDistance': 'Pickup Distance',
+      'deliveryDistance': 'Delivery Distance',
+      'toRestaurant': 'to restaurant',
+      'toCustomer': 'to customer',
     },
     'ta': {
       'title': 'ஆர்டர்கள் கண்ணோட்டம்',
@@ -197,6 +218,26 @@ class DeliveryOrdersStrings {
       'updateFailed': 'ஆர்டர் நிலையை புதுப்பிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
       'liveMap': 'லைவ் வரைபடம்',
       'liveTrackingSoon': 'லைவ் டிராக்கிங் விரைவில் வருகிறது',
+      'available': 'கிடைக்கிறது',
+      'accept': 'ஏற்க',
+      'reject': 'நிராகரி',
+      'accepting': 'ஏற்கிறது…',
+      'conflict': 'ஆர்டர் ஏற்கனவே மற்றொரு டெலிவரி பார்ட்னரால் ஏற்கப்பட்டது',
+      'acceptedToast': 'ஆர்டர் ஏற்கப்பட்டது. கடைக்கு செல்கிறது.',
+      'rejectedToast': 'ஆர்டர் நிராகரிக்கப்பட்டது.',
+      'rejectFailed': 'ஆர்டரை நிராகரிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+      'orderIdLabel': 'ஆர்டர் ஐடி',
+      'copy': 'நகலெடு',
+      'copied': 'ஆர்டர் ஐடி நகலெடுக்கப்பட்டது',
+      'restaurantLocation': 'உணவக இடம்',
+      'customerArea': 'வாடிக்கையாளர் பகுதி',
+      'estimatedDeliveryTime': 'மதிப்பிடப்பட்ட டெலிவரி நேரம்',
+      'estimatedEarnings': 'மதிப்பிடப்பட்ட வருவாய்',
+      'numberOfItems': 'பொருட்கள்',
+      'pickupDistance': 'பிக்கப் தூரம்',
+      'deliveryDistance': 'டெலிவரி தூரம்',
+      'toRestaurant': 'உணவகத்திற்கு',
+      'toCustomer': 'வாடிக்கையாளருக்கு',
     },
   };
 
@@ -244,22 +285,39 @@ class DeliveryOrdersPageView extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocConsumer<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
       listenWhen: (previous, current) =>
-          previous.errorMessage != current.errorMessage &&
-          current.errorMessage != null &&
-          current.errorMessage!.isNotEmpty,
+          (previous.errorMessage != current.errorMessage &&
+              current.errorMessage != null &&
+              current.errorMessage!.isNotEmpty) ||
+          (previous.notificationMessage != current.notificationMessage &&
+              current.notificationMessage != null &&
+              current.notificationMessage!.isNotEmpty),
       listener: (context, state) {
-        if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
+        if (state.notificationMessage != null &&
+            state.notificationMessage!.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                state.errorMessage ==
-                        'Failed to update order status. Please try again.'
-                    ? DeliveryOrdersStrings.of(
-                        'updateFailed',
-                        state.localeCode,
-                      )
-                    : state.errorMessage!,
-              ),
+              content: Text(state.notificationMessage!),
+              backgroundColor: DeliveryAppColors.primaryDark,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+        if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
+          final conflictSentinel =
+              'Order already accepted by another delivery partner';
+          final message = state.errorMessage == conflictSentinel
+              ? DeliveryOrdersStrings.of('conflict', state.localeCode)
+              : state.errorMessage ==
+                      'Failed to update order status. Please try again.'
+                  ? DeliveryOrdersStrings.of('updateFailed', state.localeCode)
+                  : state.errorMessage ==
+                          'Failed to reject order. Please try again.'
+                      ? DeliveryOrdersStrings.of('rejectFailed', state.localeCode)
+                      : state.errorMessage!;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
               backgroundColor: DeliveryAppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
@@ -332,11 +390,19 @@ class _OrdersLoadedView extends StatelessWidget {
                     itemCount: state.filteredOrders.length,
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: 16),
-                    itemBuilder: (context, index) =>
-                        _OrderCard(
-                          order: state.filteredOrders[index],
+                    itemBuilder: (context, index) {
+                      final order = state.filteredOrders[index];
+                      if (order.isAvailableOrder) {
+                        return _AvailableOrderCard(
+                          order: order,
                           state: state,
-                        ),
+                        );
+                      }
+                      return _OrderCard(
+                        order: order,
+                        state: state,
+                      );
+                    },
                   ),
           ],
         );
@@ -1432,6 +1498,533 @@ class _MapGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _AvailableOrderCard extends StatelessWidget {
+  final DeliveryOrderCardModel order;
+  final DeliveryOrdersPageState state;
+
+  const _AvailableOrderCard({required this.order, required this.state});
+
+  String _displayOrderId() {
+    final id = order.orderId;
+    if (id.startsWith('#')) return id;
+    if (id.length > 10 && !id.contains(' ')) {
+      return '#${id.substring(0, 10).toUpperCase()}';
+    }
+    return '#$id';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = state.localeCode;
+    final service = DeliveryOrdersService();
+    final isAccepting = state.acceptingOrderId == order.orderId;
+    final earnings = order.estimatedEarnings > 0
+        ? order.estimatedEarnings
+        : service.calculateEstimatedEarnings(order.distance);
+    final orderIdLabel = _displayOrderId();
+
+    return Container(
+      key: Key('dp_orders_available_card_${order.orderId}'),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: DeliveryAppColors.primary.withValues(alpha: 0.35),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                DeliveryChip(
+                  variant: DeliveryChipVariant.success,
+                  icon: Icons.circle,
+                  label: DeliveryOrdersStrings.of('available', lang),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    orderIdLabel,
+                    style: DeliveryAppTypography.titleMedium.copyWith(
+                      color: DeliveryAppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _CopyOrderIdButton(orderId: order.orderId, lang: lang),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _AvailableAddressRow(
+              icon: Icons.store,
+              color: DeliveryAppColors.primary,
+              label: DeliveryOrdersStrings.of('restaurantLocation', lang),
+              value: order.restaurantName,
+              address: order.displayRestaurantLocation,
+            ),
+            const SizedBox(height: 12),
+            _AvailableAddressRow(
+              icon: Icons.location_on,
+              color: DeliveryAppColors.error,
+              label: DeliveryOrdersStrings.of('customerArea', lang),
+              value: order.customerName,
+              address: order.displayCustomerArea,
+            ),
+            const SizedBox(height: 14),
+            const Divider(color: DeliveryAppColors.border, height: 1),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              children: [
+                _AvailableMetric(
+                  icon: Icons.near_me_outlined,
+                  label: DeliveryOrdersStrings.of('distance', lang),
+                  value: service.formatDistance(order.distance),
+                ),
+                _AvailableMetric(
+                  icon: Icons.timer_outlined,
+                  label: DeliveryOrdersStrings.of('estimatedDeliveryTime', lang),
+                  value: order.etaMins > 0
+                      ? '${order.etaMins} ${DeliveryOrdersStrings.of('min', lang)}'
+                      : '--',
+                ),
+                _AvailableMetric(
+                  icon: Icons.shopping_bag_outlined,
+                  label: DeliveryOrdersStrings.of('numberOfItems', lang),
+                  value:
+                      '${order.itemsCount} ${DeliveryOrdersStrings.of('items', lang)}',
+                ),
+                _AvailableMetric(
+                  icon: Icons.store_mall_directory_outlined,
+                  label: DeliveryOrdersStrings.of('pickupDistance', lang),
+                  value:
+                      '${service.formatDistance(order.pickupDistance > 0 ? order.pickupDistance : order.distance)} '
+                      '${DeliveryOrdersStrings.of('toRestaurant', lang)}',
+                ),
+                _AvailableMetric(
+                  icon: Icons.place_outlined,
+                  label: DeliveryOrdersStrings.of('deliveryDistance', lang),
+                  value:
+                      '${service.formatDistance(order.deliveryDistance > 0 ? order.deliveryDistance : order.distance)} '
+                      '${DeliveryOrdersStrings.of('toCustomer', lang)}',
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: DeliveryAppSpacing.sm,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    DeliveryAppColors.successBg,
+                    Color(0xFF0D141C),
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: DeliveryAppSpacing.borderRadiusMd,
+                border: Border.all(
+                  color: DeliveryAppColors.primary.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.account_balance_wallet_outlined,
+                    color: DeliveryAppColors.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    DeliveryOrdersStrings.of('estimatedEarnings', lang),
+                    style: DeliveryAppTypography.bodySmall.copyWith(
+                      color: DeliveryAppColors.textMuted,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    service.formatCurrency(earnings, lang),
+                    style: DeliveryAppTypography.h3.copyWith(
+                      color: DeliveryAppColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _AcceptOrderButton(
+                    buttonKey: Key('dp_orders_accept_${order.orderId}'),
+                    isAccepting: isAccepting,
+                    label: isAccepting
+                        ? DeliveryOrdersStrings.of('accepting', lang)
+                        : DeliveryOrdersStrings.of('accept', lang),
+                    onTap: isAccepting
+                        ? null
+                        : () => context
+                            .read<DeliveryOrdersPageBloc>()
+                            .add(DeliveryOrdersAcceptOrderEvent(order.orderId)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _RejectOrderButton(
+                    buttonKey: Key('dp_orders_reject_${order.orderId}'),
+                    label: DeliveryOrdersStrings.of('reject', lang),
+                    onTap: () => context
+                        .read<DeliveryOrdersPageBloc>()
+                        .add(DeliveryOrdersRejectOrderEvent(order.orderId)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ViewDetailsOrderButton(
+                    buttonKey: Key('dp_orders_details_${order.orderId}'),
+                    label: DeliveryOrdersStrings.of('viewDetails', lang),
+                    onTap: () => Navigator.of(context).pushNamed(
+                      '/deliveryOrderDetails',
+                      arguments: {'orderId': order.orderId},
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CopyOrderIdButton extends StatelessWidget {
+  final String orderId;
+  final String lang;
+
+  const _CopyOrderIdButton({required this.orderId, required this.lang});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: DeliveryOrdersStrings.of('copy', lang),
+      child: Material(
+        color: DeliveryAppColors.primaryDark.withValues(alpha: 0.16),
+        borderRadius: DeliveryAppSpacing.borderRadiusSm,
+        child: InkWell(
+          key: Key('dp_orders_copy_$orderId'),
+          onTap: () async {
+            await Clipboard.setData(ClipboardData(text: orderId));
+            if (context.mounted) {
+              _showSnack(
+                context,
+                DeliveryOrdersStrings.of('copied', lang),
+                DeliveryAppColors.primaryDark,
+              );
+            }
+          },
+          borderRadius: DeliveryAppSpacing.borderRadiusSm,
+          child: const Padding(
+            padding: EdgeInsets.all(6),
+            child: Icon(
+              Icons.copy_rounded,
+              color: DeliveryAppColors.primary,
+              size: 16,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AvailableAddressRow extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+  final String address;
+
+  const _AvailableAddressRow({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+    required this.address,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: DeliveryAppSpacing.borderRadiusSm,
+          ),
+          child: Icon(icon, color: color, size: 17),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: DeliveryAppTypography.caption.copyWith(
+                  color: DeliveryAppColors.textMuted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: DeliveryAppTypography.bodyMedium.copyWith(
+                  color: DeliveryAppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (address.isNotEmpty) ...[
+                const SizedBox(height: 1),
+                Text(
+                  address,
+                  style: DeliveryAppTypography.bodySmall.copyWith(
+                    color: DeliveryAppColors.textMuted,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AvailableMetric extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _AvailableMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 150,
+      child: Row(
+        children: [
+          Icon(icon, color: DeliveryAppColors.textMuted, size: 16),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: DeliveryAppTypography.caption.copyWith(
+                    color: DeliveryAppColors.textMuted,
+                    fontSize: 10,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: DeliveryAppTypography.bodySmall.copyWith(
+                    color: DeliveryAppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AcceptOrderButton extends StatelessWidget {
+  final Key buttonKey;
+  final bool isAccepting;
+  final String label;
+  final VoidCallback? onTap;
+
+  const _AcceptOrderButton({
+    required this.buttonKey,
+    required this.isAccepting,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: DeliveryAppSpacing.minTouchTargetSize,
+      child: Material(
+        borderRadius: DeliveryAppSpacing.borderRadiusMd,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: DeliveryAppSpacing.borderRadiusMd,
+          ),
+          child: InkWell(
+            key: buttonKey,
+            onTap: onTap,
+            borderRadius: DeliveryAppSpacing.borderRadiusMd,
+            child: Center(
+              child: isAccepting
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          DeliveryAppColors.buttonPrimaryText,
+                        ),
+                      ),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.check_circle_outline,
+                          size: 16,
+                          color: DeliveryAppColors.buttonPrimaryText,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            label,
+                            style: DeliveryAppTypography.button.copyWith(
+                              color: DeliveryAppColors.buttonPrimaryText,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RejectOrderButton extends StatelessWidget {
+  final Key buttonKey;
+  final String label;
+  final VoidCallback onTap;
+
+  const _RejectOrderButton({
+    required this.buttonKey,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: DeliveryAppSpacing.minTouchTargetSize,
+      child: OutlinedButton.icon(
+        key: buttonKey,
+        onPressed: onTap,
+        icon: const Icon(Icons.close, size: 16),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 12),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: DeliveryAppColors.error,
+          side: const BorderSide(color: DeliveryAppColors.error),
+          shape: RoundedRectangleBorder(
+            borderRadius: DeliveryAppSpacing.borderRadiusMd,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ViewDetailsOrderButton extends StatelessWidget {
+  final Key buttonKey;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ViewDetailsOrderButton({
+    required this.buttonKey,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: DeliveryAppSpacing.minTouchTargetSize,
+      child: OutlinedButton.icon(
+        key: buttonKey,
+        onPressed: onTap,
+        icon: const Icon(Icons.info_outline, size: 16),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 12),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: DeliveryAppColors.textMuted,
+          side: const BorderSide(color: DeliveryAppColors.border),
+          shape: RoundedRectangleBorder(
+            borderRadius: DeliveryAppSpacing.borderRadiusMd,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _OrderCard extends StatelessWidget {

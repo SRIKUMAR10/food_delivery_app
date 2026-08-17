@@ -109,6 +109,56 @@ class DeliveryCompletedService implements DeliveryCompletedServiceBase {
 
           final double earnings = ((data['amount'] as num?)?.toDouble() ?? 0.0) * 0.15;
 
+          final double codAmount =
+              ((data['codAmount'] ?? data['amount']) as num?)?.toDouble() ?? 0.0;
+          final double collectedAmount =
+              (data['collectedAmount'] as num?)?.toDouble() ?? 0.0;
+
+          final double? baseFareRaw = (data['baseFare'] as num?)?.toDouble();
+          final double? distanceFareRaw =
+              (data['distanceFare'] as num?)?.toDouble();
+          final double? surgeFareRaw = (data['surgeFare'] as num?)?.toDouble();
+          final double? incentiveRaw =
+              ((data['incentiveAmount'] ?? data['incentive']) as num?)
+                  ?.toDouble();
+          final double? bonusRaw =
+              ((data['bonusAmount'] ?? data['bonus']) as num?)?.toDouble();
+          final double? tipsRaw =
+              ((data['tipsAmount'] ?? data['tipAmount'] ?? data['tips']) as num?)
+                  ?.toDouble();
+          final double? cancellationCompensationRaw =
+              (data['cancellationCompensation'] as num?)?.toDouble();
+
+          final bool hasBreakdown = baseFareRaw != null ||
+              distanceFareRaw != null ||
+              surgeFareRaw != null ||
+              incentiveRaw != null ||
+              bonusRaw != null ||
+              tipsRaw != null ||
+              cancellationCompensationRaw != null;
+
+          final double baseFare = hasBreakdown ? (baseFareRaw ?? 0.0) : earnings;
+          final double distanceFare =
+              hasBreakdown ? (distanceFareRaw ?? 0.0) : 0.0;
+          final double surgeFare = hasBreakdown ? (surgeFareRaw ?? 0.0) : 0.0;
+          final double incentive = hasBreakdown ? (incentiveRaw ?? 0.0) : 0.0;
+          final double bonus = hasBreakdown ? (bonusRaw ?? 0.0) : 0.0;
+          final double tips = hasBreakdown ? (tipsRaw ?? 0.0) : 0.0;
+          final double cancellationCompensation =
+              hasBreakdown ? (cancellationCompensationRaw ?? 0.0) : 0.0;
+
+          final double totalPartnerEarnings =
+              (data['totalPartnerEarnings'] as num?)?.toDouble() ??
+                  (hasBreakdown
+                      ? baseFare +
+                          distanceFare +
+                          surgeFare +
+                          incentive +
+                          bonus +
+                          tips +
+                          cancellationCompensation
+                      : earnings);
+
           return {
             'orderId': orderId,
             'walletBalance': walletBalance,
@@ -126,6 +176,21 @@ class DeliveryCompletedService implements DeliveryCompletedServiceBase {
             'completedAt': data['deliveredAt'] != null
                 ? _formatTimestamp(data['deliveredAt'])
                 : '',
+            'isCOD': (data['paymentMethod'] as String? ?? '')
+                    .toUpperCase() ==
+                'COD',
+            'codAmount': codAmount,
+            'collectedAmount': collectedAmount,
+            'isCodCollected': data['isCodCollected'] == true,
+            'codReconciliationStatus': data['codReconciliationStatus'] ?? '',
+            'baseFare': baseFare,
+            'distanceFare': distanceFare,
+            'surgeFare': surgeFare,
+            'incentive': incentive,
+            'bonus': bonus,
+            'tips': tips,
+            'cancellationCompensation': cancellationCompensation,
+            'totalPartnerEarnings': totalPartnerEarnings,
           };
         }
       }
@@ -142,23 +207,67 @@ class DeliveryCompletedService implements DeliveryCompletedServiceBase {
         final orderData = orderDoc.data() ?? {};
         final amount = (orderData['amount'] as num?)?.toDouble() ?? 0.0;
         final deliveryFee = (amount * 0.15) > 30.0 ? (amount * 0.15) : 35.0;
+        final sellerId = orderData['sellerId'] as String? ?? '';
+        final isCOD =
+            (orderData['paymentMethod'] as String? ?? '').toUpperCase() == 'COD';
+        final isCodCollected = orderData['isCodCollected'] == true;
 
-        await fs.collection('orders').doc(orderId).update({
+        final double baseFare = 35.0;
+        final double distanceFare =
+            (deliveryFee - 35.0) > 0.0 ? (deliveryFee - 35.0) : 0.0;
+
+        final batch = fs.batch();
+
+        final orderRef = fs.collection('orders').doc(orderId);
+        batch.update(orderRef, {
           'status': 'Delivered',
           'deliveryPartnerStatus': 'completed',
           'deliveryStatus': 'delivered',
+          'pickupStatus': 'delivered',
           'deliveredAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
+          'baseFare': baseFare,
+          'distanceFare': distanceFare,
+          'surgeFare': 0.0,
+          'incentiveAmount': 0.0,
+          'bonusAmount': 0.0,
+          'tipsAmount': 0.0,
+          'cancellationCompensation': 0.0,
+          'totalPartnerEarnings': deliveryFee,
+          if (isCOD && isCodCollected)
+            'codReconciliationStatus': 'pending_submission',
         });
 
         final user = _auth?.currentUser;
         if (user != null) {
-          await fs.collection('delivery_partners').doc(user.uid).set({
-            'totalEarnings': FieldValue.increment(deliveryFee),
-            'completedTrips': FieldValue.increment(1),
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+          final driverRef = fs.collection('delivery_partners').doc(user.uid);
+          batch.set(
+            driverRef,
+            {
+              'totalEarnings': FieldValue.increment(deliveryFee),
+              'completedTrips': FieldValue.increment(1),
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
         }
+
+        if (sellerId.isNotEmpty) {
+          final sellerRef = fs.collection('sellers').doc(sellerId);
+          final sellerEarnings = amount - deliveryFee;
+          batch.set(
+            sellerRef,
+            {
+              'totalOrders': FieldValue.increment(1),
+              'completedOrders': FieldValue.increment(1),
+              if (sellerEarnings > 0) 'walletBalance': FieldValue.increment(sellerEarnings),
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+        }
+
+        await batch.commit();
       }
     } catch (_) {}
     return fetchCompletedOrderData(orderId);

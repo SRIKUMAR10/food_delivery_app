@@ -21,6 +21,7 @@ void main() {
 
   const DeliveryProfileState loadedState = DeliveryProfileState(
     status: DeliveryProfileStatus.loaded,
+    fullName: 'Ravi Kumar',
     completionPercentage: 75,
     verificationStatuses: DeliveryProfileRepository.defaultVerificationStatuses,
     documents: DeliveryProfileRepository.defaultDocuments,

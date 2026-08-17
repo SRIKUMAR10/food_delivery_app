@@ -102,7 +102,7 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
         conversationId: current.conversationId,
         text: event.text.trim(),
         senderId: current.currentUserId,
-        senderRole: 'seller',
+        senderRole: 'delivery_partner',
       );
     } catch (e) {
       emit(current.copyWith(

@@ -58,24 +58,37 @@ void main() {
         when(
           () => mockService.fetchProfileData(),
         ).thenAnswer((_) async => {
+          'id': 'partner_123456',
           'displayName': 'Kavitha',
           'phoneNumber': '+91 98765 43210',
           'email': 'kavitha@test.com',
+          'address': '45 Anna Nagar, Chennai',
           'photoUrl': 'https://example.com/avatar.png',
           'vehicleType': 'Bike',
           'vehicleNumber': 'TN 01 AB 1234',
           'drivingLicense': 'DL-2023-001',
+          'rating': 4.8,
+          'totalDeliveries': 25,
+          'joiningDate': '12 Jan 2024',
+          'status': 'approved',
+          'kycStatus': 'approved',
         });
 
         final profile = await repository.fetchProfile();
 
+        expect(profile.partnerId, 'partner_123456');
+        expect(profile.partnerCode, 'DP-PARTNE');
         expect(profile.fullName, 'Kavitha');
         expect(profile.phone, '+91 98765 43210');
         expect(profile.email, 'kavitha@test.com');
+        expect(profile.address, '45 Anna Nagar, Chennai');
         expect(profile.vehicleType, 'Bike');
         expect(profile.vehicleNumber, 'TN 01 AB 1234');
         expect(profile.licenseNumber, 'DL-2023-001');
+        expect(profile.rating, 4.8);
+        expect(profile.totalDeliveries, 25);
         expect(profile.avatarPath, 'https://example.com/avatar.png');
+        expect(profile.isKycApproved, isTrue);
       },
     );
 
@@ -89,6 +102,7 @@ void main() {
 
       final updated = (await repository.fetchProfile()).copyWith(
         fullName: 'Kavitha',
+        address: 'New Street, Coimbatore',
         vehicleNumber: 'TN 01 AB 1234',
       );
 
@@ -96,33 +110,57 @@ void main() {
 
       final restored = await repository.fetchProfile();
       expect(restored.fullName, 'Kavitha');
+      expect(restored.address, 'New Street, Coimbatore');
       expect(restored.vehicleNumber, 'TN 01 AB 1234');
     });
 
-    test('avatar path can be saved and retrieved', () async {
-      expect(await repository.getAvatarPath(), isNull);
-
-      await repository.saveAvatarPath('/tmp/profile.png');
-      expect(await repository.getAvatarPath(), '/tmp/profile.png');
-
-      await repository.saveAvatarPath(null);
-      expect(await repository.getAvatarPath(), isNull);
+    test('updateAddress calls service correctly', () async {
+      when(() => mockService.updateProfile({'address': 'Madurai'}))
+          .thenAnswer((_) async => true);
+      await repository.updateAddress('Madurai');
+      verify(() => mockService.updateProfile({'address': 'Madurai'})).called(1);
     });
 
-    test('pickProfileImage resolves to null placeholder', () async {
-      expect(await repository.pickProfileImage(), isNull);
-    });
-
-    test('buildDefaultChecklist does not mark unverified documents', () {
-      final profile = repository.buildDefaultProfile();
-      final checklist = DeliveryProfileRepository.buildDefaultChecklist(
-        profile: profile,
+    test('updateVehicle calls service correctly', () async {
+      when(() => mockService.updateProfile({
+            'vehicleType': 'Scooter',
+            'vehicleNumber': 'TN 58 AA 1111',
+          })).thenAnswer((_) async => true);
+      await repository.updateVehicle(
+        vehicleType: 'Scooter',
+        vehicleNumber: 'TN 58 AA 1111',
       );
+      verify(() => mockService.updateProfile({
+            'vehicleType': 'Scooter',
+            'vehicleNumber': 'TN 58 AA 1111',
+          })).called(1);
+    });
 
-      final byId = {for (final item in checklist) item.id: item};
-      expect(byId['drivingLicense']!.isComplete, isFalse);
-      expect(byId['insurance']!.isComplete, isFalse);
-      expect(byId['documentVerification']!.isComplete, isFalse);
+    test('changePassword calls service correctly', () async {
+      when(() => mockService.changePassword(
+            currentPassword: 'old',
+            newPassword: 'new',
+          )).thenAnswer((_) async {});
+      await repository.changePassword(
+        currentPassword: 'old',
+        newPassword: 'new',
+      );
+      verify(() => mockService.changePassword(
+            currentPassword: 'old',
+            newPassword: 'new',
+          )).called(1);
+    });
+
+    test('deactivateAccount calls service correctly', () async {
+      when(() => mockService.deactivateAccount()).thenAnswer((_) async {});
+      await repository.deactivateAccount();
+      verify(() => mockService.deactivateAccount()).called(1);
+    });
+
+    test('logout calls service correctly', () async {
+      when(() => mockService.logout()).thenAnswer((_) async {});
+      await repository.logout();
+      verify(() => mockService.logout()).called(1);
     });
 
     test('computeDeliveryProfileCompletion returns 0 for empty profile', () {
@@ -132,6 +170,7 @@ void main() {
         phone: profile.phone,
         email: profile.email,
         dob: profile.dob,
+        address: profile.address,
         vehicleType: profile.vehicleType,
         vehicleNumber: profile.vehicleNumber,
         licenseNumber: profile.licenseNumber,

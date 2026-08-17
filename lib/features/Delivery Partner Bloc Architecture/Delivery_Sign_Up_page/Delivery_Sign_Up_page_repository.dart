@@ -127,7 +127,6 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
       countryCode: '+91',
       displayName: name,
       email: authEmail,
-      password: password,
       role: 'delivery_partner',
       status: 'approved',
       isActive: true,

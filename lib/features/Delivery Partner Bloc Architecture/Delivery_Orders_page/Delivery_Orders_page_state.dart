@@ -31,6 +31,19 @@ class DeliveryOrderCardModel extends Equatable {
   final int preparationTimeMins;
   final double deliveryBonus;
 
+  final String restaurantLocation;
+  final String customerArea;
+  final double estimatedEarnings;
+  final double pickupDistance;
+  final double deliveryDistance;
+  final String sellerId;
+  final String customerId;
+  final String assignedTime;
+  final String acceptedTime;
+  final String assignmentStatus;
+  final List<String> rejectedBy;
+  final bool isAvailable;
+
   const DeliveryOrderCardModel({
     required this.orderId,
     required this.customerName,
@@ -51,9 +64,44 @@ class DeliveryOrderCardModel extends Equatable {
     this.expectedTip = 0.0,
     this.preparationTimeMins = 0,
     this.deliveryBonus = 0.0,
+    this.restaurantLocation = '',
+    this.customerArea = '',
+    this.estimatedEarnings = 0.0,
+    this.pickupDistance = 0.0,
+    this.deliveryDistance = 0.0,
+    this.sellerId = '',
+    this.customerId = '',
+    this.assignedTime = '',
+    this.acceptedTime = '',
+    this.assignmentStatus = '',
+    this.rejectedBy = const [],
+    this.isAvailable = false,
   });
 
-  DeliveryOrderCardModel copyWith({DeliveryOrderStatus? status}) {
+  bool get isAvailableOrder =>
+      isAvailable || assignmentStatus == 'available';
+
+  String get displayRestaurantLocation =>
+      restaurantLocation.isNotEmpty ? restaurantLocation : pickupAddress;
+
+  String get displayCustomerArea =>
+      customerArea.isNotEmpty ? customerArea : deliveryAddress;
+
+  DeliveryOrderCardModel copyWith({
+    DeliveryOrderStatus? status,
+    String? restaurantLocation,
+    String? customerArea,
+    double? estimatedEarnings,
+    double? pickupDistance,
+    double? deliveryDistance,
+    String? sellerId,
+    String? customerId,
+    String? assignedTime,
+    String? acceptedTime,
+    String? assignmentStatus,
+    List<String>? rejectedBy,
+    bool? isAvailable,
+  }) {
     return DeliveryOrderCardModel(
       orderId: orderId,
       customerName: customerName,
@@ -74,6 +122,18 @@ class DeliveryOrderCardModel extends Equatable {
       expectedTip: expectedTip,
       preparationTimeMins: preparationTimeMins,
       deliveryBonus: deliveryBonus,
+      restaurantLocation: restaurantLocation ?? this.restaurantLocation,
+      customerArea: customerArea ?? this.customerArea,
+      estimatedEarnings: estimatedEarnings ?? this.estimatedEarnings,
+      pickupDistance: pickupDistance ?? this.pickupDistance,
+      deliveryDistance: deliveryDistance ?? this.deliveryDistance,
+      sellerId: sellerId ?? this.sellerId,
+      customerId: customerId ?? this.customerId,
+      assignedTime: assignedTime ?? this.assignedTime,
+      acceptedTime: acceptedTime ?? this.acceptedTime,
+      assignmentStatus: assignmentStatus ?? this.assignmentStatus,
+      rejectedBy: rejectedBy ?? this.rejectedBy,
+      isAvailable: isAvailable ?? this.isAvailable,
     );
   }
 
@@ -98,6 +158,18 @@ class DeliveryOrderCardModel extends Equatable {
         expectedTip,
         preparationTimeMins,
         deliveryBonus,
+        restaurantLocation,
+        customerArea,
+        estimatedEarnings,
+        pickupDistance,
+        deliveryDistance,
+        sellerId,
+        customerId,
+        assignedTime,
+        acceptedTime,
+        assignmentStatus,
+        rejectedBy,
+        isAvailable,
       ];
 }
 
@@ -113,6 +185,8 @@ class DeliveryOrdersPageState extends Equatable {
   final List<DeliveryOrderCardModel> orders;
   final List<DeliveryOrderCardModel> filteredOrders;
   final String? errorMessage;
+  final String? notificationMessage;
+  final String? acceptingOrderId;
   final String localeCode;
 
   const DeliveryOrdersPageState({
@@ -125,6 +199,8 @@ class DeliveryOrdersPageState extends Equatable {
     this.orders = const [],
     this.filteredOrders = const [],
     this.errorMessage,
+    this.notificationMessage,
+    this.acceptingOrderId,
     this.localeCode = 'en',
   });
 
@@ -134,6 +210,9 @@ class DeliveryOrdersPageState extends Equatable {
 
   int get activeCount =>
       orders.where((o) => o.status == DeliveryOrderStatus.active).length;
+
+  int get availableCount =>
+      orders.where((o) => o.isAvailableOrder).length;
 
   int get pendingCount =>
       orders.where((o) => o.status == DeliveryOrderStatus.pending).length;
@@ -189,6 +268,10 @@ class DeliveryOrdersPageState extends Equatable {
     List<DeliveryOrderCardModel>? filteredOrders,
     String? errorMessage,
     bool clearError = false,
+    String? notificationMessage,
+    bool clearNotification = false,
+    String? acceptingOrderId,
+    bool clearAcceptingOrderId = false,
     String? localeCode,
   }) {
     return DeliveryOrdersPageState(
@@ -201,6 +284,12 @@ class DeliveryOrdersPageState extends Equatable {
       orders: orders ?? this.orders,
       filteredOrders: filteredOrders ?? this.filteredOrders,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      notificationMessage: clearNotification
+          ? null
+          : (notificationMessage ?? this.notificationMessage),
+      acceptingOrderId: clearAcceptingOrderId
+          ? null
+          : (acceptingOrderId ?? this.acceptingOrderId),
       localeCode: localeCode ?? this.localeCode,
     );
   }
@@ -216,6 +305,8 @@ class DeliveryOrdersPageState extends Equatable {
         orders,
         filteredOrders,
         errorMessage,
+        notificationMessage,
+        acceptingOrderId,
         localeCode,
       ];
 }

@@ -76,24 +76,49 @@ class AssignDeliveryService {
     try {
       final orderRef = _firestore.collection('orders').doc(orderId);
 
+      // Fetch rider metadata
+      String riderName = 'Delivery Partner';
+      String riderPhone = '';
+      try {
+        final dpDoc = await _firestore.collection('delivery_partners').doc(riderId).get();
+        if (dpDoc.exists) {
+          final data = dpDoc.data() ?? {};
+          riderName = data['displayName'] as String? ?? data['name'] as String? ?? riderName;
+          riderPhone = data['phoneNumber'] as String? ?? data['phone'] as String? ?? riderPhone;
+        } else {
+          final rDoc = await _firestore.collection('riders').doc(riderId).get();
+          if (rDoc.exists) {
+            final data = rDoc.data() ?? {};
+            riderName = data['name'] as String? ?? riderName;
+            riderPhone = data['phone'] as String? ?? riderPhone;
+          }
+        }
+      } catch (_) {}
+
       await _firestore.runTransaction((transaction) async {
         final orderSnap = await transaction.get(orderRef);
         if (!orderSnap.exists) {
           throw Exception('Order not found');
         }
         final currentStatus = orderSnap.data()?['status'] as String?;
-        if (currentStatus != 'Ready') {
+        final cleanStatus = (currentStatus ?? '').toLowerCase().replaceAll('_', '').replaceAll(' ', '');
+        if (cleanStatus != 'ready' && cleanStatus != 'readyforpickup') {
           throw Exception(
             'Order must be in "Ready" status before assigning a delivery partner. '
             'Current status: $currentStatus',
           );
         }
         transaction.update(orderRef, {
-          'status': 'OutForDelivery',
+          'status': 'Ready',
           'riderId': riderId,
           'deliveryPartnerId': riderId,
           'driverId': riderId,
+          'deliveryPartnerName': riderName,
+          'deliveryPartnerPhone': riderPhone,
+          'deliveryPartnerStatus': 'assigned',
+          'pickupStatus': 'heading_to_store',
           'deliveryInstructions': instructions,
+          'assignedAt': FieldValue.serverTimestamp(),
           'outForDeliveryAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         });

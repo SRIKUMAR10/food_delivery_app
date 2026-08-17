@@ -1,25 +1,43 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_delivery_app/core/models/seller_model.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_profile_page/seller_profile_page__state.dart';
 
 void main() {
-  group('Security and Sensitive Data Test', () {
-    test('Ensure sensitive data like passwords are not logged in State', () {
+  group('Security and Sensitive Data Tests for Restaurant Profile', () {
+    test('Ensure sensitive data like passwords or tokens are not leaked in State', () {
       final state = ProfileLoaded(
-        storeName: 'Test Store',
-        email: 'test@test.com',
+        storeName: 'Secured Kitchen',
+        email: 'seller@secured.com',
         phone: '1234567890',
-        profileImageUrl: 'url',
+        profileImageUrl: 'https://example.com/img.jpg',
+        coverImageUrl: 'https://example.com/cover.jpg',
         notificationsEnabled: true,
-        createdAt: DateTime(2023, 1, 1),
+        createdAt: DateTime(2025, 1, 1),
         isVerified: true,
         role: 'seller',
       );
 
       final stateString = state.toString();
 
-      // We shouldn't see any field named password or token in the state's string representation
+      // Rule #9 Compliance: We must not expose password, secret token, bank credential
       expect(stateString.contains('password'), isFalse);
       expect(stateString.contains('token'), isFalse);
+      expect(stateString.contains('secretKey'), isFalse);
+    });
+
+    test('SellerModel toMap does not expose secret keys', () {
+      final model = SellerModel(
+        id: 'seller_123',
+        name: 'Test Kitchen',
+        email: 'seller@test.com',
+        shopName: 'Test Kitchen',
+        createdAt: DateTime(2025, 1, 1),
+      );
+
+      final map = model.toMap();
+      expect(map.containsKey('password'), isFalse);
+      expect(map.containsKey('secretKey'), isFalse);
+      expect(map.containsKey('authToken'), isFalse);
     });
   });
 }

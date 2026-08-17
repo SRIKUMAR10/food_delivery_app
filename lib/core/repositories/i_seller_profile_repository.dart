@@ -7,4 +7,16 @@ abstract interface class ISellerProfileRepository {
     required String fileName,
     required List<int> imageBytes,
   });
+  Future<String> uploadCoverImage({
+    required String sellerId,
+    required String fileName,
+    required List<int> imageBytes,
+  });
+  Future<void> updateOperationalStatus(
+    String sellerId, {
+    bool? isOpen,
+    bool? isAcceptingOrders,
+    bool? isOnline,
+  });
 }
+

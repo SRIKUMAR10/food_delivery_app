@@ -73,3 +73,17 @@ At the end of every task, you must provide a detailed report including:
 - Completely remove any hardcoded or static placeholder data present in every UI screen.
 - As soon as each user logs in, ensure that they are presented only with the latest, real-time data.
 - Modernize and configure all database queries on all pages to fetch directly from real-time Firestore fields without any local fallback defaults or hardcoded values.
+
+
+## 9. Payment & Security Rules
+- Never duplicate backend payment-related logic in the frontend.
+- Ensure all payment verification, order creation, and price calculation logic is handled server-side (Cloud Functions).
+- Never pass sensitive payment details (bank credentials, OTP, card numbers, secret keys) to the frontend.
+- The frontend should only send payment tokens, transaction IDs, and user identifiers to the backend.
+- Always validate and confirm payments through the secure backend endpoints before showing success messages.
+- Always use mock payment flows for development unless explicit backend support is verified to be active and stable.
+
+## 10. Real -time UI update (நமது architecture-ல் உள்ள அனைத்து widgets-ும் **real-time UI/UX** ஆக Chrome, Android Emulator, Windows, macOS, Linux போன்ற பல சாதனங்களில் ஒரே நேரத்தில் update ஆகி, seamless real-time experience தர வேண்டும்.
+
+Responsive Layout, smooth Animation, Localization, மற்றும் real-time state updates அனைத்தும் அனைத்துப் platforms-லும் ஒரே தரத்தில், widgets எல்லாம் ஒரே நேரத்தில் update ஆகி, consistent UI/UX வழங்கும்.)
+

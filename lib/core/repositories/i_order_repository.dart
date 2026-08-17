@@ -1,7 +1,8 @@
+import 'package:equatable/equatable.dart';
 import '../models/order_model.dart';
 import '../models/order_status.dart';
 
-class DriverLocation {
+class DriverLocation extends Equatable {
   final double lat;
   final double lng;
   final DateTime? timestamp;
@@ -11,14 +12,18 @@ class DriverLocation {
     required this.lng,
     this.timestamp,
   });
+
+  @override
+  List<Object?> get props => [lat, lng, timestamp];
 }
+
 
 abstract interface class IOrderRepository {
   Stream<List<OrderModel>> getBuyerOrdersStream(String buyerId);
   Stream<List<OrderModel>> getSellerOrdersStream(String sellerId);
   Stream<OrderModel?> streamOrderById(String orderId);
   Stream<List<OrderModel>> streamAvailableDeliveryOrders();
-  Future<void> updateOrderStatus(String orderId, OrderStatus newStatus);
+  Future<void> updateOrderStatus(String orderId, OrderStatus newStatus, {String? reason});
   Future<OrderModel?> getOrderById(String orderId);
   Future<void> addOrderWalletTransaction({
     required String customerId,

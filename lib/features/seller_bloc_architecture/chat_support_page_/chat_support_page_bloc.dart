@@ -28,11 +28,31 @@ class _MessagesError extends ChatSupportEvent {
   _MessagesError(this.error);
 }
 
+class _TypingStatusUpdated extends ChatSupportEvent {
+  final Map<String, bool> typingUsers;
+  const _TypingStatusUpdated(this.typingUsers);
+}
+
 class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
   final IChatRepository repository;
   String? _sellerId;
   StreamSubscription? _conversationsSub;
   StreamSubscription? _messagesSub;
+  StreamSubscription? _typingSub;
+  Timer? _typingResetTimer;
+  String? _activeTypingConversationId;
+
+  // Initial open context (used for deep-linking from Orders List / tracking).
+  String? _initialConversationId;
+  String? _initialOrderId;
+  String? _targetRole;
+  String? _partnerId;
+  String? _partnerName;
+  String? _partnerPhone;
+  String? _partnerImageUrl;
+  String? _orderTitle;
+  double? _orderTotal;
+  bool _autoOpenHandled = false;
 
   ChatSupportBloc({required this.repository}) : super(ChatSupportInitial()) {
     on<LoadChatSessionsEvent>(_onLoadChatSessions);
@@ -49,12 +69,29 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
     on<StartSupportAudioRecording>(_onStartAudioRecording);
     on<StopSupportAudioRecording>(_onStopAudioRecording);
     on<CancelSupportAudioRecording>(_onCancelAudioRecording);
+    on<SetTypingStatusEvent>(_onSetTypingStatus);
+    on<_TypingStatusUpdated>(_onTypingStatusUpdated);
+    on<SetChatFilterTabEvent>(_onSetChatFilterTab);
+    on<StartOrderDeliveryPartnerChatEvent>(_onStartOrderDeliveryPartnerChat);
+    on<AutoOpenOrderConversationEvent>(_onAutoOpenOrderConversation);
   }
 
   void _onLoadChatSessions(
       LoadChatSessionsEvent event, Emitter<ChatSupportState> emit) {
     _sellerId = event.sellerId;
+    _initialConversationId = event.initialConversationId;
+    _initialOrderId = event.initialOrderId;
+    _targetRole = event.targetRole;
+    _partnerId = event.partnerId;
+    _partnerName = event.partnerName;
+    _partnerPhone = event.partnerPhone;
+    _partnerImageUrl = event.partnerImageUrl;
+    _orderTitle = event.orderTitle;
+    _orderTotal = event.orderTotal;
+    _autoOpenHandled = false;
+
     _messagesSub?.cancel();
+    _typingSub?.cancel();
     emit(ChatSupportLoading());
 
     _conversationsSub?.cancel();
@@ -70,14 +107,52 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
   void _onConversationsUpdated(
       _ConversationsUpdated event, Emitter<ChatSupportState> emit) {
     final current = state;
-    if (current is ChatSupportLoaded) {
-      emit(current.copyWith(conversations: event.conversations));
-    } else {
-      emit(ChatSupportLoaded(
-        currentUserId: _sellerId ?? '',
-        conversations: event.conversations,
-      ));
+    final loadedState = current is ChatSupportLoaded
+        ? current.copyWith(conversations: event.conversations)
+        : ChatSupportLoaded(
+            currentUserId: _sellerId ?? '',
+            conversations: event.conversations,
+            initialOrderId: _initialOrderId,
+          );
+    emit(loadedState);
+
+    if (!_autoOpenHandled) {
+      _autoOpenHandled = true;
+      _runAutoOpen(event.conversations);
     }
+  }
+
+  void _runAutoOpen(List<ConversationModel> conversations) {
+    final initialConversationId = _initialConversationId;
+    if (initialConversationId != null &&
+        initialConversationId.isNotEmpty &&
+        conversations.any((c) => c.id == initialConversationId)) {
+      add(SelectChatSessionEvent(initialConversationId));
+      return;
+    }
+
+    final orderId = _initialOrderId;
+    if (orderId == null || orderId.isEmpty) return;
+
+    if (_targetRole == 'delivery_partner' &&
+        _partnerId != null &&
+        _partnerId!.isNotEmpty) {
+      add(StartOrderDeliveryPartnerChatEvent(
+        orderId: orderId,
+        riderId: _partnerId!,
+        riderName: _partnerName ?? 'Delivery Partner',
+        riderPhone: _partnerPhone,
+        riderImageUrl: _partnerImageUrl,
+        orderTitle: _orderTitle,
+        orderTotal: _orderTotal,
+      ));
+      return;
+    }
+
+    add(AutoOpenOrderConversationEvent(
+      orderId: orderId,
+      targetRole: _targetRole,
+    ));
   }
 
   void _onConversationsError(
@@ -92,26 +167,44 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
     emit(current.copyWith(searchQuery: event.query));
   }
 
+  void _onSetChatFilterTab(
+      SetChatFilterTabEvent event, Emitter<ChatSupportState> emit) {
+    final current = state;
+    if (current is! ChatSupportLoaded) return;
+    emit(current.copyWith(activeFilterTab: event.tab));
+  }
+
   void _onSelectChatSession(
       SelectChatSessionEvent event, Emitter<ChatSupportState> emit) {
     final current = state;
     if (current is! ChatSupportLoaded || current.currentUserId.isEmpty) return;
 
     _messagesSub?.cancel();
+    _typingSub?.cancel();
+    _activeTypingConversationId = null;
+    _typingResetTimer?.cancel();
 
     if (event.conversationId.isEmpty) {
-      emit(current.copyWith(
-        selectedConversationId: null,
-        messages: [],
+      emit(ChatSupportLoaded(
+        currentUserId: current.currentUserId,
+        conversations: current.conversations,
+        activeFilterTab: current.activeFilterTab,
+        initialOrderId: current.initialOrderId,
+        searchQuery: current.searchQuery,
+        showEmojiPicker: current.showEmojiPicker,
+        isRecording: current.isRecording,
+        recordingDuration: current.recordingDuration,
       ));
       return;
     }
 
-    repository.markConversationRead(event.conversationId, current.currentUserId, true);
+    repository.markConversationRead(
+        event.conversationId, current.currentUserId, true);
 
     emit(current.copyWith(
       selectedConversationId: event.conversationId,
-      messages: [],
+      messages: const [],
+      typingUsers: const {},
     ));
 
     _messagesSub = repository
@@ -123,6 +216,59 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
     }, onError: (error) {
       if (!isClosed) add(_MessagesError('$error'));
     });
+
+    _typingSub = repository
+        .getTypingStatusStream(event.conversationId)
+        .listen((typingUsers) {
+      if (!isClosed) add(_TypingStatusUpdated(typingUsers));
+    }, onError: (_) {});
+  }
+
+  void _onTypingStatusUpdated(
+      _TypingStatusUpdated event, Emitter<ChatSupportState> emit) {
+    final s = state;
+    if (s is! ChatSupportLoaded) return;
+    emit(s.copyWith(typingUsers: event.typingUsers));
+  }
+
+  void _onSetTypingStatus(
+      SetTypingStatusEvent event, Emitter<ChatSupportState> emit) {
+    final current = state;
+    if (current is! ChatSupportLoaded || current.currentUserId.isEmpty) return;
+
+    final conversationId = event.conversationId ??
+        current.selectedConversationId;
+    if (conversationId == null || conversationId.isEmpty) return;
+
+    _typingResetTimer?.cancel();
+
+    if (event.isTyping) {
+      _activeTypingConversationId = conversationId;
+      unawaited(repository.setTypingStatus(
+        conversationId: conversationId,
+        userId: current.currentUserId,
+        isTyping: true,
+      ));
+      // Auto-reset: if the seller stops typing for 3 seconds, mark as not typing.
+      _typingResetTimer = Timer(const Duration(seconds: 3), () {
+        final c = _activeTypingConversationId;
+        if (c != null && !isClosed) {
+          unawaited(repository.setTypingStatus(
+            conversationId: c,
+            userId: _sellerId ?? current.currentUserId,
+            isTyping: false,
+          ));
+        }
+        _activeTypingConversationId = null;
+      });
+    } else {
+      _activeTypingConversationId = null;
+      unawaited(repository.setTypingStatus(
+        conversationId: conversationId,
+        userId: current.currentUserId,
+        isTyping: false,
+      ));
+    }
   }
 
   void _onMessagesUpdated(
@@ -198,9 +344,7 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
 
       await repository.sendMessage(
         conversationId: event.conversationId,
-        text: (event.fileName != null && event.fileName!.isNotEmpty)
-            ? event.fileName!
-            : event.messageType,
+        text: event.fileName.isNotEmpty ? event.fileName : event.messageType,
         senderId: current.currentUserId,
         senderRole: 'seller',
         messageType: event.messageType,
@@ -253,6 +397,91 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
     emit(current.copyWith(isRecording: false, recordingDuration: Duration.zero));
   }
 
+  Future<void> _onStartOrderDeliveryPartnerChat(
+      StartOrderDeliveryPartnerChatEvent event,
+      Emitter<ChatSupportState> emit) async {
+    final current = state;
+    if (current is! ChatSupportLoaded || current.currentUserId.isEmpty) return;
+
+    try {
+      final existing = await repository.getConversationBetween(
+        user1Id: current.currentUserId,
+        user2Id: event.riderId,
+        orderId: event.orderId,
+        type: 'seller_delivery',
+      );
+
+      String conversationId;
+      if (existing != null) {
+        conversationId = existing.id;
+      } else {
+        conversationId = await repository.createConversation(
+          buyerId: '',
+          buyerName: '',
+          sellerId: current.currentUserId,
+          sellerName: '',
+          orderId: event.orderId,
+          orderTitle: event.orderTitle,
+          orderTotal: event.orderTotal,
+          deliveryPartnerId: event.riderId,
+          deliveryPartnerName: event.riderName,
+          deliveryPartnerPhone: event.riderPhone,
+          deliveryPartnerImageUrl: event.riderImageUrl,
+          conversationType: 'seller_delivery',
+          participants: [current.currentUserId, event.riderId],
+          participantRoles: {
+            current.currentUserId: 'seller',
+            event.riderId: 'delivery_partner',
+          },
+        );
+      }
+
+      if (!isClosed) add(SelectChatSessionEvent(conversationId));
+    } catch (e) {
+      if (isClosed) return;
+      emit(current.copyWith(
+        errorMessage: 'Failed to open delivery partner chat. Please try again.',
+      ));
+    }
+  }
+
+  Future<void> _onAutoOpenOrderConversation(
+      AutoOpenOrderConversationEvent event,
+      Emitter<ChatSupportState> emit) async {
+    final current = state;
+    if (current is! ChatSupportLoaded) return;
+
+    // Prefer a delivery conversation when explicitly requested, otherwise the
+    // classic buyer_seller conversation for the order.
+    final targetType = event.targetRole == 'delivery_partner'
+        ? 'seller_delivery'
+        : 'buyer_seller';
+
+    ConversationModel? match;
+    for (final c in current.conversations) {
+      if (c.orderId != event.orderId) continue;
+      if (c.conversationType == targetType) {
+        match = c;
+        break;
+      }
+      match ??= c;
+    }
+
+    if (match == null) {
+      try {
+        match = await repository.getConversationByOrderId(
+          event.orderId,
+          userId: current.currentUserId,
+          isSeller: true,
+        );
+      } catch (_) {}
+    }
+
+    if (match != null && !isClosed) {
+      add(SelectChatSessionEvent(match.id));
+    }
+  }
+
   Future<void> _onDeleteMessage(
       DeleteSupportMessageEvent event, Emitter<ChatSupportState> emit) async {
     final current = state;
@@ -280,6 +509,8 @@ class ChatSupportBloc extends Bloc<ChatSupportEvent, ChatSupportState> {
   Future<void> close() {
     _conversationsSub?.cancel();
     _messagesSub?.cancel();
+    _typingSub?.cancel();
+    _typingResetTimer?.cancel();
     return super.close();
   }
 }

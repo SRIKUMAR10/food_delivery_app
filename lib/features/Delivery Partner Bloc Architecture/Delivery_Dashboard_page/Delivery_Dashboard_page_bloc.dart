@@ -23,6 +23,10 @@ class DeliveryDashboardPageBloc
         super(const DeliveryDashboardState()) {
     on<DeliveryDashboardInitEvent>(_onInit);
     on<DeliveryDashboardToggleOnlineEvent>(_onToggleOnline);
+    on<DeliveryDashboardChangeStatusEvent>(_onChangeStatus);
+    on<DeliveryDashboardSetAvailableEvent>(_onSetAvailable);
+    on<DeliveryDashboardSetBusyEvent>(_onSetBusy);
+    on<DeliveryDashboardAutoOfflineEvent>(_onAutoOffline);
     on<DeliveryDashboardRefreshEvent>(_onRefresh);
     on<DeliveryDashboardFilterActivityEvent>(_onFilterActivity);
     on<DeliveryDashboardQuickActionExecutedEvent>(_onQuickAction);
@@ -46,6 +50,11 @@ class DeliveryDashboardPageBloc
           return dataState.copyWith(
             status: DeliveryDashboardStatus.loaded,
             isOnline: dataState.isOnline,
+            isAvailable: dataState.isAvailable,
+            isBusy: dataState.isBusy,
+            partnerStatus: dataState.partnerStatus,
+            currentOrderId: dataState.currentOrderId,
+            lastActiveAt: dataState.lastActiveAt,
             walletBalance: s?.walletBalance ?? dataState.walletBalance,
           );
         },
@@ -67,10 +76,23 @@ class DeliveryDashboardPageBloc
     Emitter<DeliveryDashboardState> emit,
   ) async {
     final newOnlineState = event.isOnline;
-    emit(state.copyWith(isOnline: newOnlineState));
+    final newPartnerStatus = newOnlineState
+        ? DeliveryPartnerStatusType.available
+        : DeliveryPartnerStatusType.offline;
+
+    emit(state.copyWith(
+      isOnline: newOnlineState,
+      isAvailable: newOnlineState,
+      isBusy: false,
+      partnerStatus: newPartnerStatus,
+    ));
     _sessionRepo?.setOnlineStatus(newOnlineState);
     try {
-      await repository.saveOnlineStatus(newOnlineState);
+      await repository.updatePartnerStatus(
+        isOnline: newOnlineState,
+        isAvailable: newOnlineState,
+        isBusy: false,
+      );
     } catch (e) {
       emit(
         state.copyWith(
@@ -78,6 +100,117 @@ class DeliveryDashboardPageBloc
         ),
       );
     }
+  }
+
+  Future<void> _onChangeStatus(
+    DeliveryDashboardChangeStatusEvent event,
+    Emitter<DeliveryDashboardState> emit,
+  ) async {
+    final targetStatus = event.status;
+    final bool isOnline = targetStatus != DeliveryPartnerStatusType.offline;
+    final bool isAvailable = targetStatus == DeliveryPartnerStatusType.available;
+    final bool isBusy = targetStatus == DeliveryPartnerStatusType.busy;
+
+    emit(state.copyWith(
+      isOnline: isOnline,
+      isAvailable: isAvailable,
+      isBusy: isBusy,
+      partnerStatus: targetStatus,
+    ));
+    _sessionRepo?.setOnlineStatus(isOnline);
+    try {
+      await repository.updatePartnerStatus(
+        isOnline: isOnline,
+        isAvailable: isAvailable,
+        isBusy: isBusy,
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Failed to update status. Please try again.',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onSetAvailable(
+    DeliveryDashboardSetAvailableEvent event,
+    Emitter<DeliveryDashboardState> emit,
+  ) async {
+    final available = event.isAvailable;
+    final newStatus = state.isOnline
+        ? (available ? DeliveryPartnerStatusType.available : DeliveryPartnerStatusType.busy)
+        : DeliveryPartnerStatusType.offline;
+
+    emit(state.copyWith(
+      isAvailable: available,
+      isBusy: !available,
+      partnerStatus: newStatus,
+    ));
+
+    try {
+      await repository.updatePartnerStatus(
+        isOnline: state.isOnline,
+        isAvailable: available,
+        isBusy: !available,
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Failed to update availability status.',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onSetBusy(
+    DeliveryDashboardSetBusyEvent event,
+    Emitter<DeliveryDashboardState> emit,
+  ) async {
+    final busy = event.isBusy;
+    final newStatus = busy ? DeliveryPartnerStatusType.busy : DeliveryPartnerStatusType.available;
+
+    emit(state.copyWith(
+      isBusy: busy,
+      isAvailable: !busy,
+      partnerStatus: newStatus,
+      currentOrderId: event.currentOrderId,
+    ));
+
+    try {
+      await repository.updatePartnerStatus(
+        isOnline: state.isOnline,
+        isAvailable: !busy,
+        isBusy: busy,
+        currentOrderId: event.currentOrderId,
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Failed to update busy status.',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onAutoOffline(
+    DeliveryDashboardAutoOfflineEvent event,
+    Emitter<DeliveryDashboardState> emit,
+  ) async {
+    emit(state.copyWith(
+      isOnline: false,
+      isAvailable: false,
+      isBusy: false,
+      partnerStatus: DeliveryPartnerStatusType.offline,
+    ));
+    _sessionRepo?.setOnlineStatus(false);
+    try {
+      await repository.updatePartnerStatus(
+        isOnline: false,
+        isAvailable: false,
+        isBusy: false,
+      );
+    } catch (_) {}
   }
 
   Future<void> _onRefresh(
@@ -138,3 +271,4 @@ class _DeliveryDashboardSessionUpdatedEvent extends DeliveryDashboardPageEvent {
   @override
   List<Object?> get props => [session];
 }
+

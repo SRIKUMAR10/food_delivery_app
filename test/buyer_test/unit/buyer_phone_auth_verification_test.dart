@@ -8,9 +8,14 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_otp_ver
 import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_otp_verification_page/buyer_otp_verification_page_bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/buyer_otp_verification_page/buyer_otp_verification_page_repository.dart';
 
-class MockBuyerSignUpRepo extends BuyerSignUpRepository {
+class MockBuyerSignUpRepo implements BuyerSignUpRepository {
   final bool shouldFail;
   MockBuyerSignUpRepo({this.shouldFail = false});
+
+  @override
+  Future<bool> isPhoneRegistered({required String mobileNumber}) async {
+    return false;
+  }
 
   @override
   Future<String> sendOtp({required String mobileNumber}) async {
@@ -21,7 +26,7 @@ class MockBuyerSignUpRepo extends BuyerSignUpRepository {
   }
 }
 
-class MockBuyerOtpRepo extends BuyerOtpRepository {
+class MockBuyerOtpRepo implements BuyerOtpRepository {
   final bool shouldFail;
   MockBuyerOtpRepo({this.shouldFail = false});
 
@@ -35,7 +40,7 @@ class MockBuyerOtpRepo extends BuyerOtpRepository {
     String verificationId = '',
   }) async {
     if (shouldFail || otpCode != '147852') {
-      throw Exception('Invalid OTP code. Please enter the correct verification code.');
+      throw Exception('Invalid OTP code. Please enter the correct 6-digit code.');
     }
     return 'user_uid_123';
   }
@@ -104,7 +109,7 @@ void main() {
           const BuyerOtpState(status: BuyerOtpStatus.loading),
           isA<BuyerOtpState>()
               .having((s) => s.status, 'status', BuyerOtpStatus.failure)
-              .having((s) => s.errorMessage, 'errorMessage', 'Invalid OTP code. Please enter the correct verification code.'),
+              .having((s) => s.errorMessage, 'errorMessage', 'Invalid OTP code. Please enter the correct 6-digit code.'),
         ]),
       );
     });

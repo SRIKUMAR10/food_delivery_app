@@ -194,4 +194,144 @@ void main() {
       },
     );
   });
+
+  group('SetBuyerChatFilter', () {
+    blocTest<BuyerChatBloc, BuyerChatState>(
+      'updates activeFilter',
+      build: () => BuyerChatBloc(
+        repository: mockRepository,
+        authService: mockAuthService,
+      ),
+      seed: () => BuyerChatLoaded(
+        currentUserId: testUserId,
+        conversations: [testConversation],
+      ),
+      act: (bloc) => bloc.add(const SetBuyerChatFilter('delivery')),
+      expect: () => [
+        isA<BuyerChatLoaded>().having((s) => s.activeFilter, 'filter', 'delivery'),
+      ],
+    );
+  });
+
+  group('MarkMessagesAsRead', () {
+    blocTest<BuyerChatBloc, BuyerChatState>(
+      'calls repository markMessagesAsRead',
+      setUp: () {
+        when(() => mockAuthService.currentUserId).thenReturn(testUserId);
+        when(() => mockRepository.markMessagesAsRead(
+              conversationId: any(named: 'conversationId'),
+              readerId: any(named: 'readerId'),
+            )).thenAnswer((_) async {});
+      },
+      build: () => BuyerChatBloc(
+        repository: mockRepository,
+        authService: mockAuthService,
+      ),
+      seed: () => BuyerChatLoaded(
+        currentUserId: testUserId,
+        conversations: [testConversation],
+      ),
+      act: (bloc) => bloc.add(const MarkMessagesAsRead(testConversationId)),
+      verify: (_) {
+        verify(() => mockRepository.markMessagesAsRead(
+              conversationId: testConversationId,
+              readerId: testUserId,
+            )).called(1);
+      },
+    );
+  });
+
+  group('SendOrderQuickReply', () {
+    blocTest<BuyerChatBloc, BuyerChatState>(
+      'sends quick reply through repository',
+      setUp: () {
+        when(() => mockAuthService.currentUserId).thenReturn(testUserId);
+        when(() => mockRepository.sendMessage(
+              conversationId: any(named: 'conversationId'),
+              text: any(named: 'text'),
+              senderId: any(named: 'senderId'),
+              senderRole: any(named: 'senderRole'),
+            )).thenAnswer((_) async {});
+      },
+      build: () => BuyerChatBloc(
+        repository: mockRepository,
+        authService: mockAuthService,
+      ),
+      seed: () => BuyerChatLoaded(
+        currentUserId: testUserId,
+        conversations: [testConversation],
+        selectedConversationId: testConversationId,
+      ),
+      act: (bloc) =>
+          bloc.add(SendOrderQuickReply(testConversationId, 'Where are you?')),
+      verify: (_) {
+        verify(() => mockRepository.sendMessage(
+              conversationId: testConversationId,
+              text: 'Where are you?',
+              senderId: testUserId,
+              senderRole: 'buyer',
+            )).called(1);
+      },
+    );
+  });
+
+  group('StartDeliveryPartnerConversation', () {
+    blocTest<BuyerChatBloc, BuyerChatState>(
+      'creates buyer_delivery conversation',
+      setUp: () {
+        when(() => mockAuthService.currentUserId).thenReturn(testUserId);
+        when(() => mockRepository.getMessagesStream(any()))
+            .thenAnswer((_) => const Stream.empty());
+        when(() => mockRepository.markMessagesAsRead(
+              conversationId: any(named: 'conversationId'),
+              readerId: any(named: 'readerId'),
+            )).thenAnswer((_) async {});
+        when(() => mockRepository.createConversation(
+              buyerId: any(named: 'buyerId'),
+              buyerName: any(named: 'buyerName'),
+              sellerId: any(named: 'sellerId'),
+              sellerName: any(named: 'sellerName'),
+              deliveryPartnerId: any(named: 'deliveryPartnerId'),
+              deliveryPartnerName: any(named: 'deliveryPartnerName'),
+              deliveryPartnerPhone: any(named: 'deliveryPartnerPhone'),
+              deliveryPartnerImageUrl: any(named: 'deliveryPartnerImageUrl'),
+              conversationType: any(named: 'conversationType'),
+              orderId: any(named: 'orderId'),
+              orderTitle: any(named: 'orderTitle'),
+              orderTotal: any(named: 'orderTotal'),
+              initialMessage: any(named: 'initialMessage'),
+            )).thenAnswer((_) async => 'conv_delivery');
+      },
+      build: () => BuyerChatBloc(
+        repository: mockRepository,
+        authService: mockAuthService,
+      ),
+      seed: () => BuyerChatLoaded(
+        currentUserId: testUserId,
+        conversations: [testConversation],
+      ),
+      act: (bloc) => bloc.add(const StartDeliveryPartnerConversation(
+        deliveryPartnerId: 'rider_1',
+        deliveryPartnerName: 'Ravi Rider',
+        buyerName: 'John',
+      )),
+      verify: (_) {
+        verify(() => mockRepository.createConversation(
+              buyerId: testUserId,
+              buyerName: 'John',
+              sellerId: '',
+              sellerName: '',
+              deliveryPartnerId: 'rider_1',
+              deliveryPartnerName: 'Ravi Rider',
+              deliveryPartnerPhone: any(named: 'deliveryPartnerPhone'),
+              deliveryPartnerImageUrl: any(named: 'deliveryPartnerImageUrl'),
+              conversationType: 'buyer_delivery',
+              orderId: any(named: 'orderId'),
+              orderTitle: any(named: 'orderTitle'),
+              orderTotal: any(named: 'orderTotal'),
+              initialMessage: any(named: 'initialMessage'),
+            )).called(1);
+      },
+    );
+  });
 }

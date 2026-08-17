@@ -18,19 +18,22 @@ void main() {
   });
 
   testWidgets('Golden Test for Overall Rating Page Loaded State', (tester) async {
+    final reviews = [
+      ReviewModel(
+        id: '1',
+        authorName: 'Jane Smith',
+        authorAvatarUrl: 'http://test.com/img',
+        rating: 4.5,
+        content: 'Great food!',
+        date: DateTime(2024, 1, 1),
+      )
+    ];
     when(() => mockBloc.state).thenReturn(OverallRatingLoaded(
       overallRating: 4.8,
       totalReviews: 248,
-      reviews: [
-        ReviewModel(
-          id: '1',
-          authorName: 'Jane Smith',
-          authorAvatarUrl: 'http://test.com/img',
-          rating: 4.5,
-          content: 'Great food!',
-          date: DateTime(2024, 1, 1),
-        )
-      ],
+      breakdown: RatingBreakdownModel.fromReviews(reviews),
+      allReviews: reviews,
+      filteredReviews: reviews,
     ));
 
     await tester.pumpWidget(MaterialApp(

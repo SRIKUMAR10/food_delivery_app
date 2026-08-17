@@ -16,6 +16,8 @@ class ChatMessageModel extends Equatable {
   final int? duration; // for audio
   final List<String> deletedBy;
   final bool isDeletedForEveryone;
+  final String? receiverId;
+  final DateTime? readAt;
 
   const ChatMessageModel({
     required this.id,
@@ -32,6 +34,8 @@ class ChatMessageModel extends Equatable {
     this.duration,
     this.deletedBy = const [],
     this.isDeletedForEveryone = false,
+    this.receiverId,
+    this.readAt,
   });
 
   factory ChatMessageModel.fromMap(
@@ -54,6 +58,8 @@ class ChatMessageModel extends Equatable {
       duration: map['duration'] as int?,
       deletedBy: List<String>.from(map['deletedBy'] ?? []),
       isDeletedForEveryone: map['isDeletedForEveryone'] as bool? ?? false,
+      receiverId: map['receiverId'] as String?,
+      readAt: (map['readAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -72,6 +78,8 @@ class ChatMessageModel extends Equatable {
       'duration': duration,
       'deletedBy': deletedBy,
       'isDeletedForEveryone': isDeletedForEveryone,
+      'receiverId': receiverId,
+      'readAt': readAt != null ? Timestamp.fromDate(readAt!) : null,
     };
   }
 
@@ -90,6 +98,8 @@ class ChatMessageModel extends Equatable {
     int? duration,
     List<String>? deletedBy,
     bool? isDeletedForEveryone,
+    String? receiverId,
+    DateTime? readAt,
   }) {
     return ChatMessageModel(
       id: id ?? this.id,
@@ -106,6 +116,8 @@ class ChatMessageModel extends Equatable {
       duration: duration ?? this.duration,
       deletedBy: deletedBy ?? this.deletedBy,
       isDeletedForEveryone: isDeletedForEveryone ?? this.isDeletedForEveryone,
+      receiverId: receiverId ?? this.receiverId,
+      readAt: readAt ?? this.readAt,
     );
   }
 
@@ -125,5 +137,7 @@ class ChatMessageModel extends Equatable {
     duration,
     deletedBy,
     isDeletedForEveryone,
+    receiverId,
+    readAt,
   ];
 }

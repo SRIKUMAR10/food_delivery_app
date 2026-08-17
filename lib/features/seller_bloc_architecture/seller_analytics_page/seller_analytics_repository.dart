@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:rxdart/rxdart.dart';
 import '../../../../core/models/analytics_data_model.dart';
 import '../../../../core/models/order_status.dart';
 
@@ -11,288 +13,560 @@ class SellerAnalyticsRepository {
 
   Stream<AnalyticsDataModel> streamAnalyticsData(
       String sellerId, String timeframe) {
-    final now = DateTime.now();
-
-    final startOfToday = DateTime(now.year, now.month, now.day);
-    final startOfThisWeek = startOfToday.subtract(Duration(days: now.weekday - 1));
-    final startOfLastWeek = startOfThisWeek.subtract(const Duration(days: 7));
-    final startOfThisMonth = DateTime(now.year, now.month, 1);
-    final startOfLastMonth = DateTime(now.year, now.month - 1, 1);
-
-    final earliestRequiredDate = startOfLastMonth.isBefore(startOfLastWeek)
-        ? startOfLastMonth
-        : startOfLastWeek;
-
-    return _firestore
+    final ordersStream = _firestore
         .collection('orders')
         .where('sellerId', isEqualTo: sellerId)
-        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(earliestRequiredDate))
-        .snapshots()
-        .map((snapshot) {
-      double todayRevenue = 0;
-      double thisWeekRevenue = 0;
-      double thisMonthRevenue = 0;
+        .snapshots();
 
-      Set<String> currentPeriodCustomers = {};
-      Set<String> previousPeriodCustomers = {};
+    final productsStream = _firestore
+        .collection('products')
+        .where('sellerId', isEqualTo: sellerId)
+        .snapshots();
 
-      Map<int, int> hourlyOrderCounts = {};
-      Map<String, BestSellingProductModel> productStats = {};
-      Map<DateTime, double> chartData = {};
-
-      final isWeekly = timeframe == 'Weekly';
-      final currentPeriodStart = isWeekly ? startOfThisWeek : startOfThisMonth;
-      final previousPeriodStart = isWeekly ? startOfLastWeek : startOfLastMonth;
-
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-
-        if (data['status'] != OrderStatus.delivered.value) continue;
-
-        final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
-        final timestamp = (data['timestamp'] as Timestamp).toDate();
-        final customerId = data['customerId'] as String? ?? '';
-        final items = data['items'] as List<dynamic>? ?? [];
-
-        if (timestamp.isAfter(startOfToday) || timestamp.isAtSameMomentAs(startOfToday)) {
-          todayRevenue += amount;
-        }
-        if (timestamp.isAfter(startOfThisWeek) || timestamp.isAtSameMomentAs(startOfThisWeek)) {
-          thisWeekRevenue += amount;
-        }
-        if (timestamp.isAfter(startOfThisMonth) || timestamp.isAtSameMomentAs(startOfThisMonth)) {
-          thisMonthRevenue += amount;
-        }
-
-        if (timestamp.isAfter(currentPeriodStart) || timestamp.isAtSameMomentAs(currentPeriodStart)) {
-          currentPeriodCustomers.add(customerId);
-
-          final dayDate = DateTime(timestamp.year, timestamp.month, timestamp.day);
-          chartData[dayDate] = (chartData[dayDate] ?? 0) + amount;
-
-          hourlyOrderCounts[timestamp.hour] = (hourlyOrderCounts[timestamp.hour] ?? 0) + 1;
-
-          for (var item in items) {
-            final itemMap = item as Map<String, dynamic>;
-            final name = itemMap['name'] as String? ?? 'Unknown';
-            final qty = (itemMap['quantity'] as num?)?.toInt() ?? 1;
-            final price = (itemMap['price'] as num?)?.toDouble() ?? 0.0;
-            final itemRev = price * qty;
-
-            if (productStats.containsKey(name)) {
-              final existing = productStats[name]!;
-              productStats[name] = BestSellingProductModel(
-                productName: name,
-                unitsSold: existing.unitsSold + qty,
-                revenueGenerated: existing.revenueGenerated + itemRev,
-              );
-            } else {
-              productStats[name] = BestSellingProductModel(
-                productName: name,
-                unitsSold: qty,
-                revenueGenerated: itemRev,
-              );
-            }
-          }
-        } else if (timestamp.isAfter(previousPeriodStart) || timestamp.isAtSameMomentAs(previousPeriodStart)) {
-          previousPeriodCustomers.add(customerId);
-        }
-      }
-
-      final currCust = currentPeriodCustomers.length;
-      final prevCust = previousPeriodCustomers.length;
-      double growth = 0;
-      if (prevCust == 0 && currCust > 0) {
-        growth = 100.0;
-      } else if (prevCust > 0) {
-        growth = ((currCust - prevCust) / prevCust) * 100;
-      }
-
-      final sortedProducts = productStats.values.toList()
-        ..sort((a, b) => b.unitsSold.compareTo(a.unitsSold));
-      final topProducts = sortedProducts.take(5).toList();
-
-      final sortedHours = hourlyOrderCounts.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-      final top3Hours = sortedHours.take(3).map((e) {
-        final hour = e.key;
-        final start = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-        final amPm = hour >= 12 ? 'PM' : 'AM';
-        final endHour = (hour + 1) % 24;
-        final end = endHour == 0 ? 12 : (endHour > 12 ? endHour - 12 : endHour);
-        final endAmPm = endHour >= 12 ? 'PM' : 'AM';
-        return '$start $amPm - $end $endAmPm';
-      }).toList();
-
-      final chartDataPoints = chartData.entries
-          .map((e) => ChartDataPoint(date: e.key, value: e.value))
-          .toList()
-        ..sort((a, b) => a.date.compareTo(b.date));
-
-      return AnalyticsDataModel(
-        todayRevenue: todayRevenue,
-        thisWeekRevenue: thisWeekRevenue,
-        thisMonthRevenue: thisMonthRevenue,
-        currentPeriodCustomers: currCust,
-        previousPeriodCustomers: prevCust,
-        customerGrowthPercentage: growth,
-        top3PeakTimeSlots: top3Hours,
-        bestSellingProducts: topProducts,
-        revenueChartData: chartDataPoints,
-      );
-    });
+    return Rx.combineLatest2(
+      ordersStream,
+      productsStream,
+      (QuerySnapshot<Map<String, dynamic>> ordersSnap,
+          QuerySnapshot<Map<String, dynamic>> productsSnap) {
+        return _calculateAnalytics(
+          ordersSnap.docs,
+          productsSnap.docs,
+          timeframe,
+        );
+      },
+    );
   }
 
   Future<AnalyticsDataModel> fetchAnalyticsData(
       String sellerId, String timeframe) async {
-    final now = DateTime.now();
-
-    // Today boundaries
-    final startOfToday = DateTime(now.year, now.month, now.day);
-    
-    // Weekly boundaries
-    final startOfThisWeek = startOfToday.subtract(Duration(days: now.weekday - 1));
-    final startOfLastWeek = startOfThisWeek.subtract(const Duration(days: 7));
-    
-    // Monthly boundaries
-    final startOfThisMonth = DateTime(now.year, now.month, 1);
-    final startOfLastMonth = DateTime(now.year, now.month - 1, 1);
-
-    // We need data back to the earliest previous period to calculate growth
-    final earliestRequiredDate = startOfLastMonth.isBefore(startOfLastWeek)
-        ? startOfLastMonth
-        : startOfLastWeek;
-
-    // Fetch orders from earliestRequiredDate to now, filtering by sellerId + timestamp
-    // (uses existing 2-field composite index). Status is filtered client-side to avoid
-    // requiring a 3-field composite index that may still be building.
-    final snapshot = await _firestore
+    final ordersSnap = await _firestore
         .collection('orders')
         .where('sellerId', isEqualTo: sellerId)
-        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(earliestRequiredDate))
         .get();
 
-    double todayRevenue = 0;
-    double thisWeekRevenue = 0;
-    double thisMonthRevenue = 0;
+    final productsSnap = await _firestore
+        .collection('products')
+        .where('sellerId', isEqualTo: sellerId)
+        .get();
 
-    Set<String> currentPeriodCustomers = {};
-    Set<String> previousPeriodCustomers = {};
+    return _calculateAnalytics(
+      ordersSnap.docs,
+      productsSnap.docs,
+      timeframe,
+    );
+  }
 
-    Map<int, int> hourlyOrderCounts = {};
-    Map<String, BestSellingProductModel> productStats = {};
-    Map<DateTime, double> chartData = {};
+  AnalyticsDataModel _calculateAnalytics(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> orderDocs,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> productDocs,
+    String timeframe,
+  ) {
+    final now = DateTime.now();
 
-    final isWeekly = timeframe == 'Weekly';
-    final currentPeriodStart = isWeekly ? startOfThisWeek : startOfThisMonth;
-    final previousPeriodStart = isWeekly ? startOfLastWeek : startOfLastMonth;
+    // 1. Time Boundaries
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final startOfYesterday = startOfToday.subtract(const Duration(days: 1));
+    final endOfYesterday = startOfToday.subtract(const Duration(microseconds: 1));
 
-    for (var doc in snapshot.docs) {
+    final startOfThisWeek = startOfToday.subtract(Duration(days: now.weekday - 1));
+    final startOfLastWeek = startOfThisWeek.subtract(const Duration(days: 7));
+    final endOfLastWeek = startOfThisWeek.subtract(const Duration(microseconds: 1));
+
+    final startOfThisMonth = DateTime(now.year, now.month, 1);
+    final startOfLastMonth = DateTime(now.year, now.month - 1, 1);
+    final endOfLastMonth = startOfThisMonth.subtract(const Duration(microseconds: 1));
+
+    final startOfThisYear = DateTime(now.year, 1, 1);
+    final startOfLastYear = DateTime(now.year - 1, 1, 1);
+    final endOfLastYear = startOfThisYear.subtract(const Duration(microseconds: 1));
+
+    // Determine current & previous period starts based on timeframe
+    DateTime currentPeriodStart;
+    DateTime previousPeriodStart;
+    DateTime previousPeriodEnd;
+
+    switch (timeframe) {
+      case 'Daily':
+      case 'Today':
+        currentPeriodStart = startOfToday;
+        previousPeriodStart = startOfYesterday;
+        previousPeriodEnd = endOfYesterday;
+        break;
+      case 'Monthly':
+        currentPeriodStart = startOfThisMonth;
+        previousPeriodStart = startOfLastMonth;
+        previousPeriodEnd = endOfLastMonth;
+        break;
+      case 'Yearly':
+        currentPeriodStart = startOfThisYear;
+        previousPeriodStart = startOfLastYear;
+        previousPeriodEnd = endOfLastYear;
+        break;
+      case 'Weekly':
+      default:
+        currentPeriodStart = startOfThisWeek;
+        previousPeriodStart = startOfLastWeek;
+        previousPeriodEnd = endOfLastWeek;
+        break;
+    }
+
+    // 2. Revenue & Sales Aggregates
+    double todayRev = 0.0;
+    double yesterdayRev = 0.0;
+
+    double thisWeekRev = 0.0;
+    double lastWeekRev = 0.0;
+
+    double thisMonthRev = 0.0;
+    double lastMonthRev = 0.0;
+
+    double thisYearRev = 0.0;
+    double lastYearRev = 0.0;
+
+    // Timeframe-specific order metrics
+    int totalOrders = 0;
+    int completedOrders = 0;
+    int cancelledOrders = 0;
+    int pendingOrders = 0;
+    double timeframeDeliveredRev = 0.0;
+
+    Set<String> currentCustomers = {};
+    Set<String> previousCustomers = {};
+    Set<String> priorCustomers = {};
+
+    Map<int, int> hourlyCounts = {for (var i = 0; i < 24; i++) i: 0};
+    Map<int, double> hourlyRevenue = {for (var i = 0; i < 24; i++) i: 0.0};
+
+    // Item stats: Key -> productName or productId
+    Map<String, _ProductStatAccumulator> soldItemStats = {};
+
+    for (var doc in orderDocs) {
       final data = doc.data();
-
-      // Client-side status filter (replaces Firestore-level filter to use simpler index)
-      if (data['status'] != OrderStatus.delivered.value) continue;
-
+      final status = data['status'] as String? ?? '';
       final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
-      final timestamp = (data['timestamp'] as Timestamp).toDate();
+      final rawTimestamp = data['timestamp'];
+      DateTime? timestamp;
+      if (rawTimestamp is Timestamp) {
+        timestamp = rawTimestamp.toDate();
+      } else if (rawTimestamp is String) {
+        timestamp = DateTime.tryParse(rawTimestamp);
+      }
+      if (timestamp == null) continue;
+
       final customerId = data['customerId'] as String? ?? '';
       final items = data['items'] as List<dynamic>? ?? [];
+      final isDelivered = status == OrderStatus.delivered.value || status.toLowerCase() == 'delivered';
+      final isCancelled = status == OrderStatus.cancelled.value ||
+          status == OrderStatus.rejected.value ||
+          status.toLowerCase() == 'cancelled' ||
+          status.toLowerCase() == 'rejected';
 
-      // Revenue Calculations
-      if (timestamp.isAfter(startOfToday) || timestamp.isAtSameMomentAs(startOfToday)) {
-        todayRevenue += amount;
-      }
-      if (timestamp.isAfter(startOfThisWeek) || timestamp.isAtSameMomentAs(startOfThisWeek)) {
-        thisWeekRevenue += amount;
-      }
-      if (timestamp.isAfter(startOfThisMonth) || timestamp.isAtSameMomentAs(startOfThisMonth)) {
-        thisMonthRevenue += amount;
-      }
-
-      // Customer Growth & Timeframe Specific Metrics
-      if (timestamp.isAfter(currentPeriodStart) || timestamp.isAtSameMomentAs(currentPeriodStart)) {
-        currentPeriodCustomers.add(customerId);
-
-        // Chart Data (Daily aggregation)
-        final dayDate = DateTime(timestamp.year, timestamp.month, timestamp.day);
-        chartData[dayDate] = (chartData[dayDate] ?? 0) + amount;
-
-        // Peak Time (Hour of day)
-        hourlyOrderCounts[timestamp.hour] = (hourlyOrderCounts[timestamp.hour] ?? 0) + 1;
-
-        // Best Selling Products
-        for (var item in items) {
-          final itemMap = item as Map<String, dynamic>;
-          final name = itemMap['name'] as String? ?? 'Unknown';
-          final qty = (itemMap['quantity'] as num?)?.toInt() ?? 1;
-          final price = (itemMap['price'] as num?)?.toDouble() ?? 0.0;
-          final itemRev = price * qty;
-
-          if (productStats.containsKey(name)) {
-            final existing = productStats[name]!;
-            productStats[name] = BestSellingProductModel(
-              productName: name,
-              unitsSold: existing.unitsSold + qty,
-              revenueGenerated: existing.revenueGenerated + itemRev,
-            );
-          } else {
-            productStats[name] = BestSellingProductModel(
-              productName: name,
-              unitsSold: qty,
-              revenueGenerated: itemRev,
-            );
-          }
+      // Global Revenue calculations (Delivered only)
+      if (isDelivered) {
+        if (!timestamp.isBefore(startOfToday)) {
+          todayRev += amount;
+        } else if (!timestamp.isBefore(startOfYesterday) && timestamp.isBefore(startOfToday)) {
+          yesterdayRev += amount;
         }
-      } else if (timestamp.isAfter(previousPeriodStart) || timestamp.isAtSameMomentAs(previousPeriodStart)) {
-        previousPeriodCustomers.add(customerId);
+
+        if (!timestamp.isBefore(startOfThisWeek)) {
+          thisWeekRev += amount;
+        } else if (!timestamp.isBefore(startOfLastWeek) && timestamp.isBefore(startOfThisWeek)) {
+          lastWeekRev += amount;
+        }
+
+        if (!timestamp.isBefore(startOfThisMonth)) {
+          thisMonthRev += amount;
+        } else if (!timestamp.isBefore(startOfLastMonth) && timestamp.isBefore(startOfThisMonth)) {
+          lastMonthRev += amount;
+        }
+
+        if (!timestamp.isBefore(startOfThisYear)) {
+          thisYearRev += amount;
+        } else if (!timestamp.isBefore(startOfLastYear) && timestamp.isBefore(startOfThisYear)) {
+          lastYearRev += amount;
+        }
+      }
+
+      // Customer history mapping for repeat buyer detection
+      if (customerId.isNotEmpty) {
+        if (timestamp.isBefore(currentPeriodStart)) {
+          priorCustomers.add(customerId);
+        }
+        if (!timestamp.isBefore(previousPeriodStart) && timestamp.isBefore(currentPeriodStart)) {
+          previousCustomers.add(customerId);
+        }
+      }
+
+      // Timeframe-specific order processing
+      if (!timestamp.isBefore(currentPeriodStart)) {
+        totalOrders++;
+        if (customerId.isNotEmpty) {
+          currentCustomers.add(customerId);
+        }
+
+        if (isDelivered) {
+          completedOrders++;
+          timeframeDeliveredRev += amount;
+
+          // Hourly distribution
+          hourlyCounts[timestamp.hour] = (hourlyCounts[timestamp.hour] ?? 0) + 1;
+          hourlyRevenue[timestamp.hour] = (hourlyRevenue[timestamp.hour] ?? 0.0) + amount;
+
+          // Product sales stats
+          for (var item in items) {
+            if (item is Map) {
+              final name = item['name'] as String? ?? 'Unknown Product';
+              final id = (item['id'] ?? item['productId'] ?? name) as String;
+              final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+              final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+              final rev = price * qty;
+              final img = item['imageUrl'] as String?;
+
+              if (soldItemStats.containsKey(id)) {
+                soldItemStats[id]!.unitsSold += qty;
+                soldItemStats[id]!.revenueGenerated += rev;
+              } else if (soldItemStats.containsKey(name)) {
+                soldItemStats[name]!.unitsSold += qty;
+                soldItemStats[name]!.revenueGenerated += rev;
+              } else {
+                soldItemStats[id] = _ProductStatAccumulator(
+                  productId: id,
+                  productName: name,
+                  price: price,
+                  unitsSold: qty,
+                  revenueGenerated: rev,
+                  imageUrl: img,
+                );
+              }
+            }
+          }
+        } else if (isCancelled) {
+          cancelledOrders++;
+        } else {
+          pendingOrders++;
+        }
       }
     }
 
-    // Calculate Growth Percentage
-    final currCust = currentPeriodCustomers.length;
-    final prevCust = previousPeriodCustomers.length;
-    double growth = 0;
-    if (prevCust == 0 && currCust > 0) {
-      growth = 100.0;
-    } else if (prevCust > 0) {
-      growth = ((currCust - prevCust) / prevCust) * 100;
+    // 3. Growth Percentages
+    double calcGrowth(double prev, double curr) {
+      if (prev <= 0) return curr > 0 ? 100.0 : 0.0;
+      return ((curr - prev) / prev) * 100.0;
     }
 
-    // Sort Best Selling Products
-    final sortedProducts = productStats.values.toList()
-      ..sort((a, b) => b.unitsSold.compareTo(a.unitsSold));
-    final topProducts = sortedProducts.take(5).toList(); // Top 5
+    final todayGrowth = calcGrowth(yesterdayRev, todayRev);
+    final weekGrowth = calcGrowth(lastWeekRev, thisWeekRev);
+    final monthGrowth = calcGrowth(lastMonthRev, thisMonthRev);
+    final yearGrowth = calcGrowth(lastYearRev, thisYearRev);
 
-    // Sort Peak Times
-    final sortedHours = hourlyOrderCounts.entries.toList()
+    final currCustCount = currentCustomers.length;
+    final prevCustCount = previousCustomers.length;
+    final customerGrowth = calcGrowth(prevCustCount.toDouble(), currCustCount.toDouble());
+
+    // Repeat vs New Customers in current timeframe
+    int repeatCust = 0;
+    for (var c in currentCustomers) {
+      if (priorCustomers.contains(c)) {
+        repeatCust++;
+      }
+    }
+    final newCust = currCustCount - repeatCust;
+
+    // Rates
+    final completionRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100.0 : 0.0;
+    final cancellationRate = totalOrders > 0 ? (cancelledOrders / totalOrders) * 100.0 : 0.0;
+    final aov = completedOrders > 0 ? (timeframeDeliveredRev / completedOrders) : 0.0;
+
+    // 4. Peak Hours
+    final sortedHours = hourlyCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final top3Hours = sortedHours.take(3).map((e) {
-      final hour = e.key;
+
+    final top3Hours = sortedHours
+        .where((e) => e.value > 0)
+        .take(3)
+        .map((e) {
+          final hour = e.key;
+          final start = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+          final amPm = hour >= 12 ? 'PM' : 'AM';
+          final endHour = (hour + 1) % 24;
+          final end = endHour == 0 ? 12 : (endHour > 12 ? endHour - 12 : endHour);
+          final endAmPm = endHour >= 12 ? 'PM' : 'AM';
+          return '$start $amPm - $end $endAmPm';
+        })
+        .toList();
+
+    if (top3Hours.isEmpty && sortedHours.isNotEmpty) {
+      top3Hours.add('12 PM - 1 PM');
+    }
+
+    final hourlyChartData = List.generate(24, (h) {
+      final hour = h;
       final start = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
       final amPm = hour >= 12 ? 'PM' : 'AM';
-      final endHour = (hour + 1) % 24;
-      final end = endHour == 0 ? 12 : (endHour > 12 ? endHour - 12 : endHour);
-      final endAmPm = endHour >= 12 ? 'PM' : 'AM';
-      return '$start $amPm - $end $endAmPm';
-    }).toList();
+      return HourlyChartPoint(
+        hour: h,
+        orderCount: hourlyCounts[h] ?? 0,
+        revenue: hourlyRevenue[h] ?? 0.0,
+        label: '$start$amPm',
+      );
+    });
 
-    // Map Chart Data
-    final chartDataPoints = chartData.entries
-        .map((e) => ChartDataPoint(date: e.key, value: e.value))
+    // 5. Product Performance & Top/Low Performing Products
+    // Build catalog map
+    final Map<String, ProductPerformanceModel> catalogMap = {};
+
+    for (var pDoc in productDocs) {
+      final pData = pDoc.data();
+      final pId = pDoc.id;
+      final pName = pData['name'] as String? ?? 'Product';
+      final pPrice = (pData['price'] as num?)?.toDouble() ?? 0.0;
+      final pStock = (pData['availableStock'] as num?)?.toInt() ??
+          (pData['stock'] as num?)?.toInt() ??
+          0;
+      final pCategory = pData['category'] as String? ?? 'General';
+      final pImages = pData['imageUrls'] as List<dynamic>? ?? [];
+      final pImage = pImages.isNotEmpty ? pImages.first as String : null;
+      final pActive = pData['isActive'] as bool? ?? true;
+
+      // Check if sold
+      int soldUnits = 0;
+      double genRev = 0.0;
+      if (soldItemStats.containsKey(pId)) {
+        soldUnits = soldItemStats[pId]!.unitsSold;
+        genRev = soldItemStats[pId]!.revenueGenerated;
+      } else if (soldItemStats.containsKey(pName)) {
+        soldUnits = soldItemStats[pName]!.unitsSold;
+        genRev = soldItemStats[pName]!.revenueGenerated;
+      }
+
+      final share = timeframeDeliveredRev > 0
+          ? (genRev / timeframeDeliveredRev) * 100.0
+          : 0.0;
+
+      catalogMap[pId] = ProductPerformanceModel(
+        productId: pId,
+        productName: pName,
+        price: pPrice,
+        unitsSold: soldUnits,
+        revenueGenerated: genRev,
+        sharePercentage: share,
+        availableStock: pStock,
+        category: pCategory,
+        imageUrl: pImage,
+        isActive: pActive,
+      );
+    }
+
+    // Include sold items that may not be in catalogDocs
+    for (var entry in soldItemStats.entries) {
+      if (!catalogMap.containsKey(entry.key) &&
+          !catalogMap.values.any((p) => p.productName == entry.value.productName)) {
+        final share = timeframeDeliveredRev > 0
+            ? (entry.value.revenueGenerated / timeframeDeliveredRev) * 100.0
+            : 0.0;
+        catalogMap[entry.key] = ProductPerformanceModel(
+          productId: entry.value.productId,
+          productName: entry.value.productName,
+          price: entry.value.price,
+          unitsSold: entry.value.unitsSold,
+          revenueGenerated: entry.value.revenueGenerated,
+          sharePercentage: share,
+          availableStock: 0,
+          category: 'General',
+          imageUrl: entry.value.imageUrl,
+          isActive: true,
+        );
+      }
+    }
+
+    final allProductPerformances = catalogMap.values.toList()
+      ..sort((a, b) {
+        final cmp = b.unitsSold.compareTo(a.unitsSold);
+        return cmp != 0 ? cmp : b.revenueGenerated.compareTo(a.revenueGenerated);
+      });
+
+    final bestSellingProducts = allProductPerformances
+        .where((p) => p.unitsSold > 0)
+        .take(5)
+        .map((p) => BestSellingProductModel(
+              productId: p.productId,
+              productName: p.productName,
+              unitsSold: p.unitsSold,
+              revenueGenerated: p.revenueGenerated,
+              price: p.price,
+              sharePercentage: p.sharePercentage,
+              imageUrl: p.imageUrl,
+            ))
+        .toList();
+
+    final lowPerformingProducts = allProductPerformances
+        .where((p) => p.unitsSold == 0 || p.unitsSold <= 2)
         .toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
+      ..sort((a, b) => a.unitsSold.compareTo(b.unitsSold));
+
+    // 6. Dynamic Chart Data based on timeframe
+    final List<ChartDataPoint> chartDataPoints = _generateChartData(
+      orderDocs,
+      timeframe,
+      now,
+      startOfToday,
+      startOfThisWeek,
+      startOfThisMonth,
+      startOfThisYear,
+    );
+
+    // Order status map
+    final orderStatusMap = {
+      'Delivered': completedOrders,
+      'Cancelled': cancelledOrders,
+      'In-Progress': pendingOrders,
+    };
 
     return AnalyticsDataModel(
-      todayRevenue: todayRevenue,
-      thisWeekRevenue: thisWeekRevenue,
-      thisMonthRevenue: thisMonthRevenue,
-      currentPeriodCustomers: currCust,
-      previousPeriodCustomers: prevCust,
-      customerGrowthPercentage: growth,
+      todayRevenue: todayRev,
+      yesterdayRevenue: yesterdayRev,
+      todayGrowthPercentage: todayGrowth,
+      thisWeekRevenue: thisWeekRev,
+      lastWeekRevenue: lastWeekRev,
+      weekGrowthPercentage: weekGrowth,
+      thisMonthRevenue: thisMonthRev,
+      lastMonthRevenue: lastMonthRev,
+      monthGrowthPercentage: monthGrowth,
+      thisYearRevenue: thisYearRev,
+      lastYearRevenue: lastYearRev,
+      yearGrowthPercentage: yearGrowth,
+      totalOrdersCount: totalOrders,
+      completedOrdersCount: completedOrders,
+      cancelledOrdersCount: cancelledOrders,
+      pendingOrdersCount: pendingOrders,
+      averageOrderValue: aov,
+      orderCompletionRate: completionRate,
+      orderCancellationRate: cancellationRate,
+      currentPeriodCustomers: currCustCount,
+      previousPeriodCustomers: prevCustCount,
+      customerGrowthPercentage: customerGrowth,
+      newCustomersCount: newCust,
+      repeatCustomersCount: repeatCust,
       top3PeakTimeSlots: top3Hours,
-      bestSellingProducts: topProducts,
+      hourlyOrderCounts: hourlyCounts,
+      hourlyChartData: hourlyChartData,
+      bestSellingProducts: bestSellingProducts,
+      lowPerformingProducts: lowPerformingProducts.take(5).toList(),
+      allProductPerformances: allProductPerformances,
       revenueChartData: chartDataPoints,
+      orderStatusDistribution: orderStatusMap,
     );
+  }
+
+  List<ChartDataPoint> _generateChartData(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> orderDocs,
+    String timeframe,
+    DateTime now,
+    DateTime startOfToday,
+    DateTime startOfThisWeek,
+    DateTime startOfThisMonth,
+    DateTime startOfThisYear,
+  ) {
+    if (timeframe == 'Daily' || timeframe == 'Today') {
+      // 8 intervals of 3 hours for today
+      final Map<int, double> hourlyBuckets = {for (var i = 0; i < 24; i += 3) i: 0.0};
+      for (var doc in orderDocs) {
+        final data = doc.data();
+        if (data['status'] != OrderStatus.delivered.value) continue;
+        final rawTs = data['timestamp'];
+        DateTime? ts;
+        if (rawTs is Timestamp) ts = rawTs.toDate();
+        if (ts == null || ts.isBefore(startOfToday)) continue;
+
+        final bucket = (ts.hour ~/ 3) * 3;
+        final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+        hourlyBuckets[bucket] = (hourlyBuckets[bucket] ?? 0.0) + amount;
+      }
+
+      return hourlyBuckets.entries.map((e) {
+        final hour = e.key;
+        final start = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+        final amPm = hour >= 12 ? 'PM' : 'AM';
+        return ChartDataPoint(
+          date: startOfToday.add(Duration(hours: hour)),
+          value: e.value,
+          label: '$start$amPm',
+        );
+      }).toList();
+    } else if (timeframe == 'Monthly') {
+      // Days of the current month
+      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+      final Map<int, double> dayBuckets = {for (var i = 1; i <= daysInMonth; i++) i: 0.0};
+
+      for (var doc in orderDocs) {
+        final data = doc.data();
+        if (data['status'] != OrderStatus.delivered.value) continue;
+        final rawTs = data['timestamp'];
+        DateTime? ts;
+        if (rawTs is Timestamp) ts = rawTs.toDate();
+        if (ts == null || ts.isBefore(startOfThisMonth) || ts.year != now.year || ts.month != now.month) continue;
+
+        dayBuckets[ts.day] = (dayBuckets[ts.day] ?? 0.0) + ((data['amount'] as num?)?.toDouble() ?? 0.0);
+      }
+
+      return dayBuckets.entries.map((e) {
+        return ChartDataPoint(
+          date: DateTime(now.year, now.month, e.key),
+          value: e.value,
+          label: e.key.toString().padLeft(2, '0'),
+        );
+      }).toList();
+    } else if (timeframe == 'Yearly') {
+      // 12 months
+      final Map<int, double> monthBuckets = {for (var i = 1; i <= 12; i++) i: 0.0};
+
+      for (var doc in orderDocs) {
+        final data = doc.data();
+        if (data['status'] != OrderStatus.delivered.value) continue;
+        final rawTs = data['timestamp'];
+        DateTime? ts;
+        if (rawTs is Timestamp) ts = rawTs.toDate();
+        if (ts == null || ts.isBefore(startOfThisYear) || ts.year != now.year) continue;
+
+        monthBuckets[ts.month] = (monthBuckets[ts.month] ?? 0.0) + ((data['amount'] as num?)?.toDouble() ?? 0.0);
+      }
+
+      return monthBuckets.entries.map((e) {
+        final monthName = DateFormat('MMM').format(DateTime(now.year, e.key, 1));
+        return ChartDataPoint(
+          date: DateTime(now.year, e.key, 1),
+          value: e.value,
+          label: monthName,
+        );
+      }).toList();
+    } else {
+      // Weekly: 7 days Mon - Sun
+      final Map<int, double> weekdayBuckets = {for (var i = 0; i < 7; i++) i: 0.0};
+
+      for (var doc in orderDocs) {
+        final data = doc.data();
+        if (data['status'] != OrderStatus.delivered.value) continue;
+        final rawTs = data['timestamp'];
+        DateTime? ts;
+        if (rawTs is Timestamp) ts = rawTs.toDate();
+        if (ts == null || ts.isBefore(startOfThisWeek)) continue;
+
+        final dayDiff = ts.difference(startOfThisWeek).inDays;
+        if (dayDiff >= 0 && dayDiff < 7) {
+          weekdayBuckets[dayDiff] = (weekdayBuckets[dayDiff] ?? 0.0) + ((data['amount'] as num?)?.toDouble() ?? 0.0);
+        }
+      }
+
+      return weekdayBuckets.entries.map((e) {
+        final d = startOfThisWeek.add(Duration(days: e.key));
+        return ChartDataPoint(
+          date: d,
+          value: e.value,
+          label: DateFormat('EEE').format(d),
+        );
+      }).toList();
+    }
   }
 
   Stream<FavoritesAnalytics> streamFavoritesAnalytics(String sellerId) {
@@ -407,3 +681,22 @@ class SellerAnalyticsRepository {
     });
   }
 }
+
+class _ProductStatAccumulator {
+  final String productId;
+  final String productName;
+  final double price;
+  int unitsSold;
+  double revenueGenerated;
+  final String? imageUrl;
+
+  _ProductStatAccumulator({
+    required this.productId,
+    required this.productName,
+    required this.price,
+    required this.unitsSold,
+    required this.revenueGenerated,
+    this.imageUrl,
+  });
+}
+

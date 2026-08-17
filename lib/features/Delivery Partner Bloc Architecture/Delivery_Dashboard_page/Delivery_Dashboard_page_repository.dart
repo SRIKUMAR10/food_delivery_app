@@ -9,6 +9,12 @@ abstract class DeliveryDashboardRepositoryBase {
   Future<DeliveryDashboardState> loadDashboardData();
   Stream<DeliveryDashboardState> watchDashboard();
   Future<bool> saveOnlineStatus(bool isOnline);
+  Future<void> updatePartnerStatus({
+    required bool isOnline,
+    bool? isAvailable,
+    bool? isBusy,
+    String? currentOrderId,
+  });
   Future<bool> getOnlineStatus();
 }
 
@@ -33,7 +39,7 @@ class DeliveryDashboardRepository implements DeliveryDashboardRepositoryBase {
   Future<DeliveryDashboardState> loadDashboardData() async {
     final raw = await _service.fetchDashboardMetrics();
     final savedOnline = await getOnlineStatus();
-    return _buildState(raw, isOnline: savedOnline);
+    return _buildState(raw, isOnline: raw['isOnline'] ?? savedOnline);
   }
 
   @override
@@ -86,21 +92,39 @@ class DeliveryDashboardRepository implements DeliveryDashboardRepositoryBase {
       );
     }).toList();
 
+    final isAvailable = raw['isAvailable'] as bool? ?? (isOnline ? !(raw['isBusy'] ?? false) : false);
+    final isBusy = raw['isBusy'] as bool? ?? false;
+    final partnerStatus = raw['partnerStatus'] is DeliveryPartnerStatusType
+        ? (raw['partnerStatus'] as DeliveryPartnerStatusType)
+        : (isOnline ? (isBusy ? DeliveryPartnerStatusType.busy : (isAvailable ? DeliveryPartnerStatusType.available : DeliveryPartnerStatusType.online)) : DeliveryPartnerStatusType.offline);
+
     return DeliveryDashboardState(
       status: DeliveryDashboardStatus.loaded,
       isOnline: isOnline,
+      isAvailable: isAvailable,
+      isBusy: isBusy,
+      partnerStatus: partnerStatus,
+      currentOrderId: raw['currentOrderId'] as String?,
+      lastActiveAt: raw['lastActiveAt'] as DateTime?,
       todayEarnings: (raw['todayEarnings'] as num?)?.toDouble() ?? 0.0,
       earningsGrowth: (raw['earningsGrowth'] as num?)?.toDouble() ?? 0.0,
       todayOrdersCount: (raw['todayOrdersCount'] as num?)?.toInt() ?? 0,
+      todayTotalDeliveries: (raw['todayTotalDeliveries'] as num?)?.toInt() ?? (raw['todayOrdersCount'] as num?)?.toInt() ?? 0,
+      completedDeliveriesCount: (raw['completedDeliveriesCount'] as num?)?.toInt() ?? (raw['todayOrdersCount'] as num?)?.toInt() ?? 0,
+      pendingDeliveriesCount: (raw['pendingDeliveriesCount'] as num?)?.toInt() ?? (raw['activeOrdersCount'] as num?)?.toInt() ?? 0,
+      cancelledDeliveriesCount: (raw['cancelledDeliveriesCount'] as num?)?.toInt() ?? 0,
       activeOrdersCount: (raw['activeOrdersCount'] as num?)?.toInt() ?? 0,
       walletBalance: (raw['walletBalance'] as num?)?.toDouble() ?? 0.0,
       incentiveEarned: (raw['incentiveEarned'] as num?)?.toDouble() ?? 0.0,
       incentiveTarget: (raw['incentiveTarget'] as num?)?.toDouble() ?? 0.0,
       incentivesList: incentives,
       workingHours: raw['workingHours'] ?? '',
+      onlineHours: raw['onlineHours'] ?? raw['workingHours'] ?? '5h 45m',
       acceptanceRate: (raw['acceptanceRate'] as num?)?.toInt() ?? 0,
       performanceScore: (raw['performanceScore'] as num?)?.toDouble() ?? 0.0,
+      averageRating: (raw['averageRating'] as num?)?.toDouble() ?? (raw['performanceScore'] as num?)?.toDouble() ?? 4.9,
       distanceTravelled: (raw['distanceTravelled'] as num?)?.toDouble() ?? 0.0,
+      todayDistance: (raw['todayDistance'] as num?)?.toDouble() ?? (raw['distanceTravelled'] as num?)?.toDouble() ?? 0.0,
       weeklyEarnings: (raw['weeklyEarnings'] as num?)?.toDouble() ?? 0.0,
       partnerName: raw['partnerName'] ?? '',
       vehicleNumber: raw['vehicleNumber'] ?? '',
@@ -119,8 +143,26 @@ class DeliveryDashboardRepository implements DeliveryDashboardRepositoryBase {
   }
 
   @override
+  Future<void> updatePartnerStatus({
+    required bool isOnline,
+    bool? isAvailable,
+    bool? isBusy,
+    String? currentOrderId,
+  }) async {
+    final prefs = await _getPrefs();
+    await prefs.setBool(_onlineStatusKey, isOnline);
+    await _service.updatePartnerStatus(
+      isOnline: isOnline,
+      isAvailable: isAvailable,
+      isBusy: isBusy,
+      currentOrderId: currentOrderId,
+    );
+  }
+
+  @override
   Future<bool> getOnlineStatus() async {
     final prefs = await _getPrefs();
     return prefs.getBool(_onlineStatusKey) ?? false;
   }
 }
+

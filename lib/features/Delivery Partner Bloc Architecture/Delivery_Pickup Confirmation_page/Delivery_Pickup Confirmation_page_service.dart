@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 abstract class DeliveryPickupConfirmationServiceBase {
   Future<Map<String, dynamic>> fetchPickupConfirmationData(String orderId);
   Future<Map<String, dynamic>> startDeliveryData(String orderId);
+  Future<bool> arrivedAtStore(String orderId);
   String formatCurrency(double amount);
   bool isValidPhoneNumber(String phoneNumber);
   String buildWhatsAppLink(String phoneNumber);
@@ -139,6 +140,22 @@ class DeliveryPickupConfirmationService
   }
 
   @override
+  Future<bool> arrivedAtStore(String orderId) async {
+    try {
+      final fs = _firestore;
+      if (fs != null) {
+        await fs.collection('orders').doc(orderId).update({
+          'pickupStatus': 'arrived_at_store',
+          'arrivedAtStoreAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  @override
   Future<Map<String, dynamic>> startDeliveryData(String orderId) async {
     try {
       final fs = _firestore;
@@ -147,6 +164,7 @@ class DeliveryPickupConfirmationService
           'status': 'OutForDelivery',
           'deliveryPartnerStatus': 'picked_up',
           'deliveryStatus': 'picked_up',
+          'pickupStatus': 'picked_up',
           'outForDeliveryAt': FieldValue.serverTimestamp(),
           'pickedUpAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),

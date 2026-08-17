@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
-import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -37,7 +37,6 @@ class _AppTheme {
   static const Color primary = Color(0xFFE52121);
   static const Color primaryLight = Color(0xFFFF5252);
   static const Color success = Color(0xFF22C55E);
-  static const Color warning = Color(0xFFF59E0B);
   static const Color info = Color(0xFF3B82F6);
 
   static const Color background = Color(0xFFF8F9FB);
@@ -95,14 +94,46 @@ class ChatBackgroundPainter extends CustomPainter {
 
 class ChatSupportPage extends StatelessWidget {
   final String sellerId;
-  const ChatSupportPage({Key? key, required this.sellerId}) : super(key: key);
+  final String? initialConversationId;
+  final String? initialOrderId;
+  final String? targetRole;
+  final String? partnerId;
+  final String? partnerName;
+  final String? partnerPhone;
+  final String? partnerImageUrl;
+  final String? orderTitle;
+  final double? orderTotal;
+
+  const ChatSupportPage({
+    Key? key,
+    required this.sellerId,
+    this.initialConversationId,
+    this.initialOrderId,
+    this.targetRole,
+    this.partnerId,
+    this.partnerName,
+    this.partnerPhone,
+    this.partnerImageUrl,
+    this.orderTitle,
+    this.orderTotal,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) =>
-          ChatSupportBloc(repository: context.read<IChatRepository>())
-            ..add(LoadChatSessionsEvent(sellerId)),
+      create: (context) => ChatSupportBloc(repository: context.read<IChatRepository>())
+        ..add(LoadChatSessionsEvent(
+          sellerId,
+          initialConversationId: initialConversationId,
+          initialOrderId: initialOrderId,
+          targetRole: targetRole,
+          partnerId: partnerId,
+          partnerName: partnerName,
+          partnerPhone: partnerPhone,
+          partnerImageUrl: partnerImageUrl,
+          orderTitle: orderTitle,
+          orderTotal: orderTotal,
+        )),
       child: const ChatSupportView(),
     );
   }
@@ -165,6 +196,8 @@ class ChatSupportView extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                         child: _ChatListView(
                           conversations: state.filteredConversations,
+                          allConversations: state.conversations,
+                          activeFilterTab: state.activeFilterTab,
                           currentUserId: state.currentUserId,
                           searchQuery: state.searchQuery,
                           embedded: true,
@@ -189,6 +222,8 @@ class ChatSupportView extends StatelessWidget {
                                   messages: state.messages,
                                   isSending: state.isSendingMessage,
                                   isDesktop: true,
+                                  isOtherUserTyping: state.isOtherUserTyping,
+                                  otherUserTypingName: state.otherUserTypingName,
                                 ),
                               ),
                             )
@@ -212,10 +247,14 @@ class ChatSupportView extends StatelessWidget {
               messages: state.messages,
               isSending: state.isSendingMessage,
               isDesktop: false,
+              isOtherUserTyping: state.isOtherUserTyping,
+              otherUserTypingName: state.otherUserTypingName,
             );
           } else {
             content = _ChatListView(
               conversations: state.filteredConversations,
+              allConversations: state.conversations,
+              activeFilterTab: state.activeFilterTab,
               currentUserId: state.currentUserId,
               searchQuery: state.searchQuery,
             );
@@ -289,6 +328,8 @@ class _EmptySellerChatPlaceholder extends StatelessWidget {
 
 class _ChatListView extends StatefulWidget {
   final List<ConversationModel> conversations;
+  final List<ConversationModel> allConversations;
+  final ChatFilterTab activeFilterTab;
   final String currentUserId;
   final String searchQuery;
   final bool embedded;
@@ -296,6 +337,8 @@ class _ChatListView extends StatefulWidget {
 
   const _ChatListView({
     required this.conversations,
+    required this.allConversations,
+    required this.activeFilterTab,
     required this.currentUserId,
     required this.searchQuery,
     this.embedded = false,
@@ -334,6 +377,10 @@ class _ChatListViewState extends State<_ChatListView> {
   Widget build(BuildContext context) {
     Widget listContent = Column(
       children: [
+        _FilterTabsBar(
+          allConversations: widget.allConversations,
+          activeFilterTab: widget.activeFilterTab,
+        ),
         _buildSearchBar(context),
         Expanded(
           child: widget.conversations.isEmpty
@@ -450,6 +497,122 @@ class _ChatListViewState extends State<_ChatListView> {
             borderSide: const BorderSide(color: _AppTheme.primary, width: 1.5),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FilterTabsBar extends StatelessWidget {
+  final List<ConversationModel> allConversations;
+  final ChatFilterTab activeFilterTab;
+
+  const _FilterTabsBar({
+    required this.allConversations,
+    required this.activeFilterTab,
+  });
+
+  int _countFor(ChatFilterTab tab) {
+    switch (tab) {
+      case ChatFilterTab.all:
+        return allConversations.length;
+      case ChatFilterTab.customers:
+        return allConversations
+            .where((c) =>
+                c.conversationType == 'buyer_seller' &&
+                c.deliveryPartnerId == null)
+            .length;
+      case ChatFilterTab.deliveryPartners:
+        return allConversations
+            .where((c) =>
+                c.conversationType == 'seller_delivery' ||
+                c.conversationType == 'buyer_delivery' ||
+                (c.deliveryPartnerId != null && c.deliveryPartnerId!.isNotEmpty))
+            .length;
+      case ChatFilterTab.orders:
+        return allConversations
+            .where((c) => c.orderId != null && c.orderId!.isNotEmpty)
+            .length;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tabs = [
+      (ChatFilterTab.all, 'All'),
+      (ChatFilterTab.customers, 'Customers'),
+      (ChatFilterTab.deliveryPartners, 'Delivery Partners'),
+      (ChatFilterTab.orders, 'Active Orders'),
+    ];
+
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: ListView.separated(
+        key: const ValueKey('filterTabs'),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: tabs.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final entry = tabs[index];
+          final tab = entry.$1;
+          final label = entry.$2;
+          final isSelected = tab == activeFilterTab;
+          final count = _countFor(tab);
+
+          return InkWell(
+            onTap: () {
+              context.read<ChatSupportBloc>().add(SetChatFilterTabEvent(tab));
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? _AppTheme.primary.withValues(alpha: 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? _AppTheme.primary : _AppTheme.borderLight,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected
+                          ? _AppTheme.primary
+                          : _AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? _AppTheme.primary
+                          : _AppTheme.surfaceHover,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? Colors.white : _AppTheme.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -643,6 +806,63 @@ class _RealtimeCustomerNameText extends StatelessWidget {
   }
 }
 
+class _SellerNameText extends StatelessWidget {
+  final bool isDeliveryChat;
+  final String displayName;
+  final String? buyerId;
+  final String? orderId;
+  final TextStyle style;
+  final Widget Function(BuildContext context, String resolvedName)? builder;
+
+  const _SellerNameText({
+    Key? key,
+    required this.isDeliveryChat,
+    required this.displayName,
+    this.buyerId,
+    this.orderId,
+    required this.style,
+    this.builder,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    if (isDeliveryChat) {
+      if (builder != null) return builder!(context, displayName);
+      return Text(displayName, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
+    }
+    return _RealtimeCustomerNameText(
+      fallbackName: displayName,
+      buyerId: buyerId,
+      orderId: orderId,
+      style: style,
+      builder: builder,
+    );
+  }
+}
+
+class _ParticipantTypeBadge extends StatelessWidget {
+  final bool isDelivery;
+  const _ParticipantTypeBadge({required this.isDelivery});
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = isDelivery ? Icons.delivery_dining_rounded : Icons.person_rounded;
+    final color = isDelivery ? _AppTheme.info : _AppTheme.success;
+    return Semantics(
+      label: isDelivery ? 'Delivery Partner' : 'Customer',
+      child: Container(
+        width: 20,
+        height: 20,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 12, color: color),
+      ),
+    );
+  }
+}
+
 class _SellerConversationTile extends StatefulWidget {
   final ConversationModel conversation;
   final String currentUserId;
@@ -668,6 +888,13 @@ class _SellerConversationTileState extends State<_SellerConversationTile> {
     final conversation = widget.conversation;
     final unread = conversation.unreadCountForUser(widget.currentUserId);
     final lastMessageTimestamp = conversation.lastMessageTimestamp;
+    final isDeliveryChat = conversation.isDeliveryChat ||
+        conversation.conversationType == 'seller_delivery';
+    final displayName = isDeliveryChat
+        ? (conversation.deliveryPartnerName?.isNotEmpty == true
+            ? conversation.deliveryPartnerName!
+            : 'Delivery Partner')
+        : conversation.buyerName;
 
     String timeText = '';
     if (lastMessageTimestamp != null) {
@@ -713,15 +940,16 @@ class _SellerConversationTileState extends State<_SellerConversationTile> {
             children: [
               Stack(
                 children: [
-                  _RealtimeCustomerNameText(
-                    fallbackName: conversation.buyerName,
+                  _SellerNameText(
+                    isDeliveryChat: isDeliveryChat,
+                    displayName: displayName,
                     buyerId: conversation.buyerId,
                     orderId: conversation.orderId,
                     style: const TextStyle(fontSize: 16),
                     builder: (context, resolvedName) {
                       final initial = resolvedName.isNotEmpty
                           ? resolvedName[0].toUpperCase()
-                          : 'S';
+                          : (isDeliveryChat ? 'R' : 'S');
                       return Container(
                         width: 48,
                         height: 48,
@@ -773,15 +1001,24 @@ class _SellerConversationTileState extends State<_SellerConversationTile> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: _RealtimeCustomerNameText(
-                            fallbackName: conversation.buyerName,
-                            buyerId: conversation.buyerId,
-                            orderId: conversation.orderId,
-                            style: TextStyle(
-                              fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w600,
-                              fontSize: 15,
-                              color: _AppTheme.textPrimary,
-                            ),
+                          child: Row(
+                            children: [
+                              _ParticipantTypeBadge(isDelivery: isDeliveryChat),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: _SellerNameText(
+                                  isDeliveryChat: isDeliveryChat,
+                                  displayName: displayName,
+                                  buyerId: conversation.buyerId,
+                                  orderId: conversation.orderId,
+                                  style: TextStyle(
+                                    fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w600,
+                                    fontSize: 15,
+                                    color: _AppTheme.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         if (lastMessageTimestamp != null)
@@ -855,12 +1092,16 @@ class _ChatDetailsView extends StatefulWidget {
   final List<ChatMessageModel> messages;
   final bool isSending;
   final bool isDesktop;
+  final bool isOtherUserTyping;
+  final String? otherUserTypingName;
 
   const _ChatDetailsView({
     required this.conversation,
     required this.messages,
     required this.isSending,
     required this.isDesktop,
+    this.isOtherUserTyping = false,
+    this.otherUserTypingName,
   });
 
   @override
@@ -1007,6 +1248,9 @@ class _ChatDetailsViewState extends State<_ChatDetailsView> {
 
   @override
   Widget build(BuildContext context) {
+    final isDeliveryChat = widget.conversation.isDeliveryChat ||
+        widget.conversation.conversationType == 'seller_delivery';
+
     return Scaffold(
       backgroundColor: _AppTheme.background,
       body: SafeArea(
@@ -1017,6 +1261,8 @@ class _ChatDetailsViewState extends State<_ChatDetailsView> {
               isDesktop: widget.isDesktop,
               onCameraTap: _openCamera,
               onInvoiceTap: _generateInvoice,
+              isOtherUserTyping: widget.isOtherUserTyping,
+              otherUserTypingName: widget.otherUserTypingName,
             ),
             Expanded(
               child: Stack(
@@ -1041,7 +1287,15 @@ class _ChatDetailsViewState extends State<_ChatDetailsView> {
                 ],
               ),
             ),
-            _QuickActionSuggestionChips(onSelect: _sendQuickReply),
+            _QuickActionSuggestionChips(
+              onSelect: _sendQuickReply,
+              isDeliveryChat: isDeliveryChat,
+            ),
+            if (widget.isOtherUserTyping)
+              _TypingIndicatorBanner(
+                isDeliveryChat: isDeliveryChat,
+                typingName: widget.otherUserTypingName,
+              ),
             _SellerComposer(
               controller: _textController,
               isSending: widget.isSending,
@@ -1136,16 +1390,28 @@ class _ChatDetailsViewState extends State<_ChatDetailsView> {
 
 class _QuickActionSuggestionChips extends StatelessWidget {
   final Function(String) onSelect;
-  const _QuickActionSuggestionChips({required this.onSelect});
+  final bool isDeliveryChat;
+  const _QuickActionSuggestionChips({
+    required this.onSelect,
+    this.isDeliveryChat = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final chips = [
-      '📦 Your order is confirmed & being prepared!',
-      '🚚 Out for delivery soon',
-      '📄 Invoice has been generated',
-      '😊 Thank you for ordering with FoodGo!',
-    ];
+    final chips = isDeliveryChat
+        ? [
+            '🚴 Food ready for pickup',
+            '⏱ Ready in 2 mins',
+            '📍 Please come to Counter 1',
+            '✅ Rider arrived',
+          ]
+        : [
+            '🍳 Order preparing',
+            '📝 Custom request noted',
+            '🔥 Will arrive hot & fresh',
+            '📦 Order confirmed & being prepared',
+            '😊 Thank you for ordering with FoodGo!',
+          ];
 
     return Container(
       color: _AppTheme.card,
@@ -1184,22 +1450,138 @@ class _QuickActionSuggestionChips extends StatelessWidget {
   }
 }
 
+class _TypingIndicatorBanner extends StatelessWidget {
+  final bool isDeliveryChat;
+  final String? typingName;
+
+  const _TypingIndicatorBanner({
+    required this.isDeliveryChat,
+    this.typingName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final emoji = isDeliveryChat ? '🚴' : '👤';
+    final name = typingName != null && typingName!.isNotEmpty
+        ? typingName!
+        : (isDeliveryChat ? 'Delivery Partner' : 'Buyer');
+
+    return Semantics(
+      liveRegion: true,
+      label: '$name is typing',
+      child: Container(
+        color: _AppTheme.card,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Row(
+          children: [
+            Text(
+              '$emoji $name is typing',
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: _AppTheme.primary,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const SizedBox(
+              width: 22,
+              height: 14,
+              child: _TypingDotsAnimation(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TypingDotsAnimation extends StatefulWidget {
+  const _TypingDotsAnimation();
+
+  @override
+  State<_TypingDotsAnimation> createState() => _TypingDotsAnimationState();
+}
+
+class _TypingDotsAnimationState extends State<_TypingDotsAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final phase = _controller.value;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: List.generate(3, (i) {
+            final t = ((phase - i * 0.2) % 1.0).abs();
+            final opacity = (1.0 - t).clamp(0.0, 1.0);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1),
+              child: Opacity(
+                opacity: opacity,
+                child: Container(
+                  width: 4,
+                  height: 4,
+                  decoration: const BoxDecoration(
+                    color: _AppTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
 class _SellerChatHeader extends StatelessWidget {
   final ConversationModel conversation;
   final bool isDesktop;
   final VoidCallback onCameraTap;
   final VoidCallback onInvoiceTap;
+  final bool isOtherUserTyping;
+  final String? otherUserTypingName;
 
   const _SellerChatHeader({
     required this.conversation,
     required this.isDesktop,
     required this.onCameraTap,
     required this.onInvoiceTap,
+    this.isOtherUserTyping = false,
+    this.otherUserTypingName,
   });
 
   @override
   Widget build(BuildContext context) {
     final hasImage = conversation.sellerImageUrl != null && conversation.sellerImageUrl!.isNotEmpty;
+    final isDeliveryChat = conversation.isDeliveryChat ||
+        conversation.conversationType == 'seller_delivery';
+    final displayName = isDeliveryChat
+        ? (conversation.deliveryPartnerName?.isNotEmpty == true
+            ? conversation.deliveryPartnerName!
+            : 'Delivery Partner')
+        : conversation.buyerName;
 
     return Container(
       decoration: const BoxDecoration(
@@ -1225,15 +1607,16 @@ class _SellerChatHeader extends StatelessWidget {
           ),
           Stack(
             children: [
-              _RealtimeCustomerNameText(
-                fallbackName: conversation.buyerName,
+              _SellerNameText(
+                isDeliveryChat: isDeliveryChat,
+                displayName: displayName,
                 buyerId: conversation.buyerId,
                 orderId: conversation.orderId,
                 style: const TextStyle(fontSize: 16),
                 builder: (context, resolvedName) {
                   final initial = resolvedName.isNotEmpty
                       ? resolvedName[0].toUpperCase()
-                      : 'S';
+                      : (isDeliveryChat ? 'R' : 'S');
                   return Container(
                     width: 44,
                     height: 44,
@@ -1292,8 +1675,9 @@ class _SellerChatHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _RealtimeCustomerNameText(
-                  fallbackName: conversation.buyerName,
+                _SellerNameText(
+                  isDeliveryChat: isDeliveryChat,
+                  displayName: displayName,
                   buyerId: conversation.buyerId,
                   orderId: conversation.orderId,
                   style: const TextStyle(
@@ -1302,10 +1686,28 @@ class _SellerChatHeader extends StatelessWidget {
                     color: _AppTheme.textPrimary,
                   ),
                 ),
-                if (conversation.orderId != null)
+                if (isOtherUserTyping)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '${isDeliveryChat ? '🚴' : '👤'} ${otherUserTypingName ?? (isDeliveryChat ? 'Delivery Partner' : 'Buyer')} is typing...',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _AppTheme.primary,
+                        fontWeight: FontWeight.w600,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  )
+                else if (conversation.orderId != null)
                   Text(
                     'Order #${conversation.orderId!.length > 8 ? conversation.orderId!.substring(0, 8) : conversation.orderId}',
                     style: const TextStyle(fontSize: 12, color: _AppTheme.textSecondary),
+                  )
+                else if (isDeliveryChat)
+                  const Text(
+                    'Delivery Partner',
+                    style: TextStyle(fontSize: 12, color: _AppTheme.textSecondary),
                   ),
               ],
             ),
@@ -1384,7 +1786,13 @@ class _SellerComposerState extends State<_SellerComposer> {
   }
 
   void _onTextChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      final hasText = widget.controller.text.trim().isNotEmpty;
+      context.read<ChatSupportBloc>().add(
+            SetTypingStatusEvent(hasText, conversationId: widget.conversationId),
+          );
+    }
   }
 
   @override
@@ -1663,6 +2071,7 @@ class _PremiumOrderContextCard extends StatefulWidget {
 
 class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
   Future<OrderModel?>? _orderFuture;
+  StreamSubscription<OrderModel?>? _orderSub;
   OrderModel? _localCachedOrder;
   static final Map<String, OrderModel> _staticOrderCache = {};
 
@@ -1680,7 +2089,14 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
     }
   }
 
+  @override
+  void dispose() {
+    _orderSub?.cancel();
+    super.dispose();
+  }
+
   void _loadOrder() {
+    _orderSub?.cancel();
     if (widget.orderId.isEmpty) {
       _localCachedOrder = null;
       _orderFuture = null;
@@ -1722,6 +2138,16 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
       }
       return order;
     });
+
+    // Live real-time status updates (Pending -> Preparing -> Ready -> ...).
+    _orderSub = orderRepo.streamOrderById(widget.orderId).listen((order) {
+      if (order != null && mounted) {
+        _staticOrderCache[widget.orderId] = order;
+        setState(() {
+          _localCachedOrder = order;
+        });
+      }
+    }, onError: (_) {});
   }
 
   @override

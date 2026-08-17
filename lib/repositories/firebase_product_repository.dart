@@ -149,21 +149,27 @@ class FirebaseProductRepository implements IProductRepository {
         }).handleError((_) => <Product>[]);
   }
 
-  /// Searches products using a backend query (e.g., via Algolia or simple prefix matching).
-  /// This replaces in-memory filtering for better scalability.
+  /// Searches products across Name, Ingredients, Add-ons, Category, and Description.
   Stream<List<Product>> searchProducts(String query, String categoryName) {
-    // Note: For a true enterprise app, this should call Algolia or Typesense.
-    // As a fallback for Firestore, we use prefix matching.
-    return _firestore
-        .collection('products')
-        .where('category', isEqualTo: categoryName)
-        .where('name', isGreaterThanOrEqualTo: query)
-        .where('name', isLessThanOrEqualTo: query + '\uf8ff')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Product.fromMap(doc.id, doc.data()))
-            .toList())
-        .handleError((_) => <Product>[]);
+    Query<Map<String, dynamic>> queryRef = _firestore.collection('products');
+    if (categoryName.isNotEmpty && categoryName != 'All') {
+      queryRef = queryRef.where('category', isEqualTo: categoryName);
+    }
+    return queryRef.snapshots().map((snapshot) {
+      final qLower = query.toLowerCase().trim();
+      return snapshot.docs
+          .map((doc) => Product.fromMap(doc.id, doc.data()))
+          .where((product) {
+            if (qLower.isEmpty) return true;
+            final nameMatch = product.name.toLowerCase().contains(qLower);
+            final descMatch = product.description.toLowerCase().contains(qLower);
+            final ingMatch = product.ingredients.any((ing) => ing.toLowerCase().contains(qLower));
+            final addonMatch = product.addons.any((add) => add.toLowerCase().contains(qLower));
+            final catMatch = product.category.toLowerCase().contains(qLower);
+            return nameMatch || descMatch || ingMatch || addonMatch || catMatch;
+          })
+          .toList();
+    }).handleError((_) => <Product>[]);
   }
 
   Future<void> deleteProduct(String productId, String sellerId) async {
@@ -199,16 +205,63 @@ class FirebaseProductRepository implements IProductRepository {
     }
   }
 
+  @override
   Future<void> toggleProductStatus(String productId, bool isActive, String sellerId) async {
     try {
       await _firestore.collection('products').doc(productId).update({
         'isActive': isActive,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
       throw Exception('Failed to toggle product status: $e');
     }
   }
 
+  @override
+  Future<void> updateProductStock(String productId, int newStock, bool hasUnlimitedStock, String sellerId) async {
+    try {
+      String status = 'inStock';
+      if (newStock <= 0 && !hasUnlimitedStock) {
+        status = 'outOfStock';
+      }
+      await _firestore.collection('products').doc(productId).update({
+        'availableStock': newStock,
+        'hasUnlimitedStock': hasUnlimitedStock,
+        'status': status,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to update product stock: $e');
+    }
+  }
+
+  @override
+  Future<void> updateProductPrice(String productId, double newPrice, double newDiscountPrice, String sellerId) async {
+    try {
+      await _firestore.collection('products').doc(productId).update({
+        'price': newPrice,
+        'discountPrice': newDiscountPrice,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to update product price: $e');
+    }
+  }
+
+  @override
+  Future<void> markProductOutOfStock(String productId, String sellerId) async {
+    try {
+      await _firestore.collection('products').doc(productId).update({
+        'availableStock': 0,
+        'status': 'outOfStock',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to mark product out of stock: $e');
+    }
+  }
+
+  @override
   Future<void> duplicateProduct(Product product, String sellerId) async {
     try {
       final newProduct = product.copyWith(
@@ -217,6 +270,7 @@ class FirebaseProductRepository implements IProductRepository {
       );
       final payload = newProduct.toMap();
       payload['createdAt'] = FieldValue.serverTimestamp();
+      payload['updatedAt'] = FieldValue.serverTimestamp();
       await _firestore.collection('products').add(payload);
     } catch (e) {
       throw Exception('Failed to duplicate product: $e');

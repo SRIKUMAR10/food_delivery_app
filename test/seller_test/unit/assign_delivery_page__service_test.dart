@@ -169,10 +169,11 @@ void main() {
           await fakeFirestore.collection('orders').doc('order_1').get();
       final data = orderDoc.data()!;
 
-      expect(data['status'], 'OutForDelivery');
       expect(data['riderId'], 'rider_1');
       expect(data['deliveryPartnerId'], 'rider_1');
       expect(data['driverId'], 'rider_1');
+      expect(data['deliveryPartnerStatus'], 'assigned');
+      expect(data['pickupStatus'], 'heading_to_store');
       expect(data['deliveryInstructions'], 'Leave at door');
       expect(data['outForDeliveryAt'], isNotNull);
       expect(data['updatedAt'], isNotNull);

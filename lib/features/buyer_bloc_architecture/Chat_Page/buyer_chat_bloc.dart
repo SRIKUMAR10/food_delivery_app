@@ -67,6 +67,10 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     on<_AutoOpenConversation>(_onAutoOpenConversation);
     on<DeleteBuyerMessage>(_onDeleteMessage);
     on<SelectProductForSupport>(_onSelectProduct);
+    on<StartDeliveryPartnerConversation>(_onStartDeliveryConversation);
+    on<MarkMessagesAsRead>(_onMarkMessagesRead);
+    on<SendOrderQuickReply>(_onSendOrderQuickReply);
+    on<SetBuyerChatFilter>(_onSetFilter);
 
     _authSub = authService.authStateChanges.listen((userId) {
       if (userId != null) {
@@ -125,6 +129,53 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
       sellerImageUrl: sellerImageUrl,
       orderId: orderId,
       orderImageUrl: orderImageUrl,
+      orderTitle: orderTitle,
+      orderTotal: orderTotal,
+      initialMessage: null,
+    );
+    _pendingConversationId = convId;
+    add(LoadBuyerConversations());
+  }
+
+  /// Opens (or auto-creates) a `buyer_delivery` conversation with a rider.
+  Future<void> openDeliveryConversation({
+    required String deliveryPartnerId,
+    required String deliveryPartnerName,
+    String? deliveryPartnerPhone,
+    String? deliveryPartnerImageUrl,
+    required String buyerName,
+    String? orderId,
+    String? orderTitle,
+    double? orderTotal,
+  }) async {
+    final userId = authService.currentUserId;
+    if (userId == null) return;
+
+    try {
+      final existing = await repository.getConversationBetween(
+        user1Id: userId,
+        user2Id: deliveryPartnerId,
+        orderId: orderId,
+        type: 'buyer_delivery',
+      );
+      if (existing != null) {
+        _pendingConversationId = existing.id;
+        add(LoadBuyerConversations());
+        return;
+      }
+    } catch (_) {}
+
+    final convId = await repository.createConversation(
+      buyerId: userId,
+      buyerName: buyerName,
+      sellerId: '',
+      sellerName: '',
+      deliveryPartnerId: deliveryPartnerId,
+      deliveryPartnerName: deliveryPartnerName,
+      deliveryPartnerPhone: deliveryPartnerPhone,
+      deliveryPartnerImageUrl: deliveryPartnerImageUrl,
+      conversationType: 'buyer_delivery',
+      orderId: orderId,
       orderTitle: orderTitle,
       orderTotal: orderTotal,
       initialMessage: null,
@@ -217,12 +268,12 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
       return;
     }
 
-    repository.markConversationRead(event.conversationId, userId, false);
-
     emit(current.copyWith(
       selectedConversationId: event.conversationId,
       messages: [],
     ));
+
+    add(MarkMessagesAsRead(event.conversationId));
 
     _messagesSub = repository
         .getMessagesStream(event.conversationId)
@@ -246,6 +297,13 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
         .where((m) => !m.deletedBy.contains(userId))
         .toList();
     emit(s.copyWith(messages: filteredMessages));
+
+    final hasIncomingUnread = filteredMessages.any(
+      (m) => m.senderId != userId && !m.isRead,
+    );
+    if (hasIncomingUnread) {
+      add(MarkMessagesAsRead(event.conversationId));
+    }
   }
 
   void _onMessagesError(
@@ -420,6 +478,91 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     } else {
       _pendingProduct = event.product;
     }
+  }
+
+  Future<void> _onStartDeliveryConversation(
+      StartDeliveryPartnerConversation event,
+      Emitter<BuyerChatState> emit) async {
+    final userId = authService.currentUserId;
+    if (userId == null) return;
+
+    final current = state;
+    if (current is BuyerChatLoaded) {
+      emit(current.copyWith(clearError: true));
+    }
+
+    try {
+      final conversationId = await repository.createConversation(
+        buyerId: userId,
+        buyerName: event.buyerName,
+        sellerId: '',
+        sellerName: '',
+        deliveryPartnerId: event.deliveryPartnerId,
+        deliveryPartnerName: event.deliveryPartnerName,
+        deliveryPartnerPhone: event.deliveryPartnerPhone,
+        deliveryPartnerImageUrl: event.deliveryPartnerImageUrl,
+        conversationType: 'buyer_delivery',
+        orderId: event.orderId,
+        orderTitle: event.orderTitle,
+        orderTotal: event.orderTotal,
+        initialMessage: event.initialMessage,
+      );
+      add(SelectBuyerConversation(conversationId));
+    } catch (e) {
+      final s = state;
+      if (s is BuyerChatLoaded) {
+        emit(s.copyWith(
+          errorMessage: 'Failed to start conversation. Please try again.',
+        ));
+      }
+    }
+  }
+
+  Future<void> _onMarkMessagesRead(
+      MarkMessagesAsRead event, Emitter<BuyerChatState> emit) async {
+    final s = state;
+    if (s is! BuyerChatLoaded) return;
+    final userId = authService.currentUserId;
+    if (userId == null) return;
+
+    emit(s.copyWith(isMarkingRead: true));
+
+    try {
+      await repository.markMessagesAsRead(
+        conversationId: event.conversationId,
+        readerId: userId,
+      );
+    } catch (_) {}
+
+    final current = state;
+    if (current is BuyerChatLoaded) {
+      emit(current.copyWith(isMarkingRead: false));
+    }
+  }
+
+  Future<void> _onSendOrderQuickReply(
+      SendOrderQuickReply event, Emitter<BuyerChatState> emit) async {
+    final current = state;
+    if (current is! BuyerChatLoaded) return;
+    final userId = authService.currentUserId;
+    if (userId == null) return;
+    if (event.text.trim().isEmpty) return;
+
+    try {
+      await repository.sendMessage(
+        conversationId: event.conversationId,
+        text: event.text,
+        senderId: userId,
+        senderRole: 'buyer',
+      );
+    } catch (_) {}
+  }
+
+  void _onSetFilter(
+      SetBuyerChatFilter event, Emitter<BuyerChatState> emit) {
+    final current = state;
+    if (current is! BuyerChatLoaded) return;
+    emit(current.copyWith(activeFilter: event.filter));
   }
 
   @override

@@ -5,20 +5,74 @@ import 'Rating_page_bloc.dart';
 import 'Rating_page_event.dart';
 import 'Rating_page_state.dart';
 import '../../../core/services/i_auth_service.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/repositories/i_rating_repository.dart';
+import '../../../repositories/firebase_rating_repository.dart';
 
 class RatingPageUI extends StatelessWidget {
   final String foodId;
   final String foodName;
+  final IRatingRepository? ratingRepository;
+  final IAuthService? authService;
+  final RatingPageBloc? bloc;
 
-  const RatingPageUI({super.key, required this.foodId, required this.foodName});
+  const RatingPageUI({
+    super.key,
+    required this.foodId,
+    required this.foodName,
+    this.ratingRepository,
+    this.authService,
+    this.bloc,
+  });
+
+  RatingPageBloc? _tryGetBloc(BuildContext context) {
+    try {
+      return BlocProvider.of<RatingPageBloc>(context, listen: false);
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (bloc != null) {
+      return BlocProvider<RatingPageBloc>.value(
+        value: bloc!,
+        child: RatingPageView(foodId: foodId, foodName: foodName),
+      );
+    }
+
+    final existingBloc = _tryGetBloc(context);
+    if (existingBloc != null) {
+      return RatingPageView(foodId: foodId, foodName: foodName);
+    }
+
+    IRatingRepository ratingRepo;
+    if (ratingRepository != null) {
+      ratingRepo = ratingRepository!;
+    } else {
+      try {
+        ratingRepo = context.read<IRatingRepository>();
+      } catch (_) {
+        ratingRepo = FirebaseRatingRepository();
+      }
+    }
+
+    IAuthService auth;
+    if (authService != null) {
+      auth = authService!;
+    } else {
+      try {
+        auth = context.read<IAuthService>();
+      } catch (_) {
+        auth = FirebaseAuthService();
+      }
+    }
+
     return BlocProvider(
       create: (context) => RatingPageBloc(
-        ratingRepository: context.read<IRatingRepository>(),
-        authService: context.read<IAuthService>(),
+        ratingRepository: ratingRepo,
+        authService: auth,
       )..add(LoadRating(foodId: foodId)),
       child: RatingPageView(foodId: foodId, foodName: foodName),
     );

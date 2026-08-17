@@ -8,6 +8,8 @@ class AddProductPageState extends Equatable {
   final AddProductStatus status;
   final List<XFile> images;
   final String? category;
+  final String? subcategory;
+  final String sku;
   final bool isActive;
   final String? errorMessage;
   final int currentStep;
@@ -19,12 +21,16 @@ class AddProductPageState extends Equatable {
   final bool isBestSeller;
   final Product? initialProduct;
   final List<String> existingImages;
+  final List<ProductVariant> variants;
+  final List<ProductCustomizationGroup> customizationGroups;
   final double gstPercentage;
 
   const AddProductPageState({
     this.status = AddProductStatus.initial,
     this.images = const [],
     this.category,
+    this.subcategory,
+    this.sku = '',
     this.isActive = true,
     this.errorMessage,
     this.currentStep = 0,
@@ -36,6 +42,8 @@ class AddProductPageState extends Equatable {
     this.isBestSeller = false,
     this.initialProduct,
     this.existingImages = const [],
+    this.variants = const [],
+    this.customizationGroups = const [],
     this.gstPercentage = 0.0,
   });
 
@@ -43,6 +51,8 @@ class AddProductPageState extends Equatable {
     AddProductStatus? status,
     List<XFile>? images,
     String? category,
+    String? subcategory,
+    String? sku,
     bool? isActive,
     String? errorMessage,
     int? currentStep,
@@ -54,12 +64,16 @@ class AddProductPageState extends Equatable {
     bool? isBestSeller,
     Product? initialProduct,
     List<String>? existingImages,
+    List<ProductVariant>? variants,
+    List<ProductCustomizationGroup>? customizationGroups,
     double? gstPercentage,
   }) {
     return AddProductPageState(
       status: status ?? this.status,
       images: images ?? this.images,
       category: category ?? this.category,
+      subcategory: subcategory ?? this.subcategory,
+      sku: sku ?? this.sku,
       isActive: isActive ?? this.isActive,
       errorMessage: errorMessage ?? this.errorMessage,
       currentStep: currentStep ?? this.currentStep,
@@ -71,26 +85,32 @@ class AddProductPageState extends Equatable {
       isBestSeller: isBestSeller ?? this.isBestSeller,
       initialProduct: initialProduct ?? this.initialProduct,
       existingImages: existingImages ?? this.existingImages,
+      variants: variants ?? this.variants,
+      customizationGroups: customizationGroups ?? this.customizationGroups,
       gstPercentage: gstPercentage ?? this.gstPercentage,
     );
   }
 
   @override
   List<Object?> get props => [
-        status,
-        images,
-        category,
-        isActive,
-        errorMessage,
-        currentStep,
-        lastSavedAt,
-        foodType,
-        spicyLevel,
-        hasUnlimitedStock,
-        isFeatured,
-        isBestSeller,
-        initialProduct,
-        existingImages,
-        gstPercentage,
-      ];
+    status,
+    images,
+    category,
+    subcategory,
+    sku,
+    isActive,
+    errorMessage,
+    currentStep,
+    lastSavedAt,
+    foodType,
+    spicyLevel,
+    hasUnlimitedStock,
+    isFeatured,
+    isBestSeller,
+    initialProduct,
+    existingImages,
+    variants,
+    customizationGroups,
+    gstPercentage,
+  ];
 }

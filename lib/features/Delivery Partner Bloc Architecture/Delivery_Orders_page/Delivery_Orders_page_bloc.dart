@@ -23,6 +23,9 @@ class DeliveryOrdersPageBloc
     on<DeliveryOrdersSortChangedEvent>(_onSortChanged);
     on<DeliveryOrdersPaymentFilterChangedEvent>(_onPaymentFilterChanged);
     on<DeliveryOrdersAutoRefreshToggledEvent>(_onAutoRefreshToggled);
+    on<DeliveryOrdersAcceptOrderEvent>(_onAcceptOrder);
+    on<DeliveryOrdersRejectOrderEvent>(_onRejectOrder);
+    on<DeliveryOrdersClearConflictEvent>(_onClearConflict);
   }
 
   List<DeliveryOrderCardModel> _applyFilters(DeliveryOrdersPageState source) {
@@ -180,5 +183,86 @@ class DeliveryOrdersPageBloc
         ),
       );
     }
+  }
+
+  Future<void> _onAcceptOrder(
+    DeliveryOrdersAcceptOrderEvent event,
+    Emitter<DeliveryOrdersPageState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        acceptingOrderId: event.orderId,
+        errorMessage: null,
+        clearError: true,
+        notificationMessage: null,
+        clearNotification: true,
+      ),
+    );
+    try {
+      final accepted = await repository.acceptOrderAtomic(event.orderId);
+      if (accepted) {
+        emit(
+          state.copyWith(
+            clearAcceptingOrderId: true,
+            notificationMessage: 'Order accepted. Heading to the store.',
+          ),
+        );
+      } else {
+        emit(
+          state.copyWith(
+            clearAcceptingOrderId: true,
+            errorMessage: 'Order already accepted by another delivery partner',
+          ),
+        );
+      }
+    } catch (e) {
+      emit(
+        state.copyWith(
+          clearAcceptingOrderId: true,
+          errorMessage: 'Order already accepted by another delivery partner',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onRejectOrder(
+    DeliveryOrdersRejectOrderEvent event,
+    Emitter<DeliveryOrdersPageState> emit,
+  ) async {
+    try {
+      await repository.rejectOrder(event.orderId, reason: event.reason);
+      final orders = state.orders
+          .where((o) => o.orderId != event.orderId)
+          .toList();
+      final next = state.copyWith(orders: orders);
+      emit(
+        next.copyWith(
+          filteredOrders: _applyFilters(next),
+          notificationMessage: 'Order declined.',
+          errorMessage: null,
+          clearError: true,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Failed to reject order. Please try again.',
+        ),
+      );
+    }
+  }
+
+  void _onClearConflict(
+    DeliveryOrdersClearConflictEvent event,
+    Emitter<DeliveryOrdersPageState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        errorMessage: null,
+        clearError: true,
+        notificationMessage: null,
+        clearNotification: true,
+      ),
+    );
   }
 }

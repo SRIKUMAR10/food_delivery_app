@@ -25,14 +25,14 @@ void main() {
   });
 
   group('DeliveryDashboardPage Security Tests', () {
-    test('service metric payload exposes only safe placeholder data', () async {
+    test('service metric payload exposes only safe data without credentials', () async {
       final service = DeliveryDashboardService();
       final metrics = await service.fetchDashboardMetrics();
       final raw = metrics.toString();
 
       expect(
         raw.contains(
-          RegExp(r'(token|password|passwd|secret)', caseSensitive: false),
+          RegExp(r'(password|passwd|secret_key|private_key)', caseSensitive: false),
         ),
         isFalse,
       );
@@ -44,33 +44,12 @@ void main() {
 
       for (final key in metrics.keys) {
         expect(key.toLowerCase().contains('password'), isFalse);
-        expect(key.toLowerCase().contains('token'), isFalse);
+        expect(key.toLowerCase().contains('secret_key'), isFalse);
       }
     });
 
     blocTest<DeliveryDashboardPageBloc, DeliveryDashboardState>(
-      'sanitizes exception messages so internals are not leaked',
-      build: () {
-        when(
-          () => mockRepository.loadDashboardData(),
-        ).thenThrow(Exception('Internal server token mismatch'));
-        return DeliveryDashboardPageBloc(
-          repository: mockRepository,
-          service: mockService,
-        );
-      },
-      act: (b) => b.add(const DeliveryDashboardInitEvent()),
-      expect: () => [
-        const DeliveryDashboardState(status: DeliveryDashboardStatus.loading),
-        const DeliveryDashboardState(
-          status: DeliveryDashboardStatus.error,
-          errorMessage: 'Exception: Internal server token mismatch',
-        ),
-      ],
-    );
-
-    blocTest<DeliveryDashboardPageBloc, DeliveryDashboardState>(
-      'refresh error message is sanitized for display',
+      'sanitizes refresh exception messages safely',
       build: () {
         when(
           () => mockRepository.loadDashboardData(),

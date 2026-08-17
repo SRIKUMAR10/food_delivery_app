@@ -6,6 +6,7 @@ abstract class DeliveryPickupConfirmationRepositoryBase {
     String orderId,
   );
   Future<PickupConfirmationModel> startDelivery(String orderId);
+  Future<bool> arrivedAtStore(String orderId);
 }
 
 class DeliveryPickupConfirmationRepository
@@ -46,5 +47,10 @@ class DeliveryPickupConfirmationRepository
   Future<PickupConfirmationModel> startDelivery(String orderId) async {
     final raw = await _service.startDeliveryData(orderId);
     return _mapDetails(raw);
+  }
+
+  @override
+  Future<bool> arrivedAtStore(String orderId) async {
+    return await _service.arrivedAtStore(orderId);
   }
 }

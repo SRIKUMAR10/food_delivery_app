@@ -47,3 +47,11 @@ class CallStoreEvent extends DeliveryPickupConfirmationPageEvent {
   @override
   List<Object?> get props => [phoneNumber];
 }
+
+class ArrivedAtStoreEvent extends DeliveryPickupConfirmationPageEvent {
+  final String orderId;
+  const ArrivedAtStoreEvent(this.orderId);
+
+  @override
+  List<Object?> get props => [orderId];
+}

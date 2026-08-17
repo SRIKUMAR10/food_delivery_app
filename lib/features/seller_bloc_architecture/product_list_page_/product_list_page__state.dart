@@ -14,12 +14,14 @@ class ProductListLoading extends ProductListPageState {}
 
 class ProductListLoaded extends ProductListPageState {
   final List<Product> products;
-  final String activeFilter; // 'All Products', 'Active', 'Inactive', 'Low Stock', 'Veg', 'Non-Veg', 'Archived'
+  final String activeFilter; // 'All Products', 'Active', 'Inactive', 'In Stock', 'Low Stock', 'Out of Stock', 'Veg', 'Non-Veg', 'Archived'
   final String searchQuery;
   final int allCount;
   final int activeCount;
   final int inactiveCount;
+  final int inStockCount;
   final int lowStockCount;
+  final int outOfStockCount;
   final int vegCount;
   final int nonVegCount;
   final int archivedCount;
@@ -29,6 +31,7 @@ class ProductListLoaded extends ProductListPageState {
   final String sortBy;
   final double? ratingFilter;
   final String? categoryFilter;
+  final String? subcategoryFilter;
   final double? priceRangeMin;
   final double? priceRangeMax;
 
@@ -39,7 +42,9 @@ class ProductListLoaded extends ProductListPageState {
     required this.allCount,
     required this.activeCount,
     required this.inactiveCount,
+    this.inStockCount = 0,
     required this.lowStockCount,
+    this.outOfStockCount = 0,
     required this.vegCount,
     required this.nonVegCount,
     required this.archivedCount,
@@ -48,6 +53,7 @@ class ProductListLoaded extends ProductListPageState {
     this.sortBy = 'Recently Added',
     this.ratingFilter,
     this.categoryFilter,
+    this.subcategoryFilter,
     this.priceRangeMin,
     this.priceRangeMax,
   });
@@ -59,7 +65,9 @@ class ProductListLoaded extends ProductListPageState {
     int? allCount,
     int? activeCount,
     int? inactiveCount,
+    int? inStockCount,
     int? lowStockCount,
+    int? outOfStockCount,
     int? vegCount,
     int? nonVegCount,
     int? archivedCount,
@@ -68,6 +76,7 @@ class ProductListLoaded extends ProductListPageState {
     String? sortBy,
     double? ratingFilter,
     String? categoryFilter,
+    String? subcategoryFilter,
     double? priceRangeMin,
     double? priceRangeMax,
   }) {
@@ -78,7 +87,9 @@ class ProductListLoaded extends ProductListPageState {
       allCount: allCount ?? this.allCount,
       activeCount: activeCount ?? this.activeCount,
       inactiveCount: inactiveCount ?? this.inactiveCount,
+      inStockCount: inStockCount ?? this.inStockCount,
       lowStockCount: lowStockCount ?? this.lowStockCount,
+      outOfStockCount: outOfStockCount ?? this.outOfStockCount,
       vegCount: vegCount ?? this.vegCount,
       nonVegCount: nonVegCount ?? this.nonVegCount,
       archivedCount: archivedCount ?? this.archivedCount,
@@ -87,6 +98,7 @@ class ProductListLoaded extends ProductListPageState {
       sortBy: sortBy ?? this.sortBy,
       ratingFilter: ratingFilter ?? this.ratingFilter,
       categoryFilter: categoryFilter ?? this.categoryFilter,
+      subcategoryFilter: subcategoryFilter ?? this.subcategoryFilter,
       priceRangeMin: priceRangeMin ?? this.priceRangeMin,
       priceRangeMax: priceRangeMax ?? this.priceRangeMax,
     );
@@ -94,24 +106,27 @@ class ProductListLoaded extends ProductListPageState {
 
   @override
   List<Object?> get props => [
-        products,
-        activeFilter,
-        searchQuery,
-        allCount,
-        activeCount,
-        inactiveCount,
-        lowStockCount,
-        vegCount,
-        nonVegCount,
-        archivedCount,
-        averageRating,
-        totalRevenue,
-        sortBy,
-        ratingFilter,
-        categoryFilter,
-        priceRangeMin,
-        priceRangeMax,
-      ];
+    products,
+    activeFilter,
+    searchQuery,
+    allCount,
+    activeCount,
+    inactiveCount,
+    inStockCount,
+    lowStockCount,
+    outOfStockCount,
+    vegCount,
+    nonVegCount,
+    archivedCount,
+    averageRating,
+    totalRevenue,
+    sortBy,
+    ratingFilter,
+    categoryFilter,
+    subcategoryFilter,
+    priceRangeMin,
+    priceRangeMax,
+  ];
 }
 
 class ProductListError extends ProductListPageState {

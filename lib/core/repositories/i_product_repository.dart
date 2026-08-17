@@ -9,6 +9,9 @@ abstract interface class IProductRepository {
   Future<void> archiveProduct(String id, String sellerId);
   Future<void> unarchiveProduct(String id, String sellerId);
   Future<void> duplicateProduct(Product product, String sellerId);
+  Future<void> updateProductStock(String id, int stock, bool hasUnlimitedStock, String sellerId);
+  Future<void> updateProductPrice(String id, double price, double discountPrice, String sellerId);
+  Future<void> markProductOutOfStock(String id, String sellerId);
   Future<Product?> getProduct(String id, String sellerId);
   Future<List<Product>> getProducts(String sellerId);
   Stream<List<Product>> getProductsStream(String sellerId, {

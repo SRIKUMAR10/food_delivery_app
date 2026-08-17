@@ -17,6 +17,8 @@ void main() {
     final mockStats = const CustomerStats(
       totalCustomers: 1245,
       repeatCustomers: 320,
+      totalRevenue: 25000.0,
+      averageOrderValue: 250.0,
     );
     final mockCustomers = [
       const CustomerItem(
@@ -24,17 +26,21 @@ void main() {
         name: 'Mike Ross',
         orderCount: 12,
         avatarUrl: '',
+        totalSpent: 3000.0,
       ),
       const CustomerItem(
         id: '2',
         name: 'John Doe',
         orderCount: 10,
         avatarUrl: '',
+        totalSpent: 2500.0,
       ),
     ];
 
     setUp(() {
       repository = MockSellerCustomerRepository();
+      when(() => repository.watchCustomerData())
+          .thenAnswer((_) => const Stream.empty());
       bloc = SellerCustomerBloc(repository: repository);
     });
 
@@ -63,6 +69,7 @@ void main() {
         SellerCustomerLoaded(
           stats: mockStats,
           customers: mockCustomers,
+          filteredCustomers: mockCustomers,
           hasReachedMax: true,
         ),
       ],
@@ -88,6 +95,7 @@ void main() {
       seed: () => SellerCustomerLoaded(
         stats: mockStats,
         customers: mockCustomers,
+        filteredCustomers: mockCustomers,
         hasReachedMax: false,
       ),
       build: () {
@@ -98,6 +106,7 @@ void main() {
               name: 'Sarah Wilson',
               orderCount: 8,
               avatarUrl: '',
+              totalSpent: 1200.0,
             ),
           ],
         );
@@ -108,6 +117,7 @@ void main() {
         SellerCustomerLoaded(
           stats: mockStats,
           customers: mockCustomers,
+          filteredCustomers: mockCustomers,
           hasReachedMax: false,
           isPaginatedLoading: true,
         ),
@@ -121,10 +131,79 @@ void main() {
               name: 'Sarah Wilson',
               orderCount: 8,
               avatarUrl: '',
+              totalSpent: 1200.0,
+            ),
+          ],
+          filteredCustomers: [
+            mockCustomers[0],
+            mockCustomers[1],
+            const CustomerItem(
+              id: '3',
+              name: 'Sarah Wilson',
+              orderCount: 8,
+              avatarUrl: '',
+              totalSpent: 1200.0,
             ),
           ],
           hasReachedMax: true,
           isPaginatedLoading: false,
+        ),
+      ],
+    );
+
+    blocTest<SellerCustomerBloc, SellerCustomerState>(
+      'filters customers correctly when SearchCustomers is called',
+      seed: () => SellerCustomerLoaded(
+        stats: mockStats,
+        customers: mockCustomers,
+        filteredCustomers: mockCustomers,
+      ),
+      build: () => bloc,
+      act: (bloc) => bloc.add(const SearchCustomers('Mike')),
+      expect: () => [
+        SellerCustomerLoaded(
+          stats: mockStats,
+          customers: mockCustomers,
+          filteredCustomers: [mockCustomers[0]],
+          searchQuery: 'Mike',
+        ),
+      ],
+    );
+
+    blocTest<SellerCustomerBloc, SellerCustomerState>(
+      'sorts customers correctly when SortCustomers is called',
+      seed: () => SellerCustomerLoaded(
+        stats: mockStats,
+        customers: mockCustomers,
+        filteredCustomers: mockCustomers,
+      ),
+      build: () => bloc,
+      act: (bloc) => bloc.add(const SortCustomers(CustomerSortOption.nameAsc)),
+      expect: () => [
+        SellerCustomerLoaded(
+          stats: mockStats,
+          customers: mockCustomers,
+          filteredCustomers: [mockCustomers[1], mockCustomers[0]],
+          selectedSort: CustomerSortOption.nameAsc,
+        ),
+      ],
+    );
+
+    blocTest<SellerCustomerBloc, SellerCustomerState>(
+      'updates selected customer when SelectCustomer is called',
+      seed: () => SellerCustomerLoaded(
+        stats: mockStats,
+        customers: mockCustomers,
+        filteredCustomers: mockCustomers,
+      ),
+      build: () => bloc,
+      act: (bloc) => bloc.add(SelectCustomer(mockCustomers[0])),
+      expect: () => [
+        SellerCustomerLoaded(
+          stats: mockStats,
+          customers: mockCustomers,
+          filteredCustomers: mockCustomers,
+          selectedCustomer: mockCustomers[0],
         ),
       ],
     );

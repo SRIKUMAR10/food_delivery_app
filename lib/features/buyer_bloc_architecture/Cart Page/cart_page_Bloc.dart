@@ -2,12 +2,17 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
+import '../../../api_service/RazorpayApiService.dart';
 import '../../../core/services/i_auth_service.dart';
 import '../../../core/services/seller_status_service.dart';
 import '../../../core/repositories/i_cart_repository.dart';
 import '../../../core/repositories/i_coupon_repository.dart';
 import '../../../core/repositories/i_product_repository.dart';
+import '../../../core/repositories/i_user_profile_repository.dart';
+import '../../../features/buyer_bloc_architecture/user_profile_image/user_profile_models.dart';
 import '../../../repositories/firebase_user_profile_repository.dart';
 import 'cart_models.dart';
 
@@ -20,9 +25,15 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   final IProductRepository _productRepository;
   final IAuthService _authService;
   final SellerStatusService _sellerStatusService;
+  final IUserProfileRepository _userProfileRepository;
+  final RazorpayApiService _razorpayApiService;
+
+  final FirebaseFirestore? _firestore;
 
   StreamSubscription<String?>? _authSubscription;
   StreamSubscription<List<AppliedCoupon>>? _couponSubscription;
+  StreamSubscription<UserProfile?>? _profileSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _walletSubscription;
 
   CartBloc({
     required ICartRepository cartRepository,
@@ -30,11 +41,17 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     required IProductRepository productRepository,
     required IAuthService authService,
     SellerStatusService? sellerStatusService,
+    IUserProfileRepository? userProfileRepository,
+    RazorpayApiService? razorpayApiService,
+    FirebaseFirestore? firestore,
   })  : _cartRepository = cartRepository,
         _couponRepository = couponRepository,
         _productRepository = productRepository,
         _authService = authService,
         _sellerStatusService = sellerStatusService ?? SellerStatusService(),
+        _userProfileRepository = userProfileRepository ?? _DefaultUserProfileRepository(),
+        _razorpayApiService = razorpayApiService ?? RazorpayApiService(),
+        _firestore = firestore,
         super(const CartLoading()) {
     
     _authSubscription = _authService.authStateChanges.listen((userId) {
@@ -51,18 +68,27 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<CartItemQuantityUpdated>(_onCartItemQuantityUpdated);
     on<CartItemSelectionToggled>(_onCartItemSelectionToggled);
     on<CartCleared>(_onCartCleared);
+    on<CartPaymentMethodSelected>(_onCartPaymentMethodSelected);
     on<CartCheckoutRequested>(_onCartCheckoutRequested);
+    on<CartRazorpaySuccessReceived>(_onCartRazorpaySuccessReceived);
+    on<CartRazorpayFailedReceived>(_onCartRazorpayFailedReceived);
+    on<_WalletBalanceUpdated>(_onWalletBalanceUpdated);
     on<LoadAvailableCoupons>(_onLoadAvailableCoupons);
     on<_CouponsLoaded>(_onCouponsLoaded);
     on<CouponApplied>(_onCouponApplied);
+    on<ApplyCouponCodeRequested>(_onApplyCouponCodeRequested);
     on<CouponRemoved>(_onCouponRemoved);
     on<CouponError>(_onCouponError);
+    on<DeliveryAddressTypeChanged>(_onDeliveryAddressTypeChanged);
+    on<_ProfileUpdated>(_onProfileUpdated);
   }
 
   @override
   Future<void> close() {
     _authSubscription?.cancel();
     _couponSubscription?.cancel();
+    _profileSubscription?.cancel();
+    _walletSubscription?.cancel();
     return super.close();
   }
 
@@ -79,6 +105,8 @@ class CartBloc extends Bloc<CartEvent, CartState> {
             discountAmount: c.discountAmount,
             isPercentage: c.isPercentage,
             couponId: c.id,
+            minimumOrderValue: c.minimumOrderValue,
+            description: c.description,
           )).toList(),
         )
         .listen((availableCoupons) {
@@ -86,6 +114,124 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         add(_CouponsLoaded(availableCoupons));
       }
     });
+  }
+
+  void _subscribeToProfile(String userId) {
+    _profileSubscription?.cancel();
+    _profileSubscription = _userProfileRepository
+        .watchProfile(userId)
+        .listen((profile) {
+      if (!isClosed) {
+        add(_ProfileUpdated(profile));
+      }
+    });
+  }
+
+  void _subscribeToWallet(String userId) {
+    _walletSubscription?.cancel();
+    try {
+      final db = _firestore ?? FirebaseFirestore.instance;
+      _walletSubscription = db
+          .collection('buyer_user')
+          .doc(userId)
+          .snapshots()
+          .listen((snap) {
+        if (snap.exists && !isClosed) {
+          final balance = (snap.data()?['wallet'] as num?)?.toDouble() ?? 0.0;
+          add(_WalletBalanceUpdated(balance));
+        }
+      }, onError: (_) {});
+    } catch (_) {
+      // Safely ignore in test environments without Firebase instance
+    }
+  }
+
+  String _resolveAddress(UserProfile? profile, String selectedType) {
+    if (profile == null) return 'Primary Address';
+    final type = selectedType.toLowerCase().trim();
+    if (type == 'home' && profile.homeAddress.trim().isNotEmpty) {
+      return profile.homeAddress.trim();
+    } else if (type == 'work' && profile.workAddress.trim().isNotEmpty) {
+      return profile.workAddress.trim();
+    } else if (type == 'other' && profile.otherAddress.trim().isNotEmpty) {
+      return profile.otherAddress.trim();
+    } else if (profile.address.trim().isNotEmpty) {
+      return profile.address.trim();
+    }
+    return 'Primary Address';
+  }
+
+  CartLoaded _computePricing({
+    required List<CartItem> items,
+    AppliedCoupon? appliedCoupon,
+    List<AppliedCoupon> availableCoupons = const [],
+    String? couponMessage,
+    bool isCouponLoading = false,
+    String selectedAddressType = 'Home',
+    String deliveryAddress = '',
+    String homeAddress = '',
+    String workAddress = '',
+    String otherAddress = '',
+    String customerName = '',
+    String customerPhone = '',
+    CartPaymentMethod selectedPaymentMethod = CartPaymentMethod.razorpay,
+    bool isCheckingOut = false,
+    double walletBalance = 0.0,
+    String? paymentError,
+  }) {
+    double subtotal = 0.0;
+    int totalCount = 0;
+    for (final item in items) {
+      if (item.isSelected) {
+        subtotal += (item.price * item.quantity);
+        totalCount += item.quantity;
+      }
+    }
+
+    double discountAmount = 0.0;
+    if (appliedCoupon != null && subtotal > 0) {
+      if (appliedCoupon.isPercentage) {
+        discountAmount = (subtotal * appliedCoupon.discountAmount / 100).clamp(0, subtotal).toDouble();
+      } else {
+        discountAmount = appliedCoupon.discountAmount.clamp(0, subtotal).toDouble();
+      }
+    }
+
+    // Free delivery for orders >= ₹500, otherwise ₹35 base fee (₹0 if cart is empty)
+    final double deliveryFee = (subtotal >= 500.0 || subtotal == 0.0) ? 0.0 : 35.0;
+    final double taxableSubtotal = (subtotal - discountAmount).clamp(0.0, double.infinity).toDouble();
+    // 5% GST on taxable amount
+    final double taxAmount = subtotal > 0 ? (taxableSubtotal * 0.05) : 0.0;
+    // Platform fee ₹5 if items are present
+    final double platformFee = subtotal > 0 ? 5.0 : 0.0;
+
+    final double grandTotal = taxableSubtotal + deliveryFee + taxAmount + platformFee;
+
+    return CartLoaded(
+      items: items,
+      totalAmount: subtotal,
+      totalCount: totalCount,
+      appliedCoupon: appliedCoupon,
+      discountAmount: discountAmount,
+      deliveryFee: deliveryFee,
+      taxAmount: taxAmount,
+      platformFee: platformFee,
+      finalAmount: grandTotal,
+      availableCoupons: availableCoupons,
+      couponMessage: couponMessage,
+      isCouponLoading: isCouponLoading,
+      selectedAddressType: selectedAddressType,
+      deliveryAddress: deliveryAddress,
+      homeAddress: homeAddress,
+      workAddress: workAddress,
+      otherAddress: otherAddress,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      selectedPaymentMethod: selectedPaymentMethod,
+      isCheckingOut: isCheckingOut,
+      walletBalance: walletBalance,
+      paymentError: paymentError,
+    );
   }
 
   Future<void> _onLoadCartStarted(
@@ -100,26 +246,14 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
     emit(const CartLoading());
 
-    // Wait for the Firebase ID token to be fully propagated to Firestore's
-    // WebChannel before opening the real-time listener. This prevents the
-    // [cloud_firestore/permission-denied] race condition that occurs when the
-    // auth state change fires but the token has not yet reached the Firestore
-    // backend connection.
     await _authService.ensureTokenReady();
+    _subscribeToProfile(uid);
+    _subscribeToWallet(uid);
 
     try {
       await emit.forEach<List<CartItem>>(
         _cartRepository.getCartItemsStream(uid),
         onData: (items) {
-          double totalAmount = 0.0;
-          int totalCount = 0;
-          for (final item in items) {
-            if (item.isSelected) {
-              totalAmount += (item.price * item.quantity);
-              totalCount += item.quantity;
-            }
-          }
-
           final sellerIds = items.map((i) => i.sellerId).toSet().toList();
           if (sellerIds.isNotEmpty) {
             _subscribeToCoupons(sellerIds);
@@ -127,37 +261,97 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
           final currentState = state;
           if (currentState is CartLoaded) {
-            double discountAmount = 0.0;
-            double finalAmount = totalAmount;
-            
-            if (currentState.appliedCoupon != null) {
-              final coupon = currentState.appliedCoupon!;
-              discountAmount = coupon.isPercentage
-                  ? (totalAmount * coupon.discountAmount / 100).clamp(0, totalAmount) as double
-                  : coupon.discountAmount.clamp(0, totalAmount) as double;
-              finalAmount = totalAmount - discountAmount;
-            }
-
-            return currentState.copyWith(
+            return _computePricing(
               items: items,
-              totalAmount: totalAmount,
-              totalCount: totalCount,
-              discountAmount: discountAmount,
-              finalAmount: finalAmount,
+              appliedCoupon: currentState.appliedCoupon,
+              availableCoupons: currentState.availableCoupons,
+              couponMessage: currentState.couponMessage,
+              isCouponLoading: currentState.isCouponLoading,
+              selectedAddressType: currentState.selectedAddressType,
+              deliveryAddress: currentState.deliveryAddress,
+              homeAddress: currentState.homeAddress,
+              workAddress: currentState.workAddress,
+              otherAddress: currentState.otherAddress,
+              customerName: currentState.customerName,
+              customerPhone: currentState.customerPhone,
+              selectedPaymentMethod: currentState.selectedPaymentMethod,
+              isCheckingOut: currentState.isCheckingOut,
+              walletBalance: currentState.walletBalance,
+              paymentError: currentState.paymentError,
             );
           }
 
-          return CartLoaded(
-            items: items,
-            totalAmount: totalAmount,
-            totalCount: totalCount,
-          );
+          return _computePricing(items: items);
         },
         onError: (error, stackTrace) =>
             const CartLoaded(items: [], totalAmount: 0, totalCount: 0),
       );
     } catch (_) {
       emit(const CartLoaded(items: [], totalAmount: 0, totalCount: 0));
+    }
+  }
+
+  void _onProfileUpdated(
+    _ProfileUpdated event,
+    Emitter<CartState> emit,
+  ) {
+    final profile = event.profile as UserProfile?;
+    final currentState = state;
+    if (currentState is CartLoaded) {
+      final selectedType = profile?.selectedAddressType ?? currentState.selectedAddressType;
+      final deliveryAddress = _resolveAddress(profile, selectedType);
+
+      emit(currentState.copyWith(
+        selectedAddressType: selectedType,
+        deliveryAddress: deliveryAddress,
+        homeAddress: profile?.homeAddress ?? currentState.homeAddress,
+        workAddress: profile?.workAddress ?? currentState.workAddress,
+        otherAddress: profile?.otherAddress ?? currentState.otherAddress,
+        customerName: profile?.name ?? currentState.customerName,
+        customerPhone: profile?.phone ?? currentState.customerPhone,
+      ));
+    }
+  }
+
+  Future<void> _onDeliveryAddressTypeChanged(
+    DeliveryAddressTypeChanged event,
+    Emitter<CartState> emit,
+  ) async {
+    final uid = _currentUserId;
+    final currentState = state;
+    if (currentState is CartLoaded) {
+      final resolvedAddress = _resolveAddress(
+        UserProfile(
+          name: currentState.customerName,
+          email: '',
+          phone: currentState.customerPhone,
+          address: currentState.deliveryAddress,
+          homeAddress: currentState.homeAddress,
+          workAddress: currentState.workAddress,
+          otherAddress: currentState.otherAddress,
+          selectedAddressType: event.addressType,
+        ),
+        event.addressType,
+      );
+
+      emit(currentState.copyWith(
+        selectedAddressType: event.addressType,
+        deliveryAddress: resolvedAddress,
+      ));
+
+      if (uid != null) {
+        try {
+          final profile = await _userProfileRepository.loadProfile(uid);
+          if (profile != null) {
+            await _userProfileRepository.saveProfile(
+              uid,
+              profile.copyWith(selectedAddressType: event.addressType),
+            );
+          }
+        } catch (e) {
+          debugPrint('Failed to save selected address type: $e');
+        }
+      }
     }
   }
 
@@ -212,6 +406,20 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     final uid = _currentUserId;
     if (uid == null) return;
     try {
+      final currentState = state;
+      if (currentState is CartLoaded && event.delta > 0) {
+        final item = currentState.items.firstWhere(
+          (i) => i.id == event.id,
+          orElse: () => const CartItem(id: '', name: '', price: 0, sellerId: ''),
+        );
+        if (item.id.isNotEmpty) {
+          final product = await _productRepository.getProduct(item.id, item.sellerId);
+          if (product != null && product.availableStock < (item.quantity + event.delta)) {
+            emit(_cartErrorWithPrevious(currentState, '${item.name} only has ${product.availableStock} in stock.'));
+            return;
+          }
+        }
+      }
       await _cartRepository.updateQuantity(uid, event.id, event.delta);
     } catch (e) {
       if (state is CartLoaded) {
@@ -245,6 +453,8 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   ) async {
     _couponSubscription?.cancel();
     _couponSubscription = null;
+    _profileSubscription?.cancel();
+    _profileSubscription = null;
 
     final uid = _currentUserId;
     if (uid == null) {
@@ -257,6 +467,29 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       if (state is CartLoaded) {
         emit(_cartErrorWithPrevious(state as CartLoaded, 'Failed to clear cart.'));
       }
+    }
+  }
+
+  void _onCartPaymentMethodSelected(
+    CartPaymentMethodSelected event,
+    Emitter<CartState> emit,
+  ) {
+    final s = state;
+    if (s is CartLoaded) {
+      emit(s.copyWith(
+        selectedPaymentMethod: event.method,
+        clearPaymentError: true,
+      ));
+    }
+  }
+
+  void _onWalletBalanceUpdated(
+    _WalletBalanceUpdated event,
+    Emitter<CartState> emit,
+  ) {
+    final s = state;
+    if (s is CartLoaded) {
+      emit(s.copyWith(walletBalance: event.balance));
     }
   }
 
@@ -274,6 +507,8 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       final selectedItems = currentState.items.where((i) => i.isSelected).toList();
       if (selectedItems.isEmpty) return;
 
+      emit(currentState.copyWith(isCheckingOut: true, clearPaymentError: true));
+
       final sellerIds = selectedItems.map((i) => i.sellerId).toSet().toList();
       for (final sellerId in sellerIds) {
         final availability = await _sellerStatusService.checkAvailability(sellerId);
@@ -282,10 +517,14 @@ class CartBloc extends Bloc<CartEvent, CartState> {
               ? 'Store is currently offline.'
               : (availability.message ?? 'Store is currently closed.');
           emit(currentState.copyWith(
+            isCheckingOut: false,
+            paymentError: msg,
             couponMessage: msg,
             clearCouponMessage: false,
           ));
-          if (event.onInsufficientBalance != null) {
+          if (event.onFailure != null) {
+            event.onFailure!(msg);
+          } else if (event.onInsufficientBalance != null) {
             event.onInsufficientBalance!(msg);
           }
           return;
@@ -317,44 +556,100 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       if (validationErrors.isNotEmpty) {
         final msg = validationErrors.join('\n');
         emit(currentState.copyWith(
+          isCheckingOut: false,
+          paymentError: msg,
           couponMessage: msg,
           clearCouponMessage: false,
         ));
-        if (event.onInsufficientBalance != null) {
+        if (event.onFailure != null) {
+          event.onFailure!(msg);
+        } else if (event.onInsufficientBalance != null) {
           event.onInsufficientBalance!(msg);
         }
         return;
       }
 
-      final userProfileRepo = FirebaseUserProfileRepository();
-      final profile = await userProfileRepo.loadProfile(uid);
-
-      String displayName = profile?.name.trim() ?? '';
+      String displayName = currentState.customerName.trim();
       if (displayName.isEmpty || displayName == 'Customer') {
         displayName = _authService.currentUserDisplayName ?? 'Customer';
       }
 
-      final customerPhone = profile?.phone.trim() ?? '';
+      final customerPhone = currentState.customerPhone.trim();
+      String deliveryAddress = currentState.deliveryAddress.trim();
+      if (deliveryAddress.isEmpty || deliveryAddress == 'Primary Address') {
+        final profile = await _userProfileRepository.loadProfile(uid);
+        deliveryAddress = _resolveAddress(profile, profile?.selectedAddressType ?? 'Home');
+      }
 
-      String deliveryAddress = '';
-      if (profile != null) {
-        final selectedType = profile.selectedAddressType.toLowerCase().trim();
-        if (selectedType == 'home' && profile.homeAddress.trim().isNotEmpty) {
-          deliveryAddress = profile.homeAddress.trim();
-        } else if (selectedType == 'work' && profile.workAddress.trim().isNotEmpty) {
-          deliveryAddress = profile.workAddress.trim();
-        } else if (selectedType == 'other' && profile.otherAddress.trim().isNotEmpty) {
-          deliveryAddress = profile.otherAddress.trim();
-        } else if (profile.address.trim().isNotEmpty) {
-          deliveryAddress = profile.address.trim();
+      final customerEmail = _authService.currentUserEmail ?? 'customer@example.com';
+
+      // 1. Razorpay Online Payment Flow
+      if (currentState.selectedPaymentMethod == CartPaymentMethod.razorpay) {
+        try {
+          final orderResponse = await _razorpayApiService.createOrder(
+            amount: (currentState.finalAmount * 100).toInt(),
+            receipt: 'rcpt_${DateTime.now().millisecondsSinceEpoch}',
+          );
+          final orderId = orderResponse['orderId'] as String? ?? orderResponse['id'] as String?;
+
+          emit(currentState.copyWith(isCheckingOut: false));
+
+          if (event.onOpenRazorpay != null) {
+            event.onOpenRazorpay!(orderId, currentState.finalAmount, customerEmail, customerPhone);
+          } else {
+            _razorpayApiService.startPayment(
+              amount: currentState.finalAmount,
+              email: customerEmail,
+              phone: customerPhone,
+              orderId: orderId,
+              description: 'Food Order Payment',
+            );
+          }
+        } catch (e) {
+          final err = AppExceptionFormatter.toUserFriendlyMessage(e);
+          emit(currentState.copyWith(
+            isCheckingOut: false,
+            paymentError: err,
+          ));
+          if (event.onFailure != null) {
+            event.onFailure!(err);
+          }
         }
-      }
-      if (deliveryAddress.isEmpty) {
-        deliveryAddress = (profile?.address.trim().isNotEmpty == true)
-            ? profile!.address.trim()
-            : 'Primary Address';
+        return;
       }
 
+      // 2. FoodGo Wallet Payment Flow
+      if (currentState.selectedPaymentMethod == CartPaymentMethod.wallet) {
+        if (currentState.walletBalance < currentState.finalAmount) {
+          final msg = 'Insufficient wallet balance (₹${currentState.walletBalance.toStringAsFixed(0)}). Required: ₹${currentState.finalAmount.toStringAsFixed(0)}.';
+          emit(currentState.copyWith(
+            isCheckingOut: false,
+            paymentError: msg,
+          ));
+          if (event.onInsufficientBalance != null) {
+            event.onInsufficientBalance!(msg);
+          }
+          return;
+        }
+
+        await _cartRepository.checkoutCart(
+          uid,
+          selectedItems,
+          displayName,
+          deliveryAddress,
+          customerPhone: customerPhone,
+          appliedCoupon: currentState.appliedCoupon,
+          paymentMethod: 'Wallet',
+        );
+
+        emit(currentState.copyWith(isCheckingOut: false));
+        if (event.onSuccess != null) {
+          event.onSuccess!(null);
+        }
+        return;
+      }
+
+      // 3. Cash on Delivery (COD) Flow
       await _cartRepository.checkoutCart(
         uid,
         selectedItems,
@@ -362,18 +657,100 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         deliveryAddress,
         customerPhone: customerPhone,
         appliedCoupon: currentState.appliedCoupon,
+        paymentMethod: 'COD',
       );
 
+      emit(currentState.copyWith(isCheckingOut: false));
       if (event.onSuccess != null) {
         event.onSuccess!(null);
       }
     } catch (e) {
       debugPrint("Checkout Error: $e");
+      final errMsg = AppExceptionFormatter.toUserFriendlyMessage(e);
       if (state is CartLoaded) {
         emit((state as CartLoaded).copyWith(
-          couponMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
-          clearCouponMessage: false,
+          isCheckingOut: false,
+          paymentError: errMsg,
         ));
+      }
+      if (event.onFailure != null) {
+        event.onFailure!(errMsg);
+      }
+    }
+  }
+
+  Future<void> _onCartRazorpaySuccessReceived(
+    CartRazorpaySuccessReceived event,
+    Emitter<CartState> emit,
+  ) async {
+    final uid = _currentUserId;
+    if (uid == null) return;
+    final currentState = state;
+    if (currentState is! CartLoaded) return;
+
+    final selectedItems = currentState.items.where((i) => i.isSelected).toList();
+    if (selectedItems.isEmpty) return;
+
+    emit(currentState.copyWith(isCheckingOut: true, clearPaymentError: true));
+
+    try {
+      String displayName = currentState.customerName.trim();
+      if (displayName.isEmpty || displayName == 'Customer') {
+        displayName = _authService.currentUserDisplayName ?? 'Customer';
+      }
+
+      final customerPhone = currentState.customerPhone.trim();
+      String deliveryAddress = currentState.deliveryAddress.trim();
+      if (deliveryAddress.isEmpty || deliveryAddress == 'Primary Address') {
+        final profile = await _userProfileRepository.loadProfile(uid);
+        deliveryAddress = _resolveAddress(profile, profile?.selectedAddressType ?? 'Home');
+      }
+
+      await _cartRepository.verifyAndCheckoutRazorpay(
+        buyerId: uid,
+        razorpayOrderId: event.response.orderId ?? '',
+        razorpayPaymentId: event.response.paymentId ?? '',
+        razorpaySignature: event.response.signature ?? '',
+        selectedItems: selectedItems,
+        customerName: displayName,
+        deliveryAddress: deliveryAddress,
+        customerPhone: customerPhone,
+        appliedCoupon: currentState.appliedCoupon,
+      );
+
+      emit(currentState.copyWith(isCheckingOut: false));
+      if (event.onSuccess != null) {
+        event.onSuccess!(null);
+      }
+    } catch (e) {
+      debugPrint("Razorpay Verification Error: $e");
+      final errMsg = AppExceptionFormatter.toUserFriendlyMessage(e);
+      emit(currentState.copyWith(
+        isCheckingOut: false,
+        paymentError: errMsg,
+      ));
+      if (event.onFailure != null) {
+        event.onFailure!(errMsg);
+      }
+    }
+  }
+
+  void _onCartRazorpayFailedReceived(
+    CartRazorpayFailedReceived event,
+    Emitter<CartState> emit,
+  ) {
+    final currentState = state;
+    if (currentState is CartLoaded) {
+      final isCancelled = event.response.code == Razorpay.PAYMENT_CANCELLED;
+      final msg = isCancelled
+          ? 'Payment cancelled by user.'
+          : (event.response.message ?? 'Payment failed. Please try again.');
+      emit(currentState.copyWith(
+        isCheckingOut: false,
+        paymentError: msg,
+      ));
+      if (event.onFailure != null) {
+        event.onFailure!(msg);
       }
     }
   }
@@ -402,19 +779,126 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   ) {
     if (state is CartLoaded) {
       final current = state as CartLoaded;
-      final discount = event.coupon.isPercentage
-          ? ((current.totalAmount * event.coupon.discountAmount / 100).clamp(0, current.totalAmount) as double)
-          : (event.coupon.discountAmount.clamp(0, current.totalAmount) as double);
-      final finalAmount = current.totalAmount - discount;
+      if (event.coupon.minimumOrderValue > 0 && current.totalAmount < event.coupon.minimumOrderValue) {
+        emit(current.copyWith(
+          couponMessage: 'Minimum order value of ₹${event.coupon.minimumOrderValue.toStringAsFixed(0)} required.',
+          clearCouponMessage: false,
+        ));
+        return;
+      }
 
-      emit(current.copyWith(
+      final updated = _computePricing(
+        items: current.items,
         appliedCoupon: event.coupon,
-        discountAmount: discount,
-        finalAmount: finalAmount,
-        couponMessage: 'Coupon applied! You save ₹${discount.toStringAsFixed(0)}',
+        availableCoupons: current.availableCoupons,
+        couponMessage: 'Coupon applied! You save ₹${(event.coupon.isPercentage ? (current.totalAmount * event.coupon.discountAmount / 100) : event.coupon.discountAmount).toStringAsFixed(0)}',
+        selectedAddressType: current.selectedAddressType,
+        deliveryAddress: current.deliveryAddress,
+        homeAddress: current.homeAddress,
+        workAddress: current.workAddress,
+        otherAddress: current.otherAddress,
+        customerName: current.customerName,
+        customerPhone: current.customerPhone,
+      );
+
+      emit(updated);
+    }
+  }
+
+  Future<void> _onApplyCouponCodeRequested(
+    ApplyCouponCodeRequested event,
+    Emitter<CartState> emit,
+  ) async {
+    if (state is! CartLoaded) return;
+    final current = state as CartLoaded;
+    final inputCode = event.code.trim().toUpperCase();
+
+    if (inputCode.isEmpty) {
+      emit(current.copyWith(
+        couponMessage: 'Please enter a coupon code.',
         clearCouponMessage: false,
       ));
+      return;
     }
+
+    emit(current.copyWith(isCouponLoading: true));
+
+    // Look for matching coupon in currently loaded availableCoupons
+    AppliedCoupon? match;
+    for (final c in current.availableCoupons) {
+      if (c.code.trim().toUpperCase() == inputCode) {
+        match = c;
+        break;
+      }
+    }
+
+    if (match != null) {
+      if (match.minimumOrderValue > 0 && current.totalAmount < match.minimumOrderValue) {
+        emit(current.copyWith(
+          isCouponLoading: false,
+          couponMessage: 'Minimum order value of ₹${match.minimumOrderValue.toStringAsFixed(0)} required.',
+          clearCouponMessage: false,
+        ));
+        return;
+      }
+
+      final updated = _computePricing(
+        items: current.items,
+        appliedCoupon: match,
+        availableCoupons: current.availableCoupons,
+        couponMessage: 'Coupon ${match.code} applied successfully!',
+        isCouponLoading: false,
+        selectedAddressType: current.selectedAddressType,
+        deliveryAddress: current.deliveryAddress,
+        homeAddress: current.homeAddress,
+        workAddress: current.workAddress,
+        otherAddress: current.otherAddress,
+        customerName: current.customerName,
+        customerPhone: current.customerPhone,
+      );
+      emit(updated);
+      return;
+    }
+
+    // Try finding coupon for any seller in the cart
+    final sellerIds = current.items.map((i) => i.sellerId).toSet().toList();
+    for (final sellerId in sellerIds) {
+      final couponModel = await _couponRepository.validateAndApplyCoupon(inputCode, sellerId, current.totalAmount);
+      if (couponModel != null) {
+        final applied = AppliedCoupon(
+          code: couponModel.code,
+          sellerId: couponModel.sellerId,
+          discountAmount: couponModel.discountAmount,
+          isPercentage: couponModel.isPercentage,
+          couponId: couponModel.id,
+          minimumOrderValue: couponModel.minimumOrderValue,
+          description: couponModel.description,
+        );
+
+        final updated = _computePricing(
+          items: current.items,
+          appliedCoupon: applied,
+          availableCoupons: current.availableCoupons,
+          couponMessage: 'Coupon ${applied.code} applied successfully!',
+          isCouponLoading: false,
+          selectedAddressType: current.selectedAddressType,
+          deliveryAddress: current.deliveryAddress,
+          homeAddress: current.homeAddress,
+          workAddress: current.workAddress,
+          otherAddress: current.otherAddress,
+          customerName: current.customerName,
+          customerPhone: current.customerPhone,
+        );
+        emit(updated);
+        return;
+      }
+    }
+
+    emit(current.copyWith(
+      isCouponLoading: false,
+      couponMessage: 'Invalid or expired coupon code.',
+      clearCouponMessage: false,
+    ));
   }
 
   void _onCouponRemoved(
@@ -423,13 +907,20 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   ) {
     if (state is CartLoaded) {
       final current = state as CartLoaded;
-      emit(current.copyWith(
-        clearCoupon: true,
-        discountAmount: 0,
-        finalAmount: current.totalAmount,
+      final updated = _computePricing(
+        items: current.items,
+        appliedCoupon: null,
+        availableCoupons: current.availableCoupons,
         couponMessage: 'Coupon removed',
-        clearCouponMessage: false,
-      ));
+        selectedAddressType: current.selectedAddressType,
+        deliveryAddress: current.deliveryAddress,
+        homeAddress: current.homeAddress,
+        workAddress: current.workAddress,
+        otherAddress: current.otherAddress,
+        customerName: current.customerName,
+        customerPhone: current.customerPhone,
+      );
+      emit(updated);
     }
   }
 
@@ -453,3 +944,87 @@ class _CouponsLoaded extends CartEvent {
   @override
   List<Object?> get props => [coupons];
 }
+
+class _DefaultUserProfileRepository implements IUserProfileRepository {
+  IUserProfileRepository? _delegate;
+
+  IUserProfileRepository _getDelegate() {
+    if (_delegate != null) return _delegate!;
+    try {
+      _delegate = FirebaseUserProfileRepository();
+      return _delegate!;
+    } catch (_) {
+      return const _NoopUserProfileRepository();
+    }
+  }
+
+  @override
+  Future<UserProfile?> loadProfile(String userId) => _getDelegate().loadProfile(userId);
+
+  @override
+  Future<void> saveProfile(String userId, UserProfile profile) =>
+      _getDelegate().saveProfile(userId, profile);
+
+  @override
+  Stream<UserProfile?> watchProfile(String userId) =>
+      _getDelegate().watchProfile(userId);
+
+  @override
+  Future<String> uploadProfileImage({
+    required String userId,
+    required String fileName,
+    required Uint8List imageBytes,
+    required String contentType,
+  }) =>
+      _getDelegate().uploadProfileImage(
+        userId: userId,
+        fileName: fileName,
+        imageBytes: imageBytes,
+        contentType: contentType,
+      );
+
+  @override
+  Future<void> updateProfileImageUrl(String userId, String imageUrl) =>
+      _getDelegate().updateProfileImageUrl(userId, imageUrl);
+
+  @override
+  Stream<String?> watchProfileImageUrl(String userId) =>
+      _getDelegate().watchProfileImageUrl(userId);
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchTransactions(String userId) =>
+      _getDelegate().watchTransactions(userId);
+}
+
+class _NoopUserProfileRepository implements IUserProfileRepository {
+  const _NoopUserProfileRepository();
+
+  @override
+  Future<UserProfile?> loadProfile(String userId) async => null;
+
+  @override
+  Future<void> saveProfile(String userId, UserProfile profile) async {}
+
+  @override
+  Stream<UserProfile?> watchProfile(String userId) => const Stream.empty();
+
+  @override
+  Future<String> uploadProfileImage({
+    required String userId,
+    required String fileName,
+    required Uint8List imageBytes,
+    required String contentType,
+  }) async =>
+      '';
+
+  @override
+  Future<void> updateProfileImageUrl(String userId, String imageUrl) async {}
+
+  @override
+  Stream<String?> watchProfileImageUrl(String userId) => const Stream.empty();
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchTransactions(String userId) =>
+      const Stream.empty();
+}
+

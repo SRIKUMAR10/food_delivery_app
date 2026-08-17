@@ -47,11 +47,15 @@ void main() {
 
   const DeliveryDashboardState enState = DeliveryDashboardState(
     status: DeliveryDashboardStatus.loaded,
+    isOnline: true,
+    partnerStatus: DeliveryPartnerStatusType.online,
     recentActivities: defaultActivities,
   );
 
   const DeliveryDashboardState taState = DeliveryDashboardState(
     status: DeliveryDashboardStatus.loaded,
+    isOnline: true,
+    partnerStatus: DeliveryPartnerStatusType.online,
     localeCode: 'ta',
     recentActivities: defaultActivities,
   );
@@ -140,6 +144,14 @@ void main() {
       expect(
         DeliveryDashboardStrings.of('recentActivity', 'hi'),
         'Recent Activity',
+      );
+      expect(
+        DeliveryDashboardStrings.of('todaysDeliveries', 'ta'),
+        'இன்றைய டெலிவரிகள்',
+      );
+      expect(
+        DeliveryDashboardStrings.of('availableForOrders', 'en'),
+        'Available for Orders',
       );
     });
   });

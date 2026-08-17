@@ -54,22 +54,6 @@
         "Authorization": "Bearer <YOUR_TOKEN>",
         "Content-Type": "application/json"
       }
-    },
-    "mem0": {
-      "serverUrl": "https://mcp.mem0.ai/mcp",
-      "headers": {
-        "Authorization": "Token m0-3ytydwuikE4fP037F11wKyxEsYGusXH2wWKhZ4I0"
-      }
-    },
-    "mem0-local": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@pinkpixel/mem0-mcp"
-      ],
-      "env": {
-        "MEM0_API_KEY": "m0-3ytydwuikE4fP037F11wKyxEsYGusXH2wWKhZ4I0"
-      }
     }
   }
 }

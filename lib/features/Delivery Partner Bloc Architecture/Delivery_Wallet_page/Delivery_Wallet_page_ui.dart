@@ -17,16 +17,21 @@ class DeliveryWalletStrings {
       'walletTitle': 'My Wallet',
       'tagline':
           'Track your balance, withdrawals and payment methods in one place.',
-      'walletBalance': 'Wallet Balance',
+      'walletBalance': 'Current Balance',
+      'currentBalance': 'Current Balance',
+      'availableBalance': 'Available Balance',
+      'pendingBalance': 'Pending Balance',
+      'withdrawableAmount': 'Withdrawable Amount',
+      'codAdjustment': 'COD Adjustment',
+      'earningsCredit': 'Earnings Credit',
       'totalEarnings': 'Total Earnings',
       'totalWithdrawn': 'Total Withdrawn',
-      'bonusesEarned': 'Bonuses Earned',
+      'bonusesEarned': 'Bonuses & Incentives',
       'withdraw': 'Withdraw',
       'withdrawDialogTitle': 'Withdraw Funds',
       'withdrawDialogSub':
           'Enter the amount you want to transfer to your bank account.',
       'withdrawAmountLabel': 'Amount',
-      'availableBalance': 'Available Balance',
       'confirm': 'Confirm',
       'cancel': 'Cancel',
       'enterValidAmount': 'Please enter a valid amount.',
@@ -35,11 +40,14 @@ class DeliveryWalletStrings {
       'transactionHistory': 'Transaction History',
       'searchPlaceholder': 'Search transactions...',
       'all': 'All',
-      'income': 'Income',
+      'income': 'Delivery Earnings',
       'withdrawals': 'Withdrawals',
       'bonuses': 'Bonuses',
+      'incentives': 'Incentives',
+      'penalties': 'Penalties',
+      'adjustments': 'COD Adjustments',
       'transaction': 'Transaction',
-      'date': 'Date',
+      'date': 'Date & Time',
       'type': 'Type',
       'status': 'Status',
       'amount': 'Amount',
@@ -63,7 +71,6 @@ class DeliveryWalletStrings {
       'dashboard': 'Dashboard',
       'orders': 'Orders',
       'earnings': 'Earnings',
-      'incentives': 'Incentives',
       'wallet': 'Wallet',
       'history': 'History',
       'profile': 'Profile',
@@ -86,16 +93,21 @@ class DeliveryWalletStrings {
       'walletTitle': 'என் வாலட்',
       'tagline':
           'உங்கள் இருப்பு, எடுப்புகள் மற்றும் கட்டண முறைகளை ஒரே இடத்தில் பாருங்கள்.',
-      'walletBalance': 'வாலட் இருப்பு',
+      'walletBalance': 'தற்போதைய இருப்பு',
+      'currentBalance': 'தற்போதைய இருப்பு',
+      'availableBalance': 'கிடைக்கும் இருப்பு',
+      'pendingBalance': 'நிலுவை இருப்பு',
+      'withdrawableAmount': 'எடுக்கக்கூடிய தொகை',
+      'codAdjustment': 'COD சரிசெய்தல்',
+      'earningsCredit': 'வருவாய் வரவு',
       'totalEarnings': 'மொத்த வருமானம்',
       'totalWithdrawn': 'மொத்தம் எடுத்தவை',
-      'bonusesEarned': 'போனஸ் வருவாய்',
+      'bonusesEarned': 'போனஸ் & ஊக்கத்தொகை',
       'withdraw': 'பணம் எடுக்க',
       'withdrawDialogTitle': 'பணம் எடுக்க',
       'withdrawDialogSub':
           'உங்கள் வங்கி கணக்கிற்கு மாற்ற விரும்பும் தொகையை உள்ளிடவும்.',
       'withdrawAmountLabel': 'தொகை',
-      'availableBalance': 'கிடைக்கும் இருப்பு',
       'confirm': 'உறுதிப்படுத்து',
       'cancel': 'ரத்து செய்',
       'enterValidAmount': 'சரியான தொகையை உள்ளிடவும்.',
@@ -104,11 +116,14 @@ class DeliveryWalletStrings {
       'transactionHistory': 'பரிவர்த்தனை வரலாறு',
       'searchPlaceholder': 'பரிவர்த்தனைகளைத் தேடு...',
       'all': 'அனைத்தும்',
-      'income': 'வருமானம்',
+      'income': 'டெலிவரி வருமானம்',
       'withdrawals': 'எடுப்புகள்',
       'bonuses': 'போனஸ்கள்',
+      'incentives': 'ஊக்கத்தொகை',
+      'penalties': 'அபராதங்கள்',
+      'adjustments': 'COD சரிசெய்தல்',
       'transaction': 'பரிவர்த்தனை',
-      'date': 'தேதி',
+      'date': 'தேதி & நேரம்',
       'type': 'வகை',
       'status': 'நிலை',
       'amount': 'தொகை',
@@ -132,7 +147,6 @@ class DeliveryWalletStrings {
       'dashboard': 'டாஷ்போர்டு',
       'orders': 'ஆர்டர்கள்',
       'earnings': 'வருமானம்',
-      'incentives': 'ஊக்கத்தொகை',
       'wallet': 'வாலட்',
       'history': 'வரலாறு',
       'profile': 'சுயவிவரம்',
@@ -155,7 +169,7 @@ class DeliveryWalletStrings {
 
   static String of(String key, String localeCode) {
     final map = _strings[localeCode] ?? _strings['en']!;
-    return map[key] ?? _strings['en']![key]!;
+    return map[key] ?? _strings['en']![key] ?? key;
   }
 }
 
@@ -679,43 +693,59 @@ class _WalletSummaryGrid extends StatelessWidget {
     final cards = [
       _WalletMetricCard(
         key: const Key('dp_wallet_summary_balance'),
-        title: DeliveryWalletStrings.of('walletBalance', lang),
+        title: DeliveryWalletStrings.of('currentBalance', lang),
         value: '₹${state.walletBalance.toStringAsFixed(2)}',
-        subtext: DeliveryWalletStrings.of('withdrawFunds', lang),
+        subtext: DeliveryWalletStrings.of('walletTitle', lang),
         icon: Icons.account_balance_wallet,
         color: DeliveryAppColors.primary,
       ),
       _WalletMetricCard(
+        key: const Key('dp_wallet_summary_available'),
+        title: DeliveryWalletStrings.of('availableBalance', lang),
+        value: '₹${state.availableBalance.toStringAsFixed(2)}',
+        subtext: DeliveryWalletStrings.of('withdrawFunds', lang),
+        icon: Icons.check_circle_outline,
+        color: const Color(0xFF10B981),
+      ),
+      _WalletMetricCard(
+        key: const Key('dp_wallet_summary_pending'),
+        title: DeliveryWalletStrings.of('pendingBalance', lang),
+        value: '₹${state.pendingBalance.toStringAsFixed(2)}',
+        subtext: DeliveryWalletStrings.of('statusPending', lang),
+        icon: Icons.hourglass_top,
+        color: DeliveryAppColors.warning,
+      ),
+      _WalletMetricCard(
+        key: const Key('dp_wallet_summary_withdrawable'),
+        title: DeliveryWalletStrings.of('withdrawableAmount', lang),
+        value: '₹${state.withdrawableAmount.toStringAsFixed(2)}',
+        subtext: DeliveryWalletStrings.of('withdraw', lang),
+        icon: Icons.payments_outlined,
+        color: const Color(0xFF00E5FF),
+      ),
+      _WalletMetricCard(
+        key: const Key('dp_wallet_summary_cod'),
+        title: DeliveryWalletStrings.of('codAdjustment', lang),
+        value: '₹${state.codAdjustment.toStringAsFixed(2)}',
+        subtext: DeliveryWalletStrings.of('adjustments', lang),
+        icon: Icons.account_tree_outlined,
+        color: const Color(0xFFFF9100),
+      ),
+      _WalletMetricCard(
         key: const Key('dp_wallet_summary_earnings'),
-        title: DeliveryWalletStrings.of('totalEarnings', lang),
+        title: DeliveryWalletStrings.of('earningsCredit', lang),
         value: '₹${state.totalEarnings.toStringAsFixed(2)}',
         subtext: DeliveryWalletStrings.of('earningsOverview', lang),
         icon: Icons.trending_up,
         color: DeliveryAppColors.info,
       ),
-      _WalletMetricCard(
-        key: const Key('dp_wallet_summary_withdrawn'),
-        title: DeliveryWalletStrings.of('totalWithdrawn', lang),
-        value: '₹${state.totalWithdrawn.toStringAsFixed(2)}',
-        subtext: DeliveryWalletStrings.of('withdrawals', lang),
-        icon: Icons.outbox_outlined,
-        color: const Color(0xFF10B981),
-      ),
-      _WalletMetricCard(
-        key: const Key('dp_wallet_summary_bonus'),
-        title: DeliveryWalletStrings.of('bonusesEarned', lang),
-        value: '₹${state.bonusEarnings.toStringAsFixed(2)}',
-        subtext: DeliveryWalletStrings.of('bonuses', lang),
-        icon: Icons.emoji_events_outlined,
-        color: DeliveryAppColors.warning,
-      ),
     ];
 
     final crossAxisCount = isDesktop
-        ? 4
+        ? 3
         : isTablet
-        ? 2
-        : 2;
+            ? 2
+            : 2;
 
     return GridView.count(
       crossAxisCount: crossAxisCount,
@@ -723,7 +753,7 @@ class _WalletSummaryGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
-      childAspectRatio: isDesktop ? 1.7 : (isTablet ? 1.9 : 1.3),
+      childAspectRatio: isDesktop ? 2.1 : (isTablet ? 1.9 : 1.35),
       children: cards,
     );
   }
@@ -1253,14 +1283,29 @@ class _WalletTransactionsPanelState extends State<_WalletTransactionsPanel> {
         'dp_wallet_transaction_filter_income',
       ),
       (
+        DeliveryWalletTransactionFilter.bonuses,
+        'bonuses',
+        'dp_wallet_transaction_filter_bonuses',
+      ),
+      (
+        DeliveryWalletTransactionFilter.incentives,
+        'incentives',
+        'dp_wallet_transaction_filter_incentives',
+      ),
+      (
         DeliveryWalletTransactionFilter.withdrawals,
         'withdrawals',
         'dp_wallet_transaction_filter_withdrawals',
       ),
       (
-        DeliveryWalletTransactionFilter.bonuses,
-        'bonuses',
-        'dp_wallet_transaction_filter_bonuses',
+        DeliveryWalletTransactionFilter.adjustments,
+        'adjustments',
+        'dp_wallet_transaction_filter_adjustments',
+      ),
+      (
+        DeliveryWalletTransactionFilter.penalties,
+        'penalties',
+        'dp_wallet_transaction_filter_penalties',
       ),
     ];
 
@@ -1522,8 +1567,15 @@ class _WalletTransactionRow extends StatelessWidget {
     final (IconData icon, Color color) = switch (transaction.type) {
       'withdrawal' => (Icons.account_balance_outlined, DeliveryAppColors.warning),
       'bonus' => (Icons.emoji_events_outlined, const Color(0xFF7C4DFF)),
+      'incentive' => (Icons.bolt, const Color(0xFFFFD600)),
+      'penalty' => (Icons.warning_amber_rounded, DeliveryAppColors.error),
+      'cod_adjustment' || 'adjustment' => (Icons.account_tree_outlined, const Color(0xFFFF9100)),
       _ => (Icons.add_circle_outline, DeliveryAppColors.primary),
     };
+
+    final isNegative = transaction.type == 'withdrawal' ||
+        transaction.type == 'penalty' ||
+        (transaction.type == 'cod_adjustment' && transaction.amount < 0);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1559,12 +1611,26 @@ class _WalletTransactionRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  _walletStatusLabel(transaction.status),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 11,
-                  ),
+                Row(
+                  children: [
+                    if (transaction.id.isNotEmpty) ...[
+                      Text(
+                        '#${transaction.id.length > 8 ? transaction.id.substring(0, 8) : transaction.id} • ',
+                        style: TextStyle(
+                          color: DeliveryAppColors.primary.withValues(alpha: 0.7),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    Text(
+                      _walletStatusLabel(transaction.status),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1586,10 +1652,10 @@ class _WalletTransactionRow extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Text(
-              '${transaction.type == 'withdrawal' ? '-' : '+'}₹${transaction.amount.toStringAsFixed(2)}',
+              '${isNegative ? '-' : '+'}₹${transaction.amount.abs().toStringAsFixed(2)}',
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: color,
+                color: isNegative ? DeliveryAppColors.error : color,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),

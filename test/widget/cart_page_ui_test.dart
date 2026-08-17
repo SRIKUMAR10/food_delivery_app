@@ -66,7 +66,7 @@ void main() {
       },
     );
 
-    testWidgets('shows checkout button and total when items are present', (
+    testWidgets('shows checkout button, payment options, and total when items are present', (
       WidgetTester tester,
     ) async {
       final mockItems = [
@@ -80,13 +80,22 @@ void main() {
         ),
       ];
       when(() => mockCartBloc.state).thenReturn(
-        CartLoaded(items: mockItems, totalAmount: 300.0, totalCount: 2),
+        CartLoaded(
+          items: mockItems,
+          totalAmount: 300.0,
+          totalCount: 2,
+          finalAmount: 350.0,
+          selectedPaymentMethod: CartPaymentMethod.razorpay,
+        ),
       );
 
       await tester.pumpWidget(createWidgetUnderTest(mockCartBloc));
 
       expect(find.textContaining('300'), findsWidgets);
-      expect(find.text('Checkout'), findsWidgets);
+      expect(find.byType(ElevatedButton), findsWidgets);
+      expect(find.textContaining('Razorpay'), findsWidgets);
+      expect(find.textContaining('Cash on Delivery'), findsWidgets);
+      expect(find.textContaining('FoodGo Wallet'), findsWidgets);
     });
   });
 }

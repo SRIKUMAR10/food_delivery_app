@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart Page/cart_page.dart';
@@ -7,8 +8,18 @@ import 'package:mocktail/mocktail.dart';
 class MockCartBloc extends Mock implements CartBloc {}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('CartPage Snapshot Tests', () {
     late MockCartBloc mockCartBloc;
+
+    setUpAll(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('razorpay_flutter'),
+        (MethodCall methodCall) async => null,
+      );
+    });
 
     setUp(() {
       mockCartBloc = MockCartBloc();

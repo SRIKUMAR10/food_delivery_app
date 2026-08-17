@@ -82,7 +82,7 @@ void main() {
       when(() => mockHomePageBloc.state).thenReturn(const HomePageLoading('', []));
 
       await tester.pumpWidget(
-        buildTestableWidget(child: const HomePage()),
+        buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
       );
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -116,7 +116,7 @@ void main() {
         );
 
         await tester.pumpWidget(
-          buildTestableWidget(child: const HomePage()),
+          buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
         );
 
         // Categories
@@ -136,7 +136,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        buildTestableWidget(child: const HomePage()),
+        buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
       );
 
       expect(find.text('No products available in Burger'), findsOneWidget);
@@ -154,7 +154,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        buildTestableWidget(child: const HomePage()),
+        buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
       );
 
       final searchField = find.byType(TextField);
@@ -163,6 +163,52 @@ void main() {
       await tester.enterText(searchField, 'Pizza');
 
       verify(() => mockHomePageBloc.add(any(that: isA<SearchQueryChanged>()))).called(1);
+    });
+
+    testWidgets('Renders responsive mobile layout (<600px)', (tester) async {
+      tester.view.physicalSize = const Size(375, 812);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      when(() => mockHomePageBloc.state).thenReturn(
+        const HomePageLoaded(
+          categories: [],
+          allItems: [],
+          filteredItems: [],
+          selectedCategoryId: '',
+          searchQuery: '',
+        ),
+      );
+
+      await tester.pumpWidget(
+        buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
+      );
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.text('DELIVER TO'), findsOneWidget);
+    });
+
+    testWidgets('Renders responsive desktop layout (>=1024px)', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      when(() => mockHomePageBloc.state).thenReturn(
+        const HomePageLoaded(
+          categories: [],
+          allItems: [],
+          filteredItems: [],
+          selectedCategoryId: '',
+          searchQuery: '',
+        ),
+      );
+
+      await tester.pumpWidget(
+        buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
+      );
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.text('DELIVER TO'), findsOneWidget);
     });
   });
 }

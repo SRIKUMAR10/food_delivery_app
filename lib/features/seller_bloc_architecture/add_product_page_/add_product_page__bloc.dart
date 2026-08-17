@@ -23,6 +23,10 @@ class AddProductPageBloc
     on<RemoveImageEvent>(_onRemoveImage);
     on<RemoveExistingImageEvent>(_onRemoveExistingImage);
     on<CategoryChangedEvent>(_onCategoryChanged);
+    on<SubcategoryChangedEvent>(_onSubcategoryChanged);
+    on<SkuChangedEvent>(_onSkuChanged);
+    on<VariantsUpdatedEvent>(_onVariantsUpdated);
+    on<CustomizationGroupsUpdatedEvent>(_onCustomizationGroupsUpdated);
     on<StatusChangedEvent>(_onStatusChanged);
     on<FoodTypeChangedEvent>(_onFoodTypeChanged);
     on<SpicyLevelChangedEvent>(_onSpicyLevelChanged);
@@ -56,6 +60,8 @@ class AddProductPageBloc
           status: AddProductStatus.initial,
           initialProduct: product,
           category: product.category,
+          subcategory: product.subcategory,
+          sku: product.sku,
           isActive: product.isActive,
           foodType: product.foodType,
           spicyLevel: product.spicyLevel,
@@ -63,6 +69,8 @@ class AddProductPageBloc
           isFeatured: product.isFeatured,
           isBestSeller: product.isBestSeller,
           existingImages: product.imageUrls,
+          variants: product.variants,
+          customizationGroups: product.customizationGroups,
         ));
       } else {
         emit(state.copyWith(status: AddProductStatus.error, errorMessage: 'Product not found'));
@@ -106,6 +114,34 @@ class AddProductPageBloc
     Emitter<AddProductPageState> emit,
   ) {
     emit(state.copyWith(category: event.category));
+  }
+
+  void _onSubcategoryChanged(
+    SubcategoryChangedEvent event,
+    Emitter<AddProductPageState> emit,
+  ) {
+    emit(state.copyWith(subcategory: event.subcategory));
+  }
+
+  void _onSkuChanged(
+    SkuChangedEvent event,
+    Emitter<AddProductPageState> emit,
+  ) {
+    emit(state.copyWith(sku: event.sku));
+  }
+
+  void _onVariantsUpdated(
+    VariantsUpdatedEvent event,
+    Emitter<AddProductPageState> emit,
+  ) {
+    emit(state.copyWith(variants: event.variants));
+  }
+
+  void _onCustomizationGroupsUpdated(
+    CustomizationGroupsUpdatedEvent event,
+    Emitter<AddProductPageState> emit,
+  ) {
+    emit(state.copyWith(customizationGroups: event.customizationGroups));
   }
 
   void _onStatusChanged(
@@ -169,9 +205,21 @@ class AddProductPageBloc
       }
 
       final initial = state.initialProduct;
+      
+      // Auto generate SKU if empty
+      String effectiveSku = event.sku.isNotEmpty ? event.sku : state.sku;
+      if (effectiveSku.isEmpty) {
+        final catCode = (state.category ?? 'PRD')
+            .toUpperCase()
+            .replaceAll(RegExp(r'[^A-Z]'), '');
+        final shortCat = catCode.length >= 3 ? catCode.substring(0, 3) : catCode.padRight(3, 'X');
+        effectiveSku = 'SKU-$shortCat-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+      }
+
       final productToSave = Product(
         id: initial?.id ?? '',
         name: event.name,
+        sku: effectiveSku,
         price: event.price,
         basePrice: event.basePrice,
         gstPercentage: event.gstPercentage,
@@ -180,8 +228,12 @@ class AddProductPageBloc
         prepTime: int.tryParse(event.prepTime ?? '') ?? initial?.prepTime ?? 0,
         calories: int.tryParse(event.calories ?? '') ?? initial?.calories ?? 0,
         portionSize: event.portionSize ?? '',
-        addons: event.addons?.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList() ?? [],
+        addons: event.addons?.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList() ?? initial?.addons ?? [],
+        ingredients: event.ingredients?.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList() ?? initial?.ingredients ?? [],
+        variants: event.variants ?? state.variants,
+        customizationGroups: event.customizationGroups ?? state.customizationGroups,
         category: state.category ?? '',
+        subcategory: event.subcategory ?? state.subcategory ?? '',
         foodType: state.foodType ?? '',
         spicyLevel: state.spicyLevel ?? '',
         isActive: state.isActive,

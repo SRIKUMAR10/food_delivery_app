@@ -88,6 +88,49 @@ class NotificationService {
     }
   }
 
+  Future<void> sendChatNotification({
+    required String targetUserId,
+    required String senderName,
+    required String messageText,
+    required String conversationId,
+    required String targetRole,
+  }) async {
+    if (targetUserId.isEmpty) return;
+
+    final notificationData = {
+      'type': 'chat',
+      'title': senderName,
+      'body': messageText,
+      'conversationId': conversationId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isRead': false,
+    };
+
+    final collections = _collectionsForRole(targetRole);
+    for (final collection in collections) {
+      try {
+        await _firestore
+            .collection(collection)
+            .doc(targetUserId)
+            .collection('notifications')
+            .add(notificationData);
+      } catch (_) {}
+    }
+  }
+
+  List<String> _collectionsForRole(String targetRole) {
+    switch (targetRole) {
+      case 'buyer':
+        return const ['buyer_user'];
+      case 'seller':
+        return const ['sellers'];
+      case 'delivery_partner':
+        return const ['delivery_partners'];
+      default:
+        return const ['buyer_user', 'sellers', 'delivery_partners'];
+    }
+  }
+
   Future<void> sendOrderStatusNotification({
     required String targetUserId,
     required String orderId,

@@ -175,15 +175,83 @@ void main() {
     );
 
     blocTest<ProductListBloc, ProductListPageState>(
-      'calls duplicateProduct on DuplicateProductEvent',
+      'filters by In Stock status',
+      build: () => ProductListBloc(repository: mockRepository, authService: mockAuthService),
+      act: (bloc) async {
+        bloc.add(LoadProductsEvent());
+        await Future.delayed(Duration.zero);
+        bloc.add(const FilterProductsEvent('In Stock'));
+      },
+      expect: () => [
+        isA<ProductListLoading>(),
+        isA<ProductListLoaded>(),
+        isA<ProductListLoaded>()
+            .having((s) => s.activeFilter, 'activeFilter', 'In Stock')
+            .having((s) => s.products.length, 'filtered length', 2),
+      ],
+    );
+
+    blocTest<ProductListBloc, ProductListPageState>(
+      'filters by Out of Stock status',
+      build: () => ProductListBloc(repository: mockRepository, authService: mockAuthService),
+      act: (bloc) async {
+        bloc.add(LoadProductsEvent());
+        await Future.delayed(Duration.zero);
+        bloc.add(const FilterProductsEvent('Out of Stock'));
+      },
+      expect: () => [
+        isA<ProductListLoading>(),
+        isA<ProductListLoaded>(),
+        isA<ProductListLoaded>()
+            .having((s) => s.activeFilter, 'activeFilter', 'Out of Stock')
+            .having((s) => s.products.length, 'filtered length', 0),
+      ],
+    );
+
+    blocTest<ProductListBloc, ProductListPageState>(
+      'calls quickUpdateStock on QuickUpdateStockEvent',
       build: () {
-        when(() => mockRepository.getProduct(any(), any())).thenAnswer((_) async => tProducts.first);
-        when(() => mockRepository.duplicateProduct(any(), any())).thenAnswer((_) async => {});
+        when(() => mockRepository.updateProductStock(any(), any(), any(), any()))
+            .thenAnswer((_) async => {});
         return bloc;
       },
-      act: (bloc) => bloc.add(DuplicateProductEvent(tProducts.first.id)),
+      act: (bloc) => bloc.add(const QuickUpdateStockEvent(
+        productId: '1',
+        stockQuantity: 25,
+        hasUnlimitedStock: false,
+      )),
       verify: (_) {
-        verify(() => mockRepository.duplicateProduct(any(), any())).called(1);
+        verify(() => mockRepository.updateProductStock('1', 25, false, 'seller1')).called(1);
+      },
+    );
+
+    blocTest<ProductListBloc, ProductListPageState>(
+      'calls quickUpdatePrice on QuickUpdatePriceEvent',
+      build: () {
+        when(() => mockRepository.updateProductPrice(any(), any(), any(), any()))
+            .thenAnswer((_) async => {});
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const QuickUpdatePriceEvent(
+        productId: '1',
+        price: 250,
+        discountPrice: 200,
+      )),
+      verify: (_) {
+        verify(() => mockRepository.updateProductPrice('1', 250, 200, 'seller1')).called(1);
+      },
+    );
+
+    blocTest<ProductListBloc, ProductListPageState>(
+      'calls markProductOutOfStock on MarkProductOutOfStockEvent',
+      build: () {
+        when(() => mockRepository.markProductOutOfStock(any(), any()))
+            .thenAnswer((_) async => {});
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const MarkProductOutOfStockEvent('1')),
+      verify: (_) {
+        verify(() => mockRepository.markProductOutOfStock('1', 'seller1')).called(1);
       },
     );
   });

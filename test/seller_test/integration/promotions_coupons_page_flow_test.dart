@@ -15,8 +15,8 @@ void main() {
       // Wait for initial load
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
-      // Verify page loaded (should see "Promotions & Coupons" title)
-      expect(find.text('Promotions & Coupons'), findsWidgets);
+      // Verify page loaded (should see "Coupons & Offers" title)
+      expect(find.text('Coupons & Offers'), findsWidgets);
 
       // Tap FAB to add coupon
       await tester.tap(find.byType(FloatingActionButton));

@@ -10,7 +10,7 @@ class MockSellerReviewService extends Mock implements SellerReviewService {}
 void main() {
   testWidgets('Localization Test: checks if elements render with correct locales', (tester) async {
     final mockService = MockSellerReviewService();
-    when(() => mockService.fetchRatingsAndReviews()).thenAnswer((_) async => {
+    when(() => mockService.watchRatingsAndReviews()).thenAnswer((_) => Stream.value({
       'overallRating': 4.8,
       'totalReviews': 1,
       'reviews': [
@@ -23,7 +23,7 @@ void main() {
           'date': '2024-01-01T00:00:00.000',
         },
       ],
-    });
+    }));
 
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('en', 'US'),

@@ -1,24 +1,33 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
-// import 'package:food_delivery_app/features/seller_bloc_architecture/seller_profile_page/seller_profile_page__bloc.dart';
+import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/repositories/i_seller_profile_repository.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockAuthService extends Mock implements IAuthService {}
+class MockSellerProfileRepository extends Mock implements ISellerProfileRepository {}
 
 final getIt = GetIt.instance;
 
 void main() {
-  group('Dependency Injection Test', () {
+  group('Seller Profile Dependency Injection Tests', () {
     setUp(() {
-      // Mock DI setup
-      getIt.registerSingleton<String>('MockDependency');
+      getIt.registerLazySingleton<IAuthService>(() => MockAuthService());
+      getIt.registerLazySingleton<ISellerProfileRepository>(() => MockSellerProfileRepository());
     });
 
     tearDown(() {
       getIt.reset();
     });
 
-    test('Dependencies are resolved correctly', () {
-      final dependency = getIt<String>();
-      expect(dependency, 'MockDependency');
-      // Here you'd verify if SellerProfilePageBloc or Repository is resolvable
+    test('IAuthService and ISellerProfileRepository resolve correctly from DI container', () {
+      final authService = getIt<IAuthService>();
+      final profileRepo = getIt<ISellerProfileRepository>();
+
+      expect(authService, isNotNull);
+      expect(profileRepo, isNotNull);
+      expect(authService, isA<IAuthService>());
+      expect(profileRepo, isA<ISellerProfileRepository>());
     });
   });
 }

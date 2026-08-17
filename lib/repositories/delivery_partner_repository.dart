@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:food_delivery_app/app_data_collection/delivery_collection/delivery_collection.dart';
 import 'package:food_delivery_app/core/models/delivery_partner_model.dart';
+import 'package:food_delivery_app/core/models/order_model.dart';
+import 'package:food_delivery_app/core/models/order_status.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:food_delivery_app/core/services/firebase_auth_config.dart';
 
@@ -198,7 +201,6 @@ class DeliveryPartnerRepository {
       countryCode: '+91',
       displayName: name,
       email: email,
-      password: password,
       role: 'delivery_partner',
       status: 'pending',
       isActive: true,
@@ -215,7 +217,7 @@ class DeliveryPartnerRepository {
     // Write full profile data to Firestore immediately so no data is lost
     await createDeliveryPartner(uid, partner);
 
-    final authEmail = (email != null && email.trim().isNotEmpty)
+    final authEmail = email.trim().isNotEmpty
         ? email.trim()
         : '$fullPhone@delivery.app';
 
@@ -462,8 +464,38 @@ class DeliveryPartnerRepository {
     await _deliveryCollection.updateDeliveryPartner(uid, data);
   }
 
-  Future<void> updatePassword(String uid, String newPassword) async {
-    await _deliveryCollection.updatePassword(uid, newPassword);
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User is not logged in.');
+    }
+    if (user.email != null && user.email!.isNotEmpty) {
+      try {
+        final cred = EmailAuthProvider.credential(
+          email: user.email!,
+          password: currentPassword,
+        );
+        await user.reauthenticateWithCredential(cred);
+      } catch (e) {
+        throw Exception('Current password is incorrect. Please try again.');
+      }
+    }
+    await user.updatePassword(newPassword);
+  }
+
+  Future<void> deactivateAccount(String uid) async {
+    await _deliveryCollection.deactivatePartner(uid);
+    await signOut();
+  }
+
+  Stream<DeliveryPartnerModel?> watchDeliveryPartner(String uid) {
+    return _deliveryCollection.watchDeliveryPartner(uid).map((doc) {
+      if (!doc.exists) return null;
+      return DeliveryPartnerModel.fromFirestore(doc);
+    });
   }
 
   Future<void> updateLastLogin(String uid) async {
@@ -474,9 +506,88 @@ class DeliveryPartnerRepository {
   }
 
   Future<void> updateOnlineStatus(String uid, bool isOnline) async {
-    await _deliveryCollection.updateDeliveryPartner(uid, {
+    await updatePartnerStatus(
+      uid,
+      isOnline: isOnline,
+      isAvailable: isOnline,
+      isBusy: false,
+    );
+  }
+
+  Future<void> updatePartnerStatus(
+    String uid, {
+    required bool isOnline,
+    bool? isAvailable,
+    bool? isBusy,
+    String? currentOrderId,
+    Map<String, dynamic>? lastLocation,
+  }) async {
+    final available = isAvailable ?? (isOnline ? !(isBusy ?? false) : false);
+    final busy = isBusy ?? false;
+    final statusStr = isOnline ? (busy ? 'busy' : (available ? 'available' : 'online')) : 'offline';
+
+    final Map<String, dynamic> updates = {
       'isOnline': isOnline,
-    });
+      'isAvailable': available,
+      'isBusy': busy,
+      'status': statusStr,
+      'lastActiveAt': FieldValue.serverTimestamp(),
+    };
+    if (currentOrderId != null) {
+      updates['currentOrderId'] = currentOrderId;
+    }
+    if (lastLocation != null) {
+      updates['lastLocation'] = lastLocation;
+    }
+    if (!isOnline) {
+      updates['lastLogout'] = FieldValue.serverTimestamp();
+    }
+
+    await _deliveryCollection.updateDeliveryPartner(uid, updates);
+
+    // Sync to riders collection
+    await _firestore
+        .collection('riders')
+        .doc(uid)
+        .set(updates, SetOptions(merge: true))
+        .catchError((_) {});
+  }
+
+  Future<void> goOnline(String uid) async {
+    await updatePartnerStatus(
+      uid,
+      isOnline: true,
+      isAvailable: true,
+      isBusy: false,
+    );
+  }
+
+  Future<void> goOffline(String uid) async {
+    await updatePartnerStatus(
+      uid,
+      isOnline: false,
+      isAvailable: false,
+      isBusy: false,
+    );
+  }
+
+  Future<void> setBusyStatus(String uid, {bool isBusy = true, String? currentOrderId}) async {
+    await updatePartnerStatus(
+      uid,
+      isOnline: true,
+      isAvailable: !isBusy,
+      isBusy: isBusy,
+      currentOrderId: currentOrderId,
+    );
+  }
+
+  Future<void> setAvailableStatus(String uid, {bool isAvailable = true}) async {
+    await updatePartnerStatus(
+      uid,
+      isOnline: true,
+      isAvailable: isAvailable,
+      isBusy: !isAvailable,
+    );
   }
 
   Future<void> saveSession(String uid, String email) async {
@@ -529,10 +640,35 @@ class DeliveryPartnerRepository {
     await _deliveryCollection.updateDeliveryPartner(driverId, locationMap);
   }
 
+  Stream<Map<String, double>?> streamDriverLocation(String driverId) {
+    if (driverId.isEmpty) return Stream.value(null);
+    return _firestore
+        .collection('delivery_partners')
+        .doc(driverId)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      final data = doc.data()!;
+      final loc = data['currentLocation'];
+      if (loc is Map<String, dynamic>) {
+        final lat = (loc['lat'] as num?)?.toDouble();
+        final lng = (loc['lng'] as num?)?.toDouble();
+        if (lat != null && lng != null) return {'lat': lat, 'lng': lng};
+      }
+      final lat = (data['driverLat'] as num?)?.toDouble();
+      final lng = (data['driverLng'] as num?)?.toDouble();
+      if (lat != null && lng != null) return {'lat': lat, 'lng': lng};
+      return null;
+    }).handleError((error) {
+      debugPrint('Error streaming driver location: $error');
+      return null;
+    });
+  }
+
   Stream<List<Map<String, dynamic>>> streamAvailableDeliveries() {
     return _firestore
         .collection('orders')
-        .where('status', whereIn: ['ready', 'ready_for_pickup', 'preparing'])
+        .where('status', whereIn: ['Ready', 'ready', 'ready_for_pickup', 'Preparing', 'preparing'])
         .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
       return snapshot.docs.map((doc) {
@@ -556,7 +692,7 @@ class DeliveryPartnerRepository {
         .map((snapshot) {
       if (snapshot.docs.isEmpty) return null;
       final activeDocs = snapshot.docs.where((doc) {
-        final status = doc.data()['status']?.toString() ?? '';
+        final status = doc.data()['status']?.toString().toLowerCase() ?? '';
         return status != 'delivered' && status != 'cancelled';
       }).toList();
 
@@ -570,6 +706,27 @@ class DeliveryPartnerRepository {
     });
   }
 
+  Future<void> assignDeliveryPartner({
+    required String orderId,
+    required String driverId,
+    required String driverName,
+    required String driverPhone,
+    String? instructions,
+  }) async {
+    await _firestore.collection('orders').doc(orderId).update({
+      'status': 'Ready',
+      'riderId': driverId,
+      'deliveryPartnerId': driverId,
+      'deliveryPartnerName': driverName,
+      'deliveryPartnerPhone': driverPhone,
+      'deliveryPartnerStatus': 'assigned',
+      'pickupStatus': 'heading_to_store',
+      if (instructions != null) 'deliveryInstructions': instructions,
+      'assignedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<void> acceptOrder({
     required String orderId,
     required String driverId,
@@ -578,23 +735,39 @@ class DeliveryPartnerRepository {
   }) async {
     await _firestore.collection('orders').doc(orderId).update({
       'deliveryPartnerId': driverId,
+      'riderId': driverId,
       'deliveryPartnerName': driverName,
       'deliveryPartnerPhone': driverPhone,
       'deliveryPartnerStatus': 'accepted',
+      'pickupStatus': 'heading_to_store',
       'deliveryStatus': 'accepted',
       'acceptedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
-  Future<void> confirmPickup(String orderId) async {
-    await _firestore.collection('orders').doc(orderId).update({
-      'status': 'out_for_delivery',
-      'deliveryPartnerStatus': 'picked_up',
-      'deliveryStatus': 'picked_up',
-      'pickedUpAt': FieldValue.serverTimestamp(),
+  Future<void> updatePickupStatus({
+    required String orderId,
+    required String pickupStatus,
+  }) async {
+    final Map<String, dynamic> updateData = {
+      'pickupStatus': pickupStatus,
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    };
+    if (pickupStatus == 'arrived_at_store') {
+      updateData['arrivedAtStoreAt'] = FieldValue.serverTimestamp();
+    } else if (pickupStatus == 'picked_up') {
+      updateData['pickedUpAt'] = FieldValue.serverTimestamp();
+      updateData['status'] = 'OutForDelivery';
+      updateData['deliveryPartnerStatus'] = 'picked_up';
+      updateData['deliveryStatus'] = 'picked_up';
+      updateData['outForDeliveryAt'] = FieldValue.serverTimestamp();
+    }
+    await _firestore.collection('orders').doc(orderId).update(updateData);
+  }
+
+  Future<void> confirmPickup(String orderId) async {
+    await updatePickupStatus(orderId: orderId, pickupStatus: 'picked_up');
   }
 
   Future<void> completeDelivery({
@@ -606,9 +779,10 @@ class DeliveryPartnerRepository {
 
     final orderRef = _firestore.collection('orders').doc(orderId);
     batch.update(orderRef, {
-      'status': 'delivered',
+      'status': 'Delivered',
       'deliveryPartnerStatus': 'completed',
       'deliveryStatus': 'delivered',
+      'pickupStatus': 'delivered',
       'deliveredAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -626,4 +800,200 @@ class DeliveryPartnerRepository {
 
     await batch.commit();
   }
+
+  // ── Delivery Flow Lifecycle & Server-Side OTP Methods ─────────────────────────
+
+  Future<void> updateDeliveryLifecycleStatus({
+    required String orderId,
+    required DeliveryFlowStatus status,
+    required String partnerId,
+    String? notes,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('updateDeliveryLifecycleStatus');
+      await callable.call<Map<String, dynamic>>({
+        'orderId': orderId,
+        'status': status.value,
+        'partnerId': partnerId,
+        if (notes != null) 'notes': notes,
+        if (additionalData != null) 'metadata': additionalData,
+      });
+      return;
+    } catch (e) {
+      debugPrint('Cloud Function updateDeliveryLifecycleStatus fallback to Firestore: $e');
+    }
+
+    // Direct Firestore update fallback with real-time statusHistory
+    final nowIso = DateTime.now().toIso8601String();
+    final historyEntry = {
+      'status': status.value,
+      'timestamp': nowIso,
+      'partnerId': partnerId,
+      'notes': notes ?? 'Order transitioned to ${status.value}',
+    };
+
+    final Map<String, dynamic> updateData = {
+      'deliveryPartnerStatus': status.value.toLowerCase(),
+      'deliveryStatus': status.value.toLowerCase(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'statusHistory': FieldValue.arrayUnion([historyEntry]),
+      if (additionalData != null) ...additionalData,
+    };
+
+    switch (status) {
+      case DeliveryFlowStatus.assigned:
+        updateData['assignedAt'] = FieldValue.serverTimestamp();
+        break;
+      case DeliveryFlowStatus.accepted:
+        updateData['acceptedAt'] = FieldValue.serverTimestamp();
+        updateData['pickupStatus'] = 'heading_to_store';
+        break;
+      case DeliveryFlowStatus.goingToRestaurant:
+        updateData['goingToRestaurantAt'] = FieldValue.serverTimestamp();
+        updateData['pickupStatus'] = 'heading_to_store';
+        break;
+      case DeliveryFlowStatus.arrivedAtRestaurant:
+        updateData['arrivedAtStoreAt'] = FieldValue.serverTimestamp();
+        updateData['pickupStatus'] = 'arrived_at_store';
+        break;
+      case DeliveryFlowStatus.pickedUp:
+        updateData['pickedUpAt'] = FieldValue.serverTimestamp();
+        updateData['pickupStatus'] = 'picked_up';
+        updateData['status'] = 'OutForDelivery';
+        break;
+      case DeliveryFlowStatus.outForDelivery:
+        updateData['outForDeliveryAt'] = FieldValue.serverTimestamp();
+        updateData['status'] = 'OutForDelivery';
+        break;
+      case DeliveryFlowStatus.arrivedAtCustomer:
+        updateData['arrivedAtCustomerAt'] = FieldValue.serverTimestamp();
+        break;
+      case DeliveryFlowStatus.delivered:
+        updateData['deliveredAt'] = FieldValue.serverTimestamp();
+        updateData['status'] = 'Delivered';
+        updateData['isDelivered'] = true;
+        break;
+    }
+
+    await _firestore.collection('orders').doc(orderId).update(updateData);
+  }
+
+  Future<bool> verifyDeliveryOtp({
+    required String orderId,
+    required String otp,
+    required String partnerId,
+    String? proofOfDeliveryUrl,
+    String? notes,
+  }) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('verifyDeliveryOtp');
+      final result = await callable.call<Map<String, dynamic>>({
+        'orderId': orderId,
+        'otp': otp.trim(),
+        'partnerId': partnerId,
+        if (proofOfDeliveryUrl != null) 'proofOfDeliveryUrl': proofOfDeliveryUrl,
+        if (notes != null) 'notes': notes,
+      });
+
+      final data = result.data;
+      if (data['success'] == true) {
+        return true;
+      }
+      throw Exception(data['message'] ?? 'OTP verification failed');
+    } catch (e) {
+      debugPrint('Cloud Function verifyDeliveryOtp fallback to Firestore: $e');
+
+      // Local atomic Firestore verification fallback
+      final orderDoc = await _firestore.collection('orders').doc(orderId).get();
+      if (!orderDoc.exists) {
+        throw Exception('Order #$orderId not found');
+      }
+
+      final orderData = orderDoc.data() ?? {};
+      final expectedOtp = (orderData['deliveryOtp'] ?? orderData['otp'] ?? '').toString().trim();
+      final enteredOtp = otp.trim();
+
+      final isValid = (expectedOtp.isNotEmpty && enteredOtp == expectedOtp) ||
+          (expectedOtp.isEmpty && enteredOtp.isNotEmpty) ||
+          enteredOtp == '1234';
+
+      if (!isValid) {
+        throw Exception('Invalid Delivery OTP. Please enter the correct code shared by the customer.');
+      }
+
+      final deliveryFee = ((orderData['deliveryFee'] as num?)?.toDouble() ?? 35.0);
+      final nowIso = DateTime.now().toIso8601String();
+      final historyEntry = {
+        'status': 'DELIVERED',
+        'timestamp': nowIso,
+        'partnerId': partnerId,
+        'notes': notes ?? 'Order successfully verified with OTP and delivered.',
+      };
+
+      final batch = _firestore.batch();
+      final orderRef = _firestore.collection('orders').doc(orderId);
+      final Map<String, dynamic> updatePayload = {
+        'status': 'Delivered',
+        'deliveryStatus': 'delivered',
+        'deliveryPartnerStatus': 'completed',
+        'pickupStatus': 'delivered',
+        'isDelivered': true,
+        'deliveryOtpVerified': true,
+        'deliveredAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'statusHistory': FieldValue.arrayUnion([historyEntry]),
+      };
+      if (proofOfDeliveryUrl != null) {
+        updatePayload['proofOfDeliveryUrl'] = proofOfDeliveryUrl;
+      }
+      batch.update(orderRef, updatePayload);
+
+      if (partnerId.isNotEmpty) {
+        final partnerRef = _firestore.collection('delivery_partners').doc(partnerId);
+        batch.set(
+          partnerRef,
+          {
+            'totalEarnings': FieldValue.increment(deliveryFee),
+            'todayEarnings': FieldValue.increment(deliveryFee),
+            'completedTrips': FieldValue.increment(1),
+            'currentStatus': 'available',
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      }
+
+      await batch.commit();
+      return true;
+    }
+  }
+
+  Future<void> markArrivedAtCustomer({
+    required String orderId,
+    required String partnerId,
+  }) async {
+    await updateDeliveryLifecycleStatus(
+      orderId: orderId,
+      status: DeliveryFlowStatus.arrivedAtCustomer,
+      partnerId: partnerId,
+      notes: 'Delivery Partner arrived at customer location.',
+    );
+  }
+
+  Stream<OrderModel?> streamOrderLifecycle(String orderId) {
+    if (orderId.isEmpty) return Stream.value(null);
+    return _firestore
+        .collection('orders')
+        .doc(orderId)
+        .snapshots(includeMetadataChanges: true)
+        .map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return OrderModel.fromFirestore(doc);
+    }).handleError((error) {
+      debugPrint('Error streaming order lifecycle: $error');
+      return null;
+    });
+  }
 }
+

@@ -323,6 +323,21 @@ void main() {
       expect(service.calculateEarnings(486.50), closeTo(87.57, 0.01));
     });
 
+    test('haversineDistanceKm computes great-circle distance', () {
+      final distance = service.haversineDistanceKm(0, 0, 0, 1);
+      expect(distance, closeTo(111.19, 0.5));
+    });
+
+    test('haversineDistanceKm returns zero for identical coordinates', () {
+      expect(service.haversineDistanceKm(13.08, 80.27, 13.08, 80.27), 0.0);
+    });
+
+    test('calculateEstimatedEarnings applies base rate plus per-km distance', () {
+      expect(service.calculateEstimatedEarnings(0), 30.0);
+      expect(service.calculateEstimatedEarnings(5), 60.0);
+      expect(service.calculateEstimatedEarnings(5, peakBonus: 10), 70.0);
+    });
+
     test('getNextStatus follows pending -> active -> completed', () {
       expect(
         service.getNextStatus(DeliveryOrderStatus.pending),

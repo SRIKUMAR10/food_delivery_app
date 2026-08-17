@@ -39,7 +39,10 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
               child: BlocConsumer<BuyerLoginBloc, BuyerLoginState>(
                 listenWhen: (previous, current) =>
                     previous.status != current.status ||
-                    previous.errorMessage != current.errorMessage,
+                    (current.status == BuyerLoginStatus.failure &&
+                        current.errorMessage != null &&
+                        current.errorMessage!.isNotEmpty &&
+                        current.errorMessage != previous.errorMessage),
                 listener: (context, state) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (!context.mounted) return;
@@ -65,11 +68,13 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                           (route) => false,
                         );
                       }
-                    } else if (state.status == BuyerLoginStatus.failure) {
+                    } else if (state.status == BuyerLoginStatus.failure &&
+                        state.errorMessage != null &&
+                        state.errorMessage!.isNotEmpty) {
                       messenger.showSnackBar(
                         SnackBar(
                           content: Text(
-                            state.errorMessage ?? 'Incorrect password. Please try again.',
+                            state.errorMessage!,
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                           ),
                           backgroundColor: Colors.red.shade700,

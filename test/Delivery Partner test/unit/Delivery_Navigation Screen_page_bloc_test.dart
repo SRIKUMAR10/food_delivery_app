@@ -38,18 +38,30 @@ void main() {
     when(
       () => mockService.checkLocationPermission(),
     ).thenAnswer((_) async => true);
+    when(() => mockService.checkGpsStatus()).thenAnswer((_) async => true);
     when(
       () => mockRepository.fetchOrderSummary(),
     ).thenAnswer((_) async => DeliveryNavigationRepository.defaultOrder);
+    when(() => mockRepository.fetchActiveOrderData()).thenAnswer((_) async => null);
     when(
       () => mockRepository.fetchPickup(),
     ).thenAnswer((_) async => DeliveryNavigationRepository.defaultPickup);
     when(
       () => mockRepository.fetchDrop(),
     ).thenAnswer((_) async => DeliveryNavigationRepository.defaultDrop);
+    when(() => mockRepository.fetchPartnerProfile()).thenAnswer((_) async => null);
+    when(() => mockRepository.watchActiveOrder()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.watchPartnerProfile()).thenAnswer((_) => const Stream.empty());
     when(() => mockRepository.getAudioEnabled()).thenAnswer((_) async => false);
+    when(() => mockRepository.saveAudioEnabled(any())).thenAnswer((_) async {});
     when(() => mockRepository.getEmergencyMode()).thenAnswer((_) async => false);
+    when(() => mockRepository.saveEmergencyMode(any())).thenAnswer((_) async {});
     when(() => mockRepository.getLocaleCode()).thenAnswer((_) async => 'en');
+    when(() => mockRepository.saveLocaleCode(any())).thenAnswer((_) async {});
+    when(() => mockRepository.getHasLocationPermission()).thenAnswer((_) async => true);
+    when(() => mockRepository.saveHasLocationPermission(any())).thenAnswer((_) async {});
+    when(() => mockService.streamLiveLocation()).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.watchActiveOrder(any())).thenAnswer((_) => const Stream.empty());
     when(() => mockService.updateDriverLocation(
       latitude: any(named: 'latitude'),
       longitude: any(named: 'longitude'),
@@ -59,6 +71,7 @@ void main() {
   setUp(() {
     mockRepository = MockDeliveryNavigationRepository();
     mockService = MockDeliveryNavigationService();
+    stubSuccessfulInit();
     bloc = DeliveryNavigationBloc(
       repository: mockRepository,
       service: mockService,
@@ -100,6 +113,8 @@ void main() {
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.active,
           isOffline: false,
           audioEnabled: false,
           emergencyMode: false,
@@ -278,6 +293,8 @@ void main() {
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.active,
           turnDistanceMeters: 120.0,
           order: DeliveryNavigationRepository.defaultOrder,
           pickup: DeliveryNavigationRepository.defaultPickup,
@@ -330,41 +347,51 @@ void main() {
       },
       seed: () => const DeliveryNavigationState(
         status: DeliveryNavigationStatus.loaded,
+        hasLocationPermission: true,
+        isGpsServiceEnabled: true,
+        gpsStatus: DeliveryGpsStatus.searching,
         turnDistanceMeters: 250.0,
       ),
       act: (b) async {
-        final controller = StreamController<double>();
-        when(
-          () => mockService.simulateLiveLocation(),
-        ).thenAnswer((_) => controller.stream);
         b.add(const DeliveryNavigationStartNavigationEvent());
         await Future<void>.delayed(Duration.zero);
-        controller.add(40.0);
+        b.add(const DeliveryNavigationLocationTickEvent(40.0));
         await Future<void>.delayed(Duration.zero);
-        controller.add(35.0);
+        b.add(const DeliveryNavigationLocationTickEvent(35.0));
         await Future<void>.delayed(Duration.zero);
         b.add(const DeliveryNavigationExitNavigationEvent());
         await Future<void>.delayed(Duration.zero);
-        await controller.close();
       },
       expect: () => const [
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.navigating,
+          hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.searching,
           audioEnabled: true,
           turnDistanceMeters: 250.0,
         ),
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.navigating,
+          hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.searching,
           audioEnabled: true,
           turnDistanceMeters: 210.0,
         ),
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.navigating,
+          hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.searching,
           audioEnabled: true,
           turnDistanceMeters: 175.0,
         ),
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
+          hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.searching,
           audioEnabled: true,
           turnDistanceMeters: 175.0,
         ),

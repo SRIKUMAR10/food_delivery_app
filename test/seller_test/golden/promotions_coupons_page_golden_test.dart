@@ -27,6 +27,7 @@ void main() {
         coupons: [
           CouponModel(
             id: 'g1',
+            sellerId: 'seller_1',
             code: 'GOLDEN50',
             description: 'Golden ticket discount',
             discountAmount: 50,

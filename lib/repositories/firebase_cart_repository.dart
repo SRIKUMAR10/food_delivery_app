@@ -104,13 +104,18 @@ class FirebaseCartRepository implements ICartRepository {
     String deliveryAddress, {
     String? customerPhone,
     AppliedCoupon? appliedCoupon,
+    String paymentMethod = 'COD',
   }) async {
     if (buyerId.isEmpty || selectedItems.isEmpty) return;
 
     final selectedCartItemsPayload = selectedItems.map((item) => {
       'id': item.id,
+      'name': item.name,
+      'price': item.price,
       'quantity': item.quantity,
       'sellerId': item.sellerId,
+      'image': item.image ?? '',
+      'selectedAddons': item.selectedAddons,
     }).toList();
 
     final payload = <String, dynamic>{
@@ -118,7 +123,7 @@ class FirebaseCartRepository implements ICartRepository {
       'customerName': customerName,
       'customerPhone': customerPhone ?? '',
       'deliveryAddress': deliveryAddress,
-      'paymentMethod': 'Wallet',
+      'paymentMethod': paymentMethod,
     };
 
     if (appliedCoupon != null) {
@@ -126,6 +131,48 @@ class FirebaseCartRepository implements ICartRepository {
     }
 
     final httpsCallable = FirebaseFunctions.instance.httpsCallable('createSecureOrder');
+    await httpsCallable.call(payload);
+  }
+
+  @override
+  Future<void> verifyAndCheckoutRazorpay({
+    required String buyerId,
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+    required List<CartItem> selectedItems,
+    required String customerName,
+    required String deliveryAddress,
+    String? customerPhone,
+    AppliedCoupon? appliedCoupon,
+  }) async {
+    if (buyerId.isEmpty || selectedItems.isEmpty) return;
+
+    final selectedCartItemsPayload = selectedItems.map((item) => {
+      'id': item.id,
+      'name': item.name,
+      'price': item.price,
+      'quantity': item.quantity,
+      'sellerId': item.sellerId,
+      'image': item.image ?? '',
+      'selectedAddons': item.selectedAddons,
+    }).toList();
+
+    final payload = <String, dynamic>{
+      'razorpayOrderId': razorpayOrderId,
+      'razorpayPaymentId': razorpayPaymentId,
+      'razorpaySignature': razorpaySignature,
+      'selectedCartItems': selectedCartItemsPayload,
+      'customerName': customerName,
+      'customerPhone': customerPhone ?? '',
+      'deliveryAddress': deliveryAddress,
+    };
+
+    if (appliedCoupon != null) {
+      payload['coupon'] = appliedCoupon.toMap();
+    }
+
+    final httpsCallable = FirebaseFunctions.instance.httpsCallable('verifyPaymentAndCreateOrder');
     await httpsCallable.call(payload);
   }
 }

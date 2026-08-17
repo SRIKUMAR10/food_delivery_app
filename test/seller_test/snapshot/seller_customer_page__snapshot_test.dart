@@ -17,6 +17,8 @@ void main() {
       tester,
     ) async {
       final repo = MockCustomerRepository();
+      when(() => repo.watchCustomerData())
+          .thenAnswer((_) => const Stream.empty());
       when(() => repo.getCustomerStats()).thenAnswer(
         (_) async => const CustomerStats(totalCustomers: 1245, repeatCustomers: 320),
       );

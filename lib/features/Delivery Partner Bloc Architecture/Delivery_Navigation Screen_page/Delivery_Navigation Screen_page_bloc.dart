@@ -12,7 +12,11 @@ class DeliveryNavigationBloc
   final DeliveryNavigationRepositoryBase repository;
   final DeliveryNavigationServiceBase service;
 
-  StreamSubscription<double>? _locationSub;
+  StreamSubscription<Map<String, dynamic>>? _locationSub;
+  StreamSubscription<Map<String, dynamic>?>? _orderSub;
+  StreamSubscription<Map<String, dynamic>?>? _profileSub;
+
+  String? _activeOrderId;
 
   DeliveryNavigationBloc({
     required this.repository,
@@ -28,13 +32,119 @@ class DeliveryNavigationBloc
     on<DeliveryNavigationLocaleChangedEvent>(_onLocaleChanged);
     on<DeliveryNavigationLocationTickEvent>(_onLocationTick);
     on<DeliveryNavigationToggleMapEvent>(_onToggleMap);
+    on<DeliveryNavigationLocationUpdatedEvent>(_onLocationUpdated);
+    on<DeliveryNavigationStageChangedEvent>(_onStageChanged);
+    on<DeliveryNavigationGpsStatusChangedEvent>(_onGpsStatusChanged);
+    on<DeliveryNavigationPermissionStatusChangedEvent>(
+      _onPermissionStatusChanged,
+    );
+    on<DeliveryNavigationOrderUpdatedEvent>(_onOrderUpdated);
+    on<DeliveryNavigationArrivedAtPickupEvent>(_onArrivedAtPickup);
+    on<DeliveryNavigationConfirmPickupEvent>(_onConfirmPickup);
+    on<DeliveryNavigationArrivedAtCustomerEvent>(_onArrivedAtCustomer);
+    on<DeliveryNavigationConfirmDeliveryEvent>(_onConfirmDelivery);
+    on<DeliveryNavigationProfileUpdatedEvent>(_onProfileUpdated);
   }
 
   @override
   Future<void> close() async {
-    await _locationSub?.cancel();
-    _locationSub = null;
+    _stopLocationStream();
+    await _orderSub?.cancel();
+    _orderSub = null;
+    await _profileSub?.cancel();
+    _profileSub = null;
     await super.close();
+  }
+
+  NavigationStage _determineStage(String? rawStatus) {
+    String compress(String? value) => (value ?? '')
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    const stage1 = <String>{
+      'accepted',
+      'assigned',
+      'reachingrestaurant',
+      'arrivedatrestaurant',
+      'preparing',
+      'ready',
+      'readyforpickup',
+    };
+    const stage2 = <String>{
+      'pickedup',
+      'outfordelivery',
+      'reachingcustomer',
+      'arrivedatcustomer',
+      'ontheway',
+    };
+    const completed = <String>{'delivered', 'completed'};
+
+    final normalized = compress(rawStatus);
+    if (completed.contains(normalized)) return NavigationStage.completed;
+    if (stage2.contains(normalized)) return NavigationStage.toCustomer;
+    if (stage1.contains(normalized)) return NavigationStage.toRestaurant;
+    return NavigationStage.toRestaurant;
+  }
+
+  DeliveryNavigationState _applyProfile(
+    DeliveryNavigationState state,
+    Map<String, dynamic>? profile,
+  ) {
+    if (profile == null) return state;
+    return state.copyWith(
+      partnerName: profile['partnerName'] as String? ?? state.partnerName,
+      partnerPhotoUrl:
+          profile['partnerPhotoUrl'] as String? ?? state.partnerPhotoUrl,
+      partnerVehicleNumber:
+          profile['partnerVehicleNumber'] as String? ??
+              state.partnerVehicleNumber,
+      partnerRating:
+          (profile['partnerRating'] as num?)?.toDouble() ?? state.partnerRating,
+      isOnline: profile['isOnline'] as bool? ?? state.isOnline,
+    );
+  }
+
+  DeliveryNavigationState _withDestination(
+    DeliveryNavigationState state,
+    NavigationStage stage,
+  ) {
+    final toRestaurant = stage == NavigationStage.toRestaurant;
+    return state.copyWith(
+      navigationStage: stage,
+      destinationName:
+          toRestaurant ? state.restaurantName : state.customerName,
+      destinationAddress:
+          toRestaurant ? state.restaurantAddress : state.customerAddress,
+      destinationPhone:
+          toRestaurant ? state.restaurantPhone : state.customerPhone,
+      destinationLat: toRestaurant ? state.restaurantLat : state.customerLat,
+      destinationLng: toRestaurant ? state.restaurantLng : state.customerLng,
+    );
+  }
+
+  DeliveryNavigationState _applyOrderData(
+    DeliveryNavigationState state,
+    Map<String, dynamic> data,
+  ) {
+    final stage = _determineStage(data['status'] as String?);
+    final withTargets = state.copyWith(
+      restaurantName: data['sellerName'] as String? ?? state.restaurantName,
+      restaurantAddress:
+          data['sellerAddress'] as String? ?? state.restaurantAddress,
+      restaurantPhone: data['sellerPhone'] as String? ?? state.restaurantPhone,
+      restaurantLat:
+          (data['sellerLat'] as num?)?.toDouble() ?? state.restaurantLat,
+      restaurantLng:
+          (data['sellerLng'] as num?)?.toDouble() ?? state.restaurantLng,
+      customerName: data['customerName'] as String? ?? state.customerName,
+      customerAddress:
+          data['customerAddress'] as String? ?? state.customerAddress,
+      customerPhone: data['customerPhone'] as String? ?? state.customerPhone,
+      customerNotes: data['customerNotes'] as String? ?? state.customerNotes,
+      customerLat: (data['customerLat'] as num?)?.toDouble() ?? state.customerLat,
+      customerLng: (data['customerLng'] as num?)?.toDouble() ?? state.customerLng,
+    );
+    return _withDestination(withTargets, stage);
   }
 
   Future<void> _onInit(
@@ -45,39 +155,53 @@ class DeliveryNavigationBloc
     try {
       final isOnline = await service.checkConnectivity();
       final hasPermission = await service.checkLocationPermission();
+      final gpsEnabled = await service.checkGpsStatus();
       final order = await repository.fetchOrderSummary();
+      final rawOrder = await repository.fetchActiveOrderData();
       final pickup = await repository.fetchPickup();
       final drop = await repository.fetchDrop();
+      final profile = await repository.fetchPartnerProfile();
       final audioEnabled = await repository.getAudioEnabled();
       final emergencyMode = await repository.getEmergencyMode();
       final localeCode = await repository.getLocaleCode();
 
-      if (order.orderId.trim().isEmpty) {
-        emit(state.copyWith(
-          status: DeliveryNavigationStatus.empty,
-          isOffline: !isOnline,
-          hasLocationPermission: hasPermission,
-          audioEnabled: audioEnabled,
-          emergencyMode: emergencyMode,
-          localeCode: localeCode,
-          errorMessage: null,
-          clearError: true,
-        ));
-        return;
-      }
+      _activeOrderId = rawOrder?['orderId'] as String?;
+      _subscribeToOrderStream();
+      _subscribeToProfileStream();
 
-      emit(state.copyWith(
-        status: DeliveryNavigationStatus.loaded,
-        order: order,
-        pickup: pickup,
-        drop: drop,
+      final gpsStatus = !hasPermission
+          ? DeliveryGpsStatus.permissionDenied
+          : (gpsEnabled
+              ? DeliveryGpsStatus.active
+              : DeliveryGpsStatus.disabled);
+
+      var next = state.copyWith(
         isOffline: !isOnline,
         hasLocationPermission: hasPermission,
+        isGpsServiceEnabled: gpsEnabled,
+        gpsStatus: gpsStatus,
         audioEnabled: audioEnabled,
         emergencyMode: emergencyMode,
         localeCode: localeCode,
         errorMessage: null,
         clearError: true,
+      );
+      next = _applyProfile(next, profile);
+
+      if (order.orderId.trim().isEmpty) {
+        emit(next.copyWith(status: DeliveryNavigationStatus.empty));
+        return;
+      }
+
+      if (rawOrder != null) {
+        next = _applyOrderData(next, rawOrder);
+      }
+
+      emit(next.copyWith(
+        status: DeliveryNavigationStatus.loaded,
+        order: order,
+        pickup: pickup,
+        drop: drop,
       ));
     } catch (e) {
       emit(state.copyWith(
@@ -85,6 +209,28 @@ class DeliveryNavigationBloc
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       ));
     }
+  }
+
+  void _subscribeToOrderStream() {
+    _orderSub?.cancel();
+    _orderSub = repository.watchActiveOrder().listen(
+      (data) {
+        if (isClosed) return;
+        add(DeliveryNavigationOrderUpdatedEvent(data));
+      },
+      onError: (Object _) {},
+    );
+  }
+
+  void _subscribeToProfileStream() {
+    _profileSub?.cancel();
+    _profileSub = repository.watchPartnerProfile().listen(
+      (profile) {
+        if (isClosed || profile == null) return;
+        add(DeliveryNavigationProfileUpdatedEvent(profile));
+      },
+      onError: (Object _) {},
+    );
   }
 
   Future<void> _onStartNavigation(
@@ -95,11 +241,14 @@ class DeliveryNavigationBloc
       return;
     }
     await repository.saveAudioEnabled(true);
-    _startLocationStream();
+    _startLiveLocationStream();
     emit(state.copyWith(
       status: DeliveryNavigationStatus.navigating,
       audioEnabled: true,
       emergencyMode: false,
+      gpsStatus: state.hasLocationPermission
+          ? DeliveryGpsStatus.searching
+          : DeliveryGpsStatus.permissionDenied,
       errorMessage: null,
       clearError: true,
     ));
@@ -109,11 +258,11 @@ class DeliveryNavigationBloc
     DeliveryNavigationExitNavigationEvent event,
     Emitter<DeliveryNavigationState> emit,
   ) async {
-    _locationSub?.cancel();
-    _locationSub = null;
+    _stopLocationStream();
     emit(state.copyWith(
       status: DeliveryNavigationStatus.loaded,
       emergencyMode: false,
+      gpsStatus: DeliveryGpsStatus.searching,
       errorMessage: null,
       clearError: true,
     ));
@@ -173,36 +322,46 @@ class DeliveryNavigationBloc
     try {
       final isOnline = await service.checkConnectivity();
       final hasPermission = await service.checkLocationPermission();
+      final gpsEnabled = await service.checkGpsStatus();
       final order = await repository.fetchOrderSummary();
+      final rawOrder = await repository.fetchActiveOrderData();
       final pickup = await repository.fetchPickup();
       final drop = await repository.fetchDrop();
       final audioEnabled = await repository.getAudioEnabled();
       final emergencyMode = await repository.getEmergencyMode();
 
-      if (order.orderId.trim().isEmpty) {
-        emit(state.copyWith(
-          status: DeliveryNavigationStatus.empty,
-          isOffline: !isOnline,
-          hasLocationPermission: hasPermission,
-          audioEnabled: audioEnabled,
-          emergencyMode: emergencyMode,
-          errorMessage: null,
-          clearError: true,
-        ));
-        return;
-      }
+      _activeOrderId = rawOrder?['orderId'] as String?;
 
-      emit(state.copyWith(
-        status: DeliveryNavigationStatus.loaded,
-        order: order,
-        pickup: pickup,
-        drop: drop,
+      var next = state.copyWith(
         isOffline: !isOnline,
         hasLocationPermission: hasPermission,
+        isGpsServiceEnabled: gpsEnabled,
+        gpsStatus: !hasPermission
+            ? DeliveryGpsStatus.permissionDenied
+            : (gpsEnabled
+                ? DeliveryGpsStatus.active
+                : DeliveryGpsStatus.disabled),
         audioEnabled: audioEnabled,
         emergencyMode: emergencyMode,
         errorMessage: null,
         clearError: true,
+      );
+
+      if (order.orderId.trim().isEmpty) {
+        _stopLocationStream();
+        emit(next.copyWith(status: DeliveryNavigationStatus.empty));
+        return;
+      }
+
+      if (rawOrder != null) {
+        next = _applyOrderData(next, rawOrder);
+      }
+
+      emit(next.copyWith(
+        status: DeliveryNavigationStatus.loaded,
+        order: order,
+        pickup: pickup,
+        drop: drop,
       ));
     } catch (e) {
       emit(state.copyWith(
@@ -232,24 +391,201 @@ class DeliveryNavigationBloc
     ));
   }
 
-  void _startLocationStream() {
+  void _onLocationUpdated(
+    DeliveryNavigationLocationUpdatedEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) {
+    final destLat = state.destinationLat;
+    final destLng = state.destinationLng;
+    var distance = state.distanceToDestinationKm;
+    var eta = state.etaToDestinationMinutes;
+    var heading = event.heading;
+
+    if (destLat != 0.0 || destLng != 0.0) {
+      distance = service.calculateDistanceKm(
+        event.lat,
+        event.lng,
+        destLat,
+        destLng,
+      );
+      eta = service
+          .calculateEtaMinutes(distance, event.speed)
+          .round();
+      if (heading <= 0.0) {
+        heading = service.calculateBearing(
+          event.lat,
+          event.lng,
+          destLat,
+          destLng,
+        );
+      }
+    }
+
+    emit(state.copyWith(
+      driverLat: event.lat,
+      driverLng: event.lng,
+      driverHeading: heading,
+      driverSpeedKmh: event.speed,
+      driverLastUpdated: event.timestamp,
+      distanceToDestinationKm: distance,
+      etaToDestinationMinutes: eta,
+      distanceKm: distance,
+      etaMinutes: eta,
+      gpsStatus: DeliveryGpsStatus.active,
+    ));
+
+    final orderId = _activeOrderId;
+    if (orderId != null && orderId.isNotEmpty && !state.isOffline) {
+      unawaited(
+        service.updateLiveLocation(
+          orderId: orderId,
+          lat: event.lat,
+          lng: event.lng,
+          heading: heading,
+          speed: event.speed,
+          stage: state.navigationStage.firestoreValue,
+        ),
+      );
+    }
+  }
+
+  void _onStageChanged(
+    DeliveryNavigationStageChangedEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) {
+    emit(_withDestination(state, event.stage));
+  }
+
+  void _onGpsStatusChanged(
+    DeliveryNavigationGpsStatusChangedEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) {
+    emit(state.copyWith(gpsStatus: event.status));
+  }
+
+  void _onPermissionStatusChanged(
+    DeliveryNavigationPermissionStatusChangedEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) {
+    emit(state.copyWith(hasLocationPermission: event.hasPermission));
+  }
+
+  void _onProfileUpdated(
+    DeliveryNavigationProfileUpdatedEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) {
+    emit(_applyProfile(state, event.profile));
+  }
+
+  void _onOrderUpdated(
+    DeliveryNavigationOrderUpdatedEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) {
+    final data = event.orderData;
+    if (data == null) {
+      // Battery/data saver: no active order -> suspend location stream.
+      _stopLocationStream();
+      emit(state.copyWith(
+        status: DeliveryNavigationStatus.empty,
+        errorMessage: null,
+        clearError: true,
+      ));
+      return;
+    }
+
+    _activeOrderId = data['orderId'] as String?;
+    final stage = _determineStage(data['status'] as String?);
+    if (stage == NavigationStage.completed) {
+      _stopLocationStream();
+    }
+
+    emit(_applyOrderData(state, data));
+  }
+
+  Future<void> _onArrivedAtPickup(
+    DeliveryNavigationArrivedAtPickupEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) async {
+    emit(state.copyWith(
+      turnDistanceMeters: 0,
+      nextTurnInstruction: 'Arrived at Restaurant',
+    ));
+  }
+
+  Future<void> _onConfirmPickup(
+    DeliveryNavigationConfirmPickupEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) async {
+    final orderId = _activeOrderId;
+    if (orderId != null && orderId.isNotEmpty) {
+      await service.updateOrderStatus(orderId, 'picked_up');
+    }
+    emit(
+      _withDestination(state, NavigationStage.toCustomer).copyWith(
+        turnDistanceMeters: 0,
+        nextTurnInstruction: 'Head to Customer',
+      ),
+    );
+  }
+
+  Future<void> _onArrivedAtCustomer(
+    DeliveryNavigationArrivedAtCustomerEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) async {
+    emit(state.copyWith(
+      turnDistanceMeters: 0,
+      nextTurnInstruction: 'Arrived at Customer',
+    ));
+  }
+
+  Future<void> _onConfirmDelivery(
+    DeliveryNavigationConfirmDeliveryEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) async {
+    final orderId = _activeOrderId;
+    if (orderId != null && orderId.isNotEmpty) {
+      await service.updateOrderStatus(orderId, 'delivered');
+    }
+    _stopLocationStream();
+    emit(state.copyWith(
+      navigationStage: NavigationStage.completed,
+      status: DeliveryNavigationStatus.loaded,
+      emergencyMode: false,
+      nextTurnInstruction: 'Delivery Completed',
+      turnDistanceMeters: 0,
+      errorMessage: null,
+      clearError: true,
+    ));
+  }
+
+  void _startLiveLocationStream() {
     _locationSub?.cancel();
-    _locationSub = service.simulateLiveLocation().listen(
-      (deltaMeters) {
+    _locationSub = service.streamLiveLocation(highAccuracy: true).listen(
+      (loc) {
         if (isClosed) return;
-        add(DeliveryNavigationLocationTickEvent(deltaMeters));
-        // Broadcast live coordinates to Firestore so sellers & buyers can track driver in real-time
-        final baseLat = 13.0827;
-        final baseLng = 80.2707;
-        final offset = (deltaMeters / 100000.0);
-        service.updateDriverLocation(
-          latitude: baseLat + offset,
-          longitude: baseLng + offset,
+        add(
+          DeliveryNavigationLocationUpdatedEvent(
+            lat: (loc['lat'] as num).toDouble(),
+            lng: (loc['lng'] as num).toDouble(),
+            heading: (loc['heading'] as num?)?.toDouble() ?? 0.0,
+            speed: (loc['speedKmh'] as num?)?.toDouble() ?? 0.0,
+            timestamp: (loc['timestamp'] as DateTime?) ?? DateTime.now(),
+          ),
         );
       },
       onError: (Object _) {
-        // Degrade gracefully: keep the last known guidance state.
+        if (isClosed) return;
+        add(
+          const DeliveryNavigationGpsStatusChangedEvent(
+            DeliveryGpsStatus.disabled,
+          ),
+        );
       },
     );
+  }
+
+  void _stopLocationStream() {
+    _locationSub?.cancel();
+    _locationSub = null;
   }
 }

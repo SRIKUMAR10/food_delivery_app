@@ -15,6 +15,15 @@ abstract class DeliveryChatRepositoryBase {
     String? orderTitle,
     double? orderTotal,
   });
+  Future<String> createOrGetSellerDeliveryConversation({
+    required String orderId,
+    required String sellerId,
+    required String sellerName,
+    required String riderId,
+    required String riderName,
+    String? orderTitle,
+    double? orderTotal,
+  });
 }
 
 class DeliveryChatRepository implements DeliveryChatRepositoryBase {
@@ -31,22 +40,12 @@ class DeliveryChatRepository implements DeliveryChatRepositoryBase {
 
   @override
   Stream<List<ConversationModel>> getDeliveryConversations(String riderId) {
-    if (riderId.isEmpty) return Stream.value([]);
-
-    return firestore
-        .collection('conversations')
-        .where('sellerId', isEqualTo: riderId)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ConversationModel.fromMap(doc.data(), doc.id))
-          .toList()
-        ..sort((a, b) {
-          final aTime = a.lastMessageTimestamp ?? a.createdAt;
-          final bTime = b.lastMessageTimestamp ?? b.createdAt;
-          return bTime.compareTo(aTime);
-        });
-    });
+    // Delegate to the core repository's multi-party delivery query which
+    // merges legacy `sellerId` chats with `deliveryPartnerId`/`participants`.
+    return chatRepository.getConversationsForUser(
+      riderId,
+      role: 'delivery_partner',
+    );
   }
 
   @override
@@ -69,9 +68,11 @@ class DeliveryChatRepository implements DeliveryChatRepositoryBase {
     String? orderTitle,
     double? orderTotal,
   }) async {
-    final existing = await chatRepository.getConversationByParticipants(
-      customerId,
-      riderId,
+    final existing = await chatRepository.getConversationBetween(
+      user1Id: customerId,
+      user2Id: riderId,
+      orderId: orderId.isNotEmpty ? orderId : null,
+      type: 'buyer_delivery',
     );
 
     if (existing != null) {
@@ -88,8 +89,53 @@ class DeliveryChatRepository implements DeliveryChatRepositoryBase {
     return chatRepository.createConversation(
       buyerId: customerId,
       buyerName: customerName,
-      sellerId: riderId,
-      sellerName: riderName,
+      sellerId: '',
+      sellerName: '',
+      deliveryPartnerId: riderId,
+      deliveryPartnerName: riderName,
+      conversationType: 'buyer_delivery',
+      orderId: orderId,
+      orderTitle: orderTitle,
+      orderTotal: orderTotal,
+    );
+  }
+
+  @override
+  Future<String> createOrGetSellerDeliveryConversation({
+    required String orderId,
+    required String sellerId,
+    required String sellerName,
+    required String riderId,
+    required String riderName,
+    String? orderTitle,
+    double? orderTotal,
+  }) async {
+    final existing = await chatRepository.getConversationBetween(
+      user1Id: sellerId,
+      user2Id: riderId,
+      orderId: orderId.isNotEmpty ? orderId : null,
+      type: 'seller_delivery',
+    );
+
+    if (existing != null) {
+      if (orderId != existing.orderId && orderId.isNotEmpty) {
+        await firestore.collection('conversations').doc(existing.id).update({
+          'orderId': orderId,
+          if (orderTitle != null) 'orderTitle': orderTitle,
+          if (orderTotal != null) 'orderTotal': orderTotal,
+        });
+      }
+      return existing.id;
+    }
+
+    return chatRepository.createConversation(
+      buyerId: '',
+      buyerName: '',
+      sellerId: sellerId,
+      sellerName: sellerName,
+      deliveryPartnerId: riderId,
+      deliveryPartnerName: riderName,
+      conversationType: 'seller_delivery',
       orderId: orderId,
       orderTitle: orderTitle,
       orderTotal: orderTotal,

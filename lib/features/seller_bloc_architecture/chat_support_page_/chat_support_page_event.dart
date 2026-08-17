@@ -12,7 +12,27 @@ class DeleteSupportMessageEvent extends ChatSupportEvent {
 
 class LoadChatSessionsEvent extends ChatSupportEvent {
   final String sellerId;
-  LoadChatSessionsEvent(this.sellerId);
+  final String? initialConversationId;
+  final String? initialOrderId;
+  final String? targetRole;
+  final String? partnerId;
+  final String? partnerName;
+  final String? partnerPhone;
+  final String? partnerImageUrl;
+  final String? orderTitle;
+  final double? orderTotal;
+  LoadChatSessionsEvent(
+    this.sellerId, {
+    this.initialConversationId,
+    this.initialOrderId,
+    this.targetRole,
+    this.partnerId,
+    this.partnerName,
+    this.partnerPhone,
+    this.partnerImageUrl,
+    this.orderTitle,
+    this.orderTotal,
+  });
 }
 
 class SelectChatSessionEvent extends ChatSupportEvent {
@@ -63,5 +83,43 @@ class StopSupportAudioRecording extends ChatSupportEvent {
 
 class CancelSupportAudioRecording extends ChatSupportEvent {
   const CancelSupportAudioRecording();
+}
+
+class SetTypingStatusEvent extends ChatSupportEvent {
+  final bool isTyping;
+  final String? conversationId;
+  const SetTypingStatusEvent(this.isTyping, {this.conversationId});
+}
+
+enum ChatFilterTab { all, customers, deliveryPartners, orders }
+
+class SetChatFilterTabEvent extends ChatSupportEvent {
+  final ChatFilterTab tab;
+  const SetChatFilterTabEvent(this.tab);
+}
+
+class StartOrderDeliveryPartnerChatEvent extends ChatSupportEvent {
+  final String orderId;
+  final String riderId;
+  final String riderName;
+  final String? riderPhone;
+  final String? riderImageUrl;
+  final String? orderTitle;
+  final double? orderTotal;
+  const StartOrderDeliveryPartnerChatEvent({
+    required this.orderId,
+    required this.riderId,
+    required this.riderName,
+    this.riderPhone,
+    this.riderImageUrl,
+    this.orderTitle,
+    this.orderTotal,
+  });
+}
+
+class AutoOpenOrderConversationEvent extends ChatSupportEvent {
+  final String orderId;
+  final String? targetRole;
+  const AutoOpenOrderConversationEvent({required this.orderId, this.targetRole});
 }
 

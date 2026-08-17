@@ -38,8 +38,27 @@ class ClearMessages extends OrdersListEvent {}
 class UpdateOrderStatusEvent extends OrdersListEvent {
   final String orderId;
   final OrderStatus newStatus;
-  const UpdateOrderStatusEvent(this.orderId, this.newStatus);
+  final String? reason;
+  const UpdateOrderStatusEvent(this.orderId, this.newStatus, {this.reason});
 
   @override
-  List<Object?> get props => [orderId, newStatus];
+  List<Object?> get props => [orderId, newStatus, reason];
+}
+
+class CancelOrderEvent extends OrdersListEvent {
+  final String orderId;
+  final String reason;
+  const CancelOrderEvent(this.orderId, {required this.reason});
+
+  @override
+  List<Object?> get props => [orderId, reason];
+}
+
+class RejectOrderEvent extends OrdersListEvent {
+  final String orderId;
+  final String reason;
+  const RejectOrderEvent(this.orderId, {required this.reason});
+
+  @override
+  List<Object?> get props => [orderId, reason];
 }

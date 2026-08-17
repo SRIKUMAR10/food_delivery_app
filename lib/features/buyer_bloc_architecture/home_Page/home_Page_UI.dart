@@ -4,9 +4,11 @@
 // This file contains zero business logic — it reads state from HomePageBloc
 // and dispatches events back to it. All Firebase calls are inside the BLoC.
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
@@ -23,9 +25,10 @@ import '../../../core/services/seller_status_service.dart';
 import '../../../repositories/firebase_product_repository.dart';
 import '../../../repositories/category_repository.dart';
 import 'home_Page_Bloc.dart';
-import 'home_page_models.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
 import '../user_profile_image/user_profile_image.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
+import '../Notifications_page/widgets/notification_bell_button.dart';
 
 // ─── HomePage (entry point) ────────────────────────────────────────────────────
 
@@ -37,17 +40,35 @@ class HomePage extends StatelessWidget {
   /// Causes the bottom navigation bar to switch to the Cart tab.
   final VoidCallback? onNavigateToCart;
 
-  const HomePage({super.key, this.onNavigateToCart});
+  /// Optional BLoC instance provided for widget testing or custom scoping.
+  final HomePageBloc? bloc;
+
+  const HomePage({super.key, this.onNavigateToCart, this.bloc});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => HomePageBloc(
-        productRepository: FirebaseProductRepository(),
-        categoryRepository: CategoryRepository(),
-      ),
-      child: _HomePageContentView(onNavigateToCart: onNavigateToCart),
-    );
+    if (bloc != null) {
+      return BlocProvider<HomePageBloc>.value(
+        value: bloc!,
+        child: _HomePageContentView(onNavigateToCart: onNavigateToCart),
+      );
+    }
+
+    try {
+      final existingBloc = BlocProvider.of<HomePageBloc>(context, listen: false);
+      return BlocProvider<HomePageBloc>.value(
+        value: existingBloc,
+        child: _HomePageContentView(onNavigateToCart: onNavigateToCart),
+      );
+    } catch (_) {
+      return BlocProvider<HomePageBloc>(
+        create: (context) => HomePageBloc(
+          productRepository: FirebaseProductRepository(),
+          categoryRepository: CategoryRepository(),
+        ),
+        child: _HomePageContentView(onNavigateToCart: onNavigateToCart),
+      );
+    }
   }
 }
 
@@ -93,7 +114,7 @@ class _HomePageContentViewState extends State<_HomePageContentView> {
       body: SafeArea(
         child: BlocBuilder<HomePageBloc, HomePageState>(
           buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
+          builder: (context, state) {
             return LayoutBuilder(
               builder: (context, constraints) {
                 final maxWidth = constraints.maxWidth;
@@ -101,11 +122,21 @@ class _HomePageContentViewState extends State<_HomePageContentView> {
                 // Determine layout type based on viewport width.
                 final bool isMobile = maxWidth < 600;
                 final bool isTablet = maxWidth >= 600 && maxWidth < 1024;
-                final bool isWeb = maxWidth >= 1024;
+                final bool isDesktop = maxWidth >= 1024;
 
-                // Column count: 2 on mobile, 3 on tablet, 4 on web.
-                final int crossAxisCount = isWeb ? 4 : (isTablet ? 3 : 2);
-                final double horizontalPadding = isWeb
+                // Column count: 1 on small mobile (<360px), 2 on mobile, 3 on tablet, 4 on desktop.
+                final int crossAxisCount = isDesktop
+                    ? 4
+                    : (isTablet
+                        ? 3
+                        : (maxWidth < 360 ? 1 : 2));
+
+                // Responsive aspect ratio to prevent card overflow
+                final double childAspectRatio = isDesktop
+                    ? 0.80
+                    : (isTablet ? 0.76 : (maxWidth < 360 ? 1.0 : 0.74));
+
+                final double horizontalPadding = isDesktop
                     ? 48.0
                     : (isTablet ? 32.0 : 16.0);
 
@@ -114,66 +145,90 @@ class _HomePageContentViewState extends State<_HomePageContentView> {
                     SliverPadding(
                       padding: EdgeInsets.symmetric(
                         horizontal: horizontalPadding,
-                        vertical: 20.0,
+                        vertical: 16.0,
                       ),
                       sliver: SliverToBoxAdapter(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // ── Top bar (logo + search on web, logo + avatar on mobile) ──
+                            // ── Top bar (logo + search bar + profile avatar + favorites) ──
                             _TopBar(
                               isMobile: isMobile,
-                              isWeb: isWeb,
+                              isTablet: isTablet,
+                              isDesktop: isDesktop,
                               maxWidth: maxWidth,
                               searchController: _searchController,
                               onNavigateToCart: widget.onNavigateToCart,
                             ),
 
-                            // ── Mobile: tagline + search bar below the top bar ──
-                            if (isMobile) ...[
-                              const SizedBox(height: 16),
-                              Text(
-                                'Order your favourite food!',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xDE000000),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
+                            // ── Mobile & Tablet: Search Bar ──
+                            if (!isDesktop) ...[
+                              const SizedBox(height: 14),
                               _SearchBar(controller: _searchController),
                             ],
 
-                            // ── Web/tablet: centred tagline only (search is in the top bar) ──
-                            if (!isMobile) ...[
-                              const SizedBox(height: 32),
-                              Center(
-                                child: Text(
-                                  'Order your favourite food!',
-                                  style: TextStyle(
-                                    fontSize: isWeb ? 36 : 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1C1C1C),
-                                  ),
-                                ),
+                            const SizedBox(height: 16),
+
+                            // ── GPS Location Header Selection ──
+                            _LocationHeader(
+                              address: state.currentAddress,
+                              isDesktop: isDesktop,
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // ── Promotional Offers & Banners Carousel ──
+                            if (state is HomePageLoaded || state is HomePageEmpty || state is HomePageSearchEmpty) ...[
+                              _OfferBannerCarousel(
+                                banners: state.banners,
+                                isMobile: isMobile,
+                                isDesktop: isDesktop,
+                                maxWidth: maxWidth,
                               ),
+                              const SizedBox(height: 24),
+
+                              // ── "Order Again" Quick Reorder Bar ──
+                              if (state.recentlyOrderedItems.isNotEmpty) ...[
+                                _OrderAgainSection(
+                                  items: state.recentlyOrderedItems,
+                                  onNavigateToCart: widget.onNavigateToCart,
+                                  isMobile: isMobile,
+                                  maxWidth: maxWidth,
+                                  distancesMap: state.distancesMap,
+                                ),
+                                const SizedBox(height: 24),
+                              ],
+
+
+                              // ── Popular Dishes Section ──
+                              if (state.popularProducts.isNotEmpty) ...[
+                                _PopularProductsSection(
+                                  items: state.popularProducts,
+                                  onNavigateToCart: widget.onNavigateToCart,
+                                  isMobile: isMobile,
+                                  distancesMap: state.distancesMap,
+                                ),
+                                const SizedBox(height: 24),
+                              ],
                             ],
 
-                            const SizedBox(height: 24),
-
-                            // ── Horizontal category filter row ──
-                            _CategoryRow(state: state),
+                            // ── Horizontal Category Filter Row (All, Burgers, Pizza, Drinks, etc.) ──
+                            _CategoryRow(
+                              state: state,
+                              isMobile: isMobile,
+                            ),
                             const SizedBox(height: 16),
                           ],
                         ),
                       ),
                     ),
 
-                    // ── Product grid (content depends on current BLoC state) ──
+                    // ── Product Grid ──
                     _ProductGrid(
                       state: state,
                       horizontalPadding: horizontalPadding,
                       crossAxisCount: crossAxisCount,
+                      childAspectRatio: childAspectRatio,
                       onNavigateToCart: widget.onNavigateToCart,
                     ),
 
@@ -191,17 +246,19 @@ class _HomePageContentViewState extends State<_HomePageContentView> {
 
 // ─── Top Bar ───────────────────────────────────────────────────────────────────
 
-/// Renders the app logo, search bar (web only), and profile avatar.
+/// Renders the app logo, search bar (web/tablet), favorites button, and profile avatar.
 class _TopBar extends StatelessWidget {
   final bool isMobile;
-  final bool isWeb;
+  final bool isTablet;
+  final bool isDesktop;
   final double maxWidth;
   final TextEditingController searchController;
   final VoidCallback? onNavigateToCart;
 
   const _TopBar({
     required this.isMobile,
-    required this.isWeb,
+    required this.isTablet,
+    required this.isDesktop,
     required this.maxWidth,
     required this.searchController,
     this.onNavigateToCart,
@@ -211,71 +268,69 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final avatarWidget = _ProfileAvatar(onNavigateToCart: onNavigateToCart);
 
-    final favoritesIcon = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const FavoritesPageUI()),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+    final favoritesIcon = GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const FavoritesPageUI()),
+        );
+      },
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: const Icon(
+          ],
+          border: Border.all(color: const Color(0xFFF0F0F0)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
               Icons.favorite_rounded,
               color: Color(0xFFEF2A39),
-              size: 24,
+              size: 18,
             ),
-          ),
+            if (!isMobile) ...[
+              const SizedBox(width: 6),
+              const Text(
+                'Favorites',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: Color(0xFF1C1C1C),
+                ),
+              ),
+            ],
+          ],
         ),
-        const SizedBox(height: 4),
-        const Text(
-          'Favorite',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-            color: Colors.black,
-          ),
-        ),
-      ],
+      ),
     );
 
-    if (isMobile) {
-      // Mobile layout: logo on the left, avatar on the right.
+    if (!isDesktop) {
+      // Mobile & Tablet header layout: logo on left, avatar & favorites on right.
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Display SVG logo with original colours (no colour filter applied).
-          Flexible(
-            child: SvgPicture.asset(
-              'assets/images/FoodGo.svg',
-              height: 50,
-              fit: BoxFit.contain,
-              semanticsLabel: 'FoodGo Logo',
-            ),
+          SvgPicture.asset(
+            'assets/images/FoodGo.svg',
+            height: isMobile ? 38 : 46,
+            fit: BoxFit.contain,
+            semanticsLabel: 'FoodGo Logo',
           ),
           Row(
             children: [
+              const NotificationBellButton(),
+              const SizedBox(width: 10),
               favoritesIcon,
-              Container(
-                height: 40,
-                width: 1,
-                color: Colors.grey.shade300,
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-              ),
+              const SizedBox(width: 10),
               avatarWidget,
             ],
           ),
@@ -283,27 +338,23 @@ class _TopBar extends StatelessWidget {
       );
     }
 
-    // Web / tablet layout: logo on the left, search bar takes remaining space, then icons.
+    // Desktop layout: logo on left, search bar expanding in middle, favorites & profile avatar on right.
     return Row(
       children: [
         SvgPicture.asset(
           'assets/images/FoodGo.svg',
-          height: 70,
-          width: 160, // Slightly reduced to ensure it fits nicely on tablets
+          height: 52,
+          width: 140,
           fit: BoxFit.contain,
           semanticsLabel: 'FoodGo Logo',
         ),
         const SizedBox(width: 24),
-        // Search bar takes up the remaining available space gracefully.
         Expanded(child: _SearchBar(controller: searchController)),
-        const SizedBox(width: 16),
+        const SizedBox(width: 20),
+        const NotificationBellButton(),
+        const SizedBox(width: 14),
         favoritesIcon,
-        Container(
-          height: 40,
-          width: 1,
-          color: Colors.grey.shade300,
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-        ),
+        const SizedBox(width: 14),
         avatarWidget,
       ],
     );
@@ -312,8 +363,6 @@ class _TopBar extends StatelessWidget {
 
 // ─── Profile Avatar ────────────────────────────────────────────────────────────
 
-/// Displays the logged-in user's profile photo (or a placeholder icon).
-/// Tapping opens the profile drawer if logged in, or redirects to the login screen.
 class _ProfileAvatar extends StatelessWidget {
   final VoidCallback? onNavigateToCart;
 
@@ -321,79 +370,96 @@ class _ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Builder(
-          builder: (innerCtx) => GestureDetector(
-            onTap: () {
-              Navigator.push(
-                innerCtx,
-                MaterialPageRoute(builder: (_) => const user_profile_image()),
-              );
-            },
-            child: StreamBuilder<String?>(
-              stream: context.read<IAuthService>().authStateChanges,
-              builder: (context, authSnapshot) {
-                final uid = authSnapshot.data;
+    return Builder(
+      builder: (innerCtx) => GestureDetector(
+        onTap: () {
+          Navigator.push(
+            innerCtx,
+            MaterialPageRoute(builder: (_) => const user_profile_image()),
+          );
+        },
+        child: StreamBuilder<String?>(
+          stream: context.read<IAuthService>().authStateChanges,
+          builder: (context, authSnapshot) {
+            final uid = authSnapshot.data;
+            if (uid == null) {
+              return _buildAvatarRow(null);
+            }
 
-                if (uid == null) {
-                  return _buildAvatarContainer(null);
-                }
-
-                return StreamBuilder<String?>(
-                  stream: context.read<IUserProfileRepository>().watchProfileImageUrl(uid),
-                  builder: (_, imageSnapshot) {
-                    final imageUrl = imageSnapshot.data;
-                    return _buildAvatarContainer(imageUrl);
-                  },
-                );
+            return StreamBuilder<String?>(
+              stream: context
+                  .read<IUserProfileRepository>()
+                  .watchProfileImageUrl(uid),
+              builder: (context, imageSnapshot) {
+                return _buildAvatarRow(imageSnapshot.data);
               },
-            ),
-          ),
+            );
+          },
         ),
-        const SizedBox(height: 4),
+      ),
+    );
+  }
+
+  Widget _buildAvatarRow(String? imageUrl) {
+    final cleanUrl = (imageUrl ?? '').trim();
+    final bool hasValidUrl = cleanUrl.isNotEmpty && cleanUrl.startsWith('http');
+
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: const BoxDecoration(
+            color: Color(0xFFEFEEF4),
+            shape: BoxShape.circle,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: hasValidUrl
+              ? Image.network(
+                  cleanUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Image.asset(
+                    'assets/images/chef.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      color: Colors.grey,
+                      size: 24,
+                    ),
+                  ),
+                )
+              : Image.asset(
+                  'assets/images/chef.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.person,
+                    color: Colors.grey,
+                    size: 24,
+                  ),
+                ),
+        ),
+        const SizedBox(width: 8),
         const Text(
           'Profile',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 12,
-            color: Colors.black,
+            fontSize: 13,
+            color: Color(0xFF1C1C1C),
           ),
+        ),
+        const Icon(
+          Icons.keyboard_arrow_down_rounded,
+          color: Colors.grey,
+          size: 18,
         ),
       ],
     );
   }
-
-  Widget _buildAvatarContainer(String? imageUrl) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFEEF4),
-        borderRadius: BorderRadius.circular(12),
-        image: imageUrl != null && imageUrl.isNotEmpty
-            ? DecorationImage(
-                image: NetworkImage(imageUrl),
-                fit: BoxFit.cover,
-                onError: (exception, stackTrace) {},
-              )
-            : null,
-      ),
-      child: imageUrl == null || imageUrl.isEmpty
-          ? const Icon(
-              Icons.person_outline_rounded,
-              color: Color(0xFFEF2A39),
-              size: 24,
-            )
-          : null,
-    );
-  }
 }
+
 
 // ─── Search Bar ────────────────────────────────────────────────────────────────
 
-/// Text input field used to filter the product list by name.
 class _SearchBar extends StatelessWidget {
   final TextEditingController controller;
 
@@ -401,57 +467,65 @@ class _SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFEEF4),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F5F8),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFEBECEF)),
+      ),
+      padding: const EdgeInsets.only(left: 16, right: 6),
+      child: Row(
+        children: [
+          const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
             child: TextField(
               controller: controller,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF1C1C1C)),
               decoration: const InputDecoration(
-                hintText: 'Search food item...',
-                hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                hintText: 'Search for food, restaurants, cuisines...',
+                hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 10),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        // Search icon button (visual only; filtering is driven by the text field listener).
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEF2A39),
-            borderRadius: BorderRadius.circular(14),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEF2A39),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.search_rounded, color: Colors.white, size: 18),
           ),
-          child: const Icon(Icons.search, color: Colors.white, size: 22),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
+
 
 // ─── Category Row ──────────────────────────────────────────────────────────────
 
 /// Horizontally scrollable row of animated category filter chips.
 class _CategoryRow extends StatelessWidget {
   final HomePageState state;
+  final bool isMobile;
 
-  const _CategoryRow({required this.state});
+  const _CategoryRow({
+    required this.state,
+    this.isMobile = false,
+  });
 
   String get _selectedId => state.selectedCategoryId;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 46,
+      height: 48,
       child: ListView.separated(
         physics: const BouncingScrollPhysics(),
         scrollDirection: Axis.horizontal,
@@ -462,13 +536,16 @@ class _CategoryRow extends StatelessWidget {
           final isSelected = cat.id == _selectedId;
 
           return GestureDetector(
-            // Dispatch a category change event to the BLoC when a chip is tapped.
             onTap: () =>
                 context.read<HomePageBloc>().add(CategorySelected(cat.id)),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              constraints: const BoxConstraints(minHeight: 44),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 16 : 20,
+                vertical: 10,
+              ),
               decoration: BoxDecoration(
                 color: isSelected
                     ? const Color(0xFFEF2A39)
@@ -477,7 +554,7 @@ class _CategoryRow extends StatelessWidget {
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: const Color(0xFFEF2A39).withValues(alpha: 0.2),
+                          color: const Color(0xFFEF2A39).withValues(alpha: 0.25),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -502,7 +579,7 @@ class _CategoryRow extends StatelessWidget {
                     cat.name,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: isMobile ? 13 : 14,
                       color: isSelected
                           ? Colors.white
                           : const Color(0xFF3A3A3A),
@@ -526,12 +603,14 @@ class _ProductGrid extends StatelessWidget {
   final HomePageState state;
   final double horizontalPadding;
   final int crossAxisCount;
+  final double childAspectRatio;
   final VoidCallback? onNavigateToCart;
 
   const _ProductGrid({
     required this.state,
     required this.horizontalPadding,
     required this.crossAxisCount,
+    this.childAspectRatio = 0.76,
     this.onNavigateToCart,
   });
 
@@ -589,16 +668,21 @@ class _ProductGrid extends StatelessWidget {
         sliver: SliverGrid(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            childAspectRatio: 0.76,
+            childAspectRatio: childAspectRatio,
             mainAxisSpacing: 20,
             crossAxisSpacing: 20,
           ),
           delegate: SliverChildBuilderDelegate(
-            (ctx, index) => FoodCard(
-              item: items[index],
-              index: index,
-              onNavigateToCart: onNavigateToCart,
-            ),
+            (ctx, index) {
+              final item = items[index];
+              final distance = state.distancesMap[item.sellerId];
+              return FoodCard(
+                item: item,
+                index: index,
+                onNavigateToCart: onNavigateToCart,
+                distanceKm: distance,
+              );
+            },
             childCount: items.length,
           ),
         ),
@@ -618,12 +702,14 @@ class FoodCard extends StatefulWidget {
   final FoodItem item;
   final int index;
   final VoidCallback? onNavigateToCart;
+  final double? distanceKm;
 
   const FoodCard({
     super.key,
     required this.item,
     this.index = 0,
     this.onNavigateToCart,
+    this.distanceKm,
   });
 
   @override
@@ -676,6 +762,7 @@ class _FoodCardState extends State<FoodCard> {
                     sellerId: widget.item.sellerId,
                     imageUrls: widget.item.imageUrls.isNotEmpty ? widget.item.imageUrls : null,
                     foodItem: widget.item,
+                    distanceKm: widget.distanceKm,
                   ),
                 ),
               );
@@ -694,6 +781,7 @@ class _FoodCardState extends State<FoodCard> {
                         description: widget.item.description,
                         sellerId: widget.item.sellerId,
                         foodItem: widget.item,
+                        distanceKm: widget.distanceKm,
                       ),
                 ),
               );
@@ -1108,3 +1196,770 @@ class _ProductImage extends StatelessWidget {
     );
   }
 }
+
+// ─── Location Header ───────────────────────────────────────────────────────────
+
+class _LocationHeader extends StatelessWidget {
+  final String address;
+  final bool isDesktop;
+
+  const _LocationHeader({
+    required this.address,
+    this.isDesktop = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFF0F0F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFF0F1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.location_on_rounded,
+              color: Color(0xFFEF2A39),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'DELIVER TO',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        address.isNotEmpty ? address : 'No. 12, Main Street, Central Park, City',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1C1C1C),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Color(0xFFEF2A39),
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () {
+              context.read<HomePageBloc>().add(const FetchUserLocation());
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 64, minHeight: 38),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF0F1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Change',
+                style: TextStyle(
+                  color: Color(0xFFEF2A39),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Offer Banner Carousel (2-Column Desktop Hero Section) ─────────────────────
+
+class _OfferBannerCarousel extends StatefulWidget {
+  final List<PromotionBanner> banners;
+  final bool isMobile;
+  final bool isDesktop;
+  final double maxWidth;
+
+  const _OfferBannerCarousel({
+    required this.banners,
+    this.isMobile = false,
+    this.isDesktop = false,
+    this.maxWidth = 400.0,
+  });
+
+  @override
+  State<_OfferBannerCarousel> createState() => _OfferBannerCarouselState();
+}
+
+class _OfferBannerCarouselState extends State<_OfferBannerCarousel> {
+  late final PageController _pageController;
+  int _currentIndex = 0;
+  Timer? _autoTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 1.0);
+    _autoTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (widget.banners.isEmpty || !mounted) return;
+      final nextIndex = (_currentIndex + 1) % widget.banners.length;
+      _pageController.animateToPage(
+        nextIndex,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDesktop = widget.isDesktop || MediaQuery.of(context).size.width >= 1024;
+    final double bannerHeight = isDesktop
+        ? 185.0
+        : (widget.isMobile
+            ? (widget.maxWidth * 0.48).clamp(165.0, 200.0)
+            : 190.0);
+
+    final mainHeroBanner = Column(
+      children: [
+        SizedBox(
+          height: bannerHeight,
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() => _currentIndex = index);
+            },
+            itemCount: widget.banners.isNotEmpty ? widget.banners.length : 1,
+            itemBuilder: (context, index) {
+              final banner = widget.banners.isNotEmpty
+                  ? widget.banners[index]
+                  : const PromotionBanner(
+                      id: 'BAN-DEFAULT',
+                      title: 'Free Delivery on Combos',
+                      subtitle: 'Orders above ₹299',
+                      imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80',
+                      code: 'WELCOME50',
+                      discountPercent: 50.0,
+                    );
+
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.network(
+                          banner.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: const Color(0xFF1C1C1C),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.black.withValues(alpha: 0.85),
+                              Colors.black.withValues(alpha: 0.35),
+                              Colors.transparent,
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(widget.isMobile ? 14 : 20),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('🔥 ', style: TextStyle(fontSize: 10)),
+                                  Text(
+                                    'HOT DEAL',
+                                    style: TextStyle(
+                                      color: Color(0xFF1C1C1C),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              banner.title,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: widget.isMobile ? 18 : 22,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              banner.subtitle,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF2A39),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Order Now',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Icon(Icons.arrow_forward_rounded,
+                                      color: Colors.white, size: 14),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            widget.banners.isNotEmpty ? widget.banners.length : 1,
+            (index) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: _currentIndex == index ? 18 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: _currentIndex == index
+                    ? const Color(0xFFEF2A39)
+                    : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final secondaryOfferCard = Container(
+      height: 185,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF5EE),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFD4EBE0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2E7D32).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Text(
+              'SUPER SAVER',
+              style: TextStyle(
+                color: Color(0xFF2E7D32),
+                fontWeight: FontWeight.bold,
+                fontSize: 9,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Flat 20% OFF',
+            style: TextStyle(
+              color: Color(0xFF1B4332),
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'On your first order',
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF81C784)),
+                ),
+                child: const Text(
+                  'FOODGO20',
+                  style: TextStyle(
+                    color: Color(0xFF2E7D32),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E7D32),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text(
+                  'Order Now',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (isDesktop) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 7, child: mainHeroBanner),
+          const SizedBox(width: 16),
+          Expanded(flex: 3, child: secondaryOfferCard),
+        ],
+      );
+    }
+
+    return mainHeroBanner;
+  }
+}
+
+
+// ─── Order Again Section ──────────────────────────────────────────────────────
+
+class _OrderAgainSection extends StatelessWidget {
+  final List<FoodItem> items;
+  final VoidCallback? onNavigateToCart;
+  final bool isMobile;
+  final double maxWidth;
+  final Map<String, double> distancesMap;
+
+  const _OrderAgainSection({
+    required this.items,
+    this.onNavigateToCart,
+    this.isMobile = false,
+    this.maxWidth = 400.0,
+    this.distancesMap = const {},
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final double cardWidth = isMobile
+        ? (maxWidth * 0.72).clamp(210.0, 260.0)
+        : 240.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            children: [
+              Text(
+                'Order Again 🔄',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1C1C1C),
+                ),
+              ),
+              Spacer(),
+              Text(
+                'View All >',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFFEF2A39),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 100,
+          child: ListView.builder(
+            physics: const BouncingScrollPhysics(),
+            scrollDirection: Axis.horizontal,
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return Container(
+                width: cardWidth,
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(color: const Color(0xFFF0F0F0)),
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        item.image ?? kDefaultFoodImageUrl,
+                        width: 68,
+                        height: 68,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 68,
+                          height: 68,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.fastfood, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            item.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Color(0xFF1C1C1C),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '₹${item.price.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              color: Color(0xFFEF2A39),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => DetailsPageUI(
+                                    foodItem: item,
+                                    onNavigateToCart: onNavigateToCart,
+                                    distanceKm: distancesMap[item.sellerId],
+                                  ),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              constraints: const BoxConstraints(minHeight: 32),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF0F1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Reorder',
+                                    style: TextStyle(
+                                      color: Color(0xFFEF2A39),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(width: 3),
+                                  Icon(Icons.refresh_rounded,
+                                      color: Color(0xFFEF2A39), size: 14),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+// ─── Popular Products Section ──────────────────────────────────────────────────
+
+class _PopularProductsSection extends StatelessWidget {
+  final List<FoodItem> items;
+  final VoidCallback? onNavigateToCart;
+  final bool isMobile;
+  final Map<String, double> distancesMap;
+
+  const _PopularProductsSection({
+    required this.items,
+    this.onNavigateToCart,
+    this.isMobile = false,
+    this.distancesMap = const {},
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            children: [
+              Text(
+                'Popular Dishes 🔥',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1C1C1C),
+                ),
+              ),
+              Spacer(),
+              Text(
+                'View All >',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFFEF2A39),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 180,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return Container(
+                width: 155,
+                margin: const EdgeInsets.only(right: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(color: const Color(0xFFF0F0F0)),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DetailsPageUI(
+                          foodItem: item,
+                          onNavigateToCart: onNavigateToCart,
+                          distanceKm: distancesMap[item.sellerId],
+                        ),
+                      ),
+                    );
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius:
+                            const BorderRadius.vertical(top: Radius.circular(16)),
+                        child: Image.network(
+                          item.image ?? kDefaultFoodImageUrl,
+                          height: 100,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 100,
+                            color: Colors.grey.shade200,
+                            child:
+                                const Icon(Icons.fastfood, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: Color(0xFF1C1C1C),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '₹${item.price.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFFEF2A39),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFEF2A39),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.add_rounded,
+                                      color: Colors.white, size: 14),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+

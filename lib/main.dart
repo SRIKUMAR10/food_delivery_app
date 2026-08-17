@@ -20,6 +20,21 @@ import 'repositories/firebase_coupon_repository.dart';
 import 'repositories/firebase_favorites_repository.dart';
 import 'core/repositories/i_chat_repository.dart';
 import 'repositories/firebase_chat_repository.dart';
+import 'features/seller_bloc_architecture/seller_dashboard_page/seller_dashboard_repository.dart';
+import 'core/repositories/i_seller_profile_repository.dart';
+import 'repositories/firebase_seller_profile_repository.dart';
+import 'core/repositories/i_inventory_repository.dart';
+import 'repositories/firebase_inventory_repository.dart';
+import 'core/repositories/i_seller_repository.dart';
+import 'repositories/firebase_seller_repository.dart';
+import 'core/repositories/i_app_settings_repository.dart';
+import 'repositories/firebase_app_settings_repository.dart';
+import 'core/repositories/i_rating_repository.dart';
+import 'repositories/firebase_rating_repository.dart';
+import 'core/repositories/i_buyer_notification_repository.dart';
+import 'repositories/firebase_buyer_notification_repository.dart';
+import 'core/repositories/i_seller_notification_repository.dart';
+import 'repositories/firebase_seller_notification_repository.dart';
 
 import 'features/buyer_bloc_architecture/CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import 'features/buyer_bloc_architecture/onboarding_page/onboarding_page_UI.dart';
@@ -71,6 +86,14 @@ class MyApp extends StatelessWidget {
   final IUserProfileRepository? userProfileRepository;
   final IOrderRepository? orderRepository;
   final IChatRepository? chatRepository;
+  final SellerDashboardRepository? sellerDashboardRepository;
+  final ISellerProfileRepository? sellerProfileRepository;
+  final IInventoryRepository? inventoryRepository;
+  final ISellerRepository? sellerRepository;
+  final IAppSettingsRepository? appSettingsRepository;
+  final IRatingRepository? ratingRepository;
+  final IBuyerNotificationRepository? buyerNotificationRepository;
+  final ISellerNotificationRepository? sellerNotificationRepository;
 
   const MyApp({
     super.key,
@@ -81,6 +104,14 @@ class MyApp extends StatelessWidget {
     this.userProfileRepository,
     this.orderRepository,
     this.chatRepository,
+    this.sellerDashboardRepository,
+    this.sellerProfileRepository,
+    this.inventoryRepository,
+    this.sellerRepository,
+    this.appSettingsRepository,
+    this.ratingRepository,
+    this.buyerNotificationRepository,
+    this.sellerNotificationRepository,
   });
 
   @override
@@ -92,6 +123,20 @@ class MyApp extends StatelessWidget {
     final effectiveProductRepo = FirebaseProductRepository();
     final effectiveCategoryRepo = CategoryRepository();
     final effectiveChatRepo = chatRepository ?? FirebaseChatRepository();
+    final effectiveSellerDashboardRepo =
+        sellerDashboardRepository ?? FirebaseSellerDashboardRepository();
+    final effectiveSellerProfileRepo =
+        sellerProfileRepository ?? FirebaseSellerProfileRepository();
+    final effectiveInventoryRepo =
+        inventoryRepository ?? FirebaseInventoryRepository();
+    final effectiveSellerRepo = sellerRepository ?? FirebaseSellerRepository();
+    final effectiveAppSettingsRepo =
+        appSettingsRepository ?? FirebaseAppSettingsRepository();
+    final effectiveRatingRepo = ratingRepository ?? FirebaseRatingRepository();
+    final effectiveBuyerNotificationRepo =
+        buyerNotificationRepository ?? FirebaseBuyerNotificationRepository();
+    final effectiveSellerNotificationRepo =
+        sellerNotificationRepository ?? FirebaseSellerNotificationRepository();
 
     return MultiRepositoryProvider(
       providers: [
@@ -107,6 +152,26 @@ class MyApp extends StatelessWidget {
           value: effectiveCategoryRepo,
         ),
         RepositoryProvider<IChatRepository>.value(value: effectiveChatRepo),
+        RepositoryProvider<SellerDashboardRepository>.value(
+          value: effectiveSellerDashboardRepo,
+        ),
+        RepositoryProvider<ISellerProfileRepository>.value(
+          value: effectiveSellerProfileRepo,
+        ),
+        RepositoryProvider<IInventoryRepository>.value(
+          value: effectiveInventoryRepo,
+        ),
+        RepositoryProvider<ISellerRepository>.value(value: effectiveSellerRepo),
+        RepositoryProvider<IAppSettingsRepository>.value(
+          value: effectiveAppSettingsRepo,
+        ),
+        RepositoryProvider<IRatingRepository>.value(value: effectiveRatingRepo),
+        RepositoryProvider<IBuyerNotificationRepository>.value(
+          value: effectiveBuyerNotificationRepo,
+        ),
+        RepositoryProvider<ISellerNotificationRepository>.value(
+          value: effectiveSellerNotificationRepo,
+        ),
       ],
       child: MultiBlocProvider(
         providers: [

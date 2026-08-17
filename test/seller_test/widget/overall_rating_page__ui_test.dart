@@ -31,14 +31,17 @@ void main() {
             'rating': 5.0,
             'content': 'Great food and fast delivery!',
             'date': '2024-05-01T00:00:00.000',
+            'customerId': 'cust_1',
+            'productName': 'Paneer Tikka',
           },
         ],
       };
     }
 
-    testWidgets('shows loading skeleton while data is being loaded', (tester) async {
-      when(() => mockService.fetchRatingsAndReviews())
-          .thenAnswer((_) async => buildPayload());
+    testWidgets('shows loading skeleton while data is being loaded',
+        (tester) async {
+      when(() => mockService.watchRatingsAndReviews())
+          .thenAnswer((_) => Stream.value(buildPayload()));
 
       await tester.pumpWidget(createWidgetUnderTest());
       await tester.pump();
@@ -47,28 +50,32 @@ void main() {
     });
 
     testWidgets('shows rating data when state is Loaded', (tester) async {
-      when(() => mockService.fetchRatingsAndReviews())
-          .thenAnswer((_) async => buildPayload());
+      tester.view.physicalSize = const Size(800, 1800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      when(() => mockService.watchRatingsAndReviews())
+          .thenAnswer((_) => Stream.value(buildPayload()));
 
       await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       expect(find.text('Overall Rating'), findsOneWidget);
       expect(find.text('4.8'), findsOneWidget);
       expect(find.text('(1 reviews)'), findsOneWidget);
       expect(find.text('Mike Ross'), findsOneWidget);
       expect(find.text('Great food and fast delivery!'), findsOneWidget);
-      expect(find.text('View All Reviews'), findsOneWidget);
+      expect(find.text('Rating Breakdown'), findsOneWidget);
+      expect(find.text('Customer Reviews'), findsOneWidget);
     });
 
     testWidgets('shows error message when state is Error', (tester) async {
-      when(() => mockService.fetchRatingsAndReviews())
-          .thenThrow(Exception('Network Failure'));
+      when(() => mockService.watchRatingsAndReviews())
+          .thenAnswer((_) => Stream.error(Exception('Network Failure')));
 
       await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       expect(find.textContaining('Network Failure'), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);

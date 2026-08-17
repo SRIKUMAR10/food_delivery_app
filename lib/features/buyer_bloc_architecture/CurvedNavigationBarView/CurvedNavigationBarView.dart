@@ -74,8 +74,15 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
       ),
       _buildTabNavigator(
         3,
-        () => OrderPageUI(orderRepository: context.read<IOrderRepository>()),
+        () => OrderPageUI(
+          orderRepository: context.read<IOrderRepository>(),
+          onNavigateToCart: _navigateToCart,
+          onNavigateToHome: () {
+            if (mounted) setState(() => _selectedIndex = 0);
+          },
+        ),
       ),
+
       _buildTabNavigator(
         4,
         () => BuyerChatPage(pendingOrderData: _pendingSupportData),
@@ -179,7 +186,7 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
+    final bool isDesktop = MediaQuery.of(context).size.width >= 1024;
 
     final Widget bodyContent = PopScope(
       canPop: false,
@@ -204,95 +211,132 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
 
     if (isDesktop) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF8F9FB),
+        backgroundColor: const Color(0xFFF9FAFC),
         body: Row(
           children: [
             Expanded(child: bodyContent),
             Container(
-              width: 100,
+              width: 110,
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 4,
-                    offset: const Offset(-2, 0),
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: NavigationRail(
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: _onTabSelected,
-                labelType: NavigationRailLabelType.all,
-                backgroundColor: Colors.white,
-                selectedIconTheme: const IconThemeData(
-                  color: Color(0xFFE52121),
-                ),
-                unselectedIconTheme: const IconThemeData(
-                  color: Color(0xFF94A3B8),
-                ),
-                selectedLabelTextStyle: const TextStyle(
-                  color: Color(0xFFE52121),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                ),
-                unselectedLabelTextStyle: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
-                ),
-                indicatorColor: const Color(0xFFE52121).withValues(alpha: 0.1),
-                indicatorShape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                minWidth: 80,
-                groupAlignment: 0.0,
-                leading: Padding(
-                  padding: const EdgeInsets.only(top: 16, bottom: 8),
-                  child: Container(
-                    width: 44,
-                    height: 44,
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildDesktopNavItem(
+                            icon: Icons.home_rounded,
+                            label: 'Home',
+                            index: 0,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildDesktopNavItem(
+                            icon: Icons.account_balance_wallet_outlined,
+                            label: 'Wallet',
+                            index: 1,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildDesktopNavItem(
+                            icon: Icons.shopping_cart_outlined,
+                            label: 'Cart',
+                            index: 2,
+                            badgeCount: 3,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildDesktopNavItem(
+                            icon: Icons.receipt_long_outlined,
+                            label: 'Orders',
+                            index: 3,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildDesktopNavItem(
+                            icon: Icons.local_offer_outlined,
+                            label: 'Offers',
+                            index: 0,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildDesktopNavItem(
+                            icon: Icons.support_agent_outlined,
+                            label: 'Support',
+                            index: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Bottom Refer & Earn Promo Card
+                  Container(
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE52121).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(14),
+                      color: const Color(0xFFFFF0F1),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(
-                      Icons.restaurant_rounded,
-                      color: Color(0xFFE52121),
-                      size: 24,
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.card_giftcard_rounded,
+                          color: Color(0xFFEF2A39),
+                          size: 24,
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Refer & Earn',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1C1C1C),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Invite friends &\nget ₹100',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: const Text(
+                            'Invite Now',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFEF2A39),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-                destinations: const [
-                  NavigationRailDestination(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    icon: Icon(Icons.home_outlined),
-                    selectedIcon: Icon(Icons.home_rounded),
-                    label: Text('Home'),
-                  ),
-                  NavigationRailDestination(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    icon: Icon(Icons.account_balance_wallet_outlined),
-                    selectedIcon: Icon(Icons.account_balance_wallet_rounded),
-                    label: Text('Wallet'),
-                  ),
-                  NavigationRailDestination(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    icon: Icon(Icons.shopping_cart_outlined),
-                    selectedIcon: Icon(Icons.shopping_cart_rounded),
-                    label: Text('Cart'),
-                  ),
-                  NavigationRailDestination(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    icon: Icon(Icons.receipt_long_outlined),
-                    selectedIcon: Icon(Icons.receipt_long_rounded),
-                    label: Text('Orders'),
-                  ),
-                  NavigationRailDestination(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    icon: Icon(Icons.support_agent_outlined),
-                    selectedIcon: Icon(Icons.support_agent_rounded),
-                    label: Text('Support'),
                   ),
                 ],
               ),
@@ -301,6 +345,7 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
         ),
       );
     }
+
 
     return Scaffold(
       backgroundColor: const Color(0xFFFBF5F5),
@@ -350,4 +395,70 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
       ],
     );
   }
+
+  Widget _buildDesktopNavItem({
+    required IconData icon,
+    required String label,
+    required int index,
+    int badgeCount = 0,
+  }) {
+    final bool isSelected = _selectedIndex == index;
+    final color = isSelected ? const Color(0xFFEF2A39) : Colors.grey.shade600;
+
+    return InkWell(
+      onTap: () => _onTabSelected(index),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 80,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: isSelected
+            ? BoxDecoration(
+                color: const Color(0xFFFFF0F1),
+                borderRadius: BorderRadius.circular(16),
+              )
+            : null,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, size: 24, color: color),
+                if (badgeCount > 0)
+                  Positioned(
+                    top: -4,
+                    right: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF2A39),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$badgeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+

@@ -23,6 +23,7 @@ void main() {
       mockAuthService = MockIAuthService();
 
       when(() => mockAuthService.currentUserId).thenReturn('user123');
+      when(() => mockAuthService.ensureTokenReady()).thenAnswer((_) async {});
     });
 
     blocTest<OrderBloc, OrderState>(

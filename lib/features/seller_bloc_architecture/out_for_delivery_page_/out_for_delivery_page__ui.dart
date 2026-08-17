@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'out_for_delivery_page__bloc.dart';
 import 'out_for_delivery_page__event.dart';
 import 'out_for_delivery_page__state.dart';
+import '../chat_support_page_/chat_support_page_ui.dart';
 
 class OutForDeliveryPageUI extends StatelessWidget {
   final String orderId;
@@ -89,7 +91,7 @@ class _OutForDeliveryView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDriverProfile(context, state.rider),
+                    _buildDriverProfile(context, state.rider, state.orderId),
                     const SizedBox(height: 24),
                     _buildMapPlaceholder(),
                     const SizedBox(height: 24),
@@ -107,7 +109,7 @@ class _OutForDeliveryView extends StatelessWidget {
     );
   }
 
-  Widget _buildDriverProfile(BuildContext context, RiderDetails rider) {
+  Widget _buildDriverProfile(BuildContext context, RiderDetails rider, String orderId) {
     return Row(
       children: [
         CircleAvatar(
@@ -146,7 +148,22 @@ class _OutForDeliveryView extends StatelessWidget {
         const SizedBox(width: 12),
         _buildActionButton(
           icon: Icons.chat_bubble_outline,
-          onTap: () => context.read<OutForDeliveryPageBloc>().add(MessageRider(riderId: rider.id)),
+          onTap: () {
+            final sellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChatSupportPage(
+                  sellerId: sellerId,
+                  initialOrderId: orderId,
+                  targetRole: 'delivery_partner',
+                  partnerId: rider.id,
+                  partnerName: rider.name,
+                  partnerPhone: rider.phone,
+                ),
+              ),
+            );
+          },
         ),
       ],
     );

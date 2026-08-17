@@ -41,6 +41,9 @@ class DeliveryChatService implements DeliveryChatServiceBase {
 
   @override
   Future<void> markMessagesRead(String conversationId, String riderId) async {
-    await chatRepository.markConversationRead(conversationId, riderId, true);
+    await chatRepository.markMessagesAsRead(
+      conversationId: conversationId,
+      readerId: riderId,
+    );
   }
 }

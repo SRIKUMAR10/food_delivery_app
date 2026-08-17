@@ -17,10 +17,19 @@ import '../inventory_low_stock/inventory_low_stock_page_ui.dart';
 import '../seller_analytics_page/seller_analytics_page__bloc.dart';
 import '../seller_analytics_page/seller_analytics_repository.dart';
 import '../product_list_page_/product_list_page__ui.dart';
+import '../seller_payment_page/seller_payment_page_ui.dart';
+import '../seller_notifications/seller_notification_ui.dart';
 import '../../../../core/services/notification_service.dart';
 
 class SellerDashboardPageUI extends StatefulWidget {
-  const SellerDashboardPageUI({Key? key}) : super(key: key);
+  final SellerDashboardRepository? repository;
+  final SellerDashboardPageBloc? bloc;
+
+  const SellerDashboardPageUI({
+    Key? key,
+    this.repository,
+    this.bloc,
+  }) : super(key: key);
 
   @override
   State<SellerDashboardPageUI> createState() => _SellerDashboardPageUIState();
@@ -35,7 +44,11 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
   @override
   void initState() {
     super.initState();
-    NotificationService().initialize();
+    try {
+      NotificationService().initialize();
+    } catch (e) {
+      debugPrint('NotificationService initialization note: $e');
+    }
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -59,72 +72,107 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
     super.dispose();
   }
 
+  SellerDashboardPageBloc? _tryGetBloc(BuildContext context) {
+    try {
+      return BlocProvider.of<SellerDashboardPageBloc>(context, listen: false);
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
+    if (widget.bloc != null) {
+      return BlocProvider<SellerDashboardPageBloc>.value(
+        value: widget.bloc!,
+        child: _buildScaffold(context),
+      );
+    }
+
+    final existingBloc = _tryGetBloc(context);
+    if (existingBloc != null) {
+      return _buildScaffold(context);
+    }
+
+    SellerDashboardRepository repo;
+    if (widget.repository != null) {
+      repo = widget.repository!;
+    } else {
+      try {
+        repo = context.read<SellerDashboardRepository>();
+      } catch (_) {
+        repo = FirebaseSellerDashboardRepository();
+      }
+    }
+
+    return BlocProvider<SellerDashboardPageBloc>(
       create: (context) => SellerDashboardPageBloc(
-        repository: context.read<SellerDashboardRepository>(),
+        repository: repo,
       )..add(LoadDashboardData()),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA),
-        body: _ResponsiveContainer(
-          child: SafeArea(
-            child:
-                BlocConsumer<SellerDashboardPageBloc, SellerDashboardPageState>(
-                  listener: (context, state) {
-                    if (state is SellerDashboardLoaded) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          _animationController.forward();
-                        }
-                      });
-                    } else if (state is SellerDashboardError) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(state.message)));
-                    }
-                  },
-                  builder: (context, state) {
-                    if (state is SellerDashboardLoading ||
-                        state is SellerDashboardInitial) {
-                      return const _DashboardSkeletonLoader();
-                    } else if (state is SellerDashboardLoaded) {
-                      return RefreshIndicator(
-                        onRefresh: () async {
-                          context.read<SellerDashboardPageBloc>().add(
-                            RefreshDashboardData(),
-                          );
-                        },
-                        child: FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: SlideTransition(
-                            position: _slideAnimation,
-                            child: _buildDashboardContent(context, state.data),
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: _ResponsiveContainer(
+        child: SafeArea(
+          child:
+              BlocConsumer<SellerDashboardPageBloc, SellerDashboardPageState>(
+                listener: (context, state) {
+                  if (state is SellerDashboardLoaded) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        _animationController.forward();
+                      }
+                    });
+                  } else if (state is SellerDashboardError) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(state.message)));
+                  }
+                },
+                builder: (context, state) {
+                  if (state is SellerDashboardLoading ||
+                      state is SellerDashboardInitial) {
+                    return const _DashboardSkeletonLoader();
+                  } else if (state is SellerDashboardLoaded) {
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        context.read<SellerDashboardPageBloc>().add(
+                          RefreshDashboardData(),
+                        );
+                      },
+                      child: FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: _buildDashboardContent(context, state.data),
+                        ),
+                      ),
+                    );
+                  } else if (state is SellerDashboardError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(state.message),
+                          ElevatedButton(
+                            onPressed: () {
+                              context.read<SellerDashboardPageBloc>().add(
+                                LoadDashboardData(),
+                              );
+                            },
+                            child: const Text('Retry'),
                           ),
-                        ),
-                      );
-                    } else if (state is SellerDashboardError) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(state.message),
-                            ElevatedButton(
-                              onPressed: () {
-                                context.read<SellerDashboardPageBloc>().add(
-                                  LoadDashboardData(),
-                                );
-                              },
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
         ),
       ),
     );
@@ -156,13 +204,11 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                       title: 'Good Morning, ${data.storeName} 👋',
                       notificationCount: data.newOrdersCount,
                       onNotificationTap: () {
-                        try {
-                          context.read<SellerNavigationBarViewPageBloc>().add(TabChangedEvent(1));
-                          context.read<OrdersListBloc>().add(FilterOrders('New'));
-                        } catch (e) {
-                          // Blocs might not be available if not in the correct context hierarchy,
-                          // but SellerNavigationBarViewPageUI provides them.
-                        }
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SellerNotificationPageUI(),
+                          ),
+                        );
                       },
                     ),
                     const SizedBox(height: 24),
@@ -298,7 +344,14 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                   iconColor: const Color(0xFF10B981),
                                   bgColor: const Color(0xFFECFDF5),
                                   subtitle: 'Earned today',
-                                  onTap: () {},
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const SellerPaymentPage(),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -373,7 +426,14 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                                     iconColor: const Color(0xFF10B981),
                                     bgColor: const Color(0xFFECFDF5),
                                     subtitle: 'Earned today',
-                                    onTap: () {},
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const SellerPaymentPage(),
+                                        ),
+                                      );
+                                    },
                                   ),
                                   _buildStatCard(
                                     width: constraints.maxWidth / 2 - 8,

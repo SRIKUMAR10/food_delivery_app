@@ -149,27 +149,7 @@ class UserRepository {
     final trimmedEmail = email.trim();
     final trimmedPassword = password.trim();
 
-    // 0. Verify Firestore document password if present in buyer_user
-    try {
-      final snap = await _userCollection.buyerUserCollection
-          .where('email', isEqualTo: trimmedEmail)
-          .limit(1)
-          .get();
-      if (snap.docs.isNotEmpty) {
-        final data = snap.docs.first.data() as Map<String, dynamic>?;
-        final storedPassword = data?['password']?.toString().trim();
-        if (storedPassword != null && storedPassword.isNotEmpty) {
-          if (storedPassword != trimmedPassword) {
-            throw Exception('Password is incorrect. Please try again.');
-          }
-        }
-      }
-    } catch (e) {
-      if (e.toString().contains('Password is incorrect') || e.toString().contains('Incorrect password')) {
-        rethrow;
-      }
-    }
-
+    // 1. Primary Authentication: Try Firebase Auth directly FIRST
     try {
       final credential = await _auth.signInWithEmailAndPassword(
         email: trimmedEmail,
@@ -183,61 +163,193 @@ class UserRepository {
         );
       }
       return credential;
-    } catch (e) {
-      if (e is FirebaseAuthException && (e.code == 'wrong-password' || e.code == 'invalid-credential')) {
-        throw Exception('Password is incorrect. Please try again.');
+    } on FirebaseAuthException catch (e) {
+      debugPrint('signInWithEmailAndPassword FirebaseAuthException: ${e.code} - ${e.message}');
+      if (e.code == 'wrong-password' ||
+          e.code == 'invalid-credential' ||
+          e.code == 'INVALID_LOGIN_CREDENTIALS' ||
+          e.code == 'wrong_password' ||
+          e.code == 'invalid_credential') {
+        throw Exception('Incorrect password. Please try again.');
       }
-      debugPrint('signInWithEmailAndPassword note ($e), attempting customLogin fallback...');
-      try {
-        final callable = FirebaseFunctions.instance.httpsCallable('customLogin');
-        final response = await callable.call({
-          'identifier': trimmedEmail,
-          'email': trimmedEmail,
-          'password': trimmedPassword,
-          'role': 'user',
-          'targetRole': 'user',
-        });
 
-        final data = Map<String, dynamic>.from(response.data as Map);
-        final customToken = data['customToken'] as String?;
-
-        if (customToken != null && customToken.isNotEmpty) {
-          final credential = await _auth.signInWithCustomToken(customToken);
-          if (credential.user != null) {
-            await syncUserProfile(
-              uid: credential.user!.uid,
-              email: trimmedEmail,
-              name: credential.user!.displayName ?? '',
-            );
-          }
-          return credential;
+      if (e.code == 'user-not-found') {
+        final isRegistered = await _doesEmailExistInAuth(trimmedEmail);
+        if (!isRegistered) {
+          throw Exception('No registered buyer account found for "$trimmedEmail". Please sign up.');
         }
-      } on FirebaseFunctionsException catch (fe) {
-        throw Exception(fe.message ?? 'Password is incorrect. Please try again.');
-      } catch (ce) {
-        debugPrint('customLogin fallback note: $ce');
+        throw Exception('Incorrect password. Please try again.');
       }
 
-      if (e is FirebaseAuthException && e.code == 'account-exists-with-different-credential') {
+      if (e.code == 'account-exists-with-different-credential') {
         throw Exception(
             'An account with this email exists but uses a different sign-in method. Please sign in with that method to link your account.');
       }
-      throw Exception('Password is incorrect. Please try again.');
+    } catch (e) {
+      debugPrint('signInWithEmailAndPassword note ($e), attempting customLogin fallback...');
     }
+
+    // 2. Secondary Authentication Fallback: customLogin Cloud Function
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('customLogin');
+      final response = await callable.call({
+        'identifier': trimmedEmail,
+        'email': trimmedEmail,
+        'password': trimmedPassword,
+        'role': 'user',
+        'targetRole': 'user',
+      });
+
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final customToken = data['customToken'] as String?;
+
+      if (customToken != null && customToken.isNotEmpty) {
+        final credential = await _auth.signInWithCustomToken(customToken);
+        if (credential.user != null) {
+          await syncUserProfile(
+            uid: credential.user!.uid,
+            email: trimmedEmail,
+            name: credential.user!.displayName ?? '',
+          );
+        }
+        return credential;
+      }
+    } on FirebaseFunctionsException catch (fe) {
+      debugPrint('customLogin FirebaseFunctionsException in signIn: ${fe.code} - ${fe.message}');
+      if (fe.code == 'unauthenticated' ||
+          (fe.message != null && (fe.message!.contains('Password is incorrect') || fe.message!.contains('incorrect')))) {
+        throw Exception('Incorrect password. Please try again.');
+      }
+    } catch (ce) {
+      debugPrint('customLogin fallback note: $ce');
+    }
+
+    // Final fallback check: If email is not registered in Firestore, notify user to sign up
+    final existsInAuth = await _doesEmailExistInAuth(trimmedEmail);
+    if (!existsInAuth) {
+      throw Exception('No registered buyer account found for "$trimmedEmail". Please sign up.');
+    }
+
+    throw Exception('Incorrect password. Please try again.');
   }
 
   Future<bool> _doesEmailExistInAuth(String email) async {
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('buyer_user')
-          .where('email', isEqualTo: email)
-          .limit(1)
-          .get()
-          .timeout(const Duration(seconds: 2));
-      return snap.docs.isNotEmpty;
+      String lookup = email;
+      if (email.endsWith('@foodgo.app')) {
+        lookup = email.replaceAll('@foodgo.app', '');
+      }
+
+      final digitsOnly = lookup.replaceAll(RegExp(r'\D'), '');
+      final variants = <String>{
+        lookup,
+        digitsOnly,
+        if (digitsOnly.length == 10) '+91$digitsOnly',
+        if (digitsOnly.length == 10) '+91 $digitsOnly',
+      }.toList();
+
+      final results = await Future.wait([
+        _userCollection.buyerUserCollection
+            .where('phone', whereIn: variants)
+            .limit(1)
+            .get(),
+        _userCollection.buyerUserCollection
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('users')
+            .where('phone', whereIn: variants)
+            .limit(1)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get(),
+      ]).timeout(const Duration(seconds: 3));
+
+      return results.any((snap) => snap.docs.isNotEmpty);
     } catch (e) {
       return false;
     }
+  }
+
+  Future<bool> _isAccountRegistered(String identifier, DocumentSnapshot? userDoc) async {
+    if (userDoc != null && userDoc.exists) return true;
+
+    final trimmed = identifier.trim();
+    if (trimmed.isEmpty) return false;
+
+    if (trimmed.contains('@')) {
+      return await _doesEmailExistInAuth(trimmed);
+    }
+
+    final digitsOnly = trimmed.replaceAll(RegExp(r'\D'), '');
+    final variants = <String>{
+      trimmed,
+      digitsOnly,
+      '+91 $digitsOnly',
+      '+91$digitsOnly',
+      if (digitsOnly.length == 10) '+91 $digitsOnly',
+      if (digitsOnly.length == 10) '+91$digitsOnly',
+      if (digitsOnly.length > 10 && digitsOnly.startsWith('91'))
+        digitsOnly.substring(2),
+      if (digitsOnly.length == 10) '91$digitsOnly',
+      if (digitsOnly.length == 10) '0$digitsOnly',
+    }.toList();
+
+    try {
+      final results = await Future.wait([
+        _userCollection.buyerUserCollection
+            .where('phone', whereIn: variants)
+            .limit(1)
+            .get(),
+        _userCollection.buyerUserCollection
+            .where('mobileNumber', whereIn: variants)
+            .limit(1)
+            .get(),
+        _userCollection.buyerUserCollection
+            .where('phoneNumber', whereIn: variants)
+            .limit(1)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('users')
+            .where('phone', whereIn: variants)
+            .limit(1)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('users')
+            .where('mobileNumber', whereIn: variants)
+            .limit(1)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('users')
+            .where('phoneNumber', whereIn: variants)
+            .limit(1)
+            .get(),
+      ]).timeout(const Duration(seconds: 3));
+
+      if (results.any((snap) => snap.docs.isNotEmpty)) {
+        return true;
+      }
+    } catch (e) {
+      debugPrint('_isAccountRegistered query note: $e');
+    }
+
+    final isPhoneReg = await isBuyerPhoneRegistered(trimmed);
+    if (isPhoneReg) return true;
+
+    final isBuyerCollPhoneReg = await _userCollection.isPhoneInBuyerCollection(trimmed);
+    if (isBuyerCollPhoneReg) return true;
+
+    if (digitsOnly.isNotEmpty) {
+      final targetEmail = digitsOnly.length == 10 ? '+91$digitsOnly@foodgo.app' : '$digitsOnly@foodgo.app';
+      final existsInAuth = await _doesEmailExistInAuth(targetEmail);
+      if (existsInAuth) return true;
+    }
+
+    return false;
   }
 
   /// Sign in using either Phone Number or Email + Password
@@ -266,7 +378,7 @@ class UserRepository {
       if (digitsOnly.length == 10) '0$digitsOnly',
     }.toList();
 
-    // 0. Verify Firestore buyer_user / users document and password across fields (phone, mobileNumber, phoneNumber) in parallel
+    // STEP 1: Registration Check - verify Firestore buyer_user / users document and registration
     DocumentSnapshot? userDoc;
     try {
       final results = await Future.wait([
@@ -309,6 +421,9 @@ class UserRepository {
       debugPrint('Firestore phone lookup note: $e');
     }
 
+    final isRegistered = await _isAccountRegistered(trimmed, userDoc);
+
+    // STEP 2: Password Verification - verify stored password in userDoc if available
     if (userDoc != null) {
       final data = userDoc.data() as Map<String, dynamic>?;
       final storedPassword = data?['password']?.toString().trim();
@@ -319,7 +434,7 @@ class UserRepository {
       }
     }
 
-    // 1. Primary Authentication: Call Cloud Function customLogin
+    // 2a. Primary Authentication: Call Cloud Function customLogin
     try {
       final cleanPhone = trimmed.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
       final formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : '+91$cleanPhone';
@@ -348,28 +463,18 @@ class UserRepository {
       }
     } on FirebaseFunctionsException catch (e) {
       debugPrint('customLogin FirebaseFunctionsException: ${e.code} - ${e.message}');
-      if (e.code == 'unauthenticated' || (e.message != null && (e.message!.contains('Password is incorrect') || e.message!.contains('incorrect')))) {
+      if (e.code == 'unauthenticated' ||
+          (e.message != null && (e.message!.contains('Password is incorrect') || e.message!.contains('incorrect')))) {
         throw Exception('Incorrect password. Please try again.');
       }
-      if (e.code == 'not-found' || (e.message != null && e.message!.contains('No registered account'))) {
-        if (userDoc != null) {
-          throw Exception('Incorrect password. Please try again.');
-        } else {
-          throw Exception('No registered buyer account found for "$trimmed". Please sign up.');
-        }
-      }
-      if (e.code == 'internal' || e.code == 'INTERNAL' || e.message == 'INTERNAL' || e.message == 'internal' || e.code == 'unavailable') {
-        if (userDoc != null) {
-          throw Exception('Incorrect password. Please try again.');
-        }
-        debugPrint('customLogin internal error, falling back to candidate sign-in...');
-      } else {
-        throw Exception(e.message ?? (userDoc != null ? 'Incorrect password. Please try again.' : 'No registered buyer account found for "$trimmed". Please sign up.'));
+      if (e.code == 'not-found' || e.code == 'internal' || e.code == 'INTERNAL' || e.code == 'unavailable') {
+        debugPrint('customLogin note (${e.code}), falling back to candidate sign-in...');
       }
     } catch (e) {
       debugPrint('customLogin Cloud Function error, attempting fallback: $e');
     }
 
+    // 2b. Fallback: Candidate email sign-in
     final candidates = <String>[];
     if (userDoc != null) {
       final data = userDoc.data() as Map<String, dynamic>?;
@@ -386,7 +491,6 @@ class UserRepository {
     }
 
     final uniqueCandidates = candidates.toSet().toList();
-    bool hadWrongPassword = false;
 
     for (final targetEmail in uniqueCandidates) {
       try {
@@ -403,28 +507,26 @@ class UserRepository {
         }
         return credential;
       } on FirebaseAuthException catch (e) {
-        if (e.code == 'wrong-password') {
-          hadWrongPassword = true;
-        } else if (e.code == 'invalid-credential') {
-          if (userDoc != null) {
-            hadWrongPassword = true;
-          } else {
-            final existsInAuth = await _doesEmailExistInAuth(targetEmail);
-            if (existsInAuth) {
-              hadWrongPassword = true;
-            }
-          }
+        debugPrint('Candidate sign-in FirebaseAuthException: ${e.code} - ${e.message}');
+        if (e.code == 'wrong-password' ||
+            e.code == 'invalid-credential' ||
+            e.code == 'INVALID_LOGIN_CREDENTIALS' ||
+            e.code == 'wrong_password' ||
+            e.code == 'invalid_credential') {
+          throw Exception('Incorrect password. Please try again.');
         }
       } catch (e) {
         debugPrint('Candidate sign-in note: $e');
       }
     }
 
-    if (hadWrongPassword || userDoc != null) {
-      throw Exception('Incorrect password. Please try again.');
+    // If account is confirmed not registered after all auth attempts fail:
+    if (!isRegistered) {
+      throw Exception('No registered buyer account found for "$trimmed". Please sign up.');
     }
 
-    throw Exception('No registered buyer account found for "$trimmed". Please sign up.');
+    // Since account IS registered, but password verification failed across all attempts:
+    throw Exception('Incorrect password. Please try again.');
   }
 
   /// Google Sign-In with Firestore Profile synchronization

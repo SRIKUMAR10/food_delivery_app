@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
 /// Centralized utility for converting raw exceptions, Firebase errors,
@@ -36,54 +35,26 @@ class AppExceptionFormatter {
     final lower = rawMessage.toLowerCase();
     final lowerCode = code.toLowerCase();
 
-    // 0. Cloud Functions / Internal Errors & Raw Exception interceptor
-    if (lowerCode == 'internal' ||
-        lower == 'internal' ||
-        lower.contains('exception: internal') ||
-        lower.contains('firebasefunctionsexception: internal') ||
-        lower.contains('[firebase_functions/internal]') ||
-        lower.contains('internal error')) {
-      if (lower.contains('phone') || lower.contains('mobile')) {
-        return 'Please enter a valid phone number.';
-      }
-      if (lower.contains('password') || lower.contains('incorrect')) {
-        return 'Incorrect password. Please try again.';
-      }
-      if (lower.contains('not-found') || lower.contains('no registered')) {
-        return 'Mobile number or email is not registered. Please sign up.';
-      }
-      return 'Authentication failed. Please check your mobile number or password and try again.';
-    }
-
-    // 1. Connection & Timeout Errors
-    if (code.contains('deadline-exceeded') ||
-        lower.contains('deadline-exceeded') ||
-        lower.contains('timed out') ||
-        lower.contains('timeout')) {
-      return 'Connection timed out. Please check your network and try again.';
-    }
-
-    // 2. Network & Server Errors
-    if (code.contains('network-request-failed') ||
-        code.contains('unavailable') ||
-        lower.contains('socketexception') ||
-        lower.contains('failed to connect') ||
-        lower.contains('network error')) {
-      return 'Network connection error. Please check your internet connection.';
-    }
-
-    // 3. Password Errors
-    if (code.contains('wrong-password') ||
-        code.contains('invalid-credential') ||
-        code.contains('invalid-password') ||
-        code.contains('wrong_password') ||
-        code.contains('invalid_credential') ||
-        code.contains('wrong-credential') ||
+    // 0. Password & Credential Errors (Checked FIRST for Auth failures)
+    if (lowerCode.contains('wrong-password') ||
+        lowerCode.contains('invalid-credential') ||
+        lowerCode.contains('invalid-password') ||
+        lowerCode.contains('wrong_password') ||
+        lowerCode.contains('invalid_credential') ||
+        lowerCode.contains('wrong-credential') ||
+        lowerCode.contains('invalid_login_credentials') ||
+        lowerCode.contains('invalid-login-credentials') ||
+        lowerCode.contains('invalid_credentials') ||
+        lowerCode.contains('invalid-credentials') ||
         lower.contains('password is incorrect') ||
         lower.contains('wrong password') ||
         lower.contains('incorrect password') ||
         lower.contains('invalid-credential') ||
         lower.contains('invalid_credential') ||
+        lower.contains('invalid_login_credentials') ||
+        lower.contains('invalid-login-credentials') ||
+        lower.contains('invalid_credentials') ||
+        lower.contains('invalid-credentials') ||
         lower.contains('wrong-password') ||
         lower.contains('wrong_password') ||
         lower.contains('invalid password') ||
@@ -100,6 +71,46 @@ class AppExceptionFormatter {
                 lower.contains('wrong') ||
                 lower.contains('failed')))) {
       return 'Incorrect password. Please try again.';
+    }
+
+    // 1. Cloud Functions / Internal Errors & Raw Exception interceptor
+    if (lowerCode == 'internal' ||
+        lower == 'internal' ||
+        lower.contains('exception: internal') ||
+        lower.contains('firebasefunctionsexception: internal') ||
+        lower.contains('[firebase_functions/internal]') ||
+        lower.contains('internal error')) {
+      if (lower.contains('phone') || lower.contains('mobile')) {
+        return 'Please enter a valid phone number.';
+      }
+      if (lower.contains('password') ||
+          lower.contains('incorrect') ||
+          lower.contains('credential') ||
+          lower.contains('invalid_login_credentials') ||
+          lower.contains('invalid-login-credentials')) {
+        return 'Incorrect password. Please try again.';
+      }
+      if (lower.contains('not-found') || lower.contains('no registered')) {
+        return 'Mobile number or email is not registered. Please sign up.';
+      }
+      return 'Authentication failed. Please check your mobile number or password and try again.';
+    }
+
+    // 2. Connection & Timeout Errors
+    if (code.contains('deadline-exceeded') ||
+        lower.contains('deadline-exceeded') ||
+        lower.contains('timed out') ||
+        lower.contains('timeout')) {
+      return 'Connection timed out. Please check your network and try again.';
+    }
+
+    // 3. Network & Server Errors
+    if (code.contains('network-request-failed') ||
+        code.contains('unavailable') ||
+        lower.contains('socketexception') ||
+        lower.contains('failed to connect') ||
+        lower.contains('network error')) {
+      return 'Network connection error. Please check your internet connection.';
     }
 
     // 4. User Account / Search Errors

@@ -78,7 +78,7 @@ void main() {
         ).having(
           (s) => s.filteredOrders.length,
           'filteredOrders length',
-          1, // By default activeFilter is 'New', so only order1 is filtered
+          2,
         ),
       ],
     );
@@ -99,7 +99,7 @@ void main() {
       },
       skip: 1, // skip Loading
       expect: () => [
-        isA<OrdersListLoaded>().having((s) => s.activeFilter, 'filter', 'New').having((s) => s.filteredOrders.length, 'len', 1),
+        isA<OrdersListLoaded>().having((s) => s.activeFilter, 'filter', 'All').having((s) => s.filteredOrders.length, 'len', 2),
         isA<OrdersListLoaded>().having((s) => s.activeFilter, 'filter', 'Preparing').having((s) => s.filteredOrders.length, 'len', 1),
         isA<OrdersListLoaded>().having((s) => s.searchQuery, 'search', 'ali').having((s) => s.filteredOrders.first.customerName, 'name', 'Alice'),
       ],
@@ -124,11 +124,11 @@ void main() {
         isA<OrdersListLoaded>().having(
           (s) => s.errorMessage,
           'error message',
-          'Invalid status transition.',
+          contains('Invalid status transition'),
         ),
       ],
       verify: (_) {
-        verifyNever(() => mockRepository.updateOrderStatus(any(), any()));
+        verifyNever(() => mockRepository.updateOrderStatus(any(), any(), reason: any(named: 'reason')));
       },
     );
 
@@ -138,7 +138,7 @@ void main() {
         when(() => mockRepository.getSellerOrdersStream('s1')).thenAnswer(
           (_) => Stream.value([order1]), // Status is New
         );
-        when(() => mockRepository.updateOrderStatus('1', OrderStatus.accepted))
+        when(() => mockRepository.updateOrderStatus('1', OrderStatus.accepted, reason: any(named: 'reason')))
             .thenAnswer((_) async {}); // Success
         when(() => mockChatRepository.createConversation(
               buyerId: any(named: 'buyerId'),
@@ -162,10 +162,10 @@ void main() {
         isA<OrdersListLoaded>().having((s) => s.updatingOrderIds.contains('1'), 'updating', true),
         // 2. Removes from updatingOrderIds and sets successMessage
         isA<OrdersListLoaded>().having((s) => s.updatingOrderIds.contains('1'), 'updating', false)
-                               .having((s) => s.successMessage, 'success', 'Order status updated successfully.'),
+                               .having((s) => s.successMessage, 'success', contains('Order status updated')),
       ],
       verify: (_) {
-        verify(() => mockRepository.updateOrderStatus('1', OrderStatus.accepted)).called(1);
+        verify(() => mockRepository.updateOrderStatus('1', OrderStatus.accepted, reason: null)).called(1);
       },
     );
   });

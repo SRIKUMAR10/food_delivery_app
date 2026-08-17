@@ -54,6 +54,12 @@ void main() {
 
       final excRawInvalidPass = Exception('invalid password');
       expect(AppExceptionFormatter.toUserFriendlyMessage(excRawInvalidPass), 'Incorrect password. Please try again.');
+
+      final excWrappedInternalCred = FirebaseAuthException(code: 'invalid-credential', message: 'An internal error has occurred. [ INVALID_LOGIN_CREDENTIALS ]');
+      expect(AppExceptionFormatter.toUserFriendlyMessage(excWrappedInternalCred), 'Incorrect password. Please try again.');
+
+      final excInvalidLoginCred = FirebaseAuthException(code: 'INVALID_LOGIN_CREDENTIALS');
+      expect(AppExceptionFormatter.toUserFriendlyMessage(excInvalidLoginCred), 'Incorrect password. Please try again.');
     });
 
     test('formats network and timeout errors', () {

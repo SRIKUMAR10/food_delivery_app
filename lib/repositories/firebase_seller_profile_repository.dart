@@ -64,6 +64,40 @@ class FirebaseSellerProfileRepository implements ISellerProfileRepository {
     return snapshot.ref.getDownloadURL();
   }
 
+  @override
+  Future<String> uploadCoverImage({
+    required String sellerId,
+    required String fileName,
+    required List<int> imageBytes,
+  }) async {
+    final String path = 'profile_images/$sellerId/cover_$fileName';
+    final Reference ref = storage.ref().child(path);
+    final String contentType = _getContentType(fileName);
+    final UploadTask uploadTask = ref.putData(
+      Uint8List.fromList(imageBytes),
+      SettableMetadata(contentType: contentType),
+    );
+    final TaskSnapshot snapshot = await uploadTask;
+    return snapshot.ref.getDownloadURL();
+  }
+
+  @override
+  Future<void> updateOperationalStatus(
+    String sellerId, {
+    bool? isOpen,
+    bool? isAcceptingOrders,
+    bool? isOnline,
+  }) async {
+    final Map<String, dynamic> updates = {};
+    if (isOpen != null) updates['isOpen'] = isOpen;
+    if (isAcceptingOrders != null) updates['isAcceptingOrders'] = isAcceptingOrders;
+    if (isOnline != null) updates['isOnline'] = isOnline;
+
+    if (updates.isNotEmpty) {
+      await _sellerCollection.updateSeller(sellerId, updates);
+    }
+  }
+
   String _getContentType(String fileName) {
     final lower = fileName.toLowerCase();
     if (lower.endsWith('.png')) return 'image/png';
@@ -73,3 +107,4 @@ class FirebaseSellerProfileRepository implements ISellerProfileRepository {
     return 'image/jpeg';
   }
 }
+

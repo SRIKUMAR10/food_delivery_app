@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,6 +19,8 @@ abstract class DeliveryOrdersServiceBase {
   String formatCurrency(double amount, String localeCode);
   String formatDistance(double distance);
   double calculateEarnings(double orderAmount);
+  double haversineDistanceKm(double lat1, double lon1, double lat2, double lon2);
+  double calculateEstimatedEarnings(double distanceKm, {double peakBonus = 0.0});
   DeliveryOrderStatus? getNextStatus(DeliveryOrderStatus status);
   Map<String, String> getEnvironmentVariables();
   Future<bool> requestNotificationPermission();
@@ -32,6 +35,20 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
   };
 
   static const double _earningRate = 0.18;
+  static const double _baseEarningsRate = 30.0;
+  static const double _perKmRate = 6.0;
+
+  static const List<String> _availableStatuses = [
+    'ready',
+    'ready_for_pickup',
+    'order_ready',
+    'searching_driver',
+    'pending',
+    'new',
+    'neworder',
+    'confirmed',
+    'preparing',
+  ];
 
   final FirebaseFirestore? _firestore;
   final FirebaseAuth? _auth;
@@ -74,7 +91,7 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
         try {
           final q3 = await currentFirestore
               .collection('orders')
-              .where('status', whereIn: ['pending', 'new', 'ready', 'preparing', 'outfordelivery', 'active', 'accepted', 'completed', 'delivered'])
+              .where('status', whereIn: _availableStatuses)
               .get();
           for (var doc in q3.docs) {
             docMap[doc.id] = doc;
@@ -350,7 +367,7 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
 
     final Stream<QuerySnapshot<Map<String, dynamic>>?> s3 = currentFirestore
         .collection('orders')
-        .where('status', whereIn: ['pending', 'new', 'ready', 'preparing', 'outfordelivery', 'active', 'accepted', 'completed', 'delivered'])
+        .where('status', whereIn: _availableStatuses)
         .snapshots()
         .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
         .onErrorReturnWith((e, st) {
@@ -379,9 +396,19 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
           }
         }
 
-        if (docMap.isEmpty && snap3 != null) {
+        if (snap3 != null) {
           for (var doc in snap3.docs) {
-            docMap[doc.id] = doc;
+            final data = doc.data();
+            final assigned = data['riderId'] ?? data['deliveryPartnerId'] ?? data['driverId'];
+            final isUnassigned = assigned == null || assigned.toString().trim().isEmpty;
+            final rejectedBy = data['rejectedBy'];
+            final wasRejectedByMe = rejectedBy is List &&
+                uid != null &&
+                uid.isNotEmpty &&
+                rejectedBy.any((e) => e?.toString() == uid);
+            if (isUnassigned && !wasRejectedByMe) {
+              docMap[doc.id] = doc;
+            }
           }
         }
 
@@ -411,6 +438,33 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
   }
 
   Map<String, dynamic> _mapFirestoreOrder(String docId, Map<String, dynamic> data) {
+    final distance = (data['distance'] as num?)?.toDouble() ?? 0.0;
+    final pickupDistance = (data['pickupDistance'] as num?)?.toDouble() ?? 0.0;
+    final deliveryDistance =
+        (data['deliveryDistance'] as num?)?.toDouble() ?? 0.0;
+    final routeDistance = distance > 0
+        ? distance
+        : (pickupDistance + deliveryDistance);
+
+    final sellerId = (data['sellerId'] ?? data['seller_id'] ?? data['vendorId'] ??
+        data['storeId'] ?? data['store_id'] ?? data['merchantId'] ?? '')
+        ?.toString() ?? '';
+    final customerId = (data['customerId'] ?? data['customer_id'] ?? data['userId'] ??
+        data['user_id'] ?? data['buyerId'] ?? data['buyer_id'] ?? '')
+        ?.toString() ?? '';
+
+    final rawStatus = data['status']?.toString() ?? 'pending';
+    final assignmentStatus =
+        (data['deliveryAssignmentStatus'] ?? data['assignmentStatus'] ?? '')
+            ?.toString() ?? '';
+    final isAvailable = assignmentStatus == 'available' ||
+        _isAvailableStatus(rawStatus);
+
+    final rejectedByRaw = data['rejectedBy'];
+    final rejectedBy = rejectedByRaw is List
+        ? rejectedByRaw.map((e) => e?.toString() ?? '').where((e) => e.isNotEmpty).toList()
+        : <String>[];
+
     return {
       'orderId': docId,
       'customerName': data['customerName'] ?? data['userName'] ?? data['user_name'] ?? '',
@@ -419,19 +473,54 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
       'deliveryAddress': data['deliveryAddress'] ?? data['userAddress'] ?? data['address'] ?? '',
       'amount': (data['amount'] as num?)?.toDouble() ?? (data['totalAmount'] as num?)?.toDouble() ?? (data['totalPrice'] as num?)?.toDouble() ?? 0.0,
       'itemsCount': (data['items'] as List?)?.length ?? (data['itemCount'] as num?)?.toInt() ?? 0,
-      'status': _mapFirestoreStatus(data['status']?.toString() ?? 'pending'),
-      'distance': (data['distance'] as num?)?.toDouble() ?? 0.0,
+      'status': _mapFirestoreStatus(rawStatus),
+      'distance': routeDistance,
       'time': _formatTimestamp(data['timestamp'] ?? data['createdAt'] ?? data['created_at']),
       'paymentType': data['paymentMethod'] ?? data['paymentType'] ?? '',
       'phoneNumber': data['customerPhone'] ?? data['phone'] ?? data['userPhone'] ?? '',
-      'etaMins': (data['etaMins'] as num?)?.toInt() ?? 0,
+      'etaMins': (data['etaMins'] as num?)?.toInt() ?? (data['estimatedDeliveryTime'] as num?)?.toInt() ?? 0,
       'lateMins': (data['lateMins'] as num?)?.toInt() ?? 0,
       'priority': data['priority'] ?? false,
       'restaurantRating': (data['restaurantRating'] as num?)?.toDouble() ?? 0.0,
       'expectedTip': (data['expectedTip'] as num?)?.toDouble() ?? (data['tip'] as num?)?.toDouble() ?? 0.0,
       'preparationTimeMins': (data['preparationTimeMins'] as num?)?.toInt() ?? 0,
       'deliveryBonus': (data['deliveryBonus'] as num?)?.toDouble() ?? 0.0,
+      'restaurantLocation': data['restaurantLocation'] ?? data['pickupAddress'] ?? data['sellerAddress'] ?? data['restaurantAddress'] ?? '',
+      'customerArea': data['customerArea'] ?? data['deliveryAddress'] ?? data['userAddress'] ?? data['address'] ?? '',
+      'estimatedEarnings': _estimatedEarningsFromData(data, routeDistance),
+      'pickupDistance': pickupDistance,
+      'deliveryDistance': deliveryDistance,
+      'sellerId': sellerId,
+      'customerId': customerId,
+      'assignedTime': _formatTimestamp(data['assignedAt'] ?? data['assignedTime']),
+      'acceptedTime': _formatTimestamp(data['acceptedAt'] ?? data['acceptedTime']),
+      'assignmentStatus': assignmentStatus,
+      'rejectedBy': rejectedBy,
+      'isAvailable': isAvailable,
     };
+  }
+
+  bool _isAvailableStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'ready':
+      case 'ready_for_pickup':
+      case 'order_ready':
+      case 'searching_driver':
+      case 'pending':
+      case 'new':
+      case 'neworder':
+      case 'confirmed':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  double _estimatedEarningsFromData(Map<String, dynamic> data, double routeDistance) {
+    final stored = data['estimatedEarnings'] ?? data['deliveryEarnings'];
+    if (stored is num) return stored.toDouble();
+    final peakBonus = (data['peakBonus'] as num?)?.toDouble() ?? 0.0;
+    return calculateEstimatedEarnings(routeDistance, peakBonus: peakBonus);
   }
 
   String _mapFirestoreStatus(String status) {
@@ -536,6 +625,32 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
 
   @override
   double calculateEarnings(double orderAmount) => orderAmount * _earningRate;
+
+  @override
+  double haversineDistanceKm(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const earthRadiusKm = 6371.0;
+    final dLat = _toRadians(lat2 - lat1);
+    final dLon = _toRadians(lon2 - lon1);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRadians(lat1)) *
+            math.cos(_toRadians(lat2)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadiusKm * c;
+  }
+
+  double _toRadians(double degrees) => degrees * math.pi / 180.0;
+
+  @override
+  double calculateEstimatedEarnings(double distanceKm, {double peakBonus = 0.0}) {
+    return _baseEarningsRate + (distanceKm * _perKmRate) + peakBonus;
+  }
 
   @override
   DeliveryOrderStatus? getNextStatus(DeliveryOrderStatus status) {

@@ -169,5 +169,26 @@ void main() {
       );
       expect(DeliveryOrdersStrings.of('earnings', 'de'), 'Your Earnings');
     });
+
+    test('available order labels are localized in English and Tamil', () {
+      expect(DeliveryOrdersStrings.of('available', 'en'), 'Available');
+      expect(DeliveryOrdersStrings.of('available', 'ta'), 'கிடைக்கிறது');
+      expect(DeliveryOrdersStrings.of('accept', 'en'), 'Accept');
+      expect(DeliveryOrdersStrings.of('accept', 'ta'), 'ஏற்க');
+      expect(DeliveryOrdersStrings.of('reject', 'en'), 'Reject');
+      expect(DeliveryOrdersStrings.of('reject', 'ta'), 'நிராகரி');
+      expect(
+        DeliveryOrdersStrings.of('conflict', 'en'),
+        'Order already accepted by another delivery partner',
+      );
+      expect(
+        DeliveryOrdersStrings.of('estimatedEarnings', 'en'),
+        'Estimated Earnings',
+      );
+      expect(
+        DeliveryOrdersStrings.of('pickupDistance', 'ta'),
+        'பிக்கப் தூரம்',
+      );
+    });
   });
 }

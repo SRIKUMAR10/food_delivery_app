@@ -93,5 +93,65 @@ void main() {
       expect(reviews[0]['authorName'], 'Newer Reviewer');
       expect(reviews[1]['authorName'], 'Older Reviewer');
     });
+
+    test('submitSellerReply updates the review and notifies the customer', () async {
+      final reviewRef = await fakeFirestore.collection('reviews').add({
+        'sellerId': 'seller_1',
+        'productId': 'p1',
+        'customerId': 'cust_1',
+        'customerName': 'Mike',
+        'rating': 5.0,
+        'content': 'Great',
+        'createdAt': DateTime(2024, 5, 1),
+      });
+
+      await service.submitSellerReply(
+        reviewId: reviewRef.id,
+        replyText: 'Thanks for your feedback!',
+        authorName: '',
+        customerId: 'cust_1',
+        productName: 'Pizza',
+      );
+
+      final updated =
+          (await fakeFirestore.collection('reviews').doc(reviewRef.id).get())
+              .data()!;
+      expect(updated['sellerReply'], 'Thanks for your feedback!');
+      expect(updated['sellerReplyAuthor'], 'Restaurant');
+
+      final notifications = await fakeFirestore
+          .collection('buyer_user')
+          .doc('cust_1')
+          .collection('notifications')
+          .get();
+      expect(notifications.docs.length, 1);
+    });
+
+    test('reportInappropriateReview flags the review and records a report', () async {
+      final reviewRef = await fakeFirestore.collection('reviews').add({
+        'sellerId': 'seller_1',
+        'customerId': 'cust_1',
+        'customerName': 'Mike',
+        'rating': 1.0,
+        'content': 'Bad',
+        'createdAt': DateTime(2024, 5, 1),
+      });
+
+      await service.reportInappropriateReview(
+        reviewId: reviewRef.id,
+        reason: 'Spam',
+      );
+
+      final updated =
+          (await fakeFirestore.collection('reviews').doc(reviewRef.id).get())
+              .data()!;
+      expect(updated['isReported'], isTrue);
+      expect(updated['reportReason'], 'Spam');
+      expect(updated['reportStatus'], 'pending');
+
+      final reports = await fakeFirestore.collection('review_reports').get();
+      expect(reports.docs.length, 1);
+      expect(reports.docs.first.data()['reporterId'], 'seller_1');
+    });
   });
 }

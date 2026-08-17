@@ -61,3 +61,56 @@ final class _ProductErrorReceived extends HomePageEvent {
   final String message;
   const _ProductErrorReceived(this.message);
 }
+
+/// Dispatched to fetch or refresh current GPS location.
+final class FetchUserLocation extends HomePageEvent {
+  const FetchUserLocation();
+}
+
+/// Dispatched when the user selects a new location or location is fetched from GPS.
+final class LocationUpdated extends HomePageEvent {
+  final String address;
+  const LocationUpdated(this.address);
+}
+
+/// Dispatched when featured sellers are fetched from Firestore.
+final class FeaturedSellersUpdated extends HomePageEvent {
+  final List<Seller> sellers;
+  const FeaturedSellersUpdated(this.sellers);
+}
+
+/// Dispatched when recently ordered food items are fetched.
+final class RecentOrdersUpdated extends HomePageEvent {
+  final List<FoodItem> items;
+  const RecentOrdersUpdated(this.items);
+}
+
+/// Dispatched when active promotional banners are updated.
+final class PromotionsUpdated extends HomePageEvent {
+  final List<PromotionBanner> banners;
+  const PromotionsUpdated(this.banners);
+}
+
+/// Dispatched when the user picks a new restaurant sort strategy
+/// (rating, distance, or delivery time).
+final class RestaurantSortChanged extends HomePageEvent {
+  final RestaurantSortOption sortOption;
+  const RestaurantSortChanged(this.sortOption);
+}
+
+/// Dispatched when the buyer's delivery coordinates (GPS or selected address)
+/// are known, so distances can be computed with the Haversine formula.
+final class BuyerLocationUpdated extends HomePageEvent {
+  final double lat;
+  final double lng;
+  final String address;
+  const BuyerLocationUpdated(this.lat, this.lng, this.address);
+}
+
+/// Dispatched when the user selects a cuisine tag to filter restaurants.
+/// An empty string clears the cuisine filter.
+final class CuisineFilterChanged extends HomePageEvent {
+  final String cuisine;
+  const CuisineFilterChanged(this.cuisine);
+}
+

@@ -12,6 +12,12 @@ class InvoiceGenerator {
     required double totalAmount,
     required DateTime date,
     required List<Map<String, dynamic>> items,
+    double? subtotal,
+    double? deliveryFee,
+    double? taxAmount,
+    double? discountAmount,
+    String? couponCode,
+    double? platformFee,
   }) async {
     final pdf = pw.Document();
 
@@ -27,7 +33,15 @@ class InvoiceGenerator {
             pw.SizedBox(height: 30),
             _buildItemsTable(items),
             pw.SizedBox(height: 20),
-            _buildTotal(totalAmount),
+            _buildCostSummary(
+              totalAmount: totalAmount,
+              subtotal: subtotal,
+              deliveryFee: deliveryFee,
+              taxAmount: taxAmount,
+              discountAmount: discountAmount,
+              couponCode: couponCode,
+              platformFee: platformFee,
+            ),
             pw.SizedBox(height: 40),
             _buildFooter(),
           ];
@@ -180,28 +194,97 @@ class InvoiceGenerator {
     );
   }
 
-  static pw.Widget _buildTotal(double totalAmount) {
+  static pw.Widget _buildCostSummary({
+    required double totalAmount,
+    double? subtotal,
+    double? deliveryFee,
+    double? taxAmount,
+    double? discountAmount,
+    String? couponCode,
+    double? platformFee,
+  }) {
+    pw.Widget _row(String label, String value, {bool bold = false, PdfColor? color}) {
+      return pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 2),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(
+              label,
+              style: pw.TextStyle(
+                fontSize: 13,
+                fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+                color: color,
+              ),
+            ),
+            pw.Text(
+              value,
+              style: pw.TextStyle(
+                fontSize: 13,
+                fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final rows = <pw.Widget>[];
+    if (subtotal != null) {
+      rows.add(_row('Item Total', 'Rs. ${subtotal.toStringAsFixed(2)}'));
+    }
+    if (deliveryFee != null) {
+      rows.add(_row('Delivery Fee', 'Rs. ${deliveryFee.toStringAsFixed(2)}'));
+    }
+    if (taxAmount != null) {
+      rows.add(_row('Taxes & Charges', 'Rs. ${taxAmount.toStringAsFixed(2)}'));
+    }
+    if (platformFee != null) {
+      rows.add(_row('Platform Fee', 'Rs. ${platformFee.toStringAsFixed(2)}'));
+    }
+    if (discountAmount != null && discountAmount > 0) {
+      final label = couponCode != null && couponCode.isNotEmpty
+          ? 'Discount ($couponCode)'
+          : 'Discount';
+      rows.add(_row(label, '- Rs. ${discountAmount.toStringAsFixed(2)}',
+          color: PdfColors.green700));
+    }
+
     return pw.Container(
       alignment: pw.Alignment.centerRight,
-      child: pw.Row(
-        mainAxisSize: pw.MainAxisSize.min,
-        children: [
-          pw.Text(
-            'Grand Total: ',
-            style: pw.TextStyle(
-              fontSize: 16,
-              fontWeight: pw.FontWeight.bold,
+      child: pw.SizedBox(
+        width: 300,
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: [
+            ...rows,
+            pw.Divider(),
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(top: 4),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Grand Total',
+                    style: pw.TextStyle(
+                      fontSize: 15,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.Text(
+                    'Rs. ${totalAmount.toStringAsFixed(2)}',
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.deepOrange,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          pw.Text(
-            'Rs. ${totalAmount.toStringAsFixed(2)}',
-            style: pw.TextStyle(
-              fontSize: 20,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.deepOrange,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

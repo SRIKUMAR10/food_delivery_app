@@ -15,9 +15,29 @@ class TestSellerSettingRepository implements SellerSettingRepository {
   }
 
   @override
+  Stream<SellerSettingState> watchSettings() {
+    return Stream.value(_state);
+  }
+
+  @override
   Future<void> saveSettings(SellerSettingState state) async {
     _state = state;
   }
+
+  @override
+  Future<void> changePassword(String currentPassword, String newPassword, {bool signOutOtherDevices = false}) async {}
+
+  @override
+  Future<void> deactivateAccount(String reason, int durationDays) async {}
+
+  @override
+  Future<void> reactivateAccount() async {}
+
+  @override
+  Future<void> deleteAccount(String password) async {}
+
+  @override
+  Future<void> logout() async {}
 }
 
 void main() {

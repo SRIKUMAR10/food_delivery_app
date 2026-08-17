@@ -28,6 +28,21 @@ class DeliveryCompletedRepository implements DeliveryCompletedRepositoryBase {
       customerRating: (raw['customerRating'] as num?)?.toDouble() ?? 0.0,
       deliveryEarnings: (raw['deliveryEarnings'] as num?)?.toDouble() ?? 0.0,
       completedAt: raw['completedAt'] ?? '',
+      isCOD: raw['isCOD'] == true,
+      codAmount: (raw['codAmount'] as num?)?.toDouble() ?? 0.0,
+      collectedAmount: (raw['collectedAmount'] as num?)?.toDouble() ?? 0.0,
+      isCodCollected: raw['isCodCollected'] == true,
+      codReconciliationStatus: raw['codReconciliationStatus'] ?? '',
+      baseFare: (raw['baseFare'] as num?)?.toDouble() ?? 0.0,
+      distanceFare: (raw['distanceFare'] as num?)?.toDouble() ?? 0.0,
+      surgeFare: (raw['surgeFare'] as num?)?.toDouble() ?? 0.0,
+      incentive: (raw['incentive'] as num?)?.toDouble() ?? 0.0,
+      bonus: (raw['bonus'] as num?)?.toDouble() ?? 0.0,
+      tips: (raw['tips'] as num?)?.toDouble() ?? 0.0,
+      cancellationCompensation:
+          (raw['cancellationCompensation'] as num?)?.toDouble() ?? 0.0,
+      totalPartnerEarnings:
+          (raw['totalPartnerEarnings'] as num?)?.toDouble() ?? 0.0,
     );
   }
 

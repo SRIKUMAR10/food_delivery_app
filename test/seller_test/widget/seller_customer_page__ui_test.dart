@@ -56,19 +56,26 @@ void main() {
       (tester) async {
         when(() => bloc.state).thenReturn(
           const SellerCustomerLoaded(
-            stats: CustomerStats(totalCustomers: 1245, repeatCustomers: 320),
+            stats: CustomerStats(
+              totalCustomers: 1245,
+              repeatCustomers: 320,
+              totalRevenue: 45000,
+              averageOrderValue: 350,
+            ),
             customers: [
               CustomerItem(
                 id: '1',
                 name: 'Mike Ross',
                 orderCount: 12,
                 avatarUrl: 'https://example.com/avatar1.png',
+                totalSpent: 4200,
               ),
               CustomerItem(
                 id: '2',
                 name: 'John Doe',
                 orderCount: 10,
                 avatarUrl: 'https://example.com/avatar2.png',
+                totalSpent: 3500,
               ),
             ],
           ),
@@ -85,6 +92,8 @@ void main() {
           expect(find.text('Top Customers'), findsOneWidget);
           expect(find.text('Mike Ross'), findsOneWidget);
           expect(find.text('John Doe'), findsOneWidget);
+          expect(find.text('Sort by:'), findsOneWidget);
+          expect(find.text('Most Orders'), findsOneWidget);
         });
       },
     );

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,12 +21,57 @@ import '../../../core/services/i_auth_service.dart';
 import '../../../core/repositories/i_user_profile_repository.dart';
 import '../Chat_Page/invoice_generator.dart';
 import 'package:printing/printing.dart';
+
+String _tr(BuildContext context, String key) {
+  final isTamil = Localizations.localeOf(context).languageCode == 'ta';
+  final tamil = _tamilStrings[key];
+  return isTamil && tamil != null ? tamil : key;
+}
+
+const Map<String, String> _tamilStrings = {
+  'Track Order': 'ஆர்டர் கண்காணிப்பு',
+  'Tracking Status': 'கண்காணிப்பு நிலை',
+  'Delivery Partner': 'டெலிவரி பார்ட்னர்',
+  'Restaurant Information': 'உணவக தகவல்',
+  'Customer Address': 'வாடிக்கையாளர் முகவரி',
+  'Order Details': 'ஆர்டர் விவரங்கள்',
+  'Order ID': 'ஆர்டர் ஐடி',
+  'Date & Time': 'தேதி & நேரம்',
+  'Estimated Delivery': 'மதிப்பிடப்பட்ட டெலிவரி',
+  'Cancel Order': 'ஆர்டரை ரத்து செய்',
+  'Download Invoice': 'இன்வாய்ஸ் பதிவிறக்கு',
+  'Call': 'அழை',
+  'Chat': 'அரட்டை',
+  'Order Placed': 'ஆர்டர் வைக்கப்பட்டது',
+  'Accepted': 'ஏற்கப்பட்டது',
+  'Preparing Your Food': 'உணவு தயாராகிறது',
+  'Out for Delivery': 'டெலிவரிக்கு புறப்பட்டது',
+  'Delivered': 'வழங்கப்பட்டது',
+  'Order Cancelled': 'ஆர்டர் ரத்து செய்யப்பட்டது',
+  'In progress': 'நடைபெறுகிறது',
+  'Upcoming': 'வரவிருக்கிறது',
+  'Open in Maps': 'மேப்பில் திற',
+  'View on map': 'மேப்பில் பார்',
+  'Looking for a delivery partner...': 'டெலிவரி பார்ட்னரை தேடுகிறோம்...',
+  'Assigning a delivery partner...': 'டெலிவரி பார்ட்னர் ஒதுக்கப்படுகிறது...',
+  'Order Summary': 'ஆர்டர் சுருக்கம்',
+  'Order Information': 'ஆர்டர் தகவல்',
+  'Bill Details': 'பில் விவரங்கள்',
+  'Items': 'பொருட்கள்',
+  'Item': 'பொருள்',
+  'Item Total': 'பொருட்களின் மொத்தம்',
+  'Delivery Fee': 'டெலிவரி கட்டணம்',
+  'Taxes & Charges': 'வரிகள் & கட்டணங்கள்',
+  'Platform Fee': 'பிளாட்பார்ம் கட்டணம்',
+  'Discount': 'தள்ளுபடி',
+  'Order ID copied': 'ஆர்டர் ஐடி நகலெடுக்கப்பட்டது',
+  'Copy Order ID': 'ஆர்டர் ஐடியை நகலெடுக்கவும்',
+};
+
 class TrackOrderPageUI extends StatelessWidget {
   final String orderId;
   final OrderViewModel? order;
-  final bool
-  isEmbedded; // If true, hide Scaffold app bar and use simple background
-
+  final bool isEmbedded;
   final bool allowPopOnDesktop;
 
   const TrackOrderPageUI({
@@ -41,26 +87,24 @@ class TrackOrderPageUI extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) =>
-              TrackOrderBloc(
-                repository: TrackOrderRepositoryImpl(
-                  service: TrackOrderService(firestore: FirebaseFirestore.instance),
-                ),
-                orderRepository: context.read<IOrderRepository>(),
-                trackService: TrackOrderService(firestore: FirebaseFirestore.instance),
-              )..add(
-                LoadTrackOrderDetails(
-                  orderId: orderId,
-                  orderDate: order?.date ?? DateTime.now(),
-                ),
+          create: (context) => TrackOrderBloc(
+            repository: TrackOrderRepositoryImpl(
+              service: TrackOrderService(firestore: FirebaseFirestore.instance),
+            ),
+            orderRepository: context.read<IOrderRepository>(),
+            trackService: TrackOrderService(firestore: FirebaseFirestore.instance),
+          )..add(
+              LoadTrackOrderDetails(
+                orderId: orderId,
+                orderDate: order?.date ?? DateTime.now(),
               ),
+            ),
         ),
         BlocProvider(
-          create: (context) =>
-              UserProfileBloc(
-                authService: context.read<IAuthService>(),
-                profileRepository: context.read<IUserProfileRepository>(),
-              )..add(const LoadProfileStarted()),
+          create: (context) => UserProfileBloc(
+            authService: context.read<IAuthService>(),
+            profileRepository: context.read<IUserProfileRepository>(),
+          )..add(const LoadProfileStarted()),
         ),
       ],
       child: _TrackOrderView(order: order, isEmbedded: isEmbedded, allowPopOnDesktop: allowPopOnDesktop),
@@ -80,8 +124,6 @@ class _TrackOrderView extends StatelessWidget {
     Widget content = LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 800) {
-          // If the app is pushed as a mobile view but the window is resized to desktop,
-          // pop this route so it doesn't duplicate the master-detail desktop layout.
           if (!isEmbedded && allowPopOnDesktop) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (context.mounted && Navigator.canPop(context)) {
@@ -114,7 +156,7 @@ class _TrackOrderView extends StatelessWidget {
               )
             : null,
         title: Text(
-          'Track Order',
+          _tr(context, 'Track Order'),
           style: GoogleFonts.poppins(
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -127,11 +169,7 @@ class _TrackOrderView extends StatelessWidget {
   }
 
   Widget _buildCancelButton(BuildContext context, TrackOrderLoaded state) {
-    bool isCancelled = state.trackingSteps.any((step) => step.status == TrackingStatus.cancelled);
-    bool isDelivered = state.trackingSteps.isNotEmpty &&
-        state.trackingSteps.last.status == TrackingStatus.completed;
-
-    if (isCancelled || isDelivered) return const SizedBox.shrink();
+    if (state.isCancelled || state.isDelivered) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -155,7 +193,7 @@ class _TrackOrderView extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  context.read<TrackOrderBloc>().add(CancelOrderEvent(state.orderId));
+                  _showCancelConfirmation(context, state);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFF0F0),
@@ -166,9 +204,9 @@ class _TrackOrderView extends StatelessWidget {
                   ),
                   elevation: 0,
                 ),
-                child: const Text(
-                  'Cancel Order',
-                  style: TextStyle(
+                child: Text(
+                  _tr(context, 'Cancel Order'),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -181,10 +219,57 @@ class _TrackOrderView extends StatelessWidget {
     );
   }
 
+  void _showCancelConfirmation(BuildContext context, TrackOrderLoaded state) {
+    final reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Cancel Order'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Are you sure you want to cancel this order?'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  hintText: 'Reason for cancellation (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Keep Order'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE52121),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                context.read<TrackOrderBloc>().add(
+                      CancelOrderEvent(state.orderId, reason: reasonController.text.trim()),
+                    );
+              },
+              child: const Text('Cancel Order'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildMobileLayout(BuildContext context) {
     return BlocBuilder<TrackOrderBloc, TrackOrderState>(
       buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
+      builder: (context, state) {
         if (state is TrackOrderLoading || state is TrackOrderInitial) {
           return _buildSkeletonLoader();
         } else if (state is TrackOrderError) {
@@ -199,19 +284,19 @@ class _TrackOrderView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeaderInfo(state),
-                      const SizedBox(height: 24),
-                      _buildTimelineCard(state),
+                      _buildOrderInfoCard(context, state),
+                      const SizedBox(height: 20),
+                      _buildLiveMapCard(context, state),
+                      const SizedBox(height: 20),
+                      _buildTimelineCard(context, state),
                       const SizedBox(height: 20),
                       _buildDeliveryPartnerCard(context, state),
                       const SizedBox(height: 20),
-                      _buildUserInfo(context, state),
-                      if (order != null) ...[
-                        const SizedBox(height: 24),
-                        const Divider(color: Color(0xFFF0F0F0), thickness: 1),
-                        const SizedBox(height: 24),
-                        _buildOrderSummaryMobile(context, state),
-                      ],
+                      _buildRestaurantCard(context, state),
+                      const SizedBox(height: 20),
+                      _buildCustomerAddressCard(context, state),
+                      const SizedBox(height: 20),
+                      _buildOrderSummaryCard(context, state),
                     ],
                   ),
                 ),
@@ -228,7 +313,7 @@ class _TrackOrderView extends StatelessWidget {
   Widget _buildDesktopLayout(BuildContext context) {
     return BlocBuilder<TrackOrderBloc, TrackOrderState>(
       buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
+      builder: (context, state) {
         if (state is TrackOrderLoading || state is TrackOrderInitial) {
           return _buildSkeletonLoader();
         } else if (state is TrackOrderError) {
@@ -246,7 +331,6 @@ class _TrackOrderView extends StatelessWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Left column: Order Details & Payment Summary
                           Expanded(
                             flex: 3,
                             child: Container(
@@ -259,73 +343,78 @@ class _TrackOrderView extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Order Details',
-                                    style: TextStyle(
+                                  Text(
+                                    _tr(context, 'Order Details'),
+                                    style: const TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFF1C1C1C),
                                     ),
                                   ),
                                   const SizedBox(height: 16),
-                                  _buildHeaderInfo(state),
+                                  _buildHeaderInfo(context, state),
                                   const SizedBox(height: 24),
                                   const Divider(color: Color(0xFFF0F0F0), thickness: 1),
                                   const SizedBox(height: 24),
-                                  if (order != null) _buildOrderItemsList(),
-                                  if (order != null) ...[
-                                    const SizedBox(height: 24),
-                                    const Divider(color: Color(0xFFF0F0F0), thickness: 1),
-                                    const SizedBox(height: 16),
-                                    _buildPaymentSummary(),
-                                    const SizedBox(height: 16),
-                                    _buildDownloadInvoiceButton(context, state),
-                                  ],
+                                  _buildOrderSummary(context, state, isDesktop: true),
                                 ],
                               ),
                             ),
                           ),
                           const SizedBox(width: 32),
-                          // Right column: Tracking Timeline & Partner
                           Expanded(
                             flex: 2,
-                            child: Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFF0F0F0)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.02),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLiveMapCard(context, state),
+                                const SizedBox(height: 24),
+                                Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: const Color(0xFFF0F0F0)),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.02),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Tracking Status',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF1C1C1C),
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _tr(context, 'Tracking Status'),
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF1C1C1C),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      _buildTimeline(context, state.trackingSteps),
+                                    ],
                                   ),
-                                  const SizedBox(height: 24),
-                                  _buildTimeline(state.trackingSteps),
-                                  const SizedBox(height: 24),
-                                  _buildDesktopDeliveryPartnerCard(context, state),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      _buildDesktopUserInfo(context, state),
+                      _buildDesktopDeliveryPartnerCard(context, state),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _buildRestaurantCard(context, state)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _buildCustomerAddressCard(context, state)),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -339,51 +428,56 @@ class _TrackOrderView extends StatelessWidget {
     );
   }
 
-  Widget _buildHeaderInfo(TrackOrderLoaded state) {
+  Widget _buildHeaderInfo(BuildContext context, TrackOrderLoaded state) {
     final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
-    final formattedDate = order != null ? dateFormat.format(order!.date) : null;
+    final formattedDate = order != null ? dateFormat.format(order!.date) : dateFormat.format(state.orderDate);
 
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Order ID',
-              style: TextStyle(color: Colors.black54, fontSize: 14),
-            ),
             Text(
-              '#${state.orderId.toUpperCase()}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              _tr(context, 'Order ID'),
+              style: const TextStyle(color: Colors.black54, fontSize: 14),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '#${state.orderId.toUpperCase()}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(width: 4),
+                _buildCopyOrderIdButton(context, state),
+              ],
             ),
           ],
         ),
-        if (formattedDate != null) ...[
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Date & Time',
-                style: TextStyle(color: Colors.black54, fontSize: 14),
-              ),
-              Text(
-                formattedDate,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-            ],
-          ),
-        ],
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Estimated Delivery',
-              style: TextStyle(color: Colors.black54, fontSize: 14),
+            Text(
+              _tr(context, 'Date & Time'),
+              style: const TextStyle(color: Colors.black54, fontSize: 14),
+            ),
+            Text(
+              formattedDate,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _tr(context, 'Estimated Delivery'),
+              style: const TextStyle(color: Colors.black54, fontSize: 14),
             ),
             Text(
               state.estimatedDelivery,
@@ -391,11 +485,125 @@ class _TrackOrderView extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _tr(context, 'Tracking Status'),
+              style: const TextStyle(color: Colors.black54, fontSize:14),
+            ),
+            _buildStatusChip(state),
+          ],
+        ),
       ],
     );
   }
 
-  Widget _buildTimelineCard(TrackOrderLoaded state) {
+  Widget _buildCopyOrderIdButton(BuildContext context, TrackOrderLoaded state) {
+    return IconButton(
+      icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF6B7280)),
+      tooltip: _tr(context, 'Copy Order ID'),
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(),
+      padding: EdgeInsets.zero,
+      onPressed: () async {
+        await Clipboard.setData(ClipboardData(text: '#${state.orderId.toUpperCase()}'));
+        HapticFeedback.mediumImpact();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(_tr(context, 'Order ID copied')),
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+        }
+      },
+    );
+  }
+
+  Widget _buildOrderInfoCard(BuildContext context, TrackOrderLoaded state) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _tr(context, 'Order Information'),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1C1C1C),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildHeaderInfo(context, state),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderSummaryCard(BuildContext context, TrackOrderLoaded state) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: _buildOrderSummary(context, state),
+    );
+  }
+
+  Widget _buildStatusChip(TrackOrderLoaded state) {
+    final Color color;
+    if (state.isCancelled) {
+      color = const Color(0xFFE52121);
+    } else if (state.isDelivered) {
+      color = const Color(0xFF22C55E);
+    } else {
+      color = const Color(0xFF2563EB);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        state.orderStatusLabel,
+        style: GoogleFonts.poppins(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineCard(BuildContext context, TrackOrderLoaded state) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -413,38 +621,39 @@ class _TrackOrderView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Tracking Status',
-            style: TextStyle(
+          Text(
+            _tr(context, 'Tracking Status'),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Color(0xFF1C1C1C),
             ),
           ),
           const SizedBox(height: 24),
-          _buildTimeline(state.trackingSteps),
+          _buildTimeline(context, state.trackingSteps),
         ],
       ),
     );
   }
 
-  Widget _buildTimeline(List<TrackingStep> steps) {
+  Widget _buildTimeline(BuildContext context, List<TrackingStep> steps) {
     return Column(
       children: [
         ...steps.asMap().entries.map((entry) {
           int idx = entry.key;
           var step = entry.value;
           bool isLast = idx == steps.length - 1;
-          return _buildTimelineNode(step, isLast, idx);
+          return _buildTimelineNode(context, step, isLast);
         }),
       ],
     );
   }
 
-  Widget _buildTimelineNode(TrackingStep step, bool isLast, int index) {
+  Widget _buildTimelineNode(BuildContext context, TrackingStep step, bool isLast) {
     final isCompleted = step.status == TrackingStatus.completed;
     final isCurrent = step.status == TrackingStatus.current;
     final isFuture = step.status == TrackingStatus.future;
+    final isCancelled = step.status == TrackingStatus.cancelled;
 
     return IntrinsicHeight(
       child: Row(
@@ -476,18 +685,18 @@ class _TrackOrderView extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        step.title,
+                        _tr(context, step.title),
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                           color: isFuture
                               ? Colors.grey.shade400
-                              : const Color(0xFF1C1C1C),
+                              : (isCancelled ? const Color(0xFFE52121) : const Color(0xFF1C1C1C)),
                         ),
                       ),
                       if (step.time != null)
                         Text(
-                          isFuture ? 'Upcoming' : step.time!,
+                          isFuture ? _tr(context, 'Upcoming') : step.time!,
                           style: TextStyle(
                             fontSize: 12,
                             color: isFuture
@@ -501,10 +710,10 @@ class _TrackOrderView extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        'In progress',
-                        style: TextStyle(
+                        _tr(context, 'In progress'),
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: const Color(0xFF22C55E),
+                          color: Color(0xFF22C55E),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -550,6 +759,16 @@ class _TrackOrderView extends StatelessWidget {
         ),
         child: const Icon(Icons.check, color: Color(0xFF22C55E), size: 14),
       );
+    } else if (status == TrackingStatus.cancelled) {
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          color: Color(0xFFE52121),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.close, color: Colors.white, size: 14),
+      );
     } else if (status == TrackingStatus.upcoming) {
       return Container(
         width: 24,
@@ -593,11 +812,43 @@ class _TrackOrderView extends StatelessWidget {
     }
   }
 
+  Widget _buildLiveMapCard(BuildContext context, TrackOrderLoaded state) {
+    final hasRoute = (state.sellerLat != null && state.sellerLng != null) ||
+        (state.customerLat != null && state.customerLng != null) ||
+        (state.driverLat != null && state.driverLng != null);
+
+    return _LiveTrackingMapCard(
+      sellerLat: state.sellerLat,
+      sellerLng: state.sellerLng,
+      customerLat: state.customerLat,
+      customerLng: state.customerLng,
+      driverLat: state.driverLat,
+      driverLng: state.driverLng,
+      etaLabel: state.estimatedDelivery,
+      distanceLabel: _distanceLabel(state),
+      isExpanded: state.isMapExpanded,
+      hasRoute: hasRoute,
+      onToggleFullscreen: () =>
+          context.read<TrackOrderBloc>().add(const ToggleMapFullScreen()),
+      onOpenMaps: () => _openMap(context, state.driverLat ?? state.sellerLat, state.driverLng ?? state.sellerLng),
+    );
+  }
+
+  String _distanceLabel(TrackOrderLoaded state) {
+    final lat1 = state.driverLat ?? state.sellerLat;
+    final lng1 = state.driverLng ?? state.sellerLng;
+    if (lat1 == null || lng1 == null || state.customerLat == null || state.customerLng == null) {
+      return '';
+    }
+    final km = _haversineKm(lat1, lng1, state.customerLat!, state.customerLng!);
+    return '${km.toStringAsFixed(1)} km';
+  }
+
   Future<void> _openMap(BuildContext context, double? lat, double? lng) async {
     if (lat == null || lng == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Driver location not available yet')),
+          const SnackBar(content: Text('Location not available yet')),
         );
       }
       return;
@@ -633,10 +884,10 @@ class _TrackOrderView extends StatelessWidget {
               child: const Icon(Icons.person_outline, color: Colors.grey, size: 24),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Looking for a delivery partner...',
-                style: TextStyle(
+                _tr(context, 'Looking for a delivery partner...'),
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: Colors.black54,
@@ -647,6 +898,10 @@ class _TrackOrderView extends StatelessWidget {
         ),
       );
     }
+
+    final vehicle = [partner.vehicleType, partner.vehicleNumber]
+        .where((e) => e.isNotEmpty)
+        .join(' • ');
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -662,42 +917,76 @@ class _TrackOrderView extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: Colors.grey[200],
-            backgroundImage: partner.imageUrl.isNotEmpty
-                ? NetworkImage(partner.imageUrl)
-                : null,
-            child: partner.imageUrl.isEmpty
-                ? const Icon(Icons.person, color: Colors.grey, size: 26)
-                : null,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  partner.name,
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: const Color(0xFF1C1C1C),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  partner.role,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: const Color(0xFF6B7280),
-                  ),
-                ),
-              ],
+          Text(
+            _tr(context, 'Delivery Partner'),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1C1C1C),
             ),
           ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: partner.imageUrl.isNotEmpty
+                    ? NetworkImage(partner.imageUrl)
+                    : null,
+                child: partner.imageUrl.isEmpty
+                    ? const Icon(Icons.person, color: Colors.grey, size: 26)
+                    : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            partner.name,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: const Color(0xFF1C1C1C),
+                            ),
+                          ),
+                        ),
+                        if (partner.rating != null) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 16),
+                          const SizedBox(width: 2),
+                          Text(
+                            partner.rating!.toStringAsFixed(1),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      partner.role,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: const Color(0xFF6B7280),
+                      ),
+                    ),
+                    if (vehicle.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        vehicle,
+                        style: const TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
           Column(
             children: [
               _buildActionSquare(
@@ -707,6 +996,14 @@ class _TrackOrderView extends StatelessWidget {
                     ? () => _handlePhoneCall(context, partner.phone)
                     : null,
               ),
+              const SizedBox(height: 10),
+              _buildActionSquare(
+                Icons.message,
+                const Color(0xFF2563EB),
+                onTap: () => _navigateToDeliveryChat(context, state),
+              ),
+            ],
+          ),
             ],
           ),
         ],
@@ -714,9 +1011,40 @@ class _TrackOrderView extends StatelessWidget {
     );
   }
 
+  void _navigateToDeliveryChat(BuildContext context, TrackOrderLoaded state) {
+    final partner = state.deliveryPartner;
+    final riderId = order?.riderId;
+    if (riderId == null || riderId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Delivery partner not available yet')),
+      );
+      return;
+    }
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+    CurvedNavigationBarView.supportNavigation.value = SupportNavigationData(
+      orderId: state.orderId,
+      sellerId: '',
+      sellerName: '',
+      buyerName: '',
+      deliveryPartnerId: riderId,
+      deliveryPartnerName: partner.name,
+      deliveryPartnerPhone: partner.phone,
+      deliveryPartnerImageUrl: partner.imageUrl,
+      orderTitle: state.orderItems.isNotEmpty
+          ? state.orderItems.first.name
+          : null,
+      orderTotal: state.totalAmount,
+    );
+  }
+
   Widget _buildDesktopDeliveryPartnerCard(BuildContext context, TrackOrderLoaded state) {
     final partner = state.deliveryPartner;
     final hasDriver = partner.name.isNotEmpty;
+    final vehicle = [partner.vehicleType, partner.vehicleNumber]
+        .where((e) => e.isNotEmpty)
+        .join(' • ');
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -736,7 +1064,7 @@ class _TrackOrderView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Delivery Partner',
+            _tr(context, 'Delivery Partner'),
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -745,14 +1073,14 @@ class _TrackOrderView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (!hasDriver)
-            const Row(
+            Row(
               children: [
-                Icon(Icons.hourglass_empty, color: Colors.grey, size: 20),
-                SizedBox(width: 12),
+                const Icon(Icons.hourglass_empty, color: Colors.grey, size: 20),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Assigning a delivery partner...',
-                    style: TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w500),
+                    _tr(context, 'Assigning a delivery partner...'),
+                    style: const TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w500),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -792,6 +1120,26 @@ class _TrackOrderView extends StatelessWidget {
                           color: const Color(0xFF6B7280),
                         ),
                       ),
+                      if (vehicle.isNotEmpty)
+                        Text(
+                          vehicle,
+                          style: const TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                      if (partner.rating != null)
+                        Row(
+                          children: [
+                            const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 15),
+                            Text(
+                              ' ${partner.rating!.toStringAsFixed(1)}',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                            if (partner.totalDeliveries != null)
+                              Text(
+                                '  •  ${partner.totalDeliveries} deliveries',
+                                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                              ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
@@ -807,6 +1155,17 @@ class _TrackOrderView extends StatelessWidget {
                         : null,
                   ),
                 ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 70,
+                  height: 60,
+                  child: _buildDesktopActionButton(
+                    icon: Icons.chat_bubble_outline,
+                    label: _tr(context, 'Chat'),
+                    color: const Color(0xFF2563EB),
+                    onTap: () => _navigateToDeliveryChat(context, state),
+                  ),
+                ),
               ],
             ),
         ],
@@ -814,13 +1173,26 @@ class _TrackOrderView extends StatelessWidget {
     );
   }
 
-  Widget _buildUserInfo(BuildContext context, TrackOrderLoaded state) {
-    if (state.sellerInfo == null) return const SizedBox.shrink();
-    final profile = state.sellerInfo!;
-    final isVerified = true;
-    final distance = '1.2 km';
-    final statusText = 'Open • Closes 10:00 PM';
-    final statusColor = const Color(0xFF22C55E);
+  void _openSupportChat(BuildContext context, TrackOrderLoaded state) {
+    final seller = state.sellerInfo;
+    CurvedNavigationBarView.supportNavigation.value = SupportNavigationData(
+      orderId: state.orderId,
+      sellerId: seller?.id ?? '',
+      sellerName: seller?.name ?? 'Restaurant',
+      buyerName: state.customerInfo?.name ?? '',
+      shopName: seller?.name ?? '',
+      sellerImageUrl: seller?.imageUrl ?? '',
+    );
+  }
+
+  Widget _buildRestaurantCard(BuildContext context, TrackOrderLoaded state) {
+    final profile = state.sellerInfo;
+    if (profile == null) return const SizedBox.shrink();
+    final isVerified = profile.isVerified;
+    final distance = _distanceBetween(state.sellerLat, state.sellerLng, state.customerLat, state.customerLng);
+    final openStatus = profile.openStatus?.toString().toLowerCase() == 'closed' ? 'Closed' : 'Open';
+    final statusColor = openStatus == 'Closed' ? const Color(0xFFE52121) : const Color(0xFF22C55E);
+    final hours = profile.openingHours;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -836,392 +1208,223 @@ class _TrackOrderView extends StatelessWidget {
           ),
         ],
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isCompact = constraints.maxWidth < 360;
-
-          return Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _tr(context, 'Restaurant Information'),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1C1C1C),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: isCompact ? 28 : 30,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: profile.imageUrl.isNotEmpty
-                        ? NetworkImage(profile.imageUrl)
-                        : null,
-                    child: profile.imageUrl.isEmpty
-                        ? Icon(Icons.store, color: Colors.grey, size: isCompact ? 28 : 30)
-                        : null,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: profile.imageUrl.isNotEmpty
+                    ? NetworkImage(profile.imageUrl)
+                    : null,
+                child: profile.imageUrl.isEmpty
+                    ? const Icon(Icons.store, color: Colors.grey, size: 30)
+                    : null,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                profile.name.isNotEmpty ? profile.name : 'Restaurant',
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: isCompact ? 15 : 17,
-                                  color: const Color(0xFF1C1C1C),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                        Flexible(
+                          child: Text(
+                            profile.name.isNotEmpty ? profile.name : 'Restaurant',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                              color: const Color(0xFF1C1C1C),
                             ),
-                            if (isVerified) ...[
-                              const SizedBox(width: 6),
-                              Icon(
-                                Icons.verified_rounded,
-                                size: isCompact ? 17 : 20,
-                                color: const Color(0xFF22C55E),
-                              ),
-                            ],
-                          ],
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const SizedBox(height: 6),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: isCompact ? 13 : 15,
+                        if (isVerified) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.verified_rounded,
+                            size: 20,
+                            color: Color(0xFF22C55E),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (profile.address.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 15, color: Color(0xFF9CA3AF)),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              profile.address,
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFF6B7280),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (distance != null)
+                          Text(
+                            '${distance.toStringAsFixed(1)} km  •  ',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
                               color: const Color(0xFF9CA3AF),
                             ),
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                profile.address.isNotEmpty
-                                    ? profile.address
-                                    : 'Store',
-                                style: GoogleFonts.poppins(
-                                  color: const Color(0xFF6B7280),
-                                  fontSize: isCompact ? 11 : 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                          ),
+                        GestureDetector(
+                          onTap: () => _openMap(context, profile.lat, profile.lng),
+                          child: Text(
+                            _tr(context, 'View on map'),
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: const Color(0xFF2563EB),
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Text(
-                              distance,
-                              style: GoogleFonts.poppins(
-                                fontSize: isCompact ? 11 : 12,
-                                color: const Color(0xFF9CA3AF),
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                            Text(
-                              '  •  ',
-                              style: GoogleFonts.poppins(
-                                fontSize: isCompact ? 11 : 12,
-                                color: const Color(0xFFD1D5DB),
-                              ),
-                            ),
-                                GestureDetector(
-                                  onTap: () => _openMap(context, state.driverLat, state.driverLng),
-                              child: Text(
-                                'View on map',
-                                style: GoogleFonts.poppins(
-                                  fontSize: isCompact ? 11 : 12,
-                                  color: const Color(0xFFE53935),
-                                  fontWeight: FontWeight.w600,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
+                  ],
+                ),
+              ),
+              Column(
+                children: [
+                  _buildActionSquare(
+                    Icons.call,
+                    const Color(0xFF22C55E),
+                    onTap: profile.phone.isNotEmpty
+                        ? () => _handlePhoneCall(context, profile.phone)
+                        : null,
                   ),
-                  const SizedBox(width: 12),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildActionSquare(
-                        Icons.call,
-                        const Color(0xFF22C55E),
-                        onTap: () => _handlePhoneCall(context, profile.phone),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildActionSquare(
-                        Icons.message,
-                        const Color(0xFF2563EB),
-                        onTap: () {
-                          if (Navigator.canPop(context)) {
-                            Navigator.pop(context);
-                          }
-                          CurvedNavigationBarView.supportNavigation.value = SupportNavigationData(
-                            orderId: state.orderId,
-                            sellerId: profile.id,
-                            sellerName: profile.name,
-                            buyerName: '',
-                            sellerImageUrl: profile.imageUrl,
-                          );
-                        },
-                      ),
-                    ],
+                  const SizedBox(height: 10),
+                  _buildActionSquare(
+                    Icons.message,
+                    const Color(0xFF2563EB),
+                    onTap: () => _openSupportChat(context, state),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  statusText,
-                  style: GoogleFonts.poppins(
-                    fontSize: isCompact ? 11 : 12,
-                    color: statusColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
             ],
-          );
-        },
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              hours != null ? '$openStatus • $hours' : openStatus,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDesktopUserInfo(BuildContext context, TrackOrderLoaded state) {
-    if (state.sellerInfo == null) return const SizedBox.shrink();
-    final profile = state.sellerInfo!;
-    final isVerified = true;
-    final distance = '2.4 km away';
+  Widget _buildCustomerAddressCard(BuildContext context, TrackOrderLoaded state) {
+    final customer = state.customerInfo;
+    final name = customer?.name ?? order?.customerName ?? '';
+    final phone = customer?.phone ?? order?.customerPhone ?? '';
+    final address = customer?.deliveryAddress ?? order?.deliveryAddress ?? '';
+    final notes = customer?.deliveryNotes ?? '';
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sold by',
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFF6B7280),
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Colors.grey[200],
-                      backgroundImage: profile.imageUrl.isNotEmpty
-                          ? NetworkImage(profile.imageUrl)
-                          : null,
-                      child: profile.imageUrl.isEmpty
-                          ? const Icon(Icons.store, color: Colors.grey, size: 30)
-                          : null,
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                profile.name.isNotEmpty ? profile.name : 'Restaurant',
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  color: const Color(0xFF1C1C1C),
-                                ),
-                              ),
-                              if (isVerified) ...[
-                                const SizedBox(width: 6),
-                                const Icon(
-                                  Icons.verified,
-                                  size: 20,
-                                  color: Color(0xFF22C55E),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.storefront_outlined,
-                                size: 16,
-                                color: Color(0xFF6B7280),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '${profile.name.isNotEmpty ? profile.name : "Restaurant"} Cakes & Desserts',
-                                  style: GoogleFonts.poppins(
-                                    color: const Color(0xFF1C1C1C),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.location_on_outlined,
-                                size: 16,
-                                color: Color(0xFF6B7280),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  profile.address.isNotEmpty
-                                      ? profile.address
-                                      : 'Store Address',
-                                  style: GoogleFonts.poppins(
-                                    color: const Color(0xFF6B7280),
-                                    fontSize: 13,
-                                  ),
-                                  maxLines: 2,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on,
-                                size: 16,
-                                color: Color(0xFF22C55E),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                distance,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: const Color(0xFF6B7280),
-                                ),
-                              ),
-                              Text(
-                                '  •  ',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: const Color(0xFFD1D5DB),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => _openMap(context, state.driverLat, state.driverLng),
-                                child: Text(
-                                  'View on map',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    color: const Color(0xFF2563EB),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          Text(
+            _tr(context, 'Customer Address'),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1C1C1C),
             ),
           ),
-          const SizedBox(width: 24),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(20),
+                  color: const Color(0xFFE52121).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Open',
-                        style: GoogleFonts.poppins(
-                          color: const Color(0xFF22C55E),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
+                child: const Icon(Icons.location_on, color: Color(0xFFE52121), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (name.isNotEmpty)
+                      Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                       ),
-                      TextSpan(
-                        text: '  •  Closes 10:00 PM',
-                        style: GoogleFonts.poppins(
-                          color: const Color(0xFF4B5563),
-                          fontSize: 12,
-                        ),
+                    if (phone.isNotEmpty)
+                      Text(
+                        phone,
+                        style: const TextStyle(color: Colors.black54, fontSize: 13),
+                      ),
+                    const SizedBox(height: 4),
+                    if (address.isNotEmpty)
+                      Text(
+                        address,
+                        style: const TextStyle(color: Colors.black87, fontSize: 14),
+                      ),
+                    if (notes.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Instructions: $notes',
+                        style: const TextStyle(color: Colors.black54, fontSize: 13, fontStyle: FontStyle.italic),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  _buildDesktopActionButton(
-                    icon: Icons.call,
-                    label: 'Call',
-                    color: const Color(0xFF22C55E),
-                    onTap: () => _handlePhoneCall(context, profile.phone),
-                  ),
-                  const SizedBox(width: 12),
-                  _buildDesktopActionButton(
-                    icon: Icons.chat_bubble_outline,
-                    label: 'Chat',
-                    color: const Color(0xFF2563EB),
-                    onTap: () {
-                      if (Navigator.canPop(context)) {
-                        Navigator.pop(context);
-                      }
-                      CurvedNavigationBarView.supportNavigation.value = SupportNavigationData(
-                        orderId: state.orderId,
-                        sellerId: profile.id,
-                        sellerName: profile.name,
-                        buyerName: '',
-                        sellerImageUrl: profile.imageUrl,
-                      );
-                    },
-                  ),
-                ],
               ),
             ],
           ),
@@ -1230,163 +1433,125 @@ class _TrackOrderView extends StatelessWidget {
     );
   }
 
-  Widget _buildDesktopActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    VoidCallback? onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 70,
-          height: 60,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _handlePhoneCall(BuildContext context, String phone) async {
-    if (phone.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No phone number provided')));
-      return;
-    }
-
-    if (kIsWeb) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(
-                  Icons.phone_android_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Phone: $phone',
-                    style: const TextStyle(fontSize: 15),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.copy_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  tooltip: 'Copy to clipboard',
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: phone));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Copied to clipboard!'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ],
-            ),
-            duration: const Duration(seconds: 5),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } else {
-      final Uri url = Uri(scheme: 'tel', path: phone);
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not launch phone dialer')),
-          );
-        }
-      }
-    }
-  }
-
-  Widget _buildActionSquare(IconData icon, Color color, {VoidCallback? onTap}) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.15),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Icon(icon, color: color, size: 22),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOrderSummaryMobile(BuildContext context, TrackOrderLoaded state) {
+  Widget _buildOrderSummary(BuildContext context, TrackOrderLoaded state, {bool isDesktop = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Order Details',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1C1C1C),
-          ),
+        Row(
+          children: [
+            Text(
+              _tr(context, 'Order Summary'),
+              style: TextStyle(
+                fontSize: isDesktop ? 24 : 18,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1C1C1C),
+              ),
+            ),
+            const SizedBox(width: 10),
+            _buildItemCountPill(context, state),
+          ],
         ),
         const SizedBox(height: 16),
-        _buildOrderItemsList(),
+        _buildOrderItemsList(context, state),
         const SizedBox(height: 16),
         const Divider(color: Color(0xFFF0F0F0), thickness: 1),
         const SizedBox(height: 16),
-        _buildPaymentSummary(),
+        _buildPaymentSummary(context, state),
         const SizedBox(height: 24),
         _buildDownloadInvoiceButton(context, state),
       ],
     );
   }
 
-  Widget _buildOrderItemsList() {
+  int _totalItemCount(TrackOrderLoaded state) {
+    if (state.orderItems.isNotEmpty) {
+      return state.orderItems.fold<int>(0, (int sum, item) => sum + item.quantity);
+    }
+    return order?.items.fold<int>(0, (int sum, item) => sum + item.quantity) ?? 0;
+  }
+
+  Widget _buildItemCountPill(BuildContext context, TrackOrderLoaded state) {
+    final count = _totalItemCount(state);
+    if (count <= 0) return const SizedBox.shrink();
+    final label = count == 1 ? '1 ${_tr(context, 'Item')}' : '$count ${_tr(context, 'Items')}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF6B7280),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderItemsList(BuildContext context, TrackOrderLoaded state) {
+    if (state.orderItems.isNotEmpty) {
+      return Column(
+        children: state.orderItems.map((item) {
+          final heroTag = 'track_order_${state.orderId}_item_${item.id}';
+          final imageUrl = item.imageUrl ?? '';
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Builder(
+                  builder: (context) => GestureDetector(
+                    onTap: () => _showImagePreview(context, imageUrl, heroTag),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.network(
+                        imageUrl,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.fastfood, color: Colors.grey, size: 32),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Qty: ${item.quantity}',
+                        style: const TextStyle(fontSize: 13, color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '₹${(item.price * item.quantity).toStringAsFixed(2)}',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    }
+
     if (order == null) return const SizedBox.shrink();
     return Column(
       children: order!.items.map((item) {
@@ -1416,11 +1581,7 @@ class _TrackOrderView extends StatelessWidget {
                           width: 80,
                           height: 80,
                           color: Colors.grey[200],
-                          child: const Icon(
-                            Icons.fastfood,
-                            color: Colors.grey,
-                            size: 32,
-                          ),
+                          child: const Icon(Icons.fastfood, color: Colors.grey, size: 32),
                         ),
                       ),
                     ),
@@ -1434,32 +1595,21 @@ class _TrackOrderView extends StatelessWidget {
                   children: [
                     Text(
                       item.name,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Qty: ${item.quantity}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black54,
-                      ),
+                      style: const TextStyle(fontSize: 13, color: Colors.black54),
                     ),
                   ],
                 ),
               ),
               Text(
                 '₹${(item.price * item.quantity).toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
               ),
             ],
           ),
@@ -1468,11 +1618,7 @@ class _TrackOrderView extends StatelessWidget {
     );
   }
 
-  void _showImagePreview(
-    BuildContext context,
-    String imageUrl,
-    String heroTag,
-  ) {
+  void _showImagePreview(BuildContext context, String imageUrl, String heroTag) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -1518,28 +1664,124 @@ class _TrackOrderView extends StatelessWidget {
     );
   }
 
-  Widget _buildPaymentSummary() {
-    if (order == null) return const SizedBox.shrink();
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildPaymentSummary(BuildContext context, TrackOrderLoaded state) {
+    if (order == null && state.totalAmount <= 0 && state.orderItems.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final paymentMethod = state.paymentMethod.isNotEmpty ? state.paymentMethod : order?.paymentMethod ?? '';
+    final paymentStatus = state.paymentStatus.isNotEmpty ? state.paymentStatus : order?.paymentStatus ?? '';
+    final isPaid = paymentStatus.toLowerCase() == 'paid';
+
+    final subtotal = state.subtotal ?? order?.subtotal;
+    final deliveryFee = state.deliveryFee ?? order?.deliveryFee;
+    final taxAmount = state.taxAmount ?? order?.taxAmount;
+    final platformFee = state.platformFee ?? order?.platformFee;
+    final discountAmount = state.discountAmount ?? order?.discountAmount;
+    final couponCode = order?.couponCode;
+    final totalAmount = state.totalAmount > 0 ? state.totalAmount : (order?.totalAmount ?? 0.0);
+
+    return Column(
       children: [
-        const Text(
-          'Total Amount',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Payment Method', style: TextStyle(fontSize: 14, color: Colors.black54)),
+            Row(
+              children: [
+                Icon(
+                  paymentMethod.toUpperCase() == 'RAZORPAY'
+                      ? Icons.credit_card_rounded
+                      : (paymentMethod.toUpperCase() == 'WALLET'
+                          ? Icons.account_balance_wallet_outlined
+                          : Icons.payments_outlined),
+                  size: 16,
+                  color: const Color(0xFF1C1C1C),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  paymentMethod.isEmpty ? 'COD' : paymentMethod,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1C1C1C)),
+                ),
+              ],
+            ),
+          ],
         ),
-        Text(
-          '₹${order!.totalAmount.toStringAsFixed(2)}',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFE52121),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Payment Status', style: TextStyle(fontSize: 14, color: Colors.black54)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: isPaid ? const Color(0xFFF0FDF4) : const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isPaid ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                  width: 0.8,
+                ),
+              ),
+              child: Text(
+                paymentStatus.isEmpty ? 'Pending' : paymentStatus,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isPaid ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 10),
+          child: Divider(height: 1),
+        ),
+        if (subtotal != null) _buildCostRow(context, 'Item Total', '₹${subtotal.toStringAsFixed(2)}'),
+        if (deliveryFee != null) _buildCostRow(context, 'Delivery Fee', '₹${deliveryFee.toStringAsFixed(2)}'),
+        if (taxAmount != null) _buildCostRow(context, 'Taxes & Charges', '₹${taxAmount.toStringAsFixed(2)}'),
+        if (platformFee != null) _buildCostRow(context, 'Platform Fee', '₹${platformFee.toStringAsFixed(2)}'),
+        if (discountAmount != null && discountAmount > 0)
+          _buildCostRow(
+            context,
+            couponCode != null && couponCode.isNotEmpty
+                ? '${_tr(context, 'Discount')} ($couponCode)'
+                : _tr(context, 'Discount'),
+            '-₹${discountAmount.toStringAsFixed(2)}',
+            valueColor: const Color(0xFF15803D),
           ),
+        if (subtotal != null || deliveryFee != null || taxAmount != null || platformFee != null || discountAmount != null)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Divider(height: 1),
+          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Total Amount', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+            Text(
+              '₹${totalAmount.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFE52121)),
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  Widget _buildCostRow(BuildContext context, String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(_tr(context, label), style: const TextStyle(fontSize: 14, color: Colors.black54)),
+          Text(
+            value,
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: valueColor ?? const Color(0xFF1C1C1C)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1552,27 +1794,33 @@ class _TrackOrderView extends StatelessWidget {
           try {
             final pdfBytes = await InvoiceGenerator.generateInvoice(
               orderId: order!.id,
-              buyerName: 'Customer', 
+              buyerName: state.customerInfo?.name.isNotEmpty == true ? state.customerInfo!.name : 'Customer',
               sellerName: state.sellerInfo?.name ?? 'Restaurant',
               shopName: state.sellerInfo?.name ?? 'Restaurant',
-              totalAmount: order!.totalAmount,
+              totalAmount: state.totalAmount > 0 ? state.totalAmount : order!.totalAmount,
               date: order!.date,
               items: order!.items.map((i) => {
                 'name': i.name,
                 'qty': i.quantity,
                 'price': i.price,
               }).toList(),
+              subtotal: order!.subtotal,
+              deliveryFee: order!.deliveryFee,
+              taxAmount: order!.taxAmount,
+              discountAmount: order!.discountAmount,
+              couponCode: order!.couponCode,
+              platformFee: order!.platformFee,
             );
-            
+
             await Printing.sharePdf(
-              bytes: pdfBytes, 
-              filename: 'invoice_${order!.id.substring(0, 8)}.pdf'
+              bytes: pdfBytes,
+              filename: 'invoice_${order!.id.substring(0, 8)}.pdf',
             );
           } catch (e) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Failed to generate invoice: $e'), 
+                  content: Text('Failed to generate invoice: $e'),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -1580,9 +1828,9 @@ class _TrackOrderView extends StatelessWidget {
           }
         },
         icon: const Icon(Icons.receipt_long_outlined, size: 20),
-        label: const Text(
-          'Download Invoice',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        label: Text(
+          _tr(context, 'Download Invoice'),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF2563EB),
@@ -1652,5 +1900,487 @@ class _TrackOrderView extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _handlePhoneCall(BuildContext context, String phone) async {
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No phone number provided')));
+      return;
+    }
+
+    if (kIsWeb) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.phone_android_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('Phone: $phone', style: const TextStyle(fontSize: 15)),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy_rounded, color: Colors.white, size: 20),
+                  tooltip: 'Copy to clipboard',
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: phone));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Copied to clipboard!'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else {
+      final Uri url = Uri(scheme: 'tel', path: phone);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not launch phone dialer')),
+          );
+        }
+      }
+    }
+  }
+
+  Widget _buildActionSquare(IconData icon, Color color, {VoidCallback? onTap}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.15),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 70,
+          height: 60,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  double? _distanceBetween(double? lat1, double? lng1, double? lat2, double? lng2) {
+    if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
+    return _haversineKm(lat1, lng1, lat2, lng2);
+  }
+
+  double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
+    const r = 6371.0;
+    final dLat = _deg2rad(lat2 - lat1);
+    final dLng = _deg2rad(lng2 - lng1);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_deg2rad(lat1)) * math.cos(_deg2rad(lat2)) * math.sin(dLng / 2) * math.sin(dLng / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return r * c;
+  }
+
+  double _deg2rad(double deg) => deg * math.pi / 180;
+}
+
+class _LiveTrackingMapCard extends StatefulWidget {
+  final double? sellerLat;
+  final double? sellerLng;
+  final double? customerLat;
+  final double? customerLng;
+  final double? driverLat;
+  final double? driverLng;
+  final String etaLabel;
+  final String distanceLabel;
+  final bool isExpanded;
+  final bool hasRoute;
+  final VoidCallback onToggleFullscreen;
+  final VoidCallback onOpenMaps;
+
+  const _LiveTrackingMapCard({
+    required this.sellerLat,
+    required this.sellerLng,
+    required this.customerLat,
+    required this.customerLng,
+    required this.driverLat,
+    required this.driverLng,
+    required this.etaLabel,
+    required this.distanceLabel,
+    required this.isExpanded,
+    required this.hasRoute,
+    required this.onToggleFullscreen,
+    required this.onOpenMaps,
+  });
+
+  @override
+  State<_LiveTrackingMapCard> createState() => _LiveTrackingMapCardState();
+}
+
+class _LiveTrackingMapCardState extends State<_LiveTrackingMapCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  double _zoom = 1.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  void _zoomIn() => setState(() => _zoom = (_zoom + 0.25).clamp(0.5, 3.0));
+
+  void _zoomOut() => setState(() => _zoom = (_zoom - 0.25).clamp(0.5, 3.0));
+
+  void _recenter() => setState(() => _zoom = 1.0);
+
+  @override
+  Widget build(BuildContext context) {
+    final etaParts = widget.distanceLabel.isNotEmpty
+        ? '${widget.etaLabel} • ${widget.distanceLabel}'
+        : widget.etaLabel;
+
+    return Container(
+      height: widget.isExpanded ? 460 : 300,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, _) {
+                return CustomPaint(
+                  painter: _LiveTrackingMapPainter(
+                    sellerLat: widget.sellerLat,
+                    sellerLng: widget.sellerLng,
+                    customerLat: widget.customerLat,
+                    customerLng: widget.customerLng,
+                    driverLat: widget.driverLat,
+                    driverLng: widget.driverLng,
+                    zoom: _zoom,
+                    pulse: _pulseController.value,
+                  ),
+                  child: const SizedBox.expand(),
+                );
+              },
+            ),
+          ),
+          if (!widget.hasRoute)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Live map will appear once a delivery partner is assigned.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54, fontSize: 14),
+                ),
+              ),
+            ),
+          Positioned(
+            top: 16,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.delivery_dining, color: Color(0xFFE52121), size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    etaParts,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            right: 12,
+            top: 12,
+            child: Column(
+              children: [
+                _mapControl(Icons.add, _zoomIn),
+                const SizedBox(height: 8),
+                _mapControl(Icons.remove, _zoomOut),
+                const SizedBox(height: 8),
+                _mapControl(Icons.my_location, _recenter),
+                const SizedBox(height: 8),
+                _mapControl(
+                  widget.isExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
+                  widget.onToggleFullscreen,
+                ),
+                const SizedBox(height: 8),
+                _mapControl(Icons.navigation, widget.onOpenMaps),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mapControl(IconData icon, VoidCallback onTap) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      elevation: 1,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Icon(icon, size: 20, color: const Color(0xFF1C1C1C)),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveTrackingMapPainter extends CustomPainter {
+  final double? sellerLat;
+  final double? sellerLng;
+  final double? customerLat;
+  final double? customerLng;
+  final double? driverLat;
+  final double? driverLng;
+  final double zoom;
+  final double pulse;
+
+  _LiveTrackingMapPainter({
+    required this.sellerLat,
+    required this.sellerLng,
+    required this.customerLat,
+    required this.customerLng,
+    required this.driverLat,
+    required this.driverLng,
+    required this.zoom,
+    required this.pulse,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _paintGrid(canvas, size);
+    _paintRoads(canvas, size);
+
+    Offset? _project(double? lat, double? lng) {
+      if (lat == null || lng == null) return null;
+      return _projectPoint(lat, lng, size);
+    }
+
+    final seller = _project(sellerLat, sellerLng);
+    final customer = _project(customerLat, customerLng);
+    final driver = _project(driverLat, driverLng);
+
+    // Draw dashed route from seller -> customer (or driver -> customer).
+    Offset? start = seller ?? driver;
+    Offset? end = customer;
+    if (start != null && end != null) {
+      _paintDashedRoute(canvas, start, end);
+    }
+
+    if (seller != null) _paintSellerMarker(canvas, seller);
+    if (customer != null) _paintCustomerMarker(canvas, customer);
+    if (driver != null) _paintDriverMarker(canvas, driver);
+  }
+
+  void _paintGrid(Canvas canvas, Size size) {
+    final gridPaint = Paint()
+      ..color = const Color(0xFFE2E8F0)
+      ..strokeWidth = 0.7;
+    const spacing = 40.0;
+    for (double x = 0; x <= size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+    for (double y = 0; y <= size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+  }
+
+  void _paintRoads(Canvas canvas, Size size) {
+    final roadPaint = Paint()
+      ..color = const Color(0xFFF8FAFC)
+      ..strokeWidth = 12
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(0, size.height * 0.3), Offset(size.width, size.height * 0.3), roadPaint);
+    canvas.drawLine(Offset(size.width * 0.4, 0), Offset(size.width * 0.4, size.height), roadPaint);
+    final roadLine = Paint()
+      ..color = const Color(0xFFCBD5E1)
+      ..strokeWidth = 1;
+    canvas.drawLine(Offset(0, size.height * 0.3), Offset(size.width, size.height * 0.3), roadLine);
+  }
+
+  Offset _projectPoint(double lat, double lng, Size size) {
+    final lats = <double>[];
+    final lngs = <double>[];
+    void add(double? la, double? lo) {
+      if (la != null) lats.add(la);
+      if (lo != null) lngs.add(lo);
+    }
+
+    add(sellerLat, sellerLng);
+    add(customerLat, customerLng);
+    add(driverLat, driverLng);
+
+    final minLat = lats.reduce(math.min);
+    final maxLat = lats.reduce(math.max);
+    final minLng = lngs.reduce(math.min);
+    final maxLng = lngs.reduce(math.max);
+
+    final latRange = ((maxLat - minLat) / zoom).abs() < 1e-6 ? 0.05 : ((maxLat - minLat) / zoom).abs();
+    final lngRange = ((maxLng - minLng) / zoom).abs() < 1e-6 ? 0.05 : ((maxLng - minLng) / zoom).abs();
+    final midLat = (minLat + maxLat) / 2;
+    final midLng = (minLng + maxLng) / 2;
+    final effMinLat = midLat - latRange / 2;
+    final effMaxLat = midLat + latRange / 2;
+    final effMinLng = midLng - lngRange / 2;
+    final effMaxLng = midLng + lngRange / 2;
+
+    const padding = 40.0;
+    final usableW = size.width - padding * 2;
+    final usableH = size.height - padding * 2;
+    final x = padding + (lng - effMinLng) / (effMaxLng - effMinLng) * usableW;
+    final y = padding + (effMaxLat - lat) / (effMaxLat - effMinLat) * usableH;
+    return Offset(x, y);
+  }
+
+  void _paintDashedRoute(Canvas canvas, Offset start, Offset end) {
+    final paint = Paint()
+      ..color = const Color(0xFF2563EB)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    final distance = (end - start).distance;
+    final direction = (end - start) / distance;
+    const dash = 10.0;
+    const gap = 8.0;
+    double covered = 0;
+    while (covered < distance) {
+      final segEnd = math.min(covered + dash, distance);
+      canvas.drawLine(
+        start + direction * covered,
+        start + direction * segEnd,
+        paint,
+      );
+      covered += dash + gap;
+    }
+  }
+
+  void _paintSellerMarker(Canvas canvas, Offset pos) {
+    final paint = Paint()..color = const Color(0xFF22C55E);
+    canvas.drawCircle(pos, 12, paint);
+    canvas.drawCircle(pos, 16, Paint()..color = const Color(0xFF22C55E).withValues(alpha: 0.2));
+  }
+
+  void _paintCustomerMarker(Canvas canvas, Offset pos) {
+    final paint = Paint()..color = const Color(0xFFE52121);
+    canvas.drawCircle(pos, 10, paint);
+    canvas.drawCircle(pos, 14, Paint()..color = const Color(0xFFE52121).withValues(alpha: 0.2));
+  }
+
+  void _paintDriverMarker(Canvas canvas, Offset pos) {
+    final pulseRadius = 12 + pulse * 18;
+    canvas.drawCircle(
+      pos,
+      pulseRadius,
+      Paint()..color = const Color(0xFF2563EB).withValues(alpha: (1 - pulse) * 0.4),
+    );
+    final paint = Paint()..color = const Color(0xFF2563EB);
+    canvas.drawCircle(pos, 12, paint);
+    canvas.drawCircle(
+      pos,
+      12,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _LiveTrackingMapPainter oldDelegate) {
+    return oldDelegate.sellerLat != sellerLat ||
+        oldDelegate.sellerLng != sellerLng ||
+        oldDelegate.customerLat != customerLat ||
+        oldDelegate.customerLng != customerLng ||
+        oldDelegate.driverLat != driverLat ||
+        oldDelegate.driverLng != driverLng ||
+        oldDelegate.zoom != zoom ||
+        oldDelegate.pulse != pulse;
   }
 }

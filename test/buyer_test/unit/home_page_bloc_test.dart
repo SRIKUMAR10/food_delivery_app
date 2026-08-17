@@ -6,17 +6,22 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/hom
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
 import 'package:food_delivery_app/core/models/product_model.dart';
 
+import 'package:food_delivery_app/core/services/seller_status_service.dart';
+
 class MockProductRepository extends Mock implements IProductRepository {}
 class MockCategoryRepository extends Mock implements CategoryRepository {}
+class MockSellerStatusService extends Mock implements SellerStatusService {}
 
 void main() {
   late MockProductRepository mockProductRepository;
   late MockCategoryRepository mockCategoryRepository;
+  late MockSellerStatusService mockSellerStatusService;
   late HomePageBloc homePageBloc;
 
   setUp(() {
     mockProductRepository = MockProductRepository();
     mockCategoryRepository = MockCategoryRepository();
+    mockSellerStatusService = MockSellerStatusService();
 
     when(() => mockCategoryRepository.getCategories())
         .thenAnswer((_) => Stream.value(CategoryRepository.defaultCategories));
@@ -24,11 +29,16 @@ void main() {
     when(() => mockProductRepository.getProductsByCategory(any()))
         .thenAnswer((_) => Stream.value(<Product>[]));
 
+    when(() => mockSellerStatusService.watchSellerStatus(any()))
+        .thenAnswer((_) => Stream.value(const SellerAvailability(isOnline: true, isOpen: true)));
+
     homePageBloc = HomePageBloc(
       productRepository: mockProductRepository,
       categoryRepository: mockCategoryRepository,
+      sellerStatusService: mockSellerStatusService,
     );
   });
+
 
   tearDown(() {
     homePageBloc.close();

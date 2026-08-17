@@ -63,6 +63,16 @@ void main() {
 
   const DeliveryDashboardState loadedState = DeliveryDashboardState(
     status: DeliveryDashboardStatus.loaded,
+    isOnline: true,
+    partnerStatus: DeliveryPartnerStatusType.online,
+    todayEarnings: 2450.00,
+    todayTotalDeliveries: 18,
+    completedDeliveriesCount: 15,
+    pendingDeliveriesCount: 2,
+    cancelledDeliveriesCount: 1,
+    todayDistance: 42.5,
+    onlineHours: '5h 45m',
+    averageRating: 4.8,
     recentActivities: defaultActivities,
   );
 
@@ -183,7 +193,10 @@ void main() {
 
       when(
         () => mockBloc.state,
-      ).thenReturn(loadedState.copyWith(isOnline: false));
+      ).thenReturn(loadedState.copyWith(
+        isOnline: false,
+        partnerStatus: DeliveryPartnerStatusType.offline,
+      ));
 
       await tester.pumpWidget(buildPage());
       await tester.pump();

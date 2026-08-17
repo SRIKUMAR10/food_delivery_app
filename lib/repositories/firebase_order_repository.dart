@@ -94,12 +94,16 @@ class FirebaseOrderRepository implements IOrderRepository {
   }
 
   @override
-  Future<void> updateOrderStatus(String orderId, OrderStatus newStatus) async {
+  Future<void> updateOrderStatus(String orderId, OrderStatus newStatus, {String? reason}) async {
     try {
       final Map<String, dynamic> updates = {
         'status': newStatus.value,
         'updatedAt': FieldValue.serverTimestamp(),
       };
+
+      if (reason != null && reason.trim().isNotEmpty) {
+        updates['cancellationReason'] = reason.trim();
+      }
 
       switch (newStatus) {
         case OrderStatus.accepted:
@@ -114,6 +118,7 @@ class FirebaseOrderRepository implements IOrderRepository {
         case OrderStatus.ready:
           updates['readyAt'] = FieldValue.serverTimestamp();
           break;
+        case OrderStatus.pickedUp:
         case OrderStatus.outForDelivery:
           updates['outForDeliveryAt'] = FieldValue.serverTimestamp();
           break;

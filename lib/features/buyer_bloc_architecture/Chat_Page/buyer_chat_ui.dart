@@ -35,7 +35,7 @@ import '../Cart Page/cart_page_Bloc.dart';
 import '../Order Page/order_view_model.dart';
 import '../Cart Page/cart_models.dart';
 import '../Cart Page/cart_page_UI.dart';
-import '../home_Page/home_page_models.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
 
 class _AppTheme {
   _AppTheme._();
@@ -190,6 +190,10 @@ class SupportNavigationData {
   final String? orderImageUrl;
   final String? orderTitle;
   final double? orderTotal;
+  final String? deliveryPartnerId;
+  final String? deliveryPartnerName;
+  final String? deliveryPartnerPhone;
+  final String? deliveryPartnerImageUrl;
 
   const SupportNavigationData({
     required this.orderId,
@@ -201,7 +205,14 @@ class SupportNavigationData {
     this.orderImageUrl,
     this.orderTitle,
     this.orderTotal,
+    this.deliveryPartnerId,
+    this.deliveryPartnerName,
+    this.deliveryPartnerPhone,
+    this.deliveryPartnerImageUrl,
   });
+
+  bool get isDeliveryChat =>
+      deliveryPartnerId != null && deliveryPartnerId!.isNotEmpty;
 }
 
 class BuyerChatPage extends StatelessWidget {
@@ -213,6 +224,12 @@ class BuyerChatPage extends StatelessWidget {
   final String? buyerName;
   final SupportNavigationData? pendingOrderData;
   final FoodItem? foodItem;
+  final String? deliveryPartnerId;
+  final String? deliveryPartnerName;
+  final String? deliveryPartnerPhone;
+  final String? deliveryPartnerImageUrl;
+  final String? orderTitle;
+  final double? orderTotal;
 
   const BuyerChatPage({
     Key? key,
@@ -224,12 +241,21 @@ class BuyerChatPage extends StatelessWidget {
     this.buyerName,
     this.pendingOrderData,
     this.foodItem,
+    this.deliveryPartnerId,
+    this.deliveryPartnerName,
+    this.deliveryPartnerPhone,
+    this.deliveryPartnerImageUrl,
+    this.orderTitle,
+    this.orderTotal,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final bool isPushedRoute =
-        pendingOrderData != null || (orderId != null && sellerId != null) || foodItem != null;
+        pendingOrderData != null ||
+        (orderId != null && sellerId != null) ||
+        (orderId != null && deliveryPartnerId != null) ||
+        foodItem != null;
     return BlocProvider(
       create: (context) {
         IChatRepository chatRepo;
@@ -252,16 +278,40 @@ class BuyerChatPage extends StatelessWidget {
         );
         final data = pendingOrderData;
         if (data != null) {
-          bloc.openOrderConversation(
-            orderId: data.orderId,
-            sellerId: data.sellerId,
-            sellerName: data.sellerName,
-            shopName: data.shopName,
-            sellerImageUrl: data.sellerImageUrl,
-            buyerName: data.buyerName,
-            orderImageUrl: data.orderImageUrl,
-            orderTitle: data.orderTitle,
-            orderTotal: data.orderTotal,
+          if (data.isDeliveryChat) {
+            bloc.openDeliveryConversation(
+              deliveryPartnerId: data.deliveryPartnerId!,
+              deliveryPartnerName: data.deliveryPartnerName ?? 'Delivery Partner',
+              deliveryPartnerPhone: data.deliveryPartnerPhone,
+              deliveryPartnerImageUrl: data.deliveryPartnerImageUrl,
+              buyerName: data.buyerName,
+              orderId: data.orderId,
+              orderTitle: data.orderTitle,
+              orderTotal: data.orderTotal,
+            );
+          } else {
+            bloc.openOrderConversation(
+              orderId: data.orderId,
+              sellerId: data.sellerId,
+              sellerName: data.sellerName,
+              shopName: data.shopName,
+              sellerImageUrl: data.sellerImageUrl,
+              buyerName: data.buyerName,
+              orderImageUrl: data.orderImageUrl,
+              orderTitle: data.orderTitle,
+              orderTotal: data.orderTotal,
+            );
+          }
+        } else if (orderId != null && deliveryPartnerId != null) {
+          bloc.openDeliveryConversation(
+            deliveryPartnerId: deliveryPartnerId!,
+            deliveryPartnerName: deliveryPartnerName ?? 'Delivery Partner',
+            deliveryPartnerPhone: deliveryPartnerPhone,
+            deliveryPartnerImageUrl: deliveryPartnerImageUrl,
+            buyerName: buyerName ?? 'Buyer',
+            orderId: orderId,
+            orderTitle: orderTitle,
+            orderTotal: orderTotal,
           );
         } else if (orderId != null &&
             sellerId != null &&
@@ -654,6 +704,7 @@ class _BuyerChatListViewState extends State<_BuyerChatListView> {
     Widget bodyContent = Column(
       children: [
         _PremiumSearchBar(controller: _searchController),
+        const _ChatFilterBar(),
         Expanded(
           child: widget.conversations.isEmpty
               ? _EmptyConversationsState()
@@ -841,6 +892,170 @@ class _PremiumSearchBar extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ChatFilterBar extends StatelessWidget {
+  const _ChatFilterBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<BuyerChatBloc, BuyerChatState>(
+      builder: (context, state) {
+        final activeFilter =
+            state is BuyerChatLoaded ? state.activeFilter : 'all';
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: Row(
+            children: [
+              _FilterChip(
+                label: 'All',
+                icon: Icons.forum_outlined,
+                selected: activeFilter == 'all',
+                onTap: () => context
+                    .read<BuyerChatBloc>()
+                    .add(const SetBuyerChatFilter('all')),
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Store Support',
+                icon: Icons.storefront_outlined,
+                selected: activeFilter == 'seller',
+                onTap: () => context
+                    .read<BuyerChatBloc>()
+                    .add(const SetBuyerChatFilter('seller')),
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Delivery Partner',
+                icon: Icons.electric_scooter_outlined,
+                selected: activeFilter == 'delivery',
+                onTap: () => context
+                    .read<BuyerChatBloc>()
+                    .add(const SetBuyerChatFilter('delivery')),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: _AppTheme.normalDuration,
+          curve: Curves.easeOut,
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? _AppTheme.primary
+                : _AppTheme.surfaceHover,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? _AppTheme.primary : _AppTheme.borderLight,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? Colors.white : _AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : _AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleBadge extends StatelessWidget {
+  final ConversationModel conversation;
+
+  const _RoleBadge({required this.conversation});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!conversation.isDeliveryChat) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: _AppTheme.info.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('🏪', style: TextStyle(fontSize: 10)),
+            SizedBox(width: 3),
+            Text(
+              'Store',
+              style: TextStyle(
+                fontSize: 10,
+                color: _AppTheme.info,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: _AppTheme.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('🛵', style: TextStyle(fontSize: 10)),
+          SizedBox(width: 3),
+          Text(
+            'Rider',
+            style: TextStyle(
+              fontSize: 10,
+              color: _AppTheme.warning,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1046,6 +1261,8 @@ class _ConversationTileState extends State<_ConversationTile> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 6),
+                        _RoleBadge(conversation: conversation),
                         if (conversation.lastMessageTimestamp != null)
                           Padding(
                             padding: const EdgeInsets.only(left: 8),
@@ -1391,6 +1608,8 @@ class _ChatPanelState extends State<_ChatPanel> {
               return const SizedBox.shrink();
             },
           ),
+          if (widget.conversation.isDeliveryChat)
+            _DeliveryQuickActions(conversation: widget.conversation),
           _PremiumComposer(
             controller: _textController,
             isSending: widget.isSending,
@@ -1554,6 +1773,8 @@ class _PremiumChatHeader extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
+                                const SizedBox(width: 6),
+                                _RoleBadge(conversation: conversation),
                                 const SizedBox(width: 6),
                                 const Icon(
                                   Icons.verified_rounded,
@@ -2038,6 +2259,118 @@ class _PremiumComposerState extends State<_PremiumComposer> {
     } else {
       widget.onSend();
     }
+  }
+}
+
+class _DeliveryQuickActions extends StatelessWidget {
+  final ConversationModel conversation;
+
+  const _DeliveryQuickActions({required this.conversation});
+
+  @override
+  Widget build(BuildContext context) {
+    final phone = conversation.deliveryPartnerPhone;
+
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: _AppTheme.borderLight)),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Row(
+        children: [
+          if (phone != null && phone.isNotEmpty) ...[
+            _QuickActionButton(
+              icon: Icons.call_rounded,
+              label: 'Call rider',
+              color: _AppTheme.success,
+              onTap: () => _launchTel(phone),
+            ),
+            const SizedBox(width: 8),
+          ],
+          _QuickActionButton(
+            icon: Icons.location_searching_rounded,
+            label: 'Where are you?',
+            color: _AppTheme.info,
+            onTap: () => context.read<BuyerChatBloc>().add(
+                  SendOrderQuickReply(
+                    conversation.id,
+                    'Where are you?',
+                  ),
+                ),
+          ),
+          const SizedBox(width: 8),
+          _QuickActionButton(
+            icon: Icons.storefront_outlined,
+            label: 'I am at the gate',
+            color: _AppTheme.warning,
+            onTap: () => context.read<BuyerChatBloc>().add(
+                  SendOrderQuickReply(
+                    conversation.id,
+                    'I am at the gate',
+                  ),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _launchTel(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

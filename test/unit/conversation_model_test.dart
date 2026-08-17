@@ -231,5 +231,159 @@ void main() {
 
       expect(a, isNot(c));
     });
+
+    group('multi-party fields', () {
+      test('isDeliveryChat true when conversationType is buyer_delivery', () {
+        final model = ConversationModel(
+          id: testId,
+          buyerId: buyerId,
+          sellerId: '',
+          buyerName: buyerName,
+          sellerName: '',
+          deliveryPartnerId: 'rider_1',
+          deliveryPartnerName: 'Ravi Rider',
+          conversationType: 'buyer_delivery',
+          createdAt: testTimestamp,
+          updatedAt: testTimestamp,
+        );
+
+        expect(model.isDeliveryChat, isTrue);
+      });
+
+      test('isDeliveryChat true when deliveryPartnerId is set', () {
+        final model = ConversationModel(
+          id: testId,
+          buyerId: buyerId,
+          sellerId: sellerId,
+          buyerName: buyerName,
+          sellerName: sellerName,
+          deliveryPartnerId: 'rider_1',
+          createdAt: testTimestamp,
+          updatedAt: testTimestamp,
+        );
+
+        expect(model.isDeliveryChat, isTrue);
+      });
+
+      test('isDeliveryChat false for buyer_seller chat', () {
+        final model = ConversationModel(
+          id: testId,
+          buyerId: buyerId,
+          sellerId: sellerId,
+          buyerName: buyerName,
+          sellerName: sellerName,
+          createdAt: testTimestamp,
+          updatedAt: testTimestamp,
+        );
+
+        expect(model.isDeliveryChat, isFalse);
+      });
+
+      test('unreadCountForUser returns deliveryUnreadCount for rider', () {
+        final model = ConversationModel(
+          id: testId,
+          buyerId: buyerId,
+          sellerId: '',
+          buyerName: buyerName,
+          sellerName: '',
+          deliveryPartnerId: 'rider_1',
+          deliveryUnreadCount: 4,
+          conversationType: 'buyer_delivery',
+          createdAt: testTimestamp,
+          updatedAt: testTimestamp,
+        );
+
+        expect(model.unreadCountForUser('rider_1'), 4);
+        expect(model.unreadCountForUser(buyerId), 0);
+      });
+
+      test('otherParticipantName returns rider name for buyer in delivery chat', () {
+        final model = ConversationModel(
+          id: testId,
+          buyerId: buyerId,
+          sellerId: '',
+          buyerName: buyerName,
+          sellerName: '',
+          deliveryPartnerId: 'rider_1',
+          deliveryPartnerName: 'Ravi Rider',
+          conversationType: 'buyer_delivery',
+          createdAt: testTimestamp,
+          updatedAt: testTimestamp,
+        );
+
+        expect(model.otherParticipantName(buyerId), 'Ravi Rider');
+        expect(model.otherParticipantName('rider_1'), buyerName);
+      });
+
+      test('otherParticipantRole returns delivery_partner for buyer', () {
+        final model = ConversationModel(
+          id: testId,
+          buyerId: buyerId,
+          sellerId: '',
+          buyerName: buyerName,
+          sellerName: '',
+          deliveryPartnerId: 'rider_1',
+          conversationType: 'buyer_delivery',
+          createdAt: testTimestamp,
+          updatedAt: testTimestamp,
+        );
+
+        expect(model.otherParticipantRole(buyerId), 'delivery_partner');
+        expect(model.otherParticipantRole('rider_1'), 'buyer');
+      });
+
+      test('fromMap derives participants when not present', () {
+        final map = {
+          'buyerId': buyerId,
+          'sellerId': '',
+          'deliveryPartnerId': 'rider_1',
+          'conversationType': 'buyer_delivery',
+        };
+
+        final model = ConversationModel.fromMap(map, testId);
+
+        expect(model.participants, containsAll(['buyer_1', 'rider_1']));
+        expect(model.conversationType, 'buyer_delivery');
+      });
+
+      test('fromMap parses explicit participants and participantRoles', () {
+        final map = {
+          'buyerId': buyerId,
+          'sellerId': '',
+          'deliveryPartnerId': 'rider_1',
+          'conversationType': 'buyer_delivery',
+          'participants': ['buyer_1', 'rider_1'],
+          'participantRoles': {'buyer_1': 'buyer', 'rider_1': 'delivery_partner'},
+        };
+
+        final model = ConversationModel.fromMap(map, testId);
+
+        expect(model.participants, ['buyer_1', 'rider_1']);
+        expect(model.participantRoles['rider_1'], 'delivery_partner');
+      });
+
+      test('toMap includes multi-party fields', () {
+        final model = ConversationModel(
+          id: testId,
+          buyerId: buyerId,
+          sellerId: '',
+          buyerName: buyerName,
+          sellerName: '',
+          deliveryPartnerId: 'rider_1',
+          deliveryPartnerName: 'Ravi Rider',
+          deliveryPartnerPhone: '9876543210',
+          conversationType: 'buyer_delivery',
+          createdAt: testTimestamp,
+          updatedAt: testTimestamp,
+        );
+
+        final map = model.toMap();
+
+        expect(map['deliveryPartnerId'], 'rider_1');
+        expect(map['deliveryPartnerName'], 'Ravi Rider');
+        expect(map['deliveryPartnerPhone'], '9876543210');
+        expect(map['conversationType'], 'buyer_delivery');
+      });
+    });
   });
 }

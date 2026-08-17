@@ -57,10 +57,35 @@ class OrdersListLoaded extends OrdersListState {
   List<Object?> get props => [allOrders, filteredOrders, activeFilter, searchQuery, updatingOrderIds, errorMessage, successMessage];
 
   int getCount(String status) {
-    if (status == 'Preparing') {
-      return allOrders.where((order) => order.status == OrderStatus.preparing || order.status == OrderStatus.accepted).length;
+    final clean = status.toLowerCase().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
+    if (clean == 'all') {
+      return allOrders.length;
     }
-    return allOrders.where((order) => order.status.value == status).length;
+    if (clean == 'new' || clean == 'placed' || clean == 'neworder') {
+      return allOrders.where((order) => order.status == OrderStatus.newOrder).length;
+    }
+    if (clean == 'accepted') {
+      return allOrders.where((order) => order.status == OrderStatus.accepted).length;
+    }
+    if (clean == 'preparing') {
+      return allOrders.where((order) => order.status == OrderStatus.preparing).length;
+    }
+    if (clean == 'ready' || clean == 'readyforpickup') {
+      return allOrders.where((order) => order.status == OrderStatus.ready).length;
+    }
+    if (clean == 'pickedup') {
+      return allOrders.where((order) => order.status == OrderStatus.pickedUp).length;
+    }
+    if (clean == 'outfordelivery') {
+      return allOrders.where((order) => order.status == OrderStatus.outForDelivery).length;
+    }
+    if (clean == 'delivered') {
+      return allOrders.where((order) => order.status == OrderStatus.delivered).length;
+    }
+    if (clean == 'cancelled' || clean == 'canceled' || clean == 'rejected') {
+      return allOrders.where((order) => order.status == OrderStatus.cancelled || order.status == OrderStatus.rejected).length;
+    }
+    return allOrders.where((order) => order.status.value.toLowerCase() == clean).length;
   }
 }
 

@@ -30,4 +30,29 @@ class PromotionsCouponsRepository {
   Future<void> toggleCouponStatus(String sellerId, String couponId, bool isActive) {
     return service.toggleCouponStatus(sellerId, couponId, isActive);
   }
+
+  Future<List<Map<String, dynamic>>> getSellerProducts(String sellerId) {
+    return service.fetchSellerProducts(sellerId);
+  }
+
+  Future<List<String>> getSellerCategories(String sellerId) {
+    return service.fetchSellerCategories(sellerId);
+  }
+
+  Future<CouponValidationResult> validateCouponServerSide({
+    required String sellerId,
+    required String couponCode,
+    required double orderTotal,
+    List<Map<String, dynamic>>? items,
+    String? customerId,
+  }) {
+    return service.validateCouponServerSide(
+      sellerId: sellerId,
+      couponCode: couponCode,
+      orderTotal: orderTotal,
+      items: items,
+      customerId: customerId,
+    );
+  }
 }
+

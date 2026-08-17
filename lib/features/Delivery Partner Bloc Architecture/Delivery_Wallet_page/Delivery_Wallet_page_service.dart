@@ -6,6 +6,11 @@ abstract class DeliveryWalletPageServiceBase {
   Future<Map<String, dynamic>> fetchWalletData();
   Stream<Map<String, dynamic>> watchWalletData();
   Future<Map<String, dynamic>> withdraw(double amount);
+  Future<Map<String, dynamic>> submitCash({
+    required double amount,
+    required String method,
+  });
+  Future<List<Map<String, dynamic>>> fetchReconciliationHistory();
   Future<Map<String, dynamic>> addPaymentMethod(Map<String, dynamic> method);
   Future<List<Map<String, dynamic>>> fetchTransactions(
     DeliveryWalletTransactionFilter filter,
@@ -64,7 +69,18 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
     DocumentSnapshot<Map<String, dynamic>> partnerDoc,
   ) async {
     final data = partnerDoc.data() ?? {};
+    final walletBalance = (data['walletBalance'] as num?)?.toDouble() ??
+        (data['totalEarnings'] as num?)?.toDouble() ??
+        0.0;
     final totalEarnings = (data['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+    final bonusEarnings = (data['bonusEarnings'] as num?)?.toDouble() ?? 0.0;
+    final incentiveEarnings =
+        (data['incentiveEarnings'] as num?)?.toDouble() ?? 0.0;
+    final codAdjustment = (data['codAdjustment'] as num?)?.toDouble() ?? 0.0;
+    final availableBalance = (data['availableBalance'] as num?)?.toDouble() ??
+        (walletBalance > 100.0 ? walletBalance - 100.0 : 0.0);
+    final withdrawableAmount =
+        (data['withdrawableAmount'] as num?)?.toDouble() ?? availableBalance;
 
     final pendingQuery = await _firestore
         .collection('delivery_partners')
@@ -80,10 +96,17 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
     );
 
     return {
-      'walletBalance': totalEarnings,
+      'walletBalance': walletBalance,
+      'availableBalance': availableBalance,
+      'pendingBalance': pendingWithdrawal,
       'pendingWithdrawal': pendingWithdrawal,
+      'withdrawableAmount': withdrawableAmount,
+      'codAdjustment': codAdjustment,
       'totalEarnings': totalEarnings,
-      'todayEarnings': 0.0,
+      'bonusEarnings': bonusEarnings,
+      'incentiveEarnings': incentiveEarnings,
+      'todayEarnings': (data['todayEarnings'] as num?)?.toDouble() ?? 0.0,
+      'totalWithdrawn': (data['totalWithdrawn'] as num?)?.toDouble() ?? 0.0,
       'lastUpdated': DateTime.now().toIso8601String(),
     };
   }
@@ -97,23 +120,45 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
         await _firestore.runTransaction((transaction) async {
           final snap = await transaction.get(docRef);
           if (!snap.exists) throw Exception('Account not found');
-          final balance =
-              (snap.data()?['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+          final data = snap.data() ?? {};
+          final balance = (data['walletBalance'] as num?)?.toDouble() ??
+              (data['totalEarnings'] as num?)?.toDouble() ??
+              0.0;
           if (balance < amount) throw Exception('Insufficient balance');
 
+          final newBalance = balance - amount;
+          final newAvailable = (newBalance > 100.0) ? newBalance - 100.0 : 0.0;
+          final totalWithdrawn =
+              ((data['totalWithdrawn'] as num?)?.toDouble() ?? 0.0) + amount;
+
           transaction.update(docRef, {
-            'totalEarnings': balance - amount,
+            'walletBalance': newBalance,
+            'availableBalance': newAvailable,
+            'withdrawableAmount': newAvailable,
+            'totalWithdrawn': totalWithdrawn,
             'updatedAt': FieldValue.serverTimestamp(),
           });
           transaction.set(docRef.collection('transactions').doc(), {
             'type': 'withdrawal',
             'amount': -amount,
-            'description': 'Wallet withdrawal',
+            'title': 'Wallet Withdrawal',
+            'description': 'Withdrawal to registered bank account',
             'status': 'processing',
             'createdAt': FieldValue.serverTimestamp(),
           });
         });
-        return {'success': true};
+        return {
+          'success': true,
+          'walletBalance': 0.0,
+          'transaction': {
+            'id': 'txn_${DateTime.now().millisecondsSinceEpoch}',
+            'type': 'withdrawal',
+            'title': 'Wallet Withdrawal',
+            'amount': -amount,
+            'status': 'processing',
+            'date': DateTime.now().toIso8601String(),
+          }
+        };
       }
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -127,7 +172,7 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
     try {
       final uid = _auth.currentUser?.uid;
       if (uid != null) {
-        await _firestore
+        final docRef = await _firestore
             .collection('delivery_partners')
             .doc(uid)
             .collection('payment_methods')
@@ -135,7 +180,7 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
           ...method,
           'createdAt': FieldValue.serverTimestamp(),
         });
-        return {'success': true, 'id': 'pm_added'};
+        return {'success': true, 'id': docRef.id, ...method};
       }
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -184,15 +229,17 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
         .orderBy('createdAt', descending: true);
 
     if (filter != DeliveryWalletTransactionFilter.all) {
-      final status = filter == DeliveryWalletTransactionFilter.income
-          ? 'delivery_earning'
-          : filter == DeliveryWalletTransactionFilter.withdrawals
-              ? 'withdrawal'
-              : filter == DeliveryWalletTransactionFilter.bonuses
-                  ? 'bonus'
-                  : null;
-      if (status != null) {
-        query = query.where('type', isEqualTo: status);
+      final typeString = switch (filter) {
+        DeliveryWalletTransactionFilter.income => 'delivery_earning',
+        DeliveryWalletTransactionFilter.withdrawals => 'withdrawal',
+        DeliveryWalletTransactionFilter.bonuses => 'bonus',
+        DeliveryWalletTransactionFilter.incentives => 'incentive',
+        DeliveryWalletTransactionFilter.penalties => 'penalty',
+        DeliveryWalletTransactionFilter.adjustments => 'cod_adjustment',
+        _ => null,
+      };
+      if (typeString != null) {
+        query = query.where('type', isEqualTo: typeString);
       }
     }
     return query;
@@ -202,13 +249,19 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data();
+    final createdAtDate = (data['createdAt'] as Timestamp?)?.toDate() ??
+        (data['date'] is String ? DateTime.tryParse(data['date']) : null) ??
+        DateTime.now();
     return {
-      'id': doc.id,
-      'type': data['type'] ?? 'payment',
+      'id': data['id'] ?? doc.id,
+      'type': data['type'] ?? 'delivery_earning',
+      'title': data['title'] ?? data['description'] ?? 'Delivery Transaction',
       'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
-      'description': data['description'] ?? '',
+      'description': data['description'] ?? data['title'] ?? '',
       'status': data['status'] ?? 'completed',
-      'createdAt': (data['createdAt'] as Timestamp?)?.toDate().toIso8601String() ?? '',
+      'orderId': data['orderId'],
+      'date': createdAtDate.toIso8601String(),
+      'createdAt': createdAtDate.toIso8601String(),
     };
   }
 }

@@ -17,9 +17,13 @@ class RazorpayApiService {
 
   Razorpay? _razorpay;
 
-  RazorpayApiService({this.apiSecret}) {
+  RazorpayApiService({this.apiSecret, Razorpay? razorpay}) {
     if (!kIsWeb) {
-      _razorpay = Razorpay();
+      try {
+        _razorpay = razorpay ?? Razorpay();
+      } catch (e) {
+        debugPrint('Razorpay init: $e');
+      }
     }
   }
 
@@ -27,10 +31,16 @@ class RazorpayApiService {
   void initialize({
     required Function(PaymentSuccessResponse) onSuccess,
     required Function(PaymentFailureResponse) onFailure,
+    Function(ExternalWalletResponse)? onExternalWallet,
   }) {
     if (!kIsWeb && _razorpay != null) {
-      _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, onSuccess);
-      _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, onFailure);
+      try {
+        _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, onSuccess);
+        _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, onFailure);
+        if (onExternalWallet != null) {
+          _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, onExternalWallet);
+        }
+      } catch (_) {}
     }
   }
 
@@ -38,9 +48,10 @@ class RazorpayApiService {
   void startPayment({
     required double amount,
     required String email,
+    String? phone,
     String? orderId,
     String name = 'Food Delivery App',
-    String description = 'Wallet Top-up',
+    String description = 'Food Order Payment',
   }) {
     if (kIsWeb) {
       debugPrint('Razorpay native checkout is not supported on Web platform.');
@@ -51,7 +62,13 @@ class RazorpayApiService {
       'amount': (amount * 100).toInt(), // Razorpay expects amount in paise
       'name': name,
       'description': description,
-      'prefill': {'email': email},
+      'prefill': {
+        'email': email,
+        if (phone != null && phone.isNotEmpty) 'contact': phone,
+      },
+      'theme': {
+        'color': '#EF4444',
+      },
     };
 
     if (orderId != null) {

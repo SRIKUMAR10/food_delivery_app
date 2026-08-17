@@ -10,14 +10,13 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/promotions_c
 class MockPromotionsCouponsRepository extends Mock implements PromotionsCouponsRepository {}
 
 void main() {
-  return; // SKIP ALL TESTS IN THIS FILE due to missing DI for Firebase
-
   group('PromotionsCouponsBloc', () {
     late PromotionsCouponsBloc bloc;
     late MockPromotionsCouponsRepository mockRepository;
-    
+
     final dummyCoupon = CouponModel(
       id: '1',
+      sellerId: 'seller_1',
       code: 'TEST10',
       description: 'Test coupon',
       discountAmount: 10,
@@ -28,6 +27,14 @@ void main() {
 
     setUp(() {
       mockRepository = MockPromotionsCouponsRepository();
+      when(() => mockRepository.streamCoupons(any()))
+          .thenAnswer((_) => Stream.value([dummyCoupon]));
+      when(() => mockRepository.getCoupons(any()))
+          .thenAnswer((_) async => [dummyCoupon]);
+      when(() => mockRepository.getSellerProducts(any()))
+          .thenAnswer((_) async => []);
+      when(() => mockRepository.getSellerCategories(any()))
+          .thenAnswer((_) async => []);
       bloc = PromotionsCouponsBloc(repository: mockRepository);
     });
 
@@ -41,11 +48,8 @@ void main() {
 
     blocTest<PromotionsCouponsBloc, PromotionsCouponsState>(
       'emits [Loading, Loaded] when LoadCouponsEvent is added and succeeds',
-      build: () {
-        when(() => mockRepository.getCoupons(any())).thenAnswer((_) async => [dummyCoupon]);
-        return bloc;
-      },
-      act: (bloc) => bloc.add(LoadCouponsEvent('seller_1')),
+      build: () => bloc,
+      act: (bloc) => bloc.add(const LoadCouponsEvent('seller_1')),
       expect: () => [
         isA<PromotionsCouponsLoading>(),
         isA<PromotionsCouponsLoaded>().having((s) => s.coupons.length, 'coupons count', 1),
@@ -58,7 +62,7 @@ void main() {
         when(() => mockRepository.getCoupons(any())).thenThrow(Exception('API error'));
         return bloc;
       },
-      act: (bloc) => bloc.add(LoadCouponsEvent('seller_1')),
+      act: (bloc) => bloc.add(const LoadCouponsEvent('seller_1')),
       expect: () => [
         isA<PromotionsCouponsLoading>(),
         isA<PromotionsCouponsError>().having((s) => s.message, 'error message', contains('API error')),

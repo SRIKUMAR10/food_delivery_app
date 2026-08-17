@@ -10,8 +10,8 @@ class MockSellerReviewService extends Mock implements SellerReviewService {}
 void main() {
   testWidgets('Performance test for rendering a large number of reviews', (tester) async {
     final mockService = MockSellerReviewService();
-    when(() => mockService.fetchRatingsAndReviews()).thenAnswer(
-      (_) async => {
+    when(() => mockService.watchRatingsAndReviews()).thenAnswer(
+      (_) => Stream.value({
         'overallRating': 4.8,
         'totalReviews': 248,
         'reviews': List.generate(
@@ -25,7 +25,7 @@ void main() {
             'date': DateTime.now().toIso8601String(),
           },
         ),
-      },
+      }),
     );
 
     // Build Widget

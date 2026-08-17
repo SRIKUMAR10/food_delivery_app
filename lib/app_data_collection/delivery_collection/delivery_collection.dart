@@ -175,17 +175,19 @@ class DeliveryCollection {
   Future<void> updateDeliveryPartner(
       String uid, Map<String, dynamic> data) async {
     try {
-      data['updatedAt'] = FieldValue.serverTimestamp();
+      final sanitizedData = Map<String, dynamic>.from(data);
+      sanitizedData.remove('password'); // Strictly never store password in Firestore
+      sanitizedData['updatedAt'] = FieldValue.serverTimestamp();
       final docRef = _collection.doc(uid);
-      await docRef.set(data, SetOptions(merge: true));
+      await docRef.set(sanitizedData, SetOptions(merge: true));
 
       // Sync rider sub-collection info
       final Map<String, dynamic> riderUpdates = {};
-      if (data.containsKey('displayName')) riderUpdates['name'] = data['displayName'];
-      if (data.containsKey('phoneNumber')) riderUpdates['phone'] = data['phoneNumber'];
-      if (data.containsKey('photoUrl')) riderUpdates['imageUrl'] = data['photoUrl'];
-      if (data.containsKey('rating')) riderUpdates['rating'] = data['rating'];
-      if (data.containsKey('isOnline')) riderUpdates['isOnline'] = data['isOnline'];
+      if (sanitizedData.containsKey('displayName')) riderUpdates['name'] = sanitizedData['displayName'];
+      if (sanitizedData.containsKey('phoneNumber')) riderUpdates['phone'] = sanitizedData['phoneNumber'];
+      if (sanitizedData.containsKey('photoUrl')) riderUpdates['imageUrl'] = sanitizedData['photoUrl'];
+      if (sanitizedData.containsKey('rating')) riderUpdates['rating'] = sanitizedData['rating'];
+      if (sanitizedData.containsKey('isOnline')) riderUpdates['isOnline'] = sanitizedData['isOnline'];
       if (riderUpdates.isNotEmpty) {
         riderUpdates['updatedAt'] = FieldValue.serverTimestamp();
         await docRef.collection('riders').doc('info').set(riderUpdates, SetOptions(merge: true));
@@ -193,28 +195,28 @@ class DeliveryCollection {
 
       // Sync earnings sub-collection summary
       final Map<String, dynamic> earningsUpdates = {};
-      if (data.containsKey('totalEarnings')) earningsUpdates['totalEarnings'] = data['totalEarnings'];
-      if (data.containsKey('totalDeliveries')) earningsUpdates['totalDeliveries'] = data['totalDeliveries'];
+      if (sanitizedData.containsKey('totalEarnings')) earningsUpdates['totalEarnings'] = sanitizedData['totalEarnings'];
+      if (sanitizedData.containsKey('totalDeliveries')) earningsUpdates['totalDeliveries'] = sanitizedData['totalDeliveries'];
       if (earningsUpdates.isNotEmpty) {
         earningsUpdates['updatedAt'] = FieldValue.serverTimestamp();
         await docRef.collection('earnings').doc('summary').set(earningsUpdates, SetOptions(merge: true));
       }
 
       // Sync ratings sub-collection summary
-      if (data.containsKey('rating')) {
+      if (sanitizedData.containsKey('rating')) {
         await docRef.collection('ratings').doc('summary').set({
-          'rating': data['rating'],
+          'rating': sanitizedData['rating'],
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       }
 
       // Sync kyc_documents sub-collection details
       final Map<String, dynamic> kycUpdates = {};
-      if (data.containsKey('kycStatus')) kycUpdates['kycStatus'] = data['kycStatus'];
-      if (data.containsKey('vehicleType')) kycUpdates['vehicleType'] = data['vehicleType'];
-      if (data.containsKey('vehicleNumber')) kycUpdates['vehicleNumber'] = data['vehicleNumber'];
-      if (data.containsKey('drivingLicense')) kycUpdates['drivingLicense'] = data['drivingLicense'];
-      if (data.containsKey('aadhaarNumber')) kycUpdates['aadhaarNumber'] = data['aadhaarNumber'];
+      if (sanitizedData.containsKey('kycStatus')) kycUpdates['kycStatus'] = sanitizedData['kycStatus'];
+      if (sanitizedData.containsKey('vehicleType')) kycUpdates['vehicleType'] = sanitizedData['vehicleType'];
+      if (sanitizedData.containsKey('vehicleNumber')) kycUpdates['vehicleNumber'] = sanitizedData['vehicleNumber'];
+      if (sanitizedData.containsKey('drivingLicense')) kycUpdates['drivingLicense'] = sanitizedData['drivingLicense'];
+      if (sanitizedData.containsKey('aadhaarNumber')) kycUpdates['aadhaarNumber'] = sanitizedData['aadhaarNumber'];
       if (kycUpdates.isNotEmpty) {
         kycUpdates['updatedAt'] = FieldValue.serverTimestamp();
         await docRef.collection('kyc_documents').doc('details').set(kycUpdates, SetOptions(merge: true));
@@ -224,14 +226,16 @@ class DeliveryCollection {
     }
   }
 
-  Future<void> updatePassword(String uid, String newPassword) async {
+  Future<void> deactivatePartner(String uid) async {
     try {
       await _collection.doc(uid).set({
-        'password': newPassword,
+        'isActive': false,
+        'isOnline': false,
+        'status': 'inactive',
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {
-      throw Exception('Failed to update password in Firestore: $e');
+      throw Exception('Failed to deactivate delivery partner: $e');
     }
   }
 
@@ -241,6 +245,10 @@ class DeliveryCollection {
     } catch (e) {
       throw Exception('Failed to delete delivery partner from Firestore: $e');
     }
+  }
+
+  Stream<DocumentSnapshot> watchDeliveryPartner(String uid) {
+    return _collection.doc(uid).snapshots();
   }
 
   Stream<QuerySnapshot> getDeliveryPartnersStream() {

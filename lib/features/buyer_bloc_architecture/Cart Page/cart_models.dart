@@ -92,6 +92,8 @@ class AppliedCoupon extends Equatable {
   final double discountAmount;
   final bool isPercentage;
   final String couponId;
+  final double minimumOrderValue;
+  final String description;
 
   const AppliedCoupon({
     required this.code,
@@ -99,6 +101,8 @@ class AppliedCoupon extends Equatable {
     required this.discountAmount,
     required this.isPercentage,
     required this.couponId,
+    this.minimumOrderValue = 0.0,
+    this.description = '',
   });
 
   Map<String, dynamic> toMap() => {
@@ -107,8 +111,10 @@ class AppliedCoupon extends Equatable {
     'discountAmount': discountAmount,
     'isPercentage': isPercentage,
     'couponId': couponId,
+    'minimumOrderValue': minimumOrderValue,
+    'description': description,
   };
 
   @override
-  List<Object?> get props => [code, sellerId, discountAmount, isPercentage, couponId];
+  List<Object?> get props => [code, sellerId, discountAmount, isPercentage, couponId, minimumOrderValue, description];
 }
