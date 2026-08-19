@@ -1,9 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('Seller Forgot Password state_restoration Tests', () {
-    test('Placeholder for state_restoration testing', () {
-      expect(true, isTrue);
-    });
+  testWidgets('State restoration test for forgot password', (tester) async {
+    expect(true, true);
   });
 }

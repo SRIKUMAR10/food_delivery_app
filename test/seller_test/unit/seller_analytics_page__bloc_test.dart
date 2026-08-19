@@ -1,87 +1,103 @@
-import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:food_delivery_app/core/models/analytics_data_model.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_analytics_page/seller_analytics_page__bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_analytics_page/seller_analytics_page__event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_analytics_page/seller_analytics_page__state.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_analytics_page/seller_analytics_repository.dart';
-import 'package:food_delivery_app/core/models/analytics_data_model.dart';
 
-class MockSellerAnalyticsRepository extends Mock
-    implements SellerAnalyticsRepository {}
+class MockSellerAnalyticsRepository extends Mock implements SellerAnalyticsRepository {}
 
 void main() {
-  return; // SKIP ALL TESTS IN THIS FILE due to missing DI for Firebase
+  late MockSellerAnalyticsRepository mockRepository;
+  late SellerAnalyticsBloc bloc;
+  final sellerId = 'seller123';
+
+  final validData = AnalyticsDataModel(
+    todayRevenue: 100,
+    thisWeekRevenue: 500,
+    thisMonthRevenue: 2000,
+    currentPeriodCustomers: 10,
+    previousPeriodCustomers: 5,
+    customerGrowthPercentage: 100.0,
+    top3PeakTimeSlots: ['12 PM - 1 PM'],
+    bestSellingProducts: const [],
+    revenueChartData: const [],
+  );
+
+  final emptyData = AnalyticsDataModel(
+    todayRevenue: 0,
+    thisWeekRevenue: 0,
+    thisMonthRevenue: 0,
+    currentPeriodCustomers: 0,
+    previousPeriodCustomers: 0,
+    customerGrowthPercentage: 0,
+    top3PeakTimeSlots: const [],
+    bestSellingProducts: const [],
+    revenueChartData: const [],
+  );
+
+  setUp(() {
+    mockRepository = MockSellerAnalyticsRepository();
+    when(() => mockRepository.streamFavoritesAnalytics(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.streamRatingAnalytics(any()))
+        .thenAnswer((_) => const Stream.empty());
+    bloc = SellerAnalyticsBloc(repository: mockRepository);
+  });
+
+  tearDown(() {
+    bloc.close();
+  });
 
   group('SellerAnalyticsBloc', () {
-    late SellerAnalyticsBloc bloc;
-    late MockSellerAnalyticsRepository mockRepository;
-
-    final mockData = AnalyticsDataModel(
-      todayRevenue: 500,
-      thisWeekRevenue: 1000,
-      thisMonthRevenue: 4000,
-      currentPeriodCustomers: 100,
-      previousPeriodCustomers: 90,
-      customerGrowthPercentage: 11.1,
-      top3PeakTimeSlots: const ['1 PM - 2 PM', '6 PM - 7 PM', '12 PM - 1 PM'],
-      bestSellingProducts: const [],
-      revenueChartData: const [],
-    );
-
-    setUp(() {
-      mockRepository = MockSellerAnalyticsRepository();
-      bloc = SellerAnalyticsBloc(repository: mockRepository);
-    });
-
-    tearDown(() {
-      bloc.close();
-    });
-
     test('initial state is AnalyticsInitial', () {
       expect(bloc.state, isA<AnalyticsInitial>());
     });
 
     blocTest<SellerAnalyticsBloc, SellerAnalyticsState>(
-      'emits [AnalyticsLoading, AnalyticsLoaded] when LoadSellerAnalytics is added successfully',
+      'emits [AnalyticsLoading, AnalyticsLoaded] when data is present',
       build: () {
-        when(
-          () => mockRepository.fetchAnalyticsData(any(), any()),
-        ).thenAnswer((_) async => mockData);
+        when(() => mockRepository.fetchAnalyticsData(sellerId, 'Weekly'))
+            .thenAnswer((_) async => validData);
         return bloc;
       },
-      act: (bloc) => bloc.add(const LoadSellerAnalytics(sellerId: 'test_seller_id')),
+      act: (bloc) => bloc.add(LoadSellerAnalytics(sellerId: sellerId, timeRange: 'Weekly')),
       expect: () => [
         isA<AnalyticsLoading>(),
         isA<AnalyticsLoaded>()
-            .having((s) => s.data, 'data', mockData)
-            .having(
-              (s) => s.selectedTimeRange,
-              'selectedTimeRange',
-              'This Week',
-            ),
+            .having((s) => s.data.todayRevenue, 'revenue', 100)
+            .having((s) => s.selectedTimeRange, 'timeRange', 'Weekly'),
       ],
-      verify: (_) {
-        verify(() => mockRepository.fetchAnalyticsData('seller_123', 'This Week')).called(1);
-      },
     );
 
     blocTest<SellerAnalyticsBloc, SellerAnalyticsState>(
-      'emits [AnalyticsLoading, AnalyticsError] when LoadSellerAnalytics fails',
+      'emits [AnalyticsLoading, AnalyticsEmpty] when data is empty',
       build: () {
-        when(
-          () => mockRepository.fetchAnalyticsData(any(), any()),
-        ).thenThrow(Exception('Failed to load'));
+        when(() => mockRepository.fetchAnalyticsData(sellerId, 'Monthly'))
+            .thenAnswer((_) async => emptyData);
         return bloc;
       },
-      act: (bloc) => bloc.add(const LoadSellerAnalytics(sellerId: 'test_seller_id')),
+      act: (bloc) => bloc.add(LoadSellerAnalytics(sellerId: sellerId, timeRange: 'Monthly')),
       expect: () => [
         isA<AnalyticsLoading>(),
-        isA<AnalyticsError>().having(
-          (s) => s.message,
-          'message',
-          'Exception: Failed to load',
-        ),
+        isA<AnalyticsEmpty>()
+            .having((s) => s.selectedTimeRange, 'timeRange', 'Monthly'),
+      ],
+    );
+
+    blocTest<SellerAnalyticsBloc, SellerAnalyticsState>(
+      'emits [AnalyticsLoading, AnalyticsError] when repository throws',
+      build: () {
+        when(() => mockRepository.fetchAnalyticsData(sellerId, 'Weekly'))
+            .thenThrow(Exception('Failed to fetch'));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(LoadSellerAnalytics(sellerId: sellerId, timeRange: 'Weekly')),
+      expect: () => [
+        isA<AnalyticsLoading>(),
+        isA<AnalyticsError>().having((s) => s.message, 'message', 'Exception: Failed to fetch'),
       ],
     );
   });

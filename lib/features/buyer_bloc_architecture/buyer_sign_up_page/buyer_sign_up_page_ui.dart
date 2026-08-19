@@ -19,9 +19,6 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
-
   @override
   void dispose() {
     _fullNameController.dispose();
@@ -30,6 +27,19 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _submitForm(BuildContext context, BuyerSignUpState state) {
+    if (state.status == BuyerSignUpStatus.loading) return;
+    context.read<BuyerSignUpBloc>().add(
+          BuyerSignUpSubmitted(
+            fullName: _fullNameController.text.trim(),
+            email: _emailController.text.trim(),
+            mobileNumber: _mobileController.text.trim(),
+            password: _passwordController.text.trim(),
+            confirmPassword: _confirmPasswordController.text.trim(),
+          ),
+        );
   }
 
   @override
@@ -134,6 +144,8 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
                         const SizedBox(height: 6),
                         TextField(
                           controller: _fullNameController,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.name],
                           decoration: InputDecoration(
                             hintText: 'John Doe',
                             prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
@@ -154,6 +166,8 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
                         TextField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.email],
                           decoration: InputDecoration(
                             hintText: 'john@example.com',
                             prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
@@ -174,6 +188,8 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
                         TextField(
                           controller: _mobileController,
                           keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.telephoneNumber],
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.phone_android, color: Colors.grey),
                             filled: true,
@@ -192,13 +208,22 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
                         const SizedBox(height: 6),
                         TextField(
                           controller: _passwordController,
-                          obscureText: _obscurePassword,
+                          obscureText: state.isPasswordObscured,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.newPassword],
                           decoration: InputDecoration(
                             hintText: 'Create password',
                             prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
                             suffixIcon: IconButton(
-                              icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: Colors.grey),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              icon: Icon(
+                                state.isPasswordObscured
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () => context
+                                  .read<BuyerSignUpBloc>()
+                                  .add(const BuyerSignUpTogglePasswordVisibility()),
                             ),
                             filled: true,
                             fillColor: const Color(0xFFEEF0F5),
@@ -216,13 +241,23 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
                         const SizedBox(height: 6),
                         TextField(
                           controller: _confirmPasswordController,
-                          obscureText: _obscureConfirmPassword,
+                          obscureText: state.isConfirmPasswordObscured,
+                          textInputAction: TextInputAction.done,
+                          autofillHints: const [AutofillHints.newPassword],
+                          onSubmitted: (_) => _submitForm(context, state),
                           decoration: InputDecoration(
                             hintText: 'Confirm password',
                             prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
                             suffixIcon: IconButton(
-                              icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: Colors.grey),
-                              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                              icon: Icon(
+                                state.isConfirmPasswordObscured
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () => context
+                                  .read<BuyerSignUpBloc>()
+                                  .add(const BuyerSignUpToggleConfirmPasswordVisibility()),
                             ),
                             filled: true,
                             fillColor: const Color(0xFFEEF0F5),
@@ -242,17 +277,7 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
                           child: ElevatedButton(
                             onPressed: state.status == BuyerSignUpStatus.loading
                                 ? null
-                                : () {
-                                    context.read<BuyerSignUpBloc>().add(
-                                          BuyerSignUpSubmitted(
-                                            fullName: _fullNameController.text.trim(),
-                                            email: _emailController.text.trim(),
-                                            mobileNumber: _mobileController.text.trim(),
-                                            password: _passwordController.text.trim(),
-                                            confirmPassword: _confirmPasswordController.text.trim(),
-                                          ),
-                                        );
-                                  },
+                                : () => _submitForm(context, state),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFE52121),
                               shape: RoundedRectangleBorder(

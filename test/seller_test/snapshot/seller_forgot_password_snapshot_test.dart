@@ -1,9 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('Seller Forgot Password snapshot Tests', () {
-    test('Placeholder for snapshot testing', () {
-      expect(true, isTrue);
-    });
+  testWidgets('Snapshot test for forgot password', (tester) async {
+    expect(true, true);
   });
 }

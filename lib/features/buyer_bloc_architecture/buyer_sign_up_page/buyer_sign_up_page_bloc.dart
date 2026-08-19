@@ -11,6 +11,23 @@ class BuyerSignUpBloc extends Bloc<BuyerSignUpEvent, BuyerSignUpState> {
       : repository = repository ?? BuyerSignUpRepository(),
         super(const BuyerSignUpState()) {
     on<BuyerSignUpSubmitted>(_onSubmitted);
+    on<BuyerSignUpTogglePasswordVisibility>(_onTogglePasswordVisibility);
+    on<BuyerSignUpToggleConfirmPasswordVisibility>(_onToggleConfirmPasswordVisibility);
+  }
+
+  void _onTogglePasswordVisibility(
+    BuyerSignUpTogglePasswordVisibility event,
+    Emitter<BuyerSignUpState> emit,
+  ) {
+    emit(state.copyWith(isPasswordObscured: !state.isPasswordObscured));
+  }
+
+  void _onToggleConfirmPasswordVisibility(
+    BuyerSignUpToggleConfirmPasswordVisibility event,
+    Emitter<BuyerSignUpState> emit,
+  ) {
+    emit(state.copyWith(
+        isConfirmPasswordObscured: !state.isConfirmPasswordObscured));
   }
 
   Future<void> _onSubmitted(

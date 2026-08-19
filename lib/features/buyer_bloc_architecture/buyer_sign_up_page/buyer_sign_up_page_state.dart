@@ -10,6 +10,8 @@ class BuyerSignUpState extends Equatable {
   final String? mobileNumber;
   final String? password;
   final String? verificationId;
+  final bool isPasswordObscured;
+  final bool isConfirmPasswordObscured;
 
   const BuyerSignUpState({
     this.status = BuyerSignUpStatus.initial,
@@ -19,6 +21,8 @@ class BuyerSignUpState extends Equatable {
     this.mobileNumber,
     this.password,
     this.verificationId,
+    this.isPasswordObscured = true,
+    this.isConfirmPasswordObscured = true,
   });
 
   BuyerSignUpState copyWith({
@@ -29,6 +33,8 @@ class BuyerSignUpState extends Equatable {
     String? mobileNumber,
     String? password,
     String? verificationId,
+    bool? isPasswordObscured,
+    bool? isConfirmPasswordObscured,
   }) {
     return BuyerSignUpState(
       status: status ?? this.status,
@@ -38,6 +44,9 @@ class BuyerSignUpState extends Equatable {
       mobileNumber: mobileNumber ?? this.mobileNumber,
       password: password ?? this.password,
       verificationId: verificationId ?? this.verificationId,
+      isPasswordObscured: isPasswordObscured ?? this.isPasswordObscured,
+      isConfirmPasswordObscured:
+          isConfirmPasswordObscured ?? this.isConfirmPasswordObscured,
     );
   }
 
@@ -50,5 +59,7 @@ class BuyerSignUpState extends Equatable {
         mobileNumber,
         password,
         verificationId,
+        isPasswordObscured,
+        isConfirmPasswordObscured,
       ];
 }

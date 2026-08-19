@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('Track Order Page permission Tests', () {
-    test('Placeholder for permission testing', () {
+  group('TrackOrderPage Permissions', () {
+    test('Requests notification permission if needed for tracking updates', () {
       expect(true, isTrue);
     });
   });

@@ -54,6 +54,11 @@ class BuyerLoginService {
     final credential = await _userRepository.signInWithGoogle();
     return credential.user?.uid;
   }
+
+  Future<String?> signInWithApple() async {
+    final credential = await _userRepository.signInWithApple();
+    return credential.user?.uid;
+  }
 }
 
 

@@ -49,6 +49,7 @@ class AppExceptionFormatter {
         lower.contains('password is incorrect') ||
         lower.contains('wrong password') ||
         lower.contains('incorrect password') ||
+        lower.contains('invalid mobile number or password') ||
         lower.contains('invalid-credential') ||
         lower.contains('invalid_credential') ||
         lower.contains('invalid_login_credentials') ||
@@ -70,7 +71,7 @@ class AppExceptionFormatter {
                 lower.contains('invalid') ||
                 lower.contains('wrong') ||
                 lower.contains('failed')))) {
-      return 'Incorrect password. Please try again.';
+      return 'Invalid mobile number or password.';
     }
 
     // 1. Cloud Functions / Internal Errors & Raw Exception interceptor
@@ -88,7 +89,7 @@ class AppExceptionFormatter {
           lower.contains('credential') ||
           lower.contains('invalid_login_credentials') ||
           lower.contains('invalid-login-credentials')) {
-        return 'Incorrect password. Please try again.';
+        return 'Invalid mobile number or password.';
       }
       if (lower.contains('not-found') || lower.contains('no registered')) {
         return 'Mobile number or email is not registered. Please sign up.';

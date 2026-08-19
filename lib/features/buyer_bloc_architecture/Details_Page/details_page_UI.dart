@@ -985,6 +985,13 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     final food = _currentFoodItem;
     final hasMetrics = food != null &&
         (food.calories.isNotEmpty || food.spicyLevel.isNotEmpty || food.portionSize.isNotEmpty);
+    final desc = (food?.description.trim().isNotEmpty == true)
+        ? food!.description.trim()
+        : widget.description.trim();
+
+    if (!hasMetrics && desc.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1002,29 +1009,27 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                 _buildInfoChip(Icons.restaurant_menu_rounded, food.portionSize),
             ],
           ),
-          const SizedBox(height: 16),
+          if (desc.isNotEmpty) const SizedBox(height: 16),
         ],
-        const Text(
-          'Description',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1C1C1C),
+        if (desc.isNotEmpty) ...[
+          const Text(
+            'Description',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1C1C1C),
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          food?.description.isNotEmpty == true
-              ? food!.description
-              : (widget.description.isNotEmpty
-                  ? widget.description
-                  : 'A delicious, freshly prepared dish made with premium ingredients. Perfect for any time of the day!'),
-          style: TextStyle(
-            fontSize: 13.5,
-            color: Colors.grey.shade600,
-            height: 1.65,
+          const SizedBox(height: 8),
+          Text(
+            desc,
+            style: TextStyle(
+              fontSize: 13.5,
+              color: Colors.grey.shade600,
+              height: 1.65,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -1034,24 +1039,14 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     if (food != null && food.ingredients.isNotEmpty) {
       return food.ingredients;
     }
-    final nameLower = (food?.name ?? widget.name).toLowerCase();
-    final catLower = (food?.category ?? '').toLowerCase();
-    if (nameLower.contains('burger') || catLower.contains('burger')) {
-      return const ['Brioche Bun', 'Grilled Patty', 'Cheddar Cheese', 'Fresh Lettuce', 'Signature Sauce', 'Pickles'];
-    } else if (nameLower.contains('pizza') || catLower.contains('pizza')) {
-      return const ['Hand-tossed Dough', 'Mozzarella Cheese', 'San Marzano Sauce', 'Fresh Basil', 'Extra Virgin Olive Oil'];
-    } else if (nameLower.contains('chicken') || catLower.contains('chicken')) {
-      return const ['Tender Chicken', 'Aromatic Spices', 'Garlic Butter', 'Herbs', 'Crispy Batter'];
-    } else if (nameLower.contains('pasta') || catLower.contains('pasta')) {
-      return const ['Durum Wheat Pasta', 'Parmesan Cheese', 'Garlic & Olive Oil', 'Fresh Basil', 'Creamy Sauce'];
-    } else if (nameLower.contains('shake') || nameLower.contains('drink') || catLower.contains('beverage')) {
-      return const ['Whole Milk', 'Rich Cocoa / Fruit Blend', 'Natural Sweetener', 'Whipped Cream'];
-    }
-    return const ['Fresh Farm Ingredients', 'Organic Seasoning', 'Natural Herbs', 'Chef Special Blend'];
+    return const [];
   }
 
   Widget _buildIngredientsSection() {
     final list = _effectiveIngredients;
+    if (list.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1115,20 +1110,14 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     if (food != null && food.addons.isNotEmpty) {
       return food.addons;
     }
-    final nameLower = (food?.name ?? widget.name).toLowerCase();
-    final catLower = (food?.category ?? '').toLowerCase();
-    if (nameLower.contains('burger') || catLower.contains('burger')) {
-      return const ['Extra Cheese (+₹30)', 'Spicy Jalapenos (+₹20)', 'Extra Patty (+₹60)', 'Crispy Bacon (+₹40)'];
-    } else if (nameLower.contains('pizza') || catLower.contains('pizza')) {
-      return const ['Extra Mozzarella (+₹40)', 'Stuffed Crust (+₹50)', 'Oregano & Chilli Flakes (Free)', 'Garlic Dip (+₹25)'];
-    } else if (nameLower.contains('drink') || nameLower.contains('beverage')) {
-      return const ['Extra Ice (Free)', 'Less Sugar (Free)', 'Whipped Cream (+₹20)', 'Boba Pearls (+₹30)'];
-    }
-    return const ['Extra Cheese (+₹30)', 'Spicy Dip Sauce (+₹20)', 'Chef Special Topping (+₹35)', 'Cutlery & Napkins (Free)'];
+    return const [];
   }
 
   Widget _buildAddonsSection() {
     final list = _effectiveAddons;
+    if (list.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1185,18 +1174,18 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected ? _primaryRed : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: isSelected ? _primaryRed : Colors.grey.shade300,
                     width: isSelected ? 1.5 : 1.0,
                   ),
-                  borderRadius: BorderRadius.circular(24),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
                             color: _primaryRed.withValues(alpha: 0.25),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          )
                         ]
                       : [],
                 ),
@@ -1205,16 +1194,16 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                   children: [
                     Icon(
                       isSelected ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
-                      size: 15,
+                      size: 16,
                       color: isSelected ? Colors.white : Colors.grey.shade600,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       addon,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: isSelected ? Colors.white : const Color(0xFF1C1C1C),
+                        fontSize: 12.5,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? Colors.white : const Color(0xFF374151),
                       ),
                     ),
                   ],

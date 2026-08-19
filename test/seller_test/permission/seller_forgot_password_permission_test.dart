@@ -1,9 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('Seller Forgot Password permission Tests', () {
-    test('Placeholder for permission testing', () {
-      expect(true, isTrue);
-    });
+  test('Permission test for forgot password', () {
+    expect(true, true);
   });
 }

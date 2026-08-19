@@ -83,6 +83,7 @@ class _HomePageContentView extends StatefulWidget {
 
 class _HomePageContentViewState extends State<_HomePageContentView> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -91,9 +92,15 @@ class _HomePageContentViewState extends State<_HomePageContentView> {
     // Dispatch the startup event to begin loading products.
     context.read<HomePageBloc>().add(const HomePageStarted());
 
-    // Forward every search keystroke to the BLoC as an event.
-    _searchController.addListener(() {
-      final query = _searchController.text;
+    // Forward every search keystroke to the BLoC with 300ms debounce
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      final query = _searchController.text.trim();
       if (query.isEmpty) {
         context.read<HomePageBloc>().add(const SearchCleared());
       } else {
@@ -104,6 +111,7 @@ class _HomePageContentViewState extends State<_HomePageContentView> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -319,11 +327,17 @@ class _TopBar extends StatelessWidget {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          SvgPicture.asset(
-            'assets/images/FoodGo.svg',
-            height: isMobile ? 38 : 46,
-            fit: BoxFit.contain,
-            semanticsLabel: 'FoodGo Logo',
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: SvgPicture.asset(
+                'assets/images/FoodGo.svg',
+                height: isMobile ? 38 : 46,
+                fit: BoxFit.contain,
+                semanticsLabel: 'FoodGo Logo',
+              ),
+            ),
           ),
           Row(
             children: [
@@ -467,42 +481,57 @@ class _SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F5F8),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFEBECEF)),
-      ),
-      padding: const EdgeInsets.only(left: 16, right: 6),
-      child: Row(
-        children: [
-          const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF1C1C1C)),
-              decoration: const InputDecoration(
-                hintText: 'Search for food, restaurants, cuisines...',
-                hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 12),
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        final hasText = value.text.isNotEmpty;
+        return Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF4F5F8),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFEBECEF)),
+          ),
+          padding: const EdgeInsets.only(left: 16, right: 6),
+          child: Row(
+            children: [
+              const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF1C1C1C)),
+                  textInputAction: TextInputAction.search,
+                  decoration: const InputDecoration(
+                    hintText: 'Search for food, restaurants, cuisines...',
+                    hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
               ),
-            ),
+              if (hasText)
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 18),
+                  splashRadius: 18,
+                  onPressed: () {
+                    controller.clear();
+                  },
+                ),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEF2A39),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.search_rounded, color: Colors.white, size: 18),
+              ),
+            ],
           ),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: Color(0xFFEF2A39),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.search_rounded, color: Colors.white, size: 18),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

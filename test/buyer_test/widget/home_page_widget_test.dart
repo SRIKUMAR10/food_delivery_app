@@ -161,6 +161,7 @@ void main() {
       expect(searchField, findsOneWidget);
 
       await tester.enterText(searchField, 'Pizza');
+      await tester.pump(const Duration(milliseconds: 350));
 
       verify(() => mockHomePageBloc.add(any(that: isA<SearchQueryChanged>()))).called(1);
     });

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'HelpSupport_State.dart';
 
 class HelpSupportRepository {
   final FirebaseFirestore _firestore;
@@ -55,5 +56,18 @@ class HelpSupportRepository {
         .collection('support_tickets')
         .orderBy('createdAt', descending: true)
         .snapshots();
+  }
+
+  Stream<List<FaqItem>> watchFaqs() {
+    return _firestore
+        .collection('faqs')
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => FaqItem.fromFirestore(doc.data()))
+          .where((faq) => faq.question.isNotEmpty)
+          .toList();
+    }).handleError((_) => <FaqItem>[]);
   }
 }

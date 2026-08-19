@@ -31,3 +31,11 @@ class BuyerSignUpSubmitted extends BuyerSignUpEvent {
         confirmPassword,
       ];
 }
+
+class BuyerSignUpTogglePasswordVisibility extends BuyerSignUpEvent {
+  const BuyerSignUpTogglePasswordVisibility();
+}
+
+class BuyerSignUpToggleConfirmPasswordVisibility extends BuyerSignUpEvent {
+  const BuyerSignUpToggleConfirmPasswordVisibility();
+}

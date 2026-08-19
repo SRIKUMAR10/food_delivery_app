@@ -15,6 +15,7 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
     on<BuyerLoginTogglePasswordVisibility>(_onTogglePasswordVisibility);
     on<BuyerLoginSubmitted>(_onSubmitted);
     on<BuyerLoginGoogleSubmitted>(_onGoogleSubmitted);
+    on<BuyerLoginAppleSubmitted>(_onAppleSubmitted);
   }
 
   void _onPhoneChanged(
@@ -120,6 +121,38 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
       }
 
       final userId = await repository.loginWithGoogle();
+      if (userId != null) {
+        emit(state.copyWith(
+          status: BuyerLoginStatus.success,
+          userId: userId,
+        ));
+      } else {
+        emit(state.copyWith(status: BuyerLoginStatus.initial));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+        status: BuyerLoginStatus.failure,
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
+      ));
+    }
+  }
+
+  Future<void> _onAppleSubmitted(
+    BuyerLoginAppleSubmitted event,
+    Emitter<BuyerLoginState> emit,
+  ) async {
+    emit(state.copyWith(status: BuyerLoginStatus.loading));
+    try {
+      final isOnline = await repository.checkNetworkConnectivity();
+      if (!isOnline) {
+        emit(state.copyWith(
+          status: BuyerLoginStatus.failure,
+          errorMessage: 'No internet connection. Please check your network.',
+        ));
+        return;
+      }
+
+      final userId = await repository.loginWithApple();
       if (userId != null) {
         emit(state.copyWith(
           status: BuyerLoginStatus.success,

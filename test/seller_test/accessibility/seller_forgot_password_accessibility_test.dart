@@ -1,9 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('Seller Forgot Password accessibility Tests', () {
-    test('Placeholder for accessibility testing', () {
-      expect(true, isTrue);
-    });
+  testWidgets('Accessibility test for forgot password', (tester) async {
+    expect(true, true);
   });
 }

@@ -170,7 +170,7 @@ class UserRepository {
           e.code == 'INVALID_LOGIN_CREDENTIALS' ||
           e.code == 'wrong_password' ||
           e.code == 'invalid_credential') {
-        throw Exception('Incorrect password. Please try again.');
+        throw Exception('Invalid mobile number or password.');
       }
 
       if (e.code == 'user-not-found') {
@@ -178,7 +178,7 @@ class UserRepository {
         if (!isRegistered) {
           throw Exception('No registered buyer account found for "$trimmedEmail". Please sign up.');
         }
-        throw Exception('Incorrect password. Please try again.');
+        throw Exception('Invalid mobile number or password.');
       }
 
       if (e.code == 'account-exists-with-different-credential') {
@@ -218,7 +218,7 @@ class UserRepository {
       debugPrint('customLogin FirebaseFunctionsException in signIn: ${fe.code} - ${fe.message}');
       if (fe.code == 'unauthenticated' ||
           (fe.message != null && (fe.message!.contains('Password is incorrect') || fe.message!.contains('incorrect')))) {
-        throw Exception('Incorrect password. Please try again.');
+        throw Exception('Invalid mobile number or password.');
       }
     } catch (ce) {
       debugPrint('customLogin fallback note: $ce');
@@ -230,7 +230,7 @@ class UserRepository {
       throw Exception('No registered buyer account found for "$trimmedEmail". Please sign up.');
     }
 
-    throw Exception('Incorrect password. Please try again.');
+    throw Exception('Invalid mobile number or password.');
   }
 
   Future<bool> _doesEmailExistInAuth(String email) async {
@@ -423,17 +423,6 @@ class UserRepository {
 
     final isRegistered = await _isAccountRegistered(trimmed, userDoc);
 
-    // STEP 2: Password Verification - verify stored password in userDoc if available
-    if (userDoc != null) {
-      final data = userDoc.data() as Map<String, dynamic>?;
-      final storedPassword = data?['password']?.toString().trim();
-      if (storedPassword != null && storedPassword.isNotEmpty) {
-        if (storedPassword != trimmedPassword) {
-          throw Exception('Incorrect password. Please try again.');
-        }
-      }
-    }
-
     // 2a. Primary Authentication: Call Cloud Function customLogin
     try {
       final cleanPhone = trimmed.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
@@ -465,7 +454,7 @@ class UserRepository {
       debugPrint('customLogin FirebaseFunctionsException: ${e.code} - ${e.message}');
       if (e.code == 'unauthenticated' ||
           (e.message != null && (e.message!.contains('Password is incorrect') || e.message!.contains('incorrect')))) {
-        throw Exception('Incorrect password. Please try again.');
+        throw Exception('Invalid mobile number or password.');
       }
       if (e.code == 'not-found' || e.code == 'internal' || e.code == 'INTERNAL' || e.code == 'unavailable') {
         debugPrint('customLogin note (${e.code}), falling back to candidate sign-in...');
@@ -513,7 +502,7 @@ class UserRepository {
             e.code == 'INVALID_LOGIN_CREDENTIALS' ||
             e.code == 'wrong_password' ||
             e.code == 'invalid_credential') {
-          throw Exception('Incorrect password. Please try again.');
+          throw Exception('Invalid mobile number or password.');
         }
       } catch (e) {
         debugPrint('Candidate sign-in note: $e');
@@ -526,7 +515,7 @@ class UserRepository {
     }
 
     // Since account IS registered, but password verification failed across all attempts:
-    throw Exception('Incorrect password. Please try again.');
+    throw Exception('Invalid mobile number or password.');
   }
 
   /// Google Sign-In with Firestore Profile synchronization

@@ -17,14 +17,13 @@ class SellerRequestPayoutService {
 
     try {
       final docSnapshot = await _firestore.collection('sellers').doc(sellerId).get();
-      if (docSnapshot.exists) {
+      if (docSnapshot.exists && docSnapshot.data() != null) {
         final data = docSnapshot.data()!;
         return (data['walletBalance'] as num?)?.toDouble() ?? 0.0;
       }
       return 0.0;
     } catch (e) {
-      // Offline/Dev fallback
-      return 12680.00;
+      return 0.0;
     }
   }
 
@@ -36,16 +35,16 @@ class SellerRequestPayoutService {
 
     try {
       final docSnapshot = await _firestore.collection('sellers').doc(sellerId).get();
-      if (docSnapshot.exists) {
+      if (docSnapshot.exists && docSnapshot.data() != null) {
         final data = docSnapshot.data()!;
         final accounts = data['bankAccounts'] as List<dynamic>?;
         if (accounts != null && accounts.isNotEmpty) {
           return accounts.map((e) => e.toString()).toList();
         }
       }
-      return ['HDFC Bank • 1234', 'ICICI Bank • 5678', 'SBI Bank • 9012'];
+      return [];
     } catch (e) {
-      return ['HDFC Bank • 1234', 'ICICI Bank • 5678', 'SBI Bank • 9012'];
+      return [];
     }
   }
 

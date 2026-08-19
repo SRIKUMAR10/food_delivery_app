@@ -1,9 +1,32 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../Details_Page/mock_details_page.dart';
 
 void main() {
-  group('Details Page snapshot Tests', () {
-    test('Placeholder for snapshot testing', () {
-      expect(true, isTrue);
+  group('DetailsPage Snapshot Tests', () {
+    testWidgets('DetailsPage matches snapshot tree', (WidgetTester tester) async {
+      final service = DetailsPageService();
+      final repository = DetailsPageRepository(service: service);
+      final bloc = DetailsPageBloc(repository: repository);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider.value(
+            value: bloc,
+            child: const DetailsPage(itemId: '1'),
+          ),
+        ),
+      );
+
+      // We can use expectations on the widget tree to act like a snapshot
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(BlocBuilder<DetailsPageBloc, DetailsPageState>), findsOneWidget);
+
+      bloc.add(LoadDetailsEvent('1'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('Name: Delicious Burger'), findsOneWidget);
     });
   });
 }

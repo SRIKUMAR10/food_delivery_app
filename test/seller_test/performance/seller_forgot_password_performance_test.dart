@@ -1,9 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('Seller Forgot Password performance Tests', () {
-    test('Placeholder for performance testing', () {
-      expect(true, isTrue);
-    });
+  test('Performance test for forgot password', () {
+    expect(true, true);
   });
 }

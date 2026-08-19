@@ -218,12 +218,19 @@ class _FaqPage extends StatelessWidget {
           },
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: faqItems
-            .map((item) => _FaqAccordion(faqItem: item))
-            .toList(),
-      ),
+      body: faqItems.isEmpty
+          ? const Center(
+              child: Text(
+                'No FAQs available at the moment.',
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: faqItems
+                  .map((item) => _FaqAccordion(faqItem: item))
+                  .toList(),
+            ),
     );
   }
 }

@@ -16,7 +16,7 @@ class BuyerLoginPageUI extends StatefulWidget {
 }
 
 class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
-  final TextEditingController _phoneController = TextEditingController(text: '+91 ');
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   @override
@@ -24,6 +24,16 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _submitForm(BuildContext context, BuyerLoginState state) {
+    if (state.status == BuyerLoginStatus.loading) return;
+    context.read<BuyerLoginBloc>().add(
+          BuyerLoginSubmitted(
+            phone: _phoneController.text.trim(),
+            password: _passwordController.text.trim(),
+          ),
+        );
   }
 
   @override
@@ -167,6 +177,17 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                         TextField(
                           controller: _phoneController,
                           keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [
+                            AutofillHints.username,
+                            AutofillHints.email,
+                            AutofillHints.telephoneNumber,
+                          ],
+                          onChanged: (value) {
+                            context
+                                .read<BuyerLoginBloc>()
+                                .add(BuyerLoginPhoneChanged(value.trim()));
+                          },
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
                             filled: true,
@@ -193,6 +214,14 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                         TextField(
                           controller: _passwordController,
                           obscureText: state.isPasswordObscured,
+                          textInputAction: TextInputAction.done,
+                          autofillHints: const [AutofillHints.password],
+                          onChanged: (value) {
+                            context
+                                .read<BuyerLoginBloc>()
+                                .add(BuyerLoginPasswordChanged(value));
+                          },
+                          onSubmitted: (_) => _submitForm(context, state),
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
                             suffixIcon: IconButton(
@@ -252,14 +281,7 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                           child: ElevatedButton(
                             onPressed: state.status == BuyerLoginStatus.loading
                                 ? null
-                                : () {
-                                    context.read<BuyerLoginBloc>().add(
-                                          BuyerLoginSubmitted(
-                                            phone: _phoneController.text.trim(),
-                                            password: _passwordController.text.trim(),
-                                          ),
-                                        );
-                                  },
+                                : () => _submitForm(context, state),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFE52121),
                               shape: RoundedRectangleBorder(
@@ -358,7 +380,7 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                         const SizedBox(height: 12),
                         OutlinedButton(
                           onPressed: () {
-                            context.read<BuyerLoginBloc>().add(const BuyerLoginSubmitted(phone: 'guest', password: 'guest'));
+                            context.read<BuyerLoginBloc>().add(const BuyerLoginAppleSubmitted());
                           },
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size(double.infinity, 48),

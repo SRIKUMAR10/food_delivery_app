@@ -15,6 +15,8 @@ void main() {
       when(() => mockBloc.state).thenReturn(const RatingInitial(rating: 5.0));
       when(() => mockBloc.stream).thenAnswer((_) => const Stream.empty());
 
+      final SemanticsHandle handle = tester.ensureSemantics();
+
       await tester.pumpWidget(
         MaterialApp(
           home: BlocProvider<RatingPageBloc>.value(
@@ -27,11 +29,15 @@ void main() {
         ),
       );
 
-      // Verify Semantics
-      expect(tester.getSemantics(find.byType(RatingPageView)), matchesGoldenFile('goldens/rating_page_semantics.json'));
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(iOSTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(textContrastGuideline));
+
       // Basic accessibility checks
       expect(find.byType(Slider), findsOneWidget); // Slider is accessible by default
       expect(find.byType(TextField), findsOneWidget);
+
+      handle.dispose();
     });
   });
 }

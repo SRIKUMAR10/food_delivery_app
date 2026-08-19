@@ -57,7 +57,7 @@ import 'features/Delivery Partner Bloc Architecture/Delivery_OTP_Verification_pa
 import 'core/utils/app_role_helper.dart';
 
 // Global Role Toggle Switch (Default fallback when no tab session or URL param is present)
-const AppRole activeRole = AppRole.delivery;
+const AppRole activeRole = AppRole.buyer;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

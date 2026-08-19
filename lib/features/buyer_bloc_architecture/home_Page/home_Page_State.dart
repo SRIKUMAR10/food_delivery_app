@@ -51,7 +51,7 @@ sealed class HomePageState extends Equatable {
     this.selectedCategoryId,
     this.categories, {
     this.currentAddress = 'Fetching location...',
-    this.banners = kDefaultBanners,
+    this.banners = const [],
     this.featuredSellers = const [],
     this.recentlyOrderedItems = const [],
     this.popularProducts = const [],
@@ -133,7 +133,7 @@ final class HomePageLoaded extends HomePageState {
     String currentAddress = 'Select Location',
     this.searchQuery = '',
     Map<String, SellerAvailability> sellerAvailabilities = const {},
-    List<PromotionBanner> banners = kDefaultBanners,
+    List<PromotionBanner> banners = const [],
     List<Seller> featuredSellers = const [],
     List<FoodItem> popularProducts = const [],
     List<FoodItem> recentlyOrderedItems = const [],
@@ -245,7 +245,22 @@ final class HomePageError extends HomePageState {
   });
 
   @override
-  List<Object?> get props => [message, selectedCategoryId, categories, currentAddress];
+  List<Object?> get props => [
+        message,
+        selectedCategoryId,
+        categories,
+        currentAddress,
+        banners,
+        featuredSellers,
+        recentlyOrderedItems,
+        popularProducts,
+        activeSortOption,
+        distancesMap,
+        sellerAvailabilities,
+        selectedCuisine,
+        userLat,
+        userLng,
+      ];
 }
 
 /// Emitted when the selected category has no products in Firestore.
@@ -271,7 +286,22 @@ final class HomePageEmpty extends HomePageState {
   });
 
   @override
-  List<Object?> get props => [categoryName, selectedCategoryId, categories, currentAddress];
+  List<Object?> get props => [
+        categoryName,
+        selectedCategoryId,
+        categories,
+        currentAddress,
+        banners,
+        featuredSellers,
+        recentlyOrderedItems,
+        popularProducts,
+        activeSortOption,
+        distancesMap,
+        sellerAvailabilities,
+        selectedCuisine,
+        userLat,
+        userLng,
+      ];
 }
 
 /// Emitted when products exist in the category but none match the search query.
@@ -297,5 +327,20 @@ final class HomePageSearchEmpty extends HomePageState {
   });
 
   @override
-  List<Object?> get props => [query, selectedCategoryId, categories, currentAddress];
+  List<Object?> get props => [
+        query,
+        selectedCategoryId,
+        categories,
+        currentAddress,
+        banners,
+        featuredSellers,
+        recentlyOrderedItems,
+        popularProducts,
+        activeSortOption,
+        distancesMap,
+        sellerAvailabilities,
+        selectedCuisine,
+        userLat,
+        userLng,
+      ];
 }

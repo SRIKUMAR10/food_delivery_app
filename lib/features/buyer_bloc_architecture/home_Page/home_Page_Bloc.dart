@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,7 +26,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
   List<FoodCategory> _categories = [];
   Map<String, SellerAvailability> _sellerAvailabilities = {};
   String _currentAddress = 'Fetching location...';
-  List<PromotionBanner> _banners = kDefaultBanners;
+  List<PromotionBanner> _banners = const [];
   List<Seller> _featuredSellers = const [];
   List<FoodItem> _popularProducts = const [];
   List<FoodItem> _recentlyOrderedItems = const [];
@@ -43,6 +44,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
   StreamSubscription<List<FoodCategory>>? _categorySubscription;
   StreamSubscription<List<Product>>? _productSubscription;
   StreamSubscription<QuerySnapshot>? _sellersSubscription;
+  StreamSubscription<QuerySnapshot>? _promotionsSubscription;
   final Map<String, StreamSubscription<SellerAvailability>> _sellerStatusSubscriptions = {};
   Timer? _batchTimer;
   Timer? _loadingTimeoutTimer;
@@ -81,6 +83,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     _categorySubscription?.cancel();
     _productSubscription?.cancel();
     _sellersSubscription?.cancel();
+    _promotionsSubscription?.cancel();
     _cancelSellerStatusSubscriptions();
     _batchTimer?.cancel();
     _loadingTimeoutTimer?.cancel();
@@ -296,6 +299,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
 
     // Subscribe to sellers from Firestore in real-time
     _sellersSubscription?.cancel();
+    _promotionsSubscription?.cancel();
     try {
       final db = _firestore ?? FirebaseFirestore.instance;
       _sellersSubscription = db
@@ -316,6 +320,29 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
         }
       }, onError: (error) {
         print('Firestore sellers stream error: $error');
+      });
+
+      // Subscribe to promotions from Firestore in real-time
+      _promotionsSubscription = db
+          .collection('promotions')
+          .snapshots()
+          .listen((snapshot) {
+        final banners = <PromotionBanner>[];
+        for (final doc in snapshot.docs) {
+          try {
+            banners.add(PromotionBanner.fromFirestore(doc.data(), doc.id));
+          } catch (e) {
+            print('Error parsing promotion doc ID ${doc.id}: $e');
+          }
+        }
+        if (!isClosed) {
+          add(PromotionsUpdated(banners));
+        }
+      }, onError: (error) {
+        print('Firestore promotions stream error: $error');
+        if (!isClosed) {
+          add(const PromotionsUpdated([]));
+        }
       });
     } catch (e) {
       print('Firebase not initialized in tests or fallback triggered: $e');
@@ -515,10 +542,33 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     }
   }
 
-  void _onFetchUserLocation(FetchUserLocation event, Emitter<HomePageState> emit) {
-    _currentAddress = 'No. 12, Main Street, Central Park, City';
-    _userLat = 28.6139;
-    _userLng = 77.2090;
+  Future<void> _onFetchUserLocation(FetchUserLocation event, Emitter<HomePageState> emit) async {
+    try {
+      final db = _firestore ?? FirebaseFirestore.instance;
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        final doc = await db.collection('buyer_user').doc(uid).get();
+        if (doc.exists) {
+          final data = doc.data();
+          final addr = data?['address']?.toString() ?? data?['deliveryAddress']?.toString();
+          if (addr != null && addr.isNotEmpty) {
+            _currentAddress = addr;
+          }
+          final lat = (data?['latitude'] as num?)?.toDouble() ?? (data?['lat'] as num?)?.toDouble();
+          final lng = (data?['longitude'] as num?)?.toDouble() ?? (data?['lng'] as num?)?.toDouble();
+          if (lat != null && lng != null) {
+            _userLat = lat;
+            _userLng = lng;
+          }
+        }
+      }
+    } catch (_) {
+      // Safe fallback when unauthenticated, offline, or in test environment
+      if (_currentAddress == 'Fetching location...') {
+        _currentAddress = 'Select delivery address';
+      }
+    }
+
     _computeDistances();
     if (state is HomePageLoaded) {
       emit((state as HomePageLoaded).copyWith(

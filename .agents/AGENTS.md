@@ -1,7 +1,7 @@
 # Universal Continuous Development Lifecycle Management Rules
 
-## 1. 8-Step Enterprise Development Workflow
-You MUST strictly follow this 8-step continuous workflow for every development task to ensure resilience against session interruptions (token limits, crashes, network cuts) and to maintain the highest code quality:
+## 1. 10-Step Enterprise Development Workflow
+You MUST strictly follow this 10-step continuous workflow for every development task to ensure resilience against session interruptions (token limits, crashes, network cuts) and to maintain the highest code quality:
 
 1. **Session Recovery & Context Sync:**
    - If the previous task was interrupted due to token limits, IDE quota limits, network interruptions, crashes, or unexpected termination, automatically perform a deep recovery analysis of the entire codebase.

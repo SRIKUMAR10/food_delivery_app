@@ -1,14 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/api_service/RazorpayApiService.dart';
 import 'package:food_delivery_app/core/models/product_model.dart';
 import 'package:food_delivery_app/core/repositories/i_cart_repository.dart';
 import 'package:food_delivery_app/core/repositories/i_coupon_repository.dart';
 import 'package:food_delivery_app/core/repositories/i_product_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_user_profile_repository.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/core/services/seller_status_service.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_models.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/user_profile_image/user_profile_models.dart';
 
 class MockCartRepository extends Mock implements ICartRepository {}
 class MockCouponRepository extends Mock implements ICouponRepository {}
@@ -16,6 +19,7 @@ class MockProductRepository extends Mock implements IProductRepository {}
 class MockAuthService extends Mock implements IAuthService {}
 class MockSellerStatusService extends Mock implements SellerStatusService {}
 class MockRazorpayApiService extends Mock implements RazorpayApiService {}
+class MockUserProfileRepository extends Mock implements IUserProfileRepository {}
 
 void main() {
   group('CartBloc Unit Tests', () {
@@ -25,6 +29,7 @@ void main() {
     late MockAuthService mockAuthService;
     late MockSellerStatusService mockSellerStatusService;
     late MockRazorpayApiService mockRazorpayApiService;
+    late MockUserProfileRepository mockUserProfileRepository;
     late CartBloc cartBloc;
 
     setUp(() {
@@ -34,6 +39,21 @@ void main() {
       mockAuthService = MockAuthService();
       mockSellerStatusService = MockSellerStatusService();
       mockRazorpayApiService = MockRazorpayApiService();
+      mockUserProfileRepository = MockUserProfileRepository();
+
+      registerFallbackValue(const UserProfile(
+        name: 'Test User',
+        email: '',
+        phone: '',
+        address: '',
+      ));
+
+      when(() => mockUserProfileRepository.watchProfile(any()))
+          .thenAnswer((_) => Stream.value(null));
+      when(() => mockUserProfileRepository.loadProfile(any()))
+          .thenAnswer((_) async => null);
+      when(() => mockUserProfileRepository.saveProfile(any(), any()))
+          .thenAnswer((_) async {});
 
       when(() => mockAuthService.currentUserId).thenReturn('test_uid');
       when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream<String?>.value('test_uid'));
@@ -50,6 +70,8 @@ void main() {
         authService: mockAuthService,
         sellerStatusService: mockSellerStatusService,
         razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
       );
     });
 
@@ -97,6 +119,8 @@ void main() {
         authService: mockAuthService,
         sellerStatusService: mockSellerStatusService,
         razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
       );
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -163,6 +187,8 @@ void main() {
         authService: mockAuthService,
         sellerStatusService: mockSellerStatusService,
         razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
       );
       await Future.delayed(const Duration(milliseconds: 100));
 
@@ -212,6 +238,8 @@ void main() {
         authService: mockAuthService,
         sellerStatusService: mockSellerStatusService,
         razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
       );
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -246,6 +274,8 @@ void main() {
         authService: mockAuthService,
         sellerStatusService: mockSellerStatusService,
         razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
       );
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -290,6 +320,8 @@ void main() {
         authService: mockAuthService,
         sellerStatusService: mockSellerStatusService,
         razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
       );
 
       await Future.delayed(const Duration(milliseconds: 100));

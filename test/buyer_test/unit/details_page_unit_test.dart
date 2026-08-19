@@ -60,31 +60,24 @@ void main() {
       expect(isAvailable('inStock', true, false), isFalse);
     });
 
-    test('verifies ingredients fallback logic ensures UI is never blank', () {
-      List<String> getEffectiveIngredients(List<String> ingredients, String name) {
+    test('verifies ingredients logic handles empty and populated lists correctly', () {
+      List<String> getEffectiveIngredients(List<String> ingredients) {
         if (ingredients.isNotEmpty) return ingredients;
-        if (name.toLowerCase().contains('burger')) {
-          return const ['Brioche Bun', 'Grilled Patty', 'Cheddar Cheese'];
-        }
-        return const ['Fresh Farm Ingredients', 'Natural Herbs'];
+        return const [];
       }
 
-      expect(getEffectiveIngredients(['Tomato', 'Basil'], 'Burger'), equals(['Tomato', 'Basil']));
-      expect(getEffectiveIngredients([], 'Classic Cheeseburger'), contains('Brioche Bun'));
-      expect(getEffectiveIngredients([], 'Special Salad'), contains('Fresh Farm Ingredients'));
+      expect(getEffectiveIngredients(['Tomato', 'Basil']), equals(['Tomato', 'Basil']));
+      expect(getEffectiveIngredients([]), isEmpty);
     });
 
-    test('verifies addons fallback logic ensures UI is never blank', () {
-      List<String> getEffectiveAddons(List<String> addons, String name) {
+    test('verifies addons logic handles empty and populated lists correctly', () {
+      List<String> getEffectiveAddons(List<String> addons) {
         if (addons.isNotEmpty) return addons;
-        if (name.toLowerCase().contains('burger')) {
-          return const ['Extra Cheese (+₹30)', 'Spicy Jalapenos (+₹20)'];
-        }
-        return const ['Extra Cheese (+₹30)', 'Spicy Dip Sauce (+₹20)'];
+        return const [];
       }
 
-      expect(getEffectiveAddons(['Extra Bacon'], 'Burger'), equals(['Extra Bacon']));
-      expect(getEffectiveAddons([], 'Zesty Burger'), contains('Extra Cheese (+₹30)'));
+      expect(getEffectiveAddons(['Extra Bacon (+₹40)']), equals(['Extra Bacon (+₹40)']));
+      expect(getEffectiveAddons([]), isEmpty);
     });
 
     test('verifies dynamic addon price parsing and effective total calculation', () {

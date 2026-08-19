@@ -8,6 +8,13 @@ class FaqItem extends Equatable {
 
   const FaqItem({required this.question, required this.answer});
 
+  factory FaqItem.fromFirestore(Map<String, dynamic> data) {
+    return FaqItem(
+      question: data['question'] as String? ?? '',
+      answer: data['answer'] as String? ?? '',
+    );
+  }
+
   @override
   List<Object?> get props => [question, answer];
 }

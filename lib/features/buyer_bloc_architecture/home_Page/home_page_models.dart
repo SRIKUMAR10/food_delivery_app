@@ -94,6 +94,19 @@ class PromotionBanner {
     required this.code,
     required this.discountPercent,
   });
+
+  factory PromotionBanner.fromFirestore(Map<String, dynamic> data, String id) {
+    return PromotionBanner(
+      id: id,
+      title: data['title']?.toString() ?? '',
+      subtitle: data['subtitle']?.toString() ?? data['description']?.toString() ?? '',
+      imageUrl: data['imageUrl']?.toString() ?? data['image']?.toString() ?? '',
+      code: data['code']?.toString() ?? data['couponCode']?.toString() ?? '',
+      discountPercent: (data['discountPercent'] as num?)?.toDouble() ??
+          (data['discount'] as num?)?.toDouble() ??
+          0.0,
+    );
+  }
 }
 
 const List<PromotionBanner> kDefaultBanners = [

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/core/repositories/i_product_repository.dart';
 import 'package:food_delivery_app/repositories/category_repository.dart';
@@ -29,6 +30,9 @@ void main() {
     when(() => mockProductRepository.getProductsByCategory(any()))
         .thenAnswer((_) => Stream.value(<Product>[]));
 
+    when(() => mockProductRepository.searchProducts(any(), any()))
+        .thenAnswer((_) => Stream.value(<Product>[]));
+
     when(() => mockSellerStatusService.watchSellerStatus(any()))
         .thenAnswer((_) => Stream.value(const SellerAvailability(isOnline: true, isOpen: true)));
 
@@ -36,6 +40,7 @@ void main() {
       productRepository: mockProductRepository,
       categoryRepository: mockCategoryRepository,
       sellerStatusService: mockSellerStatusService,
+      firestore: FakeFirebaseFirestore(),
     );
   });
 
@@ -63,6 +68,76 @@ void main() {
         homePageBloc.stream,
         emitsThrough(isA<HomePageEmpty>()),
       );
+    });
+
+    test('PromotionsUpdated updates promotions banners in state', () async {
+      homePageBloc.add(const HomePageStarted());
+      await homePageBloc.stream.firstWhere((s) => s is HomePageEmpty);
+
+      const customBanners = [
+        PromotionBanner(
+          id: 'PROMO-TEST',
+          title: 'Special 50% Off',
+          subtitle: 'Test code TEST50',
+          imageUrl: 'https://example.com/promo.png',
+          code: 'TEST50',
+          discountPercent: 50.0,
+        ),
+      ];
+
+      final expectation = expectLater(
+        homePageBloc.stream,
+        emitsThrough(isA<HomePageEmpty>().having(
+          (s) => s.banners.first.title,
+          'banner title',
+          'Special 50% Off',
+        )),
+      );
+
+      homePageBloc.add(const PromotionsUpdated(customBanners));
+      await expectation;
+    });
+
+    test('LocationUpdated and FetchUserLocation update address in state', () async {
+      homePageBloc.add(const HomePageStarted());
+      await homePageBloc.stream.firstWhere((s) => s is HomePageEmpty);
+
+      final expectation = expectLater(
+        homePageBloc.stream,
+        emitsThrough(isA<HomePageEmpty>().having(
+          (s) => s.currentAddress,
+          'currentAddress',
+          '456 Sunset Boulevard, City',
+        )),
+      );
+
+      homePageBloc.add(const LocationUpdated('456 Sunset Boulevard, City'));
+      await expectation;
+    });
+
+    test('SearchQueryChanged and SearchCleared update search query in state', () async {
+      homePageBloc.add(const HomePageStarted());
+      await homePageBloc.stream.firstWhere((s) => s is HomePageEmpty);
+
+      final searchExpectation = expectLater(
+        homePageBloc.stream,
+        emitsThrough(isA<HomePageSearchEmpty>().having(
+          (s) => s.query,
+          'query',
+          'burger',
+        )),
+      );
+
+      homePageBloc.add(const SearchQueryChanged('burger'));
+      await searchExpectation;
+
+      final clearExpectation = expectLater(
+        homePageBloc.stream,
+        emitsThrough(isA<HomePageEmpty>()),
+      );
+
+      homePageBloc.add(const SearchCleared());
+      await clearExpectation;
     });
   });
 }

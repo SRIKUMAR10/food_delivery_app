@@ -1,9 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('Seller Forgot Password error_handling Tests', () {
-    test('Placeholder for error_handling testing', () {
-      expect(true, isTrue);
-    });
+  test('Error handling test for forgot password', () {
+    expect(true, true);
   });
 }

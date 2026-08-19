@@ -24,4 +24,7 @@ class BuyerLoginRepository {
     return await _service.signInWithGoogle();
   }
 
+  Future<String?> loginWithApple() async {
+    return await _service.signInWithApple();
+  }
 }

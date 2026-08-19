@@ -21,37 +21,17 @@ class HelpSupportBloc extends Bloc<HelpSupportEvent, HelpSupportState> {
   ) async {
     emit(state.copyWith(status: HelpSupportStatus.loading));
 
-    final faqItems = const [
-      FaqItem(
-        question: 'How do I place an order?',
-        answer: 'Browse restaurants, add items to your cart, and proceed to checkout. Select your payment method and confirm the order.',
+    await emit.forEach<List<FaqItem>>(
+      _repository.watchFaqs(),
+      onData: (faqItems) => state.copyWith(
+        status: HelpSupportStatus.loaded,
+        faqItems: faqItems,
       ),
-      FaqItem(
-        question: 'How can I track my order?',
-        answer: 'Go to "My Orders" from your profile, select the order you want to track, and you will see the live status and delivery partner location.',
+      onError: (e, _) => state.copyWith(
+        status: HelpSupportStatus.failure,
+        errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
       ),
-      FaqItem(
-        question: 'What payment methods are accepted?',
-        answer: 'We accept credit/debit cards, UPI, and wallet balance. You can manage your payment methods from the Profile section.',
-      ),
-      FaqItem(
-        question: 'Can I cancel my order?',
-        answer: 'Orders can be cancelled before the restaurant starts preparing. Go to "My Orders" and select Cancel if the option is available.',
-      ),
-      FaqItem(
-        question: 'How do I get a refund?',
-        answer: 'If your order is cancelled or there is an issue, the refund will be credited to your FoodGo wallet or original payment method within 5-7 business days.',
-      ),
-      FaqItem(
-        question: 'How do I contact support?',
-        answer: 'You can reach us via the Contact Us option, submit a ticket through Order/Payment/Delivery Issues, or email us at support@foodgo.app.',
-      ),
-    ];
-
-    emit(state.copyWith(
-      status: HelpSupportStatus.loaded,
-      faqItems: faqItems,
-    ));
+    );
   }
 
   Future<void> _onSubmitSupportTicket(

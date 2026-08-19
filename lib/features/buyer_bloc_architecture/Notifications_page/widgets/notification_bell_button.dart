@@ -101,16 +101,17 @@ class _BellBadge extends StatefulWidget {
 
 class _BellBadgeState extends State<_BellBadge>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 480),
-  );
+  late final AnimationController _controller;
   int _prevUnread = 0;
 
   @override
   void initState() {
     super.initState();
     _prevUnread = widget.unread;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 480),
+    );
   }
 
   @override

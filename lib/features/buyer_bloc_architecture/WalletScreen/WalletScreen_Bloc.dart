@@ -126,6 +126,7 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
   WalletBloc(this.database, this.razorpayApiService)
     : super(const WalletState()) {
     on<LoadWalletData>(_onLoadWalletData);
+    on<_WalletBalanceUpdatedInternal>(_onWalletBalanceUpdatedInternal);
     on<InitiatePaymentRequested>(_onInitiatePaymentRequested);
     on<PaymentRetryRequested>((event, emit) {
       add(InitiatePaymentRequested(event.amount));
@@ -138,6 +139,16 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
   Future<void> close() {
     _balanceSubscription?.cancel();
     return super.close();
+  }
+
+  void _onWalletBalanceUpdatedInternal(
+    _WalletBalanceUpdatedInternal event,
+    Emitter<WalletState> emit,
+  ) {
+    emit(state.copyWith(
+      walletBalance: event.balance,
+      paymentStatus: PaymentStatus.initial,
+    ));
   }
 
   Future<void> _onLoadWalletData(
@@ -161,7 +172,7 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
 
       _balanceSubscription = database.getWalletBalanceStream().listen((liveBalance) {
         if (!isClosed && liveBalance != null) {
-          add(LoadWalletData());
+          add(_WalletBalanceUpdatedInternal(liveBalance));
         }
       });
     } catch (_) {

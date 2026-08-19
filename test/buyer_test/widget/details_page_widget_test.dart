@@ -84,8 +84,8 @@ void main() {
         
         expect(find.text('Burger'), findsOneWidget);
         expect(find.text('Tasty Burger'), findsOneWidget);
-        // ₹150.00
-        expect(find.text('₹150.00'), findsWidgets);
+        // ₹150
+        expect(find.text('₹150'), findsWidgets);
       });
     });
 
@@ -135,7 +135,7 @@ void main() {
           ),
         );
 
-        expect(find.text('Add-ons Available'), findsOneWidget);
+        expect(find.text('Add-ons & Customizations'), findsOneWidget);
         expect(find.text('Extra Cheese'), findsOneWidget);
         expect(find.text('Mayo'), findsOneWidget);
 
@@ -173,9 +173,9 @@ void main() {
           ),
         );
 
-        // Should see both ₹120.00 and ₹150.00
-        expect(find.text('₹120.00'), findsWidgets);
-        expect(find.text('₹150.00'), findsWidgets);
+        // Should see both ₹120 and ₹150
+        expect(find.text('₹120'), findsWidgets);
+        expect(find.text('₹150'), findsWidgets);
       });
     });
 

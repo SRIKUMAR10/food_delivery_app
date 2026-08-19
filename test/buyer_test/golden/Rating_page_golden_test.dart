@@ -14,6 +14,7 @@ void main() {
   setUp(() {
     mockBloc = MockRatingPageBloc();
     when(() => mockBloc.stream).thenAnswer((_) => const Stream.empty());
+    when(() => mockBloc.close()).thenAnswer((_) async {});
   });
 
   tearDown(() {

@@ -62,6 +62,7 @@ void main() {
       productRepository: mockProductRepository,
       categoryRepository: mockCategoryRepository,
       sellerStatusService: mockSellerStatusService,
+      firestore: FakeFirebaseFirestore(),
     );
   });
 
