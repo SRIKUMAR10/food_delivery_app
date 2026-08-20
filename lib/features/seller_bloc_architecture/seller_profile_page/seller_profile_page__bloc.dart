@@ -442,15 +442,18 @@ class SellerProfilePageBloc
 
       try {
         final String uid = authService.currentUserId ?? '';
-        final effectiveUid = uid.isNotEmpty ? uid : 'default_seller';
+        if (uid.isEmpty) {
+          emit(currentState.copyWith(isImageUploading: false, localImageBytes: null));
+          return;
+        }
 
         final downloadUrl = await profileRepository.uploadProfileImage(
-          sellerId: effectiveUid,
+          sellerId: uid,
           fileName: event.fileName,
           imageBytes: event.imageBytes,
         );
 
-        await profileRepository.updateProfile(effectiveUid, {
+        await profileRepository.updateProfile(uid, {
           'profileImageUrl': downloadUrl,
         });
 
@@ -483,15 +486,18 @@ class SellerProfilePageBloc
 
       try {
         final String uid = authService.currentUserId ?? '';
-        final effectiveUid = uid.isNotEmpty ? uid : 'default_seller';
+        if (uid.isEmpty) {
+          emit(currentState.copyWith(isCoverUploading: false, localCoverBytes: null));
+          return;
+        }
 
         final downloadUrl = await profileRepository.uploadCoverImage(
-          sellerId: effectiveUid,
+          sellerId: uid,
           fileName: event.fileName,
           imageBytes: event.imageBytes,
         );
 
-        await profileRepository.updateProfile(effectiveUid, {
+        await profileRepository.updateProfile(uid, {
           'coverImageUrl': downloadUrl,
         });
 

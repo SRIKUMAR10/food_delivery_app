@@ -29,6 +29,7 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/hom
 import '../user_profile_image/user_profile_image.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
 import '../Notifications_page/widgets/notification_bell_button.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 // ─── HomePage (entry point) ────────────────────────────────────────────────────
 
@@ -276,50 +277,80 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final avatarWidget = _ProfileAvatar(onNavigateToCart: onNavigateToCart);
 
-    final favoritesIcon = GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const FavoritesPageUI()),
+    final favoritesIcon = BlocBuilder<FavoritesBloc, FavoritesState>(
+      builder: (context, state) {
+        final count = state is FavoritesLoaded ? state.items.length : 0;
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const FavoritesPageUI()),
+            );
+          },
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+              border: Border.all(color: const Color(0xFFF0F0F0)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.favorite_rounded,
+                  color: BuyerAppColors.primary,
+                  size: 18,
+                ),
+                if (count > 0) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    key: const Key('home_favorites_badge'),
+                    constraints: const BoxConstraints(
+                      minWidth: 18,
+                      minHeight: 18,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: BuyerAppColors.primary,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ],
+                if (!isMobile) ...[
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Favorites',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: Color(0xFF1C1C1C),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         );
       },
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          border: Border.all(color: const Color(0xFFF0F0F0)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.favorite_rounded,
-              color: Color(0xFFEF2A39),
-              size: 18,
-            ),
-            if (!isMobile) ...[
-              const SizedBox(width: 6),
-              const Text(
-                'Favorites',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: Color(0xFF1C1C1C),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
 
     if (!isDesktop) {
@@ -523,7 +554,7 @@ class _SearchBar extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFEF2A39),
+                  color: BuyerAppColors.primary,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.search_rounded, color: Colors.white, size: 18),
@@ -577,13 +608,13 @@ class _CategoryRow extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFFEF2A39)
+                    ? BuyerAppColors.primary
                     : const Color(0xFFEFEEF4),
                 borderRadius: BorderRadius.circular(isSelected ? 20 : 14),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: const Color(0xFFEF2A39).withValues(alpha: 0.25),
+                          color: BuyerAppColors.primary.withValues(alpha: 0.25),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -921,7 +952,7 @@ class _FoodCardState extends State<FoodCard> {
                                         child: const Icon(
                                           Icons.chat_bubble_outline_rounded,
                                           size: 16,
-                                          color: Color(0xFFEF2A39),
+                                          color: BuyerAppColors.primary,
                                         ),
                                       ),
                                     ),
@@ -966,7 +997,7 @@ class _FoodCardState extends State<FoodCard> {
                                             child: Icon(
                                               isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                                               key: ValueKey(isFav),
-                                              color: const Color(0xFFEF2A39),
+                                              color: BuyerAppColors.primary,
                                               size: 18,
                                             ),
                                           ),
@@ -1133,7 +1164,7 @@ class _FoodCardState extends State<FoodCard> {
                       width: 48,
                       height: 38,
                       decoration: const BoxDecoration(
-                        color: Color(0xFFEF2A39),
+                        color: BuyerAppColors.primary,
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(16),
                           bottomRight: Radius.circular(24),
@@ -1186,7 +1217,7 @@ class _ProductImage extends StatelessWidget {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Color(0xFFEF2A39),
+                  color: BuyerAppColors.primary,
                 ),
               ),
             ),
@@ -1263,7 +1294,7 @@ class _LocationHeader extends StatelessWidget {
             ),
             child: const Icon(
               Icons.location_on_rounded,
-              color: Color(0xFFEF2A39),
+              color: BuyerAppColors.primary,
               size: 20,
             ),
           ),
@@ -1299,7 +1330,7 @@ class _LocationHeader extends StatelessWidget {
                     const SizedBox(width: 4),
                     const Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: Color(0xFFEF2A39),
+                      color: BuyerAppColors.primary,
                       size: 20,
                     ),
                   ],
@@ -1324,7 +1355,7 @@ class _LocationHeader extends StatelessWidget {
               child: const Text(
                 'Change',
                 style: TextStyle(
-                  color: Color(0xFFEF2A39),
+                  color: BuyerAppColors.primary,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -1508,7 +1539,7 @@ class _OfferBannerCarouselState extends State<_OfferBannerCarousel> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEF2A39),
+                                color: BuyerAppColors.primary,
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: const Row(
@@ -1550,7 +1581,7 @@ class _OfferBannerCarouselState extends State<_OfferBannerCarousel> {
               height: 6,
               decoration: BoxDecoration(
                 color: _currentIndex == index
-                    ? const Color(0xFFEF2A39)
+                    ? BuyerAppColors.primary
                     : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(3),
               ),
@@ -1707,7 +1738,7 @@ class _OrderAgainSection extends StatelessWidget {
                 'View All >',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFFEF2A39),
+                  color: BuyerAppColors.primary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1716,7 +1747,7 @@ class _OrderAgainSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 100,
+          height: 114,
           child: ListView.builder(
             physics: const BouncingScrollPhysics(),
             scrollDirection: Axis.horizontal,
@@ -1776,7 +1807,7 @@ class _OrderAgainSection extends StatelessWidget {
                           Text(
                             '₹${item.price.toStringAsFixed(0)}',
                             style: const TextStyle(
-                              color: Color(0xFFEF2A39),
+                              color: BuyerAppColors.primary,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
@@ -1797,9 +1828,9 @@ class _OrderAgainSection extends StatelessWidget {
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
-                              constraints: const BoxConstraints(minHeight: 32),
+                              constraints: const BoxConstraints(minHeight: 28),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
+                                  horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFFF0F1),
                                 borderRadius: BorderRadius.circular(12),
@@ -1810,14 +1841,14 @@ class _OrderAgainSection extends StatelessWidget {
                                   Text(
                                     'Reorder',
                                     style: TextStyle(
-                                      color: Color(0xFFEF2A39),
+                                      color: BuyerAppColors.primary,
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   SizedBox(width: 3),
                                   Icon(Icons.refresh_rounded,
-                                      color: Color(0xFFEF2A39), size: 14),
+                                      color: BuyerAppColors.primary, size: 14),
                                 ],
                               ),
                             ),
@@ -1876,7 +1907,7 @@ class _PopularProductsSection extends StatelessWidget {
                 'View All >',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFFEF2A39),
+                  color: BuyerAppColors.primary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1960,7 +1991,7 @@ class _PopularProductsSection extends StatelessWidget {
                                 Text(
                                   '₹${item.price.toStringAsFixed(0)}',
                                   style: const TextStyle(
-                                    color: Color(0xFFEF2A39),
+                                    color: BuyerAppColors.primary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
                                   ),
@@ -1968,7 +1999,7 @@ class _PopularProductsSection extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.all(4),
                                   decoration: const BoxDecoration(
-                                    color: Color(0xFFEF2A39),
+                                    color: BuyerAppColors.primary,
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(Icons.add_rounded,

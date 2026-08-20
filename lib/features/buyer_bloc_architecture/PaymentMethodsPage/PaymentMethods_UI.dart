@@ -1,6 +1,8 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/widgets/app_snack_bar.dart';
 
 import 'PaymentMethods_Bloc.dart';
 import 'PaymentMethods_Event.dart';
@@ -46,7 +48,7 @@ class _PaymentMethodsUIState extends State<PaymentMethodsUI> {
   Widget _buildBody(BuildContext context, PaymentMethodsState state) {
     if (state.isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFEF2A39)),
+        child: CircularProgressIndicator(color: BuyerAppColors.primary),
       );
     }
 
@@ -165,12 +167,12 @@ class _PaymentMethodsUIState extends State<PaymentMethodsUI> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF2A39).withValues(alpha: 0.1),
+                      color: BuyerAppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       isCard ? Icons.credit_card_rounded : Icons.phone_android_rounded,
-                      color: const Color(0xFFEF2A39),
+                      color: BuyerAppColors.primary,
                       size: 24,
                     ),
                   ),
@@ -197,7 +199,7 @@ class _PaymentMethodsUIState extends State<PaymentMethodsUI> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEF2A39).withValues(alpha: 0.1),
+                                  color: BuyerAppColors.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Text(
@@ -205,7 +207,7 @@ class _PaymentMethodsUIState extends State<PaymentMethodsUI> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFFEF2A39),
+                                    color: BuyerAppColors.primary,
                                   ),
                                 ),
                               ),
@@ -265,7 +267,7 @@ class _PaymentMethodsUIState extends State<PaymentMethodsUI> {
         child: ElevatedButton(
           onPressed: () => _showAddBottomSheet(context),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFEF2A39),
+            backgroundColor: BuyerAppColors.primary,
             foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -348,16 +350,7 @@ class _PaymentMethodsUIState extends State<PaymentMethodsUI> {
   }
 
   void _showSnack(BuildContext context, String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 }
 
@@ -516,7 +509,7 @@ class _PaymentMethodFormSheetState extends State<_PaymentMethodFormSheet> {
                 child: ElevatedButton(
                   onPressed: _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF2A39),
+                    backgroundColor: BuyerAppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -680,8 +673,8 @@ class _PaymentMethodFormSheetState extends State<_PaymentMethodFormSheet> {
           style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
         ),
         value: _isDefault,
-        activeTrackColor: const Color(0xFFEF2A39).withValues(alpha: 0.4),
-        activeThumbColor: const Color(0xFFEF2A39),
+        activeTrackColor: BuyerAppColors.primary.withValues(alpha: 0.4),
+        activeThumbColor: BuyerAppColors.primary,
         onChanged: (v) => setState(() => _isDefault = v),
         contentPadding: const EdgeInsets.symmetric(horizontal: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -695,7 +688,7 @@ class _PaymentMethodFormSheetState extends State<_PaymentMethodFormSheet> {
   }) {
     return InputDecoration(
       hintText: hint,
-      prefixIcon: Icon(icon, size: 20, color: const Color(0xFFEF2A39)),
+      prefixIcon: Icon(icon, size: 20, color: BuyerAppColors.primary),
       filled: true,
       fillColor: Colors.white,
       counterText: '',
@@ -710,7 +703,7 @@ class _PaymentMethodFormSheetState extends State<_PaymentMethodFormSheet> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFEF2A39)),
+        borderSide: const BorderSide(color: BuyerAppColors.primary),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

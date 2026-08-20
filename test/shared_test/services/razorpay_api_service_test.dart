@@ -53,5 +53,56 @@ void main() {
       expect(() => service.dispose(), returnsNormally);
       verify(() => mockRazorpay.clear()).called(1);
     });
+
+    test('apiKey returns loaded key from dotenv', () {
+      expect(RazorpayApiService.apiKey, 'rzp_test_sampleKey123');
+    });
+
+    test('PaymentSuccessResponse instantiates with 4 positional arguments', () {
+      final success = PaymentSuccessResponse(
+        'pay_123',
+        'order_123',
+        'sig_123',
+        {
+          'razorpay_payment_id': 'pay_123',
+          'razorpay_order_id': 'order_123',
+          'razorpay_signature': 'sig_123',
+        },
+      );
+      expect(success.paymentId, equals('pay_123'));
+      expect(success.orderId, equals('order_123'));
+      expect(success.signature, equals('sig_123'));
+      expect(success.data?['razorpay_payment_id'], equals('pay_123'));
+    });
+
+    test('PaymentSuccessResponse.fromMap correctly populates all properties', () {
+      final map = {
+        'razorpay_payment_id': 'pay_456',
+        'razorpay_order_id': 'order_456',
+        'razorpay_signature': 'sig_456',
+      };
+      final success = PaymentSuccessResponse.fromMap(map);
+      expect(success.paymentId, equals('pay_456'));
+      expect(success.orderId, equals('order_456'));
+      expect(success.signature, equals('sig_456'));
+      expect(success.data, equals(map));
+    });
+
+    test('PaymentFailureResponse works with Razorpay error code constants', () {
+      final failureCancel = PaymentFailureResponse(
+        Razorpay.PAYMENT_CANCELLED,
+        'Payment cancelled by user',
+        null,
+      );
+      expect(failureCancel.code, equals(Razorpay.PAYMENT_CANCELLED));
+      expect(failureCancel.message, equals('Payment cancelled by user'));
+
+      final failureUnknown = PaymentFailureResponse(
+        Razorpay.UNKNOWN_ERROR,
+        'Failed to launch Razorpay Web: test error',
+        null,
+      );
+      expect(failureUnknown.code, equals(Razorpay.UNKNOWN_ERROR));
+    });
   });
 }

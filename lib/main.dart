@@ -4,6 +4,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 
 import 'core/services/i_auth_service.dart';
@@ -35,6 +36,8 @@ import 'core/repositories/i_buyer_notification_repository.dart';
 import 'repositories/firebase_buyer_notification_repository.dart';
 import 'core/repositories/i_seller_notification_repository.dart';
 import 'repositories/firebase_seller_notification_repository.dart';
+import 'core/services/theme_manager.dart';
+import 'core/services/locale_manager.dart';
 
 import 'features/buyer_bloc_architecture/CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import 'features/buyer_bloc_architecture/onboarding_page/onboarding_page_UI.dart';
@@ -61,6 +64,11 @@ const AppRole activeRole = AppRole.buyer;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint('dotenv initialization note: $e');
+  }
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   try {
     await FirebaseAppCheck.instance.activate(
@@ -94,6 +102,8 @@ class MyApp extends StatelessWidget {
   final IRatingRepository? ratingRepository;
   final IBuyerNotificationRepository? buyerNotificationRepository;
   final ISellerNotificationRepository? sellerNotificationRepository;
+  final ThemeManager? themeManager;
+  final LocaleManager? localeManager;
 
   const MyApp({
     super.key,
@@ -112,6 +122,8 @@ class MyApp extends StatelessWidget {
     this.ratingRepository,
     this.buyerNotificationRepository,
     this.sellerNotificationRepository,
+    this.themeManager,
+    this.localeManager,
   });
 
   @override
@@ -137,6 +149,8 @@ class MyApp extends StatelessWidget {
         buyerNotificationRepository ?? FirebaseBuyerNotificationRepository();
     final effectiveSellerNotificationRepo =
         sellerNotificationRepository ?? FirebaseSellerNotificationRepository();
+    final effectiveThemeManager = themeManager ?? ThemeManager();
+    final effectiveLocaleManager = localeManager ?? LocaleManager();
 
     return MultiRepositoryProvider(
       providers: [
@@ -172,6 +186,8 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<ISellerNotificationRepository>.value(
           value: effectiveSellerNotificationRepo,
         ),
+        RepositoryProvider<ThemeManager>.value(value: effectiveThemeManager),
+        RepositoryProvider<LocaleManager>.value(value: effectiveLocaleManager),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -205,40 +221,61 @@ class MyApp extends StatelessWidget {
               )..add(const HomePageStarted()),
             ),
         ],
-        child: MaterialApp(
-          title: 'FoodGo',
-          debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            primaryColor: const Color(0xFFE52121),
-            scaffoldBackgroundColor: const Color(0xFFFBF5F5),
-            useMaterial3: true,
-          ),
-          home: _getHomeWidget(),
-          routes: {
-            '/sellerlogin': (context) => const SellerLoginPageUI(),
-            '/sellerDashboard': (context) =>
-                const SellerNavigationBarViewPageUI(),
-            '/deliveryLogin': (context) => const DeliveryLoginPage(),
-            '/deliveryNavigationBar': (context) =>
-                const DeliveryNavigationBarPage(),
-            '/deliverySignUp': (context) => const DeliverySignUpPage(),
-            '/deliveryForgotPassword': (context) =>
-                const DeliveryForgotPasswordPage(),
-          },
-          onGenerateRoute: (settings) {
-            if (settings.name == '/deliveryOtpVerification') {
-              final args = settings.arguments as Map<String, dynamic>? ?? {};
-              return MaterialPageRoute(
-                builder: (context) => DeliveryOtpVerificationPage(
-                  verificationId: args['verificationId'] as String? ?? '',
-                  name: args['name'] as String? ?? '',
-                  phone: args['phone'] as String? ?? '',
-                  email: args['email'] as String? ?? '',
-                  password: args['password'] as String? ?? '',
-                ),
-              );
-            }
-            return null;
+        child: ValueListenableBuilder<ThemeMode>(
+          valueListenable: effectiveThemeManager.themeModeNotifier,
+          builder: (context, currentThemeMode, _) {
+            return ValueListenableBuilder<Locale>(
+              valueListenable: effectiveLocaleManager.localeNotifier,
+              builder: (context, currentLocale, _) {
+                return MaterialApp(
+                  title: 'FoodGo',
+                  debugShowCheckedModeBanner: false,
+                  themeMode: currentThemeMode,
+                  locale: currentLocale,
+                  theme: ThemeData(
+                    primaryColor: const Color(0xFFE52121),
+                    scaffoldBackgroundColor: const Color(0xFFFBF5F5),
+                    brightness: Brightness.light,
+                    useMaterial3: true,
+                  ),
+                  darkTheme: ThemeData(
+                    primaryColor: const Color(0xFFE52121),
+                    scaffoldBackgroundColor: const Color(0xFF121212),
+                    brightness: Brightness.dark,
+                    useMaterial3: true,
+                  ),
+                  home: _getHomeWidget(),
+                  routes: {
+                    '/sellerlogin': (context) => const SellerLoginPageUI(),
+                    '/sellerDashboard': (context) =>
+                        const SellerNavigationBarViewPageUI(),
+                    '/deliveryLogin': (context) => const DeliveryLoginPage(),
+                    '/deliveryNavigationBar': (context) =>
+                        const DeliveryNavigationBarPage(),
+                    '/deliverySignUp': (context) => const DeliverySignUpPage(),
+                    '/deliveryForgotPassword': (context) =>
+                        const DeliveryForgotPasswordPage(),
+                  },
+                  onGenerateRoute: (settings) {
+                    if (settings.name == '/deliveryOtpVerification') {
+                      final args =
+                          settings.arguments as Map<String, dynamic>? ?? {};
+                      return MaterialPageRoute(
+                        builder: (context) => DeliveryOtpVerificationPage(
+                          verificationId:
+                              args['verificationId'] as String? ?? '',
+                          name: args['name'] as String? ?? '',
+                          phone: args['phone'] as String? ?? '',
+                          email: args['email'] as String? ?? '',
+                          password: args['password'] as String? ?? '',
+                        ),
+                      );
+                    }
+                    return null;
+                  },
+                );
+              },
+            );
           },
         ),
       ),

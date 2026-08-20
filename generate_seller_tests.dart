@@ -24,7 +24,6 @@ void main() {
     'new_order_notification',
     'inventory_low_stock_page',
     'assign_delivery_page',
-    'low_stock_alert_page',
     'add_product_page',
   ];
 

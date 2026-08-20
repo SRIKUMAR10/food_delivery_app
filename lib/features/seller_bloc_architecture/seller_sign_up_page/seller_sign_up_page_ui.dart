@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:food_delivery_app/core/widgets/primary_button.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_state.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_event.dart';
@@ -24,14 +25,20 @@ class _AppColors {
 // Entry point widget (provides BLoC)
 // ─────────────────────────────────────────────────────────────────────────────
 class SellerSignUpPageUI extends StatelessWidget {
-  const SellerSignUpPageUI({super.key});
+  final SellerSignUpPageBloc? bloc;
+  const SellerSignUpPageUI({super.key, this.bloc});
 
   @override
   Widget build(BuildContext context) {
+    if (bloc != null) {
+      return BlocProvider<SellerSignUpPageBloc>.value(
+        value: bloc!,
+        child: const _SellerSignUpPageView(),
+      );
+    }
     return BlocProvider(
       create: (context) => SellerSignUpPageBloc(),
       child: const _SellerSignUpPageView(),
-
     );
   }
 }
@@ -156,30 +163,15 @@ class _PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
+    return PrimaryButton(
+      text: label,
+      isLoading: isLoading,
+      onPressed: onPressed,
       height: 52,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _AppColors.primary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: _AppColors.primary.withValues(alpha: 0.6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 2,
-          shadowColor: _AppColors.primary.withValues(alpha: 0.4),
-        ),
-        child: isLoading
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-              )
-            : Text(
-                label,
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-      ),
+      borderRadius: 12,
+      elevation: 2,
+      shadowColor: _AppColors.primary.withValues(alpha: 0.4),
+      backgroundColor: _AppColors.primary,
     );
   }
 }

@@ -20,8 +20,12 @@ class ProductRepository {
       final String effectiveSellerId = sellerId.isNotEmpty
           ? sellerId
           : (_firestore.app.options.projectId.isNotEmpty
-              ? 'default_seller'
-              : 'default_seller');
+              ? ''
+              : '');
+
+      if (effectiveSellerId.isEmpty) {
+        throw Exception('User not authenticated: sellerId is required.');
+      }
 
       List<String> imageUrls = [];
       int counter = 0;
@@ -63,7 +67,11 @@ class ProductRepository {
     try {
       final String effectiveSellerId = sellerId.isNotEmpty
           ? sellerId
-          : (product.sellerId.isNotEmpty ? product.sellerId : 'default_seller');
+          : product.sellerId;
+
+      if (effectiveSellerId.isEmpty) {
+        throw Exception('User not authenticated: sellerId is required.');
+      }
 
       List<String> imageUrls = List<String>.from(product.imageUrls);
 

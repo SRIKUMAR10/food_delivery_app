@@ -1,3 +1,4 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../buyer_notification_event.dart';
@@ -64,11 +65,11 @@ class _Chip extends StatelessWidget {
         constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE52121) : Colors.white,
+          color: selected ? BuyerAppColors.primaryDeep : Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: selected
-                ? const Color(0xFFE52121)
+                ? BuyerAppColors.primaryDeep
                 : const Color(0xFFF0F0F0),
           ),
         ),
@@ -88,7 +89,7 @@ class _Chip extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
-                  color: selected ? Colors.white : const Color(0xFFE52121),
+                  color: selected ? Colors.white : BuyerAppColors.primaryDeep,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -96,7 +97,7 @@ class _Chip extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: selected ? const Color(0xFFE52121) : Colors.white,
+                    color: selected ? BuyerAppColors.primaryDeep : Colors.white,
                   ),
                 ),
               ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
@@ -10,6 +11,9 @@ import 'product_list_page__bloc.dart';
 import 'product_list_page__event.dart';
 import 'product_list_page__state.dart';
 import '../../../../core/models/product_model.dart';
+import '../../../../core/widgets/shimmer_loader.dart';
+import '../../../../core/widgets/status_badge.dart';
+import '../../../../core/widgets/filter_chips_bar.dart';
 import 'product_preview_page.dart';
 import '../../../../core/repositories/i_product_repository.dart';
 import '../../../../core/services/i_auth_service.dart';
@@ -1096,48 +1100,25 @@ class _ProductListViewState extends State<ProductListView>
   }
 
   Widget _buildDetailStatusBadge(ProductStatus status) {
-    Color textColor;
-    Color bgColor;
-    Color borderColor;
+    Color color;
     String text;
 
     switch (status) {
       case ProductStatus.inStock:
-        textColor = const Color(0xFF4CAF50);
-        bgColor = const Color(0xFF4CAF50).withValues(alpha: 0.05);
-        borderColor = const Color(0xFF4CAF50).withValues(alpha: 0.2);
+        color = const Color(0xFF4CAF50);
         text = 'In Stock';
         break;
       case ProductStatus.lowStock:
-        textColor = const Color(0xFFE50914);
-        bgColor = const Color(0xFFE50914).withValues(alpha: 0.05);
-        borderColor = const Color(0xFFE50914).withValues(alpha: 0.2);
+        color = const Color(0xFFE50914);
         text = 'Low Stock';
         break;
       case ProductStatus.outOfStock:
-        textColor = Colors.grey.shade700;
-        bgColor = Colors.grey.shade100;
-        borderColor = Colors.grey.shade300;
+        color = Colors.grey.shade700;
         text = 'Out of Stock';
         break;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-        ),
-      ),
-    );
+    return StatusBadge(label: text, color: color);
   }
 
 
@@ -1926,22 +1907,24 @@ class _ProductListViewState extends State<ProductListView>
           ),
           child: Row(
             children: [
-              const _ShimmerBox(
-                width: 80,
-                height: 80,
-                margin: EdgeInsets.all(12),
-                borderRadius: 12,
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: SkeletonBox(
+                  width: 80,
+                  height: 80,
+                  borderRadius: 12,
+                ),
               ),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
-                    _ShimmerBox(height: 14, width: 120, borderRadius: 4),
+                    SkeletonBox(height: 14, width: 120, borderRadius: 4),
                     SizedBox(height: 8),
-                    _ShimmerBox(height: 14, width: 80, borderRadius: 4),
+                    SkeletonBox(height: 14, width: 80, borderRadius: 4),
                     SizedBox(height: 8),
-                    _ShimmerBox(height: 14, width: 60, borderRadius: 4),
+                    SkeletonBox(height: 14, width: 60, borderRadius: 4),
                   ],
                 ),
               ),
@@ -2153,23 +2136,19 @@ class _FilterSheetContentState extends State<_FilterSheetContent>
                 // Category Card
                 _buildFilterCard(
                   title: 'Category',
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 12,
-                    children: [
-                      _buildChip(
-                        'All',
-                        _categoryFilter == null,
-                        () => setState(() => _categoryFilter = null),
-                      ),
-                      ..._categories.map(
-                        (c) => _buildChip(
-                          c,
-                          _categoryFilter == c,
-                          () => setState(() => _categoryFilter = c),
-                        ),
-                      ),
+                  child: FilterChipsBar(
+                    items: [
+                      const FilterChipItem(label: 'All', value: '__all__'),
+                      for (final c in _categories)
+                        FilterChipItem(label: c, value: c),
                     ],
+                    selected: _categoryFilter ?? '__all__',
+                    onSelected: (value) {
+                      setState(() {
+                        _categoryFilter =
+                            value == '__all__' ? null : value;
+                      });
+                    },
                   ),
                 ),
 
@@ -2458,51 +2437,6 @@ class _FilterSheetContentState extends State<_FilterSheetContent>
     );
   }
 
-  Widget _buildChip(String label, bool isSelected, VoidCallback onTap) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF111827) : Colors.white,
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(
-          color: isSelected ? const Color(0xFF111827) : Colors.grey.shade300,
-          width: 1.5,
-        ),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: const Color(0xFF111827).withValues(alpha: 0.2),
-                  blurRadius: 6,
-                  offset: const Offset(0, 3),
-                ),
-              ]
-            : [],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(100),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(100),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF4B5563),
-                fontWeight: FontWeight.w600, // Keeps shape consistent
-                fontSize: 14,
-                height: 1.2,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildCheckboxTile(
     String title,
     bool isSelected,
@@ -2744,17 +2678,24 @@ class _ProductCardState extends State<_ProductCard> {
   bool _startAnimation = false;
   bool _isHovered = false;
   bool _isImageHovered = false;
+  Timer? _animTimer;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration(milliseconds: 50 + (widget.index * 50)), () {
+    _animTimer = Timer(Duration(milliseconds: 50 + ((widget.index % 10) * 50)), () {
       if (mounted) {
         setState(() {
           _startAnimation = true;
         });
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _animTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -3504,88 +3445,6 @@ class _CardActionButtonState extends State<_CardActionButton> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Shimmer Loading Animation
-// ══════════════════════════════════════════════════════════════════════════════
-
-class _ShimmerBox extends StatefulWidget {
-  final double width;
-  final double height;
-  final EdgeInsetsGeometry? margin;
-  final double borderRadius;
-
-  const _ShimmerBox({
-    this.width = double.infinity,
-    required this.height,
-    this.margin,
-    this.borderRadius = 0,
-  });
-
-  @override
-  State<_ShimmerBox> createState() => _ShimmerBoxState();
-}
-
-class _ShimmerBoxState extends State<_ShimmerBox>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-
-    _animation = Tween<double>(begin: -2, end: 2).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: widget.width,
-      height: widget.height,
-      margin: widget.margin,
-      child: AnimatedBuilder(
-        animation: _animation,
-        builder: (context, child) {
-          return ShaderMask(
-            shaderCallback: (bounds) {
-              return LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.grey.shade300,
-                  Colors.grey.shade100,
-                  Colors.grey.shade300,
-                ],
-                stops: const [0.0, 0.5, 1.0],
-                transform: GradientRotation(_animation.value),
-              ).createShader(bounds);
-            },
-            blendMode: BlendMode.srcATop,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(widget.borderRadius),
-              ),
-            ),
-          );
-        },
       ),
     );
   }

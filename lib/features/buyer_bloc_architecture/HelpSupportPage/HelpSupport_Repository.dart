@@ -58,16 +58,45 @@ class HelpSupportRepository {
         .snapshots();
   }
 
-  Stream<List<FaqItem>> watchFaqs() {
-    return _firestore
-        .collection('faqs')
-        .where('isActive', isEqualTo: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => FaqItem.fromFirestore(doc.data()))
-          .where((faq) => faq.question.isNotEmpty)
-          .toList();
-    }).handleError((_) => <FaqItem>[]);
+  static const List<FaqItem> defaultFaqs = [
+    FaqItem(
+      question: 'How do I place an order?',
+      answer: 'Browse restaurants and menu items, add your favorite food to the cart, select your delivery address, and proceed to checkout.',
+    ),
+    FaqItem(
+      question: 'How can I track my order?',
+      answer: 'You can track your order in real-time under the Orders tab by tapping on the active order to view delivery status and rider location.',
+    ),
+    FaqItem(
+      question: 'How do I cancel my order?',
+      answer: 'You can cancel an order before the restaurant starts preparing it from the order details page.',
+    ),
+    FaqItem(
+      question: 'What payment methods are accepted?',
+      answer: 'We accept Credit/Debit Cards, UPI, Net Banking, FoodGo Wallet, and Cash on Delivery.',
+    ),
+    FaqItem(
+      question: 'How do refunds work?',
+      answer: 'Refunds for cancelled orders are credited back to your original payment method or FoodGo wallet within 2-4 business days.',
+    ),
+    FaqItem(
+      question: 'How can I contact customer support?',
+      answer: 'You can reach us directly via Email (support@foodgo.app) or call our helpline from the Contact Us option.',
+    ),
+  ];
+
+  Stream<List<FaqItem>> watchFaqs() async* {
+    yield defaultFaqs;
+    try {
+      await for (final snapshot in _firestore.collection('faqs').snapshots()) {
+        final items = snapshot.docs
+            .map((doc) => FaqItem.fromFirestore(doc.data()))
+            .where((faq) => faq.question.isNotEmpty)
+            .toList();
+        yield items.isNotEmpty ? items : defaultFaqs;
+      }
+    } catch (_) {
+      yield defaultFaqs;
+    }
   }
 }

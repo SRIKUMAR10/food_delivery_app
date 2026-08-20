@@ -24,6 +24,8 @@ import '../product_list_page_/product_list_page__event.dart';
 import '../product_list_page_/product_list_page__state.dart';
 import '../../../../core/repositories/i_product_repository.dart';
 import '../../../../core/services/i_auth_service.dart';
+import '../../../core/widgets/hoverable_widgets.dart';
+import '../../../../core/widgets/logout_button.dart';
 import '../../../widgets/curved_header_clipper.dart';
 
 class SellerNavigationBarViewPageUI extends StatelessWidget {
@@ -389,7 +391,7 @@ class _DesktopSideMenuState extends State<_DesktopSideMenu> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _HoverableMenuItem(
+                          HoverableMenuItem(
                             title: 'Dashboard',
                             icon: Icons.dashboard_outlined,
                             activeIcon: Icons.dashboard_rounded,
@@ -407,7 +409,7 @@ class _DesktopSideMenuState extends State<_DesktopSideMenu> {
                                   badgeText = newCount > 99 ? '99+' : newCount.toString();
                                 }
                               }
-                              return _HoverableMenuItem(
+                              return HoverableMenuItem(
                                 title: 'Orders',
                                 icon: Icons.shopping_bag_outlined,
                                 activeIcon: Icons.shopping_bag_rounded,
@@ -429,7 +431,7 @@ class _DesktopSideMenuState extends State<_DesktopSideMenu> {
                                     ? '99+'
                                     : state.allCount.toString();
                               }
-                              return _HoverableMenuItem(
+                              return HoverableMenuItem(
                                 title: 'Products',
                                 icon: Icons.inventory_outlined,
                                 activeIcon: Icons.inventory_rounded,
@@ -441,7 +443,7 @@ class _DesktopSideMenuState extends State<_DesktopSideMenu> {
                               );
                             },
                           ),
-                          _HoverableMenuItem(
+                          HoverableMenuItem(
                             title: 'More',
                             icon: Icons.grid_view_outlined,
                             activeIcon: Icons.grid_view_rounded,
@@ -450,7 +452,7 @@ class _DesktopSideMenuState extends State<_DesktopSideMenu> {
                             onTap: () => widget.onTap(3),
                           ),
                           const SizedBox(height: 48),
-                          _HoverableMenuItem(
+                          HoverableMenuItem(
                             title: 'Settings',
                             icon: Icons.settings_outlined,
                             activeIcon: Icons.settings_rounded,
@@ -470,29 +472,38 @@ class _DesktopSideMenuState extends State<_DesktopSideMenu> {
                               );
                             },
                           ),
-                          _HoverableMenuItem(
+                          HoverableMenuItem(
                             title: 'Logout',
                             icon: Icons.logout_rounded,
                             isSelected: false,
                             isExpanded: _isExpanded,
                             iconColor: const Color(0xFFE52929),
                             textColor: const Color(0xFFE52929),
-                            onTap: () async {
-                              final repo = SellerRepository();
-                              final uid = repo.currentUser?.uid;
-                              if (uid != null) {
-                                await repo.updateSellerData(uid, {'isOnline': false});
-                              }
-                              await repo.signOut();
-                              if (context.mounted) {
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const SellerLoginPageUI(),
-                                  ),
-                                  (route) => false,
-                                );
-                              }
+                            onTap: () {
+                              showLogoutConfirmDialog(
+                                context,
+                                title: 'Logout',
+                                message: 'Are you sure you want to log out of your restaurant seller account?',
+                                confirmLabel: 'Logout',
+                                confirmColor: const Color(0xFFE52929),
+                                onConfirm: () async {
+                                  final repo = SellerRepository();
+                                  final uid = repo.currentUser?.uid;
+                                  if (uid != null) {
+                                    await repo.updateSellerData(uid, {'isOnline': false});
+                                  }
+                                  await repo.signOut();
+                                  if (context.mounted) {
+                                    Navigator.pushAndRemoveUntil(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const SellerLoginPageUI(),
+                                      ),
+                                      (route) => false,
+                                    );
+                                  }
+                                },
+                              );
                             },
                           ),
                           const SizedBox(height: 16),
@@ -723,187 +734,4 @@ class _GoPremiumButtonState extends State<_GoPremiumButton> {
   }
 }
 
-class _HoverableMenuItem extends StatefulWidget {
-  final String title;
-  final IconData icon;
-  final IconData? activeIcon;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final bool isExpanded;
-  final String? badgeText;
-  final Color? badgeColor;
-  final Color? iconColor;
-  final Color? textColor;
 
-  const _HoverableMenuItem({
-    required this.title,
-    required this.icon,
-    this.activeIcon,
-    required this.isSelected,
-    required this.isExpanded,
-    required this.onTap,
-    this.badgeText,
-    this.badgeColor,
-    this.iconColor,
-    this.textColor,
-  });
-
-  @override
-  State<_HoverableMenuItem> createState() => _HoverableMenuItemState();
-}
-
-class _HoverableMenuItemState extends State<_HoverableMenuItem> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final isSelected = widget.isSelected;
-    final defaultIconColor = isSelected
-        ? const Color(0xFFE52929)
-        : const Color(0xFF64748B);
-    final defaultTextColor = isSelected
-        ? const Color(0xFFE52929)
-        : const Color(0xFF4B5563);
-
-    final finalIconColor = widget.iconColor ?? defaultIconColor;
-    final finalTextColor = widget.textColor ?? defaultTextColor;
-
-    final bgColor = isSelected
-        ? Colors.white
-        : (_isHovered
-              ? const Color(0xFFF1F5F9).withValues(alpha: 0.5)
-              : Colors.transparent);
-    final shadow = isSelected
-        ? [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ]
-        : <BoxShadow>[];
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(32),
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          focusColor: Colors.transparent,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOutCubic,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            height: 56,
-            transform: Matrix4.identity()
-              ..scale(_isHovered && !isSelected ? 1.02 : 1.0),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: shadow,
-            ),
-            child: widget.isExpanded
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOutCubic,
-                        width: isSelected ? 5 : 0,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE52929),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      SizedBox(width: isSelected ? 12 : 17),
-                      Icon(
-                        isSelected ? (widget.activeIcon ?? widget.icon) : widget.icon,
-                        color: finalIconColor,
-                        size: isSelected ? 26 : 24,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          widget.title,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: finalTextColor,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (widget.badgeText != null)
-                        Container(
-                          margin: const EdgeInsets.only(right: 16),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: widget.badgeColor,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            widget.badgeText!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        )
-                      else
-                        const SizedBox(width: 16),
-                    ],
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Icon(
-                            isSelected ? (widget.activeIcon ?? widget.icon) : widget.icon,
-                            color: finalIconColor,
-                            size: isSelected ? 26 : 24,
-                          ),
-                          if (widget.badgeText != null)
-                            Positioned(
-                              top: -6,
-                              right: -8,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: widget.badgeColor,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  widget.badgeText!,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-}

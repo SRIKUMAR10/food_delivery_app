@@ -82,10 +82,6 @@ export 'add_product_page_/add_product_page__bloc.dart';
 export 'add_product_page_/add_product_page__event.dart';
 export 'add_product_page_/add_product_page__state.dart';
 export 'add_product_page_/add_product_page__ui.dart';
-export 'add_product_page_/low_stock_alert_page__bloc.dart';
-export 'add_product_page_/low_stock_alert_page__event.dart';
-export 'add_product_page_/low_stock_alert_page__state.dart';
-export 'add_product_page_/low_stock_alert_page__ui.dart';
 
 export 'menu_category_management_page_/menu_category_management_page_bloc.dart';
 export 'menu_category_management_page_/menu_category_management_page_event.dart';

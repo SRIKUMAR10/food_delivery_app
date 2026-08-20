@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/widgets/app_snack_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'HelpSupport_Bloc.dart';
 import 'HelpSupport_Event.dart';
 import 'HelpSupport_State.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class HelpSupportContent extends StatefulWidget {
   const HelpSupportContent({super.key});
@@ -22,15 +24,7 @@ class _HelpSupportContentState extends State<HelpSupportContent> {
 
   void _showSnack(String message, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   @override
@@ -49,13 +43,15 @@ class _HelpSupportContentState extends State<HelpSupportContent> {
         }
       },
       builder: (context, state) {
-        if (state.status == HelpSupportStatus.loading) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFFEF2A39)));
-        }
-
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (state.status == HelpSupportStatus.submitting)
+              const LinearProgressIndicator(
+                color: BuyerAppColors.primary,
+                backgroundColor: Color(0xFFFFEBEE),
+                minHeight: 3,
+              ),
             _buildHelpItem(
               icon: Icons.help_outline_rounded,
               title: 'FAQ',
@@ -385,7 +381,7 @@ class _IssueFormPageState extends State<_IssueFormPage> {
               ElevatedButton(
                 onPressed: _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF2A39),
+                  backgroundColor: BuyerAppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -402,7 +398,7 @@ class _IssueFormPageState extends State<_IssueFormPage> {
   InputDecoration _inputDecoration(String hint, IconData icon) {
     return InputDecoration(
       hintText: hint,
-      prefixIcon: Icon(icon, size: 20, color: const Color(0xFFEF2A39)),
+      prefixIcon: Icon(icon, size: 20, color: BuyerAppColors.primary),
       filled: true,
       fillColor: const Color(0xFFF8F9FA),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -416,7 +412,7 @@ class _IssueFormPageState extends State<_IssueFormPage> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFEF2A39)),
+        borderSide: const BorderSide(color: BuyerAppColors.primary),
       ),
     );
   }
@@ -455,14 +451,7 @@ class _FeedbackFormPageState extends State<_FeedbackFormPage> {
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    AppSnackBar.show(context, message);
   }
 
   @override
@@ -515,7 +504,7 @@ class _FeedbackFormPageState extends State<_FeedbackFormPage> {
               ElevatedButton(
                 onPressed: _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF2A39),
+                  backgroundColor: BuyerAppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -532,7 +521,7 @@ class _FeedbackFormPageState extends State<_FeedbackFormPage> {
   InputDecoration _inputDecoration(String hint, IconData icon) {
     return InputDecoration(
       hintText: hint,
-      prefixIcon: Icon(icon, size: 20, color: const Color(0xFFEF2A39)),
+      prefixIcon: Icon(icon, size: 20, color: BuyerAppColors.primary),
       filled: true,
       fillColor: const Color(0xFFF8F9FA),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -546,7 +535,7 @@ class _FeedbackFormPageState extends State<_FeedbackFormPage> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFEF2A39)),
+        borderSide: const BorderSide(color: BuyerAppColors.primary),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'Delivery_Profile_page_repository.dart';
 import 'Delivery_Profile_page_service.dart';
 import 'Delivery_Profile_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/widgets/logout_button.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_bloc.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_event.dart';
 
@@ -1574,46 +1575,21 @@ class _ProfileActionsCard extends StatelessWidget {
   }
 
   void _showLogoutDialog(BuildContext context, String localeCode) {
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: const Color(0xFF161B22),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          DeliveryProfileStrings.of('logout', localeCode),
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          DeliveryProfileStrings.of('logoutConfirm', localeCode),
-          style: const TextStyle(color: Color(0xFF94A3B8)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: Text(
-              DeliveryProfileStrings.of('cancel', localeCode),
-              style: const TextStyle(color: Color(0xFF94A3B8)),
-            ),
-          ),
-          ElevatedButton(
-            key: const Key('dp_logout_confirm_btn'),
-            onPressed: () {
-              context
-                  .read<DeliveryProfileBloc>()
-                  .add(const DeliveryProfileLogoutEvent());
-              Navigator.pop(dialogCtx);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber,
-              foregroundColor: Colors.black,
-            ),
-            child: Text(
-              DeliveryProfileStrings.of('logout', localeCode),
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
+    showLogoutConfirmDialog(
+      context,
+      title: DeliveryProfileStrings.of('logout', localeCode),
+      message: DeliveryProfileStrings.of('logoutConfirm', localeCode),
+      confirmLabel: DeliveryProfileStrings.of('logout', localeCode),
+      confirmColor: Colors.amber,
+      confirmForegroundColor: Colors.black,
+      confirmButtonKey: 'dp_logout_confirm_btn',
+      backgroundColor: const Color(0xFF161B22),
+      titleColor: Colors.white,
+      contentColor: const Color(0xFF94A3B8),
+      cancelColor: const Color(0xFF94A3B8),
+      onConfirm: () async {
+        context.read<DeliveryProfileBloc>().add(const DeliveryProfileLogoutEvent());
+      },
     );
   }
 

@@ -59,9 +59,9 @@ class PaymentRetryRequested extends WalletEvent {
 }
 
 /// Internal event triggered when real-time balance stream updates.
-class _WalletBalanceUpdatedInternal extends WalletEvent {
+class WalletBalanceUpdatedInternal extends WalletEvent {
   final double balance;
-  const _WalletBalanceUpdatedInternal(this.balance);
+  const WalletBalanceUpdatedInternal(this.balance);
 
   @override
   List<Object?> get props => [balance];

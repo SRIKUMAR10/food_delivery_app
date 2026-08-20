@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:food_delivery_app/api_service/RazorpayApiService.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/widgets/responsive_layout.dart';
+import 'package:food_delivery_app/core/widgets/transaction_history.dart';
 import 'WalletScreen_Bloc.dart';
 import 'WalletScreen_Event.dart';
 import 'WalletScreen_State.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 // ─────────────────────────────────────────────
 //  WALLET SCREEN UI (DI layer)
 // ─────────────────────────────────────────────
@@ -43,7 +47,7 @@ class _WalletAuthGate extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
-              child: CircularProgressIndicator(color: Color(0xFFE52121)),
+              child: CircularProgressIndicator(color: BuyerAppColors.primaryDeep),
             ),
           );
         }
@@ -79,6 +83,9 @@ class _WalletViewState extends State<WalletView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RazorpayApiService>().initialize(
         onSuccess: (response) {
+          if (mounted) {
+            setState(() => _selectedAmount = null);
+          }
           final state = context.read<WalletBloc>().state;
           context.read<WalletBloc>().add(
             PaymentSuccessEvent(
@@ -89,8 +96,16 @@ class _WalletViewState extends State<WalletView> {
           );
         },
         onFailure: (response) {
+          if (mounted) {
+            setState(() => _selectedAmount = null);
+          }
+          final isCancelled = response.code == Razorpay.PAYMENT_CANCELLED ||
+              (response.message?.toLowerCase().contains('cancelled') ?? false);
           context.read<WalletBloc>().add(
-            PaymentFailedEvent(response.message ?? "Payment Failed"),
+            PaymentFailedEvent(
+              response.message ?? "Payment Failed",
+              userCancelled: isCancelled,
+            ),
           );
         },
       );
@@ -213,7 +228,7 @@ class _WalletViewState extends State<WalletView> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE52121),
+                  backgroundColor: BuyerAppColors.primaryDeep,
                   minimumSize: const Size(double.infinity, 52),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -259,6 +274,13 @@ class _WalletViewState extends State<WalletView> {
       listener: (context, state) {
         if (!mounted) return;
 
+        // Reset selected amount when payment completes or cancels
+        if (state.paymentStatus == PaymentStatus.initial ||
+            state.paymentStatus == PaymentStatus.failed ||
+            state.paymentStatus == PaymentStatus.success) {
+          setState(() => _selectedAmount = null);
+        }
+
         // ── Start Razorpay Checkout ─────────────────────────────────────────
         if (state.paymentStatus == PaymentStatus.orderCreated) {
           context.read<RazorpayApiService>().startPayment(
@@ -267,6 +289,8 @@ class _WalletViewState extends State<WalletView> {
                 context.read<WalletBloc>().database.authService.currentUserEmail ??
                 'user@example.com',
             orderId: state.orderId,
+            name: 'FoodGo Wallet',
+            description: 'Wallet Top-up',
           );
         }
 
@@ -312,15 +336,10 @@ class _WalletViewState extends State<WalletView> {
                   return Stack(
                     children: [
                       // ── Main content ──────────────────────────────────────
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          if (constraints.maxWidth > 800) {
-                            return _buildWideLayout(context, state, db, size);
-                          } else {
-                            return _buildMobileLayout(context, state, db, size);
-                          }
-                        },
-                      ),
+                      if (ResponsiveHelper.isWide(context))
+                        _buildWideLayout(context, state, db, size)
+                      else
+                        _buildMobileLayout(context, state, db, size),
                       // ── Loading overlay (link fetch in progress) ──────────
                       if (state.paymentStatus == PaymentStatus.creatingOrder)
                         _buildLoadingOverlay(),
@@ -361,7 +380,7 @@ class _WalletViewState extends State<WalletView> {
                 width: 48,
                 height: 48,
                 child: CircularProgressIndicator(
-                  color: Color(0xFFE52121),
+                  color: BuyerAppColors.primaryDeep,
                   strokeWidth: 3.5,
                 ),
               ),
@@ -537,14 +556,14 @@ class _WalletViewState extends State<WalletView> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFE52121), Color(0xFFFF5252)],
+                colors: [BuyerAppColors.primaryDeep, Color(0xFFFF5252)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFE52121).withValues(alpha: 0.4),
+                  color: BuyerAppColors.primaryDeep.withValues(alpha: 0.4),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -634,33 +653,36 @@ class _WalletViewState extends State<WalletView> {
   // ── Quick Amount Selection (100, 200, 500) ───────────────────────────────
 
   Widget _buildQuickAmountSelection(BuildContext context, WalletState state) {
-    final primaryColor = Theme.of(context).primaryColor;
+    const primaryColor = BuyerAppColors.primaryDeep;
     const List<int> amounts = [100, 200, 500];
 
     return Row(
       children: amounts.map((amt) {
         final amount = amt.toDouble();
         final isSelected = _selectedAmount == amount;
-        final isProcessing = state.isLoading && state.pendingAmount == amount;
+        final isProcessing = state.isCreatingOrder && state.pendingAmount == amount;
 
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.only(right: 10),
             child: GestureDetector(
-              onTap: state.isLoading
+              onTap: state.isCreatingOrder
                   ? null
                   : () {
                       HapticFeedback.selectionClick();
-                      setState(() => _selectedAmount = amount);
-                      context.read<WalletBloc>().add(
-                        InitiatePaymentRequested(amount),
-                      );
+                      setState(() {
+                        if (_selectedAmount == amount) {
+                          _selectedAmount = null;
+                        } else {
+                          _selectedAmount = amount;
+                        }
+                      });
                     },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 height: 64,
                 decoration: BoxDecoration(
-                  color: isSelected ? primaryColor : Colors.white,
+                  color: isSelected ? const Color(0xFFFFF0F0) : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected
@@ -671,9 +693,9 @@ class _WalletViewState extends State<WalletView> {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: primaryColor.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
+                            color: primaryColor.withValues(alpha: 0.15),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
                           ),
                         ]
                       : [
@@ -686,12 +708,12 @@ class _WalletViewState extends State<WalletView> {
                 ),
                 child: Center(
                   child: isProcessing
-                      ? SizedBox(
+                      ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: isSelected ? Colors.white : primaryColor,
+                            color: primaryColor,
                           ),
                         )
                       : Column(
@@ -703,16 +725,20 @@ class _WalletViewState extends State<WalletView> {
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: isSelected
-                                    ? Colors.white
+                                    ? primaryColor
                                     : Colors.black87,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             Text(
-                              'Tap to Add',
+                              isSelected ? 'Selected' : 'Tap to Add',
                               style: TextStyle(
                                 fontSize: 10,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
                                 color: isSelected
-                                    ? Colors.white70
+                                    ? primaryColor
                                     : Colors.black38,
                               ),
                             ),
@@ -727,158 +753,79 @@ class _WalletViewState extends State<WalletView> {
     );
   }
 
-  // ── Add Money Button (custom amount) ─────────────────────────────────────
+  // ── Add Money Button ─────────────────────────────────────────────────────
 
   Widget _buildAddMoneyButton(BuildContext context, WalletState state) {
-    return ElevatedButton.icon(
-      onPressed: state.isLoading
+    final hasSelection = _selectedAmount != null && _selectedAmount! > 0;
+    final isProcessing = state.isCreatingOrder;
+
+    return ElevatedButton(
+      onPressed: isProcessing
           ? null
-          : () => _showAddMoneyBottomSheet(context),
-      icon: const Icon(Icons.add_rounded, color: Colors.white),
-      label: Text(
-        'Add Money',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+          : () {
+              if (hasSelection) {
+                HapticFeedback.mediumImpact();
+                context.read<WalletBloc>().add(
+                  InitiatePaymentRequested(_selectedAmount!),
+                );
+              } else {
+                _showAddMoneyBottomSheet(context);
+              }
+            },
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFE52121),
-        minimumSize: const Size(double.infinity, 58),
+        backgroundColor: BuyerAppColors.primaryDeep,
+        disabledBackgroundColor: BuyerAppColors.primaryDeep.withValues(alpha: 0.6),
+        minimumSize: const Size(double.infinity, 56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         elevation: 2,
       ),
+      child: isProcessing
+          ? const SizedBox(
+              height: 22,
+              width: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  hasSelection ? Icons.payment_rounded : Icons.add_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  hasSelection
+                      ? 'Add ₹${_selectedAmount!.toInt()}'
+                      : 'Add Money',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
   // ── Add Money Bottom Sheet (custom amount) ───────────────────────────────
 
   void _showAddMoneyBottomSheet(BuildContext context) {
-    final TextEditingController amountCtrl = TextEditingController();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetCtx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
-        ),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Enter Amount',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: TextField(
-                  controller: amountCtrl,
-                  autofocus: true,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFFE52121),
-                  ),
-                  decoration: InputDecoration(
-                    hintText: '₹ 0',
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 18,
-                      horizontal: 20,
-                    ),
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade300,
-                      fontSize: 34,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Min: ₹10  |  Max: ₹50,000',
-                style: TextStyle(color: Colors.black38, fontSize: 12),
-              ),
-              const SizedBox(height: 28),
-              ElevatedButton(
-                onPressed: () {
-                  final double? amt = double.tryParse(amountCtrl.text.trim());
-                  if (amt == null || amt < 10 || amt > 50000) {
-                    HapticFeedback.vibrate();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Please enter a valid amount between ₹10 and ₹50,000',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        backgroundColor: Colors.red.shade600,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        margin: const EdgeInsets.all(16),
-                      ),
-                    );
-                    return;
-                  }
-                  if (Navigator.of(context, rootNavigator: true).canPop()) {
-                    Navigator.of(context, rootNavigator: true).pop();
-                  }
-                  setState(() => _selectedAmount = amt);
-                  context.read<WalletBloc>().add(InitiatePaymentRequested(amt));
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE52121),
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Proceed',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      builder: (sheetCtx) => _AddMoneyBottomSheetContent(
+        onProceed: (amt) {
+          setState(() => _selectedAmount = null);
+          context.read<WalletBloc>().add(InitiatePaymentRequested(amt));
+        },
       ),
-    ).whenComplete(() => amountCtrl.dispose());
+    );
   }
 
   // ── Transaction List ─────────────────────────────────────────────────────
@@ -894,10 +841,10 @@ class _WalletViewState extends State<WalletView> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE52121) : Colors.grey.shade100,
+          color: isSelected ? BuyerAppColors.primaryDeep : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFFE52121) : Colors.grey.shade300,
+            color: isSelected ? BuyerAppColors.primaryDeep : Colors.grey.shade300,
           ),
         ),
         child: Text(
@@ -931,14 +878,14 @@ class _WalletViewState extends State<WalletView> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFE52121).withValues(alpha: 0.08),
+                color: BuyerAppColors.primaryDeep.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 'Live',
                 style: TextStyle(
                   fontSize: 11,
-                  color: const Color(0xFFE52121),
+                  color: BuyerAppColors.primaryDeep,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -975,7 +922,8 @@ class _WalletViewState extends State<WalletView> {
             final allDocs = snapshot.data!;
 
             final docs = allDocs.where((data) {
-              final bool isCredit = data['isCredit'] ?? true;
+              final double rawAmount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+              final bool isCredit = data['isCredit'] ?? (rawAmount >= 0 && data['type'] != 'order_payment');
               if (_selectedFilter == 'Credits') return isCredit;
               if (_selectedFilter == 'Debits') return !isCredit;
               return true;
@@ -984,11 +932,12 @@ class _WalletViewState extends State<WalletView> {
             double totalDebits = 0;
             double totalCredits = 0;
             for (var data in docs) {
-              final bool isCredit = data['isCredit'] ?? true;
+              final double rawAmount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+              final bool isCredit = data['isCredit'] ?? (rawAmount >= 0 && data['type'] != 'order_payment');
               if (!isCredit) {
-                totalDebits += (data['amount'] as num?)?.toDouble() ?? 0.0;
+                totalDebits += rawAmount.abs();
               } else {
-                totalCredits += (data['amount'] as num?)?.toDouble() ?? 0.0;
+                totalCredits += rawAmount.abs();
               }
             }
 
@@ -1094,33 +1043,9 @@ class _WalletViewState extends State<WalletView> {
   }
 
   Widget _buildEmptyTransactions() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 60,
-              color: Colors.grey.shade300,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No transactions yet',
-              style: TextStyle(
-                color: Colors.black38,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Top-up your wallet to get started!',
-              style: TextStyle(color: Colors.black26, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
+    return const TransactionEmptyState(
+      title: 'No transactions yet',
+      subtitle: 'Top-up your wallet to get started!',
     );
   }
 
@@ -1128,273 +1053,159 @@ class _WalletViewState extends State<WalletView> {
     Map<String, dynamic> data,
     BuildContext context,
   ) {
-    final double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
-    final String status = data['status'] ?? 'success';
-    final bool isCredit = data['isCredit'] ?? true;
-    final String title =
-        data['title'] ?? (isCredit ? 'Wallet Top-up' : 'Wallet Payment');
-
-    final DateTime? date =
-        data['createdAt'] as DateTime? ?? data['timestamp'] as DateTime?;
-    final String dateStr = date != null ? _formatDate(date) : '';
-
-    final bool isSuccess = status == 'success';
-
-    return GestureDetector(
-      onTap: () => _showTransactionDetail(context, data),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: isCredit
-                    ? Colors.green.withValues(alpha: 0.1)
-                    : Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                isCredit
-                    ? Icons.add_circle_outline_rounded
-                    : Icons.remove_circle_outline_rounded,
-                color: isCredit ? Colors.green : Colors.red,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    dateStr,
-                    style: TextStyle(color: Colors.black38, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${isCredit ? '+' : '-'}₹${amount.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: isCredit
-                        ? Colors.green.shade600
-                        : Colors.red.shade600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSuccess
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : Colors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    status,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: isSuccess ? Colors.green.shade700 : Colors.orange,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+    return TransactionItemCard(
+      data: data,
+      onTap: () => showTransactionDetailSheet(context, data),
     );
   }
+}
 
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final hour = date.hour > 12 ? date.hour - 12 : date.hour;
-    final ampm = date.hour >= 12 ? 'PM' : 'AM';
-    final min = date.minute.toString().padLeft(2, '0');
-    return '${date.day} ${months[date.month - 1]} ${date.year}, $hour:$min $ampm';
+// ─────────────────────────────────────────────
+// ADD MONEY BOTTOM SHEET CONTENT
+// ─────────────────────────────────────────────
+
+class _AddMoneyBottomSheetContent extends StatefulWidget {
+  final ValueChanged<double> onProceed;
+
+  const _AddMoneyBottomSheetContent({required this.onProceed});
+
+  @override
+  State<_AddMoneyBottomSheetContent> createState() =>
+      _AddMoneyBottomSheetContentState();
+}
+
+class _AddMoneyBottomSheetContentState
+    extends State<_AddMoneyBottomSheetContent> {
+  late final TextEditingController _amountCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountCtrl = TextEditingController();
   }
 
-  void _showTransactionDetail(BuildContext context, Map<String, dynamic> data) {
-    final double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
-    final String status = data['status'] ?? 'success';
-    final String currency = data['currency'] ?? 'INR';
-    final String paymentId = data['paymentId'] ?? data['title'] ?? 'N/A';
-    final bool isCredit = data['isCredit'] ?? true;
-    final DateTime? date =
-        data['createdAt'] as DateTime? ?? data['timestamp'] as DateTime?;
-    final String dateStr = date != null ? _formatDate(date) : 'N/A';
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(28),
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: isCredit
-                    ? Colors.green.withValues(alpha: 0.1)
-                    : Colors.red.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+              const SizedBox(height: 24),
+              Text(
+                'Enter Amount',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
-              child: Icon(
-                isCredit
-                    ? Icons.check_circle_rounded
-                    : Icons.info_outline_rounded,
-                color: isCredit ? Colors.green : Colors.red,
-                size: 34,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Transaction Details',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 24),
-            _detailRow(
-              'Amount',
-              '${isCredit ? '+' : '-'}₹${amount.toStringAsFixed(0)}',
-              valueColor: isCredit
-                  ? Colors.green.shade600
-                  : Colors.red.shade600,
-            ),
-            _detailRow('Currency', currency),
-            _detailRow(
-              'Status',
-              status,
-              valueColor: isCredit
-                  ? Colors.green.shade600
-                  : (status == 'success' ? Colors.red.shade600 : Colors.orange),
-            ),
-            _detailRow('Payment ID', paymentId, isSmall: true),
-            _detailRow('Date & Time', dateStr),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE52121),
-                minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(
+              const SizedBox(height: 20),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(16),
                 ),
-              ),
-              child: Text(
-                'Close',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+                child: TextField(
+                  controller: _amountCtrl,
+                  autofocus: true,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.bold,
+                    color: BuyerAppColors.primaryDeep,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: '₹ 0',
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 18,
+                      horizontal: 20,
+                    ),
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade300,
+                      fontSize: 34,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-          ],
+              const SizedBox(height: 10),
+              Text(
+                'Min: ₹10  |  Max: ₹50,000',
+                style: TextStyle(color: Colors.black38, fontSize: 12),
+              ),
+              const SizedBox(height: 28),
+              ElevatedButton(
+                onPressed: () {
+                  final double? amt = double.tryParse(_amountCtrl.text.trim());
+                  if (amt == null || amt < 10 || amt > 50000) {
+                    HapticFeedback.vibrate();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Please enter a valid amount between ₹10 and ₹50,000',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.red.shade600,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        margin: const EdgeInsets.all(16),
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.pop(context);
+                  widget.onProceed(amt);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BuyerAppColors.primaryDeep,
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'Proceed',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _detailRow(
-    String label,
-    String value, {
-    Color? valueColor,
-    bool isSmall = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black45,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                fontSize: isSmall ? 12 : 14,
-                fontWeight: FontWeight.w600,
-                color: valueColor ?? Colors.black87,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

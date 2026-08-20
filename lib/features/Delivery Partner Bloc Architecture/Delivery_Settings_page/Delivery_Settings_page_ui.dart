@@ -7,6 +7,7 @@ import 'Delivery_Settings_page_repository.dart';
 import 'Delivery_Settings_page_service.dart';
 import 'Delivery_Settings_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/widgets/logout_button.dart';
 
 String formatDeliveryCurrency(num amount, String localeCode) {
   try {
@@ -1703,46 +1704,26 @@ Future<void> _showLogoutConfirmDialog(
   DeliverySettingsState state,
 ) async {
   final localeCode = state.localeCode;
-  await showDialog<void>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      backgroundColor: const Color(0xFF0D141C),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text(
-        DeliverySettingsStrings.of('logout', localeCode),
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-      ),
-      content: Text(
-        DeliverySettingsStrings.of('logoutConfirm', localeCode),
-        style: const TextStyle(color: Color(0xFF94A3B8)),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(
-            DeliverySettingsStrings.of('cancel', localeCode),
-            style: const TextStyle(color: Color(0xFF94A3B8)),
-          ),
+  await showLogoutConfirmDialog(
+    context,
+    title: DeliverySettingsStrings.of('logout', localeCode),
+    message: DeliverySettingsStrings.of('logoutConfirm', localeCode),
+    confirmLabel: DeliverySettingsStrings.of('confirm', localeCode),
+    confirmColor: const Color(0xFFF87171),
+    confirmForegroundColor: Colors.white,
+    confirmButtonKey: 'dp_settings_logout_confirm_btn',
+    backgroundColor: const Color(0xFF0D141C),
+    titleColor: Colors.white,
+    contentColor: const Color(0xFF94A3B8),
+    cancelColor: const Color(0xFF94A3B8),
+    onConfirm: () async {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Logged out successfully'),
+          behavior: SnackBarBehavior.floating,
         ),
-        FilledButton(
-          key: const Key('dp_settings_logout_confirm_btn'),
-          onPressed: () {
-            Navigator.of(dialogContext).pop();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Logged out successfully'),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          },
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFFF87171),
-            foregroundColor: Colors.white,
-          ),
-          child: Text(DeliverySettingsStrings.of('confirm', localeCode)),
-        ),
-      ],
-    ),
+      );
+    },
   );
 }
 

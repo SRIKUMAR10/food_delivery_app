@@ -1,26 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/widgets/responsive_layout.dart';
 import '../../HelpSupportPage/HelpSupport_Bloc.dart';
+import '../../HelpSupportPage/HelpSupport_Event.dart';
 import '../../HelpSupportPage/HelpSupport_Repository.dart';
 import '../../HelpSupportPage/HelpSupport_UI.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class HelpSupportPage extends StatelessWidget {
-  const HelpSupportPage({super.key});
+  final HelpSupportRepository? repository;
+
+  const HelpSupportPage({
+    super.key,
+    this.repository,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => HelpSupportBloc(
-        repository: HelpSupportRepository(),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth > 800) {
-            return _buildDesktopLayout(context);
-          }
-          return _buildMobileLayout(context);
-        },
-      ),
+        repository: repository ?? HelpSupportRepository(),
+      )..add(const LoadHelpContent()),
+      child: ResponsiveHelper.isWide(context)
+        ? _buildDesktopLayout(context)
+        : _buildMobileLayout(context),
     );
   }
 
@@ -34,7 +37,7 @@ class HelpSupportPage extends StatelessWidget {
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFEF2A39), Color(0xFFFF5E6B)],
+                  colors: [BuyerAppColors.primary, Color(0xFFFF5E6B)],
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
                 ),
               ),

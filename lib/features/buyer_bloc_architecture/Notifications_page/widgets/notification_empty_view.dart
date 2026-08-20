@@ -1,3 +1,4 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../buyer_notification_strings.dart';
@@ -64,7 +65,7 @@ class NotificationEmptyView extends StatelessWidget {
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: Text(strings.retry),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE52121),
+                  backgroundColor: BuyerAppColors.primaryDeep,
                   foregroundColor: Colors.white,
                 ),
               ),

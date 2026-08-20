@@ -420,6 +420,7 @@ class FirebaseChatRepository implements IChatRepository {
     required String sellerName,
     String? shopName,
     String? sellerImageUrl,
+    String? sellerPhone,
     String? productId,
     String? orderId,
     String? orderImageUrl,
@@ -446,6 +447,9 @@ class FirebaseChatRepository implements IChatRepository {
           if (orderImageUrl != null) updateData['orderImageUrl'] = orderImageUrl;
           if (orderTitle != null) updateData['orderTitle'] = orderTitle;
           if (orderTotal != null) updateData['orderTotal'] = orderTotal;
+          if (sellerPhone != null && sellerPhone.isNotEmpty) updateData['sellerPhone'] = sellerPhone;
+          if (shopName != null && shopName.isNotEmpty) updateData['shopName'] = shopName;
+          if (sellerImageUrl != null && sellerImageUrl.isNotEmpty) updateData['sellerImageUrl'] = sellerImageUrl;
           await _firestore.collection('conversations').doc(existing.id).update(updateData);
 
           await sendMessage(
@@ -495,6 +499,7 @@ class FirebaseChatRepository implements IChatRepository {
       'sellerName': sellerName,
       'shopName': shopName,
       'sellerImageUrl': sellerImageUrl,
+      'sellerPhone': sellerPhone,
       'productId': productId,
       'orderId': orderId,
       'orderImageUrl': orderImageUrl,

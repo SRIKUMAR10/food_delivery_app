@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/widgets/app_snack_bar.dart';
 
 import '../user_profile_image_Bloc.dart';
 import '../user_profile_models.dart';
+import 'google_address_search_dialog.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class AddressManagementPage extends StatefulWidget {
   const AddressManagementPage({super.key});
@@ -22,7 +25,27 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
   @override
   void initState() {
     super.initState();
+    final currentState = context.read<UserProfileBloc>().state;
+    if (currentState is ProfileLoaded) {
+      _initFromProfile(currentState.profile);
+    }
     context.read<UserProfileBloc>().add(const LoadProfileStarted());
+  }
+
+  void _initFromProfile(UserProfile profile) {
+    _homeAddress = profile.homeAddress;
+    _workAddress = profile.workAddress;
+    _otherAddress = profile.otherAddress;
+    _selectedAddressType = profile.selectedAddressType;
+    if (_selectedAddressType.isEmpty) _selectedAddressType = 'Home';
+
+    if (_homeAddress.isEmpty &&
+        _workAddress.isEmpty &&
+        _otherAddress.isEmpty &&
+        profile.address.isNotEmpty) {
+      _homeAddress = profile.address;
+    }
+    _isInitialized = true;
   }
 
   void _showSnack(
@@ -30,76 +53,21 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
     String message, {
     bool isError = false,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-        ),
-        backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   void _editAddressDialog(String type, String currentAddress) {
-    final TextEditingController controller = TextEditingController(
-      text: currentAddress,
-    );
-    showDialog(
+    GoogleAddressSearchDialog.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Edit $type Address',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          decoration: InputDecoration(
-            hintText: 'Enter full address...',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFEF2A39)),
-            ),
-          ),
-        ),
-        actionsPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.black54),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                if (type == 'Home') _homeAddress = controller.text;
-                if (type == 'Work') _workAddress = controller.text;
-                if (type == 'Other') _otherAddress = controller.text;
-              });
-              Navigator.pop(ctx);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF2A39),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+      addressType: type,
+      currentAddress: currentAddress,
+      onAddressSelected: (newAddress) {
+        setState(() {
+          if (type == 'Home') _homeAddress = newAddress;
+          if (type == 'Work') _workAddress = newAddress;
+          if (type == 'Other') _otherAddress = newAddress;
+        });
+      },
     );
   }
 
@@ -128,7 +96,7 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFEF2A39), Color(0xFFFF5E6B)],
+                  colors: [BuyerAppColors.primary, Color(0xFFFF5E6B)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -196,6 +164,12 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
   Widget _buildFormBody(BuildContext context) {
     return BlocConsumer<UserProfileBloc, UserProfileState>(
       listener: (context, state) {
+        if (state is ProfileLoaded && !_isInitialized) {
+          setState(() {
+            _initFromProfile(state.profile);
+          });
+        }
+
         if (state is ProfileError) {
           _showSnack(context, state.message, isError: true);
         } else if (state is ProfileSuccessAction) {
@@ -213,7 +187,6 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
         if (state is ProfileLoaded) {
           profile = state.profile;
           isSaving = state.isSaving;
-          // Initialize local state if not done yet
           if (!_isInitialized) {
             _homeAddress = profile.homeAddress;
             _workAddress = profile.workAddress;
@@ -221,7 +194,6 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
             _selectedAddressType = profile.selectedAddressType;
             if (_selectedAddressType.isEmpty) _selectedAddressType = 'Home';
 
-            // Fallback for older profiles that only had 'address'
             if (_homeAddress.isEmpty &&
                 _workAddress.isEmpty &&
                 _otherAddress.isEmpty &&
@@ -234,7 +206,7 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
 
         if (isLoading) {
           return const Center(
-            child: CircularProgressIndicator(color: Color(0xFFEF2A39)),
+            child: CircularProgressIndicator(color: BuyerAppColors.primary),
           );
         }
 
@@ -285,6 +257,7 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
                   width: double.infinity,
                   height: 55,
                   child: ElevatedButton(
+                    key: const ValueKey('saveAddressChangesButton'),
                     onPressed: isSaving
                         ? null
                         : () {
@@ -315,7 +288,7 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
                             );
                           },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE52121),
+                      backgroundColor: BuyerAppColors.primaryDeep,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -351,6 +324,7 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
 
   Widget _buildAddressItem(String title, String details) {
     return InkWell(
+      key: ValueKey('addressTile_$title'),
       onTap: () {
         setState(() {
           _selectedAddressType = title;
@@ -379,6 +353,7 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
                       ),
                       const SizedBox(width: 12),
                       GestureDetector(
+                        key: ValueKey('editAddressButton_$title'),
                         onTap: () => _editAddressDialog(title, details),
                         child: Container(
                           padding: const EdgeInsets.all(4),
@@ -413,9 +388,10 @@ class _AddressManagementPageState extends State<AddressManagementPage> {
             const SizedBox(width: 16),
             // ignore: deprecated_member_use
             Radio<String>(
+              key: ValueKey('addressRadio_$title'),
               value: title,
               groupValue: _selectedAddressType,
-              activeColor: const Color(0xFFEF2A39),
+              activeColor: BuyerAppColors.primary,
               onChanged: (String? value) {
                 if (value != null) {
                   setState(() {

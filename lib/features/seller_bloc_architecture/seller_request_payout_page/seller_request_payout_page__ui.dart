@@ -8,6 +8,7 @@ import '../../../api_service/seller_request_payout_service.dart';
 import 'seller_request_payout_page__bloc.dart';
 import 'seller_request_payout_page__event.dart';
 import 'seller_request_payout_page__state.dart';
+import '../../../core/widgets/shimmer_loader.dart';
 
 class SellerRequestPayoutPage extends StatelessWidget {
   const SellerRequestPayoutPage({super.key});
@@ -469,10 +470,10 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(height: 40, width: 200, color: Colors.grey[200]),
-                    const SizedBox(height: 8),
-                    Container(height: 16, width: 150, color: Colors.grey[200]),
+                  children: const [
+                    SkeletonBox(width: 200, height: 40, borderRadius: 0),
+                    SizedBox(height: 8),
+                    SkeletonBox(width: 150, height: 16, borderRadius: 0),
                   ],
                 ),
               ),
@@ -480,43 +481,40 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
             ],
           ),
           const SizedBox(height: 32),
-          Container(
+          const SkeletonBox(
             height: 120,
             width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(20),
-            ),
+            borderRadius: 20,
           ),
           const SizedBox(height: 24),
-          Container(height: 16, width: 100, color: Colors.grey[200]),
+          const SkeletonBox(width: 100, height: 16, borderRadius: 0),
           const SizedBox(height: 8),
-          Container(
+          const SkeletonBox(
             height: 52,
             width: double.infinity,
-            color: Colors.grey[200],
+            borderRadius: 0,
           ),
           const SizedBox(height: 24),
-          Container(height: 16, width: 100, color: Colors.grey[200]),
+          const SkeletonBox(width: 100, height: 16, borderRadius: 0),
           const SizedBox(height: 8),
-          Container(
+          const SkeletonBox(
             height: 52,
             width: double.infinity,
-            color: Colors.grey[200],
+            borderRadius: 0,
           ),
           const SizedBox(height: 24),
-          Container(height: 16, width: 100, color: Colors.grey[200]),
+          const SkeletonBox(width: 100, height: 16, borderRadius: 0),
           const SizedBox(height: 8),
-          Container(
+          const SkeletonBox(
             height: 52,
             width: double.infinity,
-            color: Colors.grey[200],
+            borderRadius: 0,
           ),
           const Spacer(),
-          Container(
+          const SkeletonBox(
             height: 52,
             width: double.infinity,
-            color: Colors.grey[200],
+            borderRadius: 0,
           ),
         ],
       ),

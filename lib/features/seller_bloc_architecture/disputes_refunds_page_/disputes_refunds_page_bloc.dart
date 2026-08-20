@@ -73,8 +73,8 @@ class DisputesRefundsBloc extends Bloc<DisputesRefundsEvent, DisputesRefundsStat
     final currentState = state;
     if (currentState is! DisputesRefundsLoaded) return;
 
-    final updatedProcessingIds = Set<String>.from(currentState.processingIds)..add(disputeId);
-    emit(currentState.copyWith(processingIds: updatedProcessingIds, clearMessages: true));
+    final initialProcessingIds = Set<String>.from(currentState.processingIds)..add(disputeId);
+    emit(currentState.copyWith(processingIds: initialProcessingIds, clearMessages: true));
 
     try {
       if (_sellerId == null) throw Exception('Seller ID not initialized.');
@@ -85,16 +85,16 @@ class DisputesRefundsBloc extends Bloc<DisputesRefundsEvent, DisputesRefundsStat
         return d;
       }).toList();
 
-      updatedProcessingIds.remove(disputeId);
+      final finalProcessingIds = Set<String>.from(initialProcessingIds)..remove(disputeId);
       emit(currentState.copyWith(
         disputes: updatedDisputes,
-        processingIds: updatedProcessingIds,
+        processingIds: finalProcessingIds,
         successMessage: successMsg,
       ));
     } catch (e) {
-      updatedProcessingIds.remove(disputeId);
+      final finalProcessingIds = Set<String>.from(initialProcessingIds)..remove(disputeId);
       emit(currentState.copyWith(
-        processingIds: updatedProcessingIds,
+        processingIds: finalProcessingIds,
         errorMessage: 'Operation failed: $e',
       ));
     }

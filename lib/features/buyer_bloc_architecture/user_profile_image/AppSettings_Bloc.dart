@@ -6,6 +6,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:food_delivery_app/core/repositories/i_app_settings_repository.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/services/app_logout_service.dart';
 import 'package:food_delivery_app/core/services/theme_manager.dart';
 import 'package:food_delivery_app/core/services/locale_manager.dart';
 import 'AppSettings_Event.dart';
@@ -56,20 +57,19 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
     emit(state.copyWith(isLoading: true, error: null));
     try {
       final userId = _getUserId();
-      await _settingsSubscription?.cancel();
-      _settingsSubscription = _repository.watchSettings(userId).listen(
-        (settings) {
-          final live = settings.copyWith(isLoading: false);
-          emit(live);
+      await emit.forEach<AppSettingsState>(
+        _repository.watchSettings(userId),
+        onData: (settings) {
           _themeManager.setTheme(ThemeManager.themeFromString(settings.theme));
           _localeManager.setLocale(LocaleManager.localeFromString(settings.language));
+          return settings.copyWith(isLoading: false, isInitialized: true);
         },
-        onError: (Object error) {
-          emit(state.copyWith(
+        onError: (Object error, StackTrace stackTrace) {
+          return state.copyWith(
             isLoading: false,
             error: error.toString(),
             isInitialized: true,
-          ));
+          );
         },
       );
     } catch (e) {
@@ -200,7 +200,7 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
     Emitter<AppSettingsState> emit,
   ) async {
     try {
-      await authService.signOut();
+      await AppLogoutService.signOut(authService);
       emit(state.copyWith(isLoggedOut: true));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));

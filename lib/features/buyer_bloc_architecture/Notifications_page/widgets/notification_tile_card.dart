@@ -1,3 +1,4 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/models/buyer_notification_model.dart';
@@ -55,7 +56,7 @@ class NotificationTileCard extends StatelessWidget {
                               height: 9,
                               margin: const EdgeInsets.only(right: 6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE52121),
+                                color: BuyerAppColors.primaryDeep,
                                 shape: BoxShape.circle,
                               ),
                             ),

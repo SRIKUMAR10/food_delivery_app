@@ -1,9 +1,0 @@
-import 'package:flutter_test/flutter_test.dart';
-
-void main() {
-  group('Low Stock Alert Page unit Tests', () {
-    test('Placeholder for unit testing', () {
-      expect(true, isTrue);
-    });
-  });
-}

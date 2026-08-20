@@ -17,6 +17,7 @@ import '../../../core/models/order_model.dart';
 import '../../../core/models/order_item_model.dart';
 import '../../../core/models/order_status.dart';
 import '../../../core/repositories/i_order_repository.dart';
+import '../../../core/repositories/i_user_profile_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
@@ -36,6 +37,7 @@ import '../Order Page/order_view_model.dart';
 import '../Cart Page/cart_models.dart';
 import '../Cart Page/cart_page_UI.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class _AppTheme {
   _AppTheme._();
@@ -187,6 +189,7 @@ class SupportNavigationData {
   final String buyerName;
   final String shopName;
   final String sellerImageUrl;
+  final String? sellerPhone;
   final String? orderImageUrl;
   final String? orderTitle;
   final double? orderTotal;
@@ -202,6 +205,7 @@ class SupportNavigationData {
     required this.buyerName,
     this.shopName = '',
     this.sellerImageUrl = '',
+    this.sellerPhone,
     this.orderImageUrl,
     this.orderTitle,
     this.orderTotal,
@@ -221,6 +225,7 @@ class BuyerChatPage extends StatelessWidget {
   final String? sellerName;
   final String? shopName;
   final String? sellerImageUrl;
+  final String? sellerPhone;
   final String? buyerName;
   final SupportNavigationData? pendingOrderData;
   final FoodItem? foodItem;
@@ -238,6 +243,7 @@ class BuyerChatPage extends StatelessWidget {
     this.sellerName,
     this.shopName,
     this.sellerImageUrl,
+    this.sellerPhone,
     this.buyerName,
     this.pendingOrderData,
     this.foodItem,
@@ -272,9 +278,17 @@ class BuyerChatPage extends StatelessWidget {
           authServ = FirebaseAuthService();
         }
 
+        IUserProfileRepository? profileRepo;
+        try {
+          profileRepo = context.read<IUserProfileRepository>();
+        } catch (_) {
+          profileRepo = null;
+        }
+
         final bloc = BuyerChatBloc(
           repository: chatRepo,
           authService: authServ,
+          userProfileRepository: profileRepo,
         );
         final data = pendingOrderData;
         if (data != null) {
@@ -296,6 +310,7 @@ class BuyerChatPage extends StatelessWidget {
               sellerName: data.sellerName,
               shopName: data.shopName,
               sellerImageUrl: data.sellerImageUrl,
+              sellerPhone: data.sellerPhone,
               buyerName: data.buyerName,
               orderImageUrl: data.orderImageUrl,
               orderTitle: data.orderTitle,
@@ -323,6 +338,7 @@ class BuyerChatPage extends StatelessWidget {
             sellerName: sellerName!,
             shopName: shopName,
             sellerImageUrl: sellerImageUrl,
+            sellerPhone: sellerPhone,
             buyerName: buyerName!,
           );
         } else {
@@ -1141,12 +1157,24 @@ class _ConversationTileState extends State<_ConversationTile> {
   Widget build(BuildContext context) {
     final conversation = widget.conversation;
     final unread = conversation.unreadCountForUser(widget.currentUserId);
-    final displayName =
-        conversation.shopName ??
-        conversation.otherParticipantName(widget.currentUserId);
-    final hasImage =
-        conversation.sellerImageUrl != null &&
-        conversation.sellerImageUrl!.isNotEmpty;
+    final rawDisplayName = conversation.isDeliveryChat
+        ? (conversation.deliveryPartnerName ?? 'Delivery Partner')
+        : ((conversation.shopName != null && conversation.shopName!.isNotEmpty)
+            ? conversation.shopName!
+            : conversation.otherParticipantName(widget.currentUserId));
+    final displayName = (rawDisplayName.isNotEmpty && rawDisplayName != 'Store' && rawDisplayName != 'Seller')
+        ? rawDisplayName
+        : ((conversation.shopName != null && conversation.shopName!.isNotEmpty)
+            ? conversation.shopName!
+            : (conversation.sellerName.isNotEmpty && conversation.sellerName != 'Store' && conversation.sellerName != 'Seller'
+                ? conversation.sellerName
+                : (conversation.isDeliveryChat
+                    ? (conversation.deliveryPartnerName ?? 'Delivery Partner')
+                    : 'Restaurant')));
+    final imageUrl = conversation.isDeliveryChat
+        ? conversation.deliveryPartnerImageUrl
+        : conversation.sellerImageUrl;
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
     return MouseRegion(
       hitTestBehavior: HitTestBehavior.opaque,
@@ -1194,7 +1222,7 @@ class _ConversationTileState extends State<_ConversationTile> {
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(26),
                             child: Image.network(
-                              conversation.sellerImageUrl!,
+                              imageUrl!,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) =>
                                   _AvatarFallback(name: displayName),
@@ -1663,13 +1691,38 @@ class _PremiumChatHeader extends StatelessWidget {
     final currentUserId =
         context.read<BuyerChatBloc>().authService.currentUserId ?? '';
     final otherName = conversation.otherParticipantName(currentUserId);
-    final displayName = conversation.shopName ?? otherName;
-    final hasImage =
-        conversation.sellerImageUrl != null &&
-        conversation.sellerImageUrl!.isNotEmpty;
+    final rawDisplayName = conversation.isDeliveryChat
+        ? (conversation.deliveryPartnerName ?? 'Delivery Partner')
+        : ((conversation.shopName != null && conversation.shopName!.isNotEmpty)
+            ? conversation.shopName!
+            : otherName);
+    final displayName = (rawDisplayName.isNotEmpty && rawDisplayName != 'Store' && rawDisplayName != 'Seller')
+        ? rawDisplayName
+        : ((conversation.shopName != null && conversation.shopName!.isNotEmpty)
+            ? conversation.shopName!
+            : (conversation.sellerName.isNotEmpty && conversation.sellerName != 'Store' && conversation.sellerName != 'Seller'
+                ? conversation.sellerName
+                : (conversation.isDeliveryChat
+                    ? (conversation.deliveryPartnerName ?? 'Delivery Partner')
+                    : 'Restaurant')));
+
+    final imageUrl = conversation.isDeliveryChat
+        ? conversation.deliveryPartnerImageUrl
+        : conversation.sellerImageUrl;
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
     final orderText = conversation.orderId != null
         ? 'Order #${conversation.orderId!.length > 8 ? conversation.orderId!.substring(0, 8) : conversation.orderId}'
         : null;
+
+    final phone = conversation.isDeliveryChat
+        ? conversation.deliveryPartnerPhone
+        : conversation.sellerPhone;
+
+    final subtitleText = phone != null && phone.isNotEmpty
+        ? phone
+        : (conversation.isDeliveryChat
+            ? 'Verified Delivery Partner'
+            : 'Verified Store');
 
     return Container(
       decoration: BoxDecoration(
@@ -1736,7 +1789,7 @@ class _PremiumChatHeader extends StatelessWidget {
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(28),
                                     child: Image.network(
-                                      conversation.sellerImageUrl!,
+                                      imageUrl!,
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, __, ___) =>
                                           _AvatarFallback(name: displayName),
@@ -1789,20 +1842,23 @@ class _PremiumChatHeader extends StatelessWidget {
                               spacing: 4,
                               runSpacing: 4,
                               children: [
-                                const Icon(
-                                  Icons.calendar_today_rounded,
+                                Icon(
+                                  conversation.isDeliveryChat
+                                      ? Icons.delivery_dining_rounded
+                                      : Icons.storefront_rounded,
                                   size: 11,
                                   color: _AppTheme.textTertiary,
                                 ),
                                 const SizedBox(width: 4),
-                                const Text(
-                                  'Customer since 2025',
-                                  style: TextStyle(
+                                Text(
+                                  subtitleText,
+                                  style: const TextStyle(
                                     fontSize: 11,
                                     color: _AppTheme.textTertiary,
                                   ),
                                 ),
-                                if (orderText != null)
+                                if (orderText != null) ...[
+                                  const SizedBox(width: 4),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
@@ -1825,6 +1881,7 @@ class _PremiumChatHeader extends StatelessWidget {
                                       ),
                                     ),
                                   ),
+                                ],
                                 const SizedBox(width: 4),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -1855,6 +1912,18 @@ class _PremiumChatHeader extends StatelessWidget {
                         _CircularIconButton(
                           icon: Icons.phone_outlined,
                           onPressed: () async {
+                            final phoneNum = conversation.isDeliveryChat
+                                ? conversation.deliveryPartnerPhone
+                                : conversation.sellerPhone;
+
+                            if (phoneNum != null && phoneNum.isNotEmpty) {
+                              final uri = Uri.parse('tel:$phoneNum');
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                                return;
+                              }
+                            }
+
                             final bloc = context.read<BuyerChatBloc>();
                             final userId = bloc.authService.currentUserId;
                             if (userId == null) {
@@ -1862,7 +1931,7 @@ class _PremiumChatHeader extends StatelessWidget {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                      'Please log in to make a voice call.',
+                                      'Please log in to make a call.',
                                     ),
                                   ),
                                 );
@@ -3555,7 +3624,7 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Color(0xFFE52121),
+            color: BuyerAppColors.primaryDeep,
           ),
         ),
       ],

@@ -1,3 +1,4 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -485,7 +486,7 @@ class _RoundAction extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFE52121),
+                    color: BuyerAppColors.primaryDeep,
                   ),
                 )
               : Icon(icon, size: 20, color: const Color(0xFF1C1C1C)),
@@ -598,7 +599,7 @@ class _NotificationList extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE52121),
+                    color: BuyerAppColors.primaryDeep,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(Icons.delete_rounded, color: Colors.white),

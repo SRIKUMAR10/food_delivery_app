@@ -7,6 +7,7 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/hom
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_Page_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_state.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_models.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Cart%20Page/cart_page_Bloc.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
@@ -210,6 +211,140 @@ void main() {
 
       expect(find.byType(TextField), findsOneWidget);
       expect(find.text('DELIVER TO'), findsOneWidget);
+    });
+
+    testWidgets('Renders Order Again section when recentlyOrderedItems is present', (tester) async {
+      await mockNetworkImagesFor(() async {
+        final recentProducts = [
+          FoodItem(
+            id: 'recent_1',
+            name: 'Maharaja Burger',
+            price: 826.0,
+            description: 'Double patty burger',
+            category: 'Burger',
+            sellerId: 's1',
+          ),
+          FoodItem(
+            id: 'recent_2',
+            name: 'Classic Onion Capsicum',
+            price: 1770.0,
+            description: 'Crispy veg pizza',
+            category: 'Pizza',
+            sellerId: 's1',
+          ),
+        ];
+
+        when(() => mockHomePageBloc.state).thenReturn(
+          HomePageLoaded(
+            categories: const [],
+            allItems: const [],
+            filteredItems: const [],
+            recentlyOrderedItems: recentProducts,
+            selectedCategoryId: '',
+            searchQuery: '',
+          ),
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
+        );
+
+        expect(find.text('Order Again 🔄'), findsOneWidget);
+        expect(find.text('Maharaja Burger'), findsOneWidget);
+        expect(find.text('₹826'), findsOneWidget);
+        expect(find.text('Classic Onion Capsicum'), findsOneWidget);
+        expect(find.text('₹1770'), findsOneWidget);
+        expect(find.text('Reorder'), findsNWidgets(2));
+      });
+    });
+
+    testWidgets('Favorites badge is hidden when there are no favorites', (tester) async {
+      await tester.pumpWidget(
+        buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
+      );
+      await tester.pump();
+
+      expect(find.byKey(const Key('home_favorites_badge')), findsNothing);
+    });
+
+    testWidgets('Favorites badge shows the live favorites count', (tester) async {
+      final favorites = [
+        const FavoriteItem(
+          id: 'f1',
+          name: 'Cheese Burger',
+          price: 150.0,
+          description: 'Tasty',
+          sellerId: 's1',
+        ),
+        const FavoriteItem(
+          id: 'f2',
+          name: 'Margherita Pizza',
+          price: 250.0,
+          description: 'Cheesy',
+          sellerId: 's2',
+        ),
+      ];
+      when(() => mockFavoritesBloc.state)
+          .thenReturn(FavoritesLoaded(
+        items: favorites,
+        favoriteIds: {'f1', 'f2'},
+      ));
+      when(() => mockFavoritesBloc.stream)
+          .thenAnswer((_) => Stream.value(FavoritesLoaded(
+                items: favorites,
+                favoriteIds: {'f1', 'f2'},
+              )));
+
+      await tester.pumpWidget(
+        buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
+      );
+      await tester.pump();
+
+      expect(find.byKey(const Key('home_favorites_badge')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('home_favorites_badge')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Favorites badge updates when the favorites list changes', (tester) async {
+      const oneFavorite = [
+        FavoriteItem(
+          id: 'f1',
+          name: 'Cheese Burger',
+          price: 150.0,
+          description: 'Tasty',
+          sellerId: 's1',
+        ),
+      ];
+      when(() => mockFavoritesBloc.state)
+          .thenReturn(const FavoritesLoaded(items: [], favoriteIds: {}));
+      when(() => mockFavoritesBloc.stream)
+          .thenAnswer((_) => Stream.fromIterable([
+                const FavoritesLoaded(items: [], favoriteIds: {}),
+                FavoritesLoaded(
+                  items: oneFavorite,
+                  favoriteIds: {'f1'},
+                ),
+              ]));
+
+      await tester.pumpWidget(
+        buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byKey(const Key('home_favorites_badge')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('home_favorites_badge')),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

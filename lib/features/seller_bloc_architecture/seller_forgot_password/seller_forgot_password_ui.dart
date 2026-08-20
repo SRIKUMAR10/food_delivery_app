@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:food_delivery_app/repositories/seller_repository.dart';
+import '../../../core/widgets/hoverable_widgets.dart';
 import 'seller_forgot_password_bloc.dart';
 import 'seller_forgot_password_event.dart';
 import 'seller_forgot_password_state.dart';
@@ -242,16 +243,36 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
             builder: (context, state) {
                               final isLoading = state.status ==
                                   SellerForgotPasswordStatus.loading;
-                              return _HoverableButton(
-                                isLoading: isLoading,
+                              return HoverableButton(
+                                height: 56,
+                                color: const Color(0xFFE52929),
+                                shadowColor:
+                                    const Color(0xFFE52929).withValues(alpha: 0.3),
                                 onPressed: isLoading
-                                    ? () {}
+                                    ? null
                                     : () {
                                         FocusScope.of(context).unfocus();
                                         context
                                             .read<SellerForgotPasswordBloc>()
                                             .add(const SellerForgotPasswordSubmitted());
                                       },
+                                child: isLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        'Send Reset Link',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               );
                             },
                           ),
@@ -272,76 +293,4 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
   }
 }
 
-class _HoverableButton extends StatefulWidget {
-  final bool isLoading;
-  final VoidCallback onPressed;
 
-  const _HoverableButton({
-    required this.isLoading,
-    required this.onPressed,
-  });
-
-  @override
-  State<_HoverableButton> createState() => _HoverableButtonState();
-}
-
-class _HoverableButtonState extends State<_HoverableButton> {
-  bool _isHovered = false;
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: widget.isLoading
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) => setState(() => _isPressed = false),
-        onTapCancel: () => setState(() => _isPressed = false),
-        onTap: widget.onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeInOut,
-          transform: Matrix4.identity()..scale(_isPressed ? 0.98 : 1.0),
-          width: double.infinity,
-          height: 56,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE52929),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFFE52929).withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    )
-                  ]
-                : [],
-          ),
-          child: Center(
-            child: widget.isLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Text(
-                    'Send Reset Link',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-}

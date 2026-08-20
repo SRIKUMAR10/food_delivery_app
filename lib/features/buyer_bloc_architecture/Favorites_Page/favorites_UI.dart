@@ -7,6 +7,7 @@ import 'favorites_bloc.dart';
 import 'favorites_state.dart';
 import '../Details_Page/details_page_UI.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class FavoritesPageUI extends StatelessWidget {
   const FavoritesPageUI({super.key});
@@ -36,7 +37,7 @@ class _FavoritesPageContent extends StatelessWidget {
             builder: (context, state) {
           if (state is FavoritesLoading) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFEF2A39)),
+              child: CircularProgressIndicator(color: BuyerAppColors.primary),
             );
           } else if (state is FavoritesError) {
             final isPermissionDenied = state.message.contains('permission-denied');
@@ -62,7 +63,7 @@ class _FavoritesPageContent extends StatelessWidget {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEF2A39),
+                        backgroundColor: BuyerAppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -194,7 +195,7 @@ class _FavoritesPageContent extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
-                                      color: const Color(0xFFEF2A39),
+                                      color: BuyerAppColors.primary,
                                     ),
                                   ),
                                 ],
@@ -204,7 +205,7 @@ class _FavoritesPageContent extends StatelessWidget {
                               padding: EdgeInsets.all(16.0),
                               child: Icon(
                                 Icons.favorite_rounded,
-                                color: Color(0xFFEF2A39),
+                                color: BuyerAppColors.primary,
                               ),
                             ),
                           ],

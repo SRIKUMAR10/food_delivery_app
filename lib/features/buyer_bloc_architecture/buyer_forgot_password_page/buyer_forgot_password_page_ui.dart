@@ -1,5 +1,7 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/widgets/auth_form_widgets.dart';
 import 'buyer_forgot_password_page_bloc.dart';
 import 'buyer_forgot_password_page_event.dart';
 import 'buyer_forgot_password_page_state.dart';
@@ -121,10 +123,7 @@ class _BuyerForgotPasswordPageUIState extends State<BuyerForgotPasswordPageUI> {
                           style: TextStyle(fontSize: 14, color: Colors.grey),
                         ),
                         const SizedBox(height: 24),
-                        const Text(
-                          'Phone Number',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
+                        const AuthFieldLabel('Phone Number'),
                         const SizedBox(height: 8),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,9 +132,9 @@ class _BuyerForgotPasswordPageUIState extends State<BuyerForgotPasswordPageUI> {
                               child: TextField(
                                 onChanged: (v) => bloc.add(BuyerForgotPasswordPhoneChanged(v)),
                                 keyboardType: TextInputType.phone,
-                                decoration: InputDecoration(
+                                decoration: authFieldDecoration(
                                   hintText: 'Enter phone number',
-                                  prefixIcon: Row(
+                                  prefix: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const SizedBox(width: 12),
@@ -157,22 +156,9 @@ class _BuyerForgotPasswordPageUIState extends State<BuyerForgotPasswordPageUI> {
                                       ),
                                     ],
                                   ),
-                                  filled: true,
-                                  fillColor: const Color(0xFFEEF0F5),
                                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
                                   errorText: state.phoneError,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFFE52121), width: 1.5),
-                                  ),
-                                  errorBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Colors.red, width: 1.5),
-                                  ),
+                                  showErrorStyles: true,
                                 ),
                               ),
                             ),
@@ -185,7 +171,7 @@ class _BuyerForgotPasswordPageUIState extends State<BuyerForgotPasswordPageUI> {
                                     ? null
                                     : () => bloc.add(const BuyerForgotPasswordSendOtpRequested()),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFE52121),
+                                  backgroundColor: BuyerAppColors.primaryDeep,
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -213,47 +199,27 @@ class _BuyerForgotPasswordPageUIState extends State<BuyerForgotPasswordPageUI> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'OTP Code',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
+                        const AuthFieldLabel('OTP Code'),
                         const SizedBox(height: 8),
                         TextField(
                           onChanged: (v) => bloc.add(BuyerForgotPasswordOtpChanged(v)),
                           keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
+                          decoration: authFieldDecoration(
                             hintText: 'Enter 6-digit OTP',
-                            prefixIcon: const Icon(Icons.pin_outlined, color: Colors.grey),
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            prefixIcon: Icons.pin_outlined,
                             errorText: state.otpError,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFE52121), width: 1.5),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.red, width: 1.5),
-                            ),
+                            showErrorStyles: true,
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'Create Password',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
+                        const AuthFieldLabel('Create Password'),
                         const SizedBox(height: 8),
                         TextField(
                           onChanged: (v) => bloc.add(BuyerForgotPasswordPasswordChanged(v)),
                           obscureText: !state.isPasswordVisible,
-                          decoration: InputDecoration(
+                          decoration: authFieldDecoration(
                             hintText: 'Enter new password',
-                            prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                            prefixIcon: Icons.lock_outline,
                             suffixIcon: IconButton(
                               icon: Icon(
                                 state.isPasswordVisible ? Icons.visibility : Icons.visibility_off,
@@ -263,36 +229,19 @@ class _BuyerForgotPasswordPageUIState extends State<BuyerForgotPasswordPageUI> {
                               onPressed: () =>
                                   bloc.add(const BuyerForgotPasswordTogglePasswordVisibility()),
                             ),
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             errorText: state.passwordError,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFE52121), width: 1.5),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.red, width: 1.5),
-                            ),
+                            showErrorStyles: true,
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'Confirm Password',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
+                        const AuthFieldLabel('Confirm Password'),
                         const SizedBox(height: 8),
                         TextField(
                           onChanged: (v) => bloc.add(BuyerForgotPasswordConfirmPasswordChanged(v)),
                           obscureText: !state.isConfirmPasswordVisible,
-                          decoration: InputDecoration(
+                          decoration: authFieldDecoration(
                             hintText: 'Confirm new password',
-                            prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                            prefixIcon: Icons.lock_outline,
                             suffixIcon: IconButton(
                               icon: Icon(
                                 state.isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
@@ -302,58 +251,15 @@ class _BuyerForgotPasswordPageUIState extends State<BuyerForgotPasswordPageUI> {
                               onPressed: () =>
                                   bloc.add(const BuyerForgotPasswordToggleConfirmPasswordVisibility()),
                             ),
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             errorText: state.confirmPasswordError,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFE52121), width: 1.5),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.red, width: 1.5),
-                            ),
+                            showErrorStyles: true,
                           ),
                         ),
                         const SizedBox(height: 28),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: state.status == BuyerForgotPasswordStatus.submitting
-                                ? null
-                                : () => bloc.add(const BuyerForgotPasswordSubmitted()),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE52121),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: state.status == BuyerForgotPasswordStatus.submitting
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Reset Password',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                          ),
+                        AuthPrimaryButton(
+                          label: 'Reset Password',
+                          isLoading: state.status == BuyerForgotPasswordStatus.submitting,
+                          onPressed: () => bloc.add(const BuyerForgotPasswordSubmitted()),
                         ),
                       ],
                     ),

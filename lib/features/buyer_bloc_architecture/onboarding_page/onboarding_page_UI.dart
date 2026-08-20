@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/widgets/responsive_layout.dart';
 
 import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
 import 'onboarding_page_Bloc.dart';
 import 'onboarding_page_Event.dart';
 import 'onboarding_page_State.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 /// The main entry point for the Onboarding Page UI.
 /// It wraps the view in a BlocProvider.
@@ -58,7 +60,7 @@ class OnboardingPageView extends StatelessWidget {
             return const Scaffold(
               backgroundColor: Color(0xFFFBF5F5),
               body: Center(
-                child: CircularProgressIndicator(color: Color(0xFFE52121)),
+                child: CircularProgressIndicator(color: BuyerAppColors.primaryDeep),
               ),
             );
           }
@@ -69,8 +71,7 @@ class OnboardingPageView extends StatelessWidget {
             body: SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final isWebLayout = constraints.maxWidth >= 800;
-                  if (isWebLayout) {
+                  if (ResponsiveHelper.isWide(context)) {
                     return _buildWideLayout(context, constraints);
                   } else {
                     return _buildMobileLayout(context, constraints);

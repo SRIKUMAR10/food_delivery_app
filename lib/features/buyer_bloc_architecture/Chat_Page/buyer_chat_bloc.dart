@@ -1,10 +1,12 @@
 // Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'buyer_chat_event.dart';
 import 'buyer_chat_state.dart';
 import '../../../core/repositories/i_chat_repository.dart';
+import '../../../core/repositories/i_user_profile_repository.dart';
 import '../../../core/services/i_auth_service.dart';
 import '../../../core/models/conversation_model.dart';
 import '../../../core/models/chat_message_model.dart';
@@ -36,20 +38,42 @@ class _AutoOpenConversation extends BuyerChatEvent {
   _AutoOpenConversation(this.conversationId);
 }
 
+class _TypingStatusUpdated extends BuyerChatEvent {
+  final String conversationId;
+  final Map<String, bool> typingMap;
+  _TypingStatusUpdated(this.conversationId, this.typingMap);
+}
+
+class _UserProfileUpdated extends BuyerChatEvent {
+  final String? name;
+  final String? photoUrl;
+  final String? phone;
+  _UserProfileUpdated(this.name, this.photoUrl, this.phone);
+}
+
 class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
   final IChatRepository repository;
   final IAuthService authService;
+  final IUserProfileRepository? userProfileRepository;
+  final FirebaseFirestore _firestore;
   StreamSubscription<String?>? _authSub;
   StreamSubscription? _conversationsSub;
   StreamSubscription? _messagesSub;
+  StreamSubscription? _typingSub;
+  StreamSubscription? _profileSub;
 
   // Pending auto-open after conversations load
   String? _pendingConversationId;
   // Pending product selection after conversations load
   FoodItem? _pendingProduct;
 
-  BuyerChatBloc({required this.repository, required this.authService})
-      : super(BuyerChatInitial()) {
+  BuyerChatBloc({
+    required this.repository,
+    required this.authService,
+    this.userProfileRepository,
+    FirebaseFirestore? firestore,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        super(BuyerChatInitial()) {
     on<LoadBuyerConversations>(_onLoadConversations);
     on<SelectBuyerConversation>(_onSelectConversation);
     on<SendBuyerMessage>(_onSendMessage);
@@ -65,6 +89,9 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     on<_ConversationsError>(_onConversationsError);
     on<_MessagesError>(_onMessagesError);
     on<_AutoOpenConversation>(_onAutoOpenConversation);
+    on<_TypingStatusUpdated>(_onTypingStatusUpdated);
+    on<_UserProfileUpdated>(_onUserProfileUpdated);
+    on<SetBuyerTypingStatus>(_onSetTypingStatus);
     on<DeleteBuyerMessage>(_onDeleteMessage);
     on<SelectProductForSupport>(_onSelectProduct);
     on<StartDeliveryPartnerConversation>(_onStartDeliveryConversation);
@@ -78,6 +105,8 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
       } else {
         _conversationsSub?.cancel();
         _messagesSub?.cancel();
+        _typingSub?.cancel();
+        _profileSub?.cancel();
       }
     });
   }
@@ -89,6 +118,7 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     required String sellerName,
     String? shopName,
     String? sellerImageUrl,
+    String? sellerPhone,
     required String buyerName,
     String? orderImageUrl,
     String? orderTitle,
@@ -104,7 +134,7 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
         isSeller: false,
       );
       if (existing != null) {
-        if (orderImageUrl != null || orderTitle != null || orderTotal != null) {
+        if (orderImageUrl != null || orderTitle != null || orderTotal != null || sellerPhone != null) {
           try {
             await repository.updateConversationOrderDetails(
               existing.id,
@@ -127,6 +157,7 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
       sellerName: sellerName,
       shopName: shopName,
       sellerImageUrl: sellerImageUrl,
+      sellerPhone: sellerPhone,
       orderId: orderId,
       orderImageUrl: orderImageUrl,
       orderTitle: orderTitle,
@@ -195,6 +226,15 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     _messagesSub?.cancel();
     emit(BuyerChatLoading());
 
+    _profileSub?.cancel();
+    if (userProfileRepository != null) {
+      _profileSub = userProfileRepository!.watchProfile(userId).listen((profile) {
+        if (!isClosed && profile != null) {
+          add(_UserProfileUpdated(profile.name, profile.imageUrl, profile.phone));
+        }
+      }, onError: (_) {});
+    }
+
     _conversationsSub?.cancel();
     _conversationsSub = repository
         .getConversationsForUser(userId, isSeller: false)
@@ -205,23 +245,111 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     });
   }
 
-  void _onConversationsUpdated(
-      _ConversationsUpdated event, Emitter<BuyerChatState> emit) {
+  Future<void> _onConversationsUpdated(
+      _ConversationsUpdated event, Emitter<BuyerChatState> emit) async {
     if (_pendingConversationId != null) {
       final exists =
           event.conversations.any((c) => c.id == _pendingConversationId);
       if (!exists) return;
     }
 
+    // Real-time enrichment of restaurant and order information
+    final enriched = <ConversationModel>[];
+    for (final conv in event.conversations) {
+      var c = conv;
+      if (!c.isDeliveryChat &&
+          c.sellerId.isNotEmpty &&
+          (c.shopName == null ||
+              c.shopName!.isEmpty ||
+              c.shopName == 'Restaurant' ||
+              c.sellerName == 'Restaurant' ||
+              c.sellerName == 'Store' ||
+              c.sellerImageUrl == null ||
+              c.sellerPhone == null)) {
+        try {
+          final sellerDoc =
+              await _firestore.collection('sellers').doc(c.sellerId).get();
+          if (sellerDoc.exists) {
+            final data = sellerDoc.data()!;
+            final sName = data['shopName'] as String? ??
+                data['name'] as String? ??
+                data['restaurantName'] as String?;
+            final sImg = data['profileImageUrl'] as String? ??
+                data['imageUrl'] as String? ??
+                data['logoUrl'] as String?;
+            final sPhone = data['phoneNumber'] as String? ??
+                data['contactNumber'] as String? ??
+                data['phone'] as String?;
+            c = c.copyWith(
+              shopName: (sName != null && sName.isNotEmpty) ? sName : c.shopName,
+              sellerName:
+                  (sName != null && sName.isNotEmpty) ? sName : c.sellerName,
+              sellerImageUrl: (sImg != null && sImg.isNotEmpty)
+                  ? sImg
+                  : c.sellerImageUrl,
+              sellerPhone: (sPhone != null && sPhone.isNotEmpty)
+                  ? sPhone
+                  : c.sellerPhone,
+            );
+          }
+        } catch (_) {}
+      }
+
+      if (c.orderId != null &&
+          (c.orderTitle == null ||
+              c.shopName == null ||
+              c.shopName == 'Restaurant')) {
+        try {
+          final orderDoc =
+              await _firestore.collection('orders').doc(c.orderId).get();
+          if (orderDoc.exists) {
+            final oData = orderDoc.data()!;
+            final oSellerName = oData['sellerName'] as String? ??
+                oData['shopName'] as String? ??
+                oData['restaurantName'] as String?;
+            final oItems = oData['items'] as List?;
+            String? oTitle;
+            String? oImg;
+            if (oItems != null && oItems.isNotEmpty) {
+              final first = oItems.first;
+              if (first is Map) {
+                oTitle = first['name'] as String?;
+                oImg =
+                    first['imageUrl'] as String? ?? first['image'] as String?;
+              }
+            }
+            c = c.copyWith(
+              shopName: (oSellerName != null &&
+                      oSellerName.isNotEmpty &&
+                      oSellerName != 'Restaurant')
+                  ? oSellerName
+                  : c.shopName,
+              sellerName: (oSellerName != null &&
+                      oSellerName.isNotEmpty &&
+                      oSellerName != 'Restaurant')
+                  ? oSellerName
+                  : c.sellerName,
+              orderTitle: (oTitle != null && oTitle.isNotEmpty)
+                  ? oTitle
+                  : c.orderTitle,
+              orderImageUrl:
+                  (oImg != null && oImg.isNotEmpty) ? oImg : c.orderImageUrl,
+            );
+          }
+        } catch (_) {}
+      }
+      enriched.add(c);
+    }
+
     final current = state;
     if (current is BuyerChatLoaded) {
-      emit(current.copyWith(conversations: event.conversations));
+      emit(current.copyWith(conversations: enriched));
     } else {
       final userId = authService.currentUserId;
       if (userId != null) {
         emit(BuyerChatLoaded(
           currentUserId: userId,
-          conversations: event.conversations,
+          conversations: enriched,
           selectedProduct: _pendingProduct,
         ));
       }
@@ -231,6 +359,18 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     if (_pendingConversationId != null && state is BuyerChatLoaded) {
       add(_AutoOpenConversation(_pendingConversationId!));
       _pendingConversationId = null;
+    }
+  }
+
+  void _onUserProfileUpdated(
+      _UserProfileUpdated event, Emitter<BuyerChatState> emit) {
+    final current = state;
+    if (current is BuyerChatLoaded) {
+      emit(current.copyWith(
+        buyerProfileName: event.name,
+        buyerProfileImage: event.photoUrl,
+        buyerProfilePhone: event.phone,
+      ));
     }
   }
 
@@ -259,11 +399,13 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     if (userId == null) return;
 
     _messagesSub?.cancel();
+    _typingSub?.cancel();
 
     if (event.conversationId.isEmpty) {
       emit(current.copyWith(
         clearSelectedConversationId: true,
         messages: [],
+        isOtherPartyTyping: false,
       ));
       return;
     }
@@ -271,6 +413,7 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     emit(current.copyWith(
       selectedConversationId: event.conversationId,
       messages: [],
+      isOtherPartyTyping: false,
     ));
 
     add(MarkMessagesAsRead(event.conversationId));
@@ -284,6 +427,39 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     }, onError: (error) {
       if (!isClosed) add(_MessagesError('$error'));
     });
+
+    _typingSub = repository
+        .getTypingStatusStream(event.conversationId)
+        .listen((typingMap) {
+      if (!isClosed) {
+        add(_TypingStatusUpdated(event.conversationId, typingMap));
+      }
+    });
+  }
+
+  void _onTypingStatusUpdated(
+      _TypingStatusUpdated event, Emitter<BuyerChatState> emit) {
+    final s = state;
+    if (s is! BuyerChatLoaded) return;
+    if (event.conversationId != s.selectedConversationId) return;
+    final userId = authService.currentUserId;
+
+    final isOtherTyping = event.typingMap.entries
+        .any((entry) => entry.key != userId && entry.value == true);
+    emit(s.copyWith(isOtherPartyTyping: isOtherTyping));
+  }
+
+  Future<void> _onSetTypingStatus(
+      SetBuyerTypingStatus event, Emitter<BuyerChatState> emit) async {
+    final userId = authService.currentUserId;
+    if (userId == null) return;
+    try {
+      await repository.setTypingStatus(
+        conversationId: event.conversationId,
+        userId: userId,
+        isTyping: event.isTyping,
+      );
+    } catch (_) {}
   }
 
   void _onMessagesUpdated(
@@ -456,6 +632,7 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
         sellerName: event.sellerName,
         shopName: event.shopName,
         sellerImageUrl: event.sellerImageUrl,
+        sellerPhone: event.sellerPhone,
         orderId: event.orderId,
         initialMessage: event.initialMessage,
       );
@@ -570,6 +747,8 @@ class BuyerChatBloc extends Bloc<BuyerChatEvent, BuyerChatState> {
     _authSub?.cancel();
     _conversationsSub?.cancel();
     _messagesSub?.cancel();
+    _typingSub?.cancel();
+    _profileSub?.cancel();
     return super.close();
   }
 }

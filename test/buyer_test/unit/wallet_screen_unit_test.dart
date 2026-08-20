@@ -47,7 +47,9 @@ void main() {
         walletBloc.stream,
         emitsInOrder([
           isA<WalletState>().having((s) => s.paymentStatus, 'paymentStatus', PaymentStatus.loading),
-          isA<WalletState>().having((s) => s.walletBalance, 'walletBalance', 250.0),
+          isA<WalletState>()
+              .having((s) => s.walletBalance, 'walletBalance', 250.0)
+              .having((s) => s.paymentStatus, 'paymentStatus', PaymentStatus.initial),
         ]),
       );
 
@@ -79,7 +81,7 @@ void main() {
       );
 
       verify(() => mockRazorpayApiService.createOrder(
-            amount: 50000,
+            amount: 500.0,
             receipt: any(named: 'receipt'),
           )).called(1);
     });
@@ -134,6 +136,55 @@ void main() {
         emits(isA<WalletState>()
             .having((s) => s.paymentStatus, 'paymentStatus', PaymentStatus.initial)),
       );
+    });
+
+    test('InitiatePaymentRequested with amount < 10 emits failed state', () async {
+      walletBloc.add(const InitiatePaymentRequested(5.0));
+
+      await expectLater(
+        walletBloc.stream,
+        emits(isA<WalletState>()
+            .having((s) => s.paymentStatus, 'paymentStatus', PaymentStatus.failed)
+            .having((s) => s.errorMessage, 'errorMessage', 'Please enter a valid amount between ₹10 and ₹50,000')),
+      );
+
+      verifyNever(() => mockRazorpayApiService.createOrder(
+            amount: any(named: 'amount'),
+            receipt: any(named: 'receipt'),
+          ));
+    });
+
+    test('InitiatePaymentRequested with amount > 50000 emits failed state', () async {
+      walletBloc.add(const InitiatePaymentRequested(60000.0));
+
+      await expectLater(
+        walletBloc.stream,
+        emits(isA<WalletState>()
+            .having((s) => s.paymentStatus, 'paymentStatus', PaymentStatus.failed)
+            .having((s) => s.errorMessage, 'errorMessage', 'Please enter a valid amount between ₹10 and ₹50,000')),
+      );
+
+      verifyNever(() => mockRazorpayApiService.createOrder(
+            amount: any(named: 'amount'),
+            receipt: any(named: 'receipt'),
+          ));
+    });
+
+    test('PaymentSuccessEvent with amount <= 0 does not record transaction', () async {
+      walletBloc.add(const PaymentSuccessEvent(
+        amount: 0.0,
+        paymentId: 'pay_0',
+        orderId: 'order_0',
+      ));
+
+      verifyNever(() => mockDatabase.addTransaction(
+            amount: any(named: 'amount'),
+            title: any(named: 'title'),
+            isCredit: any(named: 'isCredit'),
+            paymentId: any(named: 'paymentId'),
+            orderId: any(named: 'orderId'),
+            status: any(named: 'status'),
+          ));
     });
   });
 }

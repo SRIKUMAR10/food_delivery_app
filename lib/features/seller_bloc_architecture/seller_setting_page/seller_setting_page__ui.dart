@@ -3,6 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'seller_setting_page__bloc.dart';
 import 'seller_setting_page__event.dart';
 import 'seller_setting_page__state.dart';
+import '../../../core/services/audio_notification_service.dart';
+import '../../../core/widgets/logout_button.dart';
+import '../../../repositories/seller_repository.dart';
+import '../seller_store_details_page/seller_store_details_page__ui.dart';
+import '../business_hours_page_/business_hours_page_ui.dart';
+import '../seller_payment_page/seller_payment_page_ui.dart';
+import '../seller_wallet_page/seller_wallet_page__ui.dart';
 
 class SellerSettingPage extends StatefulWidget {
   const SellerSettingPage({Key? key}) : super(key: key);
@@ -132,7 +139,7 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
                       Text(
                         state.restaurantName.isNotEmpty
                             ? state.restaurantName
-                            : 'Real-time Control Center',
+                            : 'App & Account Preferences',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF6B7280),
@@ -146,85 +153,23 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Wrap(
-            spacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              _buildLiveStatusChip(
-                label: state.isAcceptingOrders ? 'Accepting Orders' : 'Paused',
-                isActive: state.isAcceptingOrders,
-                activeColor: const Color(0xFF10B981),
-                inactiveColor: const Color(0xFFEF4444),
-                onTap: () {
-                  context.read<SellerSettingBloc>().add(
-                        ToggleAcceptingOrders(!state.isAcceptingOrders),
-                      );
-                },
-              ),
-              if (state.isDeactivated)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEE2E2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Text(
-                    'Deactivated',
-                    style: TextStyle(
-                      color: Color(0xFFDC2626),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLiveStatusChip({
-    required String label,
-    required bool isActive,
-    required Color activeColor,
-    required Color inactiveColor,
-    required VoidCallback onTap,
-  }) {
-    final color = isActive ? activeColor : inactiveColor;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.4)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+          if (state.isDeactivated)
             Container(
-              width: 8,
-              height: 8,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Text(
+                'Deactivated',
+                style: TextStyle(
+                  color: Color(0xFFDC2626),
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -241,25 +186,16 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 12),
               children: [
-                _buildCategoryHeader('Store & Operations'),
-                _buildNavItem(context, 0, Icons.storefront_rounded, 'Restaurant Info', state.selectedSectionIndex),
-                _buildNavItem(context, 1, Icons.access_time_rounded, 'Business Hours', state.selectedSectionIndex),
-                _buildNavItem(context, 2, Icons.delivery_dining_rounded, 'Delivery Settings', state.selectedSectionIndex),
-                _buildNavItem(context, 3, Icons.receipt_long_rounded, 'Order Settings', state.selectedSectionIndex),
-
                 _buildCategoryHeader('Preferences & Alerts'),
-                _buildNavItem(context, 4, Icons.notifications_active_rounded, 'Notification Settings', state.selectedSectionIndex),
-                _buildNavItem(context, 5, Icons.account_balance_wallet_rounded, 'Payment Settings', state.selectedSectionIndex),
-                _buildNavItem(context, 6, Icons.account_balance_rounded, 'Bank / UPI Settings', state.selectedSectionIndex),
-                _buildNavItem(context, 7, Icons.receipt_rounded, 'Tax Information', state.selectedSectionIndex),
+                _buildNavItem(context, 0, Icons.notifications_active_rounded, 'Notification Settings', state.selectedSectionIndex),
+                _buildNavItem(context, 1, Icons.person_rounded, 'Account Settings', state.selectedSectionIndex),
+                _buildNavItem(context, 2, Icons.privacy_tip_rounded, 'Privacy', state.selectedSectionIndex),
 
                 _buildCategoryHeader('Account & Security'),
-                _buildNavItem(context, 8, Icons.person_rounded, 'Account Settings', state.selectedSectionIndex),
-                _buildNavItem(context, 9, Icons.privacy_tip_rounded, 'Privacy', state.selectedSectionIndex),
-                _buildNavItem(context, 10, Icons.shield_rounded, 'Security', state.selectedSectionIndex),
-                _buildNavItem(context, 11, Icons.lock_reset_rounded, 'Change Password', state.selectedSectionIndex),
-                _buildNavItem(context, 12, Icons.logout_rounded, 'Logout', state.selectedSectionIndex, isDanger: true),
-                _buildNavItem(context, 13, Icons.delete_forever_rounded, 'Delete / Deactivate', state.selectedSectionIndex, isDanger: true),
+                _buildNavItem(context, 3, Icons.shield_rounded, 'Security', state.selectedSectionIndex),
+                _buildNavItem(context, 4, Icons.lock_reset_rounded, 'Change Password', state.selectedSectionIndex),
+                _buildNavItem(context, 5, Icons.logout_rounded, 'Logout', state.selectedSectionIndex, isDanger: true),
+                _buildNavItem(context, 6, Icons.delete_forever_rounded, 'Delete / Deactivate', state.selectedSectionIndex, isDanger: true),
               ],
             ),
           ),
@@ -272,7 +208,14 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 850),
-                child: _buildSelectedSection(context, state),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _StoreOperationsQuickNav(),
+                    const SizedBox(height: 24),
+                    _buildSelectedSection(context, state),
+                  ],
+                ),
               ),
             ),
           ),
@@ -292,20 +235,13 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             children: [
-              _buildFilterPill(context, 0, 'Info', state.selectedSectionIndex),
-              _buildFilterPill(context, 1, 'Hours', state.selectedSectionIndex),
-              _buildFilterPill(context, 2, 'Delivery', state.selectedSectionIndex),
-              _buildFilterPill(context, 3, 'Orders', state.selectedSectionIndex),
-              _buildFilterPill(context, 4, 'Notifications', state.selectedSectionIndex),
-              _buildFilterPill(context, 5, 'Payments', state.selectedSectionIndex),
-              _buildFilterPill(context, 6, 'Bank/UPI', state.selectedSectionIndex),
-              _buildFilterPill(context, 7, 'Tax', state.selectedSectionIndex),
-              _buildFilterPill(context, 8, 'Account', state.selectedSectionIndex),
-              _buildFilterPill(context, 9, 'Privacy', state.selectedSectionIndex),
-              _buildFilterPill(context, 10, 'Security', state.selectedSectionIndex),
-              _buildFilterPill(context, 11, 'Password', state.selectedSectionIndex),
-              _buildFilterPill(context, 12, 'Logout', state.selectedSectionIndex),
-              _buildFilterPill(context, 13, 'Deactivate', state.selectedSectionIndex),
+              _buildFilterPill(context, 0, 'Notifications', state.selectedSectionIndex),
+              _buildFilterPill(context, 1, 'Account', state.selectedSectionIndex),
+              _buildFilterPill(context, 2, 'Privacy', state.selectedSectionIndex),
+              _buildFilterPill(context, 3, 'Security', state.selectedSectionIndex),
+              _buildFilterPill(context, 4, 'Password', state.selectedSectionIndex),
+              _buildFilterPill(context, 5, 'Logout', state.selectedSectionIndex),
+              _buildFilterPill(context, 6, 'Deactivate', state.selectedSectionIndex),
             ],
           ),
         ),
@@ -313,7 +249,14 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: _buildSelectedSection(context, state),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _StoreOperationsQuickNav(),
+                const SizedBox(height: 24),
+                _buildSelectedSection(context, state),
+              ],
+            ),
           ),
         ),
       ],
@@ -424,539 +367,199 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
   Widget _buildSelectedSection(BuildContext context, SellerSettingState state) {
     switch (state.selectedSectionIndex) {
       case 0:
-        return _RestaurantInfoView(state: state);
-      case 1:
-        return _BusinessHoursView(state: state);
-      case 2:
-        return _DeliverySettingsView(state: state);
-      case 3:
-        return _OrderSettingsView(state: state);
-      case 4:
         return _NotificationSettingsView(state: state);
-      case 5:
-        return _PaymentSettingsView(state: state);
-      case 6:
-        return _BankUpiSettingsView(state: state);
-      case 7:
-        return _TaxInformationView(state: state);
-      case 8:
+      case 1:
         return _AccountSettingsView(state: state);
-      case 9:
+      case 2:
         return _PrivacySettingsView(state: state);
-      case 10:
+      case 3:
         return _SecuritySettingsView(state: state);
-      case 11:
+      case 4:
         return _ChangePasswordView(state: state);
-      case 12:
+      case 5:
         return _LogoutView(state: state);
-      case 13:
+      case 6:
         return _DeleteDeactivateView(state: state);
       default:
-        return _RestaurantInfoView(state: state);
+        return _NotificationSettingsView(state: state);
     }
   }
 }
 
 // =========================================================================
-// 1. Restaurant Information View
+// Store Operations Quick Navigation Hub
 // =========================================================================
-class _RestaurantInfoView extends StatefulWidget {
-  final SellerSettingState state;
-  const _RestaurantInfoView({required this.state});
+class _StoreOperationsQuickNav extends StatelessWidget {
+  const _StoreOperationsQuickNav();
 
-  @override
-  State<_RestaurantInfoView> createState() => _RestaurantInfoViewState();
-}
-
-class _RestaurantInfoViewState extends State<_RestaurantInfoView> {
-  late TextEditingController _nameCtrl;
-  late TextEditingController _ownerCtrl;
-  late TextEditingController _phoneCtrl;
-  late TextEditingController _emailCtrl;
-  late TextEditingController _descCtrl;
-  late TextEditingController _addressCtrl;
-  late TextEditingController _cuisineInputCtrl;
-  late List<String> _cuisines;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameCtrl = TextEditingController(text: widget.state.restaurantName);
-    _ownerCtrl = TextEditingController(text: widget.state.ownerName);
-    _phoneCtrl = TextEditingController(text: widget.state.phoneNumber);
-    _emailCtrl = TextEditingController(text: widget.state.email);
-    _descCtrl = TextEditingController(text: widget.state.restaurantDescription);
-    _addressCtrl = TextEditingController(text: widget.state.address);
-    _cuisineInputCtrl = TextEditingController();
-    _cuisines = List.from(widget.state.cuisines);
+  void _pushPage(BuildContext context, Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
-  @override
-  void didUpdateWidget(covariant _RestaurantInfoView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.state != widget.state) {
-      _nameCtrl.text = widget.state.restaurantName;
-      _ownerCtrl.text = widget.state.ownerName;
-      _phoneCtrl.text = widget.state.phoneNumber;
-      _emailCtrl.text = widget.state.email;
-      _descCtrl.text = widget.state.restaurantDescription;
-      _addressCtrl.text = widget.state.address;
-      _cuisines = List.from(widget.state.cuisines);
+  void _pushSellerScopedPage(BuildContext context, Widget Function(String sellerId) pageBuilder) {
+    final sellerId = SellerRepository().currentUser?.uid ?? '';
+    if (sellerId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to configure store operations.')),
+      );
+      return;
     }
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _ownerCtrl.dispose();
-    _phoneCtrl.dispose();
-    _emailCtrl.dispose();
-    _descCtrl.dispose();
-    _addressCtrl.dispose();
-    _cuisineInputCtrl.dispose();
-    super.dispose();
-  }
-
-  void _save() {
-    context.read<SellerSettingBloc>().add(
-          UpdateRestaurantInfo(
-            restaurantName: _nameCtrl.text.trim(),
-            ownerName: _ownerCtrl.text.trim(),
-            phoneNumber: _phoneCtrl.text.trim(),
-            email: _emailCtrl.text.trim(),
-            restaurantDescription: _descCtrl.text.trim(),
-            address: _addressCtrl.text.trim(),
-            cuisines: _cuisines,
-            profileImageUrl: widget.state.profileImageUrl,
-            coverImageUrl: widget.state.coverImageUrl,
-            latitude: widget.state.latitude,
-            longitude: widget.state.longitude,
-          ),
-        );
+    _pushPage(context, pageBuilder(sellerId));
   }
 
   @override
   Widget build(BuildContext context) {
-    return _SettingCardContainer(
-      title: 'Restaurant Information',
-      subtitle: 'Manage your restaurant profile, contact details, and cuisine types.',
-      icon: Icons.storefront_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTextField('Restaurant Name', _nameCtrl, 'e.g. Spice Symphony'),
-          const SizedBox(height: 16),
-          _buildTextField('Owner / Manager Name', _ownerCtrl, 'e.g. John Doe'),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField('Contact Phone', _phoneCtrl, '+91 9876543210', keyboardType: TextInputType.phone)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('Contact Email', _emailCtrl, 'restaurant@domain.com', keyboardType: TextInputType.emailAddress)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildTextField('Restaurant Bio / Description', _descCtrl, 'Describe your food specialty and heritage...', maxLines: 3),
-          const SizedBox(height: 16),
-          _buildTextField('Full Street Address', _addressCtrl, 'e.g. 124 Main Street, Chennai', maxLines: 2),
-          const SizedBox(height: 16),
-          const Text('Cuisine Specializations', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF374151))),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ..._cuisines.map((c) => Chip(
-                    label: Text(c, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    backgroundColor: const Color(0xFFFEE2E2),
-                    deleteIconColor: const Color(0xFFE52929),
-                    onDeleted: () {
-                      setState(() => _cuisines.remove(c));
-                    },
-                  )),
-              SizedBox(
-                width: 150,
-                height: 36,
-                child: TextField(
-                  controller: _cuisineInputCtrl,
-                  decoration: InputDecoration(
-                    hintText: '+ Add Cuisine',
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                  ),
-                  onSubmitted: (val) {
-                    if (val.trim().isNotEmpty && !_cuisines.contains(val.trim())) {
-                      setState(() {
-                        _cuisines.add(val.trim());
-                        _cuisineInputCtrl.clear();
-                      });
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildSaveButton(onPressed: _save, isSaving: widget.state.isSaving),
-        ],
-      ),
-    );
-  }
-}
+    final items = <Map<String, dynamic>>[
+      {
+        'icon': Icons.storefront_rounded,
+        'iconColor': const Color(0xFF3B82F6),
+        'iconBgColor': const Color(0xFFEFF6FF),
+        'title': 'Business Details',
+        'subtitle': 'FSSAI, GSTIN, PAN & compliance',
+        'onTap': () => _pushPage(context, const SellerStoreDetailsPage()),
+      },
+      {
+        'icon': Icons.access_time_rounded,
+        'iconColor': const Color(0xFF10B981),
+        'iconBgColor': const Color(0xFFECFDF5),
+        'title': 'Business Hours',
+        'subtitle': 'Open / close slots & weekly schedule',
+        'onTap': () => _pushSellerScopedPage(context, (id) => BusinessHoursPage(sellerId: id)),
+      },
+      {
+        'icon': Icons.account_balance_rounded,
+        'iconColor': const Color(0xFFF59E0B),
+        'iconBgColor': const Color(0xFFFFFBEB),
+        'title': 'Bank & Payout',
+        'subtitle': 'Bank account, UPI & settlement',
+        'onTap': () => _pushPage(context, const SellerPaymentPage()),
+      },
+      {
+        'icon': Icons.account_balance_wallet_rounded,
+        'iconColor': const Color(0xFF8B5CF6),
+        'iconBgColor': const Color(0xFFF5F3FF),
+        'title': 'Wallet & Earnings',
+        'subtitle': 'Balance, payouts & transactions',
+        'onTap': () => _pushPage(context, const SellerWalletPage()),
+      },
+    ];
 
-// =========================================================================
-// 2. Business Hours View
-// =========================================================================
-class _BusinessHoursView extends StatefulWidget {
-  final SellerSettingState state;
-  const _BusinessHoursView({required this.state});
-
-  @override
-  State<_BusinessHoursView> createState() => _BusinessHoursViewState();
-}
-
-class _BusinessHoursViewState extends State<_BusinessHoursView> {
-  final List<String> _days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  late Map<String, dynamic> _schedule;
-
-  @override
-  void initState() {
-    super.initState();
-    _schedule = Map.from(widget.state.businessHours);
-    for (final day in _days) {
-      if (!_schedule.containsKey(day.toLowerCase())) {
-        _schedule[day.toLowerCase()] = {
-          'isOpen': true,
-          'openTime': '09:00 AM',
-          'closeTime': '10:00 PM',
-        };
-      }
-    }
-  }
-
-  void _save() {
-    context.read<SellerSettingBloc>().add(UpdateBusinessHoursSchedule(_schedule));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _SettingCardContainer(
-      title: 'Business Hours & Schedule',
-      subtitle: 'Configure daily opening and closing hours or activate temporary holiday closure.',
-      icon: Icons.access_time_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFCA5A5)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.beach_access_rounded, color: Color(0xFFDC2626)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Temporary Emergency / Holiday Closure',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
-                      ),
-                      Text(
-                        'Instantly pause storefront and cancel auto-accept for holidays.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFFB91C1C)),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: widget.state.isEmergencyClosed,
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: const Color(0xFFDC2626),
-                  onChanged: (val) {
-                    context.read<SellerSettingBloc>().add(ToggleEmergencyClosure(val));
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text('Weekly Operating Schedule', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
-          const SizedBox(height: 12),
-          ..._days.map((day) {
-            final key = day.toLowerCase();
-            final dayData = _schedule[key] as Map<String, dynamic>? ?? {'isOpen': true, 'openTime': '09:00 AM', 'closeTime': '10:00 PM'};
-            final isOpen = dayData['isOpen'] as bool? ?? true;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
+              child: const Icon(Icons.storefront_rounded, color: Color(0xFFE52929), size: 22),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 110,
-                    child: Text(
-                      day,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: isOpen ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
-                      ),
+                  Text(
+                    'Store Operations',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827),
                     ),
                   ),
-                  Switch(
-                    value: isOpen,
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: const Color(0xFF10B981),
-                    onChanged: (val) {
-                      setState(() {
-                        _schedule[key] = {
-                          ...dayData,
-                          'isOpen': val,
-                        };
-                      });
-                    },
+                  SizedBox(height: 2),
+                  Text(
+                    'Business logistics live under the More tab. Jump to a section:',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF6B7280),
+                    ),
                   ),
-                  const Spacer(),
-                  if (isOpen) ...[
-                    Text(
-                      '${dayData['openTime'] ?? '09:00 AM'} - ${dayData['closeTime'] ?? '10:00 PM'}',
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF374151)),
-                    ),
-                  ] else ...[
-                    const Text(
-                      'Closed',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFEF4444)),
-                    ),
-                  ],
                 ],
               ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final double itemWidth = constraints.maxWidth >= 700
+                ? (constraints.maxWidth - 12) / 2
+                : constraints.maxWidth;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: items.map((item) {
+                return SizedBox(
+                  width: itemWidth,
+                  child: InkWell(
+                    onTap: item['onTap'] as VoidCallback,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: item['iconBgColor'] as Color,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              item['icon'] as IconData,
+                              color: item['iconColor'] as Color,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['title'] as String,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF111827),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item['subtitle'] as String,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF), size: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             );
-          }),
-          const SizedBox(height: 24),
-          _buildSaveButton(onPressed: _save, isSaving: widget.state.isSaving),
-        ],
-      ),
+          },
+        ),
+      ],
     );
   }
 }
 
 // =========================================================================
-// 3. Delivery Settings View
-// =========================================================================
-class _DeliverySettingsView extends StatefulWidget {
-  final SellerSettingState state;
-  const _DeliverySettingsView({required this.state});
-
-  @override
-  State<_DeliverySettingsView> createState() => _DeliverySettingsViewState();
-}
-
-class _DeliverySettingsViewState extends State<_DeliverySettingsView> {
-  late double _radius;
-  late TextEditingController _minOrderCtrl;
-  late TextEditingController _baseFeeCtrl;
-  late TextEditingController _perKmFeeCtrl;
-  late TextEditingController _freeThresholdCtrl;
-  late TextEditingController _prepTimeCtrl;
-  late TextEditingController _pkgChargesCtrl;
-  late bool _allowPickup;
-  late bool _isSelfDelivery;
-
-  @override
-  void initState() {
-    super.initState();
-    _radius = widget.state.deliveryRadius;
-    _minOrderCtrl = TextEditingController(text: widget.state.minimumOrderValue.toStringAsFixed(0));
-    _baseFeeCtrl = TextEditingController(text: widget.state.baseDeliveryFee.toStringAsFixed(0));
-    _perKmFeeCtrl = TextEditingController(text: widget.state.perKmDeliveryFee.toStringAsFixed(0));
-    _freeThresholdCtrl = TextEditingController(text: widget.state.freeDeliveryThreshold.toStringAsFixed(0));
-    _prepTimeCtrl = TextEditingController(text: widget.state.estimatedPrepTimeMinutes.toString());
-    _pkgChargesCtrl = TextEditingController(text: widget.state.packagingCharges.toStringAsFixed(0));
-    _allowPickup = widget.state.allowSelfPickup;
-    _isSelfDelivery = widget.state.isSelfDelivery;
-  }
-
-  void _save() {
-    context.read<SellerSettingBloc>().add(
-          UpdateDeliverySettings(
-            deliveryRadius: _radius,
-            minimumOrderValue: double.tryParse(_minOrderCtrl.text) ?? 150.0,
-            baseDeliveryFee: double.tryParse(_baseFeeCtrl.text) ?? 25.0,
-            perKmDeliveryFee: double.tryParse(_perKmFeeCtrl.text) ?? 5.0,
-            freeDeliveryThreshold: double.tryParse(_freeThresholdCtrl.text) ?? 500.0,
-            estimatedPrepTimeMinutes: int.tryParse(_prepTimeCtrl.text) ?? 20,
-            deliveryTimeEstimate: widget.state.deliveryTimeEstimate,
-            packagingCharges: double.tryParse(_pkgChargesCtrl.text) ?? 15.0,
-            allowSelfPickup: _allowPickup,
-            isSelfDelivery: _isSelfDelivery,
-          ),
-        );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _SettingCardContainer(
-      title: 'Delivery & Logistics Settings',
-      subtitle: 'Tune service radius, delivery fees, minimum thresholds, and pickup options.',
-      icon: Icons.delivery_dining_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Maximum Delivery Radius: ${_radius.toStringAsFixed(1)} km', style: const TextStyle(fontWeight: FontWeight.w700)),
-          Slider(
-            value: _radius,
-            min: 1.0,
-            max: 35.0,
-            divisions: 34,
-            activeColor: const Color(0xFFE52929),
-            label: '${_radius.toStringAsFixed(0)} km',
-            onChanged: (val) => setState(() => _radius = val),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField('Minimum Order Value (₹)', _minOrderCtrl, '150', keyboardType: TextInputType.number)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('Base Delivery Fee (₹)', _baseFeeCtrl, '25', keyboardType: TextInputType.number)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField('Per Km Delivery Charge (₹)', _perKmFeeCtrl, '5', keyboardType: TextInputType.number)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('Free Delivery Above (₹)', _freeThresholdCtrl, '500', keyboardType: TextInputType.number)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField('Estimated Prep Time (mins)', _prepTimeCtrl, '20', keyboardType: TextInputType.number)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('Packaging Charges (₹)', _pkgChargesCtrl, '15', keyboardType: TextInputType.number)),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildSwitchRow(
-            title: 'Allow Self-Pickup / Takeaway',
-            subtitle: 'Customers can place order online and collect in-store.',
-            value: _allowPickup,
-            onChanged: (val) => setState(() => _allowPickup = val),
-          ),
-          _buildSwitchRow(
-            title: 'Self Delivery Fleet',
-            subtitle: 'Use your own delivery staff instead of platform third-party riders.',
-            value: _isSelfDelivery,
-            onChanged: (val) => setState(() => _isSelfDelivery = val),
-          ),
-          const SizedBox(height: 24),
-          _buildSaveButton(onPressed: _save, isSaving: widget.state.isSaving),
-        ],
-      ),
-    );
-  }
-}
-
-// =========================================================================
-// 4. Order Settings View
-// =========================================================================
-class _OrderSettingsView extends StatefulWidget {
-  final SellerSettingState state;
-  const _OrderSettingsView({required this.state});
-
-  @override
-  State<_OrderSettingsView> createState() => _OrderSettingsViewState();
-}
-
-class _OrderSettingsViewState extends State<_OrderSettingsView> {
-  late bool _autoAccept;
-  late TextEditingController _bufferCtrl;
-  late TextEditingController _maxOrdersCtrl;
-  late bool _allowScheduled;
-  late bool _allowInstructions;
-  late TextEditingController _cancelWindowCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _autoAccept = widget.state.autoAcceptOrders;
-    _bufferCtrl = TextEditingController(text: widget.state.prepBufferTimeMinutes.toString());
-    _maxOrdersCtrl = TextEditingController(text: widget.state.maxActiveOrdersLimit.toString());
-    _allowScheduled = widget.state.allowScheduledOrders;
-    _allowInstructions = widget.state.allowSpecialInstructions;
-    _cancelWindowCtrl = TextEditingController(text: widget.state.cancellationWindowMinutes.toString());
-  }
-
-  void _save() {
-    context.read<SellerSettingBloc>().add(
-          UpdateOrderSettings(
-            autoAcceptOrders: _autoAccept,
-            prepBufferTimeMinutes: int.tryParse(_bufferCtrl.text) ?? 15,
-            maxActiveOrdersLimit: int.tryParse(_maxOrdersCtrl.text) ?? 20,
-            allowScheduledOrders: _allowScheduled,
-            allowSpecialInstructions: _allowInstructions,
-            cancellationWindowMinutes: int.tryParse(_cancelWindowCtrl.text) ?? 2,
-          ),
-        );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _SettingCardContainer(
-      title: 'Order Flow & Kitchen Capacity',
-      subtitle: 'Manage automatic order acceptance, capacity limits, and cooking instructions.',
-      icon: Icons.receipt_long_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSwitchRow(
-            title: 'Auto-Accept Incoming Orders',
-            subtitle: 'Automatically accept valid orders without manual intervention.',
-            value: _autoAccept,
-            onChanged: (val) => setState(() => _autoAccept = val),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField('Preparation Buffer (mins)', _bufferCtrl, '15', keyboardType: TextInputType.number)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('Max Active Orders Limit', _maxOrdersCtrl, '20', keyboardType: TextInputType.number)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildTextField('Cancellation Grace Window (mins)', _cancelWindowCtrl, '2', keyboardType: TextInputType.number),
-          const SizedBox(height: 20),
-          _buildSwitchRow(
-            title: 'Allow Scheduled / Pre-Orders',
-            subtitle: 'Customers can schedule orders for a later time slot.',
-            value: _allowScheduled,
-            onChanged: (val) => setState(() => _allowScheduled = val),
-          ),
-          _buildSwitchRow(
-            title: 'Allow Cooking / Special Notes',
-            subtitle: 'Customers can write extra spice level or allergy instructions.',
-            value: _allowInstructions,
-            onChanged: (val) => setState(() => _allowInstructions = val),
-          ),
-          const SizedBox(height: 24),
-          _buildSaveButton(onPressed: _save, isSaving: widget.state.isSaving),
-        ],
-      ),
-    );
-  }
-}
-
-// =========================================================================
-// 5. Notification Settings View
+// 1. Notification Settings View
 // =========================================================================
 class _NotificationSettingsView extends StatefulWidget {
   final SellerSettingState state;
@@ -977,6 +580,8 @@ class _NotificationSettingsViewState extends State<_NotificationSettingsView> {
   late bool _orderUpdates;
   late bool _whatsapp;
   late bool _sms;
+  late final AudioNotificationService _audioService;
+  bool _isPreviewPlaying = false;
 
   @override
   void initState() {
@@ -991,6 +596,27 @@ class _NotificationSettingsViewState extends State<_NotificationSettingsView> {
     _orderUpdates = widget.state.orderUpdates;
     _whatsapp = widget.state.whatsappNotifications;
     _sms = widget.state.smsNotifications;
+    _audioService = AudioNotificationService(
+      onRingtoneComplete: () {
+        if (mounted) setState(() => _isPreviewPlaying = false);
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _audioService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _previewRingtone() async {
+    setState(() => _isPreviewPlaying = true);
+    await _audioService.playRingtone(ringtoneName: _ringtone, volume: _volume);
+  }
+
+  void _stopPreview() {
+    setState(() => _isPreviewPlaying = false);
+    _audioService.stop();
   }
 
   void _save() {
@@ -1013,7 +639,7 @@ class _NotificationSettingsViewState extends State<_NotificationSettingsView> {
   @override
   Widget build(BuildContext context) {
     return _SettingCardContainer(
-      title: 'Notification Settings',
+      title: 'Notification & Audio Alerts',
       subtitle: 'Customize alert chimes, push notifications, and stock warning broadcasts.',
       icon: Icons.notifications_active_rounded,
       child: Column(
@@ -1040,27 +666,76 @@ class _NotificationSettingsViewState extends State<_NotificationSettingsView> {
           const SizedBox(height: 16),
           const Text('Alert Chime Ringtone', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFD1D5DB)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _ringtone,
-                isExpanded: true,
-                items: const [
-                  DropdownMenuItem(value: 'Bell Chime', child: Text('Bell Chime (Standard)')),
-                  DropdownMenuItem(value: 'Digital Siren', child: Text('Digital Siren (Loud)')),
-                  DropdownMenuItem(value: 'Classic Phone Ring', child: Text('Classic Phone Ring')),
-                  DropdownMenuItem(value: 'Kitchen Buzzer', child: Text('Kitchen Buzzer')),
-                ],
-                onChanged: (val) {
-                  if (val != null) setState(() => _ringtone = val);
-                },
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFD1D5DB)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _ringtone,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(value: 'Bell Chime', child: Text('Bell Chime (Standard)')),
+                        DropdownMenuItem(value: 'Digital Siren', child: Text('Digital Siren (Loud)')),
+                        DropdownMenuItem(value: 'Classic Phone Ring', child: Text('Classic Phone Ring')),
+                        DropdownMenuItem(value: 'Kitchen Buzzer', child: Text('Kitchen Buzzer')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _ringtone = val);
+                          _previewRingtone();
+                        }
+                      },
+                    ),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: _isPreviewPlaying ? 'Stop Preview' : 'Preview Sound',
+                child: IconButton(
+                  onPressed: _isPreviewPlaying ? _stopPreview : _previewRingtone,
+                  icon: Icon(
+                    _isPreviewPlaying
+                        ? Icons.stop_circle_rounded
+                        : Icons.play_circle_fill_rounded,
+                    size: 34,
+                    color: _isPreviewPlaying
+                        ? const Color(0xFFE52929)
+                        : const Color(0xFF10B981),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                _isPreviewPlaying ? Icons.graphic_eq_rounded : Icons.music_note_rounded,
+                size: 14,
+                color: _isPreviewPlaying ? const Color(0xFFE52929) : const Color(0xFF9CA3AF),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _isPreviewPlaying
+                      ? 'Previewing "$_ringtone" at ${(_volume * 100).toInt()}% volume...'
+                      : 'Tap play to preview the selected ringtone.',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: _isPreviewPlaying ? FontWeight.w600 : FontWeight.w400,
+                    color: _isPreviewPlaying ? const Color(0xFFE52929) : const Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Text('Alert Sound Volume: ${(_volume * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -1069,7 +744,10 @@ class _NotificationSettingsViewState extends State<_NotificationSettingsView> {
             min: 0.0,
             max: 1.0,
             activeColor: const Color(0xFFE52929),
-            onChanged: (val) => setState(() => _volume = val),
+            onChanged: (val) {
+              setState(() => _volume = val);
+              _previewRingtone();
+            },
           ),
           const SizedBox(height: 16),
           _buildSwitchRow(
@@ -1105,386 +783,7 @@ class _NotificationSettingsViewState extends State<_NotificationSettingsView> {
 }
 
 // =========================================================================
-// 6. Payment Settings View
-// =========================================================================
-class _PaymentSettingsView extends StatefulWidget {
-  final SellerSettingState state;
-  const _PaymentSettingsView({required this.state});
-
-  @override
-  State<_PaymentSettingsView> createState() => _PaymentSettingsViewState();
-}
-
-class _PaymentSettingsViewState extends State<_PaymentSettingsView> {
-  late bool _cod;
-  late bool _online;
-  late bool _wallet;
-  late String _schedule;
-  late TextEditingController _minPayoutCtrl;
-  late bool _autoSettlement;
-
-  @override
-  void initState() {
-    super.initState();
-    _cod = widget.state.acceptCashOnDelivery;
-    _online = widget.state.acceptOnlinePayments;
-    _wallet = widget.state.acceptWalletPayments;
-    _schedule = widget.state.payoutSchedule;
-    _minPayoutCtrl = TextEditingController(text: widget.state.minPayoutThreshold.toStringAsFixed(0));
-    _autoSettlement = widget.state.autoSettlementEnabled;
-  }
-
-  void _save() {
-    context.read<SellerSettingBloc>().add(
-          UpdatePaymentSettings(
-            acceptCashOnDelivery: _cod,
-            acceptOnlinePayments: _online,
-            acceptWalletPayments: _wallet,
-            payoutSchedule: _schedule,
-            minPayoutThreshold: double.tryParse(_minPayoutCtrl.text) ?? 500.0,
-            autoSettlementEnabled: _autoSettlement,
-          ),
-        );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _SettingCardContainer(
-      title: 'Payment & Payout Settings',
-      subtitle: 'Control supported buyer payment methods and seller settlement frequencies.',
-      icon: Icons.account_balance_wallet_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSwitchRow(
-            title: 'Accept Cash On Delivery (COD)',
-            subtitle: 'Allow customers to pay via cash upon food arrival.',
-            value: _cod,
-            onChanged: (val) => setState(() => _cod = val),
-          ),
-          _buildSwitchRow(
-            title: 'Accept Online Payments (UPI / Card / NetBanking)',
-            subtitle: 'Secure payments via Razorpay & UPI gateways.',
-            value: _online,
-            onChanged: (val) => setState(() => _online = val),
-          ),
-          _buildSwitchRow(
-            title: 'Accept In-App Wallet Payments',
-            subtitle: 'Allow instant checkout using FoodGo user wallet.',
-            value: _wallet,
-            onChanged: (val) => setState(() => _wallet = val),
-          ),
-          const SizedBox(height: 20),
-          const Text('Payout Schedule Preference', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFD1D5DB)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _schedule,
-                isExpanded: true,
-                items: const [
-                  DropdownMenuItem(value: 'Daily', child: Text('Daily Settlement (Automatic T+1)')),
-                  DropdownMenuItem(value: 'Weekly', child: Text('Weekly Settlement (Every Monday)')),
-                  DropdownMenuItem(value: 'Instant', child: Text('Instant On-Demand Payout')),
-                ],
-                onChanged: (val) {
-                  if (val != null) setState(() => _schedule = val);
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildTextField('Minimum Payout Threshold (₹)', _minPayoutCtrl, '500', keyboardType: TextInputType.number),
-          const SizedBox(height: 16),
-          _buildSwitchRow(
-            title: 'Auto-Settlement Enabled',
-            subtitle: 'Automatically transfer earnings to registered bank account.',
-            value: _autoSettlement,
-            onChanged: (val) => setState(() => _autoSettlement = val),
-          ),
-          const SizedBox(height: 24),
-          _buildSaveButton(onPressed: _save, isSaving: widget.state.isSaving),
-        ],
-      ),
-    );
-  }
-}
-
-// =========================================================================
-// 7. Bank / UPI Settings View
-// =========================================================================
-class _BankUpiSettingsView extends StatefulWidget {
-  final SellerSettingState state;
-  const _BankUpiSettingsView({required this.state});
-
-  @override
-  State<_BankUpiSettingsView> createState() => _BankUpiSettingsViewState();
-}
-
-class _BankUpiSettingsViewState extends State<_BankUpiSettingsView> {
-  late TextEditingController _holderCtrl;
-  late TextEditingController _bankNameCtrl;
-  late TextEditingController _accNumCtrl;
-  late TextEditingController _ifscCtrl;
-  late TextEditingController _branchCtrl;
-  late TextEditingController _upiCtrl;
-  late String _payoutMode;
-
-  @override
-  void initState() {
-    super.initState();
-    _holderCtrl = TextEditingController(text: widget.state.accountHolderName);
-    _bankNameCtrl = TextEditingController(text: widget.state.bankName);
-    _accNumCtrl = TextEditingController(text: widget.state.bankAccountNumber);
-    _ifscCtrl = TextEditingController(text: widget.state.ifscCode);
-    _branchCtrl = TextEditingController(text: widget.state.bankBranch);
-    _upiCtrl = TextEditingController(text: widget.state.upiId);
-    _payoutMode = widget.state.primaryPayoutMethod;
-  }
-
-  void _save() {
-    context.read<SellerSettingBloc>().add(
-          UpdateBankUpiSettings(
-            accountHolderName: _holderCtrl.text.trim(),
-            bankName: _bankNameCtrl.text.trim(),
-            bankAccountNumber: _accNumCtrl.text.trim(),
-            ifscCode: _ifscCtrl.text.trim().toUpperCase(),
-            bankBranch: _branchCtrl.text.trim(),
-            upiId: _upiCtrl.text.trim(),
-            primaryPayoutMethod: _payoutMode,
-          ),
-        );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _SettingCardContainer(
-      title: 'Bank & UPI Settlement Details',
-      subtitle: 'Configure your bank account and UPI VPA for receiving restaurant revenue.',
-      icon: Icons.account_balance_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTextField('Account Holder Name', _holderCtrl, 'e.g. John Doe / Spice Symphony LLC'),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField('Bank Name', _bankNameCtrl, 'e.g. HDFC Bank')),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('IFSC Code', _ifscCtrl, 'HDFC0001234')),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField('Bank Account Number', _accNumCtrl, '50100234567890', keyboardType: TextInputType.number)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('Branch Name', _branchCtrl, 'e.g. Anna Nagar, Chennai')),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildTextField('Primary UPI ID / VPA', _upiCtrl, 'restaurant@okhdfcbank'),
-          const SizedBox(height: 20),
-          const Text('Primary Preferred Payout Destination', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _payoutMode = 'bank'),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: _payoutMode == 'bank' ? const Color(0xFFFEE2E2) : const Color(0xFFF9FAFB),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: _payoutMode == 'bank' ? const Color(0xFFE52929) : const Color(0xFFE5E7EB),
-                        width: _payoutMode == 'bank' ? 1.5 : 1.0,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _payoutMode == 'bank'
-                              ? Icons.radio_button_checked_rounded
-                              : Icons.radio_button_off_rounded,
-                          color: _payoutMode == 'bank'
-                              ? const Color(0xFFE52929)
-                              : const Color(0xFF9CA3AF),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Bank Transfer (NEFT/IMPS)',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _payoutMode = 'upi'),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: _payoutMode == 'upi' ? const Color(0xFFFEE2E2) : const Color(0xFFF9FAFB),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: _payoutMode == 'upi' ? const Color(0xFFE52929) : const Color(0xFFE5E7EB),
-                        width: _payoutMode == 'upi' ? 1.5 : 1.0,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _payoutMode == 'upi'
-                              ? Icons.radio_button_checked_rounded
-                              : Icons.radio_button_off_rounded,
-                          color: _payoutMode == 'upi'
-                              ? const Color(0xFFE52929)
-                              : const Color(0xFF9CA3AF),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Instant UPI Transfer',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildSaveButton(onPressed: _save, isSaving: widget.state.isSaving),
-        ],
-      ),
-    );
-  }
-}
-
-// =========================================================================
-// 8. Tax Information View
-// =========================================================================
-class _TaxInformationView extends StatefulWidget {
-  final SellerSettingState state;
-  const _TaxInformationView({required this.state});
-
-  @override
-  State<_TaxInformationView> createState() => _TaxInformationViewState();
-}
-
-class _TaxInformationViewState extends State<_TaxInformationView> {
-  late TextEditingController _gstCtrl;
-  late double _gstPercentage;
-  late bool _isTaxIncluded;
-  late TextEditingController _panCtrl;
-  late TextEditingController _fssaiCtrl;
-  late TextEditingController _fssaiExpiryCtrl;
-  late TextEditingController _prefixCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _gstCtrl = TextEditingController(text: widget.state.gstNumber);
-    _gstPercentage = widget.state.gstPercentage;
-    _isTaxIncluded = widget.state.isTaxIncludedInPrice;
-    _panCtrl = TextEditingController(text: widget.state.panNumber);
-    _fssaiCtrl = TextEditingController(text: widget.state.fssaiNumber);
-    _fssaiExpiryCtrl = TextEditingController(text: widget.state.fssaiExpiryDate);
-    _prefixCtrl = TextEditingController(text: widget.state.invoicePrefix);
-  }
-
-  void _save() {
-    context.read<SellerSettingBloc>().add(
-          UpdateTaxSettings(
-            gstNumber: _gstCtrl.text.trim().toUpperCase(),
-            gstPercentage: _gstPercentage,
-            isTaxIncludedInPrice: _isTaxIncluded,
-            panNumber: _panCtrl.text.trim().toUpperCase(),
-            fssaiNumber: _fssaiCtrl.text.trim(),
-            fssaiExpiryDate: _fssaiExpiryCtrl.text.trim(),
-            invoicePrefix: _prefixCtrl.text.trim(),
-          ),
-        );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _SettingCardContainer(
-      title: 'Tax & Compliance Information',
-      subtitle: 'Enter GSTIN, PAN, and mandatory FSSAI food licensing certificates.',
-      icon: Icons.receipt_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(child: _buildTextField('GSTIN Number (15-digit)', _gstCtrl, '33AAAAA0000A1Z5')),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('Permanent Account Number (PAN)', _panCtrl, 'ABCDE1234F')),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField('FSSAI License Number (14-digit)', _fssaiCtrl, '12423000000000', keyboardType: TextInputType.number)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('FSSAI Expiry Date', _fssaiExpiryCtrl, 'YYYY-MM-DD')),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text('Restaurant GST Rate: ${_gstPercentage.toStringAsFixed(0)}%', style: const TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 12,
-            children: [5.0, 12.0, 18.0].map((rate) {
-              final isSelected = _gstPercentage == rate;
-              return ChoiceChip(
-                label: Text('${rate.toStringAsFixed(0)}% GST'),
-                selected: isSelected,
-                selectedColor: const Color(0xFFFEE2E2),
-                onSelected: (val) {
-                  if (val) setState(() => _gstPercentage = rate);
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-          _buildSwitchRow(
-            title: 'Prices Include Tax (GST Inclusive)',
-            subtitle: 'Menu item prices displayed already include all applicable taxes.',
-            value: _isTaxIncluded,
-            onChanged: (val) => setState(() => _isTaxIncluded = val),
-          ),
-          const SizedBox(height: 16),
-          _buildTextField('Tax Invoice Number Prefix', _prefixCtrl, 'INV-'),
-          const SizedBox(height: 24),
-          _buildSaveButton(onPressed: _save, isSaving: widget.state.isSaving),
-        ],
-      ),
-    );
-  }
-}
-
-// =========================================================================
-// 9. Account Settings View
+// 2. Account Settings View
 // =========================================================================
 class _AccountSettingsView extends StatefulWidget {
   final SellerSettingState state;
@@ -1523,8 +822,8 @@ class _AccountSettingsViewState extends State<_AccountSettingsView> {
   @override
   Widget build(BuildContext context) {
     return _SettingCardContainer(
-      title: 'Account & Regional Settings',
-      subtitle: 'Manage login credentials, theme mode, and multi-language preferences.',
+      title: 'Account & App Preferences',
+      subtitle: 'Manage registered contact details, theme mode, and multi-language preferences.',
       icon: Icons.person_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1591,7 +890,7 @@ class _AccountSettingsViewState extends State<_AccountSettingsView> {
 }
 
 // =========================================================================
-// 10. Privacy Settings View
+// 3. Privacy Settings View
 // =========================================================================
 class _PrivacySettingsView extends StatefulWidget {
   final SellerSettingState state;
@@ -1678,7 +977,7 @@ class _PrivacySettingsViewState extends State<_PrivacySettingsView> {
 }
 
 // =========================================================================
-// 11. Security Settings View
+// 4. Security Settings View
 // =========================================================================
 class _SecuritySettingsView extends StatefulWidget {
   final SellerSettingState state;
@@ -1808,7 +1107,7 @@ class _SecuritySettingsViewState extends State<_SecuritySettingsView> {
 }
 
 // =========================================================================
-// 12. Change Password View
+// 5. Change Password View
 // =========================================================================
 class _ChangePasswordView extends StatefulWidget {
   final SellerSettingState state;
@@ -1974,7 +1273,7 @@ class _ChangePasswordViewState extends State<_ChangePasswordView> {
 }
 
 // =========================================================================
-// 13. Logout View
+// 6. Logout View
 // =========================================================================
 class _LogoutView extends StatelessWidget {
   final SellerSettingState state;
@@ -2025,33 +1324,22 @@ class _LogoutView extends StatelessWidget {
   }
 
   void _confirmLogout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Confirm Logout'),
-        content: const Text('Are you sure you want to log out of your restaurant seller account?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogCtx);
-              context.read<SellerSettingBloc>().add(LogoutRequested());
-              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
-            child: const Text('Logout', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+    showLogoutConfirmDialog(
+      context,
+      title: 'Confirm Logout',
+      message: 'Are you sure you want to log out of your restaurant seller account?',
+      confirmLabel: 'Logout',
+      confirmColor: const Color(0xFFDC2626),
+      onConfirm: () async {
+        context.read<SellerSettingBloc>().add(LogoutRequested());
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      },
     );
   }
 }
 
 // =========================================================================
-// 14. Delete / Deactivate Account View
+// 7. Delete / Deactivate Account View
 // =========================================================================
 class _DeleteDeactivateView extends StatefulWidget {
   final SellerSettingState state;

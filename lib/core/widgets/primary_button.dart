@@ -5,12 +5,24 @@ class PrimaryButton extends StatefulWidget {
   final String text;
   final bool isLoading;
   final VoidCallback? onPressed;
+  final double height;
+  final double borderRadius;
+  final double elevation;
+  final Color? shadowColor;
+  final Color? backgroundColor;
+  final Color? disabledBackgroundColor;
 
   const PrimaryButton({
     Key? key,
     required this.text,
     required this.isLoading,
     this.onPressed,
+    this.height = 56,
+    this.borderRadius = 28,
+    this.elevation = 0,
+    this.shadowColor,
+    this.backgroundColor,
+    this.disabledBackgroundColor,
   }) : super(key: key);
 
   @override
@@ -59,7 +71,7 @@ class _PrimaryButtonState extends State<PrimaryButton>
               Transform.scale(scale: _scaleAnimation.value, child: child),
           child: SizedBox(
             width: double.infinity,
-            height: 56,
+            height: widget.height,
             child: ElevatedButton(
               onPressed: isDisabled ? null : widget.onPressed,
               style: ButtonStyle(
@@ -67,21 +79,30 @@ class _PrimaryButtonState extends State<PrimaryButton>
                   Set<WidgetState> states,
                 ) {
                   if (states.contains(WidgetState.disabled)) {
-                    return const Color(0xFF2E7D32).withValues(alpha: 0.6);
+                    return (widget.disabledBackgroundColor ??
+                            widget.backgroundColor ??
+                            const Color(0xFF2E7D32))
+                        .withValues(alpha: 0.6);
                   }
                   if (states.contains(WidgetState.hovered) || _isHovered) {
-                    return const Color(0xFF1B5E20);
+                    return (widget.backgroundColor ??
+                            const Color(0xFF2E7D32))
+                        .withValues(alpha: 0.85);
                   }
-                  return const Color(0xFF2E7D32);
+                  return widget.backgroundColor ?? const Color(0xFF2E7D32);
                 }),
                 foregroundColor: WidgetStateProperty.all(Colors.white),
-                elevation: WidgetStateProperty.all(0),
+                elevation: WidgetStateProperty.all(widget.elevation),
+                shadowColor: widget.shadowColor == null
+                    ? null
+                    : WidgetStateProperty.all(widget.shadowColor),
                 shape: WidgetStateProperty.resolveWith<OutlinedBorder>((
                   Set<WidgetState> states,
                 ) {
                   if (states.contains(WidgetState.focused)) {
                     return RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius:
+                          BorderRadius.circular(widget.borderRadius),
                       side: const BorderSide(
                         color: Colors.lightGreenAccent,
                         width: 2,
@@ -89,7 +110,8 @@ class _PrimaryButtonState extends State<PrimaryButton>
                     );
                   }
                   return RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius:
+                        BorderRadius.circular(widget.borderRadius),
                   );
                 }),
                 overlayColor: WidgetStateProperty.resolveWith<Color?>((

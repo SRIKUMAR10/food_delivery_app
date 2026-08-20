@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/widgets/auth_form_widgets.dart';
 import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import 'buyer_otp_verification_page_bloc.dart';
 import 'buyer_otp_verification_page_event.dart';
@@ -133,10 +134,7 @@ class _BuyerOtpVerificationPageUIState extends State<BuyerOtpVerificationPageUI>
                           style: const TextStyle(fontSize: 14, color: Colors.grey),
                         ),
                         const SizedBox(height: 32),
-                        const Text(
-                          'Enter OTP',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
+                        const AuthFieldLabel('Enter OTP'),
                         const SizedBox(height: 8),
                         TextField(
                           controller: _otpController,
@@ -148,61 +146,28 @@ class _BuyerOtpVerificationPageUIState extends State<BuyerOtpVerificationPageUI>
                             fontWeight: FontWeight.bold,
                             letterSpacing: 8,
                           ),
-                          decoration: InputDecoration(
-                            counterText: '',
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
+                          decoration: authFieldDecoration(
+                            borderRadius: 16,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
+                            counterText: '',
                           ),
                         ),
                         const SizedBox(height: 32),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: state.status == BuyerOtpStatus.loading
-                                ? null
-                                : () {
-                                    context.read<BuyerOtpBloc>().add(
-                                          BuyerVerifyOtpSubmitted(
-                                            fullName: widget.fullName,
-                                            email: widget.email,
-                                            mobileNumber: widget.mobileNumber,
-                                            password: widget.password,
-                                            otpCode: _otpController.text.trim(),
-                                            verificationId: widget.verificationId,
-                                          ),
-                                        );
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE52121),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: state.status == BuyerOtpStatus.loading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Confirm OTP',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
+                        AuthPrimaryButton(
+                          label: 'Confirm OTP',
+                          isLoading: state.status == BuyerOtpStatus.loading,
+                          onPressed: () {
+                            context.read<BuyerOtpBloc>().add(
+                                  BuyerVerifyOtpSubmitted(
+                                    fullName: widget.fullName,
+                                    email: widget.email,
+                                    mobileNumber: widget.mobileNumber,
+                                    password: widget.password,
+                                    otpCode: _otpController.text.trim(),
+                                    verificationId: widget.verificationId,
                                   ),
-                          ),
+                                );
+                          },
                         ),
                       ],
                     ),

@@ -48,6 +48,7 @@ abstract interface class IChatRepository {
     required String sellerName,
     String? shopName,
     String? sellerImageUrl,
+    String? sellerPhone,
     String? productId,
     String? orderId,
     String? orderImageUrl,

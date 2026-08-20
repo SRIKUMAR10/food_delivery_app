@@ -9,23 +9,27 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/promotions_c
 
 class MockPromotionsCouponsRepository extends Mock implements PromotionsCouponsRepository {}
 
+final dummyCoupon = CouponModel(
+  id: 'coupon_01',
+  sellerId: 'seller_abc',
+  code: 'MEGA50',
+  description: '50% off on all items',
+  discountAmount: 50.0,
+  isPercentage: true,
+  expiryDate: DateTime.now().add(const Duration(days: 15)),
+  isActive: true,
+  offerScope: 'restaurant',
+);
+
 void main() {
+  setUpAll(() {
+    registerFallbackValue(dummyCoupon);
+  });
+
   group('PromotionsCouponsBloc Tests', () {
     late MockPromotionsCouponsRepository mockRepository;
     late PromotionsCouponsBloc bloc;
-    final sellerId = 'seller_abc';
-
-    final dummyCoupon = CouponModel(
-      id: 'coupon_01',
-      sellerId: sellerId,
-      code: 'MEGA50',
-      description: '50% off on all items',
-      discountAmount: 50.0,
-      isPercentage: true,
-      expiryDate: DateTime.now().add(const Duration(days: 15)),
-      isActive: true,
-      offerScope: 'restaurant',
-    );
+    const sellerId = 'seller_abc';
 
     setUp(() {
       mockRepository = MockPromotionsCouponsRepository();
@@ -85,14 +89,13 @@ void main() {
             .thenAnswer((_) async => dummyCoupon.copyWith(id: 'coupon_02', code: 'NEW10'));
         return bloc;
       },
-      seed: () => PromotionsCouponsLoaded(coupons: [dummyCoupon]),
-      act: (b) {
+      act: (b) async {
         b.add(LoadCouponsEvent(sellerId));
+        await Future.delayed(const Duration(milliseconds: 10));
         b.add(AddCouponEvent(dummyCoupon.copyWith(code: 'NEW10')));
       },
+      skip: 2,
       expect: () => [
-        isA<PromotionsCouponsLoading>(),
-        isA<PromotionsCouponsLoaded>(),
         isA<PromotionsCouponsLoaded>().having((s) => s.isSaving, 'isSaving', true),
         isA<PromotionsCouponsLoaded>()
             .having((s) => s.coupons.length, 'coupons count', 2)
@@ -107,14 +110,13 @@ void main() {
             .thenAnswer((_) async {});
         return bloc;
       },
-      seed: () => PromotionsCouponsLoaded(coupons: [dummyCoupon]),
-      act: (b) {
+      act: (b) async {
         b.add(LoadCouponsEvent(sellerId));
+        await Future.delayed(const Duration(milliseconds: 10));
         b.add(const ToggleCouponStatusEvent('coupon_01', false));
       },
+      skip: 2,
       expect: () => [
-        isA<PromotionsCouponsLoading>(),
-        isA<PromotionsCouponsLoaded>(),
         isA<PromotionsCouponsLoaded>().having((s) => s.processingCouponIds.contains('coupon_01'), 'processing', true),
         isA<PromotionsCouponsLoaded>()
             .having((s) => s.coupons.first.isActive, 'isActive', false)

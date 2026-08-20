@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class AudioPlayerWidget extends StatefulWidget {
   final String audioUrl;
@@ -397,7 +398,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
               width: 44,
               height: 44,
               decoration: const BoxDecoration(
-                color: Color(0xFFE52121),
+                color: BuyerAppColors.primaryDeep,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.stop_rounded, color: Colors.white, size: 26),
@@ -416,7 +417,7 @@ class _RecordingWavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFE52121)
+      ..color = BuyerAppColors.primaryDeep
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
 

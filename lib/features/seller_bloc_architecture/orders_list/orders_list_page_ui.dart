@@ -9,6 +9,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/models/order_status.dart';
 import '../../../../core/models/order_model.dart';
 import '../../../../core/models/delivery_partner_model.dart';
+import '../../../../core/widgets/shimmer_loader.dart';
+import '../../../../core/widgets/empty_state_view.dart';
+import '../../../../core/widgets/status_badge.dart';
+import '../../../../core/widgets/filter_chips_bar.dart';
 import 'orders_list_page_bloc.dart';
 import 'orders_list_page_event.dart';
 import 'orders_list_page_state.dart';
@@ -232,11 +236,30 @@ class OrdersListView extends StatelessWidget {
                           child: BlocBuilder<OrdersListBloc, OrdersListState>(
                             builder: (context, state) {
                               if (state is OrdersListLoaded) {
-                                return _FilterChipsBar(state: state);
+                                final selected = state.activeFilter == 'Placed'
+                                    ? 'New'
+                                    : state.activeFilter;
+                                return FilterChipsBar(
+                                  items: const [
+                                    FilterChipItem(label: 'All', value: 'All'),
+                                    FilterChipItem(label: 'Placed (New)', value: 'New'),
+                                    FilterChipItem(label: 'Accepted', value: 'Accepted'),
+                                    FilterChipItem(label: 'Preparing', value: 'Preparing'),
+                                    FilterChipItem(label: 'Ready for Pickup', value: 'Ready'),
+                                    FilterChipItem(label: 'Picked Up', value: 'PickedUp'),
+                                    FilterChipItem(label: 'Out for Delivery', value: 'OutForDelivery'),
+                                    FilterChipItem(label: 'Delivered', value: 'Delivered'),
+                                    FilterChipItem(label: 'Cancelled / Rejected', value: 'Cancelled'),
+                                  ],
+                                  selected: selected,
+                                  onSelected: (value) {
+                                    context.read<OrdersListBloc>().add(FilterOrders(value));
+                                  },
+                                );
                               }
                               return const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                                child: _SkeletonLoader(height: 44, borderRadius: 22),
+                                child: SkeletonBox(height: 44, borderRadius: 22),
                               );
                             },
                           ),
@@ -254,7 +277,7 @@ class OrdersListView extends StatelessWidget {
                                   delegate: SliverChildBuilderDelegate(
                                     (context, index) => const Padding(
                                       padding: EdgeInsets.only(bottom: 16),
-                                      child: _SkeletonLoader(height: 200, borderRadius: 16),
+                                      child: SkeletonBox(height: 200, borderRadius: 16),
                                     ),
                                     childCount: 4,
                                   ),
@@ -303,7 +326,11 @@ class OrdersListView extends StatelessWidget {
                               if (state.filteredOrders.isEmpty) {
                                 return SliverFillRemaining(
                                   hasScrollBody: false,
-                                  child: _EmptyState(activeFilter: state.activeFilter),
+                                  child: EmptyStateView(
+                                    icon: Icons.inbox_rounded,
+                                    title: 'No ${state.activeFilter} Orders',
+                                    subtitle: 'New customer orders will appear here automatically in real time.',
+                                  ),
                                 );
                               }
 
@@ -359,103 +386,6 @@ class OrdersListView extends StatelessWidget {
             },
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _FilterChipsBar extends StatelessWidget {
-  final OrdersListLoaded state;
-  const _FilterChipsBar({required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    final filterOptions = [
-      {'label': 'All', 'filter': 'All'},
-      {'label': 'Placed (New)', 'filter': 'New'},
-      {'label': 'Accepted', 'filter': 'Accepted'},
-      {'label': 'Preparing', 'filter': 'Preparing'},
-      {'label': 'Ready for Pickup', 'filter': 'Ready'},
-      {'label': 'Picked Up', 'filter': 'PickedUp'},
-      {'label': 'Out for Delivery', 'filter': 'OutForDelivery'},
-      {'label': 'Delivered', 'filter': 'Delivered'},
-      {'label': 'Cancelled / Rejected', 'filter': 'Cancelled'},
-    ];
-
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        scrollDirection: Axis.horizontal,
-        itemCount: filterOptions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final item = filterOptions[index];
-          final filterKey = item['filter']!;
-          final label = item['label']!;
-          final count = state.getCount(filterKey);
-          final isSelected = state.activeFilter.toLowerCase() == filterKey.toLowerCase() ||
-              (filterKey == 'All' && state.activeFilter == 'All') ||
-              (filterKey == 'New' && state.activeFilter == 'Placed');
-
-          return InkWell(
-            onTap: () {
-              context.read<OrdersListBloc>().add(FilterOrders(filterKey));
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF0F172A) : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
-                ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.15),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : [],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? Colors.white : const Color(0xFF475569),
-                    ),
-                  ),
-                  if (count > 0) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFFE52929) : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        count.toString(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isSelected ? Colors.white : const Color(0xFF475569),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -546,7 +476,7 @@ class _OrderListCardState extends State<_OrderListCard> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            _StatusBadge(status: widget.order.status),
+                            _buildOrderStatusBadge(widget.order.status),
                           ],
                         ),
                         Text(
@@ -997,83 +927,47 @@ class _PaymentMethodChip extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  final OrderStatus status;
-  const _StatusBadge({required this.status});
+Widget _buildOrderStatusBadge(OrderStatus status) {
+  Color color;
+  IconData icon;
 
-  @override
-  Widget build(BuildContext context) {
-    Color bg;
-    Color textColor;
-    IconData icon;
-
-    switch (status) {
-      case OrderStatus.newOrder:
-        bg = const Color(0xFFEFF6FF);
-        textColor = const Color(0xFF2563EB);
-        icon = Icons.fiber_new_rounded;
-        break;
-      case OrderStatus.accepted:
-        bg = const Color(0xFFF0FDF4);
-        textColor = const Color(0xFF16A34A);
-        icon = Icons.thumb_up_rounded;
-        break;
-      case OrderStatus.preparing:
-        bg = const Color(0xFFFFF7ED);
-        textColor = const Color(0xFFF97316);
-        icon = Icons.soup_kitchen_rounded;
-        break;
-      case OrderStatus.ready:
-        bg = const Color(0xFFFEF9C3);
-        textColor = const Color(0xFFA16207);
-        icon = Icons.checklist_rounded;
-        break;
-      case OrderStatus.pickedUp:
-        bg = const Color(0xFFEDE9FE);
-        textColor = const Color(0xFF7C3AED);
-        icon = Icons.takeout_dining_rounded;
-        break;
-      case OrderStatus.outForDelivery:
-        bg = const Color(0xFFE0F2FE);
-        textColor = const Color(0xFF0369A1);
-        icon = Icons.delivery_dining_rounded;
-        break;
-      case OrderStatus.delivered:
-        bg = const Color(0xFFDCFCE7);
-        textColor = const Color(0xFF15803D);
-        icon = Icons.check_circle_rounded;
-        break;
-      case OrderStatus.rejected:
-      case OrderStatus.cancelled:
-        bg = const Color(0xFFFEE2E2);
-        textColor = const Color(0xFFDC2626);
-        icon = Icons.cancel_rounded;
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: textColor),
-          const SizedBox(width: 4),
-          Text(
-            status.displayName,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: textColor,
-            ),
-          ),
-        ],
-      ),
-    );
+  switch (status) {
+    case OrderStatus.newOrder:
+      color = const Color(0xFF2563EB);
+      icon = Icons.fiber_new_rounded;
+      break;
+    case OrderStatus.accepted:
+      color = const Color(0xFF16A34A);
+      icon = Icons.thumb_up_rounded;
+      break;
+    case OrderStatus.preparing:
+      color = const Color(0xFFF97316);
+      icon = Icons.soup_kitchen_rounded;
+      break;
+    case OrderStatus.ready:
+      color = const Color(0xFFA16207);
+      icon = Icons.checklist_rounded;
+      break;
+    case OrderStatus.pickedUp:
+      color = const Color(0xFF7C3AED);
+      icon = Icons.takeout_dining_rounded;
+      break;
+    case OrderStatus.outForDelivery:
+      color = const Color(0xFF0369A1);
+      icon = Icons.delivery_dining_rounded;
+      break;
+    case OrderStatus.delivered:
+      color = const Color(0xFF15803D);
+      icon = Icons.check_circle_rounded;
+      break;
+    case OrderStatus.rejected:
+    case OrderStatus.cancelled:
+      color = const Color(0xFFDC2626);
+      icon = Icons.cancel_rounded;
+      break;
   }
+
+  return StatusBadge(label: status.displayName, color: color, icon: icon);
 }
 
 // -------------------------------------------------------------
@@ -1133,7 +1027,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               Center(
                 child: Padding(
                   padding: const EdgeInsets.only(right: 16),
-                  child: _StatusBadge(status: order.status),
+                  child: _buildOrderStatusBadge(order.status),
                 ),
               ),
             ],
@@ -2559,115 +2453,6 @@ Future<void> _showCancelModal(BuildContext context, OrderModel order) async {
     context.read<OrdersListBloc>().add(
           CancelOrderEvent(order.id, reason: result),
         );
-  }
-}
-
-// -------------------------------------------------------------
-// SKELETON LOADER & EMPTY STATE
-// -------------------------------------------------------------
-class _SkeletonLoader extends StatefulWidget {
-  final double height;
-  final double borderRadius;
-
-  const _SkeletonLoader({required this.height, required this.borderRadius});
-
-  @override
-  State<_SkeletonLoader> createState() => _SkeletonLoaderState();
-}
-
-class _SkeletonLoaderState extends State<_SkeletonLoader> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Container(
-          height: widget.height,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: const [
-                Color(0xFFE2E8F0),
-                Color(0xFFF1F5F9),
-                Color(0xFFE2E8F0),
-              ],
-              stops: [
-                (_controller.value - 0.3).clamp(0.0, 1.0),
-                _controller.value.clamp(0.0, 1.0),
-                (_controller.value + 0.3).clamp(0.0, 1.0),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final String activeFilter;
-  const _EmptyState({required this.activeFilter});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF1F5F9),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.inbox_rounded,
-              size: 56,
-              color: Color(0xFF94A3B8),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'No $activeFilter Orders',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'New customer orders will appear here automatically in real time.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF64748B),
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
   }
 }
 

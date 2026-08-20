@@ -24,6 +24,7 @@ import 'details_page_Bloc.dart';
 import 'details_page_Event.dart';
 import 'details_page_State.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 // ─── Details Page UI ─────────────────────────────────────────────────────────
 
@@ -144,7 +145,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   StreamSubscription<DocumentSnapshot>? _productDocSub;
   FoodItem? _liveFoodItem;
 
-  static const _primaryRed = Color(0xFFEF2A39);
+  static const _primaryRed = BuyerAppColors.primary;
   static const _bgColor = Color(0xFFF8F8F8);
 
   final NumberFormat _currFmt = NumberFormat.currency(

@@ -24,7 +24,7 @@ class ProductRepositoryImpl implements ProductRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  String get _sellerId => _auth.currentUser?.uid ?? 'default_seller';
+  String get _sellerId => _auth.currentUser?.uid ?? '';
 
   @override
   Future<List<Product>> getProducts() async {

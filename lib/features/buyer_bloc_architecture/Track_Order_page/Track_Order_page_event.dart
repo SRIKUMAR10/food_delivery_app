@@ -37,11 +37,18 @@ class StartTracking extends TrackOrderEvent {
 class UpdateDriverLocation extends TrackOrderEvent {
   final double lat;
   final double lng;
+  final double? speed;
+  final double? heading;
 
-  const UpdateDriverLocation({required this.lat, required this.lng});
+  const UpdateDriverLocation({
+    required this.lat,
+    required this.lng,
+    this.speed,
+    this.heading,
+  });
 
   @override
-  List<Object> get props => [lat, lng];
+  List<Object> get props => [lat, lng, speed ?? 0.0, heading ?? 0.0];
 }
 
 class OrderStatusUpdated extends TrackOrderEvent {

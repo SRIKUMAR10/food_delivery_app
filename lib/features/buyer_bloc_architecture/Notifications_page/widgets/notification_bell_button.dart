@@ -1,3 +1,4 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -174,7 +175,7 @@ class _BellBadgeState extends State<_BellBadge>
                     constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE52121),
+                      color: BuyerAppColors.primaryDeep,
                       borderRadius: BorderRadius.circular(9),
                       border: Border.all(color: Colors.white, width: 1.5),
                     ),

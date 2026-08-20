@@ -38,6 +38,13 @@ void main() {
     mockAuthService = MockIAuthService();
     when(() => mockAuthService.authStateChanges)
         .thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.getTypingStatusStream(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.setTypingStatus(
+          conversationId: any(named: 'conversationId'),
+          userId: any(named: 'userId'),
+          isTyping: any(named: 'isTyping'),
+        )).thenAnswer((_) async {});
   });
 
   group('initial state', () {
@@ -333,5 +340,83 @@ void main() {
             )).called(1);
       },
     );
+  });
+
+  group('SetBuyerTypingStatus & Typing Indicators', () {
+    blocTest<BuyerChatBloc, BuyerChatState>(
+      'calls setTypingStatus on repository when typing event dispatched',
+      setUp: () {
+        when(() => mockAuthService.currentUserId).thenReturn(testUserId);
+        when(() => mockRepository.setTypingStatus(
+              conversationId: any(named: 'conversationId'),
+              userId: any(named: 'userId'),
+              isTyping: any(named: 'isTyping'),
+            )).thenAnswer((_) async {});
+      },
+      build: () => BuyerChatBloc(
+        repository: mockRepository,
+        authService: mockAuthService,
+      ),
+      seed: () => BuyerChatLoaded(
+        currentUserId: testUserId,
+        conversations: [testConversation],
+        selectedConversationId: testConversationId,
+      ),
+      act: (bloc) => bloc.add(const SetBuyerTypingStatus(
+        conversationId: testConversationId,
+        isTyping: true,
+      )),
+      verify: (_) {
+        verify(() => mockRepository.setTypingStatus(
+              conversationId: testConversationId,
+              userId: testUserId,
+              isTyping: true,
+            )).called(1);
+      },
+    );
+
+    test('updates isOtherPartyTyping when typing stream emits', () async {
+      when(() => mockAuthService.currentUserId).thenReturn(testUserId);
+      when(() => mockRepository.getMessagesStream(any()))
+          .thenAnswer((_) => const Stream.empty());
+      when(() => mockRepository.markMessagesAsRead(
+            conversationId: any(named: 'conversationId'),
+            readerId: any(named: 'readerId'),
+          )).thenAnswer((_) async {});
+
+      final typingCtrl = StreamController<Map<String, bool>>();
+      when(() => mockRepository.getTypingStatusStream(testConversationId))
+          .thenAnswer((_) => typingCtrl.stream);
+
+      final bloc = BuyerChatBloc(
+        repository: mockRepository,
+        authService: mockAuthService,
+      );
+
+      bloc.emit(BuyerChatLoaded(
+        currentUserId: testUserId,
+        conversations: [testConversation],
+      ));
+
+      bloc.add(const SelectBuyerConversation(testConversationId));
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      // Rider is typing
+      typingCtrl.add({'rider_1': true, testUserId: false});
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      var state = bloc.state as BuyerChatLoaded;
+      expect(state.isOtherPartyTyping, isTrue);
+
+      // Rider stopped typing
+      typingCtrl.add({'rider_1': false, testUserId: false});
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      state = bloc.state as BuyerChatLoaded;
+      expect(state.isOtherPartyTyping, isFalse);
+
+      await typingCtrl.close();
+      bloc.close();
+    });
   });
 }

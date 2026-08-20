@@ -9,6 +9,7 @@ class ConversationModel extends Equatable {
   final String sellerName;
   final String? shopName;
   final String? sellerImageUrl;
+  final String? sellerPhone;
   final String? productId;
   final String? orderId;
   final String? orderImageUrl;
@@ -40,6 +41,7 @@ class ConversationModel extends Equatable {
     required this.sellerName,
     this.shopName,
     this.sellerImageUrl,
+    this.sellerPhone,
     this.productId,
     this.orderId,
     this.orderImageUrl,
@@ -138,19 +140,43 @@ class ConversationModel extends Equatable {
           ))
         : <String, String>{};
 
+    final resolvedShopName = map['shopName'] as String? ??
+        map['restaurantName'] as String? ??
+        map['storeName'] as String? ??
+        map['sellerShopName'] as String?;
+    final resolvedSellerName = map['sellerName'] as String? ??
+        map['restaurantName'] as String? ??
+        resolvedShopName ??
+        'Seller';
+    final resolvedSellerImage = map['sellerImageUrl'] as String? ??
+        map['restaurantImage'] as String? ??
+        map['storeImage'] as String? ??
+        map['sellerImage'] as String? ??
+        map['logoUrl'] as String?;
+    final resolvedSellerPhone = map['sellerPhone'] as String? ??
+        map['restaurantPhone'] as String? ??
+        map['storePhone'] as String? ??
+        map['phone'] as String? ??
+        map['phoneNumber'] as String?;
+    final resolvedBuyerName = map['buyerName'] as String? ??
+        map['customerName'] as String? ??
+        map['userName'] as String? ??
+        'Buyer';
+
     return ConversationModel(
       id: documentId,
       buyerId: buyerId,
       sellerId: sellerId,
-      buyerName: map['buyerName'] as String? ?? 'Buyer',
-      sellerName: map['sellerName'] as String? ?? 'Seller',
-      shopName: map['shopName'] as String?,
-      sellerImageUrl: map['sellerImageUrl'] as String?,
+      buyerName: resolvedBuyerName,
+      sellerName: resolvedSellerName,
+      shopName: resolvedShopName,
+      sellerImageUrl: resolvedSellerImage,
+      sellerPhone: resolvedSellerPhone,
       productId: map['productId'] as String?,
       orderId: map['orderId'] as String?,
-      orderImageUrl: map['orderImageUrl'] as String?,
-      orderTitle: map['orderTitle'] as String?,
-      orderTotal: (map['orderTotal'] as num?)?.toDouble(),
+      orderImageUrl: map['orderImageUrl'] as String? ?? map['itemImageUrl'] as String?,
+      orderTitle: map['orderTitle'] as String? ?? map['productName'] as String? ?? map['itemName'] as String?,
+      orderTotal: (map['orderTotal'] as num?)?.toDouble() ?? (map['totalAmount'] as num?)?.toDouble(),
       lastMessage: map['lastMessage'] as String?,
       lastMessageSenderId: map['lastMessageSenderId'] as String?,
       lastMessageTimestamp: (map['lastMessageTimestamp'] as Timestamp?)
@@ -178,6 +204,7 @@ class ConversationModel extends Equatable {
       'sellerName': sellerName,
       'shopName': shopName,
       'sellerImageUrl': sellerImageUrl,
+      'sellerPhone': sellerPhone,
       'productId': productId,
       'orderId': orderId,
       'orderImageUrl': orderImageUrl,
@@ -211,6 +238,7 @@ class ConversationModel extends Equatable {
     String? sellerName,
     String? shopName,
     String? sellerImageUrl,
+    String? sellerPhone,
     String? productId,
     String? orderId,
     String? orderImageUrl,
@@ -240,6 +268,7 @@ class ConversationModel extends Equatable {
       sellerName: sellerName ?? this.sellerName,
       shopName: shopName ?? this.shopName,
       sellerImageUrl: sellerImageUrl ?? this.sellerImageUrl,
+      sellerPhone: sellerPhone ?? this.sellerPhone,
       productId: productId ?? this.productId,
       orderId: orderId ?? this.orderId,
       orderImageUrl: orderImageUrl ?? this.orderImageUrl,
@@ -273,6 +302,7 @@ class ConversationModel extends Equatable {
     sellerName,
     shopName,
     sellerImageUrl,
+    sellerPhone,
     productId,
     orderId,
     orderImageUrl,

@@ -18,11 +18,14 @@ import '../promotions_coupons_page_/promotions_coupons_page_ui.dart';
 import '../business_hours_page_/business_hours_page_ui.dart';
 import '../disputes_refunds_page_/disputes_refunds_page_ui.dart';
 import '../chat_support_page_/chat_support_page_ui.dart';
+import '../seller_customer_page/seller_customer_page__ui.dart';
 import '../menu_category_management_page_/menu_category_management_page_ui.dart';
 import '../overall_rating_page/overall_rating_page__ui.dart' as food_delivery_app_rating;
 import '../seller_setting_page/seller_setting_page__ui.dart';
 import '../seller_setting_page/seller_setting_page__bloc.dart';
 import '../seller_setting_page/seller_setting_page__event.dart' show LoadSellerSettings;
+import '../../../core/widgets/hoverable_widgets.dart';
+import '../../../core/widgets/shimmer_loader.dart';
 
 class SellerProfilePageUI extends StatelessWidget {
   const SellerProfilePageUI({Key? key}) : super(key: key);
@@ -60,6 +63,47 @@ class ResponsiveProfileLayout extends StatelessWidget {
         }
         return const ProfileContent();
       },
+    );
+  }
+}
+
+class ProfileSkeletonLoader extends StatelessWidget {
+  const ProfileSkeletonLoader({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonBox(width: 200, height: 36, borderRadius: 8),
+          SizedBox(height: 20),
+          SkeletonBox(
+            height: 220,
+            width: double.infinity,
+            borderRadius: 24,
+          ),
+          SizedBox(height: 20),
+          SkeletonBox(
+            height: 70,
+            width: double.infinity,
+            borderRadius: 20,
+          ),
+          SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: SkeletonBox(height: 160, borderRadius: 20),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: SkeletonBox(height: 160, borderRadius: 20),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -263,10 +307,11 @@ class _RestaurantBannerCard extends StatelessWidget {
                 Positioned(
                   top: 16,
                   right: 16,
-                  child: _HoverIconButton(
-                    icon: Icons.camera_alt_outlined,
-                    label: 'Cover Banner',
-                    onTap: () async {
+                  child: HoverableButton(
+                    height: 32,
+                    color: Colors.black54,
+                    borderColor: Colors.white70,
+                    onPressed: () async {
                       final picker = ImagePicker();
                       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
                       if (image != null) {
@@ -279,6 +324,21 @@ class _RestaurantBannerCard extends StatelessWidget {
                         }
                       }
                     },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.camera_alt_outlined, size: 16, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text(
+                          'Cover Banner',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -381,7 +441,7 @@ class _RestaurantBannerCard extends StatelessWidget {
         Positioned(
           bottom: 0,
           right: 0,
-          child: _HoverableCameraButton(
+          child: HoverableCard(
             onTap: () async {
               final picker = ImagePicker();
               final XFile? image = await picker.pickImage(source: ImageSource.gallery);
@@ -395,6 +455,28 @@ class _RestaurantBannerCard extends StatelessWidget {
                 }
               }
             },
+            hoverScale: 1.15,
+            borderRadius: BorderRadius.circular(32),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF3B30), Color(0xFFE52929)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFE52929).withValues(alpha: 0.4),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+            ),
           ),
         ),
       ],
@@ -1217,101 +1299,6 @@ class _VerificationStatusBadge extends StatelessWidget {
   }
 }
 
-class _HoverIconButton extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _HoverIconButton({required this.icon, required this.label, required this.onTap});
-
-  @override
-  State<_HoverIconButton> createState() => _HoverIconButtonState();
-}
-
-class _HoverIconButtonState extends State<_HoverIconButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: _isHovered ? Colors.white : Colors.black54,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white70),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(widget.icon, size: 16, color: _isHovered ? const Color(0xFF1E293B) : Colors.white),
-              const SizedBox(width: 6),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: _isHovered ? const Color(0xFF1E293B) : Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HoverableCameraButton extends StatefulWidget {
-  final VoidCallback onTap;
-  const _HoverableCameraButton({required this.onTap});
-  @override
-  State<_HoverableCameraButton> createState() => _HoverableCameraButtonState();
-}
-
-class _HoverableCameraButtonState extends State<_HoverableCameraButton> {
-  bool _isHovered = false;
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(8),
-          transform: Matrix4.identity()..scale(_isHovered ? 1.15 : 1.0),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFF3B30), Color(0xFFE52929)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFE52929).withValues(alpha: 0.4),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
-        ),
-      ),
-    );
-  }
-}
-
 class _EditProfileButton extends StatefulWidget {
   const _EditProfileButton({Key? key}) : super(key: key);
   @override
@@ -1370,6 +1357,23 @@ class _MenuGrid extends StatelessWidget {
 
   const _MenuGrid({Key? key, required this.state}) : super(key: key);
 
+  void _openSellerScopedPage(
+    BuildContext context,
+    Widget Function(String sellerId) pageBuilder,
+  ) {
+    final sellerId = SellerRepository().currentUser?.uid ?? '';
+    if (sellerId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to continue.')),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => pageBuilder(sellerId)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -1403,15 +1407,26 @@ class _MenuGrid extends StatelessWidget {
             'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerPaymentPage())),
           },
           {
+            'icon': Icons.people_outline,
+            'iconColor': const Color(0xFF3B82F6),
+            'iconBgColor': const Color(0xFFEFF6FF),
+            'title': 'Customer Insights',
+            'subtitle': 'View regular customers and order activity',
+            'onTap': () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SellerCustomerPage()),
+            ),
+          },
+          {
             'icon': Icons.restaurant_menu_outlined,
             'iconColor': const Color(0xFFF43F5E),
             'iconBgColor': const Color(0xFFFFF1F2),
             'title': 'Menu Categories',
             'subtitle': 'Select and reorder your menu categories',
-            'onTap': () {
-              final sellerId = SellerRepository().currentUser?.uid ?? 'test_seller';
-              Navigator.push(context, MaterialPageRoute(builder: (_) => MenuCategoryManagementPage(sellerId: sellerId)));
-            },
+            'onTap': () => _openSellerScopedPage(
+              context,
+              (id) => MenuCategoryManagementPage(sellerId: id),
+            ),
           },
           {
             'icon': Icons.local_offer_outlined,
@@ -1419,10 +1434,10 @@ class _MenuGrid extends StatelessWidget {
             'iconBgColor': const Color(0xFFF0FDFA),
             'title': 'Promotions & Coupons',
             'subtitle': 'Create and manage special offers',
-            'onTap': () {
-              final sellerId = SellerRepository().currentUser?.uid ?? 'test_seller';
-              Navigator.push(context, MaterialPageRoute(builder: (_) => PromotionsCouponsPage(sellerId: sellerId)));
-            },
+            'onTap': () => _openSellerScopedPage(
+              context,
+              (id) => PromotionsCouponsPage(sellerId: id),
+            ),
           },
           {
             'icon': Icons.access_time_outlined,
@@ -1430,10 +1445,10 @@ class _MenuGrid extends StatelessWidget {
             'iconBgColor': const Color(0xFFFFFBEB),
             'title': 'Business Hours',
             'subtitle': 'Set your store opening and closing times',
-            'onTap': () {
-              final sellerId = SellerRepository().currentUser?.uid ?? 'test_seller';
-              Navigator.push(context, MaterialPageRoute(builder: (_) => BusinessHoursPage(sellerId: sellerId)));
-            },
+            'onTap': () => _openSellerScopedPage(
+              context,
+              (id) => BusinessHoursPage(sellerId: id),
+            ),
           },
           {
             'icon': Icons.gavel_outlined,
@@ -1441,10 +1456,10 @@ class _MenuGrid extends StatelessWidget {
             'iconBgColor': const Color(0xFFF5F3FF),
             'title': 'Disputes & Refunds',
             'subtitle': 'Manage customer disputes and refund requests',
-            'onTap': () {
-              final sellerId = SellerRepository().currentUser?.uid ?? 'test_seller';
-              Navigator.push(context, MaterialPageRoute(builder: (_) => DisputesRefundsPage(sellerId: sellerId)));
-            },
+            'onTap': () => _openSellerScopedPage(
+              context,
+              (id) => DisputesRefundsPage(sellerId: id),
+            ),
           },
           {
             'icon': Icons.chat_bubble_outline,
@@ -1452,10 +1467,10 @@ class _MenuGrid extends StatelessWidget {
             'iconBgColor': const Color(0xFFECFEFF),
             'title': 'Support Chat',
             'subtitle': 'Contact admin support or customers',
-            'onTap': () {
-              final sellerId = SellerRepository().currentUser?.uid ?? 'test_seller';
-              Navigator.push(context, MaterialPageRoute(builder: (_) => ChatSupportPage(sellerId: sellerId)));
-            },
+            'onTap': () => _openSellerScopedPage(
+              context,
+              (id) => ChatSupportPage(sellerId: id),
+            ),
           },
           {
             'icon': Icons.lock_outline,
@@ -1524,14 +1539,72 @@ class _MenuGrid extends StatelessWidget {
             final item = menuItems[index];
             return SizedBox(
               width: itemWidth,
-              child: _HoverableCardMenuItem(
-                index: index,
-                icon: item['icon'] as IconData,
-                iconColor: item['iconColor'] as Color,
-                iconBgColor: item['iconBgColor'] as Color,
-                title: item['title'] as String,
-                subtitle: item['subtitle'] as String,
+              child: HoverableCard(
                 onTap: item['onTap'] as VoidCallback,
+                hoverScale: 1.02,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: item['iconBgColor'] as Color,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            item['icon'] as IconData,
+                            color: item['iconColor'] as Color,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item['title'] as String,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF111827),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                item['subtitle'] as String,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF6B7280),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          color: Color(0xFF9CA3AF),
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             );
           }),
@@ -1541,146 +1614,4 @@ class _MenuGrid extends StatelessWidget {
   }
 }
 
-class _HoverableCardMenuItem extends StatefulWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBgColor;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final int index;
 
-  const _HoverableCardMenuItem({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBgColor,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.index = 0,
-  });
-
-  @override
-  State<_HoverableCardMenuItem> createState() => _HoverableCardMenuItemState();
-}
-
-class _HoverableCardMenuItemState extends State<_HoverableCardMenuItem> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: _isHovered ? 0.06 : 0.02),
-              blurRadius: _isHovered ? 16 : 8,
-              offset: Offset(0, _isHovered ? 6 : 2),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.all(18.0),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: widget.iconBgColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(widget.icon, color: widget.iconColor, size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.subtitle,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: Color(0xFF9CA3AF),
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class ProfileSkeletonLoader extends StatelessWidget {
-  const ProfileSkeletonLoader({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(width: 200, height: 36, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8))),
-          const SizedBox(height: 20),
-          Container(
-            height: 220,
-            width: double.infinity,
-            decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(24)),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            height: 70,
-            width: double.infinity,
-            decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(20)),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: Container(height: 160, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(20))),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Container(height: 160, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(20))),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}

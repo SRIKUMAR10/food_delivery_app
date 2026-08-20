@@ -1,3 +1,4 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/models/buyer_notification_model.dart';
@@ -45,7 +46,7 @@ class NotificationVisuals {
       case BuyerNotificationCategory.reviewReminder:
         return const Color(0xFFDB2777);
       case BuyerNotificationCategory.securityAlert:
-        return const Color(0xFFE52121);
+        return BuyerAppColors.primaryDeep;
       case BuyerNotificationCategory.system:
         return const Color(0xFF64748B);
       case BuyerNotificationCategory.unknown:

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/api_service/RazorpayApiService.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:food_delivery_app/core/models/product_model.dart';
 import 'package:food_delivery_app/core/repositories/i_cart_repository.dart';
 import 'package:food_delivery_app/core/repositories/i_coupon_repository.dart';
@@ -62,6 +63,22 @@ void main() {
           .thenAnswer((_) => const Stream.empty());
       when(() => mockCouponRepository.getActiveCouponsBySellers(any()))
           .thenAnswer((_) => const Stream.empty());
+      when(() => mockSellerStatusService.checkAvailability(any()))
+          .thenAnswer((_) async => const SellerAvailability(isOnline: true, isOpen: true));
+      final now = DateTime.now();
+      when(() => mockProductRepository.getProduct(any(), any())).thenAnswer(
+        (_) async => Product(
+          id: 'item1',
+          name: 'Burger',
+          price: 100.0,
+          status: ProductStatus.inStock,
+          isActive: true,
+          isArchived: false,
+          availableStock: 10,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
       cartBloc = CartBloc(
         cartRepository: mockCartRepository,
@@ -331,6 +348,261 @@ void main() {
 
       final state = cartBloc.state as CartLoaded;
       expect(state.selectedAddressType, 'Work');
+    });
+
+    test('CartCheckoutRequested triggers Razorpay order creation when selectedPaymentMethod is razorpay', () async {
+      final item = CartItem(
+        id: 'item1',
+        name: 'Burger',
+        price: 100.0,
+        sellerId: 'seller1',
+        quantity: 1,
+        isSelected: true,
+      );
+
+      when(() => mockCartRepository.getCartItemsStream('test_uid'))
+          .thenAnswer((_) => Stream.value([item]));
+      when(() => mockRazorpayApiService.createOrder(
+            amount: any(named: 'amount'),
+            receipt: any(named: 'receipt'),
+          )).thenAnswer((_) async => {
+            'orderId': 'order_12345',
+            'amount': 100.0,
+          });
+
+      cartBloc.close();
+      cartBloc = CartBloc(
+        cartRepository: mockCartRepository,
+        couponRepository: mockCouponRepository,
+        productRepository: mockProductRepository,
+        authService: mockAuthService,
+        sellerStatusService: mockSellerStatusService,
+        razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      String? openedOrderId;
+      cartBloc.add(CartCheckoutRequested(
+        onOpenRazorpay: (orderId, amount, email, phone) {
+          openedOrderId = orderId;
+        },
+      ));
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      verify(() => mockRazorpayApiService.createOrder(
+            amount: any(named: 'amount'),
+            receipt: any(named: 'receipt'),
+          )).called(1);
+      expect(openedOrderId, 'order_12345');
+    });
+
+    test('CartRazorpaySuccessReceived invokes verifyAndCheckoutRazorpay', () async {
+      final item = CartItem(
+        id: 'item1',
+        name: 'Burger',
+        price: 100.0,
+        sellerId: 'seller1',
+        quantity: 1,
+        isSelected: true,
+      );
+
+      when(() => mockCartRepository.getCartItemsStream('test_uid'))
+          .thenAnswer((_) => Stream.value([item]));
+      when(() => mockCartRepository.verifyAndCheckoutRazorpay(
+            buyerId: any(named: 'buyerId'),
+            razorpayOrderId: any(named: 'razorpayOrderId'),
+            razorpayPaymentId: any(named: 'razorpayPaymentId'),
+            razorpaySignature: any(named: 'razorpaySignature'),
+            selectedItems: any(named: 'selectedItems'),
+            customerName: any(named: 'customerName'),
+            deliveryAddress: any(named: 'deliveryAddress'),
+            customerPhone: any(named: 'customerPhone'),
+            appliedCoupon: any(named: 'appliedCoupon'),
+          )).thenAnswer((_) async => {});
+
+      cartBloc.close();
+      cartBloc = CartBloc(
+        cartRepository: mockCartRepository,
+        couponRepository: mockCouponRepository,
+        productRepository: mockProductRepository,
+        authService: mockAuthService,
+        sellerStatusService: mockSellerStatusService,
+        razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      bool successCalled = false;
+      cartBloc.add(CartRazorpaySuccessReceived(
+        response: PaymentSuccessResponse('pay_123', 'order_123', 'sig_123', {
+          'razorpay_payment_id': 'pay_123',
+          'razorpay_order_id': 'order_123',
+          'razorpay_signature': 'sig_123',
+        }),
+        onSuccess: (_) {
+          successCalled = true;
+        },
+      ));
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      verify(() => mockCartRepository.verifyAndCheckoutRazorpay(
+            buyerId: 'test_uid',
+            razorpayOrderId: 'order_123',
+            razorpayPaymentId: 'pay_123',
+            razorpaySignature: 'sig_123',
+            selectedItems: any(named: 'selectedItems'),
+            customerName: any(named: 'customerName'),
+            deliveryAddress: any(named: 'deliveryAddress'),
+            customerPhone: any(named: 'customerPhone'),
+            appliedCoupon: any(named: 'appliedCoupon'),
+          )).called(1);
+      expect(successCalled, isTrue);
+    });
+
+    test('checkout with COD succeeds when item price has decimal precision matching product', () async {
+      final item = CartItem(
+        id: 'cake1',
+        name: 'Molten Chocolate Lava Cake',
+        price: 142.25,
+        sellerId: 'seller1',
+        quantity: 1,
+        isSelected: true,
+      );
+
+      when(() => mockCartRepository.getCartItemsStream('test_uid'))
+          .thenAnswer((_) => Stream.value([item]));
+      when(() => mockCartRepository.checkoutCart(
+        any(),
+        any(),
+        any(),
+        any(),
+        customerPhone: any(named: 'customerPhone'),
+        appliedCoupon: any(named: 'appliedCoupon'),
+        paymentMethod: any(named: 'paymentMethod'),
+      )).thenAnswer((_) async => {});
+
+      when(() => mockSellerStatusService.checkAvailability(any())).thenAnswer(
+        (_) async => const SellerAvailability(isOnline: true, isOpen: true),
+      );
+      final now = DateTime.now();
+      when(() => mockProductRepository.getProduct('cake1', 'seller1')).thenAnswer(
+        (_) async => Product(
+          id: 'cake1',
+          name: 'Molten Chocolate Lava Cake',
+          price: 142.25,
+          status: ProductStatus.inStock,
+          isActive: true,
+          isArchived: false,
+          availableStock: 10,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      cartBloc.close();
+      cartBloc = CartBloc(
+        cartRepository: mockCartRepository,
+        couponRepository: mockCouponRepository,
+        productRepository: mockProductRepository,
+        authService: mockAuthService,
+        sellerStatusService: mockSellerStatusService,
+        razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
+      );
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      cartBloc.add(const CartPaymentMethodSelected(CartPaymentMethod.cod));
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      bool successCalled = false;
+      cartBloc.add(CartCheckoutRequested(
+        onSuccess: (_) {
+          successCalled = true;
+        },
+      ));
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      verify(() => mockCartRepository.checkoutCart(
+        'test_uid',
+        any(),
+        any(),
+        any(),
+        customerPhone: any(named: 'customerPhone'),
+        appliedCoupon: any(named: 'appliedCoupon'),
+        paymentMethod: 'COD',
+      )).called(1);
+      expect(successCalled, isTrue);
+    });
+
+    test('checkout with COD alerts user and updates price in repo when product price changes significantly', () async {
+      final item = CartItem(
+        id: 'cake1',
+        name: 'Molten Chocolate Lava Cake',
+        price: 120.0,
+        sellerId: 'seller1',
+        quantity: 1,
+        isSelected: true,
+      );
+
+      when(() => mockCartRepository.getCartItemsStream('test_uid'))
+          .thenAnswer((_) => Stream.value([item]));
+      when(() => mockCartRepository.updateItemPrice(any(), any(), any()))
+          .thenAnswer((_) async => {});
+
+      when(() => mockSellerStatusService.checkAvailability(any())).thenAnswer(
+        (_) async => const SellerAvailability(isOnline: true, isOpen: true),
+      );
+      final now = DateTime.now();
+      when(() => mockProductRepository.getProduct('cake1', 'seller1')).thenAnswer(
+        (_) async => Product(
+          id: 'cake1',
+          name: 'Molten Chocolate Lava Cake',
+          price: 142.0,
+          status: ProductStatus.inStock,
+          isActive: true,
+          isArchived: false,
+          availableStock: 10,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      cartBloc.close();
+      cartBloc = CartBloc(
+        cartRepository: mockCartRepository,
+        couponRepository: mockCouponRepository,
+        productRepository: mockProductRepository,
+        authService: mockAuthService,
+        sellerStatusService: mockSellerStatusService,
+        razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
+      );
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      cartBloc.add(const CartPaymentMethodSelected(CartPaymentMethod.cod));
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      String? failureMessage;
+      cartBloc.add(CartCheckoutRequested(
+        onFailure: (msg) {
+          failureMessage = msg;
+        },
+      ));
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      verify(() => mockCartRepository.updateItemPrice('test_uid', 'cake1', 142.0)).called(1);
+      expect(failureMessage, contains('price has been automatically updated from ₹120 to ₹142'));
     });
   });
 }

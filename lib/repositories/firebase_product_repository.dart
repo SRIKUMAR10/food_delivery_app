@@ -24,7 +24,11 @@ class FirebaseProductRepository implements IProductRepository {
     try {
       final String effectiveSellerId = sellerId.isNotEmpty
           ? sellerId
-          : (FirebaseAuth.instance.currentUser?.uid ?? 'default_seller');
+          : (FirebaseAuth.instance.currentUser?.uid ?? '');
+
+      if (effectiveSellerId.isEmpty) {
+        throw Exception('User not authenticated: sellerId is required.');
+      }
 
       List<String> imageUrls = [];
       int counter = 0;
@@ -70,10 +74,7 @@ class FirebaseProductRepository implements IProductRepository {
         effectiveSellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
       }
       if (effectiveSellerId.isEmpty) {
-        effectiveSellerId = product.sellerId;
-      }
-      if (effectiveSellerId.isEmpty) {
-        effectiveSellerId = 'default_seller';
+        throw Exception('User not authenticated: sellerId is required.');
       }
 
       List<String> imageUrls = existingImages != null ? List<String>.from(existingImages) : List<String>.from(product.imageUrls);
@@ -384,11 +385,11 @@ class FirebaseProductRepository implements IProductRepository {
 
   @override
   Future<Product?> getProduct(String id, String sellerId) async {
-    if (sellerId.isEmpty) return null;
-
     final doc = await _firestore.collection('products').doc(id).get();
     if (doc.exists && doc.data() != null) {
-      if (doc.data()!['sellerId'] == sellerId) {
+      final docSellerId = doc.data()!['sellerId']?.toString().trim();
+      final targetSellerId = sellerId.trim();
+      if (targetSellerId.isEmpty || docSellerId == null || docSellerId.isEmpty || docSellerId == targetSellerId) {
         return Product.fromMap(doc.id, doc.data()!);
       }
     }

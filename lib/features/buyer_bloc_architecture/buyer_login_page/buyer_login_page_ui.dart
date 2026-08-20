@@ -1,6 +1,9 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:food_delivery_app/core/widgets/auth_form_widgets.dart';
+import 'package:food_delivery_app/core/widgets/responsive_layout.dart';
 import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import '../buyer_sign_up_page/buyer_sign_up_page_ui.dart';
 import '../buyer_forgot_password_page/buyer_forgot_password_page_ui.dart';
@@ -63,7 +66,7 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                       messenger.showSnackBar(
                         const SnackBar(
                           content: Text('Login successful! Welcome back.'),
-                          backgroundColor: Color(0xFFE52121),
+                          backgroundColor: BuyerAppColors.primaryDeep,
                           behavior: SnackBarBehavior.floating,
                           duration: Duration(seconds: 3),
                         ),
@@ -100,7 +103,7 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                   });
                 },
                 builder: (context, state) {
-                  final isWide = MediaQuery.of(context).size.width > 768;
+                  final isWide = ResponsiveHelper.isWide(context);
 
                   final leftBanner = Container(
                     padding: const EdgeInsets.all(32),
@@ -135,7 +138,7 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                                   style: TextStyle(
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFFE52121),
+                                    color: BuyerAppColors.primaryDeep,
                                   ),
                                 );
                               },
@@ -165,11 +168,10 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                         ),
                         const SizedBox(height: 24),
 
-                        const Text(
+                        const AuthFieldLabel(
                           'Phone Number or Email',
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
                             color: Color(0xFF333333),
                           ),
                         ),
@@ -188,25 +190,17 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                                 .read<BuyerLoginBloc>()
                                 .add(BuyerLoginPhoneChanged(value.trim()));
                           },
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
+                          decoration: authFieldDecoration(
                             hintText: 'Enter Phone Number or Email (+91...)',
                             hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
+                            prefixIcon: Icons.person_outline,
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
+                        const AuthFieldLabel(
                           'Password',
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
                             color: Color(0xFF333333),
                           ),
                         ),
@@ -222,8 +216,9 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                                 .add(BuyerLoginPasswordChanged(value));
                           },
                           onSubmitted: (_) => _submitForm(context, state),
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                          decoration: authFieldDecoration(
+                            hintText: 'Enter Password',
+                            prefixIcon: Icons.lock_outline,
                             suffixIcon: IconButton(
                               icon: Icon(
                                 state.isPasswordObscured
@@ -237,15 +232,6 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                                     .add(const BuyerLoginTogglePasswordVisibility());
                               },
                             ),
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            hintText: 'Enter Password',
-                            hintStyle: const TextStyle(color: Colors.grey),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -275,38 +261,10 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: state.status == BuyerLoginStatus.loading
-                                ? null
-                                : () => _submitForm(context, state),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE52121),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: state.status == BuyerLoginStatus.loading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Log In',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                          ),
+                        AuthPrimaryButton(
+                          label: 'Log In',
+                          isLoading: state.status == BuyerLoginStatus.loading,
+                          onPressed: () => _submitForm(context, state),
                         ),
                         const SizedBox(height: 16),
                         Row(

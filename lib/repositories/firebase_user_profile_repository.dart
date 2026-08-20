@@ -21,15 +21,15 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
         return UserProfile(
-          name: data['name'] ?? '',
-          email: data['email'] ?? '',
-          phone: data['phone'] ?? '',
-          address: data['address'] ?? '',
-          homeAddress: data['homeAddress'] ?? '',
-          workAddress: data['workAddress'] ?? '',
-          otherAddress: data['otherAddress'] ?? '',
-          selectedAddressType: data['selectedAddressType'] ?? 'Home',
-          imageUrl: data['imageUrl'],
+          name: (data['name'] ?? data['fullName'] ?? data['displayName'] ?? '').toString(),
+          email: (data['email'] ?? data['emailAddress'] ?? '').toString(),
+          phone: (data['phone'] ?? data['phoneNumber'] ?? data['mobile'] ?? data['contact'] ?? '').toString(),
+          address: (data['address'] ?? data['fullAddress'] ?? '').toString(),
+          homeAddress: (data['homeAddress'] ?? '').toString(),
+          workAddress: (data['workAddress'] ?? '').toString(),
+          otherAddress: (data['otherAddress'] ?? '').toString(),
+          selectedAddressType: (data['selectedAddressType'] ?? 'Home').toString(),
+          imageUrl: (data['imageUrl'] ?? data['photoUrl'] ?? data['profilePic']) as String?,
         );
       }
       return null;
@@ -46,6 +46,7 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
         'name': profile.name.trim(),
         'email': profile.email.trim(),
         'phone': profile.phone.trim(),
+        'phoneNumber': profile.phone.trim(),
         'address': profile.address.trim(),
         'homeAddress': profile.homeAddress.trim(),
         'workAddress': profile.workAddress.trim(),
@@ -99,15 +100,15 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
       final data = snapshot.data();
       if (data == null) return null;
       return UserProfile(
-        name: data['name'] ?? '',
-        email: data['email'] ?? '',
-        phone: data['phone'] ?? '',
-        address: data['address'] ?? '',
-        homeAddress: data['homeAddress'] ?? '',
-        workAddress: data['workAddress'] ?? '',
-        otherAddress: data['otherAddress'] ?? '',
-        selectedAddressType: data['selectedAddressType'] ?? 'Home',
-        imageUrl: data['imageUrl'],
+        name: (data['name'] ?? data['fullName'] ?? data['displayName'] ?? '').toString(),
+        email: (data['email'] ?? data['emailAddress'] ?? '').toString(),
+        phone: (data['phone'] ?? data['phoneNumber'] ?? data['mobile'] ?? data['contact'] ?? '').toString(),
+        address: (data['address'] ?? data['fullAddress'] ?? '').toString(),
+        homeAddress: (data['homeAddress'] ?? '').toString(),
+        workAddress: (data['workAddress'] ?? '').toString(),
+        otherAddress: (data['otherAddress'] ?? '').toString(),
+        selectedAddressType: (data['selectedAddressType'] ?? 'Home').toString(),
+        imageUrl: (data['imageUrl'] ?? data['photoUrl'] ?? data['profilePic']) as String?,
       );
     });
   }

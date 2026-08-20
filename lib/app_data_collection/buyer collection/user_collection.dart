@@ -184,4 +184,48 @@ class UserCollection {
   /// Feedback subcollection: buyer_user/{uid}/feedback
   CollectionReference feedbackCollection(String uid) =>
       _buyerUserCollection.doc(uid).collection('feedback');
+
+  /// Merges a secondary fragmented buyer user document and all 8 subcollections
+  /// into the primary canonical UID document in Firestore.
+  Future<void> mergeBuyerDocuments(String primaryUid, String secondaryUid) async {
+    if (primaryUid == secondaryUid || secondaryUid.isEmpty || primaryUid.isEmpty) {
+      return;
+    }
+
+    try {
+      final subcollections = [
+        'cart',
+        'orders',
+        'ratings',
+        'favorites',
+        'addresses',
+        'transactions',
+        'notifications',
+        'support_tickets',
+        'feedback',
+      ];
+
+      for (final subColl in subcollections) {
+        final secSubRef = _buyerUserCollection.doc(secondaryUid).collection(subColl);
+        final priSubRef = _buyerUserCollection.doc(primaryUid).collection(subColl);
+        final snap = await secSubRef.get();
+        for (final doc in snap.docs) {
+          await priSubRef.doc(doc.id).set(doc.data() as Map<String, dynamic>, SetOptions(merge: true));
+          await doc.reference.delete();
+        }
+      }
+
+      final secDoc = await _buyerUserCollection.doc(secondaryUid).get();
+      if (secDoc.exists) {
+        final secData = Map<String, dynamic>.from(secDoc.data() as Map? ?? {});
+        secData['uid'] = primaryUid;
+        secData['updatedAt'] = FieldValue.serverTimestamp();
+        await _buyerUserCollection.doc(primaryUid).set(secData, SetOptions(merge: true));
+        await _buyerUserCollection.doc(secondaryUid).delete();
+      }
+    } catch (e) {
+      // Safely handle merge errors
+    }
+  }
 }
+

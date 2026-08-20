@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/widgets/auth_form_widgets.dart';
 import '../buyer_otp_verification_page/buyer_otp_verification_page_ui.dart';
 import 'buyer_sign_up_page_bloc.dart';
 import 'buyer_sign_up_page_event.dart';
@@ -140,80 +141,59 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
                         const SizedBox(height: 28),
                         
                         // Full Name
-                        const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const AuthFieldLabel('Full Name'),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _fullNameController,
                           textInputAction: TextInputAction.next,
                           autofillHints: const [AutofillHints.name],
-                          decoration: InputDecoration(
+                          decoration: authFieldDecoration(
                             hintText: 'John Doe',
-                            prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
+                            prefixIcon: Icons.person_outline,
                           ),
                         ),
                         const SizedBox(height: 16),
 
                         // Email Address (Optional)
-                        const Text('Email Address (Optional)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const AuthFieldLabel('Email Address (Optional)'),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           autofillHints: const [AutofillHints.email],
-                          decoration: InputDecoration(
+                          decoration: authFieldDecoration(
                             hintText: 'john@example.com',
-                            prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
+                            prefixIcon: Icons.email_outlined,
                           ),
                         ),
                         const SizedBox(height: 16),
 
                         // Mobile Number
-                        const Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const AuthFieldLabel('Mobile Number'),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _mobileController,
                           keyboardType: TextInputType.phone,
                           textInputAction: TextInputAction.next,
                           autofillHints: const [AutofillHints.telephoneNumber],
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.phone_android, color: Colors.grey),
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
+                          decoration: authFieldDecoration(
+                            prefixIcon: Icons.phone_android,
                           ),
                         ),
                         const SizedBox(height: 16),
 
                         // Create Password
-                        const Text('Create Password', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const AuthFieldLabel('Create Password'),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _passwordController,
                           obscureText: state.isPasswordObscured,
                           textInputAction: TextInputAction.next,
                           autofillHints: const [AutofillHints.newPassword],
-                          decoration: InputDecoration(
+                          decoration: authFieldDecoration(
                             hintText: 'Create password',
-                            prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                            prefixIcon: Icons.lock_outline,
                             suffixIcon: IconButton(
                               icon: Icon(
                                 state.isPasswordObscured
@@ -225,19 +205,12 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
                                   .read<BuyerSignUpBloc>()
                                   .add(const BuyerSignUpTogglePasswordVisibility()),
                             ),
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
 
                         // Confirm Password
-                        const Text('Confirm Password', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const AuthFieldLabel('Confirm Password'),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _confirmPasswordController,
@@ -245,9 +218,9 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
                           textInputAction: TextInputAction.done,
                           autofillHints: const [AutofillHints.newPassword],
                           onSubmitted: (_) => _submitForm(context, state),
-                          decoration: InputDecoration(
+                          decoration: authFieldDecoration(
                             hintText: 'Confirm password',
-                            prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                            prefixIcon: Icons.lock_outline,
                             suffixIcon: IconButton(
                               icon: Icon(
                                 state.isConfirmPasswordObscured
@@ -259,50 +232,15 @@ class _BuyerSignUpPageUIState extends State<BuyerSignUpPageUI> {
                                   .read<BuyerSignUpBloc>()
                                   .add(const BuyerSignUpToggleConfirmPasswordVisibility()),
                             ),
-                            filled: true,
-                            fillColor: const Color(0xFFEEF0F5),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
                           ),
                         ),
                         const SizedBox(height: 28),
 
                         // Get OTP Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: state.status == BuyerSignUpStatus.loading
-                                ? null
-                                : () => _submitForm(context, state),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE52121),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: state.status == BuyerSignUpStatus.loading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Get OTP',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                          ),
+                        AuthPrimaryButton(
+                          label: 'Get OTP',
+                          isLoading: state.status == BuyerSignUpStatus.loading,
+                          onPressed: () => _submitForm(context, state),
                         ),
                       ],
                     ),

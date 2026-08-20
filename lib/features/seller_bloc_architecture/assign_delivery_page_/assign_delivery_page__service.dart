@@ -109,7 +109,7 @@ class AssignDeliveryService {
           );
         }
         transaction.update(orderRef, {
-          'status': 'Ready',
+          'status': 'ready',
           'riderId': riderId,
           'deliveryPartnerId': riderId,
           'driverId': riderId,

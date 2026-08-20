@@ -21,6 +21,8 @@ import '../../../core/models/chat_message_model.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/models/order_item_model.dart';
 import '../../../core/models/order_status.dart';
+import '../../../core/widgets/empty_state_view.dart';
+import '../../../core/widgets/filter_chips_bar.dart';
 
 import '../../buyer_bloc_architecture/Chat_Page/video_call_page.dart';
 import '../../buyer_bloc_architecture/Chat_Page/voice_call_page.dart';
@@ -233,7 +235,11 @@ class ChatSupportView extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: _AppTheme.cardShadow,
                               ),
-                              child: _EmptySellerChatPlaceholder(),
+                              child: const EmptyStateView(
+                                icon: Icons.support_agent_rounded,
+                                title: 'Seller Support Console',
+                                subtitle: 'Select a conversation to start assisting your customers.',
+                              ),
                             ),
                     ),
                   ],
@@ -273,55 +279,6 @@ class ChatSupportView extends StatelessWidget {
         }
         return const SizedBox.shrink();
       },
-    );
-  }
-}
-
-class _EmptySellerChatPlaceholder extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(color: _AppTheme.background),
-      child: Stack(
-        children: [
-          Positioned.fill(child: CustomPaint(painter: ChatBackgroundPainter())),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: _AppTheme.primary.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.support_agent_rounded,
-                    size: 48,
-                    color: _AppTheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Seller Support Console',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: _AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Select a conversation to start assisting your customers.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: _AppTheme.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -377,14 +334,27 @@ class _ChatListViewState extends State<_ChatListView> {
   Widget build(BuildContext context) {
     Widget listContent = Column(
       children: [
-        _FilterTabsBar(
-          allConversations: widget.allConversations,
-          activeFilterTab: widget.activeFilterTab,
+        FilterChipsBar(
+          items: const [
+            FilterChipItem(label: 'All', value: 'all'),
+            FilterChipItem(label: 'Customers', value: 'customers'),
+            FilterChipItem(label: 'Delivery Partners', value: 'deliveryPartners'),
+            FilterChipItem(label: 'Active Orders', value: 'orders'),
+          ],
+          selected: widget.activeFilterTab.name,
+          onSelected: (value) {
+            final tab = ChatFilterTab.values.firstWhere((t) => t.name == value);
+            context.read<ChatSupportBloc>().add(SetChatFilterTabEvent(tab));
+          },
         ),
         _buildSearchBar(context),
         Expanded(
           child: widget.conversations.isEmpty
-              ? _EmptySellerConversations()
+              ? const EmptyStateView(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  title: 'No active customer chats',
+                  subtitle: 'New customer inquiries will appear here',
+                )
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   itemCount: widget.conversations.length,
@@ -497,154 +467,6 @@ class _ChatListViewState extends State<_ChatListView> {
             borderSide: const BorderSide(color: _AppTheme.primary, width: 1.5),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _FilterTabsBar extends StatelessWidget {
-  final List<ConversationModel> allConversations;
-  final ChatFilterTab activeFilterTab;
-
-  const _FilterTabsBar({
-    required this.allConversations,
-    required this.activeFilterTab,
-  });
-
-  int _countFor(ChatFilterTab tab) {
-    switch (tab) {
-      case ChatFilterTab.all:
-        return allConversations.length;
-      case ChatFilterTab.customers:
-        return allConversations
-            .where((c) =>
-                c.conversationType == 'buyer_seller' &&
-                c.deliveryPartnerId == null)
-            .length;
-      case ChatFilterTab.deliveryPartners:
-        return allConversations
-            .where((c) =>
-                c.conversationType == 'seller_delivery' ||
-                c.conversationType == 'buyer_delivery' ||
-                (c.deliveryPartnerId != null && c.deliveryPartnerId!.isNotEmpty))
-            .length;
-      case ChatFilterTab.orders:
-        return allConversations
-            .where((c) => c.orderId != null && c.orderId!.isNotEmpty)
-            .length;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tabs = [
-      (ChatFilterTab.all, 'All'),
-      (ChatFilterTab.customers, 'Customers'),
-      (ChatFilterTab.deliveryPartners, 'Delivery Partners'),
-      (ChatFilterTab.orders, 'Active Orders'),
-    ];
-
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: ListView.separated(
-        key: const ValueKey('filterTabs'),
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: tabs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final entry = tabs[index];
-          final tab = entry.$1;
-          final label = entry.$2;
-          final isSelected = tab == activeFilterTab;
-          final count = _countFor(tab);
-
-          return InkWell(
-            onTap: () {
-              context.read<ChatSupportBloc>().add(SetChatFilterTabEvent(tab));
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? _AppTheme.primary.withValues(alpha: 0.1)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isSelected ? _AppTheme.primary : _AppTheme.borderLight,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected
-                          ? _AppTheme.primary
-                          : _AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? _AppTheme.primary
-                          : _AppTheme.surfaceHover,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '$count',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: isSelected ? Colors.white : _AppTheme.textSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _EmptySellerConversations extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: const BoxDecoration(
-              color: _AppTheme.surfaceHover,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.chat_bubble_outline_rounded, size: 28, color: _AppTheme.textTertiary),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No active customer chats',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _AppTheme.textSecondary),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'New customer inquiries will appear here',
-            style: TextStyle(fontSize: 13, color: _AppTheme.textTertiary),
-          ),
-        ],
       ),
     );
   }

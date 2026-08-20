@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/models/order_model.dart';
+import '../../../core/widgets/empty_state_view.dart';
 import 'new_order_notification_bloc.dart';
 import 'new_order_notification_event.dart';
 import 'new_order_notification_state.dart';
@@ -176,10 +177,20 @@ class _NewOrderNotificationViewState extends State<NewOrderNotificationView>
                     }
 
                     if (state is NoNewOrders) {
-                      return const _EmptyView();
+                      return const EmptyStateView(
+                        icon: Icons.inbox_rounded,
+                        title: 'No New Orders',
+                        subtitle:
+                            'You will be notified when a new order arrives.',
+                      );
                     }
 
-                    return const _EmptyView();
+                    return const EmptyStateView(
+                      icon: Icons.inbox_rounded,
+                      title: 'No New Orders',
+                      subtitle:
+                          'You will be notified when a new order arrives.',
+                    );
                   },
                 ),
               ),
@@ -685,32 +696,4 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-class _EmptyView extends StatelessWidget {
-  const _EmptyView();
 
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.inbox_rounded, size: 80, color: Color(0xFFD1D5DB)),
-          SizedBox(height: 24),
-          Text(
-            'No New Orders',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF374151),
-            ),
-          ),
-          SizedBox(height: 12),
-          Text(
-            'You will be notified when a new order arrives.',
-            style: TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
-          ),
-        ],
-      ),
-    );
-  }
-}

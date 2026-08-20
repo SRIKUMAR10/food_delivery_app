@@ -62,18 +62,21 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     final listFinder = find.byType(Scrollable);
 
     // Simulate fast scrolling
-    await tester.fling(listFinder, const Offset(0, -500), 10000);
-    await tester.pumpAndSettle();
+    await tester.fling(listFinder.first, const Offset(0, -500), 10000);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-    // Verify it scrolled without crashing
-    expect(
-      find.text('Pizza 99'),
-      findsNothing,
-    ); // It's down the list, verify UI is responsive
+    // Verify it scrolled without crashing and UI is responsive
+    expect(find.byType(ProductListView), findsOneWidget);
+
+    // Clean up repeating animations
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
   });
 }

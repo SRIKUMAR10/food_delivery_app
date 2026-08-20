@@ -91,7 +91,7 @@ class WalletDatabase {
       DocumentSnapshot snapshot = await transaction.get(userRef);
       final data = snapshot.data() as Map<String, dynamic>?;
       double currentBalance =
-          (data?['wallet']?.toDouble()) ??
+          ((data?['wallet'] as num?)?.toDouble()) ??
           0.0;
 
       transaction.set(userRef, {
@@ -126,7 +126,7 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
   WalletBloc(this.database, this.razorpayApiService)
     : super(const WalletState()) {
     on<LoadWalletData>(_onLoadWalletData);
-    on<_WalletBalanceUpdatedInternal>(_onWalletBalanceUpdatedInternal);
+    on<WalletBalanceUpdatedInternal>(_onWalletBalanceUpdatedInternal);
     on<InitiatePaymentRequested>(_onInitiatePaymentRequested);
     on<PaymentRetryRequested>((event, emit) {
       add(InitiatePaymentRequested(event.amount));
@@ -142,7 +142,7 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
   }
 
   void _onWalletBalanceUpdatedInternal(
-    _WalletBalanceUpdatedInternal event,
+    WalletBalanceUpdatedInternal event,
     Emitter<WalletState> emit,
   ) {
     emit(state.copyWith(
@@ -166,13 +166,14 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
     try {
       await _balanceSubscription?.cancel();
       final balance = await database.getInitialBalance();
-      if (balance != null) {
-        emit(state.copyWith(walletBalance: balance));
-      }
+      emit(state.copyWith(
+        walletBalance: balance ?? 0.0,
+        paymentStatus: PaymentStatus.initial,
+      ));
 
       _balanceSubscription = database.getWalletBalanceStream().listen((liveBalance) {
-        if (!isClosed && liveBalance != null) {
-          add(_WalletBalanceUpdatedInternal(liveBalance));
+        if (!isClosed && liveBalance != null && liveBalance != state.walletBalance) {
+          add(WalletBalanceUpdatedInternal(liveBalance));
         }
       });
     } catch (_) {
@@ -184,6 +185,16 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
     InitiatePaymentRequested event,
     Emitter<WalletState> emit,
   ) async {
+    if (event.amount < 10 || event.amount > 50000) {
+      emit(
+        state.copyWith(
+          paymentStatus: PaymentStatus.failed,
+          errorMessage: 'Please enter a valid amount between ₹10 and ₹50,000',
+        ),
+      );
+      return;
+    }
+
     emit(
       state.copyWith(
         paymentStatus: PaymentStatus.creatingOrder,
@@ -195,7 +206,7 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
 
     try {
       final orderResponse = await razorpayApiService.createOrder(
-        amount: (event.amount * 100).toInt(),
+        amount: event.amount,
         receipt: 'receipt_${DateTime.now().millisecondsSinceEpoch}',
       );
       final orderId = orderResponse['orderId'] as String? ??
@@ -221,6 +232,8 @@ class WalletBloc extends Bloc<WalletEvent, WalletState> {
     PaymentSuccessEvent event,
     Emitter<WalletState> emit,
   ) async {
+    if (event.amount <= 0) return;
+
     await database.addTransaction(
       amount: event.amount,
       title: 'Wallet Top-up',

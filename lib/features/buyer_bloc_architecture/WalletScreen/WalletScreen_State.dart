@@ -23,9 +23,11 @@ class WalletState extends Equatable {
   final String? errorMessage;
   final double walletBalance;
 
-  bool get isLoading =>
-      paymentStatus == PaymentStatus.loading ||
-      paymentStatus == PaymentStatus.creatingOrder;
+  bool get isLoading => paymentStatus == PaymentStatus.loading;
+  bool get isCreatingOrder => paymentStatus == PaymentStatus.creatingOrder;
+  bool get isPaymentActive =>
+      paymentStatus == PaymentStatus.creatingOrder ||
+      paymentStatus == PaymentStatus.orderCreated;
 
   bool get canRetry => paymentStatus == PaymentStatus.failed;
 

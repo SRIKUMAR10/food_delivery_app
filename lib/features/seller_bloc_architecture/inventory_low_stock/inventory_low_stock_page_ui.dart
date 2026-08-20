@@ -8,6 +8,7 @@ import '../../../../core/models/inventory_history_log_model.dart';
 import 'inventory_low_stock_page_bloc.dart';
 import 'inventory_low_stock_page_event.dart';
 import 'inventory_low_stock_page_state.dart';
+import '../../../core/widgets/filter_chips_bar.dart';
 import '../../../../core/repositories/i_inventory_repository.dart';
 import 'product_details_page_ui.dart';
 
@@ -879,33 +880,20 @@ class _InventoryLowStockViewState extends State<_InventoryLowStockView> {
       {'en': 'Expiring Soon', 'ta': 'விரைவில் காலாவதி'},
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: filters.map((f) {
-          final isSelected = activeFilter == f['en'];
-          final label = _InvLoc.t(context, f['en']!, f['ta']!);
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              selected: isSelected,
-              label: Text(label),
-              selectedColor: const Color(0xFF4F46E5).withValues(alpha: 0.15),
-              checkmarkColor: const Color(0xFF4F46E5),
-              labelStyle: GoogleFonts.plusJakartaSans(
-                color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade700,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-              onSelected: (val) {
-                if (val) {
-                  context.read<InventoryBloc>().add(FilterInventory(f['en']!));
-                }
-              },
-            ),
-          );
-        }).toList(),
-      ),
+    return FilterChipsBar(
+      items: [
+        for (final f in filters)
+          FilterChipItem(
+            label: _InvLoc.t(context, f['en']!, f['ta']!),
+            value: f['en']!,
+          ),
+      ],
+      selected: activeFilter,
+      onSelected: (value) {
+        if (value != activeFilter) {
+          context.read<InventoryBloc>().add(FilterInventory(value));
+        }
+      },
     );
   }
 

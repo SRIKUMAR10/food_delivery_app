@@ -29,38 +29,25 @@ void main() {
 
   Widget buildTestWidget() {
     return MaterialApp(
-      home: BlocProvider<SellerSignUpPageBloc>.value(
-        value: mockBloc,
-        child: const SellerSignUpPageUI(),
-      ),
+      home: SellerSignUpPageUI(bloc: mockBloc),
     );
   }
 
   group('SellerSignUpPageUI - Widget Tests', () {
-    testWidgets('renders Welcome screen by default', (tester) async {
+    testWidgets('renders Personal Details screen by default', (tester) async {
       await tester.pumpWidget(buildTestWidget());
-      expect(find.text('Register as a Seller!'), findsOneWidget);
-      expect(find.byKey(const Key('getStartedButton')), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('nameField')), findsOneWidget);
+      expect(find.byKey(const Key('shopNameField')), findsOneWidget);
+      expect(find.byKey(const Key('businessDetailsField')), findsOneWidget);
     });
-
-    testWidgets(
-      'renders Personal Details screen when state is personalDetails',
-      (tester) async {
-        when(() => mockBloc.state).thenReturn(
-          const SellerSignUpPageState(step: SellerSignUpStep.personalDetails),
-        );
-        await tester.pumpWidget(buildTestWidget());
-        expect(find.byKey(const Key('nameField')), findsOneWidget);
-        expect(find.byKey(const Key('shopNameField')), findsOneWidget);
-        expect(find.byKey(const Key('businessDetailsField')), findsOneWidget);
-      },
-    );
 
     testWidgets('renders Contact and Password screen', (tester) async {
       when(() => mockBloc.state).thenReturn(
         const SellerSignUpPageState(step: SellerSignUpStep.contactPassword),
       );
       await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
       expect(find.byKey(const Key('phoneField')), findsOneWidget);
       expect(find.byKey(const Key('emailField')), findsOneWidget);
       expect(find.byKey(const Key('passwordField')), findsOneWidget);
@@ -74,6 +61,7 @@ void main() {
         ),
       );
       await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
       expect(find.textContaining('+919876543210'), findsOneWidget);
       expect(find.byKey(const Key('verifyOtpButton')), findsOneWidget);
     });
@@ -86,6 +74,7 @@ void main() {
         ),
       );
       await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
       expect(find.textContaining('Welcome, John!'), findsOneWidget);
       expect(find.byKey(const Key('goToDashboardButton')), findsOneWidget);
     });

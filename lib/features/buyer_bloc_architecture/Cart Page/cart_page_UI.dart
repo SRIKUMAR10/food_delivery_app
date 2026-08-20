@@ -7,6 +7,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../api_service/RazorpayApiService.dart';
 import 'cart_models.dart';
 import 'cart_page_Bloc.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class CartPageUI extends StatefulWidget {
   final VoidCallback? onNavigateToOrders;
@@ -25,7 +26,7 @@ class CartPageUI extends StatefulWidget {
 }
 
 class _CartPageUIState extends State<CartPageUI> {
-  static const _primaryRed = Color(0xFFEF2A39);
+  static const _primaryRed = BuyerAppColors.primary;
   final TextEditingController _couponController = TextEditingController();
   bool _showCouponPicker = false;
   late final RazorpayApiService _razorpayApiService;
@@ -706,13 +707,13 @@ class _CartPageUIState extends State<CartPageUI> {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: const Color(0xFFEF2A39).withValues(alpha: 0.08),
+              color: BuyerAppColors.primary.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.shopping_cart_outlined,
               size: 56,
-              color: const Color(0xFFEF2A39).withValues(alpha: 0.55),
+              color: BuyerAppColors.primary.withValues(alpha: 0.55),
             ),
           ),
           const SizedBox(height: 24),

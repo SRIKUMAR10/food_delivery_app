@@ -19,6 +19,8 @@ import '../seller_analytics_page/seller_analytics_repository.dart';
 import '../product_list_page_/product_list_page__ui.dart';
 import '../seller_payment_page/seller_payment_page_ui.dart';
 import '../seller_notifications/seller_notification_ui.dart';
+import '../../../core/widgets/hoverable_widgets.dart';
+import '../../../core/widgets/shimmer_loader.dart';
 import '../../../../core/services/notification_service.dart';
 
 class SellerDashboardPageUI extends StatefulWidget {
@@ -136,7 +138,7 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
                 builder: (context, state) {
                   if (state is SellerDashboardLoading ||
                       state is SellerDashboardInitial) {
-                    return const _DashboardSkeletonLoader();
+                    return _buildDashboardSkeleton();
                   } else if (state is SellerDashboardLoaded) {
                     return RefreshIndicator(
                       onRefresh: () async {
@@ -586,15 +588,67 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
     required String subtitle,
     VoidCallback? onTap,
   }) {
-    return _HoverableStatCard(
-      width: width,
-      title: title,
-      value: value,
-      icon: icon,
-      iconColor: iconColor,
-      bgColor: bgColor,
-      subtitle: subtitle,
+    return HoverableCard(
       onTap: onTap,
+      hoverScale: 1.02,
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        width: width,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: iconColor, size: 20),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B7280),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF9CA3AF),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -610,23 +664,177 @@ class _SellerDashboardPageUIState extends State<SellerDashboardPageUI>
       statusBgColor = const Color(0xFFFFFBEB);
     }
 
-    return _HoverableOrderItem(
-      order: order,
-      isDesktop: isDesktop,
-      statusColor: statusColor,
-      statusBgColor: statusBgColor,
+    return HoverableCard(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFF3F4F6)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: isDesktop
+            ? Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          order.id,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        RealtimeOrderCustomerNameText(
+                          fallbackName: order.customerName,
+                          customerId: order.customerId,
+                          orderId: order.fullOrderId ?? order.id.replaceAll('#', ''),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusBgColor,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          order.status,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '₹${order.price.toInt()}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          order.timeAgo,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          order.id,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        RealtimeOrderCustomerNameText(
+                          fallbackName: order.customerName,
+                          customerId: order.customerId,
+                          orderId: order.fullOrderId ?? order.id.replaceAll('#', ''),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusBgColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      order.status,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '₹${order.price.toInt()}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        order.timeAgo,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+      ),
     );
   }
-}
 
-class _DashboardSkeletonLoader extends StatelessWidget {
-  const _DashboardSkeletonLoader({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildDashboardSkeleton() {
     return SingleChildScrollView(
-      physics:
-          const NeverScrollableScrollPhysics(), // Prevent user scrolling while loading if desired, or allow it
+      physics: const NeverScrollableScrollPhysics(),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -635,66 +843,36 @@ class _DashboardSkeletonLoader extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildSkeletonBox(width: 200, height: 24),
-                _buildSkeletonBox(
-                  width: 32,
-                  height: 32,
-                  shape: BoxShape.circle,
-                ),
+                const SkeletonBox(width: 200, height: 24),
+                const SkeletonBox(width: 32, height: 32, borderRadius: 32),
               ],
             ),
             const SizedBox(height: 24),
-            _buildSkeletonBox(width: double.infinity, height: 120),
+            const SkeletonBox(width: double.infinity, height: 120),
             const SizedBox(height: 24),
-            Row(
+            const Row(
               children: [
-                Expanded(
-                  child: _buildSkeletonBox(width: double.infinity, height: 100),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildSkeletonBox(width: double.infinity, height: 100),
-                ),
+                Expanded(child: SkeletonBox(width: double.infinity, height: 100)),
+                SizedBox(width: 16),
+                Expanded(child: SkeletonBox(width: double.infinity, height: 100)),
               ],
             ),
             const SizedBox(height: 16),
-            Row(
+            const Row(
               children: [
-                Expanded(
-                  child: _buildSkeletonBox(width: double.infinity, height: 100),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildSkeletonBox(width: double.infinity, height: 100),
-                ),
+                Expanded(child: SkeletonBox(width: double.infinity, height: 100)),
+                SizedBox(width: 16),
+                Expanded(child: SkeletonBox(width: double.infinity, height: 100)),
               ],
             ),
             const SizedBox(height: 32),
-            _buildSkeletonBox(width: 150, height: 24),
+            const SkeletonBox(width: 150, height: 24),
             const SizedBox(height: 16),
-            _buildSkeletonBox(width: double.infinity, height: 80),
+            const SkeletonBox(width: double.infinity, height: 80),
             const SizedBox(height: 12),
-            _buildSkeletonBox(width: double.infinity, height: 80),
+            const SkeletonBox(width: double.infinity, height: 80),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSkeletonBox({
-    required double width,
-    required double height,
-    BoxShape shape = BoxShape.rectangle,
-  }) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        shape: shape,
-        borderRadius: shape == BoxShape.rectangle
-            ? BorderRadius.circular(12)
-            : null,
       ),
     );
   }
@@ -718,306 +896,5 @@ class _ResponsiveContainer extends StatelessWidget {
   }
 }
 
-class _HoverableStatCard extends StatefulWidget {
-  final double width;
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color iconColor;
-  final Color bgColor;
-  final String subtitle;
-  final VoidCallback? onTap;
 
-  const _HoverableStatCard({
-    required this.width,
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.iconColor,
-    required this.bgColor,
-    required this.subtitle,
-    this.onTap,
-  });
-
-  @override
-  State<_HoverableStatCard> createState() => _HoverableStatCardState();
-}
-
-class _HoverableStatCardState extends State<_HoverableStatCard> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: widget.onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: SizedBox(
-          width: widget.width,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: widget.bgColor,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: _isHovered
-                  ? [
-                      BoxShadow(
-                        color: widget.iconColor.withValues(alpha: 0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      )
-                    ]
-                  : [],
-            ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: widget.iconColor.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(widget.icon, color: widget.iconColor, size: 20),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF6B7280),
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                widget.value,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF111827),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                widget.subtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF9CA3AF),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      ),
-    );
-  }
-}
-
-class _HoverableOrderItem extends StatefulWidget {
-  final DashboardOrder order;
-  final bool isDesktop;
-  final Color statusColor;
-  final Color statusBgColor;
-
-  const _HoverableOrderItem({
-    required this.order,
-    required this.isDesktop,
-    required this.statusColor,
-    required this.statusBgColor,
-  });
-
-  @override
-  State<_HoverableOrderItem> createState() => _HoverableOrderItemState();
-}
-
-class _HoverableOrderItemState extends State<_HoverableOrderItem> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        transform: Matrix4.identity()..scale(_isHovered ? 1.01 : 1.0),
-        decoration: BoxDecoration(
-          color: _isHovered ? const Color(0xFFF8FAFC) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF3F4F6)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: _isHovered ? 0.05 : 0.02),
-              blurRadius: _isHovered ? 8 : 4,
-              offset: Offset(0, _isHovered ? 4 : 2),
-            ),
-          ],
-        ),
-        child: widget.isDesktop
-            ? Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.order.id,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        RealtimeOrderCustomerNameText(
-                          fallbackName: widget.order.customerName,
-                          customerId: widget.order.customerId,
-                          orderId: widget.order.fullOrderId ?? widget.order.id.replaceAll('#', ''),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: widget.statusBgColor,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          widget.order.status,
-                          style: TextStyle(
-                            color: widget.statusColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '₹${widget.order.price.toInt()}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.order.timeAgo,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF9CA3AF),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.order.id,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        RealtimeOrderCustomerNameText(
-                          fallbackName: widget.order.customerName,
-                          customerId: widget.order.customerId,
-                          orderId: widget.order.fullOrderId ?? widget.order.id.replaceAll('#', ''),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: widget.statusBgColor,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      widget.order.status,
-                      style: TextStyle(
-                        color: widget.statusColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '₹${widget.order.price.toInt()}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.order.timeAgo,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF9CA3AF),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
 

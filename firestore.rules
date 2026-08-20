@@ -2,132 +2,220 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Users Collection ──────────────────────────────────────────────────
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isOrderParticipant(orderData) {
+      return isAuthenticated() && (
+        orderData.customerId == request.auth.uid ||
+        orderData.buyerId == request.auth.uid ||
+        orderData.sellerId == request.auth.uid ||
+        orderData.riderId == request.auth.uid ||
+        orderData.deliveryPartnerId == request.auth.uid ||
+        orderData.driverId == request.auth.uid
+      );
+    }
+
+    // ── Users & Buyer Profile Collection ───────────────────────────────────
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read, write: if isOwner(userId);
       }
     }
 
-    // ── Buyer User Collection ─────────────────────────────────────────────
     match /buyer_user/{userId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read, write: if isOwner(userId);
       }
     }
 
     // ── Sellers Collection ────────────────────────────────────────────────
     match /sellers/{sellerId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated();
+      allow write: if isOwner(sellerId);
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read: if isAuthenticated();
+        allow write: if isOwner(sellerId);
+      }
+    }
+
+    // ── Seller Notification Settings Collection ──────────────────────────
+    match /seller_notification_settings/{sellerId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(sellerId);
+      match /{allSubcollections=**} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(sellerId);
+      }
+    }
+
+    // ── Inventory Logs Collection ────────────────────────────────────────
+    match /inventory_logs/{logId} {
+      allow read: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.sellerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+      match /{allSubcollections=**} {
+        allow read: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+        allow write: if isAuthenticated() && request.resource.data.sellerId == request.auth.uid;
+      }
+    }
+
+    // ── Payout Requests Collection ───────────────────────────────────────
+    match /payout_requests/{requestId} {
+      allow read: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.sellerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+      match /{allSubcollections=**} {
+        allow read: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+        allow write: if isAuthenticated() && request.resource.data.sellerId == request.auth.uid;
+      }
+    }
+
+    // ── Payouts Collection ───────────────────────────────────────────────
+    match /payouts/{payoutId} {
+      allow read: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.sellerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+      match /{allSubcollections=**} {
+        allow read: if isAuthenticated() && resource.data.sellerId == request.auth.uid;
+        allow write: if isAuthenticated() && request.resource.data.sellerId == request.auth.uid;
       }
     }
 
     // ── Products Collection ───────────────────────────────────────────────
     match /products/{productId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.sellerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (
+        resource.data.sellerId == request.auth.uid ||
+        request.resource.data.sellerId == request.auth.uid
+      );
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read: if true;
+        allow write: if isAuthenticated();
       }
     }
 
     // ── Categories Collection ─────────────────────────────────────────────
     match /global_categories/{categoryId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAuthenticated();
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read: if true;
+        allow write: if isAuthenticated();
       }
     }
 
     // ── Orders Collection ─────────────────────────────────────────────────
     match /orders/{orderId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated() && (
+        isOrderParticipant(resource.data) ||
+        resource.data.status in ['ready', 'ready_for_pickup', 'preparing', 'placed', 'New']
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isOrderParticipant(resource.data) ||
+        resource.data.status in ['ready', 'ready_for_pickup', 'preparing']
+      );
+      allow delete: if false;
+
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read, write: if isAuthenticated();
       }
     }
 
     // ── Order Assignments Collection ──────────────────────────────────────
     match /order_assignments/{assignmentId} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read, write: if isAuthenticated();
       }
     }
 
     // ── Delivery Ratings Collection ───────────────────────────────────────
     match /delivery_ratings/{ratingId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read, write: if isAuthenticated();
       }
     }
 
-    // ── Delivery Partners Collection ──────────────────────────────────────
+    // ── Delivery Partners & Riders Collection ─────────────────────────────
     match /delivery_partners/{partnerId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated();
+      allow write: if isOwner(partnerId);
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read: if isAuthenticated();
+        allow write: if isOwner(partnerId);
       }
     }
 
-    // ── Riders Collection ─────────────────────────────────────────────────
     match /riders/{riderId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated();
+      allow write: if isOwner(riderId);
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read: if isAuthenticated();
+        allow write: if isOwner(riderId);
       }
     }
 
     // ── Conversations & Messages ──────────────────────────────────────────
     match /conversations/{conversationId} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read, write: if isAuthenticated();
       }
     }
 
     // ── Reviews & Ratings ─────────────────────────────────────────────────
     match /reviews/{reviewId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAuthenticated();
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read: if true;
+        allow write: if isAuthenticated();
       }
     }
 
     match /review_reports/{reportId} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read, write: if isAuthenticated();
       }
     }
 
     // ── Coupons Collection ────────────────────────────────────────────────
     match /coupons/{couponId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAuthenticated();
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read: if true;
+        allow write: if isAuthenticated();
       }
     }
 
     match /{path=**}/coupons/{couponId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
     // ── Support Tickets ───────────────────────────────────────────────────
     match /support_tickets/{ticketId} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
       match /{allSubcollections=**} {
-        allow read, write: if true;
+        allow read, write: if isAuthenticated();
       }
-    }
-
-    // ── Default Fallback ──────────────────────────────────────────────────
-    match /{document=**} {
-      allow read, write: if true;
     }
   }
 }

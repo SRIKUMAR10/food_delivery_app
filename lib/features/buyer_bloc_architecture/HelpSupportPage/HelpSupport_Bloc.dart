@@ -21,17 +21,26 @@ class HelpSupportBloc extends Bloc<HelpSupportEvent, HelpSupportState> {
   ) async {
     emit(state.copyWith(status: HelpSupportStatus.loading));
 
-    await emit.forEach<List<FaqItem>>(
-      _repository.watchFaqs(),
-      onData: (faqItems) => state.copyWith(
+    try {
+      await emit.forEach<List<FaqItem>>(
+        _repository.watchFaqs(),
+        onData: (faqItems) => state.copyWith(
+          status: HelpSupportStatus.loaded,
+          faqItems: faqItems.isNotEmpty ? faqItems : HelpSupportRepository.defaultFaqs,
+        ),
+        onError: (e, _) => state.copyWith(
+          status: HelpSupportStatus.loaded,
+          faqItems: state.faqItems.isNotEmpty ? state.faqItems : HelpSupportRepository.defaultFaqs,
+          errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
+        ),
+      );
+    } catch (e) {
+      emit(state.copyWith(
         status: HelpSupportStatus.loaded,
-        faqItems: faqItems,
-      ),
-      onError: (e, _) => state.copyWith(
-        status: HelpSupportStatus.failure,
+        faqItems: state.faqItems.isNotEmpty ? state.faqItems : HelpSupportRepository.defaultFaqs,
         errorMessage: AppExceptionFormatter.toUserFriendlyMessage(e),
-      ),
-    );
+      ));
+    }
   }
 
   Future<void> _onSubmitSupportTicket(

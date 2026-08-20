@@ -217,65 +217,96 @@ class FirebaseOrderRepository implements IOrderRepository {
     required String sellerId,
     required String customerId,
   }) async {
-    final batch = _firestore.batch();
-
     final orderRef = _firestore.collection('orders').doc(orderId);
-    batch.update(orderRef, {
-      'status': OrderStatus.delivered.value,
-      'deliveryPartnerStatus': 'completed',
-      'deliveryStatus': 'delivered',
-      'deliveredAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+
+    await _firestore.runTransaction((transaction) async {
+      final orderSnap = await transaction.get(orderRef);
+      if (!orderSnap.exists) {
+        throw Exception('Order $orderId not found');
+      }
+
+      final orderData = orderSnap.data() ?? {};
+      final isAlreadySettled = orderData['isSettled'] == true ||
+          orderData['status'] == OrderStatus.delivered.value ||
+          orderData['deliveryStatus'] == 'delivered';
+
+      // Always ensure order is marked delivered
+      transaction.update(orderRef, {
+        'status': OrderStatus.delivered.value,
+        'deliveryPartnerStatus': 'completed',
+        'deliveryStatus': 'delivered',
+        'isSettled': true,
+        'deliveredAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Idempotency: Only credit earnings once if not already settled
+      if (!isAlreadySettled) {
+        if (driverId.isNotEmpty) {
+          final driverRef =
+              _firestore.collection('delivery_partners').doc(driverId);
+          transaction.set(driverRef, {
+            'totalEarnings': FieldValue.increment(deliveryFee),
+            'completedTrips': FieldValue.increment(1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+          final driverTxRef = _firestore
+              .collection('delivery_partners')
+              .doc(driverId)
+              .collection('transactions')
+              .doc('${orderId}_driver_earning');
+          transaction.set(driverTxRef, {
+            'orderId': orderId,
+            'amount': deliveryFee,
+            'type': 'delivery_earning',
+            'description': 'Delivery fee for order #$orderId',
+            'status': 'completed',
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+
+        if (sellerId.isNotEmpty) {
+          final sellerRef = _firestore.collection('sellers').doc(sellerId);
+          transaction.set(sellerRef, {
+            'totalEarnings': FieldValue.increment(totalOrderAmount),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+          final sellerTxRef = _firestore
+              .collection('sellers')
+              .doc(sellerId)
+              .collection('transactions')
+              .doc('${orderId}_seller_earning');
+          transaction.set(sellerTxRef, {
+            'orderId': orderId,
+            'amount': totalOrderAmount,
+            'type': 'order_revenue',
+            'description': 'Revenue from order #$orderId',
+            'status': 'completed',
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+
+        if (customerId.isNotEmpty) {
+          final customerTxRef = _firestore
+              .collection('buyer_user')
+              .doc(customerId)
+              .collection('transactions')
+              .doc('${orderId}_customer_payment');
+          transaction.set(customerTxRef, {
+            'orderId': orderId,
+            'amount': -totalOrderAmount,
+            'type': 'order_payment',
+            'description': 'Order #$orderId completed',
+            'status': 'completed',
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+      }
     });
 
-    if (driverId.isNotEmpty) {
-      final driverRef = _firestore.collection('delivery_partners').doc(driverId);
-      batch.set(driverRef, {
-        'totalEarnings': FieldValue.increment(deliveryFee),
-        'completedTrips': FieldValue.increment(1),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      final driverTxRef = _firestore
-          .collection('delivery_partners')
-          .doc(driverId)
-          .collection('transactions')
-          .doc();
-      batch.set(driverTxRef, {
-        'orderId': orderId,
-        'amount': deliveryFee,
-        'type': 'delivery_earning',
-        'description': 'Delivery fee for order #$orderId',
-        'status': 'completed',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
-
-    if (sellerId.isNotEmpty) {
-      final sellerRef = _firestore.collection('sellers').doc(sellerId);
-      batch.set(sellerRef, {
-        'totalEarnings': FieldValue.increment(totalOrderAmount),
-      }, SetOptions(merge: true));
-    }
-
-    if (customerId.isNotEmpty) {
-      final customerTxRef = _firestore
-          .collection('buyer_user')
-          .doc(customerId)
-          .collection('transactions')
-          .doc();
-      batch.set(customerTxRef, {
-        'orderId': orderId,
-        'amount': -totalOrderAmount,
-        'type': 'order_payment',
-        'description': 'Order #$orderId completed',
-        'status': 'completed',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
-
     _orderCache.remove(orderId);
-    await batch.commit();
   }
 
   @override
@@ -285,11 +316,13 @@ class FirebaseOrderRepository implements IOrderRepository {
     required String sellerId,
     required double amount,
   }) async {
-    await _firestore
+    final customerTxRef = _firestore
         .collection('buyer_user')
         .doc(customerId)
         .collection('transactions')
-        .add({
+        .doc('${orderId}_buyer_ledger');
+
+    await customerTxRef.set({
       'orderId': orderId,
       'sellerId': sellerId,
       'amount': -amount,
@@ -297,6 +330,6 @@ class FirebaseOrderRepository implements IOrderRepository {
       'description': 'Order #$orderId completed',
       'status': 'completed',
       'createdAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
   }
 }

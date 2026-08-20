@@ -10,6 +10,7 @@ import '../seller_wallet_page/seller_wallet_page__state.dart';
 import 'seller_payout_history_page__bloc.dart';
 import 'seller_payout_history_page__event.dart';
 import 'seller_payout_history_page__state.dart';
+import '../../../core/widgets/shimmer_loader.dart';
 
 class SellerPayoutHistoryPage extends StatelessWidget {
   const SellerPayoutHistoryPage({super.key});
@@ -179,13 +180,9 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
         vertical: 16.0,
       ),
       itemCount: 6,
-      itemBuilder: (context, index) => Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        height: 80,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(16),
-        ),
+      itemBuilder: (context, index) => const Padding(
+        padding: EdgeInsets.only(bottom: 16),
+        child: SkeletonBox(height: 80, borderRadius: 16),
       ),
     );
   }

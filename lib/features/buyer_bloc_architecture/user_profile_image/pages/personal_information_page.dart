@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/widgets/app_snack_bar.dart';
 
 import '../user_profile_image_Bloc.dart';
 import '../user_profile_models.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class PersonalInformationPage extends StatefulWidget {
   const PersonalInformationPage({super.key});
@@ -13,6 +15,7 @@ class PersonalInformationPage extends StatefulWidget {
 }
 
 class _PersonalInformationPageState extends State<PersonalInformationPage> {
+  late final TextEditingController _uidController;
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
@@ -26,36 +29,51 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
   @override
   void initState() {
     super.initState();
+    final bloc = context.read<UserProfileBloc>();
+    _uidController = TextEditingController(text: bloc.authService.currentUserId ?? '');
     _nameController = TextEditingController();
     _emailController = TextEditingController();
     _phoneController = TextEditingController();
 
-    context.read<UserProfileBloc>().add(const LoadProfileStarted());
+    final currentState = bloc.state;
+    if (currentState is ProfileLoaded) {
+      _populateControllers(currentState.profile);
+    }
+    bloc.add(const LoadProfileStarted());
   }
 
   @override
   void dispose() {
+    _uidController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
 
-  void _populateControllers(UserProfile profile) {
+  void _populateControllers(UserProfile profile, {bool callSetState = true}) {
     if (!_profileLoaded) {
       _nameController.text = profile.name;
       _emailController.text = profile.email;
       _phoneController.text = profile.phone;
       _profileLoaded = true;
+      if (callSetState && mounted) setState(() {});
     } else {
+      bool changed = false;
       if (_nameController.text.isEmpty && profile.name.isNotEmpty) {
         _nameController.text = profile.name;
+        changed = true;
       }
       if (_emailController.text.isEmpty && profile.email.isNotEmpty) {
         _emailController.text = profile.email;
+        changed = true;
       }
       if (_phoneController.text.isEmpty && profile.phone.isNotEmpty) {
         _phoneController.text = profile.phone;
+        changed = true;
+      }
+      if (changed && callSetState && mounted) {
+        setState(() {});
       }
     }
   }
@@ -122,20 +140,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     String message, {
     bool isError = false,
   }) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-        ),
-        backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   @override
@@ -163,7 +168,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFEF2A39), Color(0xFFFF5E6B)],
+                  colors: [BuyerAppColors.primary, Color(0xFFFF5E6B)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -255,6 +260,9 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
         if (state is ProfileLoaded) {
           profile = state.profile;
           isSaving = state.isSaving;
+          if (!_profileLoaded || (_nameController.text.isEmpty && profile.name.isNotEmpty)) {
+            _populateControllers(profile, callSetState: false);
+          }
         }
 
         if (isLoading && !_profileLoaded) {
@@ -272,7 +280,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                 children: [
                   _buildModernField(
                     label: 'Account User ID (UID)',
-                    controller: TextEditingController(text: context.read<UserProfileBloc>().authService.currentUserId ?? ''),
+                    controller: _uidController,
                     icon: Icons.fingerprint_rounded,
                     enabled: false,
                     key: const ValueKey('uidField'),
@@ -311,7 +319,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                           ? null
                           : () => _onSave(profile),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE52121),
+                        backgroundColor: BuyerAppColors.primaryDeep,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -366,7 +374,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: showError ? const Color(0xFFE52121) : Colors.black54,
+            color: showError ? BuyerAppColors.primaryDeep : Colors.black54,
           ),
         ),
         const SizedBox(height: 8),
@@ -379,7 +387,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
           decoration: InputDecoration(
             prefixIcon:
-                Icon(icon, size: 20, color: const Color(0xFFEF2A39)),
+                Icon(icon, size: 20, color: BuyerAppColors.primary),
             filled: true,
             fillColor: enabled ? Colors.white : Colors.grey[100],
             contentPadding: const EdgeInsets.symmetric(
@@ -394,7 +402,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
                 color: showError
-                    ? const Color(0xFFE52121)
+                    ? BuyerAppColors.primaryDeep
                     : Colors.grey.withValues(alpha: 0.1),
               ),
             ),
@@ -402,8 +410,8 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
                 color: showError
-                    ? const Color(0xFFE52121)
-                    : const Color(0xFFEF2A39),
+                    ? BuyerAppColors.primaryDeep
+                    : BuyerAppColors.primary,
                 width: 1.5,
               ),
             ),
@@ -429,7 +437,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
             child: Text(
               errorText,
               style: const TextStyle(
-                color: Color(0xFFE52121),
+                color: BuyerAppColors.primaryDeep,
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
               ),

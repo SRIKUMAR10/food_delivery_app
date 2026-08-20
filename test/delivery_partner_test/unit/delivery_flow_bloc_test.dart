@@ -20,6 +20,7 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_service.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Dashboard_page/Delivery_Dashboard_page_state.dart';
@@ -32,6 +33,12 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_repository.dart';
+
+class MockDeliveryForgotPasswordRepository extends Mock
+    implements DeliveryForgotPasswordRepositoryBase {}
+
+class MockDeliveryForgotPasswordService extends Mock
+    implements DeliveryForgotPasswordServiceBase {}
 
 class MockIncomingOrderRepository extends Mock
     implements DeliveryIncomingOrderRepositoryBase {}
@@ -455,27 +462,39 @@ void main() {
   });
 
   group('Forgot Password BLoC', () {
+    late MockDeliveryForgotPasswordRepository mockRepository;
+    late MockDeliveryForgotPasswordService mockService;
+
+    setUp(() {
+      mockRepository = MockDeliveryForgotPasswordRepository();
+      mockService = MockDeliveryForgotPasswordService();
+    });
+
     test('initial state has defaults', () {
       final bloc = DeliveryForgotPasswordBloc(
-        service: DeliveryForgotPasswordService(),
+        repository: mockRepository,
+        service: mockService,
       );
       expect(bloc.state.status, equals(DeliveryForgotPasswordStatus.initial));
       expect(bloc.state.phoneNumber, isEmpty);
       bloc.close();
-    }, skip: 'Requires Firebase mock for DeliveryPartnerRepository');
+    });
 
-    test('phoneChanged updates phone', () {
+    test('phoneChanged updates phone', () async {
       final bloc = DeliveryForgotPasswordBloc(
-        service: DeliveryForgotPasswordService(),
+        repository: mockRepository,
+        service: mockService,
       );
       bloc.add(const DeliveryForgotPasswordPhoneChanged('9876543210'));
+      await Future.delayed(const Duration(milliseconds: 20));
       expect(bloc.state.phoneNumber, equals('9876543210'));
       bloc.close();
-    }, skip: 'Requires Firebase mock for DeliveryPartnerRepository');
+    });
 
     test('submit empty phone fails', () async {
       final bloc = DeliveryForgotPasswordBloc(
-        service: DeliveryForgotPasswordService(),
+        repository: mockRepository,
+        service: mockService,
       );
       bloc.add(const DeliveryForgotPasswordSubmitted());
       await Future.delayed(const Duration(milliseconds: 50));
@@ -483,11 +502,12 @@ void main() {
       expect(bloc.state.status, equals(DeliveryForgotPasswordStatus.failure));
       expect(bloc.state.errorMessage, isNotNull);
       bloc.close();
-    }, skip: 'Requires Firebase mock for DeliveryPartnerRepository');
+    });
 
     test('submit invalid phone fails', () async {
       final bloc = DeliveryForgotPasswordBloc(
-        service: DeliveryForgotPasswordService(),
+        repository: mockRepository,
+        service: mockService,
       );
       bloc.add(const DeliveryForgotPasswordPhoneChanged('12'));
       bloc.add(const DeliveryForgotPasswordSubmitted());
@@ -495,7 +515,7 @@ void main() {
 
       expect(bloc.state.status, equals(DeliveryForgotPasswordStatus.failure));
       bloc.close();
-    }, skip: 'Requires Firebase mock for DeliveryPartnerRepository');
+    });
   });
 
   group('Settings BLoC', () {

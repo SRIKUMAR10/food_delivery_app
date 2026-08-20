@@ -1,14 +1,28 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/seller_model.dart';
 import 'seller_store_details_page__event.dart';
 import 'seller_store_details_page__state.dart';
 import '../../../repositories/seller_repository.dart';
 
+class _StoreDetailsStreamUpdatedEvent extends SellerStoreDetailsPageEvent {
+  final Seller seller;
+  const _StoreDetailsStreamUpdatedEvent(this.seller);
+
+  @override
+  List<Object> get props => [seller];
+}
+
 class SellerStoreDetailsBloc
     extends Bloc<SellerStoreDetailsPageEvent, SellerStoreDetailsPageState> {
-  final SellerRepository _repository = SellerRepository();
+  final SellerRepository _repository;
+  StreamSubscription<Seller>? _sellerSubscription;
 
-  SellerStoreDetailsBloc() : super(SellerStoreDetailsInitial()) {
+  SellerStoreDetailsBloc({SellerRepository? repository})
+      : _repository = repository ?? SellerRepository(),
+        super(SellerStoreDetailsInitial()) {
     on<LoadStoreDetailsEvent>(_onLoadStoreDetails);
+    on<_StoreDetailsStreamUpdatedEvent>(_onStoreDetailsStreamUpdated);
     on<EditStoreDetailsEvent>(_onEditStoreDetails);
     on<ToggleStoreStatusEvent>(_onToggleStoreStatus);
     on<UpdateFieldEvent>(_onUpdateField);
@@ -22,40 +36,77 @@ class SellerStoreDetailsBloc
     try {
       final user = _repository.currentUser;
       if (user == null) {
-        throw Exception('User not authenticated');
+        emit(const SellerStoreDetailsError('User not authenticated'));
+        return;
       }
 
-      final seller = await _repository.fetchSeller(user.uid);
+      await _sellerSubscription?.cancel();
 
-      emit(
-        SellerStoreDetailsLoaded(
-          restaurantName: seller.shopName.isNotEmpty ? seller.shopName : seller.name,
-          address: seller.businessDetails.isNotEmpty ? seller.businessDetails : 'Address not set',
-          phone: seller.phoneNumber.isNotEmpty ? seller.phoneNumber : 'Phone not set',
-          openingHours: seller.openingHours.isNotEmpty ? seller.openingHours : '10:00 AM - 11:00 PM',
-          deliveryTime: seller.deliveryTime.isNotEmpty ? seller.deliveryTime : '30 - 45 min',
-          deliveryArea: seller.deliveryArea.isNotEmpty ? seller.deliveryArea : '5.0 km',
-          gstNumber: seller.gstNumber,
-          fssaiNumber: seller.fssaiNumber,
-          panNumber: seller.panNumber,
-          isOnline: seller.isOnline,
-          gstPercentage: seller.gstPercentage,
-          minimumOrderValue: seller.minimumOrderValue,
-          packagingCharges: seller.packagingCharges,
-          bankAccountNumber: seller.bankAccountNumber,
-          bankName: seller.bankName,
-        ),
+      // First fetch directly if available
+      try {
+        final seller = await _repository.fetchSeller(user.uid);
+        emit(_mapSellerToLoadedState(seller));
+      } catch (_) {}
+
+      // Then bind continuous real-time stream listener
+      _sellerSubscription = _repository.getSellerById(user.uid).listen(
+        (seller) {
+          if (!isClosed) {
+            add(_StoreDetailsStreamUpdatedEvent(seller));
+          }
+        },
+        onError: (error) {
+          if (!isClosed) {
+            emit(SellerStoreDetailsError(error.toString()));
+          }
+        },
       );
     } catch (e) {
       emit(SellerStoreDetailsError(e.toString()));
     }
   }
 
+  void _onStoreDetailsStreamUpdated(
+    _StoreDetailsStreamUpdatedEvent event,
+    Emitter<SellerStoreDetailsPageState> emit,
+  ) {
+    emit(_mapSellerToLoadedState(event.seller));
+  }
+
+  SellerStoreDetailsLoaded _mapSellerToLoadedState(Seller seller) {
+    return SellerStoreDetailsLoaded(
+      restaurantName: seller.shopName.isNotEmpty ? seller.shopName : seller.name,
+      address: seller.businessDetails.isNotEmpty ? seller.businessDetails : 'Address not set',
+      phone: seller.phoneNumber.isNotEmpty ? seller.phoneNumber : 'Phone not set',
+      openingHours: seller.openingHours.isNotEmpty ? seller.openingHours : '10:00 AM - 11:00 PM',
+      deliveryTime: seller.deliveryTime.isNotEmpty ? seller.deliveryTime : '30 - 45 min',
+      deliveryArea: seller.deliveryArea.isNotEmpty ? seller.deliveryArea : '5.0 km',
+      gstNumber: seller.gstNumber,
+      fssaiNumber: seller.fssaiNumber,
+      panNumber: seller.panNumber,
+      isOnline: seller.isOnline,
+      gstPercentage: seller.gstPercentage,
+      minimumOrderValue: seller.minimumOrderValue,
+      packagingCharges: seller.packagingCharges,
+      bankAccountNumber: seller.bankAccountNumber,
+      bankName: seller.bankName,
+      fssaiExpiryDate: seller.fssaiExpiryDate,
+      isTaxIncludedInPrice: seller.isTaxIncludedInPrice,
+      invoicePrefix: seller.invoicePrefix,
+      autoAcceptOrders: seller.autoAcceptOrders,
+      prepBufferTimeMinutes: seller.prepBufferTimeMinutes,
+      maxActiveOrdersLimit: seller.maxActiveOrdersLimit,
+      allowScheduledOrders: seller.allowScheduledOrders,
+      allowSpecialInstructions: seller.allowSpecialInstructions,
+      cancellationWindowMinutes: seller.cancellationWindowMinutes,
+    );
+  }
+
   Future<void> _onEditStoreDetails(
     EditStoreDetailsEvent event,
     Emitter<SellerStoreDetailsPageState> emit,
   ) async {
-    // Handle generic edit logic if needed
+    // Handled via individual update events
   }
 
   Future<void> _onToggleStoreStatus(
@@ -63,34 +114,13 @@ class SellerStoreDetailsBloc
     Emitter<SellerStoreDetailsPageState> emit,
   ) async {
     if (state is SellerStoreDetailsLoaded) {
-      final currentState = state as SellerStoreDetailsLoaded;
       try {
         final user = _repository.currentUser;
         if (user != null) {
           await _repository.updateSellerData(user.uid, {'isOnline': event.isOnline});
         }
-        
-        emit(
-          SellerStoreDetailsLoaded(
-            restaurantName: currentState.restaurantName,
-            address: currentState.address,
-            phone: currentState.phone,
-            openingHours: currentState.openingHours,
-            deliveryTime: currentState.deliveryTime,
-            deliveryArea: currentState.deliveryArea,
-            gstNumber: currentState.gstNumber,
-            fssaiNumber: currentState.fssaiNumber,
-            panNumber: currentState.panNumber,
-            isOnline: event.isOnline,
-            gstPercentage: currentState.gstPercentage,
-            minimumOrderValue: currentState.minimumOrderValue,
-            packagingCharges: currentState.packagingCharges,
-            bankAccountNumber: currentState.bankAccountNumber,
-            bankName: currentState.bankName,
-          ),
-        );
       } catch (e) {
-        // Fallback on error if needed
+        emit(SellerStoreDetailsError('Failed to update status: $e'));
       }
     }
   }
@@ -100,36 +130,20 @@ class SellerStoreDetailsBloc
     Emitter<SellerStoreDetailsPageState> emit,
   ) async {
     if (state is SellerStoreDetailsLoaded) {
-      final currentState = state as SellerStoreDetailsLoaded;
       try {
         final user = _repository.currentUser;
         if (user != null) {
           await _repository.updateSellerData(user.uid, {event.field: event.value});
         }
-        
-        // Optimistically update the UI
-        emit(
-          SellerStoreDetailsLoaded(
-            restaurantName: currentState.restaurantName,
-            address: currentState.address,
-            phone: currentState.phone,
-            openingHours: event.field == 'openingHours' ? event.value as String : currentState.openingHours,
-            deliveryTime: event.field == 'deliveryTime' ? event.value as String : currentState.deliveryTime,
-            deliveryArea: currentState.deliveryArea,
-            gstNumber: currentState.gstNumber,
-            fssaiNumber: currentState.fssaiNumber,
-            panNumber: currentState.panNumber,
-            isOnline: currentState.isOnline,
-            gstPercentage: event.field == 'gstPercentage' ? event.value as double : currentState.gstPercentage,
-            minimumOrderValue: event.field == 'minimumOrderValue' ? event.value as double : currentState.minimumOrderValue,
-            packagingCharges: event.field == 'packagingCharges' ? event.value as double : currentState.packagingCharges,
-            bankAccountNumber: currentState.bankAccountNumber,
-            bankName: currentState.bankName,
-          ),
-        );
       } catch (e) {
-        // Emit error or re-load in a robust app
+        emit(SellerStoreDetailsError('Failed to update ${event.field}: $e'));
       }
     }
+  }
+
+  @override
+  Future<void> close() {
+    _sellerSubscription?.cancel();
+    return super.close();
   }
 }

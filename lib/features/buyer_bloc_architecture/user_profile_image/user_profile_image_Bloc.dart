@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/core/services/app_logout_service.dart';
 import 'package:food_delivery_app/core/repositories/i_user_profile_repository.dart';
 import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'user_profile_models.dart';
@@ -43,7 +44,9 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     LoadProfileStarted event,
     Emitter<UserProfileState> emit,
   ) async {
-    emit(const ProfileLoading());
+    if (state is! ProfileLoaded) {
+      emit(const ProfileLoading());
+    }
 
     try {
       final uid = authService.currentUserId;
@@ -233,7 +236,7 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     Emitter<UserProfileState> emit,
   ) async {
     try {
-      await authService.signOut();
+      await AppLogoutService.signOut(authService);
       emit(const SignOutSuccess());
     } catch (e) {
       emit(ProfileError('Failed to sign out: $e', previousState: state));

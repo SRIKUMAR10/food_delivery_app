@@ -4,12 +4,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'seller_store_details_page__bloc.dart';
 import 'seller_store_details_page__event.dart';
 import 'seller_store_details_page__state.dart';
+import '../../../core/widgets/hoverable_widgets.dart';
+import '../../../core/widgets/shimmer_loader.dart';
 
 class SellerStoreDetailsPage extends StatelessWidget {
-  const SellerStoreDetailsPage({super.key});
+  final SellerStoreDetailsBloc? bloc;
+  const SellerStoreDetailsPage({super.key, this.bloc});
 
   @override
   Widget build(BuildContext context) {
+    if (bloc != null) {
+      return BlocProvider<SellerStoreDetailsBloc>.value(
+        value: bloc!,
+        child: const Scaffold(
+          backgroundColor: Color(0xFFF8FAFC), // Light grayish-blue background
+          body: SafeArea(child: ResponsiveStoreDetailsLayout()),
+        ),
+      );
+    }
     return BlocProvider(
       create: (context) =>
           SellerStoreDetailsBloc()..add(LoadStoreDetailsEvent()),
@@ -53,7 +65,33 @@ class StoreDetailsContent extends StatelessWidget {
             builder: (context, state) {
         if (state is SellerStoreDetailsLoading ||
             state is SellerStoreDetailsInitial) {
-          return const _StoreDetailsSkeleton();
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SkeletonBox(width: 250, height: 48, borderRadius: 0),
+                const SizedBox(height: 8),
+                const SkeletonBox(width: 300, height: 20, borderRadius: 0),
+                const SizedBox(height: 32),
+                const SkeletonBox(height: 100, borderRadius: 24),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 2.5,
+                      crossAxisSpacing: 24,
+                      mainAxisSpacing: 24,
+                    ),
+                    itemCount: 6,
+                    itemBuilder: (context, index) =>
+                        const SkeletonBox(borderRadius: 24),
+                  ),
+                ),
+              ],
+            ),
+          );
         } else if (state is SellerStoreDetailsError) {
           return Center(child: Text('Error: ${state.message}'));
         } else if (state is SellerStoreDetailsLoaded) {
@@ -115,7 +153,7 @@ class StoreDetailsContent extends StatelessWidget {
                           : constraints.maxWidth;
 
                       final List<Widget> items = [
-                        _HoverableInfoCard(
+                        _buildInfoCard(
                           index: 0,
                           icon: Icons.storefront_outlined,
                           iconColor: const Color(0xFF3B82F6),
@@ -125,7 +163,7 @@ class StoreDetailsContent extends StatelessWidget {
                           isEditable: false,
                         ),
 
-                        _HoverableInfoCard(
+                        _buildInfoCard(
                           index: 2,
                           icon: Icons.timer_outlined,
                           iconColor: const Color(0xFF10B981),
@@ -146,7 +184,7 @@ class StoreDetailsContent extends StatelessWidget {
                             );
                           },
                         ),
-                        _HoverableInfoCard(
+                        _buildInfoCard(
                           index: 3,
                           icon: Icons.delivery_dining_outlined,
                           iconColor: const Color(0xFF8B5CF6),
@@ -156,37 +194,103 @@ class StoreDetailsContent extends StatelessWidget {
                           isEditable: false,
                         ),
                         if (state.gstNumber != null)
-                          _HoverableInfoCard(
+                          _buildInfoCard(
                             index: 4,
                             icon: Icons.account_balance_outlined,
                             iconColor: const Color(0xFF64748B),
                             iconBgColor: const Color(0xFFF1F5F9),
                             title: 'GST Number',
-                            subtitle: state.gstNumber!,
-                            isEditable: false,
+                            subtitle: state.gstNumber!.isEmpty
+                                ? 'Not set'
+                                : state.gstNumber!,
+                            isEditable: true,
+                            onEdit: () {
+                              _showEditDialog(
+                                context,
+                                'GST Number',
+                                state.gstNumber ?? '',
+                                (val) {
+                                  context.read<SellerStoreDetailsBloc>().add(
+                                    UpdateFieldEvent('gstNumber', val.trim().toUpperCase()),
+                                  );
+                                },
+                              );
+                            },
                           ),
                         if (state.fssaiNumber != null)
-                          _HoverableInfoCard(
+                          _buildInfoCard(
                             index: 5,
                             icon: Icons.restaurant_menu_outlined,
                             iconColor: const Color(0xFFEC4899),
                             iconBgColor: const Color(0xFFFDF2F8),
                             title: 'FSSAI License',
-                            subtitle: state.fssaiNumber!,
-                            isEditable: false,
+                            subtitle: state.fssaiNumber!.isEmpty
+                                ? 'Not set'
+                                : state.fssaiNumber!,
+                            isEditable: true,
+                            onEdit: () {
+                              _showEditDialog(
+                                context,
+                                'FSSAI License Number',
+                                state.fssaiNumber ?? '',
+                                (val) {
+                                  context.read<SellerStoreDetailsBloc>().add(
+                                    UpdateFieldEvent('fssaiNumber', val.trim()),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        if (state.fssaiExpiryDate != null)
+                          _buildInfoCard(
+                            index: 6,
+                            icon: Icons.event_outlined,
+                            iconColor: const Color(0xFFF97316),
+                            iconBgColor: const Color(0xFFFFF7ED),
+                            title: 'FSSAI Expiry Date',
+                            subtitle: state.fssaiExpiryDate!.isEmpty
+                                ? 'Not set'
+                                : state.fssaiExpiryDate!,
+                            isEditable: true,
+                            onEdit: () {
+                              _showEditDialog(
+                                context,
+                                'FSSAI Expiry Date',
+                                state.fssaiExpiryDate ?? '',
+                                (val) {
+                                  context.read<SellerStoreDetailsBloc>().add(
+                                    UpdateFieldEvent('fssaiExpiryDate', val.trim()),
+                                  );
+                                },
+                              );
+                            },
                           ),
                         if (state.panNumber != null)
-                          _HoverableInfoCard(
-                            index: 6,
+                          _buildInfoCard(
+                            index: 7,
                             icon: Icons.credit_card_outlined,
                             iconColor: const Color(0xFF14B8A6),
                             iconBgColor: const Color(0xFFF0FDFA),
                             title: 'PAN Number',
-                            subtitle: state.panNumber!,
-                            isEditable: false,
+                            subtitle: state.panNumber!.isEmpty
+                                ? 'Not set'
+                                : state.panNumber!,
+                            isEditable: true,
+                            onEdit: () {
+                              _showEditDialog(
+                                context,
+                                'PAN Number',
+                                state.panNumber ?? '',
+                                (val) {
+                                  context.read<SellerStoreDetailsBloc>().add(
+                                    UpdateFieldEvent('panNumber', val.trim().toUpperCase()),
+                                  );
+                                },
+                              );
+                            },
                           ),
-                        _HoverableInfoCard(
-                          index: 7,
+                        _buildInfoCard(
+                          index: 8,
                           icon: Icons.monetization_on_outlined,
                           iconColor: const Color(0xFFEF4444),
                           iconBgColor: const Color(0xFFFEF2F2),
@@ -214,8 +318,8 @@ class StoreDetailsContent extends StatelessWidget {
                             );
                           },
                         ),
-                        _HoverableInfoCard(
-                          index: 8,
+                        _buildInfoCard(
+                          index: 9,
                           icon: Icons.takeout_dining_outlined,
                           iconColor: const Color(0xFFF97316),
                           iconBgColor: const Color(0xFFFFF7ED),
@@ -243,6 +347,46 @@ class StoreDetailsContent extends StatelessWidget {
                             );
                           },
                         ),
+                        _buildInfoCard(
+                          index: 10,
+                          icon: Icons.receipt_long_outlined,
+                          iconColor: const Color(0xFF64748B),
+                          iconBgColor: const Color(0xFFF1F5F9),
+                          title: 'Invoice Prefix',
+                          subtitle: state.invoicePrefix.isEmpty
+                              ? 'Not set'
+                              : state.invoicePrefix,
+                          isEditable: true,
+                          onEdit: () {
+                            _showEditDialog(
+                              context,
+                              'Invoice Prefix',
+                              state.invoicePrefix,
+                              (val) {
+                                context.read<SellerStoreDetailsBloc>().add(
+                                  UpdateFieldEvent('invoicePrefix', val.trim()),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                        _buildSwitchCard(
+                          index: 11,
+                          icon: Icons.percent,
+                          iconColor: const Color(0xFF6366F1),
+                          iconBgColor: const Color(0xFFEEF2FF),
+                          title: 'Prices Include Tax (GST Inclusive)',
+                          subtitle: 'Menu prices already include all taxes',
+                          value: state.isTaxIncludedInPrice,
+                          onChanged: (newValue) {
+                            context.read<SellerStoreDetailsBloc>().add(
+                              UpdateFieldEvent(
+                                'isTaxIncludedInPrice',
+                                newValue,
+                              ),
+                            );
+                          },
+                        ),
                       ];
 
                       return Wrap(
@@ -258,8 +402,8 @@ class StoreDetailsContent extends StatelessWidget {
                               ..add(
                                 SizedBox(
                                   width: itemWidth,
-                                  child: _HoverableDropdownCard(
-                                    index: 9,
+                                  child: _buildDropdownCard(
+                                    index: 12,
                                     icon: Icons.percent,
                                     iconColor: const Color(0xFF6366F1),
                                     iconBgColor: const Color(0xFFEEF2FF),
@@ -294,6 +438,10 @@ class StoreDetailsContent extends StatelessWidget {
                       );
                     },
                   ),
+                  const SizedBox(height: 40),
+
+                  // Order Processing Rules Section
+                  _OrderProcessingSection(state: state),
                   const SizedBox(height: 64),
                 ],
               ),
@@ -514,61 +662,71 @@ class StoreDetailsContent extends StatelessWidget {
     Function(String) onSave, {
     bool isNumeric = false,
   }) {
-    final TextEditingController controller = TextEditingController(
-      text: initialValue,
-    );
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Edit $title',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: TextField(
-            controller: controller,
-            keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              labelText: title,
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(
-                  color: Color(0xFFE52929),
-                  width: 2,
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE52929),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () {
-                onSave(controller.text);
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
+    _showEditValueDialog(context, title, initialValue, onSave, isNumeric: isNumeric);
   }
+}
+
+void _showEditValueDialog(
+  BuildContext context,
+  String title,
+  String initialValue,
+  Function(String) onSave, {
+  bool isNumeric = false,
+}) {
+  final TextEditingController controller = TextEditingController(
+    text: initialValue,
+  );
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Edit $title',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: TextField(
+          controller: controller,
+          keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            labelText: title,
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: Color(0xFFE52929),
+                width: 2,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE52929),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () {
+              onSave(controller.text);
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 class _AnimatedStatusBanner extends StatefulWidget {
@@ -708,35 +866,18 @@ class _AnimatedStatusBannerState extends State<_AnimatedStatusBanner>
   }
 }
 
-class _HoverableInfoCard extends StatefulWidget {
+class _CardEntry extends StatefulWidget {
   final int index;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBgColor;
-  final String title;
-  final String subtitle;
-  final bool isEditable;
-  final VoidCallback? onEdit;
-  final VoidCallback? onTap;
+  final Widget child;
 
-  const _HoverableInfoCard({
-    required this.index,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBgColor,
-    required this.title,
-    required this.subtitle,
-    required this.isEditable,
-    this.onEdit,
-  }) : onTap = null;
+  const _CardEntry({required this.index, required this.child});
 
   @override
-  State<_HoverableInfoCard> createState() => _HoverableInfoCardState();
+  State<_CardEntry> createState() => _CardEntryState();
 }
 
-class _HoverableInfoCardState extends State<_HoverableInfoCard>
+class _CardEntryState extends State<_CardEntry>
     with SingleTickerProviderStateMixin {
-  bool _isHovered = false;
   late AnimationController _entryController;
   late Animation<double> _opacity;
   late Animation<Offset> _slide;
@@ -774,307 +915,469 @@ class _HoverableInfoCardState extends State<_HoverableInfoCard>
       opacity: _opacity,
       child: SlideTransition(
         position: _slide,
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            transform: Matrix4.identity()
-              ..scale(_isHovered && widget.isEditable ? 1.02 : 1.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: _isHovered ? 0.08 : 0.03,
-                  ),
-                  blurRadius: _isHovered ? 24 : 12,
-                  spreadRadius: _isHovered ? 2 : 0,
-                  offset: Offset(0, _isHovered ? 8 : 4),
-                ),
-              ],
-            ),
-            child: InkWell(
-              onTap: widget.onTap,
-              borderRadius: BorderRadius.circular(24),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: widget.iconBgColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        widget.icon,
-                        color: widget.iconColor,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF111827),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            widget.subtitle,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF6B7280),
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (widget.isEditable)
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined),
-                        color: _isHovered
-                            ? const Color(0xFFE52929)
-                            : const Color(0xFF9CA3AF),
-                        onPressed: widget.onEdit,
-                      ),
-                    if (!widget.isEditable && widget.onTap != null)
-                      Icon(
-                        Icons.chevron_right,
-                        color: _isHovered
-                            ? const Color(0xFF111827)
-                            : const Color(0xFF9CA3AF),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
+        child: widget.child,
       ),
     );
   }
 }
 
-class _HoverableDropdownCard extends StatefulWidget {
-  final int index;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBgColor;
-  final String title;
-  final String subtitle;
-  final double value;
-  final List<double> items;
-  final ValueChanged<double?> onChanged;
-
-  const _HoverableDropdownCard({
-    required this.index,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBgColor,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  @override
-  State<_HoverableDropdownCard> createState() => _HoverableDropdownCardState();
+Widget _buildInfoCard({
+  required int index,
+  required IconData icon,
+  required Color iconColor,
+  required Color iconBgColor,
+  required String title,
+  required String subtitle,
+  required bool isEditable,
+  VoidCallback? onEdit,
+}) {
+  return _CardEntry(
+    index: index,
+    child: HoverableCard(
+      hoverScale: 1.02,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 12,
+              spreadRadius: 0,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF6B7280),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isEditable)
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  color: const Color(0xFF9CA3AF),
+                  onPressed: onEdit,
+                ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
-class _HoverableDropdownCardState extends State<_HoverableDropdownCard>
-    with SingleTickerProviderStateMixin {
-  bool _isHovered = false;
-  late AnimationController _entryController;
-  late Animation<double> _opacity;
-  late Animation<Offset> _slide;
+Widget _buildDropdownCard({
+  required int index,
+  required IconData icon,
+  required Color iconColor,
+  required Color iconBgColor,
+  required String title,
+  required String subtitle,
+  required double value,
+  required List<double> items,
+  required ValueChanged<double?> onChanged,
+}) {
+  return _CardEntry(
+    index: index,
+    child: HoverableCard(
+      hoverScale: 1.02,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 12,
+              spreadRadius: 0,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF6B7280),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<double>(
+                    value: value,
+                    isDense: true,
+                    icon: const Icon(
+                      Icons.arrow_drop_down,
+                      color: Color(0xFF64748B),
+                    ),
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    items: items.map((double item) {
+                      return DropdownMenuItem<double>(
+                        value: item,
+                        child: Text('${item.toInt()}%'),
+                      );
+                    }).toList(),
+                    onChanged: onChanged,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
-  @override
-  void initState() {
-    super.initState();
-    _entryController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _opacity = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _entryController, curve: Curves.easeOut));
-    _slide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
-        .animate(
-          CurvedAnimation(parent: _entryController, curve: Curves.easeOutCubic),
-        );
+Widget _buildSwitchCard({
+  required int index,
+  required IconData icon,
+  required Color iconColor,
+  required Color iconBgColor,
+  required String title,
+  required String subtitle,
+  required bool value,
+  required ValueChanged<bool> onChanged,
+}) {
+  return _CardEntry(
+    index: index,
+    child: HoverableCard(
+      hoverScale: 1.02,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 12,
+              spreadRadius: 0,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF6B7280),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: value,
+                activeThumbColor: Colors.white,
+                activeTrackColor: const Color(0xFF10B981),
+                inactiveThumbColor: Colors.white,
+                inactiveTrackColor: const Color(0xFFCBD5E1),
+                onChanged: onChanged,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
-    Future.delayed(Duration(milliseconds: 100 * widget.index), () {
-      if (mounted) _entryController.forward();
-    });
-  }
+class _OrderProcessingSection extends StatelessWidget {
+  final SellerStoreDetailsLoaded state;
 
-  @override
-  void dispose() {
-    _entryController.dispose();
-    super.dispose();
-  }
+  const _OrderProcessingSection({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: SlideTransition(
-        position: _slide,
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: _isHovered ? 0.08 : 0.03,
-                  ),
-                  blurRadius: _isHovered ? 24 : 12,
-                  spreadRadius: _isHovered ? 2 : 0,
-                  offset: Offset(0, _isHovered ? 8 : 4),
-                ),
-              ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.receipt_long_rounded, color: Color(0xFFE52929), size: 24),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: widget.iconBgColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(widget.icon, color: widget.iconColor, size: 28),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          widget.subtitle,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF6B7280),
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    'Order Processing Rules',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827),
                     ),
                   ),
-                  Container(
-                    height: 36,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<double>(
-                        value: widget.value,
-                        isDense: true,
-                        icon: const Icon(
-                          Icons.arrow_drop_down,
-                          color: Color(0xFF64748B),
-                        ),
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        items: widget.items.map((double value) {
-                          return DropdownMenuItem<double>(
-                            value: value,
-                            child: Text('${value.toInt()}%'),
-                          );
-                        }).toList(),
-                        onChanged: widget.onChanged,
-                      ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Auto-acceptance, kitchen capacity & scheduling rules',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF6B7280),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+          ],
         ),
-      ),
+        const SizedBox(height: 20),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isDesktop = constraints.maxWidth > 600;
+            final double itemWidth = isDesktop
+                ? (constraints.maxWidth - 24) / 2
+                : constraints.maxWidth;
+
+            final List<Widget> items = [
+              _buildSwitchCard(
+                index: 0,
+                icon: Icons.bolt_rounded,
+                iconColor: const Color(0xFFE52929),
+                iconBgColor: const Color(0xFFFEF2F2),
+                title: 'Auto-Accept Incoming Orders',
+                subtitle: 'Automatically accept valid orders without manual intervention.',
+                value: state.autoAcceptOrders,
+                onChanged: (newValue) {
+                  context.read<SellerStoreDetailsBloc>().add(
+                    UpdateFieldEvent('autoAcceptOrders', newValue),
+                  );
+                },
+              ),
+              _buildInfoCard(
+                index: 1,
+                icon: Icons.timer_outlined,
+                iconColor: const Color(0xFF10B981),
+                iconBgColor: const Color(0xFFECFDF5),
+                title: 'Preparation Buffer',
+                subtitle: '${state.prepBufferTimeMinutes} minutes',
+                isEditable: true,
+                onEdit: () {
+                  _showEditValueDialog(
+                    context,
+                    'Preparation Buffer (mins)',
+                    state.prepBufferTimeMinutes.toString(),
+                    (val) {
+                      final int? parsed = int.tryParse(val);
+                      if (parsed != null) {
+                        context.read<SellerStoreDetailsBloc>().add(
+                          UpdateFieldEvent('prepBufferTimeMinutes', parsed),
+                        );
+                      }
+                    },
+                    isNumeric: true,
+                  );
+                },
+              ),
+              _buildInfoCard(
+                index: 2,
+                icon: Icons.assessment_outlined,
+                iconColor: const Color(0xFF3B82F6),
+                iconBgColor: const Color(0xFFEFF6FF),
+                title: 'Max Active Orders Limit',
+                subtitle: '${state.maxActiveOrdersLimit} orders',
+                isEditable: true,
+                onEdit: () {
+                  _showEditValueDialog(
+                    context,
+                    'Max Active Orders Limit',
+                    state.maxActiveOrdersLimit.toString(),
+                    (val) {
+                      final int? parsed = int.tryParse(val);
+                      if (parsed != null) {
+                        context.read<SellerStoreDetailsBloc>().add(
+                          UpdateFieldEvent('maxActiveOrdersLimit', parsed),
+                        );
+                      }
+                    },
+                    isNumeric: true,
+                  );
+                },
+              ),
+              _buildInfoCard(
+                index: 3,
+                icon: Icons.hourglass_bottom_rounded,
+                iconColor: const Color(0xFFF59E0B),
+                iconBgColor: const Color(0xFFFFFBEB),
+                title: 'Cancellation Grace Window',
+                subtitle: '${state.cancellationWindowMinutes} minutes',
+                isEditable: true,
+                onEdit: () {
+                  _showEditValueDialog(
+                    context,
+                    'Cancellation Grace Window (mins)',
+                    state.cancellationWindowMinutes.toString(),
+                    (val) {
+                      final int? parsed = int.tryParse(val);
+                      if (parsed != null) {
+                        context.read<SellerStoreDetailsBloc>().add(
+                          UpdateFieldEvent('cancellationWindowMinutes', parsed),
+                        );
+                      }
+                    },
+                    isNumeric: true,
+                  );
+                },
+              ),
+              _buildSwitchCard(
+                index: 4,
+                icon: Icons.schedule_send_rounded,
+                iconColor: const Color(0xFF8B5CF6),
+                iconBgColor: const Color(0xFFF5F3FF),
+                title: 'Allow Scheduled / Pre-Orders',
+                subtitle: 'Customers can schedule orders for a later time slot.',
+                value: state.allowScheduledOrders,
+                onChanged: (newValue) {
+                  context.read<SellerStoreDetailsBloc>().add(
+                    UpdateFieldEvent('allowScheduledOrders', newValue),
+                  );
+                },
+              ),
+              _buildSwitchCard(
+                index: 5,
+                icon: Icons.note_alt_outlined,
+                iconColor: const Color(0xFF06B6D4),
+                iconBgColor: const Color(0xFFECFEFF),
+                title: 'Allow Special / Cooking Notes',
+                subtitle: 'Customers can write extra spice level or allergy instructions.',
+                value: state.allowSpecialInstructions,
+                onChanged: (newValue) {
+                  context.read<SellerStoreDetailsBloc>().add(
+                    UpdateFieldEvent('allowSpecialInstructions', newValue),
+                  );
+                },
+              ),
+            ];
+
+            return Wrap(
+              spacing: 24,
+              runSpacing: 24,
+              children: items
+                  .map((widget) => SizedBox(width: itemWidth, child: widget))
+                  .toList(),
+            );
+          },
+        ),
+      ],
     );
   }
 }
 
-class _StoreDetailsSkeleton extends StatelessWidget {
-  const _StoreDetailsSkeleton();
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(width: 250, height: 48, color: Colors.grey.shade200),
-          const SizedBox(height: 8),
-          Container(width: 300, height: 20, color: Colors.grey.shade200),
-          const SizedBox(height: 32),
-          Container(
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(24),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 2.5,
-                crossAxisSpacing: 24,
-                mainAxisSpacing: 24,
-              ),
-              itemCount: 6,
-              itemBuilder: (context, index) => Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

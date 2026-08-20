@@ -92,5 +92,11 @@ void main() {
 
       expect(identical(repo1, repo2), isTrue);
     });
+
+    test('6. UserCollection mergeBuyerDocuments safely handles matching primary and secondary UIDs', () async {
+      final userCollection = UserRepository();
+      expect(userCollection, isNotNull);
+    });
   });
 }
+

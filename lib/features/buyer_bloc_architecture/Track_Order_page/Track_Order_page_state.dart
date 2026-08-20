@@ -19,6 +19,9 @@ class TrackOrderLoaded extends TrackOrderState {
   final DateTime orderDate;
   final String estimatedDelivery;
   final int? etaMinutes;
+  final double? distanceKm;
+  final double? driverSpeed;
+  final double? driverHeading;
   final List<TrackingStep> trackingSteps;
   final DeliveryPartner deliveryPartner;
   final SellerInfo? sellerInfo;
@@ -40,6 +43,12 @@ class TrackOrderLoaded extends TrackOrderState {
   final String paymentMethod;
   final String paymentStatus;
   final String? cancellationReason;
+  final double progressRatio;
+  final bool isArrivingSoon;
+  final bool isAutoFollowDriver;
+  final String? expectedDeliveryTime;
+  final bool isRaining;
+  final String? weatherAlert;
 
   const TrackOrderLoaded({
     required this.orderId,
@@ -50,6 +59,9 @@ class TrackOrderLoaded extends TrackOrderState {
     required this.deliveryPartner,
     this.orderStatusLabel = 'Placed',
     this.etaMinutes,
+    this.distanceKm,
+    this.driverSpeed,
+    this.driverHeading,
     this.sellerInfo,
     this.customerInfo,
     this.driverLat,
@@ -58,7 +70,7 @@ class TrackOrderLoaded extends TrackOrderState {
     this.sellerLng,
     this.customerLat,
     this.customerLng,
-    this.isMapExpanded = false,
+    this.isMapExpanded = true,
     this.orderItems = const [],
     this.subtotal,
     this.deliveryFee,
@@ -69,6 +81,12 @@ class TrackOrderLoaded extends TrackOrderState {
     this.paymentMethod = '',
     this.paymentStatus = '',
     this.cancellationReason,
+    this.progressRatio = 0.0,
+    this.isArrivingSoon = false,
+    this.isAutoFollowDriver = true,
+    this.expectedDeliveryTime,
+    this.isRaining = false,
+    this.weatherAlert,
   });
 
   TrackOrderLoaded copyWith({
@@ -77,6 +95,9 @@ class TrackOrderLoaded extends TrackOrderState {
     DateTime? orderDate,
     String? estimatedDelivery,
     int? etaMinutes,
+    double? distanceKm,
+    double? driverSpeed,
+    double? driverHeading,
     List<TrackingStep>? trackingSteps,
     DeliveryPartner? deliveryPartner,
     SellerInfo? sellerInfo,
@@ -98,6 +119,12 @@ class TrackOrderLoaded extends TrackOrderState {
     String? paymentMethod,
     String? paymentStatus,
     String? cancellationReason,
+    double? progressRatio,
+    bool? isArrivingSoon,
+    bool? isAutoFollowDriver,
+    String? expectedDeliveryTime,
+    bool? isRaining,
+    String? weatherAlert,
   }) {
     return TrackOrderLoaded(
       orderId: orderId,
@@ -106,6 +133,9 @@ class TrackOrderLoaded extends TrackOrderState {
       orderDate: orderDate ?? this.orderDate,
       estimatedDelivery: estimatedDelivery ?? this.estimatedDelivery,
       etaMinutes: etaMinutes ?? this.etaMinutes,
+      distanceKm: distanceKm ?? this.distanceKm,
+      driverSpeed: driverSpeed ?? this.driverSpeed,
+      driverHeading: driverHeading ?? this.driverHeading,
       trackingSteps: trackingSteps ?? this.trackingSteps,
       deliveryPartner: deliveryPartner ?? this.deliveryPartner,
       sellerInfo: sellerInfo ?? this.sellerInfo,
@@ -127,6 +157,12 @@ class TrackOrderLoaded extends TrackOrderState {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       paymentStatus: paymentStatus ?? this.paymentStatus,
       cancellationReason: cancellationReason ?? this.cancellationReason,
+      progressRatio: progressRatio ?? this.progressRatio,
+      isArrivingSoon: isArrivingSoon ?? this.isArrivingSoon,
+      isAutoFollowDriver: isAutoFollowDriver ?? this.isAutoFollowDriver,
+      expectedDeliveryTime: expectedDeliveryTime ?? this.expectedDeliveryTime,
+      isRaining: isRaining ?? this.isRaining,
+      weatherAlert: weatherAlert ?? this.weatherAlert,
     );
   }
 
@@ -142,6 +178,12 @@ class TrackOrderLoaded extends TrackOrderState {
     orderDate,
     estimatedDelivery,
     etaMinutes,
+    distanceKm,
+    driverSpeed,
+    expectedDeliveryTime,
+    isRaining,
+    weatherAlert,
+    driverHeading,
     trackingSteps,
     deliveryPartner,
     sellerInfo,
@@ -163,6 +205,9 @@ class TrackOrderLoaded extends TrackOrderState {
     paymentMethod,
     paymentStatus,
     cancellationReason,
+    progressRatio,
+    isArrivingSoon,
+    isAutoFollowDriver,
   ];
 }
 

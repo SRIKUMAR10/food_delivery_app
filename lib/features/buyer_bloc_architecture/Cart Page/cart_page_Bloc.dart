@@ -546,9 +546,12 @@ class CartBloc extends Bloc<CartEvent, CartState> {
           validationErrors.add('${item.name} only has ${product.availableStock} in stock (you requested ${item.quantity}).');
           continue;
         }
-        if (product.effectivePrice != item.price) {
+        final priceDifference = (product.effectivePrice - item.price).abs();
+        if (priceDifference > 0.05) {
           await _cartRepository.updateItemPrice(uid, item.id, product.effectivePrice);
-          validationErrors.add('${item.name} price has been automatically updated from ₹${item.price.toStringAsFixed(0)} to ₹${product.effectivePrice.toStringAsFixed(0)}.');
+          final oldPriceStr = item.price % 1 == 0 ? item.price.toStringAsFixed(0) : item.price.toStringAsFixed(2);
+          final newPriceStr = product.effectivePrice % 1 == 0 ? product.effectivePrice.toStringAsFixed(0) : product.effectivePrice.toStringAsFixed(2);
+          validationErrors.add('${item.name} price has been automatically updated from ₹$oldPriceStr to ₹$newPriceStr.');
           continue;
         }
       }
@@ -587,7 +590,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       if (currentState.selectedPaymentMethod == CartPaymentMethod.razorpay) {
         try {
           final orderResponse = await _razorpayApiService.createOrder(
-            amount: (currentState.finalAmount * 100).toInt(),
+            amount: currentState.finalAmount,
             receipt: 'rcpt_${DateTime.now().millisecondsSinceEpoch}',
           );
           final orderId = orderResponse['orderId'] as String? ?? orderResponse['id'] as String?;

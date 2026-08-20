@@ -12,6 +12,8 @@ import 'seller_wallet_page__state.dart';
 import '../seller_request_payout_page/seller_request_payout_page__ui.dart';
 import '../seller_payout_history_page/seller_payout_history_page__ui.dart';
 import '../seller_payment_page/seller_payment_page_ui.dart';
+import '../../../core/widgets/hoverable_widgets.dart';
+import '../../../core/widgets/shimmer_loader.dart';
 
 class SellerWalletPage extends StatelessWidget {
   const SellerWalletPage({super.key});
@@ -276,7 +278,7 @@ class _SellerWalletViewState extends State<SellerWalletView> {
       children: [
         // Withdraw Button
         Expanded(
-          child: _HoverableButton(
+          child: HoverableButton(
             height: 52,
             gradient: const LinearGradient(
               colors: [Color(0xFFE52929), Color(0xFFDC2626)],
@@ -314,7 +316,7 @@ class _SellerWalletViewState extends State<SellerWalletView> {
         const SizedBox(width: 16),
         // Transactions Button
         Expanded(
-          child: _HoverableButton(
+          child: HoverableButton(
             height: 52,
             color: Colors.white,
             borderColor: const Color(0xFFE2E8F0),
@@ -398,54 +400,19 @@ class _SellerWalletViewState extends State<SellerWalletView> {
       key: const ValueKey('loading_wallet_skeleton'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          height: 120,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
+        const SkeletonBox(height: 120, borderRadius: 20),
         const SizedBox(height: 20),
-        Row(
+        const Row(
           children: [
-            Expanded(
-              child: Container(
-                height: 52,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Container(
-                height: 52,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
+            Expanded(child: SkeletonBox(height: 52, borderRadius: 12)),
+            SizedBox(width: 16),
+            Expanded(child: SkeletonBox(height: 52, borderRadius: 12)),
           ],
         ),
         const SizedBox(height: 32),
-        Container(
-          width: 150,
-          height: 22,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
+        const SkeletonBox(width: 150, height: 22, borderRadius: 4),
         const SizedBox(height: 16),
-        Container(
-          height: 220,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
+        const SkeletonBox(height: 220, borderRadius: 16),
       ],
     );
   }
@@ -626,65 +593,4 @@ class _PayoutListItemState extends State<_PayoutListItem>
   }
 }
 
-class _HoverableButton extends StatefulWidget {
-  final double height;
-  final Gradient? gradient;
-  final Color? color;
-  final Color? borderColor;
-  final Color? shadowColor;
-  final VoidCallback? onPressed;
-  final Widget child;
 
-  const _HoverableButton({
-    required this.height,
-    this.gradient,
-    this.color,
-    this.borderColor,
-    this.shadowColor,
-    this.onPressed,
-    required this.child,
-  });
-
-  @override
-  State<_HoverableButton> createState() => _HoverableButtonState();
-}
-
-class _HoverableButtonState extends State<_HoverableButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: widget.onPressed != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: widget.height,
-        transform: Matrix4.identity()..scale(_isHovered && widget.onPressed != null ? 1.02 : 1.0),
-        decoration: BoxDecoration(
-          color: widget.color,
-          gradient: widget.gradient,
-          borderRadius: BorderRadius.circular(12),
-          border: widget.borderColor != null ? Border.all(color: widget.borderColor!) : null,
-          boxShadow: widget.shadowColor != null && _isHovered
-              ? [BoxShadow(color: widget.shadowColor!, blurRadius: 12, offset: const Offset(0, 6))]
-              : widget.shadowColor != null
-                  ? [BoxShadow(color: widget.shadowColor!, blurRadius: 8, offset: const Offset(0, 4))]
-                  : null,
-        ),
-        child: ElevatedButton(
-          onPressed: widget.onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: widget.child,
-        ),
-      ),
-    );
-  }
-}

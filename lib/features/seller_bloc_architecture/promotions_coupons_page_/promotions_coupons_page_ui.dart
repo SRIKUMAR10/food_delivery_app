@@ -193,7 +193,7 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
                                       icon: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
                                       label: const Text('Create Coupon'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF3B82F6),
+                                        backgroundColor: const Color(0xFF1D4ED8),
                                         foregroundColor: Colors.white,
                                         elevation: 0,
                                         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -344,12 +344,12 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
                                             fontWeight: FontWeight.w600,
                                             color: isSelected ? Colors.white : const Color(0xFF475569),
                                           ),
-                                          selectedColor: const Color(0xFF3B82F6),
+                                          selectedColor: const Color(0xFF1D4ED8),
                                           backgroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(20),
                                             side: BorderSide(
-                                              color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFFE2E8F0),
+                                              color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFFE2E8F0),
                                             ),
                                           ),
                                         ),
@@ -385,12 +385,12 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
                                             fontWeight: FontWeight.w600,
                                             color: isSelected ? Colors.white : const Color(0xFF475569),
                                           ),
-                                          selectedColor: const Color(0xFF8B5CF6),
+                                          selectedColor: const Color(0xFF6D28D9),
                                           backgroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(20),
                                             side: BorderSide(
-                                              color: isSelected ? const Color(0xFF8B5CF6) : const Color(0xFFE2E8F0),
+                                              color: isSelected ? const Color(0xFF6D28D9) : const Color(0xFFE2E8F0),
                                             ),
                                           ),
                                         ),
@@ -434,52 +434,61 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
 
                             if (coupons.isEmpty) {
                               return SliverFillRemaining(
+                                hasScrollBody: false,
                                 child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(20),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFEFF6FF),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.local_offer_outlined,
-                                          color: Color(0xFF3B82F6),
-                                          size: 48,
-                                        ),
+                                  child: SingleChildScrollView(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(20),
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFEFF6FF),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.local_offer_outlined,
+                                              color: Color(0xFF1D4ED8),
+                                              size: 48,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          const Text(
+                                            'No Promotions Found',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          const Text(
+                                            'Create offers to attract more customers and boost orders!',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 20),
+                                          ElevatedButton.icon(
+                                            onPressed: () => _showCreateEditCouponDialog(context),
+                                            icon: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                                            label: const Text('Create First Coupon'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFF1D4ED8),
+                                              foregroundColor: Colors.white,
+                                              elevation: 0,
+                                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 16),
-                                      const Text(
-                                        'No Promotions Found',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w700,
-                                          color: Color(0xFF0F172A),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      const Text(
-                                        'Create offers to attract more customers and boost orders!',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF64748B),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                      ElevatedButton.icon(
-                                        onPressed: () => _showCreateEditCouponDialog(context),
-                                        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
-                                        label: const Text('Create First Coupon'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFF3B82F6),
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               );
@@ -687,13 +696,12 @@ class _CouponCard extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Ribbon & Status
-            Container(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Ribbon & Status
+          Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               color: isActive ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
               child: Row(
@@ -1021,7 +1029,6 @@ class _CouponCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

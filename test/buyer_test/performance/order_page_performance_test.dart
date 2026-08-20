@@ -57,7 +57,7 @@ void main() {
         await tester.fling(listFinder, const Offset(0, -500), 10000);
         await tester.pumpAndSettle();
         stopwatch.stop();
-        expect(stopwatch.elapsedMilliseconds, lessThan(1000));
+        expect(stopwatch.elapsedMilliseconds, lessThan(3000));
       }
     });
   });

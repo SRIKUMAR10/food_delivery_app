@@ -1,5 +1,11 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
+import 'package:food_delivery_app/core/services/app_logout_service.dart';
+import 'package:food_delivery_app/core/widgets/app_snack_bar.dart';
+import 'package:food_delivery_app/core/widgets/logout_button.dart';
+import 'package:food_delivery_app/core/widgets/responsive_layout.dart';
+import 'package:food_delivery_app/core/widgets/settings_tiles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../Order Page/order_UI.dart';
@@ -30,31 +36,16 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
   }
 
   void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.black54),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<UserProfileBloc>().add(const SignOutRequested());
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF2A39),
-            ),
-            child: const Text('Logout', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+    showLogoutConfirmDialog(
+      context,
+      title: 'Logout',
+      message: 'Are you sure you want to log out?',
+      confirmLabel: 'Logout',
+      confirmColor: BuyerAppColors.primary,
+      cancelColor: Colors.black54,
+      onConfirm: () async {
+        context.read<UserProfileBloc>().add(const SignOutRequested());
+      },
     );
   }
 
@@ -63,19 +54,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
     String message, {
     bool isError = false,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-        ),
-        backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   @override
@@ -85,10 +64,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
         if (state is ProfileError) {
           _showSnack(context, state.message, isError: true);
         } else if (state is SignOutSuccess) {
-          Navigator.of(
-            context,
-            rootNavigator: true,
-          ).pushNamedAndRemoveUntil('/', (route) => false);
+          AppLogoutService.navigateToRoot(context);
         }
       },
       builder: (context, state) {
@@ -109,14 +85,9 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
             ),
             title: const Text('Profile'),
           ),
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth > 800) {
-                return _buildDesktopLayout(profile, uploadProgress);
-              }
-              return _buildMobileLayout(profile, uploadProgress);
-            },
-          ),
+          body: ResponsiveHelper.isWide(context)
+              ? _buildDesktopLayout(profile, uploadProgress)
+              : _buildMobileLayout(profile, uploadProgress),
         );
       },
     );
@@ -228,7 +199,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Center(
-                        child: CircularProgressIndicator(color: Color(0xFFEF2A39)),
+                        child: CircularProgressIndicator(color: BuyerAppColors.primary),
                       ),
                     );
                   },
@@ -338,7 +309,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEF2A39),
+                    color: BuyerAppColors.primary,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 3),
                   ),
@@ -486,9 +457,9 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
         onPressed: () => _showLogoutDialog(context),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFFEF2A39),
+          foregroundColor: BuyerAppColors.primary,
           elevation: 0,
-          side: const BorderSide(color: Color(0xFFEF2A39), width: 1.5),
+          side: const BorderSide(color: BuyerAppColors.primary, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -502,44 +473,28 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
   }
 
   Widget _buildSectionHeader(String title) {
-    return Padding(
+    return SettingsSectionHeader(
+      title: title,
+      uppercase: false,
       padding: const EdgeInsets.only(left: 8, bottom: 12),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: Colors.black54,
-        ),
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: Colors.black54,
       ),
     );
   }
 
   Widget _buildMenuCard(List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(children: children),
+    return SettingsSectionCard(
+      children: children,
+      borderRadius: 20,
+      shadowOpacity: 0.02,
     );
   }
 
   Widget _buildMenuDivider() {
-    return Divider(
-      height: 1,
-      thickness: 1,
-      color: Colors.grey.withValues(alpha: 0.1),
-      indent: 56,
-      endIndent: 16,
-    );
+    return const SettingsMenuDivider(indent: 56, endIndent: 16);
   }
 
   Widget _buildMenuItem({
@@ -548,41 +503,20 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
     required String title,
     required VoidCallback onTap,
   }) {
-    return InkWell(
+    return SettingsTile(
       key: key,
+      icon: icon,
+      title: title,
       onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       borderRadius: BorderRadius.circular(20),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF2A39).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 20, color: const Color(0xFFEF2A39)),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF212529),
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: Colors.black26,
-            ),
-          ],
-        ),
+      iconColor: BuyerAppColors.primary,
+      titleStyle: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF212529),
       ),
+      chevronColor: Colors.black26,
     );
   }
 }

@@ -7,6 +7,7 @@ import 'disputes_refunds_page_state.dart';
 import 'disputes_refunds_page_repository.dart';
 import 'disputes_refunds_page_service.dart';
 import 'disputes_refunds_page_model.dart';
+import '../../../core/widgets/status_badge.dart';
 
 class DisputesRefundsPage extends StatelessWidget {
   final String sellerId;
@@ -166,7 +167,7 @@ class _DisputeCard extends StatelessWidget {
                 'Order ${dispute.orderId}',
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
               ),
-              _StatusBadge(status: dispute.status),
+              _buildStatusBadge(dispute.status),
             ],
           ),
           const SizedBox(height: 12),
@@ -239,49 +240,24 @@ class _DisputeCard extends StatelessWidget {
       ),
     );
   }
-}
 
-class _StatusBadge extends StatelessWidget {
-  final String status;
-  const _StatusBadge({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    Color bgColor;
-    Color textColor;
+  Widget _buildStatusBadge(String status) {
+    Color color;
 
     switch (status) {
       case 'Pending':
-        bgColor = const Color(0xFFFEF9C3);
-        textColor = const Color(0xFF854D0E);
+        color = const Color(0xFF854D0E);
         break;
       case 'Refunded':
-        bgColor = const Color(0xFFDCFCE7);
-        textColor = const Color(0xFF166534);
+        color = const Color(0xFF166534);
         break;
       case 'Declined':
-        bgColor = const Color(0xFFFEE2E2);
-        textColor = const Color(0xFF991B1B);
+        color = const Color(0xFF991B1B);
         break;
       default:
-        bgColor = const Color(0xFFF1F5F9);
-        textColor = const Color(0xFF475569);
+        color = const Color(0xFF475569);
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: textColor,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-    );
+    return StatusBadge(label: status, color: color);
   }
 }

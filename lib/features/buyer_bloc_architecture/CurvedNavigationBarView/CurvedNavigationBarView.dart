@@ -8,10 +8,16 @@
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:food_delivery_app/core/models/buyer_notification_model.dart';
+import 'package:food_delivery_app/core/models/conversation_model.dart';
+import 'package:food_delivery_app/core/models/order_model.dart';
+import 'package:food_delivery_app/core/repositories/i_buyer_notification_repository.dart';
+import 'package:food_delivery_app/core/repositories/i_chat_repository.dart';
 import 'package:food_delivery_app/core/repositories/i_order_repository.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../Cart%20Page/cart_page_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buyer_chat_ui.dart';
 
 import '../Order%20Page/order_UI.dart';
@@ -20,6 +26,7 @@ import '../Cart%20Page/cart_page_UI.dart';
 
 import '../home_Page/home_Page_UI.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class CurvedNavigationBarView extends StatefulWidget {
   static final supportNavigation =
@@ -254,25 +261,28 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
                             icon: Icons.shopping_cart_outlined,
                             label: 'Cart',
                             index: 2,
-                            badgeCount: 3,
+                            badge: _buildCartBadge(),
                           ),
                           const SizedBox(height: 24),
                           _buildDesktopNavItem(
                             icon: Icons.receipt_long_outlined,
                             label: 'Orders',
                             index: 3,
+                            badge: _buildOrdersBadge(),
                           ),
                           const SizedBox(height: 24),
                           _buildDesktopNavItem(
                             icon: Icons.local_offer_outlined,
                             label: 'Offers',
                             index: 0,
+                            badge: _buildOffersBadge(),
                           ),
                           const SizedBox(height: 24),
                           _buildDesktopNavItem(
                             icon: Icons.support_agent_outlined,
                             label: 'Support',
                             index: 4,
+                            badge: _buildSupportBadge(),
                           ),
                         ],
                       ),
@@ -290,7 +300,7 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
                       children: [
                         const Icon(
                           Icons.card_giftcard_rounded,
-                          color: Color(0xFFEF2A39),
+                          color: BuyerAppColors.primary,
                           size: 24,
                         ),
                         const SizedBox(height: 4),
@@ -331,7 +341,7 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFFEF2A39),
+                              color: BuyerAppColors.primary,
                             ),
                           ),
                         ),
@@ -357,12 +367,12 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
         items: <Widget>[
           _buildNavItem(Icons.home_outlined, Icons.home_rounded, 'Home', 0),
           _buildNavItem(Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded, 'Wallet', 1),
-          _buildNavItem(Icons.shopping_cart_outlined, Icons.shopping_cart_rounded, 'Cart', 2),
-          _buildNavItem(Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Orders', 3),
-          _buildNavItem(Icons.support_agent_outlined, Icons.support_agent_rounded, 'Support', 4),
+          _buildNavItem(Icons.shopping_cart_outlined, Icons.shopping_cart_rounded, 'Cart', 2, badge: _buildCartBadge()),
+          _buildNavItem(Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Orders', 3, badge: _buildOrdersBadge()),
+          _buildNavItem(Icons.support_agent_outlined, Icons.support_agent_rounded, 'Support', 4, badge: _buildSupportBadge()),
         ],
         color: Colors.white,
-        buttonBackgroundColor: const Color(0xFFE52121).withValues(alpha: 0.1),
+        buttonBackgroundColor: BuyerAppColors.primaryDeep.withValues(alpha: 0.1),
         backgroundColor: const Color(0xFFFBF5F5),
         animationCurve: Curves.easeInOut,
         animationDuration: const Duration(milliseconds: 300),
@@ -372,16 +382,33 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
   }
 
   /// Builds a nav bar item — icon only when selected, icon + label otherwise.
-  Widget _buildNavItem(IconData iconOutlined, IconData iconFilled, String label, int index) {
+  Widget _buildNavItem(
+    IconData iconOutlined,
+    IconData iconFilled,
+    String label,
+    int index, {
+    Widget? badge,
+  }) {
     final bool isSelected = _selectedIndex == index;
-    final color = isSelected ? const Color(0xFFE52121) : Colors.black54;
+    final color = isSelected ? BuyerAppColors.primaryDeep : Colors.black54;
     final icon = isSelected ? iconFilled : iconOutlined;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: isSelected ? 30 : 26, color: color),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(icon, size: isSelected ? 30 : 26, color: color),
+            if (badge != null)
+              Positioned(
+                top: -6,
+                right: -16,
+                child: badge,
+              ),
+          ],
+        ),
         if (!isSelected) const SizedBox(height: 2),
         if (!isSelected)
           Text(
@@ -400,10 +427,10 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
     required IconData icon,
     required String label,
     required int index,
-    int badgeCount = 0,
+    Widget? badge,
   }) {
     final bool isSelected = _selectedIndex == index;
-    final color = isSelected ? const Color(0xFFEF2A39) : Colors.grey.shade600;
+    final color = isSelected ? BuyerAppColors.primary : Colors.grey.shade600;
 
     return InkWell(
       onTap: () => _onTabSelected(index),
@@ -424,25 +451,11 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
               clipBehavior: Clip.none,
               children: [
                 Icon(icon, size: 24, color: color),
-                if (badgeCount > 0)
+                if (badge != null)
                   Positioned(
-                    top: -4,
-                    right: -6,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEF2A39),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '$badgeCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                    top: -6,
+                    right: -8,
+                    child: badge,
                   ),
               ],
             ),
@@ -456,6 +469,150 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Real-time cart badge driven by [CartBloc] so the count always matches
+  /// the live cart contents. Hidden entirely when the cart is empty.
+  Widget _buildCartBadge() {
+    return BlocBuilder<CartBloc, CartState>(
+      buildWhen: (previous, current) {
+        final prevCount = previous is CartLoaded ? previous.totalCount : 0;
+        final currCount = current is CartLoaded ? current.totalCount : 0;
+        return prevCount != currCount;
+      },
+      builder: (context, state) {
+        final count = state is CartLoaded ? state.totalCount : 0;
+        return _NavBadge(
+          badgeKey: const Key('buyer_nav_cart_badge'),
+          count: count,
+        );
+      },
+    );
+  }
+
+  /// Real-time orders badge counting active (non-terminal) in-flight orders
+  /// streamed from the order repository for the signed-in buyer.
+  Widget _buildOrdersBadge() {
+    return StreamBuilder<String?>(
+      stream: context.read<IAuthService>().authStateChanges,
+      builder: (context, authSnapshot) {
+        final uid = authSnapshot.data;
+        if (uid == null || uid.isEmpty) return const SizedBox.shrink();
+        return StreamBuilder<List<OrderModel>>(
+          stream: context.read<IOrderRepository>().getBuyerOrdersStream(uid),
+          builder: (context, snapshot) {
+            final orders = snapshot.data ?? const <OrderModel>[];
+            final activeCount =
+                orders.where((order) => !order.status.isTerminal).length;
+            return _NavBadge(
+              badgeKey: const Key('buyer_nav_orders_badge'),
+              count: activeCount,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Real-time support badge summing unread messages across all conversations
+  /// streamed for the signed-in buyer.
+  Widget _buildSupportBadge() {
+    return StreamBuilder<String?>(
+      stream: context.read<IAuthService>().authStateChanges,
+      builder: (context, authSnapshot) {
+        final uid = authSnapshot.data;
+        if (uid == null || uid.isEmpty) return const SizedBox.shrink();
+        return StreamBuilder<List<ConversationModel>>(
+          stream: context
+              .read<IChatRepository>()
+              .getConversationsForUser(uid, role: 'buyer'),
+          builder: (context, snapshot) {
+            final conversations = snapshot.data ?? const <ConversationModel>[];
+            var unreadCount = 0;
+            for (final conversation in conversations) {
+              unreadCount += conversation.unreadCountForUser(uid);
+            }
+            return _NavBadge(
+              badgeKey: const Key('buyer_nav_support_badge'),
+              count: unreadCount,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Real-time offers badge counting unread promotional notifications for the
+  /// signed-in buyer.
+  Widget _buildOffersBadge() {
+    return StreamBuilder<String?>(
+      stream: context.read<IAuthService>().authStateChanges,
+      builder: (context, authSnapshot) {
+        final uid = authSnapshot.data;
+        if (uid == null || uid.isEmpty) return const SizedBox.shrink();
+        return StreamBuilder<List<BuyerNotificationModel>>(
+          stream: context
+              .read<IBuyerNotificationRepository>()
+              .watchNotifications(uid),
+          builder: (context, snapshot) {
+            final notifications =
+                snapshot.data ?? const <BuyerNotificationModel>[];
+            final offersCount = notifications
+                .where((notification) =>
+                    notification.category ==
+                        BuyerNotificationCategory.offerPromo &&
+                    notification.isUnread)
+                .length;
+            return _NavBadge(
+              badgeKey: const Key('buyer_nav_offers_badge'),
+              count: offersCount,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Small circular count badge with a micro pop animation whenever the count
+/// changes. Renders nothing when [count] is zero so empty states stay clean.
+class _NavBadge extends StatelessWidget {
+  final int count;
+  final Key? badgeKey;
+
+  const _NavBadge({required this.count, this.badgeKey});
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) return const SizedBox.shrink();
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(count),
+      tween: Tween(begin: 0.5, end: 1.0),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutBack,
+      builder: (context, scale, child) =>
+          Transform.scale(scale: scale, child: child),
+      child: Container(
+        key: badgeKey,
+        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: BuyerAppColors.primaryDeep,
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: Colors.white, width: 1.2),
+        ),
+        child: Text(
+          count > 99 ? '99+' : '$count',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            height: 1.2,
+          ),
         ),
       ),
     );

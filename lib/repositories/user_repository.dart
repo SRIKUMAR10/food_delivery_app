@@ -800,20 +800,43 @@ class UserRepository {
       };
 
       for (final emailItem in emailsToLink) {
+        if (user == null) break;
+        final currentUser = user;
         try {
           final emailCredential = EmailAuthProvider.credential(
             email: emailItem,
             password: password,
           );
-          await user.linkWithCredential(emailCredential);
-          debugPrint('Linked EmailAuthProvider for $emailItem to UID ${user.uid}');
+          await currentUser.linkWithCredential(emailCredential);
+          debugPrint('Linked EmailAuthProvider for $emailItem to UID ${currentUser.uid}');
         } on FirebaseAuthException catch (e) {
           if (e.code == 'provider-already-linked' ||
               e.code == 'credential-already-in-use' ||
               e.code == 'email-already-in-use') {
             try {
-              await user.updatePassword(password);
+              await currentUser.updatePassword(password);
             } catch (_) {}
+
+            // When email is already registered to an existing canonical Auth account,
+            // authenticate into the canonical account and merge secondary UID
+            if (e.code == 'email-already-in-use' || e.code == 'credential-already-in-use') {
+              try {
+                final canonicalCred = await _auth.signInWithEmailAndPassword(
+                  email: emailItem,
+                  password: password,
+                );
+                final canonicalUser = canonicalCred.user;
+                if (canonicalUser != null && canonicalUser.uid != currentUser.uid) {
+                  final secondaryUid = currentUser.uid;
+                  user = canonicalUser;
+                  userCredential = canonicalCred;
+                  await _userCollection.mergeBuyerDocuments(canonicalUser.uid, secondaryUid);
+                  debugPrint('Successfully merged secondary UID $secondaryUid into canonical UID ${canonicalUser.uid}');
+                }
+              } catch (mergeErr) {
+                debugPrint('Canonical user resolution note: $mergeErr');
+              }
+            }
           } else {
             debugPrint('Note linking $emailItem: ${e.code} - ${e.message}');
           }
@@ -944,6 +967,7 @@ class UserRepository {
         await _userCollection.updateUser(existingId, updateData);
         if (user.uid != existingId) {
           await _userCollection.updateUser(user.uid, updateData);
+          await _userCollection.mergeBuyerDocuments(existingId, user.uid);
         }
       } catch (e) {
         debugPrint('Error updating password in UserRepository Firestore doc: $e');
@@ -1048,6 +1072,32 @@ class UserRepository {
     };
 
     try {
+      // Deduplicate: check if another document exists with same email or phone and merge it
+      if (email != null && email.trim().contains('@')) {
+        final snapByEmail = await _userCollection.buyerUserCollection
+            .where('email', isEqualTo: email.trim())
+            .get();
+        for (final doc in snapByEmail.docs) {
+          if (doc.id != uid) {
+            await _userCollection.mergeBuyerDocuments(uid, doc.id);
+          }
+        }
+      }
+
+      if (phone != null && phone.trim().isNotEmpty) {
+        final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
+        final digits = cleanPhone.replaceAll(RegExp(r'\D'), '');
+        final variants = [cleanPhone, '+91$digits', '+91 $digits', digits];
+        final snapByPhone = await _userCollection.buyerUserCollection
+            .where('phone', whereIn: variants)
+            .get();
+        for (final doc in snapByPhone.docs) {
+          if (doc.id != uid) {
+            await _userCollection.mergeBuyerDocuments(uid, doc.id);
+          }
+        }
+      }
+
       final doc = await _userCollection.getUser(uid);
       if (!doc.exists) {
         await _userCollection.addUser(uid, defaultProfile);
@@ -1079,6 +1129,7 @@ class UserRepository {
       }
     }
   }
+
 
   Future<void> signOut() async {
     await _auth.signOut();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:food_delivery_app/core/widgets/primary_button.dart';
 import 'package:food_delivery_app/repositories/seller_repository.dart';
 import 'seller_login_page_bloc.dart';
 import 'seller_login_page_event.dart';
@@ -174,7 +175,7 @@ class _ResponsiveContainer extends StatelessWidget {
 // Shared widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Green gradient primary button.
+/// Green gradient primary button (shared PrimaryButton with login styling).
 class _PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -188,38 +189,15 @@ class _PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
+    return PrimaryButton(
+      text: label,
+      isLoading: isLoading,
+      onPressed: onPressed,
       height: 52,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _AppColors.primary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: _AppColors.primary.withValues(alpha: 0.6),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 2,
-          shadowColor: _AppColors.primary.withValues(alpha: 0.4),
-        ),
-        child: isLoading
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: Colors.white,
-                ),
-              )
-            : Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-      ),
+      borderRadius: 12,
+      elevation: 2,
+      shadowColor: _AppColors.primary.withValues(alpha: 0.4),
+      backgroundColor: _AppColors.primary,
     );
   }
 }

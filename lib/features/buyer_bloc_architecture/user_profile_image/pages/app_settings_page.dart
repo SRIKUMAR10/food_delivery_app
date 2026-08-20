@@ -4,30 +4,43 @@ import '../../../../core/services/i_auth_service.dart';
 import '../../../../core/repositories/i_app_settings_repository.dart';
 import '../../../../core/services/theme_manager.dart';
 import '../../../../core/services/locale_manager.dart';
+import '../../../../core/widgets/responsive_layout.dart';
 import '../AppSettings_Bloc.dart';
 import '../AppSettings_Event.dart';
 import '../AppSettings_UI.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class AppSettingsPage extends StatelessWidget {
-  const AppSettingsPage({super.key});
+  final IAuthService? authService;
+  final IAppSettingsRepository? repository;
+  final ThemeManager? themeManager;
+  final LocaleManager? localeManager;
+
+  const AppSettingsPage({
+    super.key,
+    this.authService,
+    this.repository,
+    this.themeManager,
+    this.localeManager,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveAuth = authService ?? context.read<IAuthService>();
+    final effectiveRepo = repository ?? context.read<IAppSettingsRepository>();
+    final effectiveTheme = themeManager ?? context.read<ThemeManager>();
+    final effectiveLocale = localeManager ?? context.read<LocaleManager>();
+
     return BlocProvider(
       create: (context) => AppSettingsBloc(
-        authService: context.read<IAuthService>(),
-        repository: context.read<IAppSettingsRepository>(),
-        themeManager: context.read<ThemeManager>(),
-        localeManager: context.read<LocaleManager>(),
+        authService: effectiveAuth,
+        repository: effectiveRepo,
+        themeManager: effectiveTheme,
+        localeManager: effectiveLocale,
       )..add(const AppSettingsLoadStarted()),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth > 800) {
-            return _buildDesktopLayout(context);
-          }
-          return _buildMobileLayout(context);
-        },
-      ),
+      child: ResponsiveHelper.isWide(context)
+        ? _buildDesktopLayout(context)
+        : _buildMobileLayout(context),
     );
   }
 
@@ -41,7 +54,7 @@ class AppSettingsPage extends StatelessWidget {
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFEF2A39), Color(0xFFFF5E6B)],
+                  colors: [BuyerAppColors.primary, Color(0xFFFF5E6B)],
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
                 ),
               ),

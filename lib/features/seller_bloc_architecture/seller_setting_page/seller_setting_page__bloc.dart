@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:rxdart/rxdart.dart';
 import 'seller_setting_page__event.dart';
 import 'seller_setting_page__state.dart';
 
@@ -515,9 +516,18 @@ class SellerSettingRepositoryImpl implements SellerSettingRepository {
       return Stream.value(const SellerSettingState());
     }
 
-    return _firestore.collection('sellers').doc(sellerId).snapshots().map((docSnap) {
-      return _mapSnapshotsToState(docSnap, null);
-    });
+    final sellerStream = _firestore.collection('sellers').doc(sellerId).snapshots();
+    final notifStream = _firestore
+        .collection('seller_notification_settings')
+        .doc(sellerId)
+        .snapshots();
+
+    return Rx.combineLatest2<DocumentSnapshot<Map<String, dynamic>>,
+        DocumentSnapshot<Map<String, dynamic>>, SellerSettingState>(
+      sellerStream,
+      notifStream,
+      (docSnap, notifSnap) => _mapSnapshotsToState(docSnap, notifSnap),
+    );
   }
 
   SellerSettingState _mapSnapshotsToState(
@@ -643,110 +653,156 @@ class SellerSettingRepositoryImpl implements SellerSettingRepository {
   @override
   Future<void> saveSettings(SellerSettingState state) async {
     final sellerId = _auth.currentUser?.uid;
-    if (sellerId == null) return;
+    if (sellerId == null) {
+      throw Exception('Seller is not authenticated. Please sign in again.');
+    }
 
     final sellerRef = _firestore.collection('sellers').doc(sellerId);
-    final notifRef = _firestore.collection('seller_notification_settings').doc(sellerId);
+    final notifRef = _firestore
+        .collection('seller_notification_settings')
+        .doc(sellerId);
 
-    final batch = _firestore.batch();
+    final sellerData = _buildSellerDocData(state);
+    final notifData = _buildNotificationDocData(state);
 
-    // 1. Update main seller profile & configs
-    batch.set(
-      sellerRef,
-      {
-        'shopName': state.restaurantName,
-        'ownerName': state.ownerName,
-        'phoneNumber': state.phoneNumber,
-        'email': state.email,
-        'restaurantDescription': state.restaurantDescription,
-        'address': state.address,
-        'cuisines': state.cuisines,
-        'profileImageUrl': state.profileImageUrl,
-        'coverImageUrl': state.coverImageUrl,
-        'latitude': state.latitude,
-        'longitude': state.longitude,
-        'businessHours': state.businessHours,
-        'isOpen': state.isOpen,
-        'isAcceptingOrders': state.isAcceptingOrders,
-        'isEmergencyClosed': state.isEmergencyClosed,
-        'deliveryRadius': state.deliveryRadius,
-        'minimumOrderValue': state.minimumOrderValue,
-        'deliveryFeeSettings': {
-          'baseFee': state.baseDeliveryFee,
-          'perKmFee': state.perKmDeliveryFee,
-          'freeDeliveryThreshold': state.freeDeliveryThreshold,
-        },
-        'estimatedPrepTimeMinutes': state.estimatedPrepTimeMinutes,
-        'deliveryTime': state.deliveryTimeEstimate,
-        'packagingCharges': state.packagingCharges,
-        'allowSelfPickup': state.allowSelfPickup,
-        'isSelfDelivery': state.isSelfDelivery,
-        'autoAcceptOrders': state.autoAcceptOrders,
-        'prepBufferTimeMinutes': state.prepBufferTimeMinutes,
-        'maxActiveOrdersLimit': state.maxActiveOrdersLimit,
-        'allowScheduledOrders': state.allowScheduledOrders,
-        'allowSpecialInstructions': state.allowSpecialInstructions,
-        'cancellationWindowMinutes': state.cancellationWindowMinutes,
-        'whatsappNotifications': state.whatsappNotifications,
-        'smsNotifications': state.smsNotifications,
-        'acceptCashOnDelivery': state.acceptCashOnDelivery,
-        'acceptOnlinePayments': state.acceptOnlinePayments,
-        'acceptWalletPayments': state.acceptWalletPayments,
-        'payoutSchedule': state.payoutSchedule,
-        'minPayoutThreshold': state.minPayoutThreshold,
-        'autoSettlementEnabled': state.autoSettlementEnabled,
-        'accountHolderName': state.accountHolderName,
-        'bankName': state.bankName,
-        'bankAccountNumber': state.bankAccountNumber,
-        'ifscCode': state.ifscCode,
-        'bankBranch': state.bankBranch,
-        'upiId': state.upiId,
-        'primaryPayoutMethod': state.primaryPayoutMethod,
-        'gstNumber': state.gstNumber,
-        'gstPercentage': state.gstPercentage,
-        'isTaxIncludedInPrice': state.isTaxIncludedInPrice,
-        'panNumber': state.panNumber,
-        'fssaiNumber': state.fssaiNumber,
-        'fssaiExpiryDate': state.fssaiExpiryDate,
-        'invoicePrefix': state.invoicePrefix,
-        'appTheme': state.appTheme,
-        'language': state.language,
-        'isPubliclyVisible': state.isPubliclyVisible,
-        'showRatingsPublicly': state.showRatingsPublicly,
-        'showPhoneNumberPublicly': state.showPhoneNumberPublicly,
-        'allowAnalyticsTelemetry': state.allowAnalyticsTelemetry,
-        'receiveMarketingEmails': state.receiveMarketingEmails,
-        'twoFactorAuthEnabled': state.twoFactorAuthEnabled,
-        'twoFactorMethod': state.twoFactorMethod,
-        'appPinLockEnabled': state.appPinLockEnabled,
-        'biometricLockEnabled': state.biometricLockEnabled,
-        'isDeactivated': state.isDeactivated,
-        'deactivationReason': state.deactivationReason,
-        'updatedAt': FieldValue.serverTimestamp(),
+    await _commitSettingsWithFallback(sellerRef, notifRef, sellerData, notifData);
+  }
+
+  Map<String, dynamic> _buildSellerDocData(SellerSettingState state) {
+    return {
+      'shopName': state.restaurantName,
+      'ownerName': state.ownerName,
+      'phoneNumber': state.phoneNumber,
+      'email': state.email,
+      'restaurantDescription': state.restaurantDescription,
+      'address': state.address,
+      'cuisines': state.cuisines,
+      'profileImageUrl': state.profileImageUrl,
+      'coverImageUrl': state.coverImageUrl,
+      'latitude': state.latitude,
+      'longitude': state.longitude,
+      'businessHours': state.businessHours,
+      'isOpen': state.isOpen,
+      'isAcceptingOrders': state.isAcceptingOrders,
+      'isEmergencyClosed': state.isEmergencyClosed,
+      'deliveryRadius': state.deliveryRadius,
+      'minimumOrderValue': state.minimumOrderValue,
+      'deliveryFeeSettings': {
+        'baseFee': state.baseDeliveryFee,
+        'perKmFee': state.perKmDeliveryFee,
+        'freeDeliveryThreshold': state.freeDeliveryThreshold,
       },
-      SetOptions(merge: true),
-    );
+      'estimatedPrepTimeMinutes': state.estimatedPrepTimeMinutes,
+      'deliveryTime': state.deliveryTimeEstimate,
+      'packagingCharges': state.packagingCharges,
+      'allowSelfPickup': state.allowSelfPickup,
+      'isSelfDelivery': state.isSelfDelivery,
+      'autoAcceptOrders': state.autoAcceptOrders,
+      'prepBufferTimeMinutes': state.prepBufferTimeMinutes,
+      'maxActiveOrdersLimit': state.maxActiveOrdersLimit,
+      'allowScheduledOrders': state.allowScheduledOrders,
+      'allowSpecialInstructions': state.allowSpecialInstructions,
+      'cancellationWindowMinutes': state.cancellationWindowMinutes,
+      'whatsappNotifications': state.whatsappNotifications,
+      'smsNotifications': state.smsNotifications,
+      'acceptCashOnDelivery': state.acceptCashOnDelivery,
+      'acceptOnlinePayments': state.acceptOnlinePayments,
+      'acceptWalletPayments': state.acceptWalletPayments,
+      'payoutSchedule': state.payoutSchedule,
+      'minPayoutThreshold': state.minPayoutThreshold,
+      'autoSettlementEnabled': state.autoSettlementEnabled,
+      'accountHolderName': state.accountHolderName,
+      'bankName': state.bankName,
+      'bankAccountNumber': state.bankAccountNumber,
+      'ifscCode': state.ifscCode,
+      'bankBranch': state.bankBranch,
+      'upiId': state.upiId,
+      'primaryPayoutMethod': state.primaryPayoutMethod,
+      'gstNumber': state.gstNumber,
+      'gstPercentage': state.gstPercentage,
+      'isTaxIncludedInPrice': state.isTaxIncludedInPrice,
+      'panNumber': state.panNumber,
+      'fssaiNumber': state.fssaiNumber,
+      'fssaiExpiryDate': state.fssaiExpiryDate,
+      'invoicePrefix': state.invoicePrefix,
+      'appTheme': state.appTheme,
+      'language': state.language,
+      'isPubliclyVisible': state.isPubliclyVisible,
+      'showRatingsPublicly': state.showRatingsPublicly,
+      'showPhoneNumberPublicly': state.showPhoneNumberPublicly,
+      'allowAnalyticsTelemetry': state.allowAnalyticsTelemetry,
+      'receiveMarketingEmails': state.receiveMarketingEmails,
+      'twoFactorAuthEnabled': state.twoFactorAuthEnabled,
+      'twoFactorMethod': state.twoFactorMethod,
+      'appPinLockEnabled': state.appPinLockEnabled,
+      'biometricLockEnabled': state.biometricLockEnabled,
+      'isDeactivated': state.isDeactivated,
+      'deactivationReason': state.deactivationReason,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+  }
 
-    // 2. Update dedicated notification settings doc
-    batch.set(
-      notifRef,
-      {
-        'pushNotifications': state.pushNotifications,
-        'newOrderSound': state.newOrderSound,
-        'soundLoopUntilAccepted': state.soundLoopUntilAccepted,
-        'orderAlertRingtone': state.orderAlertRingtone,
-        'soundVolume': state.soundVolume,
-        'promoAndOffers': state.promoAndOffers,
-        'lowStockAlerts': state.lowStockAlerts,
-        'orderUpdates': state.orderUpdates,
-        'appTheme': state.appTheme,
-        'language': state.language,
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+  Map<String, dynamic> _buildNotificationDocData(SellerSettingState state) {
+    return {
+      'pushNotifications': state.pushNotifications,
+      'newOrderSound': state.newOrderSound,
+      'soundLoopUntilAccepted': state.soundLoopUntilAccepted,
+      'orderAlertRingtone': state.orderAlertRingtone,
+      'soundVolume': state.soundVolume,
+      'promoAndOffers': state.promoAndOffers,
+      'lowStockAlerts': state.lowStockAlerts,
+      'orderUpdates': state.orderUpdates,
+      'appTheme': state.appTheme,
+      'language': state.language,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+  }
 
-    await batch.commit();
+  /// Persists settings with retry + independent-document fallback so a
+  /// transient network disruption never wipes either half of the settings.
+  Future<void> _commitSettingsWithFallback(
+    DocumentReference<Map<String, dynamic>> sellerRef,
+    DocumentReference<Map<String, dynamic>> notifRef,
+    Map<String, dynamic> sellerData,
+    Map<String, dynamic> notifData,
+  ) async {
+    try {
+      final batch = _firestore.batch();
+      batch.set(sellerRef, sellerData, SetOptions(merge: true));
+      batch.set(notifRef, notifData, SetOptions(merge: true));
+      await batch.commit();
+      return;
+    } catch (_) {
+      // Retry once after a short delay to survive transient network failures.
+    }
+
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    try {
+      final batch = _firestore.batch();
+      batch.set(sellerRef, sellerData, SetOptions(merge: true));
+      batch.set(notifRef, notifData, SetOptions(merge: true));
+      await batch.commit();
+      return;
+    } catch (_) {
+      // Final fallback: write each document independently so one failing
+      // write never loses the other half of the settings.
+    }
+
+    Object? sellerError;
+    Object? notifError;
+    try {
+      await sellerRef.set(sellerData, SetOptions(merge: true));
+    } catch (e) {
+      sellerError = e;
+    }
+    try {
+      await notifRef.set(notifData, SetOptions(merge: true));
+    } catch (e) {
+      notifError = e;
+    }
+    if (sellerError != null && notifError != null) {
+      throw Exception('Failed to save settings: $sellerError');
+    }
   }
 
   @override

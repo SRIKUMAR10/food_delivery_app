@@ -38,6 +38,15 @@ class Seller extends Equatable {
   final int estimatedPrepTimeMinutes;
   final double rating;
   final int reviewCount;
+  final String fssaiExpiryDate;
+  final bool isTaxIncludedInPrice;
+  final String invoicePrefix;
+  final bool autoAcceptOrders;
+  final int prepBufferTimeMinutes;
+  final int maxActiveOrdersLimit;
+  final bool allowScheduledOrders;
+  final bool allowSpecialInstructions;
+  final int cancellationWindowMinutes;
 
   const Seller({
     required this.id,
@@ -76,6 +85,15 @@ class Seller extends Equatable {
     this.estimatedPrepTimeMinutes = 25,
     this.rating = 0.0,
     this.reviewCount = 0,
+    this.fssaiExpiryDate = '',
+    this.isTaxIncludedInPrice = true,
+    this.invoicePrefix = 'INV-',
+    this.autoAcceptOrders = false,
+    this.prepBufferTimeMinutes = 15,
+    this.maxActiveOrdersLimit = 20,
+    this.allowScheduledOrders = true,
+    this.allowSpecialInstructions = true,
+    this.cancellationWindowMinutes = 2,
   });
 
   @override
@@ -85,7 +103,9 @@ class Seller extends Equatable {
     deliveryArea, gstNumber, fssaiNumber, panNumber, isOnline, isOpen, isAcceptingOrders,
     gstPercentage, minimumOrderValue, packagingCharges, deliveryRadius, bankAccountNumber,
     bankName, latitude, longitude, cuisines, weeklyHoliday, estimatedPrepTimeMinutes,
-    rating, reviewCount,
+    rating, reviewCount, fssaiExpiryDate, isTaxIncludedInPrice, invoicePrefix,
+    autoAcceptOrders, prepBufferTimeMinutes, maxActiveOrdersLimit,
+    allowScheduledOrders, allowSpecialInstructions, cancellationWindowMinutes,
   ];
 
   factory Seller.fromFirestore(DocumentSnapshot doc) {
@@ -129,6 +149,15 @@ class Seller extends Equatable {
           (data['prepTimeMinutes'] as num?)?.toInt() ?? 25,
       rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
       reviewCount: (data['reviewCount'] as num?)?.toInt() ?? 0,
+      fssaiExpiryDate: data['fssaiExpiryDate'] as String? ?? '',
+      isTaxIncludedInPrice: data['isTaxIncludedInPrice'] as bool? ?? true,
+      invoicePrefix: data['invoicePrefix'] as String? ?? 'INV-',
+      autoAcceptOrders: data['autoAcceptOrders'] as bool? ?? false,
+      prepBufferTimeMinutes: (data['prepBufferTimeMinutes'] as num?)?.toInt() ?? 15,
+      maxActiveOrdersLimit: (data['maxActiveOrdersLimit'] as num?)?.toInt() ?? 20,
+      allowScheduledOrders: data['allowScheduledOrders'] as bool? ?? true,
+      allowSpecialInstructions: data['allowSpecialInstructions'] as bool? ?? true,
+      cancellationWindowMinutes: (data['cancellationWindowMinutes'] as num?)?.toInt() ?? 2,
     );
   }
 
@@ -169,6 +198,15 @@ class Seller extends Equatable {
       'estimatedPrepTimeMinutes': estimatedPrepTimeMinutes,
       'rating': rating,
       'reviewCount': reviewCount,
+      'fssaiExpiryDate': fssaiExpiryDate,
+      'isTaxIncludedInPrice': isTaxIncludedInPrice,
+      'invoicePrefix': invoicePrefix,
+      'autoAcceptOrders': autoAcceptOrders,
+      'prepBufferTimeMinutes': prepBufferTimeMinutes,
+      'maxActiveOrdersLimit': maxActiveOrdersLimit,
+      'allowScheduledOrders': allowScheduledOrders,
+      'allowSpecialInstructions': allowSpecialInstructions,
+      'cancellationWindowMinutes': cancellationWindowMinutes,
     };
   }
 

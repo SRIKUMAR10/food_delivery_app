@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/widgets/shimmer_loader.dart';
 import '../../../../core/models/analytics_data_model.dart';
 import 'seller_analytics_page__bloc.dart';
 import 'seller_analytics_page__event.dart';
@@ -97,9 +98,49 @@ class SellerAnalyticsPageUI extends StatelessWidget {
               context.read<SellerAnalyticsBloc>().add(
                     LoadSellerAnalytics(sellerId: sellerId, timeRange: 'Weekly'),
                   );
-              return const _SkeletonLoader();
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(18.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SkeletonBox(width: double.infinity, height: 48, borderRadius: 14),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        const Expanded(child: SkeletonBox(width: double.infinity, height: 110, borderRadius: 16)),
+                        const SizedBox(width: 12),
+                        const Expanded(child: SkeletonBox(width: double.infinity, height: 110, borderRadius: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    const SkeletonBox(width: double.infinity, height: 180, borderRadius: 16),
+                    const SizedBox(height: 18),
+                    const SkeletonBox(width: double.infinity, height: 240, borderRadius: 20),
+                  ],
+                ),
+              );
             } else if (state is AnalyticsLoading) {
-              return const _SkeletonLoader();
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(18.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SkeletonBox(width: double.infinity, height: 48, borderRadius: 14),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        const Expanded(child: SkeletonBox(width: double.infinity, height: 110, borderRadius: 16)),
+                        const SizedBox(width: 12),
+                        const Expanded(child: SkeletonBox(width: double.infinity, height: 110, borderRadius: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    const SkeletonBox(width: double.infinity, height: 180, borderRadius: 16),
+                    const SizedBox(height: 18),
+                    const SkeletonBox(width: double.infinity, height: 240, borderRadius: 20),
+                  ],
+                ),
+              );
             } else if (state is AnalyticsError) {
               return Center(
                 child: Padding(
@@ -1943,44 +1984,5 @@ class _HourlyPeakChartCard extends StatelessWidget {
   }
 }
 
-class _SkeletonLoader extends StatelessWidget {
-  const _SkeletonLoader();
 
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(18.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildShimmer(width: double.infinity, height: 48, radius: 14),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(child: _buildShimmer(width: double.infinity, height: 110, radius: 16)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildShimmer(width: double.infinity, height: 110, radius: 16)),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _buildShimmer(width: double.infinity, height: 180, radius: 16),
-          const SizedBox(height: 18),
-          _buildShimmer(width: double.infinity, height: 240, radius: 20),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShimmer(
-      {required double width, required double height, double radius = 8}) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE2E8F0),
-        borderRadius: BorderRadius.circular(radius),
-      ),
-    );
-  }
-}
 

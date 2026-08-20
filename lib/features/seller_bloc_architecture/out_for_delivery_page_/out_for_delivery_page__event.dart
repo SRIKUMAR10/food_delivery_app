@@ -30,3 +30,7 @@ class MessageRider extends OutForDeliveryPageEvent {
   @override
   List<Object?> get props => [riderId];
 }
+
+class ToggleMapFullScreen extends OutForDeliveryPageEvent {
+  const ToggleMapFullScreen();
+}

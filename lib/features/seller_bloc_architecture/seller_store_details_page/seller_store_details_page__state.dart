@@ -27,6 +27,15 @@ class SellerStoreDetailsLoaded extends SellerStoreDetailsPageState {
   final double packagingCharges;
   final String? bankAccountNumber;
   final String? bankName;
+  final String? fssaiExpiryDate;
+  final bool isTaxIncludedInPrice;
+  final String invoicePrefix;
+  final bool autoAcceptOrders;
+  final int prepBufferTimeMinutes;
+  final int maxActiveOrdersLimit;
+  final bool allowScheduledOrders;
+  final bool allowSpecialInstructions;
+  final int cancellationWindowMinutes;
 
   const SellerStoreDetailsLoaded({
     required this.restaurantName,
@@ -44,6 +53,15 @@ class SellerStoreDetailsLoaded extends SellerStoreDetailsPageState {
     required this.packagingCharges,
     this.bankAccountNumber,
     this.bankName,
+    this.fssaiExpiryDate,
+    this.isTaxIncludedInPrice = true,
+    this.invoicePrefix = 'INV-',
+    this.autoAcceptOrders = false,
+    this.prepBufferTimeMinutes = 15,
+    this.maxActiveOrdersLimit = 20,
+    this.allowScheduledOrders = true,
+    this.allowSpecialInstructions = true,
+    this.cancellationWindowMinutes = 2,
   });
 
   @override
@@ -63,6 +81,15 @@ class SellerStoreDetailsLoaded extends SellerStoreDetailsPageState {
     packagingCharges,
     if (bankAccountNumber != null) bankAccountNumber!,
     if (bankName != null) bankName!,
+    if (fssaiExpiryDate != null) fssaiExpiryDate!,
+    isTaxIncludedInPrice,
+    invoicePrefix,
+    autoAcceptOrders,
+    prepBufferTimeMinutes,
+    maxActiveOrdersLimit,
+    allowScheduledOrders,
+    allowSpecialInstructions,
+    cancellationWindowMinutes,
   ];
 }
 

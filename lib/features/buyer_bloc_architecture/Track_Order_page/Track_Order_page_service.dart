@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/order_status.dart';
+import '../../../core/services/google_places_service.dart';
 
 class TrackOrderService {
   final FirebaseFirestore firestore;
@@ -20,7 +21,7 @@ class TrackOrderService {
     final seller = await _fetchSeller(sellerId);
     final partner = await _fetchPartner(riderId);
 
-    final customer = _extractCustomer(orderData);
+    final customer = await _extractCustomer(orderData);
     final items = _extractItems(orderData);
     final eta = _extractEta(orderData, orderData['status'] as String? ?? 'New');
 
@@ -52,10 +53,18 @@ class TrackOrderService {
 
       // Seller / restaurant
       'sellerId': sellerId,
-      'sellerName': seller['name'],
-      'sellerAddress': seller['address'],
-      'sellerImageUrl': seller['image'],
-      'sellerPhone': seller['phone'],
+      'sellerName': (seller['name'] != null && seller['name'].toString().isNotEmpty && seller['name'] != 'Restaurant')
+          ? seller['name']
+          : (orderData['sellerName'] ?? orderData['shopName'] ?? orderData['restaurantName'] ?? (seller['name']?.toString().isNotEmpty == true ? seller['name'] : 'Restaurant')),
+      'sellerAddress': (seller['address'] != null && seller['address'].toString().isNotEmpty)
+          ? seller['address']
+          : (orderData['sellerAddress'] ?? orderData['restaurantAddress'] ?? ''),
+      'sellerImageUrl': (seller['image'] != null && seller['image'].toString().isNotEmpty)
+          ? seller['image']
+          : (orderData['sellerImageUrl'] ?? orderData['sellerImage'] ?? orderData['restaurantImage'] ?? ''),
+      'sellerPhone': (seller['phone'] != null && seller['phone'].toString().isNotEmpty)
+          ? seller['phone']
+          : (orderData['sellerPhone'] ?? orderData['restaurantPhone'] ?? ''),
       'sellerLat': seller['lat'],
       'sellerLng': seller['lng'],
       'sellerIsVerified': seller['isVerified'],
@@ -147,6 +156,16 @@ class TrackOrderService {
         result['lat'] = lat;
         result['lng'] = lng;
       }
+
+      if ((result['lat'] == null || result['lng'] == null) && (result['address'] as String).isNotEmpty) {
+        try {
+          final details = await GooglePlacesService.instance.getPlaceDetails('', fallbackAddress: result['address'] as String);
+          if (details != null && details.latitude != null && details.longitude != null) {
+            result['lat'] = details.latitude;
+            result['lng'] = details.longitude;
+          }
+        } catch (_) {}
+      }
     } catch (_) {}
     return result;
   }
@@ -219,7 +238,7 @@ class TrackOrderService {
     return result;
   }
 
-  Map<String, dynamic> _extractCustomer(Map<String, dynamic> orderData) {
+  Future<Map<String, dynamic>> _extractCustomer(Map<String, dynamic> orderData) async {
     String read(String key, [List<String>? aliases]) {
       for (final k in [key, ...?aliases]) {
         final v = orderData[k];
@@ -254,8 +273,8 @@ class TrackOrderService {
     String notes = read('deliveryNotes', ['instructions', 'deliveryInstructions']);
     if (notes.isEmpty) notes = nestedRead('notes');
 
-    double? lat = _coordinate(orderData, ['customerLat', 'customerLatitude', 'lat']);
-    double? lng = _coordinate(orderData, ['customerLng', 'customerLongitude', 'lng']);
+    double? lat = _coordinate(orderData, ['customerLat', 'customerLatitude', 'lat', 'userLat', 'buyerLat']);
+    double? lng = _coordinate(orderData, ['customerLng', 'customerLongitude', 'lng', 'userLng', 'buyerLng']);
     if (lat == null || lng == null) {
       if (nested['lat'] != null) lat = _asDouble(nested['lat']);
       if (nested['lng'] != null) lng = _asDouble(nested['lng']);
@@ -269,8 +288,40 @@ class TrackOrderService {
       }
     }
 
+    final buyerId = read('customerId', ['buyerId', 'userId', 'uid']);
+    if ((lat == null || lng == null) && buyerId.isNotEmpty) {
+      try {
+        final userDoc = await firestore.collection('users').doc(buyerId).get();
+        if (userDoc.exists) {
+          final uData = userDoc.data() as Map<String, dynamic>? ?? {};
+          lat ??= _coordinate(uData, ['latitude', 'lat', 'customerLat']);
+          lng ??= _coordinate(uData, ['longitude', 'lng', 'customerLng']);
+          if (lat == null || lng == null) {
+            final loc = uData['location'] ?? uData['currentLocation'];
+            if (loc is GeoPoint) {
+              lat = loc.latitude;
+              lng = loc.longitude;
+            } else if (loc is Map) {
+              lat = _asDouble(loc['lat'] ?? loc['latitude']);
+              lng = _asDouble(loc['lng'] ?? loc['longitude']);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    if ((lat == null || lng == null) && address.isNotEmpty) {
+      try {
+        final details = await GooglePlacesService.instance.getPlaceDetails('', fallbackAddress: address);
+        if (details != null && details.latitude != null && details.longitude != null) {
+          lat = details.latitude;
+          lng = details.longitude;
+        }
+      } catch (_) {}
+    }
+
     return {
-      'id': read('customerId', ['buyerId', 'userId', 'uid']),
+      'id': buyerId,
       'name': name,
       'phone': phone,
       'address': address,
@@ -360,20 +411,67 @@ class TrackOrderService {
     return controller.stream;
   }
 
-  /// Cancels an order only when its current status allows cancellation.
+  /// Cancels an order only when its current status allows cancellation,
+  /// and automatically triggers an instant wallet refund if the order was prepaid.
   Future<void> cancelOrder(String orderId, {String? reason}) async {
     final orderDoc = await firestore.collection('orders').doc(orderId).get();
     if (!orderDoc.exists) {
       throw Exception('Order not found');
     }
-    final status = OrderStatus.fromString(orderDoc.data()?['status'] as String? ?? 'New');
+    final orderData = orderDoc.data() ?? {};
+    final status = OrderStatus.fromString(orderData['status'] as String? ?? 'New');
     if (status.isTerminal) {
       throw Exception('Order can no longer be cancelled');
     }
 
+    final buyerId = orderData['buyerId'] as String? ??
+        orderData['customerId'] as String? ??
+        orderData['userId'] as String? ??
+        '';
+
+    final totalAmount = (orderData['totalAmount'] as num?)?.toDouble() ??
+        (orderData['amount'] as num?)?.toDouble() ??
+        0.0;
+
+    final paymentMethod = (orderData['paymentMethod'] as String? ?? '').toLowerCase();
+    final paymentStatus = (orderData['paymentStatus'] as String? ?? '').toLowerCase();
+
+    final isPrepaid = paymentMethod == 'wallet' ||
+        paymentMethod == 'razorpay' ||
+        paymentMethod == 'online' ||
+        paymentMethod == 'card' ||
+        paymentStatus == 'paid' ||
+        paymentStatus == 'completed';
+
+    // 1. If order was prepaid, process instant refund to buyer's wallet
+    if (isPrepaid && buyerId.isNotEmpty && totalAmount > 0) {
+      try {
+        final buyerRef = firestore.collection('buyer_user').doc(buyerId);
+        await buyerRef.set({
+          'wallet': FieldValue.increment(totalAmount),
+        }, SetOptions(merge: true));
+
+        await buyerRef.collection('transactions').add({
+          'title': 'Refund for Order #${orderId.toUpperCase()}',
+          'amount': totalAmount,
+          'isCredit': true,
+          'type': 'refund',
+          'status': 'success',
+          'orderId': orderId,
+          'createdAt': FieldValue.serverTimestamp(),
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        // Log wallet refund error but allow cancellation to proceed
+      }
+    }
+
+    // 2. Mark order as cancelled
     await firestore.collection('orders').doc(orderId).update({
       'status': OrderStatus.cancelled.value,
       'cancelledAt': FieldValue.serverTimestamp(),
+      if (isPrepaid && totalAmount > 0) 'refundStatus': 'completed',
+      if (isPrepaid && totalAmount > 0) 'refundAmount': totalAmount,
       if (reason != null && reason.isNotEmpty) 'cancellationReason': reason,
     });
   }

@@ -1,3 +1,4 @@
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,7 +9,7 @@ import 'package:food_delivery_app/core/utils/app_localizations.dart';
 import '../home_Page/home_page_models.dart';
 import 'Rating_page_ui.dart';
 
-const _red = Color(0xFFEF2A39);
+const _red = BuyerAppColors.primary;
 const _star = Color(0xFFFFB800);
 
 class ReviewsListScreen extends StatefulWidget {

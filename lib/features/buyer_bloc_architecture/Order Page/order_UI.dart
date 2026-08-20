@@ -10,6 +10,7 @@ import '../../../core/repositories/i_cart_repository.dart';
 import '../Cart Page/cart_models.dart';
 import 'package:intl/intl.dart';
 import '../Track_Order_page/Track_Order_page_ui.dart';
+import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class OrderPageUI extends StatelessWidget {
   final IOrderRepository? orderRepository;
@@ -125,7 +126,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                     ),
                   ],
                 ),
-                backgroundColor: const Color(0xFFE52121),
+                backgroundColor: BuyerAppColors.primaryDeep,
                 duration: const Duration(seconds: 4),
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -274,7 +275,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
           ),
           IconButton(
             tooltip: 'Refresh orders',
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFFE52121)),
+            icon: const Icon(Icons.refresh_rounded, color: BuyerAppColors.primaryDeep),
             onPressed: () {
               context.read<OrderBloc>().add(const LoadOrdersRequested());
             },
@@ -324,12 +325,12 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                   margin: const EdgeInsets.only(right: 10),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFE52121) : Colors.white,
+                    color: isSelected ? BuyerAppColors.primaryDeep : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: const Color(0xFFE52121).withValues(alpha: 0.3),
+                              color: BuyerAppColors.primaryDeep.withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
@@ -391,7 +392,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
       builder: (context, state) {
         if (state is OrderInitial || state is OrderLoading) {
           return const Center(
-            child: CircularProgressIndicator(color: Color(0xFFE52121)),
+            child: CircularProgressIndicator(color: BuyerAppColors.primaryDeep),
           );
         } else if (state is OrderError) {
           return Center(
@@ -400,7 +401,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline_rounded, size: 48, color: Color(0xFFE52121)),
+                  const Icon(Icons.error_outline_rounded, size: 48, color: BuyerAppColors.primaryDeep),
                   const SizedBox(height: 12),
                   Text(
                     'Error: ${state.message}',
@@ -413,7 +414,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                       context.read<OrderBloc>().add(const LoadOrdersRequested());
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE52121),
+                      backgroundColor: BuyerAppColors.primaryDeep,
                       foregroundColor: Colors.white,
                     ),
                     child: const Text('Try Again'),
@@ -450,7 +451,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
           }
 
           return RefreshIndicator(
-            color: const Color(0xFFE52121),
+            color: BuyerAppColors.primaryDeep,
             onRefresh: () async {
               context.read<OrderBloc>().add(const LoadOrdersRequested());
             },
@@ -499,13 +500,13 @@ class _OrderPageContentState extends State<_OrderPageContent> {
               width: 110,
               height: 110,
               decoration: BoxDecoration(
-                color: const Color(0xFFEF2A39).withValues(alpha: 0.08),
+                color: BuyerAppColors.primary.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.receipt_long_outlined,
                 size: 52,
-                color: const Color(0xFFEF2A39).withValues(alpha: 0.6),
+                color: BuyerAppColors.primary.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 20),
@@ -534,7 +535,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                 icon: const Icon(Icons.restaurant_menu, size: 18),
                 label: const Text('Explore Food'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE52121),
+                  backgroundColor: BuyerAppColors.primaryDeep,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -571,7 +572,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
       statusBorderColor = const Color(0xFFFECACA);
       statusText = order.status;
     } else {
-      statusTextColor = const Color(0xFFE52121);
+      statusTextColor = BuyerAppColors.primaryDeep;
       statusBgColor = const Color(0xFFFFF0F0);
       statusBorderColor = const Color(0xFFFECDD3);
       statusText = order.status == 'New' ? 'Placed' : order.status;
@@ -622,7 +623,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
           color: isSelected ? const Color(0xFFFFF0F0) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: isSelected
-              ? Border.all(color: const Color(0xFFE52121), width: 1.5)
+              ? Border.all(color: BuyerAppColors.primaryDeep, width: 1.5)
               : Border.all(color: Colors.transparent, width: 1.5),
           boxShadow: [
             BoxShadow(
@@ -650,11 +651,11 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: isSelected
-                                  ? const Color(0xFFE52121)
+                                  ? BuyerAppColors.primaryDeep
                                   : Colors.grey.shade300,
                               width: 1.5,
                             ),
-                            color: isSelected ? const Color(0xFFE52121) : Colors.transparent,
+                            color: isSelected ? BuyerAppColors.primaryDeep : Colors.transparent,
                           ),
                           child: isSelected
                               ? const Center(
@@ -750,17 +751,17 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                           : () {
                               context.read<OrderBloc>().add(ReorderRequested(order));
                             },
-                      icon: const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFFE52121)),
+                      icon: const Icon(Icons.refresh_rounded, size: 16, color: BuyerAppColors.primaryDeep),
                       label: const Text(
                         'Reorder',
                         style: TextStyle(
-                          color: Color(0xFFE52121),
+                          color: BuyerAppColors.primaryDeep,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFE52121), width: 1.2),
+                        side: const BorderSide(color: BuyerAppColors.primaryDeep, width: 1.2),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
@@ -817,7 +818,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE52121),
+                        backgroundColor: BuyerAppColors.primaryDeep,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -928,7 +929,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                           children: [
                             Icon(
                               isChecked ? Icons.radio_button_checked : Icons.radio_button_off,
-                              color: isChecked ? const Color(0xFFE52121) : Colors.grey,
+                              color: isChecked ? BuyerAppColors.primaryDeep : Colors.grey,
                               size: 20,
                             ),
                             const SizedBox(width: 12),
@@ -970,7 +971,7 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                                 );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE52121),
+                            backgroundColor: BuyerAppColors.primaryDeep,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(

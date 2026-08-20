@@ -7,6 +7,9 @@ import 'Delivery_Navigation Screen_page_repository.dart';
 import 'Delivery_Navigation Screen_page_service.dart';
 import 'Delivery_Navigation Screen_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/widgets/app_google_map_view.dart';
 
 class DeliveryNavigationStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -783,26 +786,46 @@ class _MapArea extends StatefulWidget {
 }
 
 class _MapAreaState extends State<_MapArea> {
-  double _zoom = 15.0;
-
-  void _zoomIn() {
-    setState(() => _zoom = (_zoom + 1).clamp(11.0, 19.0));
-  }
-
-  void _zoomOut() {
-    setState(() => _zoom = (_zoom - 1).clamp(11.0, 19.0));
-  }
-
   void _recenter(BuildContext context) {
-    setState(() => _zoom = 15.0);
     context
         .read<DeliveryNavigationBloc>()
         .add(const DeliveryNavigationRecenterMapEvent());
   }
 
+  Future<void> _openExternalNavigation(DeliveryNavigationState state) async {
+    final destLat = state.destinationLat;
+    final destLng = state.destinationLng;
+    if (destLat == 0.0 && destLng == 0.0) return;
+
+    final nativeUri = Uri.parse('google.navigation:q=$destLat,$destLng&mode=d');
+    final webUri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$destLat,$destLng&travelmode=driving',
+    );
+    try {
+      if (await canLaunchUrl(nativeUri)) {
+        await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localeCode = widget.state.localeCode;
+    final isStage2 = widget.state.navigationStage == NavigationStage.toCustomer;
+    final isCompleted = widget.state.navigationStage == NavigationStage.completed;
+
+    final driverLoc = LatLng(widget.state.driverLat, widget.state.driverLng);
+    final storeLoc = (widget.state.restaurantLat != 0 && widget.state.restaurantLng != 0)
+        ? LatLng(widget.state.restaurantLat, widget.state.restaurantLng)
+        : null;
+    final customerLoc = (widget.state.customerLat != 0 && widget.state.customerLng != 0)
+        ? LatLng(widget.state.customerLat, widget.state.customerLng)
+        : null;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
@@ -816,11 +839,28 @@ class _MapAreaState extends State<_MapArea> {
               key: const Key('dp_navscreen_map'),
               children: [
                 Positioned.fill(
-                  child: CustomPaint(
-                    painter: _NavigationMapCanvas(
-                      state: widget.state,
-                      zoom: _zoom,
-                    ),
+                  child: AppGoogleMapView(
+                    driverLocation: driverLoc,
+                    driverHeading: widget.state.driverHeading,
+                    vehicleType: 'two_wheeler',
+                    storeLocation: storeLoc,
+                    storeName: widget.state.restaurantName.isNotEmpty ? widget.state.restaurantName : 'Restaurant',
+                    customerLocation: customerLoc,
+                    customerName: widget.state.customerName.isNotEmpty ? widget.state.customerName : 'Customer',
+                    isPickedUp: isStage2 || isCompleted,
+                    isFullScreen: widget.isFullScreen,
+                    onToggleFullScreen: widget.onToggleFullScreen,
+                    showControls: false,
+                    autoFollowDriver: true,
+                    driverSpeed: widget.state.driverSpeedKmh,
+                    distanceKm: widget.state.distanceToDestinationKm,
+                    etaText: '${widget.state.etaToDestinationMinutes} mins',
+                    isArrivingSoon: widget.state.distanceToDestinationKm < 0.35 && widget.state.distanceToDestinationKm > 0,
+                    driverName: widget.state.partnerName,
+                    storePhone: widget.state.restaurantPhone,
+                    storeAddress: widget.state.restaurantAddress,
+                    customerAddress: widget.state.customerAddress,
+                    onOpenExternalNavigation: () => _openExternalNavigation(widget.state),
                   ),
                 ),
                 Positioned(
@@ -852,27 +892,19 @@ class _MapAreaState extends State<_MapArea> {
                   ),
                 ),
                 Positioned(
-                  left: w * _MapCoords.currentX - 40,
-                  top: h * _MapCoords.currentY - 40,
-                  child: const _RadarPulse(color: Color(0xFF2196F3)),
-                ),
-                Positioned(
-                  left: w * _MapCoords.currentX - 14,
-                  top: h * _MapCoords.currentY - 14,
+                  left: w * 0.5 - 14,
+                  top: h * 0.5 - 14,
                   child: _DriverMarker(
                     heading: widget.state.driverHeading,
-                    label: DeliveryNavigationStrings.of(
-                      'currentLocationSemantics',
-                      localeCode,
-                    ),
+                    label: 'Current location',
                   ),
                 ),
                 Positioned(
                   right: 14,
                   bottom: 14,
                   child: _MapControls(
-                    onZoomIn: _zoomIn,
-                    onZoomOut: _zoomOut,
+                    onZoomIn: () {},
+                    onZoomOut: () {},
                     onRecenter: () => _recenter(context),
                     isFullScreen: widget.isFullScreen,
                     onToggleFullScreen: widget.onToggleFullScreen,
@@ -1923,28 +1955,35 @@ class _TelemetryPanel extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
+              const SizedBox(width: 8),
               const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: gpsColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(gpsIcon, color: gpsColor, size: 14),
-                    const SizedBox(width: 6),
-                    Text(
-                      gpsLabel,
-                      style: TextStyle(
-                        color: gpsColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
+              Flexible(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: gpsColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(gpsIcon, color: gpsColor, size: 14),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          gpsLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: gpsColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],

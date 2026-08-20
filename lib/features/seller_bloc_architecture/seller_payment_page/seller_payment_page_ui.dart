@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'seller_payment_page_bloc.dart';
 import 'seller_payment_page_event.dart';
 import 'seller_payment_page_state.dart';
+import '../../../core/widgets/shimmer_loader.dart';
 
 class SellerPaymentPage extends StatelessWidget {
   const SellerPaymentPage({super.key});
@@ -2122,30 +2123,11 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
+          const SkeletonBox(height: 48, borderRadius: 14),
           const SizedBox(height: 20),
-          Container(
-            height: 220,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(24),
-            ),
-          ),
+          const SkeletonBox(height: 220, borderRadius: 24),
           const SizedBox(height: 28),
-          Container(
-            height: 24,
-            width: 180,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
+          const SkeletonBox(width: 180, height: 24, borderRadius: 6),
           const SizedBox(height: 14),
           GridView.count(
             crossAxisCount: 2,
@@ -2155,12 +2137,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
             childAspectRatio: 1.3,
             children: List.generate(
               4,
-              (index) => Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
+              (index) => const SkeletonBox(borderRadius: 18),
             ),
           ),
         ],

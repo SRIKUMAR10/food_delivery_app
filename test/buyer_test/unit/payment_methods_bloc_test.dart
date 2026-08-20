@@ -11,8 +11,8 @@ void main() {
     late MockPaymentMethodsRepository mockRepository;
     late PaymentMethodsBloc bloc;
 
-    final mockCards = [
-      PaymentMethodModel(
+    final List<PaymentMethodModel> mockCards = [
+      const PaymentMethodModel(
         id: 'pm_1',
         type: 'Visa',
         maskedNumber: '**** 4242',
@@ -20,8 +20,6 @@ void main() {
         cardholderName: 'John Doe',
         expiryDate: '12/28',
         isDefault: true,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
       ),
     ];
 
@@ -111,7 +109,7 @@ void main() {
           isA<PaymentMethodsState>().having((s) => s.isSaving, 'isSaving', true),
           isA<PaymentMethodsState>()
               .having((s) => s.isSaving, 'isSaving', false)
-              .having((s) => s.successMessage, 'successMessage', 'Payment method deleted'),
+              .having((s) => s.successMessage, 'successMessage', 'Payment method removed'),
         ]),
       );
 

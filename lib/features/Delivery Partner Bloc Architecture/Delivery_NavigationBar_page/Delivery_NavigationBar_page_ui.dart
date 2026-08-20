@@ -25,6 +25,7 @@ import '../auto_hide_app_bar_wrapper.dart';
 import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/theme/delivery_app_theme.dart';
 import '../../../core/theme/delivery_app_typography.dart';
+import '../../../core/widgets/logout_button.dart';
 
 class DeliveryNavigationBarStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -1607,38 +1608,27 @@ class _LogoutButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: InkWell(
-        onTap: () {
-          context.read<DeliveryNavigationBarPageBloc>().add(
-                const DeliveryNavigationBarLogoutRequestedEvent(),
-              );
+      child: LogoutButton(
+        onPressed: () {
+          showLogoutConfirmDialog(
+            context,
+            title: 'Logout',
+            message: 'Are you sure you want to log out?',
+            confirmLabel: 'Logout',
+            confirmColor: const Color(0xFFFF5252),
+            backgroundColor: const Color(0xFF0D141C),
+            titleColor: Colors.white,
+            contentColor: const Color(0xFF94A3B8),
+            cancelColor: const Color(0xFF94A3B8),
+            onConfirm: () async {
+              context.read<DeliveryNavigationBarPageBloc>().add(
+                    const DeliveryNavigationBarLogoutRequestedEvent(),
+                  );
+            },
+          );
         },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFF5252).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFFFF5252).withValues(alpha: 0.25),
-            ),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.logout, color: Color(0xFFFF5252), size: 20),
-              SizedBox(width: 10),
-              Text(
-                'Logout',
-                style: TextStyle(
-                  color: Color(0xFFFF5252),
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
+        label: 'Logout',
+        color: const Color(0xFFFF5252),
       ),
     );
   }

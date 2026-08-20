@@ -239,6 +239,50 @@ void main() {
       ],
     );
 
+    blocTest<SellerSettingBloc, SellerSettingState>(
+      'emits error state when notification save fails (e.g. permission denied)',
+      build: () {
+        when(() => mockRepository.saveSettings(any()))
+            .thenThrow(Exception('permission-denied'));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const UpdateNotificationAdvancedSettings(
+        pushNotifications: true,
+        newOrderSound: true,
+        soundLoopUntilAccepted: true,
+        orderAlertRingtone: 'Bell Chime',
+        soundVolume: 0.8,
+        promoAndOffers: false,
+        lowStockAlerts: true,
+        orderUpdates: true,
+        whatsappNotifications: true,
+        smsNotifications: false,
+      )),
+      expect: () => [
+        const SellerSettingState(isSaving: true),
+        const SellerSettingState(
+          isSaving: false,
+          pushNotifications: true,
+          newOrderSound: true,
+          soundLoopUntilAccepted: true,
+          orderAlertRingtone: 'Bell Chime',
+          soundVolume: 0.8,
+          promoAndOffers: false,
+          lowStockAlerts: true,
+          orderUpdates: true,
+          whatsappNotifications: true,
+          smsNotifications: false,
+          successMessage: 'Notification preferences saved.',
+        ),
+        predicate<SellerSettingState>(
+          (s) => s.isSaving == false && s.error != null && s.error!.contains('permission-denied'),
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockRepository.saveSettings(any())).called(1);
+      },
+    );
+
     // 6. Payment Settings Test
     blocTest<SellerSettingBloc, SellerSettingState>(
       'updates payment & payout settings',

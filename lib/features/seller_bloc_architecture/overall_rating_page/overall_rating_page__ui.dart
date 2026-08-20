@@ -4,6 +4,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:food_delivery_app/api_service/seller_review_service.dart';
 import 'package:food_delivery_app/core/utils/app_localizations.dart';
+import '../../../../core/widgets/shimmer_loader.dart';
+import '../../../../core/widgets/empty_state_view.dart';
+import '../../../../core/widgets/status_badge.dart';
+import '../../../../core/widgets/filter_chips_bar.dart';
 import 'overall_rating_page__bloc.dart';
 import 'overall_rating_page__event.dart';
 import 'overall_rating_page__state.dart';
@@ -72,9 +76,13 @@ class _OverallRatingContentView extends StatelessWidget {
             ),
           ],
         ),
-        actions: const [
-          _LiveSyncBadge(),
-          SizedBox(width: 16),
+        actions: [
+          StatusBadge(
+            label: AppLocalizations.live(context),
+            color: Colors.green,
+            icon: Icons.circle,
+          ),
+          const SizedBox(width: 16),
         ],
       ),
       body: BlocListener<OverallRatingBloc, OverallRatingState>(
@@ -100,9 +108,53 @@ class _OverallRatingContentView extends StatelessWidget {
           builder: (context, state) {
             if (state is OverallRatingInitial) {
               context.read<OverallRatingBloc>().add(LoadOverallRatingEvent());
-              return const _LoadingSkeleton();
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1100),
+                  child: ListView.builder(
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + kToolbarHeight + 24,
+                      left: 16,
+                      right: 16,
+                      bottom: 32,
+                    ),
+                    itemCount: 4,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        child: SkeletonBox(
+                          height: index == 0 ? 180 : 120,
+                          borderRadius: 16,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
             } else if (state is OverallRatingLoading) {
-              return const _LoadingSkeleton();
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1100),
+                  child: ListView.builder(
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + kToolbarHeight + 24,
+                      left: 16,
+                      right: 16,
+                      bottom: 32,
+                    ),
+                    itemCount: 4,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        child: SkeletonBox(
+                          height: index == 0 ? 180 : 120,
+                          borderRadius: 16,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
             } else if (state is OverallRatingLoaded) {
               return _buildLoaded(context, state);
             } else if (state is OverallRatingError) {
@@ -158,12 +210,37 @@ class _OverallRatingContentView extends StatelessWidget {
                 children: [
                   _buildSummary(context, state, wide),
                   const SizedBox(height: 16),
-                  _FilterTabs(state: state),
+                  FilterChipsBar(
+                    items: [
+                      FilterChipItem(label: AppLocalizations.allReviews(context), value: 'all'),
+                      FilterChipItem(label: AppLocalizations.needsReply(context), value: 'unreplied'),
+                      FilterChipItem(label: AppLocalizations.replied(context), value: 'replied'),
+                      FilterChipItem(label: AppLocalizations.flagged(context), value: 'reported'),
+                      for (var star = 5; star >= 1; star--)
+                        FilterChipItem(label: '$star★', value: 'star_$star'),
+                    ],
+                    selected: state.selectedStarFilter != null
+                        ? 'star_${state.selectedStarFilter}'
+                        : state.activeTabFilter,
+                    onSelected: (value) {
+                      if (value.startsWith('star_')) {
+                        final star = int.parse(value.substring(5));
+                        context.read<OverallRatingBloc>().add(FilterReviewsByStarEvent(star));
+                        context.read<OverallRatingBloc>().add(const FilterReviewsByTabEvent('all'));
+                      } else {
+                        context.read<OverallRatingBloc>().add(FilterReviewsByTabEvent(value));
+                        context.read<OverallRatingBloc>().add(const FilterReviewsByStarEvent(null));
+                      }
+                    },
+                  ),
                   const SizedBox(height: 16),
                   _buildReviewsHeader(context, state),
                   const SizedBox(height: 12),
                   if (state.filteredReviews.isEmpty)
-                    _EmptyReviews(message: AppLocalizations.noFilteredReviews(context))
+                    EmptyStateView(
+                    icon: Icons.rate_review_outlined,
+                    title: AppLocalizations.noFilteredReviews(context),
+                  )
                   else
                     ...state.filteredReviews.map(
                       (review) => Padding(
@@ -247,55 +324,6 @@ String _actionMessageText(BuildContext context, String key) {
       return AppLocalizations.reportFailed(context);
     default:
       return key;
-  }
-}
-
-class _LiveSyncBadge extends StatelessWidget {
-  const _LiveSyncBadge({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 1200),
-      builder: (context, value, child) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.08 + (0.06 * value)),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.green.withValues(alpha: 0.6 * value),
-                      blurRadius: 6,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                AppLocalizations.live(context),
-                style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 }
 
@@ -467,89 +495,6 @@ class _BreakdownRow extends StatelessWidget {
   }
 }
 
-class _FilterTabs extends StatelessWidget {
-  final OverallRatingLoaded state;
-
-  const _FilterTabs({Key? key, required this.state}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final tabs = <(String, String)>[
-      ('all', AppLocalizations.allReviews(context)),
-      ('unreplied', AppLocalizations.needsReply(context)),
-      ('replied', AppLocalizations.replied(context)),
-      ('reported', AppLocalizations.flagged(context)),
-    ];
-
-    final starTabs = <int>[5, 4, 3, 2, 1];
-
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          for (final tab in tabs) ...[
-            _chip(
-              context,
-              label: tab.$2,
-              selected: state.activeTabFilter == tab.$1 &&
-                  state.selectedStarFilter == null,
-              onTap: () {
-                context
-                    .read<OverallRatingBloc>()
-                    .add(FilterReviewsByTabEvent(tab.$1));
-                context
-                    .read<OverallRatingBloc>()
-                    .add(const FilterReviewsByStarEvent(null));
-              },
-            ),
-            const SizedBox(width: 8),
-          ],
-          for (final star in starTabs) ...[
-            _chip(
-              context,
-              label: '$star★',
-              selected: state.selectedStarFilter == star,
-              onTap: () {
-                context
-                    .read<OverallRatingBloc>()
-                    .add(FilterReviewsByStarEvent(star));
-                context
-                    .read<OverallRatingBloc>()
-                    .add(const FilterReviewsByTabEvent('all'));
-              },
-            ),
-            const SizedBox(width: 8),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _chip(BuildContext context,
-      {required String label,
-      required bool selected,
-      required VoidCallback onTap}) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onTap(),
-      labelStyle: TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: selected ? Colors.white : _muted,
-      ),
-      selectedColor: _primary,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: selected ? _primary : Colors.grey.shade300),
-      ),
-      showCheckmark: false,
-    );
-  }
-}
-
 class _ReviewCard extends StatefulWidget {
   final ReviewModel review;
 
@@ -605,7 +550,11 @@ class _ReviewCardState extends State<_ReviewCard> {
                   ],
                 ),
               ),
-              _RatingChip(rating: review.rating),
+              StatusBadge(
+                  label: review.rating.toStringAsFixed(1),
+                  color: _star,
+                  icon: Icons.star_rounded,
+                ),
             ],
           ),
           if (review.productName.isNotEmpty) ...[
@@ -634,7 +583,11 @@ class _ReviewCardState extends State<_ReviewCard> {
           ),
           if (review.isReported) ...[
             const SizedBox(height: 12),
-            _ReportedBadge(reason: review.reportReason),
+            StatusBadge(
+              label: AppLocalizations.reportedUnderReview(context),
+              color: Colors.orange,
+              icon: Icons.report_problem,
+            ),
           ],
           const SizedBox(height: 12),
           if (review.hasSellerReply) ...[
@@ -836,35 +789,6 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-class _RatingChip extends StatelessWidget {
-  final double rating;
-
-  const _RatingChip({Key? key, required this.rating}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: _star.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.star_rounded, color: _star, size: 16),
-          const SizedBox(width: 4),
-          Text(
-            rating.toStringAsFixed(1),
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 13, color: _ink),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ExpandableText extends StatelessWidget {
   final String text;
   final bool expanded;
@@ -955,65 +879,6 @@ class _SellerReplyBox extends StatelessWidget {
   }
 }
 
-class _ReportedBadge extends StatelessWidget {
-  final String? reason;
-
-  const _ReportedBadge({Key? key, this.reason}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.report_problem, size: 14, color: Colors.orange),
-          const SizedBox(width: 6),
-          Text(
-            AppLocalizations.reportedUnderReview(context),
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.orange),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyReviews extends StatelessWidget {
-  final String message;
-
-  const _EmptyReviews({Key? key, required this.message}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.rate_review_outlined, size: 48, color: _muted),
-          const SizedBox(height: 12),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: _muted),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _StarRating extends StatelessWidget {
   final double rating;
   final double size;
@@ -1034,38 +899,6 @@ class _StarRating extends StatelessWidget {
           return Icon(Icons.star_border, color: const Color(0xFFD1D5DB), size: size);
         }
       }),
-    );
-  }
-}
-
-class _LoadingSkeleton extends StatelessWidget {
-  const _LoadingSkeleton({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1100),
-        child: ListView.builder(
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + kToolbarHeight + 24,
-            left: 16,
-            right: 16,
-            bottom: 32,
-          ),
-          itemCount: 4,
-          itemBuilder: (context, index) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              height: index == 0 ? 180 : 120,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(16),
-              ),
-            );
-          },
-        ),
-      ),
     );
   }
 }

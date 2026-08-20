@@ -254,7 +254,17 @@ class AddProductPageBloc
 
       final effectiveSellerId = (authService.currentUserId != null && authService.currentUserId!.isNotEmpty)
           ? authService.currentUserId!
-          : (initial?.sellerId != null && initial!.sellerId.isNotEmpty ? initial.sellerId : 'default_seller');
+          : (initial?.sellerId != null && initial!.sellerId.isNotEmpty ? initial.sellerId : '');
+
+      if (effectiveSellerId.isEmpty) {
+        emit(
+          state.copyWith(
+            status: AddProductStatus.error,
+            errorMessage: 'User not authenticated. Please log in.',
+          ),
+        );
+        return;
+      }
 
       if (initial != null) {
         await repository.updateProduct(productToSave, state.images, effectiveSellerId, existingImages: state.existingImages);

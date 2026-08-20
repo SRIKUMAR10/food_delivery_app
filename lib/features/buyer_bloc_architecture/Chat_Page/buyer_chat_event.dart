@@ -45,6 +45,7 @@ class StartBuyerConversation extends BuyerChatEvent {
   final String buyerName;
   final String? shopName;
   final String? sellerImageUrl;
+  final String? sellerPhone;
   final String? orderId;
   final String? initialMessage;
 
@@ -54,12 +55,13 @@ class StartBuyerConversation extends BuyerChatEvent {
     required this.buyerName,
     this.shopName,
     this.sellerImageUrl,
+    this.sellerPhone,
     this.orderId,
     this.initialMessage,
   });
 
   @override
-  List<Object?> get props => [sellerId, sellerName, buyerName, shopName, sellerImageUrl, orderId, initialMessage];
+  List<Object?> get props => [sellerId, sellerName, buyerName, shopName, sellerImageUrl, sellerPhone, orderId, initialMessage];
 }
 
 class FilterBuyerConversations extends BuyerChatEvent {
@@ -181,4 +183,17 @@ class SetBuyerChatFilter extends BuyerChatEvent {
 
   @override
   List<Object?> get props => [filter];
+}
+
+class SetBuyerTypingStatus extends BuyerChatEvent {
+  final String conversationId;
+  final bool isTyping;
+
+  const SetBuyerTypingStatus({
+    required this.conversationId,
+    required this.isTyping,
+  });
+
+  @override
+  List<Object?> get props => [conversationId, isTyping];
 }

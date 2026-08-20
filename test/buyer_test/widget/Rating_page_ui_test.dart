@@ -123,5 +123,55 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.text('Submit Review'), findsNothing);
     });
+
+    testWidgets('renders delivery partner section, compliment chips, and tipping options', (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          const RatingPageView(
+            foodId: 'food123',
+            foodName: 'Spicy Pizza',
+            partnerName: 'Mani',
+            partnerId: 'partner_123',
+          ),
+        ),
+      );
+
+      expect(find.text('Rate Delivery: Mani'), findsOneWidget);
+      expect(find.text('⚡ Super Fast'), findsOneWidget);
+      expect(find.text('Tip your Delivery Partner'), findsOneWidget);
+      expect(find.text('₹20'), findsOneWidget);
+      expect(find.text('₹50'), findsOneWidget);
+    });
+
+    testWidgets('tapping tip chip updates submit button label to include tip amount', (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          const RatingPageView(
+            foodId: 'food123',
+            foodName: 'Spicy Pizza',
+            partnerName: 'Mani',
+            partnerId: 'partner_123',
+          ),
+        ),
+      );
+
+      // Initially says Submit Review
+      expect(find.text('Submit Review'), findsOneWidget);
+
+      // Scroll into view & tap ₹30 tip chip
+      await tester.ensureVisible(find.text('₹30'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('₹30'));
+      await tester.pumpAndSettle();
+
+      // Submit button should now reflect tip
+      expect(find.text('Submit Review & Tip ₹30'), findsOneWidget);
+    });
   });
 }

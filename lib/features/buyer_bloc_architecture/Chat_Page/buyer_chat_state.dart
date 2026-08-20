@@ -32,6 +32,10 @@ class BuyerChatLoaded extends BuyerChatState {
   final FoodItem? selectedProduct;
   final String activeFilter; // 'all' | 'seller' | 'delivery'
   final bool isMarkingRead;
+  final bool isOtherPartyTyping;
+  final String? buyerProfileName;
+  final String? buyerProfileImage;
+  final String? buyerProfilePhone;
 
   const BuyerChatLoaded({
     required this.currentUserId,
@@ -47,6 +51,10 @@ class BuyerChatLoaded extends BuyerChatState {
     this.selectedProduct,
     this.activeFilter = 'all',
     this.isMarkingRead = false,
+    this.isOtherPartyTyping = false,
+    this.buyerProfileName,
+    this.buyerProfileImage,
+    this.buyerProfilePhone,
   });
 
   ConversationModel? get selectedConversation {
@@ -94,6 +102,10 @@ class BuyerChatLoaded extends BuyerChatState {
     bool clearSelectedProduct = false,
     String? activeFilter,
     bool? isMarkingRead,
+    bool? isOtherPartyTyping,
+    String? buyerProfileName,
+    String? buyerProfileImage,
+    String? buyerProfilePhone,
   }) {
     return BuyerChatLoaded(
       currentUserId: currentUserId ?? this.currentUserId,
@@ -111,6 +123,10 @@ class BuyerChatLoaded extends BuyerChatState {
       selectedProduct: clearSelectedProduct ? null : (selectedProduct ?? this.selectedProduct),
       activeFilter: activeFilter ?? this.activeFilter,
       isMarkingRead: isMarkingRead ?? this.isMarkingRead,
+      isOtherPartyTyping: isOtherPartyTyping ?? this.isOtherPartyTyping,
+      buyerProfileName: buyerProfileName ?? this.buyerProfileName,
+      buyerProfileImage: buyerProfileImage ?? this.buyerProfileImage,
+      buyerProfilePhone: buyerProfilePhone ?? this.buyerProfilePhone,
     );
   }
 
@@ -119,7 +135,8 @@ class BuyerChatLoaded extends BuyerChatState {
     currentUserId, conversations, selectedConversationId, messages,
     isSendingMessage, errorMessage, searchQuery, showEmojiPicker,
     isRecording, recordingDuration, selectedProduct, activeFilter,
-    isMarkingRead,
+    isMarkingRead, isOtherPartyTyping, buyerProfileName,
+    buyerProfileImage, buyerProfilePhone,
   ];
 }
 

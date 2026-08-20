@@ -9,6 +9,10 @@ class MockAuthService extends Mock implements IAuthService {}
 class MockUserProfileRepository extends Mock implements IUserProfileRepository {}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(UserProfile.empty());
+  });
+
   group('UserProfileBloc Unit Tests', () {
     late MockAuthService mockAuthService;
     late MockUserProfileRepository mockProfileRepository;

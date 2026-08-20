@@ -85,7 +85,7 @@ void main() {
 
       expect(find.text('Available Balance'), findsOneWidget);
       expect(find.text('₹12,680.00'), findsOneWidget);
-      expect(find.text('Withdruw'), findsOneWidget);
+      expect(find.text('Withdraw'), findsOneWidget);
       expect(find.text('Transactions'), findsOneWidget);
       expect(find.text('Payout History'), findsOneWidget);
       expect(find.text('Payout #0002'), findsOneWidget);

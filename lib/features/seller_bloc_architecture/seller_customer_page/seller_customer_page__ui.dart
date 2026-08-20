@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../../core/widgets/shimmer_loader.dart';
 import '../../../repositories/seller_customer_repository.dart';
 import '../../../api_service/seller_customer_service.dart';
 import '../chat_support_page_/chat_support_page_ui.dart';
@@ -603,46 +604,22 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
         Row(
           children: [
             Expanded(
-              child: Container(
-                height: 90,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
+              child: SkeletonBox(height: 90, borderRadius: 16),
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Container(
-                height: 90,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
+              child: SkeletonBox(height: 90, borderRadius: 16),
             ),
           ],
         ),
         const SizedBox(height: 24),
-        Container(
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
+        SkeletonBox(height: 50, borderRadius: 16),
         const SizedBox(height: 24),
         ...List.generate(
           4,
           (index) => Padding(
             padding: const EdgeInsets.only(bottom: 12.0),
-            child: Container(
-              height: 84,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
+            child: SkeletonBox(height: 84, borderRadius: 16),
           ),
         ),
       ],

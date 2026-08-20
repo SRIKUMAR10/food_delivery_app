@@ -213,5 +213,33 @@ void main() {
         await expectation;
       });
     });
+
+    group('ToggleMapFullScreen', () {
+      test('defaults isMapExpanded to true and toggles to false then back to true', () async {
+        // Arrange
+        when(() => mockTrackService.getOrderDetails(any())).thenAnswer(
+          (_) async => {'status': 'New'},
+        );
+
+        final expectation = expectLater(
+          bloc.stream,
+          emitsInOrder([
+            isA<TrackOrderLoading>(),
+            isA<TrackOrderLoaded>().having((s) => s.isMapExpanded, 'isMapExpanded initial', true),
+            isA<TrackOrderLoaded>().having((s) => s.isMapExpanded, 'isMapExpanded toggled off', false),
+            isA<TrackOrderLoaded>().having((s) => s.isMapExpanded, 'isMapExpanded toggled back on', true),
+          ]),
+        );
+
+        // Act
+        bloc.add(LoadTrackOrderDetails(orderId: '123', orderDate: DateTime.now()));
+        // Wait until loaded
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        bloc.add(const ToggleMapFullScreen());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        bloc.add(const ToggleMapFullScreen());
+        await expectation;
+      });
+    });
   });
 }
