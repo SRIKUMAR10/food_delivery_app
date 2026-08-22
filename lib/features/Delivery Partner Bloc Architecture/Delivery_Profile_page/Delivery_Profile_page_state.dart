@@ -115,6 +115,9 @@ class DeliveryProfileState extends Equatable {
   final String phone;
   final String email;
   final String address;
+  final double? latitude;
+  final double? longitude;
+  final String? googleMapsUrl;
   final String dob;
   final String gender;
   final String vehicleType;
@@ -150,6 +153,9 @@ class DeliveryProfileState extends Equatable {
     this.phone = '',
     this.email = '',
     this.address = '',
+    this.latitude,
+    this.longitude,
+    this.googleMapsUrl,
     this.dob = '',
     this.gender = '',
     this.vehicleType = '',
@@ -208,6 +214,9 @@ class DeliveryProfileState extends Equatable {
     String? phone,
     String? email,
     String? address,
+    double? latitude,
+    double? longitude,
+    String? googleMapsUrl,
     String? dob,
     String? gender,
     String? vehicleType,
@@ -242,6 +251,9 @@ class DeliveryProfileState extends Equatable {
       phone: phone ?? this.phone,
       email: email ?? this.email,
       address: address ?? this.address,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      googleMapsUrl: googleMapsUrl ?? this.googleMapsUrl,
       dob: dob ?? this.dob,
       gender: gender ?? this.gender,
       vehicleType: vehicleType ?? this.vehicleType,
@@ -279,6 +291,9 @@ class DeliveryProfileState extends Equatable {
         phone,
         email,
         address,
+        latitude,
+        longitude,
+        googleMapsUrl,
         dob,
         gender,
         vehicleType,

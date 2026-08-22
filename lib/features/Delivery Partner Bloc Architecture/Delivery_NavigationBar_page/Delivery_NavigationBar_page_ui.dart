@@ -6,8 +6,12 @@ import 'Delivery_NavigationBar_page_repository.dart';
 import 'Delivery_NavigationBar_page_service.dart';
 import 'Delivery_NavigationBar_page_state.dart';
 import '../Delivery_Profile_page/Delivery_Profile_page_ui.dart';
+import '../Delivery_Profile_page/Delivery_Profile_page_repository.dart';
+import '../Delivery_Profile_page/Delivery_Profile_page_service.dart';
 import '../Delivery_Dashboard_page/Delivery_Dashboard_page_ui.dart';
 import '../Delivery_Orders_page/Delivery_Orders_page_ui.dart';
+import '../Delivery_Orders_page/Delivery_Orders_page_repository.dart';
+import '../Delivery_Orders_page/Delivery_Orders_page_service.dart';
 import '../Delivery_Navigation Screen_page/Delivery_Navigation Screen_page_ui.dart';
 import '../Delivery_Earnings Dashboard_page/Delivery_Earnings Dashboard_page_ui.dart';
 import '../Delivery_Wallet_page/Delivery_Wallet_page_ui.dart';
@@ -76,12 +80,20 @@ class DeliveryNavigationBarPage extends StatelessWidget {
   final DeliveryNavigationBarRepositoryBase? repository;
   final DeliveryNavigationBarServiceBase? service;
   final DeliveryNavigationBarPageBloc? bloc;
+  final DeliveryOrdersRepositoryBase? ordersRepository;
+  final DeliveryOrdersServiceBase? ordersService;
+  final DeliveryProfileRepositoryBase? profileRepository;
+  final DeliveryProfileServiceBase? profileService;
 
   const DeliveryNavigationBarPage({
     super.key,
     this.repository,
     this.service,
     this.bloc,
+    this.ordersRepository,
+    this.ordersService,
+    this.profileRepository,
+    this.profileService,
   });
 
   @override
@@ -89,7 +101,12 @@ class DeliveryNavigationBarPage extends StatelessWidget {
     if (bloc != null) {
       return BlocProvider<DeliveryNavigationBarPageBloc>.value(
         value: bloc!,
-        child: const DeliveryNavigationBarPageView(),
+        child: DeliveryNavigationBarPageView(
+          ordersRepository: ordersRepository,
+          ordersService: ordersService,
+          profileRepository: profileRepository,
+          profileService: profileService,
+        ),
       );
     }
 
@@ -98,13 +115,29 @@ class DeliveryNavigationBarPage extends StatelessWidget {
         repository: repository ?? DeliveryNavigationBarRepository(),
         service: service ?? DeliveryNavigationBarService(),
       )..add(const DeliveryNavigationBarInitEvent()),
-      child: const DeliveryNavigationBarPageView(),
+      child: DeliveryNavigationBarPageView(
+        ordersRepository: ordersRepository,
+        ordersService: ordersService,
+        profileRepository: profileRepository,
+        profileService: profileService,
+      ),
     );
   }
 }
 
 class DeliveryNavigationBarPageView extends StatefulWidget {
-  const DeliveryNavigationBarPageView({super.key});
+  final DeliveryOrdersRepositoryBase? ordersRepository;
+  final DeliveryOrdersServiceBase? ordersService;
+  final DeliveryProfileRepositoryBase? profileRepository;
+  final DeliveryProfileServiceBase? profileService;
+
+  const DeliveryNavigationBarPageView({
+    super.key,
+    this.ordersRepository,
+    this.ordersService,
+    this.profileRepository,
+    this.profileService,
+  });
 
   @override
   State<DeliveryNavigationBarPageView> createState() =>
@@ -229,6 +262,8 @@ class _DeliveryNavigationBarPageViewState
                   isMobile: isMobile,
                   onNavTap: (i) => _onNavTap(context, i),
                   onContactSupport: () => _onContactSupportPressed(context),
+                  ordersRepository: widget.ordersRepository,
+                  ordersService: widget.ordersService,
                 ),
               );
             }
@@ -253,6 +288,8 @@ class _LoadedShell extends StatelessWidget {
   final bool isMobile;
   final ValueChanged<int> onNavTap;
   final VoidCallback onContactSupport;
+  final DeliveryOrdersRepositoryBase? ordersRepository;
+  final DeliveryOrdersServiceBase? ordersService;
 
   const _LoadedShell({
     required this.state,
@@ -261,6 +298,8 @@ class _LoadedShell extends StatelessWidget {
     required this.isMobile,
     required this.onNavTap,
     required this.onContactSupport,
+    this.ordersRepository,
+    this.ordersService,
   });
 
   @override
@@ -275,13 +314,25 @@ class _LoadedShell extends StatelessWidget {
     );
 
     if (isMobile) {
-      return _ContentArea(state: state, isMobile: true);
+      return _ContentArea(
+        state: state,
+        isMobile: true,
+        ordersRepository: ordersRepository,
+        ordersService: ordersService,
+      );
     }
 
     return Row(
       children: [
         sidebar,
-        Expanded(child: _ContentArea(state: state, isMobile: false)),
+        Expanded(
+          child: _ContentArea(
+            state: state,
+            isMobile: false,
+            ordersRepository: ordersRepository,
+            ordersService: ordersService,
+          ),
+        ),
       ],
     );
   }
@@ -802,8 +853,15 @@ class _UploadProgressIndicator extends StatelessWidget {
 class _ContentArea extends StatelessWidget {
   final DeliveryNavigationBarState state;
   final bool isMobile;
+  final DeliveryOrdersRepositoryBase? ordersRepository;
+  final DeliveryOrdersServiceBase? ordersService;
 
-  const _ContentArea({required this.state, required this.isMobile});
+  const _ContentArea({
+    required this.state,
+    required this.isMobile,
+    this.ordersRepository,
+    this.ordersService,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -828,7 +886,10 @@ class _ContentArea extends StatelessWidget {
                       case 'dashboard':
                         return const DeliveryDashboardPage();
                       case 'orders':
-                        return const DeliveryOrdersPage();
+                        return DeliveryOrdersPage(
+                          repository: ordersRepository,
+                          service: ordersService,
+                        );
                       case 'earnings':
                         return const DeliveryEarningsDashboardPage();
                       case 'incentives':

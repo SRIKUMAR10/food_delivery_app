@@ -685,5 +685,133 @@ void main() {
         ),
       ],
     );
+
+    blocTest<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
+      'toggles online status to false on DeliveryOrdersToggleOnlineEvent',
+      build: () {
+        when(
+          () => mockRepository.updateOnlineStatus(false),
+        ).thenAnswer((_) async {});
+        return buildBloc();
+      },
+      seed: () => const DeliveryOrdersPageState(
+        status: DeliveryOrdersPageStatus.loaded,
+        isOnline: true,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+      ),
+      act: (bloc) => bloc.add(const DeliveryOrdersToggleOnlineEvent(isOnline: false)),
+      expect: () => [
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          isOnline: true,
+          isTogglingOnline: true,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+        ),
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          isOnline: false,
+          isTogglingOnline: false,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+          notificationMessage: 'You are now offline. New orders will pause.',
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockRepository.updateOnlineStatus(false)).called(1);
+      },
+    );
+
+    blocTest<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
+      'toggles online status to true on DeliveryOrdersToggleOnlineEvent',
+      build: () {
+        when(
+          () => mockRepository.updateOnlineStatus(true),
+        ).thenAnswer((_) async {});
+        return buildBloc();
+      },
+      seed: () => const DeliveryOrdersPageState(
+        status: DeliveryOrdersPageStatus.loaded,
+        isOnline: false,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+      ),
+      act: (bloc) => bloc.add(const DeliveryOrdersToggleOnlineEvent(isOnline: true)),
+      expect: () => [
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          isOnline: false,
+          isTogglingOnline: true,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+        ),
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          isOnline: true,
+          isTogglingOnline: false,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+          notificationMessage: 'You are online. New orders will appear automatically.',
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockRepository.updateOnlineStatus(true)).called(1);
+      },
+    );
+
+    blocTest<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
+      'accepts next available order on DeliveryOrdersAcceptNextOrderEvent',
+      build: () {
+        when(
+          () => mockRepository.acceptOrderAtomic('ORD12346'),
+        ).thenAnswer((_) async => true);
+        return buildBloc();
+      },
+      seed: () => const DeliveryOrdersPageState(
+        status: DeliveryOrdersPageStatus.loaded,
+        orders: sampleOrders,
+        filteredOrders: sampleOrders,
+      ),
+      act: (bloc) => bloc.add(const DeliveryOrdersAcceptNextOrderEvent()),
+      expect: () => [
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+          acceptingOrderId: 'ORD12346',
+        ),
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+          acceptingOrderId: null,
+          notificationMessage: 'Order accepted. Heading to the store.',
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockRepository.acceptOrderAtomic('ORD12346')).called(1);
+      },
+    );
+
+    blocTest<DeliveryOrdersPageBloc, DeliveryOrdersPageState>(
+      'emits notification when no next order is available on DeliveryOrdersAcceptNextOrderEvent',
+      build: () => buildBloc(),
+      seed: () => const DeliveryOrdersPageState(
+        status: DeliveryOrdersPageStatus.loaded,
+        orders: [activeOrder, completedOrder],
+        filteredOrders: [activeOrder, completedOrder],
+      ),
+      act: (bloc) => bloc.add(const DeliveryOrdersAcceptNextOrderEvent()),
+      expect: () => [
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: [activeOrder, completedOrder],
+          filteredOrders: [activeOrder, completedOrder],
+          notificationMessage: 'No pending orders right now',
+        ),
+      ],
+    );
   });
 }
+

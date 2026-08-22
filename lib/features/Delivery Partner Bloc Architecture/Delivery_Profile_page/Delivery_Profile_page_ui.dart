@@ -8,6 +8,8 @@ import 'Delivery_Profile_page_service.dart';
 import 'Delivery_Profile_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/widgets/logout_button.dart';
+import '../../../core/services/google_places_service.dart';
+import 'delivery_google_address_search_dialog.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_bloc.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_event.dart';
 
@@ -917,13 +919,8 @@ class _PersonalInfoCard extends StatelessWidget {
                 field: 'email',
                 keyboardType: TextInputType.emailAddress,
               );
-              final Widget addressField = _textField(
-                context,
-                key: 'dp_profile_address',
-                label: 'address',
-                value: state.address,
-                field: 'address',
-                hint: 'House/Street, Area, City',
+              final Widget addressField = _AddressPickerField(
+                state: state,
               );
               final Widget dobField = _textField(
                 context,
@@ -990,6 +987,188 @@ class _PersonalInfoCard extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AddressPickerField extends StatefulWidget {
+  final DeliveryProfileState state;
+
+  const _AddressPickerField({required this.state});
+
+  @override
+  State<_AddressPickerField> createState() => _AddressPickerFieldState();
+}
+
+class _AddressPickerFieldState extends State<_AddressPickerField> {
+  late final TextEditingController _controller;
+  bool _isLocatingGps = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.state.address);
+  }
+
+  @override
+  void didUpdateWidget(covariant _AddressPickerField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.address != widget.state.address &&
+        _controller.text != widget.state.address) {
+      _controller.text = widget.state.address;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _dispatch(BuildContext context, DeliveryProfileUpdateFieldEvent event) {
+    context.read<DeliveryProfileBloc>().add(event);
+  }
+
+  Future<void> _detectGps(BuildContext context) async {
+    setState(() => _isLocatingGps = true);
+    try {
+      final details = await GooglePlacesService.instance.getCurrentLocationAddress();
+      if (details != null && mounted) {
+        final lat = details.latitude ?? 13.0827;
+        final lng = details.longitude ?? 80.2707;
+        _controller.text = details.formattedAddress;
+        _dispatch(
+          context,
+          DeliveryProfileUpdateFieldEvent(
+            field: 'address',
+            value: details.formattedAddress,
+            latitude: lat,
+            longitude: lng,
+            googleMapsUrl: 'https://www.google.com/maps?q=$lat,$lng',
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not retrieve GPS location. Please check location permissions.',
+            ),
+            backgroundColor: DeliveryAppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Location error: $e'),
+            backgroundColor: DeliveryAppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLocatingGps = false);
+      }
+    }
+  }
+
+  Future<void> _openMapPicker(BuildContext context) async {
+    final result = await DeliveryGoogleAddressSearchDialog.show(
+      context: context,
+      addressType: 'Home',
+      currentAddress: _controller.text.trim(),
+      onAddressSelected: (selection) {
+        _controller.text = selection.address;
+        _dispatch(
+          context,
+          DeliveryProfileUpdateFieldEvent(
+            field: 'address',
+            value: selection.address,
+            latitude: selection.latitude,
+            longitude: selection.longitude,
+            googleMapsUrl: selection.effectiveGoogleMapsUrl,
+          ),
+        );
+      },
+    );
+    if (result != null) {
+      _controller.text = result.address;
+      _dispatch(
+        context,
+        DeliveryProfileUpdateFieldEvent(
+          field: 'address',
+          value: result.address,
+          latitude: result.latitude,
+          longitude: result.longitude,
+          googleMapsUrl: result.effectiveGoogleMapsUrl,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String localeCode = widget.state.localeCode;
+    return TextFormField(
+      key: const Key('dp_profile_address'),
+      controller: _controller,
+      maxLines: 2,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: DeliveryProfileStrings.of('address', localeCode),
+        hintText: 'House/Street, Area, City',
+        hintStyle: const TextStyle(color: Color(0xFF64748B)),
+        labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+        filled: true,
+        fillColor: const Color(0xFF0B1219),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: DeliveryAppColors.primaryDark),
+        ),
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              key: const Key('dp_profile_address_gps'),
+              tooltip: 'Detect GPS Location',
+              icon: _isLocatingGps
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: DeliveryAppColors.primary,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.my_location_rounded,
+                      color: DeliveryAppColors.primary,
+                      size: 20,
+                    ),
+              onPressed: _isLocatingGps ? null : () => _detectGps(context),
+            ),
+            IconButton(
+              key: const Key('dp_profile_address_map'),
+              tooltip: 'Pick on Map',
+              icon: const Icon(
+                Icons.map_outlined,
+                color: DeliveryAppColors.primary,
+                size: 20,
+              ),
+              onPressed: () => _openMapPicker(context),
+            ),
+          ],
+        ),
+      ),
+      onChanged: (value) => _dispatch(
+        context,
+        DeliveryProfileUpdateFieldEvent(field: 'address', value: value),
       ),
     );
   }
@@ -1699,15 +1878,17 @@ class _CompletionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String localeCode = state.localeCode;
     final double value = (state.completionPercentage / 100).clamp(0.0, 1.0);
-    return Container(
-      key: const Key('dp_profile_completion_card'),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D141C),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
-      child: Column(
+    return Semantics(
+      label: 'Profile completion ${state.completionPercentage}%',
+      child: Container(
+        key: const Key('dp_profile_completion_card'),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D141C),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1748,6 +1929,7 @@ class _CompletionCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -1971,26 +2153,30 @@ class _ChecklistTile extends StatelessWidget {
       'checklist_${item.id}',
       localeCode,
     );
-    return Row(
-      key: Key('dp_profile_check_${item.id}'),
-      children: [
-        Icon(
-          isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: isDone ? DeliveryAppColors.primary : const Color(0xFF475569),
-          size: 18,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isDone ? Colors.white : const Color(0xFF64748B),
-              fontSize: 12,
-              fontWeight: isDone ? FontWeight.w600 : FontWeight.w400,
+    return Semantics(
+      checked: isDone,
+      label: label,
+      child: Row(
+        key: Key('dp_profile_check_${item.id}'),
+        children: [
+          Icon(
+            isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+            color: isDone ? DeliveryAppColors.primary : const Color(0xFF475569),
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isDone ? Colors.white : const Color(0xFF64748B),
+                fontSize: 12,
+                fontWeight: isDone ? FontWeight.w600 : FontWeight.w400,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

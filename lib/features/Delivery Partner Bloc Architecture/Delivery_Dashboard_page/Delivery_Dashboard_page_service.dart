@@ -226,8 +226,18 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
             return null;
           });
 
-      return Rx.combineLatest5<
+      final Stream<QuerySnapshot<Map<String, dynamic>>?> sellersStream = currentFirestore
+          .collection('sellers')
+          .snapshots()
+          .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+          .onErrorReturnWith((e, st) {
+            debugPrint('sellersStream error fallback: $e');
+            return null;
+          });
+
+      return Rx.combineLatest6<
           DocumentSnapshot<Map<String, dynamic>>?,
+          QuerySnapshot<Map<String, dynamic>>?,
           QuerySnapshot<Map<String, dynamic>>?,
           QuerySnapshot<Map<String, dynamic>>?,
           QuerySnapshot<Map<String, dynamic>>?,
@@ -238,7 +248,8 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
         partnerOrdersStream,
         sellerOrdersStream,
         notificationsStream,
-        (partnerDoc, riderSnap, partnerSnap, sellerOrdersSnapshot, notifsSnapshot) {
+        sellersStream,
+        (partnerDoc, riderSnap, partnerSnap, sellerOrdersSnapshot, notifsSnapshot, sellersSnapshot) {
           final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> docMap = {};
           if (riderSnap != null) {
             for (var d in riderSnap.docs) {
@@ -257,6 +268,7 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
             sellerOrdersSnapshot: sellerOrdersSnapshot?.docs,
             uid: uid,
             notifsSnapshot: notifsSnapshot?.docs,
+            sellersSnapshot: sellersSnapshot?.docs,
           );
         },
       ).onErrorReturnWith((e, st) {
@@ -276,6 +288,7 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
     List<QueryDocumentSnapshot<Map<String, dynamic>>>? sellerOrdersSnapshot,
     String? uid,
     List<QueryDocumentSnapshot<Map<String, dynamic>>>? notifsSnapshot,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>>? sellersSnapshot,
   }) {
     final data = (partnerDoc != null && partnerDoc.exists)
         ? (partnerDoc.data() ?? <String, dynamic>{})
@@ -385,6 +398,81 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
       lastActive = (data['lastActiveAt'] as Timestamp).toDate();
     }
 
+    // Extract Real Nearby Sellers from Firestore
+    final nearbySellers = <Map<String, dynamic>>[];
+    if (sellersSnapshot != null) {
+      for (final doc in sellersSnapshot) {
+        final s = doc.data();
+        final lat = (s['latitude'] as num?)?.toDouble() ?? (s['lat'] as num?)?.toDouble() ?? 0.0;
+        final lng = (s['longitude'] as num?)?.toDouble() ?? (s['lng'] as num?)?.toDouble() ?? 0.0;
+        if (lat != 0.0 && lng != 0.0) {
+          nearbySellers.add({
+            'id': doc.id,
+            'name': (s['shopName'] ?? s['name'] ?? 'Restaurant').toString(),
+            'address': (s['address'] ?? s['shopAddress'] ?? '').toString(),
+            'latitude': lat,
+            'longitude': lng,
+            'phone': (s['phone'] ?? '').toString(),
+            'isOpen': s['isOpen'] ?? true,
+            'rating': (s['rating'] as num?)?.toDouble() ?? 4.8,
+          });
+        }
+      }
+    }
+
+    // Extract Real Active Order Details from Firestore (if assigned/ongoing)
+    QueryDocumentSnapshot<Map<String, dynamic>>? activeOrderDoc;
+    if (activeDocs.isNotEmpty) {
+      activeOrderDoc = activeDocs.first;
+    }
+
+    String activeOrderStoreName = '';
+    String activeOrderStoreAddress = '';
+    double activeOrderStoreLat = 0.0;
+    double activeOrderStoreLng = 0.0;
+    String activeOrderCustomerName = '';
+    String activeOrderCustomerAddress = '';
+    double activeOrderCustomerLat = 0.0;
+    double activeOrderCustomerLng = 0.0;
+    double activeOrderDistanceKm = 0.0;
+    double activeOrderAmount = 0.0;
+    String activeOrderStatus = '';
+    bool activeOrderIsPickedUp = false;
+
+    if (activeOrderDoc != null) {
+      final aData = activeOrderDoc.data();
+      activeOrderStatus = (aData['status'] ?? '').toString();
+      activeOrderStoreName = (aData['restaurantName'] ?? aData['shopName'] ?? aData['storeName'] ?? '').toString();
+      activeOrderStoreAddress = (aData['pickupAddress'] ?? aData['restaurantAddress'] ?? aData['storeAddress'] ?? '').toString();
+      activeOrderStoreLat = (aData['restaurantLatitude'] as num?)?.toDouble() ??
+          (aData['pickupLatitude'] as num?)?.toDouble() ??
+          (aData['sellerLatitude'] as num?)?.toDouble() ??
+          (aData['latitude'] as num?)?.toDouble() ??
+          0.0;
+      activeOrderStoreLng = (aData['restaurantLongitude'] as num?)?.toDouble() ??
+          (aData['pickupLongitude'] as num?)?.toDouble() ??
+          (aData['sellerLongitude'] as num?)?.toDouble() ??
+          (aData['longitude'] as num?)?.toDouble() ??
+          0.0;
+      activeOrderCustomerName = (aData['customerName'] ?? aData['buyerName'] ?? 'Customer').toString();
+      activeOrderCustomerAddress = (aData['deliveryAddress'] ?? aData['dropAddress'] ?? aData['address'] ?? '').toString();
+      activeOrderCustomerLat = (aData['customerLatitude'] as num?)?.toDouble() ??
+          (aData['deliveryLatitude'] as num?)?.toDouble() ??
+          (aData['dropLatitude'] as num?)?.toDouble() ??
+          0.0;
+      activeOrderCustomerLng = (aData['customerLongitude'] as num?)?.toDouble() ??
+          (aData['deliveryLongitude'] as num?)?.toDouble() ??
+          (aData['dropLongitude'] as num?)?.toDouble() ??
+          0.0;
+      activeOrderDistanceKm = ((aData['distance'] ?? aData['distanceKm'] ?? 0.0) as num).toDouble();
+      activeOrderAmount = ((aData['amount'] ?? aData['totalAmount'] ?? 0.0) as num).toDouble();
+      final stLower = activeOrderStatus.toLowerCase();
+      activeOrderIsPickedUp = stLower == 'picked_up' || stLower == 'outfordelivery';
+    }
+
+    final partnerLat = (data['latitude'] as num?)?.toDouble() ?? (data['lat'] as num?)?.toDouble() ?? (activeOrderStoreLat != 0.0 ? activeOrderStoreLat : 11.4485);
+    final partnerLng = (data['longitude'] as num?)?.toDouble() ?? (data['lng'] as num?)?.toDouble() ?? (activeOrderStoreLng != 0.0 ? activeOrderStoreLng : 77.6835);
+
     return {
       'isOnline': isOnline,
       'isAvailable': isAvailable,
@@ -417,6 +505,21 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
       'activities': _buildFirestoreActivitiesFromDocs(allDocs),
       'incomingSellerOrders': _buildSellerOrderActivities(incomingSellerOrders),
       'unreadNotificationCount': unreadNotificationCount,
+      'activeOrderStoreName': activeOrderStoreName,
+      'activeOrderStoreAddress': activeOrderStoreAddress,
+      'activeOrderStoreLat': activeOrderStoreLat,
+      'activeOrderStoreLng': activeOrderStoreLng,
+      'activeOrderCustomerName': activeOrderCustomerName,
+      'activeOrderCustomerAddress': activeOrderCustomerAddress,
+      'activeOrderCustomerLat': activeOrderCustomerLat,
+      'activeOrderCustomerLng': activeOrderCustomerLng,
+      'activeOrderDistanceKm': activeOrderDistanceKm,
+      'activeOrderAmount': activeOrderAmount,
+      'activeOrderStatus': activeOrderStatus,
+      'activeOrderIsPickedUp': activeOrderIsPickedUp,
+      'partnerLatitude': partnerLat,
+      'partnerLongitude': partnerLng,
+      'nearbySellers': nearbySellers,
     };
   }
 

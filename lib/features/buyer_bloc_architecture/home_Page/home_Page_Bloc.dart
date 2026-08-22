@@ -2,9 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/models/product_model.dart';
 import '../../../core/repositories/i_product_repository.dart';
+import '../../../core/services/google_places_service.dart';
 import '../../../core/services/seller_status_service.dart';
 import '../../../repositories/category_repository.dart';
 import 'home_page_models.dart';
@@ -21,6 +23,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
   final CategoryRepository _categoryRepository;
   final SellerStatusService _sellerStatusService;
   final FirebaseFirestore? _firestore;
+  final GooglePlacesService? _placesService;
 
   List<FoodItem> _allItems = [];
   List<FoodCategory> _categories = [];
@@ -45,6 +48,7 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
   StreamSubscription<List<Product>>? _productSubscription;
   StreamSubscription<QuerySnapshot>? _sellersSubscription;
   StreamSubscription<QuerySnapshot>? _promotionsSubscription;
+  StreamSubscription<DocumentSnapshot>? _userProfileSubscription;
   final Map<String, StreamSubscription<SellerAvailability>> _sellerStatusSubscriptions = {};
   Timer? _batchTimer;
   Timer? _loadingTimeoutTimer;
@@ -54,10 +58,12 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     required CategoryRepository categoryRepository,
     SellerStatusService? sellerStatusService,
     FirebaseFirestore? firestore,
+    GooglePlacesService? placesService,
   }) : _productRepository = productRepository,
        _categoryRepository = categoryRepository,
        _sellerStatusService = sellerStatusService ?? SellerStatusService(),
        _firestore = firestore,
+       _placesService = placesService,
        super(const HomePageInitial('', [])) {
     on<HomePageStarted>(_onStarted);
     on<CategorySelected>(_onCategorySelected);
@@ -84,10 +90,37 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     _productSubscription?.cancel();
     _sellersSubscription?.cancel();
     _promotionsSubscription?.cancel();
+    _userProfileSubscription?.cancel();
     _cancelSellerStatusSubscriptions();
     _batchTimer?.cancel();
     _loadingTimeoutTimer?.cancel();
     return super.close();
+  }
+
+  void _subscribeToUserProfile(String uid) {
+    _userProfileSubscription?.cancel();
+    try {
+      final db = _firestore ?? FirebaseFirestore.instance;
+      _userProfileSubscription = db
+          .collection('buyer_user')
+          .doc(uid)
+          .snapshots()
+          .listen((doc) {
+        if (doc.exists && !isClosed) {
+          final data = doc.data() as Map<String, dynamic>?;
+          final addr = (data?['address'] ?? data?['deliveryAddress'] ?? '').toString().trim();
+          final lat = (data?['latitude'] as num?)?.toDouble() ?? (data?['lat'] as num?)?.toDouble() ?? 0.0;
+          final lng = (data?['longitude'] as num?)?.toDouble() ?? (data?['lng'] as num?)?.toDouble() ?? 0.0;
+          if (addr.isNotEmpty && addr != 'Fetching location...' && addr != 'Fetching live location...') {
+            add(BuyerLocationUpdated(lat, lng, addr));
+          }
+        }
+      }, onError: (error) {
+        debugPrint('Firestore user profile stream error: $error');
+      });
+    } catch (e) {
+      debugPrint('User profile subscription exception: $e');
+    }
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -281,6 +314,9 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
 
     // Immediately trigger fetching default category products
     add(CategorySelected(_selectedCategoryId));
+
+    // Immediately trigger fetching user delivery location
+    add(const FetchUserLocation());
 
     // Subscribe to categories safely
     _categorySubscription?.cancel();
@@ -546,25 +582,61 @@ class HomePageBloc extends Bloc<HomePageEvent, HomePageState> {
     try {
       final db = _firestore ?? FirebaseFirestore.instance;
       final uid = FirebaseAuth.instance.currentUser?.uid;
+      bool hasAddress = false;
+
       if (uid != null) {
+        _subscribeToUserProfile(uid);
         final doc = await db.collection('buyer_user').doc(uid).get();
         if (doc.exists) {
           final data = doc.data();
           final addr = data?['address']?.toString() ?? data?['deliveryAddress']?.toString();
-          if (addr != null && addr.isNotEmpty) {
+          if (addr != null && addr.isNotEmpty && addr != 'Fetching location...' && addr != 'Fetching live location...') {
             _currentAddress = addr;
+            hasAddress = true;
           }
           final lat = (data?['latitude'] as num?)?.toDouble() ?? (data?['lat'] as num?)?.toDouble();
           final lng = (data?['longitude'] as num?)?.toDouble() ?? (data?['lng'] as num?)?.toDouble();
-          if (lat != null && lng != null) {
+          if (lat != null && lng != null && (lat != 0.0 || lng != 0.0)) {
             _userLat = lat;
             _userLng = lng;
           }
         }
       }
+
+      // If user profile has no stored address or user is unauthenticated,
+      // attempt device GPS location lookup with a short timeout
+      if (!hasAddress) {
+        try {
+          final places = _placesService ?? GooglePlacesService.instance;
+          final gpsDetails = await places.getCurrentLocationAddress()
+              .timeout(const Duration(seconds: 4));
+          if (gpsDetails != null && gpsDetails.formattedAddress.isNotEmpty) {
+            _currentAddress = gpsDetails.formattedAddress;
+            _userLat = gpsDetails.latitude ?? 0.0;
+            _userLng = gpsDetails.longitude ?? 0.0;
+            hasAddress = true;
+            if (uid != null) {
+              // Store auto-resolved location to Firestore
+              db.collection('buyer_user').doc(uid).set({
+                'address': _currentAddress,
+                'deliveryAddress': _currentAddress,
+                'latitude': _userLat,
+                'longitude': _userLng,
+                'updatedAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true)).catchError((e) => debugPrint('Error saving auto-fetched location: $e'));
+            }
+          }
+        } catch (e) {
+          debugPrint('Device GPS fetch timed out or failed: $e');
+        }
+      }
+
+      if (!hasAddress && (_currentAddress == 'Fetching location...' || _currentAddress == 'Fetching live location...')) {
+        _currentAddress = 'Select delivery address';
+      }
     } catch (_) {
       // Safe fallback when unauthenticated, offline, or in test environment
-      if (_currentAddress == 'Fetching location...') {
+      if (_currentAddress == 'Fetching location...' || _currentAddress == 'Fetching live location...') {
         _currentAddress = 'Select delivery address';
       }
     }

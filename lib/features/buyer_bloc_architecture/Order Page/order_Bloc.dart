@@ -5,6 +5,7 @@ import '../../../core/repositories/i_order_repository.dart';
 import '../../../core/services/i_auth_service.dart';
 import '../../../core/repositories/i_cart_repository.dart';
 import '../../../core/models/order_status.dart';
+import '../../../core/utils/app_exception_formatter.dart';
 import '../../../repositories/firebase_cart_repository.dart';
 import 'order_mapper.dart';
 
@@ -47,7 +48,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         final viewModels = orders.map((order) => OrderMapper.toViewModel(order)).toList();
         return OrderLoaded(viewModels);
       },
-      onError: (error, stackTrace) => OrderError(error.toString()),
+      onError: (error, stackTrace) =>
+          OrderError(AppExceptionFormatter.toUserFriendlyMessage(error)),
     );
   }
 

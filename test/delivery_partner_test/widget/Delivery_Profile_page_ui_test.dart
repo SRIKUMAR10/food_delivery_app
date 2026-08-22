@@ -284,5 +284,52 @@ void main() {
       );
       expect(find.byKey(const Key('dp_profile_save_button')), findsOneWidget);
     });
+
+    testWidgets('address field shows GPS and map picker actions and dispatches events', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      expect(find.byKey(const Key('dp_profile_address')), findsOneWidget);
+      expect(find.byKey(const Key('dp_profile_address_gps')), findsOneWidget);
+      expect(find.byKey(const Key('dp_profile_address_map')), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(const Key('dp_profile_address')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('dp_profile_address')),
+        '45 Anna Nagar, Chennai',
+      );
+      await tester.pump();
+
+      verify(
+        () => mockBloc.add(
+          const DeliveryProfileUpdateFieldEvent(
+            field: 'address',
+            value: '45 Anna Nagar, Chennai',
+          ),
+        ),
+      ).called(1);
+    });
+
+    testWidgets('tapping map action opens the delivery address picker dialog', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      await tester.ensureVisible(find.byKey(const Key('dp_profile_address')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('dp_profile_address_map')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set Home Address'), findsOneWidget);
+      expect(find.text('Search Address'), findsOneWidget);
+      expect(find.text('Pick on Map'), findsOneWidget);
+      expect(find.byKey(const Key('dp_profile_address_map')), findsOneWidget);
+    });
   });
 }

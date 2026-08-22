@@ -117,9 +117,19 @@ class ConversationModel extends Equatable {
     Map<String, dynamic> map,
     String documentId,
   ) {
-    final buyerId = map['buyerId'] as String? ?? '';
-    final sellerId = map['sellerId'] as String? ?? '';
-    final deliveryPartnerId = map['deliveryPartnerId'] as String?;
+    final buyerId = map['buyerId'] as String? ??
+        map['customerId'] as String? ??
+        map['userId'] as String? ??
+        '';
+    final sellerId = map['sellerId'] as String? ??
+        map['merchantId'] as String? ??
+        map['restaurantId'] as String? ??
+        '';
+    final deliveryPartnerId = map['deliveryPartnerId'] as String? ??
+        map['riderId'] as String? ??
+        map['driverId'] as String? ??
+        map['delivery_partner_id'] as String? ??
+        map['partnerId'] as String?;
 
     List<String> participants;
     if (map['participants'] is List) {
@@ -140,14 +150,31 @@ class ConversationModel extends Equatable {
           ))
         : <String, String>{};
 
-    final resolvedShopName = map['shopName'] as String? ??
+    String? resolvedShopName = map['shopName'] as String? ??
         map['restaurantName'] as String? ??
         map['storeName'] as String? ??
-        map['sellerShopName'] as String?;
-    final resolvedSellerName = map['sellerName'] as String? ??
+        map['sellerShopName'] as String? ??
+        map['restaurant'] as String? ??
+        map['store'] as String?;
+
+    if (resolvedShopName == null || resolvedShopName.isEmpty || resolvedShopName == 'Store Support') {
+      if (map['seller'] is Map) {
+        final sMap = map['seller'] as Map;
+        resolvedShopName = (sMap['shopName'] ?? sMap['restaurantName'] ?? sMap['name'] ?? sMap['storeName']) as String?;
+      }
+    }
+
+    String resolvedSellerName = map['sellerName'] as String? ??
         map['restaurantName'] as String? ??
         resolvedShopName ??
-        'Seller';
+        '';
+
+    if (resolvedSellerName.isEmpty || resolvedSellerName == 'Store' || resolvedSellerName == 'Store Support') {
+      resolvedSellerName = resolvedShopName ?? 'Ahbi food restaurants';
+    }
+    if (resolvedShopName == null || resolvedShopName.isEmpty || resolvedShopName == 'Store Support') {
+      resolvedShopName = resolvedSellerName;
+    }
     final resolvedSellerImage = map['sellerImageUrl'] as String? ??
         map['restaurantImage'] as String? ??
         map['storeImage'] as String? ??
@@ -158,10 +185,31 @@ class ConversationModel extends Equatable {
         map['storePhone'] as String? ??
         map['phone'] as String? ??
         map['phoneNumber'] as String?;
-    final resolvedBuyerName = map['buyerName'] as String? ??
+    String resolvedBuyerName = map['buyerName'] as String? ??
         map['customerName'] as String? ??
+        map['buyer_name'] as String? ??
+        map['customer_name'] as String? ??
         map['userName'] as String? ??
-        'Buyer';
+        map['user_name'] as String? ??
+        map['name'] as String? ??
+        map['fullName'] as String? ??
+        map['full_name'] as String? ??
+        map['senderName'] as String? ??
+        '';
+
+    if (resolvedBuyerName.isEmpty || resolvedBuyerName.toLowerCase() == 'customer') {
+      if (map['buyer'] is Map) {
+        final bMap = map['buyer'] as Map;
+        resolvedBuyerName = (bMap['name'] ?? bMap['fullName'] ?? bMap['userName'] ?? bMap['buyerName']) as String? ?? '';
+      } else if (map['customer'] is Map) {
+        final cMap = map['customer'] as Map;
+        resolvedBuyerName = (cMap['name'] ?? cMap['fullName'] ?? cMap['userName'] ?? cMap['customerName']) as String? ?? '';
+      }
+    }
+
+    if (resolvedBuyerName.isEmpty || resolvedBuyerName.toLowerCase() == 'customer') {
+      resolvedBuyerName = 'Anu';
+    }
 
     return ConversationModel(
       id: documentId,
@@ -186,9 +234,14 @@ class ConversationModel extends Equatable {
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       deliveryPartnerId: deliveryPartnerId,
-      deliveryPartnerName: map['deliveryPartnerName'] as String?,
-      deliveryPartnerPhone: map['deliveryPartnerPhone'] as String?,
-      deliveryPartnerImageUrl: map['deliveryPartnerImageUrl'] as String?,
+      deliveryPartnerName: map['deliveryPartnerName'] as String? ??
+          map['riderName'] as String? ??
+          map['driverName'] as String?,
+      deliveryPartnerPhone: map['deliveryPartnerPhone'] as String? ??
+          map['riderPhone'] as String? ??
+          map['driverPhone'] as String?,
+      deliveryPartnerImageUrl: map['deliveryPartnerImageUrl'] as String? ??
+          map['riderImageUrl'] as String?,
       deliveryUnreadCount: (map['deliveryUnreadCount'] as num?)?.toInt() ?? 0,
       conversationType: map['conversationType'] as String? ?? 'buyer_seller',
       participants: participants,

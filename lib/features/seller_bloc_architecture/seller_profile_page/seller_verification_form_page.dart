@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'seller_profile_page__bloc.dart';
 import 'seller_profile_page__event.dart';
 import 'seller_profile_page__state.dart';
+import '../../../core/services/google_places_service.dart';
+import 'seller_google_address_search_dialog.dart';
 
 class SellerVerificationFormPage extends StatefulWidget {
   const SellerVerificationFormPage({Key? key}) : super(key: key);
@@ -25,6 +27,10 @@ class _SellerVerificationFormPageState
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   String? _selectedTax; // For Tax Dropdown
+  double? _pickedLatitude;
+  double? _pickedLongitude;
+  String? _pickedGoogleMapsUrl;
+  bool _isLocatingGps = false;
 
   @override
   void initState() {
@@ -72,6 +78,9 @@ class _SellerVerificationFormPageState
           fssaiLicense: _fssaiController.text,
           bankAccountNumber: _bankAccountController.text,
           ifscCode: _ifscController.text,
+          latitude: _pickedLatitude,
+          longitude: _pickedLongitude,
+          googleMapsUrl: _pickedGoogleMapsUrl,
         ),
       );
 
@@ -117,6 +126,7 @@ class _SellerVerificationFormPageState
                           child: _buildTextField(
                             'Store / Restaurant Name',
                             _storeNameController,
+                            fieldKey: const ValueKey('verification_store_name'),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -124,6 +134,7 @@ class _SellerVerificationFormPageState
                           child: _buildTextField(
                             'FSSAI License',
                             _fssaiController,
+                            fieldKey: const ValueKey('verification_fssai'),
                           ),
                         ),
                       ],
@@ -132,16 +143,17 @@ class _SellerVerificationFormPageState
                     _buildTextField(
                       'Store / Restaurant Name',
                       _storeNameController,
+                      fieldKey: const ValueKey('verification_store_name'),
                     ),
                     const SizedBox(height: 12),
-                    _buildTextField('FSSAI License', _fssaiController),
+                    _buildTextField(
+                      'FSSAI License',
+                      _fssaiController,
+                      fieldKey: const ValueKey('verification_fssai'),
+                    ),
                   ],
                   const SizedBox(height: 12),
-                  _buildTextField(
-                    'Full Address',
-                    _addressController,
-                    maxLines: 3,
-                  ),
+                  _buildAddressFieldWithPicker(),
                   const SizedBox(height: 12),
                   if (isDesktop)
                     Row(
@@ -151,6 +163,7 @@ class _SellerVerificationFormPageState
                           child: _buildTextField(
                             'Email Address',
                             _emailController,
+                            fieldKey: const ValueKey('verification_email'),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -159,17 +172,23 @@ class _SellerVerificationFormPageState
                             'Phone Number',
                             _phoneController,
                             isNumber: true,
+                            fieldKey: const ValueKey('verification_phone'),
                           ),
                         ),
                       ],
                     )
                   else ...[
-                    _buildTextField('Email Address', _emailController),
+                    _buildTextField(
+                      'Email Address',
+                      _emailController,
+                      fieldKey: const ValueKey('verification_email'),
+                    ),
                     const SizedBox(height: 12),
                     _buildTextField(
                       'Phone Number',
                       _phoneController,
                       isNumber: true,
+                      fieldKey: const ValueKey('verification_phone'),
                     ),
                   ],
                   const SizedBox(height: 12),
@@ -178,14 +197,18 @@ class _SellerVerificationFormPageState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: _buildTextField('GST Number', _gstController),
+                          child: _buildTextField('GST Number', _gstController, fieldKey: const ValueKey('verification_gst')),
                         ),
                         const SizedBox(width: 16),
                         Expanded(child: _buildTaxDropdown()),
                       ],
                     )
                   else ...[
-                    _buildTextField('GST Number', _gstController),
+                    _buildTextField(
+                      'GST Number',
+                      _gstController,
+                      fieldKey: const ValueKey('verification_gst'),
+                    ),
                     const SizedBox(height: 12),
                     _buildTaxDropdown(),
                   ],
@@ -202,11 +225,16 @@ class _SellerVerificationFormPageState
                             'Bank Account Number',
                             _bankAccountController,
                             isNumber: true,
+                            fieldKey: const ValueKey('verification_bank'),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: _buildTextField('IFSC Code', _ifscController),
+                          child: _buildTextField(
+                            'IFSC Code',
+                            _ifscController,
+                            fieldKey: const ValueKey('verification_ifsc'),
+                          ),
                         ),
                       ],
                     )
@@ -215,9 +243,14 @@ class _SellerVerificationFormPageState
                       'Bank Account Number',
                       _bankAccountController,
                       isNumber: true,
+                      fieldKey: const ValueKey('verification_bank'),
                     ),
                     const SizedBox(height: 12),
-                    _buildTextField('IFSC Code', _ifscController),
+                    _buildTextField(
+                      'IFSC Code',
+                      _ifscController,
+                      fieldKey: const ValueKey('verification_ifsc'),
+                    ),
                   ],
 
                   const SizedBox(height: 32),
@@ -267,8 +300,10 @@ class _SellerVerificationFormPageState
     TextEditingController controller, {
     int maxLines = 1,
     bool isNumber = false,
+    Key? fieldKey,
   }) {
     return TextFormField(
+      key: fieldKey,
       controller: controller,
       maxLines: maxLines,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
@@ -294,8 +329,115 @@ class _SellerVerificationFormPageState
     );
   }
 
+  Widget _buildAddressFieldWithPicker() {
+    return TextFormField(
+      key: const ValueKey('verification_address'),
+      controller: _addressController,
+      maxLines: 3,
+      decoration: InputDecoration(
+        labelText: 'Full Address',
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              key: const ValueKey('verification_gps_button'),
+              tooltip: 'Detect GPS Location',
+              icon: _isLocatingGps
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFFE50914),
+                      ),
+                    )
+                  : const Icon(Icons.my_location_rounded, color: Color(0xFFE50914), size: 20),
+              onPressed: _isLocatingGps
+                  ? null
+                  : () async {
+                      setState(() => _isLocatingGps = true);
+                      try {
+                        final details =
+                            await GooglePlacesService.instance.getCurrentLocationAddress();
+                        if (details != null && mounted) {
+                          final lat = details.latitude ?? 13.0827;
+                          final lng = details.longitude ?? 80.2707;
+                          setState(() {
+                            _addressController.text = details.formattedAddress;
+                            _pickedLatitude = lat;
+                            _pickedLongitude = lng;
+                            _pickedGoogleMapsUrl = 'https://www.google.com/maps?q=$lat,$lng';
+                            _isLocatingGps = false;
+                          });
+                        } else if (mounted) {
+                          setState(() => _isLocatingGps = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Could not retrieve GPS location. Please check location permissions.',
+                              ),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          setState(() => _isLocatingGps = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Location error: $e')),
+                          );
+                        }
+                      }
+                    },
+            ),
+            IconButton(
+              key: const ValueKey('verification_map_button'),
+              tooltip: 'Pick on Map',
+              icon: const Icon(Icons.map_outlined, color: Color(0xFFE50914), size: 20),
+              onPressed: () async {
+                final result = await SellerGoogleAddressSearchDialog.show(
+                  context: context,
+                  addressType: 'Restaurant',
+                  currentAddress: _addressController.text.trim(),
+                  onAddressSelected: (selection) {
+                    _addressController.text = selection.address;
+                    _pickedLatitude = selection.latitude;
+                    _pickedLongitude = selection.longitude;
+                    _pickedGoogleMapsUrl = selection.effectiveGoogleMapsUrl;
+                  },
+                );
+                if (result != null) {
+                  _addressController.text = result.address;
+                  _pickedLatitude = result.latitude;
+                  _pickedLongitude = result.longitude;
+                  _pickedGoogleMapsUrl = result.effectiveGoogleMapsUrl;
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter Full Address';
+        }
+        return null;
+      },
+    );
+  }
+
   Widget _buildTaxDropdown() {
     return DropdownButtonFormField<String>(
+      key: const ValueKey('verification_tax'),
       initialValue: _selectedTax,
       decoration: InputDecoration(
         labelText: 'Tax Configurations',

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:rxdart/rxdart.dart';
+import '../../../core/services/audio_notification_service.dart';
 import 'seller_setting_page__event.dart';
 import 'seller_setting_page__state.dart';
 
@@ -259,6 +260,10 @@ class SellerSettingBloc extends Bloc<SellerSettingEvent, SellerSettingState> {
   Future<void> _onUpdateNotificationAdvancedSettings(UpdateNotificationAdvancedSettings event, Emitter<SellerSettingState> emit) async {
     emit(state.copyWith(isSaving: true, error: null, successMessage: null));
     try {
+      AudioNotificationService.setGlobalAudioConfig(
+        volume: event.soundVolume,
+        ringtone: event.orderAlertRingtone,
+      );
       final newState = state.copyWith(
         pushNotifications: event.pushNotifications,
         newOrderSound: event.newOrderSound,

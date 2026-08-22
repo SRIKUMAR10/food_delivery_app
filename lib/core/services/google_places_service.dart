@@ -152,6 +152,32 @@ class GooglePlaceDetails {
       };
 }
 
+/// Result of a completed address selection from the interactive address
+/// picker dialogs (GPS, Places Autocomplete, or Draggable Map Pin).
+class AddressSelectionResult {
+  final String address;
+  final double? latitude;
+  final double? longitude;
+  final String? googleMapsUrl;
+
+  const AddressSelectionResult({
+    required this.address,
+    this.latitude,
+    this.longitude,
+    this.googleMapsUrl,
+  });
+
+  String? get effectiveGoogleMapsUrl {
+    if (googleMapsUrl != null && googleMapsUrl!.isNotEmpty) {
+      return googleMapsUrl;
+    }
+    if (latitude != null && longitude != null) {
+      return 'https://www.google.com/maps?q=${latitude!.toStringAsFixed(6)},${longitude!.toStringAsFixed(6)}';
+    }
+    return null;
+  }
+}
+
 /// Service providing Google Places Autocomplete, Geocoding, and GPS Device location lookup.
 class GooglePlacesService {
   static GooglePlacesService? _instance;

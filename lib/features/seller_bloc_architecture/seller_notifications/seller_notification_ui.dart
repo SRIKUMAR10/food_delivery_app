@@ -454,7 +454,11 @@ class _SellerNotificationContentViewState
 
   void _handleNotificationAction(
       BuildContext context, SellerNotificationModel item) {
-    switch (item.actionType) {
+    final action = item.effectiveActionType;
+    final currentSellerId =
+        FirebaseAuth.instance.currentUser?.uid ?? (item.sellerId.isNotEmpty ? item.sellerId : 'sample_seller_id');
+
+    switch (action) {
       case SellerNotificationActionType.navigateNewOrders:
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -470,7 +474,6 @@ class _SellerNotificationContentViewState
         );
         break;
       case SellerNotificationActionType.navigateChat:
-        final currentSellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => ChatSupportPage(sellerId: currentSellerId),
@@ -499,7 +502,6 @@ class _SellerNotificationContentViewState
         );
         break;
       case SellerNotificationActionType.navigatePromotions:
-        final currentSellerId = FirebaseAuth.instance.currentUser?.uid ?? '';
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => PromotionsCouponsPage(sellerId: currentSellerId),
@@ -507,6 +509,11 @@ class _SellerNotificationContentViewState
         );
         break;
       case SellerNotificationActionType.none:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const OrdersListPage(),
+          ),
+        );
         break;
     }
   }

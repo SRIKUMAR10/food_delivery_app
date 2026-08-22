@@ -98,7 +98,7 @@ void main() {
             isA<TrackOrderError>().having(
               (s) => s.message,
               'message',
-              contains('API Timeout'),
+              contains('timed out'),
             ),
           ];
           final expectation = expectLater(bloc.stream, emitsInOrder(expectedStates));

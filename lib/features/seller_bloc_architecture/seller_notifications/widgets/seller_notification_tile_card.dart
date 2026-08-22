@@ -25,7 +25,7 @@ class SellerNotificationTileCard extends StatelessWidget {
     final isUnread = notification.isUnread;
     final title = notification.getLocalizedTitle(isTamil ? 'ta' : 'en');
     final body = notification.getLocalizedBody(isTamil ? 'ta' : 'en');
-    final visual = _getVisualScheme(notification.category);
+    final visual = _getVisualScheme(notification.effectiveCategory);
 
     return Dismissible(
       key: ValueKey(notification.id),
@@ -204,7 +204,7 @@ class SellerNotificationTileCard extends StatelessWidget {
                     ],
 
                     // Quick Action CTA Button
-                    if (notification.actionType !=
+                    if (notification.effectiveActionType !=
                         SellerNotificationActionType.none) ...[
                       const SizedBox(height: 12),
                       Align(
@@ -231,7 +231,7 @@ class SellerNotificationTileCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                _getActionLabel(notification.actionType),
+                                _getActionLabel(notification.effectiveActionType),
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,

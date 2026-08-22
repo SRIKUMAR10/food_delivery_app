@@ -21,6 +21,13 @@ void main() {
   setUp(() {
     mockRepository = MockDeliveryNavigationRepository();
     mockService = MockDeliveryNavigationService();
+    when(() => mockService.checkGpsStatus()).thenAnswer((_) async => true);
+    when(() => mockService.streamLiveLocation()).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.streamLiveLocation(highAccuracy: any(named: 'highAccuracy'))).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.fetchActiveOrderData()).thenAnswer((_) async => null);
+    when(() => mockRepository.fetchPartnerProfile()).thenAnswer((_) async => null);
+    when(() => mockRepository.watchActiveOrder()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.watchPartnerProfile()).thenAnswer((_) => const Stream.empty());
   });
 
   DeliveryNavigationBloc buildBloc() {
@@ -94,6 +101,8 @@ void main() {
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.active,
           order: DeliveryNavigationRepository.defaultOrder,
           pickup: DeliveryNavigationRepository.defaultPickup,
           drop: DeliveryNavigationRepository.defaultDrop,
@@ -139,6 +148,8 @@ void main() {
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: false,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.permissionDenied,
           order: DeliveryNavigationRepository.defaultOrder,
           pickup: DeliveryNavigationRepository.defaultPickup,
           drop: DeliveryNavigationRepository.defaultDrop,
@@ -181,6 +192,8 @@ void main() {
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.active,
           isOffline: true,
           order: DeliveryNavigationRepository.defaultOrder,
           pickup: DeliveryNavigationRepository.defaultPickup,
@@ -222,8 +235,13 @@ void main() {
       expect: () => const [
         DeliveryNavigationState(status: DeliveryNavigationStatus.loading),
         DeliveryNavigationState(
-          status: DeliveryNavigationStatus.empty,
+          status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.active,
+          order: emptyOrder,
+          pickup: DeliveryNavigationRepository.defaultPickup,
+          drop: DeliveryNavigationRepository.defaultDrop,
         ),
       ],
     );

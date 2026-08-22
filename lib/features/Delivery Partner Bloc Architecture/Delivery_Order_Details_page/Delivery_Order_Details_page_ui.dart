@@ -13,6 +13,8 @@ import '../../../core/theme/delivery_app_spacing.dart';
 import '../../../core/widgets/delivery_button.dart';
 import '../../../core/widgets/delivery_card.dart';
 import '../../../core/widgets/delivery_chip.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../../core/widgets/app_google_map_view.dart';
 
 class DeliveryOrderDetailsStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -354,6 +356,10 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 🗺️ Live Delivery Journey & Route Map Preview
+                  _buildRouteMapPreviewCard(context, order, lang),
+                  const SizedBox(height: 16),
+
                   // 8. 🏪 Restaurant Pickup Flow Progress Stepper
                   _buildPickupLifecycleCard(context, bloc, order, lang),
                   const SizedBox(height: 16),
@@ -423,6 +429,131 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
           ),
         );
       },
+    );
+  }
+
+  // -------------------------------------------------------------
+  // 🗺️ Live Delivery Journey & Route Map Preview Card
+  // -------------------------------------------------------------
+  Widget _buildRouteMapPreviewCard(
+    BuildContext context,
+    OrderModel order,
+    String lang,
+  ) {
+    final storeLoc = (order.restaurantLatitude != 0 && order.restaurantLongitude != 0)
+        ? LatLng(order.restaurantLatitude, order.restaurantLongitude)
+        : const LatLng(11.4485, 77.6835);
+    final customerLoc = (order.customerLatitude != 0 && order.customerLongitude != 0)
+        ? LatLng(order.customerLatitude, order.customerLongitude)
+        : const LatLng(11.4580, 77.6980);
+
+    return DeliveryCard(
+      padding: EdgeInsets.all(DeliveryAppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.map, color: DeliveryAppColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'LIVE DELIVERY ROUTE',
+                    style: DeliveryAppTypography.caption.copyWith(
+                      color: DeliveryAppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DeliveryNavigationScreenPageUi(
+                        orderId: order.id,
+                        pickupAddress: order.pickupAddress,
+                        dropoffAddress: order.dropoffAddress,
+                        restaurantName: order.restaurantName,
+                        customerName: order.customerName,
+                        destinationLatitude: order.currentPickupStep == PickupFlowStep.pickedUp
+                            ? order.customerLatitude
+                            : order.restaurantLatitude,
+                        destinationLongitude: order.currentPickupStep == PickupFlowStep.pickedUp
+                            ? order.customerLongitude
+                            : order.restaurantLongitude,
+                        isStoreRoute: order.currentPickupStep != PickupFlowStep.pickedUp,
+                      ),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: DeliveryAppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: DeliveryAppColors.primary),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.navigation, size: 14, color: DeliveryAppColors.primary),
+                      SizedBox(width: 4),
+                      Text(
+                        'OPEN GPS NAV',
+                        style: TextStyle(
+                          color: DeliveryAppColors.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0C121E),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: AppGoogleMapView(
+                      driverLocation: storeLoc,
+                      driverHeading: 0.0,
+                      vehicleType: 'two_wheeler',
+                      storeLocation: storeLoc,
+                      storeName: order.restaurantName.isNotEmpty ? order.restaurantName : 'Restaurant',
+                      storeAddress: order.pickupAddress,
+                      customerLocation: customerLoc,
+                      customerName: order.customerName.isNotEmpty ? order.customerName : 'Customer',
+                      customerAddress: order.dropoffAddress,
+                      isPickedUp: order.currentPickupStep == PickupFlowStep.pickedUp,
+                      isDarkMode: true,
+                      showControls: true,
+                      showProgressCard: true,
+                      distanceKm: order.distance > 0 ? order.distance : null,
+                      etaText: '~15-20 mins',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1193,6 +1324,7 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
                   },
                   variant: DeliveryButtonVariant.primary,
                   height: 48,
+                  isFullWidth: false,
                 ),
               ],
             ),

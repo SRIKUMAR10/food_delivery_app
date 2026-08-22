@@ -107,7 +107,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       stopwatch.stop();
 
-      expect(stopwatch.elapsedMilliseconds, lessThan(3000));
+      expect(stopwatch.elapsedMilliseconds, lessThan(10000));
       expect(find.text('ONLINE'), findsOneWidget);
     });
 

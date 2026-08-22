@@ -21,6 +21,14 @@ void main() {
   setUp(() {
     mockRepository = MockDeliveryNavigationRepository();
     mockService = MockDeliveryNavigationService();
+    when(() => mockService.checkGpsStatus()).thenAnswer((_) async => true);
+    when(() => mockService.streamLiveLocation(highAccuracy: any(named: 'highAccuracy'))).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.streamLiveLocation()).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.simulateLiveLocation()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.fetchActiveOrderData()).thenAnswer((_) async => null);
+    when(() => mockRepository.fetchPartnerProfile()).thenAnswer((_) async => null);
+    when(() => mockRepository.watchActiveOrder()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.watchPartnerProfile()).thenAnswer((_) => const Stream.empty());
   });
 
   void stubHappyPath() {
@@ -118,6 +126,8 @@ void main() {
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.active,
           order: DeliveryNavigationRepository.defaultOrder,
           pickup: DeliveryNavigationRepository.defaultPickup,
           drop: DeliveryNavigationRepository.defaultDrop,
@@ -170,8 +180,22 @@ void main() {
       expect: () => const [
         DeliveryNavigationState(status: DeliveryNavigationStatus.loading),
         DeliveryNavigationState(
-          status: DeliveryNavigationStatus.empty,
+          status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.active,
+          order: DeliveryNavigationOrderSummary(
+            orderId: '',
+            pickupLabel: '',
+            pickupAddress: '',
+            dropLabel: '',
+            dropAddress: '',
+            customerName: '',
+            customerPhone: '',
+            status: '',
+          ),
+          pickup: DeliveryNavigationRepository.defaultPickup,
+          drop: DeliveryNavigationRepository.defaultDrop,
         ),
       ],
     );
@@ -184,8 +208,8 @@ void main() {
           () => mockRepository.saveAudioEnabled(true),
         ).thenAnswer((_) async {});
         when(
-          () => mockService.simulateLiveLocation(),
-        ).thenAnswer((_) => Stream<double>.error(Exception('GPS lost')));
+          () => mockService.streamLiveLocation(highAccuracy: any(named: 'highAccuracy')),
+        ).thenAnswer((_) => Stream<Map<String, dynamic>>.error(Exception('GPS lost')));
         return DeliveryNavigationBloc(
           repository: mockRepository,
           service: mockService,
@@ -193,6 +217,7 @@ void main() {
       },
       seed: () => const DeliveryNavigationState(
         status: DeliveryNavigationStatus.loaded,
+        hasLocationPermission: true,
         order: DeliveryNavigationRepository.defaultOrder,
         pickup: DeliveryNavigationRepository.defaultPickup,
         drop: DeliveryNavigationRepository.defaultDrop,
@@ -204,11 +229,23 @@ void main() {
       expect: () => const [
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.navigating,
+          hasLocationPermission: true,
           order: DeliveryNavigationRepository.defaultOrder,
           pickup: DeliveryNavigationRepository.defaultPickup,
           drop: DeliveryNavigationRepository.defaultDrop,
           turnDistanceMeters: 250.0,
           audioEnabled: true,
+          gpsStatus: DeliveryGpsStatus.searching,
+        ),
+        DeliveryNavigationState(
+          status: DeliveryNavigationStatus.navigating,
+          hasLocationPermission: true,
+          order: DeliveryNavigationRepository.defaultOrder,
+          pickup: DeliveryNavigationRepository.defaultPickup,
+          drop: DeliveryNavigationRepository.defaultDrop,
+          turnDistanceMeters: 250.0,
+          audioEnabled: true,
+          gpsStatus: DeliveryGpsStatus.disabled,
         ),
       ],
     );

@@ -11,7 +11,9 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/i_auth_service.dart';
 import '../../../repositories/firebase_buyer_notification_repository.dart';
 
+import '../Cart Page/cart_page_UI.dart';
 import '../Chat_Page/buyer_chat_ui.dart';
+import '../Order Page/order_UI.dart';
 import '../Rating_page/Rating_page_ui.dart';
 import '../Track_Order_page/Track_Order_page_ui.dart';
 import '../WalletScreen/WalletScreen_UI.dart';
@@ -322,69 +324,147 @@ class _NotificationCenterViewState extends State<_NotificationCenterView> {
   Future<void> _handleAction(
       BuildContext context, BuyerNotificationModel notification) async {
     final payload = notification.actionPayload;
+    final action = notification.effectiveActionType;
+    final orderId = payload['orderId'] as String? ?? notification.orderId;
+
     try {
-      switch (notification.actionType) {
+      switch (action) {
         case BuyerNotificationActionType.navigateTrackOrder:
-        case BuyerNotificationActionType.navigateOrder:
-          final orderId = payload['orderId'] as String? ??
-              notification.orderId;
-          if (orderId == null || orderId.isEmpty) {
-            _snack(context, _strings.actionViewOrder);
-            return;
+          if (orderId != null && orderId.isNotEmpty) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TrackOrderPageUI(orderId: orderId),
+              ),
+            );
+          } else {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const OrderPageUI(),
+              ),
+            );
           }
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => TrackOrderPageUI(orderId: orderId),
-            ),
-          );
+          break;
+
+        case BuyerNotificationActionType.navigateOrder:
+          if (orderId != null && orderId.isNotEmpty) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TrackOrderPageUI(orderId: orderId),
+              ),
+            );
+          } else {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const OrderPageUI(),
+              ),
+            );
+          }
+          break;
+
         case BuyerNotificationActionType.navigateChat:
+          final sellerName = payload['sellerName'] as String? ??
+              payload['senderName'] as String? ??
+              (notification.title.toLowerCase() == 'store' ? 'Store' : notification.title);
+          final shopName = payload['shopName'] as String? ?? payload['storeName'] as String?;
           await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => BuyerChatPage(
-                orderId: payload['orderId'] as String? ?? notification.orderId,
-                sellerId: payload['sellerId'] as String?,
-                sellerName: payload['sellerName'] as String?,
-                shopName: payload['shopName'] as String?,
+                orderId: orderId,
+                sellerId: payload['sellerId'] as String? ?? notification.conversationId,
+                sellerName: sellerName,
+                shopName: shopName,
                 buyerName: payload['buyerName'] as String?,
               ),
             ),
           );
+          break;
+
         case BuyerNotificationActionType.navigateWallet:
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const WalletScreen_UI()),
           );
+          break;
+
         case BuyerNotificationActionType.navigateCart:
-          Navigator.pop(context);
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CartPageUI()),
+          );
+          break;
+
         case BuyerNotificationActionType.applyCoupon:
           final code = notification.couponCode ?? payload['couponCode'] as String?;
           if (code != null && code.isNotEmpty) {
             await Clipboard.setData(ClipboardData(text: code));
             _snack(context, '$code — ${_strings.actionApplyCoupon}');
-          } else {
-            _snack(context, _strings.actionApplyCoupon);
           }
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CartPageUI()),
+          );
+          break;
+
         case BuyerNotificationActionType.openRating:
           final productId =
               payload['productId'] as String? ?? notification.productId;
+          final productName = payload['productName'] as String? ?? payload['foodName'] as String? ?? '';
           if (productId != null && productId.isNotEmpty) {
             await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => RatingPageUI(
                   foodId: productId,
-                  foodName: payload['productName'] as String? ?? '',
+                  foodName: productName,
                 ),
               ),
             );
           } else {
-            _snack(context, _strings.actionRateNow);
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const OrderPageUI(),
+              ),
+            );
           }
+          break;
+
         case BuyerNotificationActionType.navigateDetails:
         case BuyerNotificationActionType.none:
-          _snack(context, notification.localizedTitle(_languageCode));
+          // Fallback navigation based on payload/category keywords
+          final text = '${notification.title} ${notification.body}'.toLowerCase();
+          if (text.contains('chat') || text.contains('store') || text.contains('message') || text.contains('seller')) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BuyerChatPage(
+                  orderId: orderId,
+                  sellerName: notification.title,
+                ),
+              ),
+            );
+          } else if (text.contains('wallet') || text.contains('pay') || text.contains('refund') || text.contains('cashback')) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WalletScreen_UI()),
+            );
+          } else if (text.contains('cart') || text.contains('coupon') || text.contains('offer')) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CartPageUI()),
+            );
+          } else {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const OrderPageUI()),
+            );
+          }
+          break;
       }
     } catch (_) {
       _snack(context, _strings.actionViewDetails);

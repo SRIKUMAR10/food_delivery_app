@@ -67,5 +67,18 @@ void main() {
 
       expect(find.text('Enter phone number'), findsOneWidget);
     });
+
+    testWidgets('DeliveryTextField renders safely without an external Scaffold', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DeliveryTextField(
+            hintText: 'Direct input test',
+          ),
+        ),
+      );
+
+      expect(find.text('Direct input test'), findsOneWidget);
+      expect(find.byType(Material), findsWidgets);
+    });
   });
 }

@@ -104,5 +104,17 @@ void main() {
         isA<NoNewOrders>(),
       ],
     );
+
+    blocTest<NewOrderNotificationBloc, NewOrderNotificationState>(
+      'handles ConfigureNewOrderAudio without state transition error',
+      build: () => bloc,
+      act: (bloc) => bloc.add(const ConfigureNewOrderAudio(
+        ringtoneName: 'Kitchen Buzzer',
+        volume: 0.7,
+        soundEnabled: true,
+        soundLoop: true,
+      )),
+      expect: () => [],
+    );
   });
 }

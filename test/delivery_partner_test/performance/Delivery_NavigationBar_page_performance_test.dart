@@ -43,7 +43,7 @@ void main() {
     when(() => mockRepository.getNavItems()).thenAnswer((_) async => navItems);
     when(
       () => mockRepository.getSavedSelectedIndex(),
-    ).thenAnswer((_) async => -1);
+    ).thenAnswer((_) async => 7);
     when(() => mockRepository.getLocaleCode()).thenAnswer((_) async => 'en');
     when(
       () => mockRepository.getPartnerName(),
@@ -104,7 +104,7 @@ void main() {
         'Orders',
         'Earnings',
         'Incentives',
-        'Profile',
+        'Wallet',
         'Documents',
       ];
       for (var i = 0; i < 5; i++) {
@@ -134,13 +134,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       final Stopwatch switchStopwatch = Stopwatch()..start();
-      await tester.tap(find.text('Settings'), warnIfMissed: false);
+      await tester.tap(find.text('Bank Details'), warnIfMissed: false);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
       switchStopwatch.stop();
 
       expect(switchStopwatch.elapsedMilliseconds, lessThan(1500));
-      expect(find.text('Settings Overview'), findsOneWidget);
+      expect(find.text('Bank Details Overview'), findsOneWidget);
     });
   });
 }

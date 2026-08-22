@@ -49,7 +49,7 @@ void main() {
         isA<TrackOrderError>().having(
           (s) => s.message,
           'message',
-          contains('Network Error'),
+          contains('Network connection error'),
         ),
       ];
       final expectation = expectLater(bloc.stream, emitsInOrder(expectedStates));

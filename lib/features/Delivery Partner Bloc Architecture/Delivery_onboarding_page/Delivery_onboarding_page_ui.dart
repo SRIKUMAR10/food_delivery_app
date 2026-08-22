@@ -100,14 +100,8 @@ class _DeliveryOnboardingPageUIState extends State<DeliveryOnboardingPageUI>
                     previous.isStarted != current.isStarted ||
                     previous.isNavigatingToLogin != current.isNavigatingToLogin,
                 listener: (context, state) {
-                if (state.isStarted) {
+                if (state.isStarted || state.isNavigatingToLogin) {
                   Navigator.of(context).pushReplacementNamed('/deliveryLogin');
-                } else if (state.isNavigatingToLogin) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Navigating to Partner Login...'),
-                    ),
-                  );
                 }
               },
               builder: (context, state) {

@@ -23,8 +23,9 @@ class NotificationTileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = NotificationVisuals.colorFor(notification.category);
-    final icon = NotificationVisuals.iconFor(notification.category);
+    final category = notification.effectiveCategory;
+    final color = NotificationVisuals.colorFor(category);
+    final icon = NotificationVisuals.iconFor(category);
     final title = notification.localizedTitle(strings.languageCode);
     final body = notification.localizedBody(strings.languageCode);
 
@@ -118,10 +119,10 @@ class NotificationTileCard extends StatelessWidget {
   }
 
   bool get _hasAction =>
-      notification.actionType != BuyerNotificationActionType.none;
+      notification.effectiveActionType != BuyerNotificationActionType.none;
 
   String get _actionLabel {
-    switch (notification.actionType) {
+    switch (notification.effectiveActionType) {
       case BuyerNotificationActionType.navigateTrackOrder:
         return strings.actionTrackOrder;
       case BuyerNotificationActionType.navigateOrder:
@@ -136,9 +137,8 @@ class NotificationTileCard extends StatelessWidget {
       case BuyerNotificationActionType.openRating:
         return strings.actionRateNow;
       case BuyerNotificationActionType.navigateDetails:
-        return strings.actionViewDetails;
       case BuyerNotificationActionType.none:
-        return '';
+        return strings.actionViewDetails;
     }
   }
 }

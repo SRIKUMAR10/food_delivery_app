@@ -404,6 +404,9 @@ class SellerProfilePageBloc
         bankAccountNumber: event.bankAccountNumber,
         ifscCode: event.ifscCode,
         taxConfiguration: event.taxConfiguration,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        googleMapsUrl: event.googleMapsUrl,
       ));
 
       final String uid = authService.currentUserId ?? '';
@@ -420,6 +423,9 @@ class SellerProfilePageBloc
             'bankAccountNumber': event.bankAccountNumber,
             'ifscCode': event.ifscCode,
             'taxConfiguration': event.taxConfiguration,
+            'latitude': event.latitude,
+            'longitude': event.longitude,
+            'googleMapsUrl': event.googleMapsUrl,
           });
         } catch (e) {
           debugPrint('Error updating verification form: $e');

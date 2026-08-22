@@ -43,7 +43,20 @@ void main() {
 
     when(() => mockRepository.fetchProfile()).thenAnswer(
       (_) async =>
-          DeliveryProfileRepository(prefs: prefs).buildDefaultProfile(),
+          DeliveryProfileRepository(prefs: prefs).buildDefaultProfile().copyWith(
+            fullName: 'Ravi Kumar',
+            phone: '+91 98765 43210',
+            email: 'ravi.kumar@speedyfood.com',
+          ),
+    );
+    when(() => mockRepository.watchProfile()).thenAnswer(
+      (_) => Stream.value(
+        DeliveryProfileRepository(prefs: prefs).buildDefaultProfile().copyWith(
+          fullName: 'Ravi Kumar',
+          phone: '+91 98765 43210',
+          email: 'ravi.kumar@speedyfood.com',
+        ),
+      ),
     );
     when(() => mockRepository.saveProfile(any())).thenAnswer((_) async {});
   });

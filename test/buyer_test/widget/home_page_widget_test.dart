@@ -86,7 +86,29 @@ void main() {
         buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
       );
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+    });
+
+    testWidgets('Renders delivery address and DELIVER TO in location header', (tester) async {
+      when(() => mockHomePageBloc.state).thenReturn(
+        const HomePageLoaded(
+          categories: [],
+          allItems: [],
+          filteredItems: [],
+          selectedCategoryId: '',
+          searchQuery: '',
+          currentAddress: 'No. 24, Gandhi Road, Chennai',
+        ),
+      );
+
+      await tester.pumpWidget(
+        buildTestableWidget(child: HomePage(bloc: mockHomePageBloc)),
+      );
+
+      expect(find.text('DELIVER TO'), findsOneWidget);
+      expect(find.text('No. 24, Gandhi Road, Chennai'), findsOneWidget);
+      expect(find.text('Change'), findsOneWidget);
+      expect(find.byIcon(Icons.location_on_rounded), findsOneWidget);
     });
 
     testWidgets('Renders categories and products when loaded', (tester) async {

@@ -54,13 +54,30 @@ class MapTileCacheService {
 
     _pendingDownloads.add(url);
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 4));
+      var targetUrl = url;
+      var response = await http.get(Uri.parse(targetUrl)).timeout(const Duration(seconds: 4));
+      if (response.statusCode != 200 && url.contains('basemaps.cartocdn.com')) {
+        // Fallback to subdomain a.basemaps.cartocdn.com
+        targetUrl = url.replaceFirst('basemaps.cartocdn.com', 'a.basemaps.cartocdn.com');
+        response = await http.get(Uri.parse(targetUrl)).timeout(const Duration(seconds: 4));
+      }
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
         cacheTile(url, bytes);
         return bytes;
       }
     } catch (e) {
+      if (url.contains('basemaps.cartocdn.com')) {
+        try {
+          final fallbackUrl = url.replaceFirst('basemaps.cartocdn.com', 'a.basemaps.cartocdn.com');
+          final response = await http.get(Uri.parse(fallbackUrl)).timeout(const Duration(seconds: 4));
+          if (response.statusCode == 200) {
+            final bytes = response.bodyBytes;
+            cacheTile(url, bytes);
+            return bytes;
+          }
+        } catch (_) {}
+      }
       debugPrint('MapTileCacheService fetch error for $url: $e');
     } finally {
       _pendingDownloads.remove(url);

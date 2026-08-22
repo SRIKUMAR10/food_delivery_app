@@ -36,7 +36,7 @@ class _FakeNavigationRepository implements DeliveryNavigationRepositoryBase {
   }
 
   @override
-  Future<Map<String, dynamic>?> fetchActiveOrderData() async => null;
+  Future<Map<String, dynamic>?> fetchActiveOrderData({String? orderId}) async => null;
 
   @override
   Stream<Map<String, dynamic>?> watchActiveOrder() =>
@@ -164,6 +164,12 @@ class _FakeNavigationService implements DeliveryNavigationServiceBase {
   }) async {}
 
   @override
+  Future<void> updatePartnerLocation({
+    required double latitude,
+    required double longitude,
+  }) async {}
+
+  @override
   Future<void> updateLiveLocation({
     required String orderId,
     required double lat,
@@ -177,7 +183,10 @@ class _FakeNavigationService implements DeliveryNavigationServiceBase {
   Future<void> updateOrderStatus(String orderId, String status) async {}
 
   @override
-  Future<Map<String, dynamic>?> fetchActiveOrder() async => null;
+  Future<Map<String, dynamic>?> fetchActiveOrder({String? orderId}) async => null;
+
+  @override
+  Future<List<Map<String, dynamic>>?> fetchDemandZones() async => null;
 
   @override
   Stream<Map<String, dynamic>?> watchActiveOrder(String driverId) =>
@@ -279,7 +288,7 @@ void main() {
 
       expect(blocOf(tester).state.status, DeliveryNavigationStatus.navigating);
       expect(blocOf(tester).state.audioEnabled, isTrue);
-      expect(find.text('Follow Route'), findsOneWidget);
+      expect(find.text('Complete Delivery'), findsOneWidget);
 
       await tester.tap(
         find.byKey(const Key('dp_navscreen_sos_button')),

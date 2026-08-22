@@ -444,7 +444,7 @@ class _EarningsTabSelector extends StatelessWidget {
         children: [
           for (final item in tabs)
             Expanded(
-              child: _EarningsTabChip(
+              child: DeliverySelectableChip(
                 key: Key(
                   'dp_earnings_tab_${switch (item.tab) {
                     EarningsTab.overview => 'overview',
@@ -457,6 +457,7 @@ class _EarningsTabSelector extends StatelessWidget {
                   lang,
                 ),
                 isSelected: state.selectedTab == item.tab,
+                shape: DeliveryChipShape.tab,
                 onTap: () {
                   context
                       .read<DeliveryEarningsDashboardPageBloc>()
@@ -465,61 +466,6 @@ class _EarningsTabSelector extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _EarningsTabChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _EarningsTabChip({
-    super.key,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      selected: isSelected,
-      button: true,
-      label: label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? DeliveryAppColors.primaryDark.withValues(alpha: 0.14)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected
-                    ? DeliveryAppColors.primary.withValues(alpha: 0.4)
-                    : Colors.transparent,
-              ),
-            ),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isSelected
-                    ? DeliveryAppColors.primary
-                    : Colors.white.withValues(alpha: 0.6),
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -541,54 +487,60 @@ class _EarningsSummaryGrid extends StatelessWidget {
     final lang = state.localeCode;
 
     final cards = [
-      _EarningsMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_earnings_summary_total'),
         title: DeliveryEarningsDashboardStrings.of('totalEarnings', lang),
         value: '₹${state.totalEarnings.toStringAsFixed(2)}',
         subtext:
             '${DeliveryEarningsDashboardStrings.of('growthLabel', lang).replaceAll('{growth}', state.earningsGrowth.toStringAsFixed(1)).replaceAll('{vs}', DeliveryEarningsDashboardStrings.of('vsLastWeek', lang))}',
         icon: Icons.trending_up,
-        color: DeliveryAppColors.primary,
+        iconColor: DeliveryAppColors.primary,
+        subtextColor: DeliveryAppColors.primary,
       ),
-      _EarningsMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_earnings_summary_today'),
         title: DeliveryEarningsDashboardStrings.of('todayEarnings', lang),
         value: '₹${state.todayEarnings.toStringAsFixed(2)}',
         subtext: DeliveryEarningsDashboardStrings.of('today', lang),
         icon: Icons.account_balance_wallet,
-        color: DeliveryAppColors.info,
+        iconColor: DeliveryAppColors.info,
+        subtextColor: DeliveryAppColors.info,
       ),
-      _EarningsMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_earnings_summary_week'),
         title: DeliveryEarningsDashboardStrings.of('thisWeek', lang),
         value: '₹${state.weeklyEarnings.toStringAsFixed(2)}',
         subtext: DeliveryEarningsDashboardStrings.of('last7Days', lang),
         icon: Icons.calendar_view_week,
-        color: const Color(0xFF10B981),
+        iconColor: const Color(0xFF10B981),
+        subtextColor: const Color(0xFF10B981),
       ),
-      _EarningsMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_earnings_summary_month'),
         title: DeliveryEarningsDashboardStrings.of('thisMonth', lang),
         value: '₹${state.monthlyEarnings.toStringAsFixed(2)}',
         subtext: DeliveryEarningsDashboardStrings.of('thisMonthRange', lang),
         icon: Icons.calendar_month,
-        color: const Color(0xFF7C4DFF),
+        iconColor: const Color(0xFF7C4DFF),
+        subtextColor: const Color(0xFF7C4DFF),
       ),
-      _EarningsMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_earnings_summary_deliveries'),
         title: DeliveryEarningsDashboardStrings.of('completedDeliveries', lang),
         value: '${state.todayDeliveries}',
         subtext: DeliveryEarningsDashboardStrings.of('deliveryCountLabel', lang),
         icon: Icons.delivery_dining,
-        color: const Color(0xFFF59E0B),
+        iconColor: const Color(0xFFF59E0B),
+        subtextColor: const Color(0xFFF59E0B),
       ),
-      _EarningsMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_earnings_summary_pending'),
         title: DeliveryEarningsDashboardStrings.of('pendingEarnings', lang),
         value: '₹${state.pendingEarnings.toStringAsFixed(2)}',
         subtext: DeliveryEarningsDashboardStrings.of('statusPending', lang),
         icon: Icons.hourglass_top,
-        color: const Color(0xFFEF4444),
+        iconColor: const Color(0xFFEF4444),
+        subtextColor: const Color(0xFFEF4444),
       ),
     ];
 
@@ -606,87 +558,6 @@ class _EarningsSummaryGrid extends StatelessWidget {
       mainAxisSpacing: 16,
       childAspectRatio: isDesktop ? 1.5 : (isTablet ? 1.8 : 1.3),
       children: cards,
-    );
-  }
-}
-
-class _EarningsMetricCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtext;
-  final IconData icon;
-  final Color color;
-
-  const _EarningsMetricCard({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.subtext,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: DeliveryAppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 18),
-              ),
-            ],
-          ),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Text(
-            subtext,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -747,7 +618,7 @@ class _EarningsChartCard extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final item in ranges)
-                _RangeChip(
+                DeliverySelectableChip(
                   key: Key(
                     'dp_earnings_range_${switch (item.range) {
                       EarningsDateRange.today => 'today',
@@ -782,60 +653,6 @@ class _EarningsChartCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RangeChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _RangeChip({
-    super.key,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      selected: isSelected,
-      button: true,
-      label: label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? DeliveryAppColors.primary.withValues(alpha: 0.15)
-                  : Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: isSelected
-                    ? DeliveryAppColors.primary.withValues(alpha: 0.5)
-                    : Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? DeliveryAppColors.primary
-                    : Colors.white.withValues(alpha: 0.7),
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -1542,159 +1359,58 @@ class _CashReconciliationBanner extends StatelessWidget {
   }
 
   Future<void> _openSubmitDialog(BuildContext context, String lang) async {
-    final controller = TextEditingController();
-    var selectedMethod =
-        DeliveryEarningsDashboardStrings.of('depositHub', lang);
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            return AlertDialog(
-              backgroundColor: DeliveryAppColors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Text(
-                DeliveryEarningsDashboardStrings.of(
-                  'submitCashDialogTitle',
-                  lang,
+    await DeliveryWithdrawDialog.show(
+      context,
+      walletBalance: state.cashInHand,
+      title: DeliveryEarningsDashboardStrings.of(
+        'submitCashDialogTitle',
+        lang,
+      ),
+      subtitle: DeliveryEarningsDashboardStrings.of('submitCashDialogSub', lang),
+      amountLabel: DeliveryEarningsDashboardStrings.of(
+        'submitCashAmountLabel',
+        lang,
+      ),
+      availableBalanceText: DeliveryEarningsDashboardStrings.of(
+        'cashInHand',
+        lang,
+      ),
+      confirmText: DeliveryEarningsDashboardStrings.of('confirm', lang),
+      cancelText: DeliveryEarningsDashboardStrings.of('cancel', lang),
+      depositMethods: [
+        DeliveryEarningsDashboardStrings.of('depositHub', lang),
+        DeliveryEarningsDashboardStrings.of('bankDeposit', lang),
+        DeliveryEarningsDashboardStrings.of('upiTransfer', lang),
+      ],
+      depositMethodLabel: DeliveryEarningsDashboardStrings.of(
+        'depositMethod',
+        lang,
+      ),
+      remainingBalanceText: DeliveryEarningsDashboardStrings.of(
+        'remainingCashInHand',
+        lang,
+      ),
+      exceedsBalanceText: DeliveryEarningsDashboardStrings.of(
+        'exceedsCashInHand',
+        lang,
+      ),
+      enterValidAmountText: DeliveryEarningsDashboardStrings.of(
+        'enterValidAmount',
+        lang,
+      ),
+      currencySymbol: '₹',
+      onConfirm: (_) {},
+      onConfirmWithMethod: (amount, method) {
+        if (context.mounted) {
+          context
+              .read<DeliveryEarningsDashboardPageBloc>()
+              .add(
+                DeliveryEarningsSubmitCashEvent(
+                  amount: amount,
+                  method: method,
                 ),
-                style: const TextStyle(color: Colors.white),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      DeliveryEarningsDashboardStrings.of(
-                        'submitCashDialogSub',
-                        lang,
-                      ),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: controller,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: DeliveryEarningsDashboardStrings.of(
-                          'submitCashAmountLabel',
-                          lang,
-                        ),
-                        prefixText: '₹ ',
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: DeliveryAppColors.primary,
-                          ),
-                        ),
-                      ),
-                      onChanged: (_) => setDialogState(() {}),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      DeliveryEarningsDashboardStrings.of(
-                        'depositMethod',
-                        lang,
-                      ),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      key: ValueKey('submit_cash_method_$selectedMethod'),
-                      initialValue: selectedMethod,
-                      dropdownColor: DeliveryAppColors.surface,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
-                        ),
-                      ),
-                      items: [
-                        DeliveryEarningsDashboardStrings.of('depositHub', lang),
-                        DeliveryEarningsDashboardStrings.of('bankDeposit', lang),
-                        DeliveryEarningsDashboardStrings.of('upiTransfer', lang),
-                      ].map((method) {
-                        return DropdownMenuItem<String>(
-                          value: method,
-                          child: Text(method),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setDialogState(() => selectedMethod = value ?? selectedMethod);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _LiveAmountPreview(
-                      amountText: controller.text,
-                      cashInHand: state.cashInHand,
-                      lang: lang,
-                      onInvalid: () => setDialogState(() {}),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () =>
-                      Navigator.of(dialogContext).pop(),
-                  child: Text(
-                    DeliveryEarningsDashboardStrings.of('cancel', lang),
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ),
-                ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: controller,
-                  builder: (context, value, _) {
-                    final amount = double.tryParse(value.text);
-                    final valid = amount != null &&
-                        amount > 0 &&
-                        amount <= state.cashInHand;
-                    return FilledButton(
-                      onPressed: valid
-                          ? () {
-                              Navigator.of(dialogContext).pop();
-                              BlocProvider.of<DeliveryEarningsDashboardPageBloc>(
-                                context,
-                              ).add(
-                                DeliveryEarningsSubmitCashEvent(
-                                  amount: amount,
-                                  method: selectedMethod,
-                                ),
-                              );
-                            }
-                          : null,
-                      child: Text(
-                        DeliveryEarningsDashboardStrings.of('confirm', lang),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            );
-          },
-        );
+              );
+        }
       },
     );
   }
@@ -1882,58 +1598,6 @@ class _ReconMetric extends StatelessWidget {
   }
 }
 
-class _LiveAmountPreview extends StatelessWidget {
-  final String amountText;
-  final double cashInHand;
-  final String lang;
-  final VoidCallback onInvalid;
-
-  const _LiveAmountPreview({
-    required this.amountText,
-    required this.cashInHand,
-    required this.lang,
-    required this.onInvalid,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final parsed = double.tryParse(amountText);
-    final invalid =
-        parsed == null || parsed <= 0 || parsed > cashInHand;
-    final remaining =
-        parsed == null ? cashInHand : (cashInHand - parsed).clamp(0, double.infinity);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: invalid
-            ? const Color(0xFFEF4444).withValues(alpha: 0.1)
-            : const Color(0xFF10B981).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        invalid
-            ? DeliveryEarningsDashboardStrings.of(
-                parsed != null && parsed > cashInHand
-                    ? 'exceedsCashInHand'
-                    : 'enterValidAmount',
-                lang,
-              )
-            : '${DeliveryEarningsDashboardStrings.of('remainingCashInHand', lang)}: '
-                '₹${remaining.toStringAsFixed(2)}',
-        style: TextStyle(
-          color: invalid
-              ? const Color(0xFFEF4444)
-              : const Color(0xFF10B981),
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
 class _EarningsDetailedList extends StatelessWidget {
   final DeliveryEarningsDashboardState state;
 
@@ -2031,18 +1695,20 @@ class _DetailedEarningTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
         color: DeliveryAppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           leading: Container(
             padding: const EdgeInsets.all(8),
@@ -2172,8 +1838,9 @@ class _DetailedEarningTile extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _EarningsSkeleton extends StatelessWidget {

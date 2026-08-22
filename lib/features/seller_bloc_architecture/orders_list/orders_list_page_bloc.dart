@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/models/order_model.dart';
 import '../../../../core/models/order_status.dart';
 import '../../../../core/services/audio_notification_service.dart';
@@ -20,6 +22,13 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
   String _activeFilter = 'All';
   String _searchQuery = '';
   int _previousNewOrderCount = 0;
+  bool _isInitialStreamLoad = true;
+  StreamSubscription? _settingsSubscription;
+
+  double _soundVolume = 0.8;
+  String _ringtoneName = 'Bell Chime';
+  bool _soundEnabled = true;
+  bool _soundLoop = false;
 
   OrdersListBloc({required this.repository, required this.chatRepository}) : super(OrdersListInitial()) {
     on<LoadOrdersStream>(_onLoadOrdersStream);
@@ -33,23 +42,65 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
 
   Future<void> _onLoadOrdersStream(LoadOrdersStream event, Emitter<OrdersListState> emit) async {
     emit(OrdersListLoading());
+    _isInitialStreamLoad = true;
+    _previousNewOrderCount = 0;
     if (event.sellerId.isEmpty) {
       _allOrders = [];
       emit(_createFilteredState());
       return;
     }
     unawaited(BackfillOrdersService().runBackfillMigration(event.sellerId));
+
+    // Subscribe to seller audio notification settings
+    await _settingsSubscription?.cancel();
+    if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
+      // Test environment guard to avoid uninitialized Firestore platform channels
+    } else if (event.sellerId.isNotEmpty) {
+      try {
+        _settingsSubscription = FirebaseFirestore.instance
+            .collection('seller_notification_settings')
+            .doc(event.sellerId)
+            .snapshots()
+            .listen((snap) {
+          if (snap.exists) {
+            final data = snap.data() ?? {};
+            _soundVolume = (data['soundVolume'] as num?)?.toDouble() ?? 0.8;
+            _ringtoneName = data['orderAlertRingtone'] as String? ?? 'Bell Chime';
+            _soundEnabled = data['newOrderSound'] as bool? ?? true;
+            _soundLoop = data['soundLoopUntilAccepted'] as bool? ?? false;
+            AudioNotificationService.setGlobalAudioConfig(
+              volume: _soundVolume,
+              ringtone: _ringtoneName,
+            );
+          }
+        });
+      } catch (_) {}
+    }
+
     await emit.forEach<List<OrderModel>>(
       repository.getSellerOrdersStream(event.sellerId),
       onData: (orders) {
         _allOrders = orders;
         
-        // Check for new orders to play sound
+        // Check for new orders to play sound; skip sound trigger on initial stream load
         int currentNewOrderCount = _allOrders.where((o) => o.status == OrderStatus.newOrder).length;
-        if (currentNewOrderCount > _previousNewOrderCount) {
-          _audioService.playNewOrderSound();
+        if (_isInitialStreamLoad) {
+          _isInitialStreamLoad = false;
+          _previousNewOrderCount = currentNewOrderCount;
+        } else {
+          if (currentNewOrderCount > _previousNewOrderCount) {
+            if (_soundEnabled) {
+              _audioService.playNewOrderSound(
+                ringtoneName: _ringtoneName,
+                volume: _soundVolume,
+                loop: _soundLoop,
+              );
+            }
+          } else if (currentNewOrderCount == 0) {
+            _audioService.stop();
+          }
+          _previousNewOrderCount = currentNewOrderCount;
         }
-        _previousNewOrderCount = currentNewOrderCount;
 
         return _createFilteredState();
       },
@@ -225,6 +276,8 @@ class OrdersListBloc extends Bloc<OrdersListEvent, OrdersListState> {
 
   @override
   Future<void> close() {
+    _settingsSubscription?.cancel();
+    _audioService.stop();
     _audioService.dispose();
     return super.close();
   }

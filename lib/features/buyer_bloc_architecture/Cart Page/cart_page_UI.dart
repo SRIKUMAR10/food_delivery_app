@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../../api_service/RazorpayApiService.dart';
+import '../../../core/widgets/empty_state_view.dart';
 import 'cart_models.dart';
 import 'cart_page_Bloc.dart';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
@@ -394,31 +395,18 @@ class _CartPageUIState extends State<CartPageUI> {
               }
 
               if (state is CartError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.error_outline_rounded, color: Colors.red, size: 48),
-                        const SizedBox(height: 12),
-                        Text(
-                          state.message,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.red, fontSize: 14),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () =>
-                              context.read<CartBloc>().add(const LoadCartStarted()),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryRed,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Retry'),
-                        ),
-                      ],
+                return EmptyStateView(
+                  icon: Icons.error_outline_rounded,
+                  iconColor: Colors.red,
+                  title: state.message,
+                  action: ElevatedButton(
+                    onPressed: () =>
+                        context.read<CartBloc>().add(const LoadCartStarted()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryRed,
+                      foregroundColor: Colors.white,
                     ),
+                    child: const Text('Retry'),
                   ),
                 );
               }
@@ -699,39 +687,14 @@ class _CartPageUIState extends State<CartPageUI> {
   // ─── Empty State ─────────────────────────────────────────────────────────────
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: BuyerAppColors.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.shopping_cart_outlined,
-              size: 56,
-              color: BuyerAppColors.primary.withValues(alpha: 0.55),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Your cart is empty!',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1C1C1C),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Browse items and add delicious dishes to your cart.',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-          ),
-        ],
-      ),
+    return EmptyStateView(
+      icon: Icons.shopping_cart_outlined,
+      iconContainerColor: BuyerAppColors.primary.withValues(alpha: 0.08),
+      iconContainerSize: 120,
+      iconColor: BuyerAppColors.primary.withValues(alpha: 0.55),
+      iconSize: 56,
+      title: 'Your cart is empty!',
+      subtitle: 'Browse items and add delicious dishes to your cart.',
     );
   }
 

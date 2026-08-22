@@ -39,41 +39,29 @@ class DeliveryProfileBloc
       status: DeliveryProfileStatus.loading,
       clearError: true,
     ));
-    try {
-      final initialData = await repository.fetchProfile();
-      emit(_recalculate(initialData.copyWith(
-        status: initialData.status,
-        localeCode: state.localeCode,
-        clearError: true,
-      )));
-    } catch (_) {}
 
-    try {
-      await emit.forEach<DeliveryProfileState>(
-        repository.watchProfile(),
-        onData: (profile) {
-          final merged = _recalculate(profile.copyWith(
-            status: profile.status,
-            localeCode: state.localeCode,
-            clearError: true,
-          ));
-          return merged;
-        },
-        onError: (error, stackTrace) {
-          return state.copyWith(
-            status: DeliveryProfileStatus.error,
-            errorMessage: error.toString().replaceAll('Exception: ', ''),
-          );
-        },
-      );
-    } catch (e) {
-      if (state.status == DeliveryProfileStatus.loading) {
-        emit(state.copyWith(
-          status: DeliveryProfileStatus.error,
-          errorMessage: e.toString().replaceAll('Exception: ', ''),
+    await emit.forEach<DeliveryProfileState>(
+      repository.watchProfile(),
+      onData: (profile) {
+        final status = (profile.fullName.trim().isEmpty &&
+                profile.phone.trim().isEmpty &&
+                profile.email.trim().isEmpty)
+            ? DeliveryProfileStatus.empty
+            : profile.status;
+        final merged = _recalculate(profile.copyWith(
+          status: status,
+          localeCode: state.localeCode,
+          clearError: true,
         ));
-      }
-    }
+        return merged;
+      },
+      onError: (error, stackTrace) {
+        return state.copyWith(
+          status: DeliveryProfileStatus.error,
+          errorMessage: error.toString().replaceAll('Exception: ', ''),
+        );
+      },
+    );
   }
 
   void _onUpdateField(
@@ -98,6 +86,9 @@ class DeliveryProfileBloc
         ),
       'address' => state.copyWith(
           address: event.value,
+          latitude: event.latitude,
+          longitude: event.longitude,
+          googleMapsUrl: event.googleMapsUrl,
           status: DeliveryProfileStatus.loaded,
           clearError: true,
         ),
@@ -263,7 +254,7 @@ class DeliveryProfileBloc
     DeliveryProfileRetryEvent event,
     Emitter<DeliveryProfileState> emit,
   ) async {
-    add(const DeliveryProfileInitEvent());
+    await _onInit(const DeliveryProfileInitEvent(), emit);
   }
 
   Future<void> _onUpdateAddress(
@@ -271,9 +262,17 @@ class DeliveryProfileBloc
     Emitter<DeliveryProfileState> emit,
   ) async {
     try {
-      await repository.updateAddress(event.address);
+      await repository.updateAddress(
+        event.address,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        googleMapsUrl: event.googleMapsUrl,
+      );
       emit(_recalculate(state.copyWith(
         address: event.address,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        googleMapsUrl: event.googleMapsUrl,
         actionMessage: 'Address updated successfully',
         clearError: true,
       )));

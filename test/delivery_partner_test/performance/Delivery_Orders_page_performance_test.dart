@@ -1,11 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_ui.dart';
 
+import '../helpers/demo_orders.dart';
+
+class MockDeliveryOrdersRepository extends Mock
+    implements DeliveryOrdersRepositoryBase {}
+
 void main() {
+  late MockDeliveryOrdersRepository mockRepository;
+
+  setUp(() {
+    mockRepository = MockDeliveryOrdersRepository();
+    when(
+      () => mockRepository.watchOrders(),
+    ).thenAnswer((_) => Stream.value(demoOrders()));
+    when(
+      () => mockRepository.fetchOrders(),
+    ).thenAnswer((_) async => demoOrders());
+  });
+
   void setDesktopSize(WidgetTester tester) {
     tester.view.physicalSize = const Size(1280, 1600);
     tester.view.devicePixelRatio = 1.0;
@@ -16,7 +34,7 @@ void main() {
     return MaterialApp(
       home: Scaffold(
         body: DeliveryOrdersPage(
-          repository: DeliveryOrdersRepository(),
+          repository: mockRepository,
           service: DeliveryOrdersService(),
         ),
       ),

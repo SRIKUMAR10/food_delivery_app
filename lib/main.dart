@@ -57,10 +57,13 @@ import 'features/Delivery Partner Bloc Architecture/Delivery_NavigationBar_page/
 import 'features/Delivery Partner Bloc Architecture/Delivery_Sign_Up_page/Delivery_Sign_Up_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_OTP_Verification_page/Delivery_OTP_Verification_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Chat_page/Delivery_Chat_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Navigation Screen_page/Delivery_Navigation Screen_page_ui.dart';
 import 'core/utils/app_role_helper.dart';
 
 // Global Role Toggle Switch (Default fallback when no tab session or URL param is present)
-const AppRole activeRole = AppRole.buyer;
+const AppRole activeRole = AppRole.delivery;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,16 +74,18 @@ void main() async {
   }
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   try {
-    await FirebaseAppCheck.instance.activate(
-      providerWeb: ReCaptchaV3Provider('recaptcha-v3-site-key'),
-    );
+    if (!kDebugMode) {
+      await FirebaseAppCheck.instance.activate(
+        providerWeb: ReCaptchaV3Provider('recaptcha-v3-site-key'),
+      );
+    }
   } catch (e) {
     debugPrint('AppCheck initialization note: $e');
   }
 
   if (kIsWeb) {
     FirebaseFirestore.instance.settings = const Settings(
-      persistenceEnabled: true,
+      persistenceEnabled: false,
     );
   }
   runApp(const MyApp());
@@ -257,9 +262,9 @@ class MyApp extends StatelessWidget {
                         const DeliveryForgotPasswordPage(),
                   },
                   onGenerateRoute: (settings) {
+                    final args =
+                        settings.arguments as Map<String, dynamic>? ?? {};
                     if (settings.name == '/deliveryOtpVerification') {
-                      final args =
-                          settings.arguments as Map<String, dynamic>? ?? {};
                       return MaterialPageRoute(
                         builder: (context) => DeliveryOtpVerificationPage(
                           verificationId:
@@ -269,6 +274,34 @@ class MyApp extends StatelessWidget {
                           email: args['email'] as String? ?? '',
                           password: args['password'] as String? ?? '',
                         ),
+                      );
+                    }
+                    if (settings.name == '/deliveryChat') {
+                      return MaterialPageRoute(
+                        builder: (context) => DeliveryChatPage(
+                          orderId: args['orderId'] as String? ?? '',
+                          customerId: args['customerId'] as String? ?? '',
+                          customerName: args['customerName'] as String? ?? '',
+                          customerPhone: args['customerPhone'] as String?,
+                          sellerId: args['sellerId'] as String?,
+                          sellerName: args['sellerName'] as String?,
+                          sellerPhone: args['sellerPhone'] as String?,
+                          orderTitle: args['orderTitle'] as String?,
+                          orderTotal: (args['orderTotal'] as num?)?.toDouble(),
+                          recipientRole: args['recipientRole'] as String? ?? 'customer',
+                        ),
+                      );
+                    }
+                    if (settings.name == '/deliveryOrderDetails') {
+                      return MaterialPageRoute(
+                        builder: (context) => DeliveryOrderDetailsPageUi(
+                          orderId: args['orderId'] as String? ?? '',
+                        ),
+                      );
+                    }
+                    if (settings.name == '/deliveryNavigationScreen') {
+                      return MaterialPageRoute(
+                        builder: (context) => const DeliveryNavigationScreenPage(),
                       );
                     }
                     return null;

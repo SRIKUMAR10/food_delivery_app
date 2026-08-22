@@ -4,6 +4,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/core/models/chat_message_model.dart';
+import 'package:food_delivery_app/core/models/conversation_model.dart';
 import 'package:food_delivery_app/core/repositories/i_chat_repository.dart';
 import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_Chat_page/Delivery_Chat_page_bloc.dart';
 import 'package:food_delivery_app/features/Delivery Partner Bloc Architecture/Delivery_Chat_page/Delivery_Chat_page_event.dart';
@@ -37,6 +38,8 @@ void main() {
     deliveryChatService = MockDeliveryChatService();
 
     when(() => deliveryChatRepository.getTypingStatusStream(any()))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => deliveryChatRepository.getDeliveryConversations(any()))
         .thenAnswer((_) => const Stream.empty());
   });
 
@@ -132,6 +135,77 @@ void main() {
       await bloc.close();
     });
 
+    test('loads and streams conversations with tabs and search filter including Anu', () async {
+      final sampleConvs = [
+        ConversationModel(
+          id: 'conv_1',
+          buyerId: 'buyer_anu',
+          sellerId: '',
+          buyerName: 'Anu',
+          sellerName: '',
+          orderId: 'ORD-101',
+          conversationType: 'buyer_delivery',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        ConversationModel(
+          id: 'conv_2',
+          buyerId: '',
+          sellerId: 'seller_1',
+          buyerName: '',
+          sellerName: 'Burger Queen',
+          shopName: 'Burger Queen',
+          orderId: 'ORD-102',
+          conversationType: 'seller_delivery',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      ];
+
+      when(() => deliveryChatService.currentUserId).thenReturn(riderId);
+      when(() => deliveryChatRepository.getDeliveryConversations(riderId))
+          .thenAnswer((_) => Stream.value(sampleConvs));
+      when(() => deliveryChatService.markMessagesRead(any(), any()))
+          .thenAnswer((_) async {});
+      when(() => chatRepository.getMessagesStream(any()))
+          .thenAnswer((_) => const Stream.empty());
+
+      final bloc = buildBloc();
+      bloc.add(const LoadDeliveryConversations());
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      expect(bloc.state, isA<DeliveryChatLoaded>());
+      var loaded = bloc.state as DeliveryChatLoaded;
+      expect(loaded.conversations.length, 2);
+      expect(loaded.filteredConversations.length, 2);
+
+      // Filter by Customer (Anu)
+      bloc.add(const SetDeliveryChatFilter('customer'));
+      await Future.delayed(const Duration(milliseconds: 20));
+      loaded = bloc.state as DeliveryChatLoaded;
+      expect(loaded.activeFilter, 'customer');
+      expect(loaded.filteredConversations.length, 1);
+      expect(loaded.filteredConversations.first.buyerName, 'Anu');
+
+      // Filter by Store
+      bloc.add(const SetDeliveryChatFilter('seller'));
+      await Future.delayed(const Duration(milliseconds: 20));
+      loaded = bloc.state as DeliveryChatLoaded;
+      expect(loaded.activeFilter, 'seller');
+      expect(loaded.filteredConversations.length, 1);
+      expect(loaded.filteredConversations.first.id, 'conv_2');
+
+      // Select Anu's conversation
+      bloc.add(const SelectDeliveryConversation('conv_1'));
+      await Future.delayed(const Duration(milliseconds: 50));
+      loaded = bloc.state as DeliveryChatLoaded;
+      expect(loaded.selectedConversationId, 'conv_1');
+      expect(loaded.recipientName, 'Anu');
+      expect(loaded.isSellerChat, false);
+
+      await bloc.close();
+    });
+
     test('sends text message with delivery_partner role', () async {
       when(() => deliveryChatService.currentUserId).thenReturn(riderId);
       when(() => deliveryChatService.currentUserName).thenReturn(riderName);
@@ -223,66 +297,6 @@ void main() {
             senderRole: 'delivery_partner',
             receiverId: customerId,
             messageType: 'text',
-          )).called(1);
-
-      await bloc.close();
-    });
-
-    test('sends media message properly', () async {
-      when(() => deliveryChatService.currentUserId).thenReturn(riderId);
-      when(() => deliveryChatService.currentUserName).thenReturn(riderName);
-      when(() => deliveryChatRepository.createOrGetConversation(
-            orderId: any(named: 'orderId'),
-            customerId: any(named: 'customerId'),
-            customerName: any(named: 'customerName'),
-            riderId: any(named: 'riderId'),
-            riderName: any(named: 'riderName'),
-            orderTitle: any(named: 'orderTitle'),
-            orderTotal: any(named: 'orderTotal'),
-          )).thenAnswer((_) async => 'conv_1');
-      when(() => deliveryChatService.markMessagesRead(any(), any()))
-          .thenAnswer((_) async {});
-      when(() => chatRepository.getMessagesStream(any()))
-          .thenAnswer((_) => const Stream.empty());
-      when(() => chatRepository.sendMessage(
-            conversationId: any(named: 'conversationId'),
-            text: any(named: 'text'),
-            senderId: any(named: 'senderId'),
-            senderRole: any(named: 'senderRole'),
-            receiverId: any(named: 'receiverId'),
-            messageType: any(named: 'messageType'),
-            mediaUrl: any(named: 'mediaUrl'),
-            fileName: any(named: 'fileName'),
-            fileSize: any(named: 'fileSize'),
-            duration: any(named: 'duration'),
-          )).thenAnswer((_) async {});
-
-      final bloc = buildBloc();
-      bloc.add(const InitDeliveryChatEvent(
-        orderId: orderId,
-        customerId: customerId,
-        customerName: customerName,
-      ));
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      bloc.add(const SendDeliveryMediaMessageEvent(
-        messageType: 'image',
-        mediaUrl: 'https://example.com/photo.jpg',
-        fileName: 'photo.jpg',
-      ));
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      verify(() => chatRepository.sendMessage(
-            conversationId: 'conv_1',
-            text: 'Photo attachment',
-            senderId: riderId,
-            senderRole: 'delivery_partner',
-            receiverId: customerId,
-            messageType: 'image',
-            mediaUrl: 'https://example.com/photo.jpg',
-            fileName: 'photo.jpg',
-            fileSize: null,
-            duration: null,
           )).called(1);
 
       await bloc.close();

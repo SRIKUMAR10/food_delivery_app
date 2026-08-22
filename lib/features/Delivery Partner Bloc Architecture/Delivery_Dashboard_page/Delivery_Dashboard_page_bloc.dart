@@ -241,9 +241,8 @@ class DeliveryDashboardPageBloc
       debugPrint('DeliveryDashboardRefreshEvent error: $e');
       emit(
         state.copyWith(
-          status: DeliveryDashboardStatus.loaded,
-          errorMessage: null,
-          clearError: true,
+          status: DeliveryDashboardStatus.error,
+          errorMessage: e.toString().replaceAll('Exception: ', ''),
         ),
       );
     }

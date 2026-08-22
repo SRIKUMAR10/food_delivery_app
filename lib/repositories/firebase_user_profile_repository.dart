@@ -147,4 +147,66 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
               return data;
             }).toList());
   }
+
+  @override
+  Stream<double?> watchWalletBalance(String userId) {
+    return firestore.collection('buyer_user').doc(userId).snapshots().map(
+        (snapshot) {
+      if (!snapshot.exists) return null;
+      final data = snapshot.data();
+      return (data?['wallet'] as num?)?.toDouble();
+    });
+  }
+
+  @override
+  Future<double?> loadWalletBalance(String userId) async {
+    try {
+      final doc = await firestore.collection('buyer_user').doc(userId).get();
+      if (doc.exists) {
+        final data = doc.data();
+        if (data == null) return null;
+        return (data['wallet'] as num?)?.toDouble();
+      }
+    } catch (e) {
+      debugPrint('Error loading wallet balance: $e');
+    }
+    return null;
+  }
+
+  @override
+  Future<void> addWalletTransaction({
+    required String userId,
+    required double amount,
+    required String title,
+    required bool isCredit,
+    String? paymentId,
+    String? orderId,
+    String status = 'success',
+  }) async {
+    final userRef = firestore.collection('buyer_user').doc(userId);
+
+    await firestore.runTransaction((transaction) async {
+      DocumentSnapshot snapshot = await transaction.get(userRef);
+      final data = snapshot.data() as Map<String, dynamic>?;
+      double currentBalance =
+          ((data?['wallet'] as num?)?.toDouble()) ??
+          0.0;
+
+      transaction.set(userRef, {
+        'wallet': isCredit ? currentBalance + amount : currentBalance - amount,
+      }, SetOptions(merge: true));
+
+      transaction.set(userRef.collection('transactions').doc(), {
+        'amount': amount,
+        'title': title,
+        'isCredit': isCredit,
+        'status': status,
+        if (paymentId != null) 'paymentId': paymentId,
+        if (orderId != null) 'orderId': orderId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'timestamp':
+            FieldValue.serverTimestamp(),
+      });
+    });
+  }
 }

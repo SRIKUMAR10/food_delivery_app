@@ -118,7 +118,7 @@ void main() {
         ),
         DeliveryNavigationBarState(
           status: DeliveryNavigationBarStatus.loaded,
-          selectedIndex: 0,
+          selectedIndex: 4,
           navItems: navItems,
           localeCode: 'ta',
           partnerName: 'Arjun Kumar',

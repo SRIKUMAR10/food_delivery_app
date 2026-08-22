@@ -134,12 +134,48 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
   Future<Map<String, dynamic>> _enrichFirestoreOrder(String docId, Map<String, dynamic> data) async {
     final currentFirestore = _firestore ?? FirebaseFirestore.instance;
 
-    final sellerId = (data['sellerId'] ?? data['seller_id'] ?? data['vendorId'] ?? data['vendor_id'] ?? data['storeId'] ?? data['store_id'] ?? data['merchantId'] ?? data['merchant_id'])?.toString();
-    final customerId = (data['customerId'] ?? data['customer_id'] ?? data['userId'] ?? data['user_id'] ?? data['buyerId'] ?? data['buyer_id'] ?? data['customerUid'] ?? data['buyerUid'] ?? data['uid'])?.toString();
+    final sellerId = (data['sellerId'] ??
+            data['seller_id'] ??
+            data['vendorId'] ??
+            data['vendor_id'] ??
+            data['storeId'] ??
+            data['store_id'] ??
+            data['merchantId'] ??
+            data['merchant_id'] ??
+            (data['seller'] is Map ? (data['seller']['id'] ?? data['seller']['sellerId'] ?? data['seller']['uid']) : null))
+        ?.toString();
 
-    String restaurantName = (data['restaurantName'] ?? data['sellerName'] ?? data['shopName'] ?? data['storeName'])?.toString() ?? '';
-    String pickupAddress = (data['pickupAddress'] ?? data['sellerAddress'] ?? data['restaurantAddress'] ?? data['storeAddress'])?.toString() ?? '';
-    String merchantPhone = (data['sellerPhone'] ?? data['merchantPhone'] ?? data['storePhone'])?.toString() ?? '';
+    final customerId = (data['customerId'] ??
+            data['customer_id'] ??
+            data['userId'] ??
+            data['user_id'] ??
+            data['buyerId'] ??
+            data['buyer_id'] ??
+            data['customerUid'] ??
+            data['buyerUid'] ??
+            data['uid'] ??
+            (data['customer'] is Map ? (data['customer']['id'] ?? data['customer']['customerId'] ?? data['customer']['uid']) : null) ??
+            (data['buyer'] is Map ? (data['buyer']['id'] ?? data['buyer']['buyerId'] ?? data['buyer']['uid']) : null) ??
+            (data['user'] is Map ? (data['user']['id'] ?? data['user']['userId'] ?? data['user']['uid']) : null))
+        ?.toString();
+
+    String restaurantName = (data['restaurantName'] ??
+            data['sellerName'] ??
+            data['shopName'] ??
+            data['storeName'] ??
+            (data['seller'] is Map ? (data['seller']['shopName'] ?? data['seller']['name'] ?? data['seller']['storeName']) : null))
+        ?.toString() ?? '';
+    String pickupAddress = (data['pickupAddress'] ??
+            data['sellerAddress'] ??
+            data['restaurantAddress'] ??
+            data['storeAddress'] ??
+            (data['seller'] is Map ? (data['seller']['address'] ?? data['seller']['shopAddress']) : null))
+        ?.toString() ?? '';
+    String merchantPhone = (data['sellerPhone'] ??
+            data['merchantPhone'] ??
+            data['storePhone'] ??
+            (data['seller'] is Map ? (data['seller']['phone'] ?? data['seller']['phoneNumber']) : null))
+        ?.toString() ?? '';
 
     if ((restaurantName.isEmpty || _isRawUid(restaurantName) || restaurantName == sellerId) && sellerId != null && sellerId.isNotEmpty) {
       if (!_sellerCache.containsKey(sellerId)) {
@@ -181,16 +217,29 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
         final val = source[key];
         if (val != null) {
           if (val is String && val.trim().isNotEmpty) {
-            return val.trim();
+            final trimmed = val.trim();
+            if (trimmed != 'Primary Address' && trimmed != 'Customer' && trimmed != 'Unknown') {
+              return trimmed;
+            }
           }
           if (val is Map) {
             for (final subKey in subKeys) {
               final subVal = val[subKey];
               if (subVal != null && subVal is String && subVal.trim().isNotEmpty) {
-                return subVal.trim();
+                final trimmedSub = subVal.trim();
+                if (trimmedSub != 'Primary Address' && trimmedSub != 'Customer' && trimmedSub != 'Unknown') {
+                  return trimmedSub;
+                }
               }
             }
           }
+        }
+      }
+      // Second pass: return non-empty string even if generic if nothing better was found
+      for (final key in stringKeys) {
+        final val = source[key];
+        if (val != null && val is String && val.trim().isNotEmpty) {
+          return val.trim();
         }
       }
       return '';
@@ -198,44 +247,72 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
 
     String customerName = _extractStringOrMap(
       data,
-      ['customerName', 'userName', 'user_name', 'buyerName', 'buyer_name', 'name'],
-      ['name', 'displayName', 'fullName', 'customerName', 'userName'],
+      ['customerName', 'userName', 'user_name', 'buyerName', 'buyer_name', 'name', 'displayName', 'fullName'],
+      ['name', 'displayName', 'fullName', 'customerName', 'userName', 'buyerName'],
     );
-    if (customerName.isEmpty) {
-      customerName = _extractStringOrMap(
+    if (customerName.isEmpty || customerName == 'Customer' || _isRawUid(customerName)) {
+      final subName = _extractStringOrMap(
         data,
         ['customer', 'user', 'buyer'],
-        ['name', 'displayName', 'fullName', 'customerName', 'userName'],
+        ['name', 'displayName', 'fullName', 'customerName', 'userName', 'buyerName'],
       );
+      if (subName.isNotEmpty && subName != 'Customer' && !_isRawUid(subName)) {
+        customerName = subName;
+      }
     }
 
     String deliveryAddress = _extractStringOrMap(
       data,
-      ['deliveryAddress', 'userAddress', 'address', 'dropoffAddress', 'shippingAddress', 'primaryAddress', 'destinationAddress'],
-      ['address', 'fullAddress', 'street', 'formattedAddress', 'displayAddress', 'primaryAddress'],
+      [
+        'deliveryAddress',
+        'address',
+        'userAddress',
+        'dropoffAddress',
+        'shippingAddress',
+        'customerAddress',
+        'customerLocation',
+        'primaryAddress',
+        'destinationAddress',
+        'fullAddress',
+        'displayAddress',
+        'street'
+      ],
+      ['address', 'fullAddress', 'street', 'formattedAddress', 'displayAddress', 'primaryAddress', 'deliveryAddress', 'locationAddress'],
     );
     if (deliveryAddress.isEmpty || deliveryAddress == 'Primary Address') {
-      deliveryAddress = _extractStringOrMap(
+      final subAddr = _extractStringOrMap(
         data,
-        ['customer', 'user', 'buyer', 'deliveryAddressDetails'],
-        ['address', 'fullAddress', 'street', 'formattedAddress', 'displayAddress', 'primaryAddress'],
+        ['customer', 'user', 'buyer', 'deliveryAddressDetails', 'deliveryLocation', 'location', 'shippingAddress'],
+        ['address', 'fullAddress', 'street', 'formattedAddress', 'displayAddress', 'primaryAddress', 'deliveryAddress', 'locationAddress'],
       );
+      if (subAddr.isNotEmpty && subAddr != 'Primary Address') {
+        deliveryAddress = subAddr;
+      }
     }
 
     String customerPhone = _extractStringOrMap(
       data,
-      ['customerPhone', 'phone', 'userPhone', 'phoneNumber', 'mobile', 'contact', 'contactPhone', 'contactNumber'],
-      ['phone', 'phoneNumber', 'mobile', 'contactNumber'],
+      ['customerPhone', 'phone', 'userPhone', 'phoneNumber', 'mobile', 'contact', 'contactPhone', 'contactNumber', 'customer_phone', 'buyerPhone', 'phone_number'],
+      ['phone', 'phoneNumber', 'mobile', 'contactNumber', 'userPhone', 'contactPhone'],
     );
     if (customerPhone.isEmpty) {
-      customerPhone = _extractStringOrMap(
+      final subPhone = _extractStringOrMap(
         data,
         ['customer', 'user', 'buyer'],
-        ['phone', 'phoneNumber', 'mobile', 'contactNumber'],
+        ['phone', 'phoneNumber', 'mobile', 'contactNumber', 'userPhone', 'contactPhone'],
       );
+      if (subPhone.isNotEmpty) {
+        customerPhone = subPhone;
+      }
     }
 
-    if ((customerName.isEmpty || customerName == 'Customer' || _isRawUid(customerName) || customerName == customerId || deliveryAddress.isEmpty || deliveryAddress == 'Primary Address' || customerPhone.isEmpty) && customerId != null && customerId.isNotEmpty) {
+    String customerArea = _extractStringOrMap(
+      data,
+      ['customerArea', 'area', 'city', 'locality', 'landmark', 'deliveryArea', 'customerCity', 'pincode'],
+      ['area', 'city', 'locality', 'landmark', 'pincode', 'deliveryArea'],
+    );
+
+    if ((customerName.isEmpty || customerName == 'Customer' || _isRawUid(customerName) || customerName == customerId || deliveryAddress.isEmpty || deliveryAddress == 'Primary Address' || customerPhone.isEmpty || customerArea.isEmpty) && customerId != null && customerId.isNotEmpty) {
       if (!_userCache.containsKey(customerId)) {
         try {
           final uDoc = await currentFirestore.collection('buyer_user').doc(customerId).get();
@@ -245,7 +322,7 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
             final uPhone = uData['phone'] ?? uData['phoneNumber'] ?? uData['mobile'] ?? uData['userPhone'] ?? uData['contactNumber'] ?? '';
 
             String uAddr = '';
-            for (final k in ['address', 'primaryAddress', 'homeAddress', 'workAddress', 'deliveryAddress', 'shippingAddress']) {
+            for (final k in ['address', 'primaryAddress', 'homeAddress', 'workAddress', 'otherAddress', 'deliveryAddress', 'shippingAddress']) {
               final val = uData[k];
               if (val != null) {
                 if (val is String && val.trim().isNotEmpty && val.trim() != 'Primary Address') {
@@ -260,6 +337,7 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
                 }
               }
             }
+
             if (uAddr.isEmpty && uData['addresses'] is List && (uData['addresses'] as List).isNotEmpty) {
               final first = (uData['addresses'] as List).first;
               if (first is Map) {
@@ -272,10 +350,30 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
               }
             }
 
+            // Fallback: Check buyer_user/{customerId}/addresses subcollection
+            if (uAddr.isEmpty) {
+              try {
+                final subColl = await currentFirestore.collection('buyer_user').doc(customerId).collection('addresses').limit(2).get();
+                if (subColl.docs.isNotEmpty) {
+                  for (final doc in subColl.docs) {
+                    final d = doc.data();
+                    final sub = d['address'] ?? d['fullAddress'] ?? d['street'] ?? d['formattedAddress'] ?? d['displayAddress'] ?? d['locationAddress'];
+                    if (sub != null && sub.toString().trim().isNotEmpty && sub.toString().trim() != 'Primary Address') {
+                      uAddr = sub.toString().trim();
+                      break;
+                    }
+                  }
+                }
+              } catch (_) {}
+            }
+
+            String uArea = uData['city'] ?? uData['area'] ?? uData['locality'] ?? uData['landmark'] ?? '';
+
             _userCache[customerId] = {
               'name': uName,
               'phone': uPhone,
               'address': uAddr,
+              'area': uArea,
             };
           }
         } catch (e) {
@@ -287,9 +385,10 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
         final cName = cached['name']?.toString() ?? '';
         final cPhone = cached['phone']?.toString() ?? '';
         final cAddr = cached['address']?.toString() ?? '';
+        final cArea = cached['area']?.toString() ?? '';
 
         if (customerName.isEmpty || customerName == 'Customer' || _isRawUid(customerName) || customerName == customerId) {
-          if (cName.isNotEmpty && cName != 'Customer') {
+          if (cName.isNotEmpty && cName != 'Customer' && !_isRawUid(cName)) {
             customerName = cName;
           }
         }
@@ -300,6 +399,9 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
           if (cAddr.isNotEmpty && cAddr != 'Primary Address') {
             deliveryAddress = cAddr;
           }
+        }
+        if (customerArea.isEmpty && cArea.isNotEmpty) {
+          customerArea = cArea;
         }
       }
     }
@@ -312,6 +414,9 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
           customerName = uData['name'] ?? uData['displayName'] ?? uData['fullName'] ?? customerName;
           if (deliveryAddress.isEmpty || deliveryAddress == 'Primary Address') {
             deliveryAddress = uData['address'] ?? uData['homeAddress'] ?? uData['workAddress'] ?? uData['primaryAddress'] ?? deliveryAddress;
+          }
+          if (customerArea.isEmpty) {
+            customerArea = uData['city'] ?? uData['area'] ?? uData['locality'] ?? '';
           }
         }
       } catch (_) {}
@@ -329,6 +434,7 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
     rawOrderMap['pickupAddress'] = pickupAddress;
     rawOrderMap['customerName'] = customerName.isNotEmpty && customerName != 'Customer' ? customerName : 'Customer';
     rawOrderMap['deliveryAddress'] = deliveryAddress;
+    rawOrderMap['customerArea'] = customerArea.isNotEmpty ? customerArea : deliveryAddress;
     if (customerPhone.isNotEmpty) {
       rawOrderMap['phoneNumber'] = customerPhone;
     }

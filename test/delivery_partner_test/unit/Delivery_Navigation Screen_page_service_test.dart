@@ -75,5 +75,20 @@ void main() {
       final result = await service.checkConnectivity();
       expect(result, isA<bool>());
     });
+
+    test('fetchDemandZones returns Chennai hotspot coordinates', () async {
+      final zones = await service.fetchDemandZones();
+
+      expect(zones, isNotNull);
+      expect(zones, isNotEmpty);
+      expect(zones!.first, contains('name'));
+      expect(zones.first, contains('latitude'));
+      expect(zones.first, contains('longitude'));
+    });
+
+    test('fetchActiveOrder resolves null when Firestore is unavailable', () async {
+      expect(await service.fetchActiveOrder(), isNull);
+      expect(await service.fetchActiveOrder(orderId: 'ORD-123456'), isNull);
+    });
   });
 }

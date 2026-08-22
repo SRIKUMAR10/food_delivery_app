@@ -13,6 +13,8 @@ abstract class DeliveryOrdersRepositoryBase {
   Future<bool> acceptOrderAtomic(String orderId);
   Future<bool> rejectOrder(String orderId, {String? reason});
   Stream<List<DeliveryOrderCardModel>> watchOrders();
+  Stream<bool> watchOnlineStatus();
+  Future<void> updateOnlineStatus(bool isOnline);
 }
 
 class DeliveryOrdersRepository implements DeliveryOrdersRepositoryBase {
@@ -269,4 +271,54 @@ class DeliveryOrdersRepository implements DeliveryOrdersRepositoryBase {
   Stream<List<DeliveryOrderCardModel>> watchOrders() {
     return _service.watchOrdersData().map(_mapOrders);
   }
+
+  @override
+  Stream<bool> watchOnlineStatus() {
+    final currentFirestore = _firestore ?? FirebaseFirestore.instance;
+    final currentAuth = _auth ?? FirebaseAuth.instance;
+    final uid = currentAuth.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      return Stream.value(true);
+    }
+    return currentFirestore
+        .collection('delivery_partners')
+        .doc(uid)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists || doc.data() == null) return true;
+      final data = doc.data()!;
+      return (data['isOnline'] as bool?) ?? true;
+    }).handleError((_) => true);
+  }
+
+  @override
+  Future<void> updateOnlineStatus(bool isOnline) async {
+    final currentFirestore = _firestore ?? FirebaseFirestore.instance;
+    final currentAuth = _auth ?? FirebaseAuth.instance;
+    final uid = currentAuth.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+
+    final updates = {
+      'isOnline': isOnline,
+      'isAvailable': isOnline,
+      'status': isOnline ? 'online' : 'offline',
+      'lastActiveAt': FieldValue.serverTimestamp(),
+      if (!isOnline) 'lastLogout': FieldValue.serverTimestamp(),
+    };
+
+    try {
+      await currentFirestore
+          .collection('delivery_partners')
+          .doc(uid)
+          .set(updates, SetOptions(merge: true));
+    } catch (_) {}
+
+    try {
+      await currentFirestore
+          .collection('riders')
+          .doc(uid)
+          .set(updates, SetOptions(merge: true));
+    } catch (_) {}
+  }
 }
+

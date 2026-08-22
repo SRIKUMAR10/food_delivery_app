@@ -649,19 +649,28 @@ class _NotificationSettingsViewState extends State<_NotificationSettingsView> {
             title: 'Push Notifications',
             subtitle: 'Receive real-time push alerts on new order arrival.',
             value: _push,
-            onChanged: (val) => setState(() => _push = val),
+            onChanged: (val) {
+              setState(() => _push = val);
+              _save();
+            },
           ),
           _buildSwitchRow(
             title: 'New Order Sound Alert',
             subtitle: 'Play chime ringtone when a buyer places an order.',
             value: _sound,
-            onChanged: (val) => setState(() => _sound = val),
+            onChanged: (val) {
+              setState(() => _sound = val);
+              _save();
+            },
           ),
           _buildSwitchRow(
             title: 'Continuous Alert Sound (Loop until accepted)',
             subtitle: 'Sound repeats until the order is accepted or dismissed.',
             value: _soundLoop,
-            onChanged: (val) => setState(() => _soundLoop = val),
+            onChanged: (val) {
+              setState(() => _soundLoop = val);
+              _save();
+            },
           ),
           const SizedBox(height: 16),
           const Text('Alert Chime Ringtone', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
@@ -689,6 +698,7 @@ class _NotificationSettingsViewState extends State<_NotificationSettingsView> {
                         if (val != null) {
                           setState(() => _ringtone = val);
                           _previewRingtone();
+                          _save();
                         }
                       },
                     ),
@@ -747,6 +757,7 @@ class _NotificationSettingsViewState extends State<_NotificationSettingsView> {
             onChanged: (val) {
               setState(() => _volume = val);
               _previewRingtone();
+              _save();
             },
           ),
           const SizedBox(height: 16),
@@ -754,25 +765,37 @@ class _NotificationSettingsViewState extends State<_NotificationSettingsView> {
             title: 'Low Stock Alerts',
             subtitle: 'Alert immediately when menu items fall below inventory threshold.',
             value: _lowStock,
-            onChanged: (val) => setState(() => _lowStock = val),
+            onChanged: (val) {
+              setState(() => _lowStock = val);
+              _save();
+            },
           ),
           _buildSwitchRow(
             title: 'Order Status Updates',
             subtitle: 'Rider arrival & delivery completion notifications.',
             value: _orderUpdates,
-            onChanged: (val) => setState(() => _orderUpdates = val),
+            onChanged: (val) {
+              setState(() => _orderUpdates = val);
+              _save();
+            },
           ),
           _buildSwitchRow(
             title: 'WhatsApp Order Notifications',
             subtitle: 'Receive instant summary messages on WhatsApp.',
             value: _whatsapp,
-            onChanged: (val) => setState(() => _whatsapp = val),
+            onChanged: (val) {
+              setState(() => _whatsapp = val);
+              _save();
+            },
           ),
           _buildSwitchRow(
             title: 'Promo & Marketing Offers',
             subtitle: 'Receive platform announcements and boost discounts.',
             value: _promo,
-            onChanged: (val) => setState(() => _promo = val),
+            onChanged: (val) {
+              setState(() => _promo = val);
+              _save();
+            },
           ),
           const SizedBox(height: 24),
           _buildSaveButton(onPressed: _save, isSaving: widget.state.isSaving),

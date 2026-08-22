@@ -152,14 +152,15 @@ void main() {
       await tester.pumpWidget(buildPage());
       await tester.pump();
 
-      final field = tester.widget<DeliveryTextField>(
+      final field = tester.widgetList<DeliveryTextField>(
         find.byKey(const Key('dp_orders_search_field')),
       );
-      expect(field.hintText, isNotNull);
+      expect(field, isNotEmpty);
+      expect(field.first.hintText, isNotNull);
 
       final semantics = tester.getSemantics(
         find.descendant(
-          of: find.byKey(const Key('dp_orders_search_field')),
+          of: find.byKey(const Key('dp_orders_search_field')).first,
           matching: find.byType(EditableText),
         ),
       );

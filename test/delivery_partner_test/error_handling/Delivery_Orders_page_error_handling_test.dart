@@ -56,8 +56,8 @@ void main() {
     ) async {
       setDesktopSize(tester);
       when(
-        () => mockRepository.fetchOrders(),
-      ).thenThrow(Exception('Server unreachable'));
+        () => mockRepository.watchOrders(),
+      ).thenAnswer((_) => Stream.error(Exception('Server unreachable')));
 
       await tester.pumpWidget(buildPage());
       await tester.pump();
@@ -81,23 +81,23 @@ void main() {
     testWidgets('retry recovers and loads the orders', (tester) async {
       setDesktopSize(tester);
       var calls = 0;
-      when(() => mockRepository.fetchOrders()).thenAnswer((_) async {
+      when(() => mockRepository.watchOrders()).thenAnswer((_) {
         calls++;
         if (calls == 1) {
-          throw Exception('Temporary failure');
+          return Stream.error(Exception('Temporary failure'));
         }
-        return sampleOrders;
+        return Stream.value(sampleOrders);
       });
 
       await tester.pumpWidget(buildPage());
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byKey(const Key('dp_orders_error')), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('dp_orders_retry')));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byKey(const Key('dp_orders_error')), findsNothing);
       expect(find.byKey(const Key('dp_orders_page')), findsOneWidget);
@@ -108,23 +108,23 @@ void main() {
       tester,
     ) async {
       setDesktopSize(tester);
-      var calls = 0;
-      when(() => mockRepository.fetchOrders()).thenAnswer((_) async {
-        calls++;
-        if (calls == 1) return const <DeliveryOrderCardModel>[];
-        return sampleOrders;
-      });
+      when(
+        () => mockRepository.watchOrders(),
+      ).thenAnswer((_) => Stream.value(const <DeliveryOrderCardModel>[]));
+      when(
+        () => mockRepository.fetchOrders(),
+      ).thenAnswer((_) async => sampleOrders);
 
       await tester.pumpWidget(buildPage());
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byKey(const Key('dp_orders_empty')), findsOneWidget);
       expect(find.text('No orders available'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('dp_orders_refresh')));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byKey(const Key('dp_orders_empty')), findsNothing);
       expect(find.byKey(const Key('dp_orders_page')), findsOneWidget);
@@ -136,8 +136,8 @@ void main() {
     ) async {
       setDesktopSize(tester);
       when(
-        () => mockRepository.fetchOrders(),
-      ).thenAnswer((_) async => sampleOrders);
+        () => mockRepository.watchOrders(),
+      ).thenAnswer((_) => Stream.value(sampleOrders));
       when(
         () => mockRepository.updateOrderStatus(
           'ORD12345',
@@ -147,11 +147,12 @@ void main() {
 
       await tester.pumpWidget(buildPage());
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 400));
 
+      expect(find.byKey(const Key('dp_orders_update_ORD12345')), findsOneWidget);
       await tester.tap(find.byKey(const Key('dp_orders_update_ORD12345')));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(
         find.text('Failed to update order status. Please try again.'),

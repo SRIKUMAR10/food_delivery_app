@@ -189,12 +189,13 @@ class DeliveryIncomingOrderService
 
     String shopName = '';
     String shopAddress = '';
+    Map<String, dynamic>? sData;
     final fs = _firestore;
     if (sellerId.isNotEmpty && fs != null) {
       final sellerDoc =
           await fs.collection('sellers').doc(sellerId).get();
-      if (sellerDoc.exists) {
-        final sData = sellerDoc.data()!;
+      if (sellerDoc.exists && sellerDoc.data() != null) {
+        sData = sellerDoc.data()!;
         shopName = sData['shopName'] as String? ??
             sData['name'] as String? ??
             '';
@@ -237,14 +238,39 @@ class DeliveryIncomingOrderService
       } catch (_) {}
     }
 
-    if (customerName.isEmpty) customerName = 'Customer';
+    final storeLat = (sData?['latitude'] as num?)?.toDouble() ??
+        (data['restaurantLatitude'] as num?)?.toDouble() ??
+        (data['pickupLatitude'] as num?)?.toDouble() ??
+        (data['restaurantLat'] as num?)?.toDouble() ??
+        11.4485;
+    final storeLng = (sData?['longitude'] as num?)?.toDouble() ??
+        (data['restaurantLongitude'] as num?)?.toDouble() ??
+        (data['pickupLongitude'] as num?)?.toDouble() ??
+        (data['restaurantLng'] as num?)?.toDouble() ??
+        77.6835;
+    final custLat = (data['deliveryLatitude'] as num?)?.toDouble() ??
+        (data['customerLatitude'] as num?)?.toDouble() ??
+        (data['dropLatitude'] as num?)?.toDouble() ??
+        (data['customerLat'] as num?)?.toDouble() ??
+        11.4580;
+    final custLng = (data['deliveryLongitude'] as num?)?.toDouble() ??
+        (data['customerLongitude'] as num?)?.toDouble() ??
+        (data['dropLongitude'] as num?)?.toDouble() ??
+        (data['customerLng'] as num?)?.toDouble() ??
+        77.6980;
 
     return {
       'orderId': doc.id,
       'storeName': shopName,
       'storeAddress': shopAddress,
+      'storeLatitude': storeLat,
+      'storeLongitude': storeLng,
       'customerName': customerName,
       'customerAddress': customerAddress,
+      'customerLatitude': custLat,
+      'customerLongitude': custLng,
+      'driverLatitude': storeLat,
+      'driverLongitude': storeLng,
       'customerPhone': customerPhone,
       'orderAmount': (data['amount'] as num?)?.toDouble() ?? 0.0,
       'distanceKm': (data['distance'] as num?)?.toDouble() ?? 0.0,

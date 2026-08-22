@@ -51,6 +51,8 @@ void main() {
 
       when(() => mockUserProfileRepository.watchProfile(any()))
           .thenAnswer((_) => Stream.value(null));
+      when(() => mockUserProfileRepository.watchWalletBalance(any()))
+          .thenAnswer((_) => Stream.value(null));
       when(() => mockUserProfileRepository.loadProfile(any()))
           .thenAnswer((_) async => null);
       when(() => mockUserProfileRepository.saveProfile(any(), any()))

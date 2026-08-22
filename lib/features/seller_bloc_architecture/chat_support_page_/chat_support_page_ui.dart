@@ -23,6 +23,7 @@ import '../../../core/models/order_item_model.dart';
 import '../../../core/models/order_status.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../../../core/widgets/filter_chips_bar.dart';
+import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
 
 import '../../buyer_bloc_architecture/Chat_Page/video_call_page.dart';
 import '../../buyer_bloc_architecture/Chat_Page/voice_call_page.dart';
@@ -437,7 +438,12 @@ class _ChatListViewState extends State<_ChatListView> {
                 icon: const Icon(Icons.arrow_back_rounded, color: _AppTheme.textPrimary),
                 onPressed: () => Navigator.maybePop(context),
               )
-            : null,
+            : (SellerDrawerProvider.of(context) != null
+                ? IconButton(
+                    icon: const Icon(Icons.menu_rounded, color: _AppTheme.textPrimary),
+                    onPressed: SellerDrawerProvider.of(context),
+                  )
+                : null),
       ),
       body: SafeArea(child: listContent),
     );

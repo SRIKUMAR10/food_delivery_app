@@ -27,7 +27,7 @@ void main() {
       await load(tester);
       stopwatch.stop();
       expect(stopwatch.elapsedMilliseconds, lessThan(3000));
-      expect(find.text('My Wallet'), findsOneWidget);
+      expect(find.text('My Wallet'), findsWidgets);
     });
 
     testWidgets('handles repeated filters and period switches', (tester) async {

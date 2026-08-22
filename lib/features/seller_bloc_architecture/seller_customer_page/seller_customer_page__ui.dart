@@ -12,6 +12,7 @@ import '../chat_support_page_/chat_support_page_ui.dart';
 import 'seller_customer_page__bloc.dart';
 import 'seller_customer_page__event.dart';
 import 'seller_customer_page__state.dart';
+import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
 
 class SellerCustomerPage extends StatelessWidget {
   const SellerCustomerPage({super.key});
@@ -93,14 +94,25 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
         scrolledUnderElevation: 2,
         shadowColor: Colors.black.withValues(alpha: 0.05),
         centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Color(0xFF1E293B),
-            size: 20,
-          ),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Color(0xFF1E293B),
+                  size: 20,
+                ),
+                onPressed: () => Navigator.of(context).maybePop(),
+              )
+            : (SellerDrawerProvider.of(context) != null
+                ? IconButton(
+                    icon: const Icon(
+                      Icons.menu_rounded,
+                      color: Color(0xFF1E293B),
+                      size: 22,
+                    ),
+                    onPressed: SellerDrawerProvider.of(context),
+                  )
+                : null),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -16,6 +16,19 @@ class LoadBusinessHoursEvent extends BusinessHoursEvent {
   List<Object?> get props => [sellerId];
 }
 
+class BusinessHoursUpdatedStreamEvent extends BusinessHoursEvent {
+  final List<BusinessDayModel> schedule;
+  final bool isEmergencyClosed;
+
+  const BusinessHoursUpdatedStreamEvent({
+    required this.schedule,
+    required this.isEmergencyClosed,
+  });
+
+  @override
+  List<Object?> get props => [schedule, isEmergencyClosed];
+}
+
 class UpdateBusinessDayEvent extends BusinessHoursEvent {
   final BusinessDayModel updatedDay;
   const UpdateBusinessDayEvent(this.updatedDay);
@@ -31,3 +44,4 @@ class ToggleEmergencyCloseEvent extends BusinessHoursEvent {
   @override
   List<Object?> get props => [isEmergencyClosed];
 }
+

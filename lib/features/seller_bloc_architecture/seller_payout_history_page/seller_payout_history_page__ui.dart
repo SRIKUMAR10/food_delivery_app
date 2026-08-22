@@ -4,8 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../../repositories/seller_payout_history_repository.dart';
-import '../../../api_service/seller_payout_history_service.dart';
+import '../../../repositories/seller_wallet_repository.dart';
+import '../../../api_service/seller_wallet_service.dart';
 import '../seller_wallet_page/seller_wallet_page__state.dart';
 import 'seller_payout_history_page__bloc.dart';
 import 'seller_payout_history_page__event.dart';
@@ -19,9 +19,7 @@ class SellerPayoutHistoryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => SellerPayoutHistoryBloc(
-        repository: SellerPayoutHistoryRepository(
-          service: SellerPayoutHistoryService(),
-        ),
+        repository: SellerWalletRepository(service: SellerWalletService()),
       )..add(const LoadPayoutHistory()),
       child: const SellerPayoutHistoryView(),
     );

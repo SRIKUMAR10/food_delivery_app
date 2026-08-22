@@ -38,67 +38,70 @@ class DeliveryTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = labelText ?? label;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (title != null) ...[
-          Text(
-            title,
-            style: DeliveryAppTypography.titleMedium.copyWith(
-              color: DeliveryAppColors.textSecondary,
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null) ...[
+            Text(
+              title,
+              style: DeliveryAppTypography.titleMedium.copyWith(
+                color: DeliveryAppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          TextFormField(
+            controller: controller,
+            focusNode: focusNode,
+            obscureText: obscureText,
+            keyboardType: keyboardType,
+            validator: validator,
+            onChanged: onChanged,
+            style: DeliveryAppTypography.bodyLarge.copyWith(
+              color: DeliveryAppColors.textPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: DeliveryAppTypography.bodyMedium.copyWith(
+                color: DeliveryAppColors.textMuted,
+              ),
+              errorText: errorText,
+              errorStyle: const TextStyle(color: DeliveryAppColors.error, fontSize: 12),
+              filled: true,
+              fillColor: DeliveryAppColors.surface,
+              prefixIcon: prefixIcon,
+              suffixIcon: suffixIcon,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: DeliveryAppSpacing.md,
+                vertical: DeliveryAppSpacing.md,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: DeliveryAppSpacing.borderRadiusMd,
+                borderSide: const BorderSide(color: DeliveryAppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: DeliveryAppSpacing.borderRadiusMd,
+                borderSide: const BorderSide(color: DeliveryAppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: DeliveryAppSpacing.borderRadiusMd,
+                borderSide: const BorderSide(color: DeliveryAppColors.borderFocus, width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: DeliveryAppSpacing.borderRadiusMd,
+                borderSide: const BorderSide(color: DeliveryAppColors.error, width: 1.5),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: DeliveryAppSpacing.borderRadiusMd,
+                borderSide: const BorderSide(color: DeliveryAppColors.error, width: 2),
+              ),
             ),
           ),
-          const SizedBox(height: 6),
         ],
-        TextFormField(
-          key: key,
-          controller: controller,
-          focusNode: focusNode,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          validator: validator,
-          onChanged: onChanged,
-          style: DeliveryAppTypography.bodyLarge.copyWith(
-            color: DeliveryAppColors.textPrimary,
-          ),
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: DeliveryAppTypography.bodyMedium.copyWith(
-              color: DeliveryAppColors.textMuted,
-            ),
-            errorText: errorText,
-            errorStyle: const TextStyle(color: DeliveryAppColors.error, fontSize: 12),
-            filled: true,
-            fillColor: DeliveryAppColors.surface,
-            prefixIcon: prefixIcon,
-            suffixIcon: suffixIcon,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: DeliveryAppSpacing.md,
-              vertical: DeliveryAppSpacing.md,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: DeliveryAppSpacing.borderRadiusMd,
-              borderSide: const BorderSide(color: DeliveryAppColors.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: DeliveryAppSpacing.borderRadiusMd,
-              borderSide: const BorderSide(color: DeliveryAppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: DeliveryAppSpacing.borderRadiusMd,
-              borderSide: const BorderSide(color: DeliveryAppColors.borderFocus, width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: DeliveryAppSpacing.borderRadiusMd,
-              borderSide: const BorderSide(color: DeliveryAppColors.error, width: 1.5),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: DeliveryAppSpacing.borderRadiusMd,
-              borderSide: const BorderSide(color: DeliveryAppColors.error, width: 2),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

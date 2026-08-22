@@ -29,7 +29,7 @@ void main() {
 
   const DeliveryNavigationBarState loadedState = DeliveryNavigationBarState(
     status: DeliveryNavigationBarStatus.loaded,
-    selectedIndex: 4,
+    selectedIndex: 7,
     navItems: DeliveryNavigationBarRepository.defaultNavItems,
     partnerName: 'Ravi Kumar',
   );

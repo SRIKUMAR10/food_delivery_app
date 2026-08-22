@@ -63,7 +63,7 @@ void main() {
     ).thenAnswer((_) async => navItems);
     when(
       () => mockNavRepository.getSavedSelectedIndex(),
-    ).thenAnswer((_) async => -1);
+    ).thenAnswer((_) async => 7);
     when(() => mockNavRepository.getLocaleCode()).thenAnswer((_) async => 'en');
     when(
       () => mockNavRepository.getPartnerName(),
@@ -243,6 +243,8 @@ void main() {
           home: DeliveryNavigationBarPage(
             repository: mockNavRepository,
             service: mockNavService,
+            ordersRepository: mockOrdersRepository,
+            ordersService: DeliveryOrdersService(),
           ),
         ),
       );
@@ -253,7 +255,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.byKey(const Key('dp_orders_loading')), findsOneWidget);
+      expect(find.byKey(const Key('dp_orders_page')), findsOneWidget);
+      expect(find.byKey(const Key('dp_orders_card_ORD12345')), findsOneWidget);
       expect(find.text('Orders'), findsWidgets);
     });
   });

@@ -391,5 +391,34 @@ void main() {
         throwsA(isA<Exception>()),
       );
     });
+
+    test('watchOnlineStatus emits true when partnerUid is empty or doc not found', () async {
+      when(() => mockAuth.currentUser).thenReturn(null);
+
+      final repository = buildAtomicRepository();
+      final stream = repository.watchOnlineStatus();
+      expect(await stream.first, isTrue);
+    });
+
+    test('updateOnlineStatus updates delivery_partners and riders in firestore', () async {
+      final partnersCollection = MockCollectionReference();
+      final ridersCollection = MockCollectionReference();
+      final partnerDocRef = MockDocumentReference();
+      final riderDocRef = MockDocumentReference();
+
+      when(() => mockFirestore.collection('delivery_partners')).thenReturn(partnersCollection);
+      when(() => mockFirestore.collection('riders')).thenReturn(ridersCollection);
+      when(() => partnersCollection.doc(partnerUid)).thenReturn(partnerDocRef);
+      when(() => ridersCollection.doc(partnerUid)).thenReturn(riderDocRef);
+      when(() => partnerDocRef.set(any(), any())).thenAnswer((_) async {});
+      when(() => riderDocRef.set(any(), any())).thenAnswer((_) async {});
+
+      final repository = buildAtomicRepository();
+      await repository.updateOnlineStatus(false);
+
+      verify(() => partnerDocRef.set(any(), any())).called(1);
+      verify(() => riderDocRef.set(any(), any())).called(1);
+    });
   });
 }
+

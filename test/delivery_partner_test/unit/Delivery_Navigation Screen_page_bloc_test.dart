@@ -52,6 +52,8 @@ void main() {
     when(() => mockRepository.fetchPartnerProfile()).thenAnswer((_) async => null);
     when(() => mockRepository.watchActiveOrder()).thenAnswer((_) => const Stream.empty());
     when(() => mockRepository.watchPartnerProfile()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.fetchNearbySellers()).thenAnswer((_) async => const []);
+    when(() => mockRepository.watchNearbySellers()).thenAnswer((_) => const Stream.empty());
     when(() => mockRepository.getAudioEnabled()).thenAnswer((_) async => false);
     when(() => mockRepository.saveAudioEnabled(any())).thenAnswer((_) async {});
     when(() => mockRepository.getEmergencyMode()).thenAnswer((_) async => false);
@@ -517,5 +519,191 @@ void main() {
             .having((s) => s.isCodCollected, 'collected', false),
       ],
     );
+
+    test('hasActiveOrder reflects a bound active order', () {
+      const idleState = DeliveryNavigationState(
+        status: DeliveryNavigationStatus.loaded,
+        order: emptyOrder,
+      );
+      expect(idleState.hasActiveOrder, isFalse);
+      expect(idleState.isIdle, isTrue);
+
+      const activeState = DeliveryNavigationState(
+        status: DeliveryNavigationStatus.loaded,
+        activeOrderId: 'ORD-784512',
+      );
+      expect(activeState.hasActiveOrder, isTrue);
+      expect(activeState.isIdle, isFalse);
+    });
+
+    blocTest<DeliveryNavigationBloc, DeliveryNavigationState>(
+      'loads demand zones and enters idle map for empty active order',
+      build: () {
+        when(() => mockService.checkConnectivity()).thenAnswer((_) async => true);
+        when(
+          () => mockService.checkLocationPermission(),
+        ).thenAnswer((_) async => true);
+        when(() => mockService.checkGpsStatus()).thenAnswer((_) async => true);
+        when(
+          () => mockService.streamLiveLocation(),
+        ).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockService.fetchDemandZones(),
+        ).thenAnswer(
+          (_) async => const [
+            {'name': 'Anna Salai', 'latitude': 13.0475, 'longitude': 80.2573, 'estimatedDemand': 12},
+          ],
+        );
+        when(
+          () => mockRepository.fetchOrderSummary(),
+        ).thenAnswer((_) async => emptyOrder);
+        when(
+          () => mockRepository.fetchPickup(),
+        ).thenAnswer((_) async => DeliveryNavigationRepository.defaultPickup);
+        when(
+          () => mockRepository.fetchDrop(),
+        ).thenAnswer((_) async => DeliveryNavigationRepository.defaultDrop);
+        when(
+          () => mockRepository.fetchPartnerProfile(),
+        ).thenAnswer((_) async => null);
+        when(
+          () => mockRepository.watchActiveOrder(),
+        ).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockRepository.watchPartnerProfile(),
+        ).thenAnswer((_) => const Stream.empty());
+        when(() => mockRepository.getAudioEnabled()).thenAnswer((_) async => false);
+        when(
+          () => mockRepository.getEmergencyMode(),
+        ).thenAnswer((_) async => false);
+        when(() => mockRepository.getLocaleCode()).thenAnswer((_) async => 'en');
+        return DeliveryNavigationBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      act: (b) => b.add(const DeliveryNavigationInitEvent()),
+      expect: () => const [
+        DeliveryNavigationState(status: DeliveryNavigationStatus.loading),
+        DeliveryNavigationState(
+          status: DeliveryNavigationStatus.loaded,
+          hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.active,
+          order: emptyOrder,
+          pickup: DeliveryNavigationRepository.defaultPickup,
+          drop: DeliveryNavigationRepository.defaultDrop,
+          demandZones: [
+            DeliveryDemandZone(
+              name: 'Anna Salai',
+              latitude: 13.0475,
+              longitude: 80.2573,
+              estimatedDemand: 12,
+            ),
+          ],
+        ),
+      ],
+      verify: (bloc) {
+        expect(bloc.state.hasActiveOrder, isFalse);
+        expect(bloc.state.isIdle, isTrue);
+      },
+    );
+
+    blocTest<DeliveryNavigationBloc, DeliveryNavigationState>(
+      'toggles online status from the navigation console',
+      build: () {
+        return DeliveryNavigationBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => const DeliveryNavigationState(
+        status: DeliveryNavigationStatus.loaded,
+        isOnline: true,
+      ),
+      act: (b) => b.add(const DeliveryNavigationToggleOnlineStatusEvent()),
+      expect: () => const [
+        DeliveryNavigationState(
+          status: DeliveryNavigationStatus.loaded,
+          isOnline: false,
+        ),
+      ],
+    );
+
+    blocTest<DeliveryNavigationBloc, DeliveryNavigationState>(
+      'selects a demand zone and recenters the map',
+      build: () {
+        return DeliveryNavigationBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => const DeliveryNavigationState(
+        status: DeliveryNavigationStatus.loaded,
+        mapZoomLevel: 15.0,
+      ),
+      act: (b) => b.add(
+        const DeliveryNavigationSelectDemandZoneEvent(
+          DeliveryDemandZone(
+            name: 'T. Nagar',
+            latitude: 13.0418,
+            longitude: 80.2341,
+            estimatedDemand: 9,
+          ),
+        ),
+      ),
+      expect: () => const [
+        DeliveryNavigationState(
+          status: DeliveryNavigationStatus.loaded,
+          mapZoomLevel: 16.0,
+          selectedDemandZone: DeliveryDemandZone(
+            name: 'T. Nagar',
+            latitude: 13.0418,
+            longitude: 80.2341,
+            estimatedDemand: 9,
+          ),
+        ),
+      ],
+    );
+
+    blocTest<DeliveryNavigationBloc, DeliveryNavigationState>(
+      'updates nearbySellers when DeliveryNavigationSellersUpdatedEvent is added',
+      build: () {
+        return DeliveryNavigationBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      seed: () => const DeliveryNavigationState(
+        status: DeliveryNavigationStatus.loaded,
+        nearbySellers: [],
+      ),
+      act: (b) => b.add(
+        const DeliveryNavigationSellersUpdatedEvent([
+          {
+            'id': 'seller_1',
+            'name': 'Test Pizza Store',
+            'latitude': 13.0418,
+            'longitude': 80.2341,
+            'phone': '9876543210',
+          },
+        ]),
+      ),
+      expect: () => const [
+        DeliveryNavigationState(
+          status: DeliveryNavigationStatus.loaded,
+          nearbySellers: [
+            {
+              'id': 'seller_1',
+              'name': 'Test Pizza Store',
+              'latitude': 13.0418,
+              'longitude': 80.2341,
+              'phone': '9876543210',
+            },
+          ],
+        ),
+      ],
+    );
   });
 }
+

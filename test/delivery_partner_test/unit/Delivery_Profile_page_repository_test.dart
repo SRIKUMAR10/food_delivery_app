@@ -121,6 +121,79 @@ void main() {
       verify(() => mockService.updateProfile({'address': 'Madurai'})).called(1);
     });
 
+    test('updateAddress persists GPS coordinates and googleMapsUrl', () async {
+      when(() => mockService.updateProfile({
+            'address': '22 Velachery Main Road, Chennai',
+            'latitude': 12.9815,
+            'longitude': 80.2180,
+            'googleMapsUrl': 'https://www.google.com/maps?q=12.981500,80.218000',
+          })).thenAnswer((_) async => true);
+      await repository.updateAddress(
+        '22 Velachery Main Road, Chennai',
+        latitude: 12.9815,
+        longitude: 80.2180,
+        googleMapsUrl: 'https://www.google.com/maps?q=12.981500,80.218000',
+      );
+      verify(() => mockService.updateProfile({
+            'address': '22 Velachery Main Road, Chennai',
+            'latitude': 12.9815,
+            'longitude': 80.2180,
+            'googleMapsUrl': 'https://www.google.com/maps?q=12.981500,80.218000',
+          })).called(1);
+    });
+
+    test('saveProfile persists GPS coordinates that fetchProfile restores', () async {
+      when(
+        () => mockService.fetchProfileData(),
+      ).thenAnswer((_) async => <String, dynamic>{});
+      when(
+        () => mockService.updateProfile(any()),
+      ).thenAnswer((_) async => true);
+
+      final updated = (await repository.fetchProfile()).copyWith(
+        fullName: 'Kavitha',
+        address: 'New Street, Coimbatore',
+        latitude: 11.0168,
+        longitude: 76.9558,
+        googleMapsUrl: 'https://www.google.com/maps?q=11.016800,76.955800',
+      );
+
+      await repository.saveProfile(updated);
+
+      final restored = await repository.fetchProfile();
+      expect(restored.address, 'New Street, Coimbatore');
+      expect(restored.latitude, 11.0168);
+      expect(restored.longitude, 76.9558);
+      expect(
+        restored.googleMapsUrl,
+        'https://www.google.com/maps?q=11.016800,76.955800',
+      );
+    });
+
+    test('fetchProfile maps real-time GPS coordinates from service data', () async {
+      when(
+        () => mockService.fetchProfileData(),
+      ).thenAnswer((_) async => {
+        'id': 'partner_123456',
+        'displayName': 'Kavitha',
+        'phoneNumber': '+91 98765 43210',
+        'email': 'kavitha@test.com',
+        'address': '45 Anna Nagar, Chennai',
+        'latitude': 13.0850,
+        'longitude': 80.2100,
+        'googleMapsUrl': 'https://www.google.com/maps?q=13.085000,80.210000',
+      });
+
+      final profile = await repository.fetchProfile();
+
+      expect(profile.latitude, 13.0850);
+      expect(profile.longitude, 80.2100);
+      expect(
+        profile.googleMapsUrl,
+        'https://www.google.com/maps?q=13.085000,80.210000',
+      );
+    });
+
     test('updateVehicle calls service correctly', () async {
       when(() => mockService.updateProfile({
             'vehicleType': 'Scooter',

@@ -73,6 +73,9 @@ class _NewOrderNotificationViewState extends State<NewOrderNotificationView>
 
   @override
   void dispose() {
+    try {
+      context.read<NewOrderNotificationBloc>().audioService?.stop();
+    } catch (_) {}
     _animationController.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -695,5 +698,3 @@ class _ErrorView extends StatelessWidget {
     );
   }
 }
-
-

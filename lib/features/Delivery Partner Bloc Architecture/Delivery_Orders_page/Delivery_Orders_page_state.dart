@@ -187,6 +187,8 @@ class DeliveryOrdersPageState extends Equatable {
   final String? errorMessage;
   final String? notificationMessage;
   final String? acceptingOrderId;
+  final bool isOnline;
+  final bool isTogglingOnline;
   final String localeCode;
 
   const DeliveryOrdersPageState({
@@ -201,6 +203,8 @@ class DeliveryOrdersPageState extends Equatable {
     this.errorMessage,
     this.notificationMessage,
     this.acceptingOrderId,
+    this.isOnline = true,
+    this.isTogglingOnline = false,
     this.localeCode = 'en',
   });
 
@@ -257,6 +261,15 @@ class DeliveryOrdersPageState extends Equatable {
     return null;
   }
 
+  DeliveryOrderCardModel? get nextAvailableOrder {
+    for (final order in orders) {
+      if (order.isAvailableOrder || order.status == DeliveryOrderStatus.pending) {
+        return order;
+      }
+    }
+    return null;
+  }
+
   DeliveryOrdersPageState copyWith({
     DeliveryOrdersPageStatus? status,
     DeliveryOrdersTab? activeTab,
@@ -272,6 +285,8 @@ class DeliveryOrdersPageState extends Equatable {
     bool clearNotification = false,
     String? acceptingOrderId,
     bool clearAcceptingOrderId = false,
+    bool? isOnline,
+    bool? isTogglingOnline,
     String? localeCode,
   }) {
     return DeliveryOrdersPageState(
@@ -290,6 +305,8 @@ class DeliveryOrdersPageState extends Equatable {
       acceptingOrderId: clearAcceptingOrderId
           ? null
           : (acceptingOrderId ?? this.acceptingOrderId),
+      isOnline: isOnline ?? this.isOnline,
+      isTogglingOnline: isTogglingOnline ?? this.isTogglingOnline,
       localeCode: localeCode ?? this.localeCode,
     );
   }
@@ -307,6 +324,8 @@ class DeliveryOrdersPageState extends Equatable {
         errorMessage,
         notificationMessage,
         acceptingOrderId,
+        isOnline,
+        isTogglingOnline,
         localeCode,
       ];
 }

@@ -109,5 +109,17 @@ void main() {
       final restored = DeliveryNavigationRepository();
       expect(await restored.getLocaleCode(), 'ta');
     });
+
+    test('fetchActiveOrderData forwards an optional orderId', () async {
+      when(
+        () => mockService.fetchActiveOrder(orderId: 'ORD-99'),
+      ).thenAnswer((_) async => buildOrderPayload());
+
+      final data = await repository.fetchActiveOrderData(orderId: 'ORD-99');
+
+      expect(data, isNotNull);
+      expect(data!['orderId'], '78945');
+      verify(() => mockService.fetchActiveOrder(orderId: 'ORD-99')).called(1);
+    });
   });
 }

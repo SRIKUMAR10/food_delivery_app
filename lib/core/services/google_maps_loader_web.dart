@@ -30,6 +30,10 @@ void markGoogleMapsAuthFailed() {
 
 void registerGoogleMapsAuthFailureListener(void Function() callback) {
   try {
+    if (_gmAuthFailed || (js.context.hasProperty('_gmAuthFailed') && js.context['_gmAuthFailed'] == true)) {
+      _gmAuthFailed = true;
+      callback();
+    }
     html.window.addEventListener('gm-auth-failed', (_) {
       _gmAuthFailed = true;
       callback();

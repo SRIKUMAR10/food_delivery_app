@@ -7,15 +7,21 @@ import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/core/models/seller_model.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_profile_page/seller_profile_page__ui.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_profile_page/seller_profile_page__bloc.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/seller_profile_page/seller_profile_page__event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_profile_page/seller_profile_page__state.dart';
 
 class MockSellerProfilePageBloc extends Mock implements SellerProfilePageBloc {}
+class FakeSellerProfilePageEvent extends Fake implements SellerProfilePageEvent {}
 
 final _validPng = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==',
 );
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(FakeSellerProfilePageEvent());
+  });
+
   group('SellerProfilePageUI Widget Tests', () {
     late MockSellerProfilePageBloc mockBloc;
 
@@ -129,6 +135,101 @@ void main() {
 
       expect(find.text('Error: Network connection failed'), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);
+    });
+
+    testWidgets('Location logistics dialog opens, updates fields, and saves logistics successfully', (tester) async {
+      when(() => mockBloc.state).thenReturn(ProfileLoaded(
+        storeName: 'Royal Biryani Hub',
+        email: 'ramesh@royalbiryani.com',
+        phone: '+91 9876543210',
+        address: '123 Food Street, T. Nagar, Chennai',
+        profileImageUrl: '',
+        coverImageUrl: '',
+        notificationsEnabled: true,
+        role: 'seller',
+        createdAt: DateTime(2025, 1, 1),
+        isVerified: true,
+        deliveryRadius: 15.0,
+        minimumOrderValue: 200.0,
+        estimatedPrepTimeMinutes: 25,
+        deliveryFeeSettings: const DeliveryFeeSettings(
+          baseFee: 20.0,
+          perKmFee: 5.0,
+          freeDeliveryThreshold: 500.0,
+        ),
+      ));
+
+      await tester.binding.setSurfaceSize(const Size(1200, 2400));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider<SellerProfilePageBloc>.value(
+            value: mockBloc,
+            child: const Scaffold(body: ProfileContent()),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Open the Location & Delivery Logistics edit dialog (2nd section card edit icon)
+      await tester.tap(find.byIcon(Icons.edit_outlined).at(1));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit Location & Delivery Logistics'), findsOneWidget);
+      expect(find.byKey(const ValueKey('sellerLogisticsGpsButton')), findsOneWidget);
+      expect(find.byKey(const ValueKey('sellerLogisticsMapButton')), findsOneWidget);
+      expect(find.text('Save Logistics'), findsOneWidget);
+
+      // Tap Save Logistics button
+      await tester.tap(find.text('Save Logistics'));
+      await tester.pumpAndSettle();
+
+      verify(() => mockBloc.add(any(that: isA<UpdateLocationDetails>()))).called(1);
+      verify(() => mockBloc.add(any(that: isA<UpdateLogisticsSettings>()))).called(1);
+    });
+
+    testWidgets('Location logistics map picker dialog opens when Pick on Map button is tapped', (tester) async {
+      when(() => mockBloc.state).thenReturn(ProfileLoaded(
+        storeName: 'Royal Biryani Hub',
+        email: 'ramesh@royalbiryani.com',
+        phone: '+91 9876543210',
+        address: '123 Food Street, T. Nagar, Chennai',
+        profileImageUrl: '',
+        coverImageUrl: '',
+        notificationsEnabled: true,
+        role: 'seller',
+        createdAt: DateTime(2025, 1, 1),
+        isVerified: true,
+        deliveryRadius: 15.0,
+        minimumOrderValue: 200.0,
+        estimatedPrepTimeMinutes: 25,
+        deliveryFeeSettings: const DeliveryFeeSettings(),
+      ));
+
+      await tester.binding.setSurfaceSize(const Size(1200, 2400));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider<SellerProfilePageBloc>.value(
+            value: mockBloc,
+            child: const Scaffold(body: ProfileContent()),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Open the Location & Delivery Logistics edit dialog
+      await tester.tap(find.byIcon(Icons.edit_outlined).at(1));
+      await tester.pumpAndSettle();
+
+      // Tapping the map button opens the interactive Seller address picker dialog
+      await tester.tap(find.byKey(const ValueKey('sellerLogisticsMapButton')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set Restaurant Address'), findsOneWidget);
+      expect(find.text('Search Address'), findsOneWidget);
     });
   });
 }

@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/seller_notification_model.dart';
 import '../../../core/repositories/i_seller_notification_repository.dart';
+import '../../../core/services/audio_notification_service.dart';
 import 'seller_notification_event.dart';
 import 'seller_notification_service.dart';
 import 'seller_notification_state.dart';
@@ -15,9 +19,15 @@ class SellerNotificationBloc
 
   StreamSubscription<List<SellerNotificationModel>>? _notificationSubscription;
   StreamSubscription<SellerNotificationModel>? _fcmSubscription;
+  StreamSubscription? _settingsSubscription;
   String? _sellerId;
   bool _isFirstEmission = true;
   final Set<String> _knownIds = <String>{};
+
+  String _ringtoneName = 'Bell Chime';
+  double _soundVolume = 0.8;
+  bool _soundEnabled = true;
+  bool _soundLoop = false;
 
   SellerNotificationBloc({
     required this.repository,
@@ -35,6 +45,21 @@ class SellerNotificationBloc
     on<SellerNotificationSearchChanged>(_onSearchChanged);
     on<TriggerSellerInAppToast>(_onTriggerInAppToast);
     on<DismissSellerInAppToast>(_onDismissInAppToast);
+    on<ConfigureNotificationAudioSettings>(_onConfigureAudioSettings);
+  }
+
+  void _onConfigureAudioSettings(
+    ConfigureNotificationAudioSettings event,
+    Emitter<SellerNotificationState> emit,
+  ) {
+    _ringtoneName = event.orderAlertRingtone;
+    _soundVolume = event.soundVolume;
+    _soundEnabled = event.soundEnabled;
+    _soundLoop = event.soundLoopUntilAccepted;
+    AudioNotificationService.setGlobalAudioConfig(
+      volume: _soundVolume,
+      ringtone: _ringtoneName,
+    );
   }
 
   Future<void> _onStartListening(
@@ -47,7 +72,32 @@ class SellerNotificationBloc
 
     await _notificationSubscription?.cancel();
     await _fcmSubscription?.cancel();
+    await _settingsSubscription?.cancel();
     emit(const SellerNotificationLoading());
+
+    if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
+      // Skip live Firestore channel subscription in unit test mode
+    } else if (event.sellerId.isNotEmpty) {
+      try {
+        _settingsSubscription = FirebaseFirestore.instance
+            .collection('seller_notification_settings')
+            .doc(event.sellerId)
+            .snapshots()
+            .listen((snap) {
+          if (snap.exists) {
+            final data = snap.data() ?? {};
+            _soundVolume = (data['soundVolume'] as num?)?.toDouble() ?? 0.8;
+            _ringtoneName = data['orderAlertRingtone'] as String? ?? 'Bell Chime';
+            _soundEnabled = data['newOrderSound'] as bool? ?? true;
+            _soundLoop = data['soundLoopUntilAccepted'] as bool? ?? false;
+            AudioNotificationService.setGlobalAudioConfig(
+              volume: _soundVolume,
+              ringtone: _ringtoneName,
+            );
+          }
+        });
+      } catch (_) {}
+    }
 
     _notificationSubscription =
         repository.watchNotifications(event.sellerId).listen(
@@ -92,7 +142,13 @@ class SellerNotificationBloc
 
       if (newOnes.isNotEmpty) {
         latest = newOnes.first;
-        service.playChime();
+        if (_soundEnabled) {
+          service.playChime(
+            ringtoneName: _ringtoneName,
+            volume: _soundVolume,
+            loop: _soundLoop,
+          );
+        }
       }
     }
 
@@ -241,7 +297,13 @@ class SellerNotificationBloc
     TriggerSellerInAppToast event,
     Emitter<SellerNotificationState> emit,
   ) {
-    service.playChime();
+    if (_soundEnabled) {
+      service.playChime(
+        ringtoneName: _ringtoneName,
+        volume: _soundVolume,
+        loop: _soundLoop,
+      );
+    }
     final current = state;
     if (current is SellerNotificationLoaded) {
       emit(current.copyWith(latestArrivedToast: event.notification));
@@ -252,6 +314,7 @@ class SellerNotificationBloc
     DismissSellerInAppToast event,
     Emitter<SellerNotificationState> emit,
   ) {
+    service.stopAudio();
     final current = state;
     if (current is SellerNotificationLoaded) {
       emit(current.copyWith(clearToast: true));
@@ -270,43 +333,43 @@ class SellerNotificationBloc
         break;
       case SellerNotificationFilter.orders:
         result = result.where((n) =>
-            n.category == SellerNotificationCategory.newOrder ||
-            n.category == SellerNotificationCategory.orderAccepted ||
-            n.category == SellerNotificationCategory.orderCancelled).toList();
+            n.effectiveCategory == SellerNotificationCategory.newOrder ||
+            n.effectiveCategory == SellerNotificationCategory.orderAccepted ||
+            n.effectiveCategory == SellerNotificationCategory.orderCancelled).toList();
         break;
       case SellerNotificationFilter.payments:
         result = result
-            .where((n) => n.category == SellerNotificationCategory.paymentUpdate)
+            .where((n) => n.effectiveCategory == SellerNotificationCategory.paymentUpdate)
             .toList();
         break;
       case SellerNotificationFilter.deliveries:
         result = result.where((n) =>
-            n.category == SellerNotificationCategory.deliveryPartnerAssigned ||
-            n.category == SellerNotificationCategory.pickupNotification).toList();
+            n.effectiveCategory == SellerNotificationCategory.deliveryPartnerAssigned ||
+            n.effectiveCategory == SellerNotificationCategory.pickupNotification).toList();
         break;
       case SellerNotificationFilter.messages:
         result = result
-            .where((n) => n.category == SellerNotificationCategory.customerMessage)
+            .where((n) => n.effectiveCategory == SellerNotificationCategory.customerMessage)
             .toList();
         break;
       case SellerNotificationFilter.reviews:
         result = result
-            .where((n) => n.category == SellerNotificationCategory.newReview)
+            .where((n) => n.effectiveCategory == SellerNotificationCategory.newReview)
             .toList();
         break;
       case SellerNotificationFilter.inventory:
         result = result.where((n) =>
-            n.category == SellerNotificationCategory.lowStock ||
-            n.category == SellerNotificationCategory.outOfStock).toList();
+            n.effectiveCategory == SellerNotificationCategory.lowStock ||
+            n.effectiveCategory == SellerNotificationCategory.outOfStock).toList();
         break;
       case SellerNotificationFilter.payouts:
         result = result
-            .where((n) => n.category == SellerNotificationCategory.payoutCompleted)
+            .where((n) => n.effectiveCategory == SellerNotificationCategory.payoutCompleted)
             .toList();
         break;
       case SellerNotificationFilter.promos:
         result = result
-            .where((n) => n.category == SellerNotificationCategory.promotional)
+            .where((n) => n.effectiveCategory == SellerNotificationCategory.promotional)
             .toList();
         break;
     }
@@ -339,6 +402,7 @@ class SellerNotificationBloc
   Future<void> close() {
     _notificationSubscription?.cancel();
     _fcmSubscription?.cancel();
+    _settingsSubscription?.cancel();
     service.dispose();
     return super.close();
   }

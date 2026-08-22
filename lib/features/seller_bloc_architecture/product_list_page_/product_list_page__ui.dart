@@ -17,6 +17,7 @@ import '../../../../core/widgets/filter_chips_bar.dart';
 import 'product_preview_page.dart';
 import '../../../../core/repositories/i_product_repository.dart';
 import '../../../../core/services/i_auth_service.dart';
+import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
 
 class ProductListPage extends StatelessWidget {
   const ProductListPage({super.key});
@@ -138,16 +139,50 @@ class _ProductListViewState extends State<ProductListView>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 24),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0),
-              child: Text(
-                'Products',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1C1C1C),
-                ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Row(
+                children: [
+                  if (SellerDrawerProvider.of(context) != null) ...[
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: SellerDrawerProvider.of(context),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.menu_rounded,
+                            color: Color(0xFF1E293B),
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  const Text(
+                    'Products',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1C1C1C),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 20),

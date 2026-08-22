@@ -71,8 +71,8 @@ void main() {
       'sanitizes exception messages so internals are not leaked',
       build: () {
         when(
-          () => mockRepository.fetchOrders(),
-        ).thenThrow(Exception('Internal server token mismatch'));
+          () => mockRepository.watchOrders(),
+        ).thenAnswer((_) => Stream.error(Exception('Internal server token mismatch')));
         return DeliveryOrdersPageBloc(
           repository: mockRepository,
           service: DeliveryOrdersService(),
@@ -87,7 +87,7 @@ void main() {
         ),
       ],
       verify: (_) {
-        verify(() => mockRepository.fetchOrders()).called(1);
+        verify(() => mockRepository.watchOrders()).called(1);
       },
     );
 

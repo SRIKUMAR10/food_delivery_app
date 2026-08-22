@@ -5,8 +5,8 @@ import 'Delivery_Incoming_Order_page_bloc.dart';
 import 'Delivery_Incoming_Order_page_event.dart';
 import 'Delivery_Incoming_Order_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
-import '../../../core/theme/delivery_app_theme.dart';
-import '../../../core/theme/delivery_app_typography.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../../core/widgets/app_google_map_view.dart';
 
 class DeliveryIncomingOrderPageUi extends StatelessWidget {
   const DeliveryIncomingOrderPageUi({super.key});
@@ -70,7 +70,7 @@ class _IncomingOrderView extends StatelessWidget {
                             children: [
                               Expanded(
                                 flex: 6,
-                                child: _buildMapPane(),
+                                child: _buildMapPane(state),
                               ),
                               Expanded(
                                 flex: 4,
@@ -80,7 +80,7 @@ class _IncomingOrderView extends StatelessWidget {
                           )
                         : Column(
                             children: [
-                              Expanded(child: _buildMapPane()),
+                              Expanded(child: _buildMapPane(state)),
                               _buildDetailsPane(state),
                             ],
                           ),
@@ -95,7 +95,17 @@ class _IncomingOrderView extends StatelessWidget {
     );
   }
 
-  Widget _buildMapPane() {
+  Widget _buildMapPane(DeliveryIncomingOrderState state) {
+    final storeLoc = (state.storeLatitude != 0 && state.storeLongitude != 0)
+        ? LatLng(state.storeLatitude, state.storeLongitude)
+        : const LatLng(11.4485, 77.6835);
+    final customerLoc = (state.customerLatitude != 0 && state.customerLongitude != 0)
+        ? LatLng(state.customerLatitude, state.customerLongitude)
+        : const LatLng(11.4580, 77.6980);
+    final driverLoc = (state.driverLatitude != 0 && state.driverLongitude != 0)
+        ? LatLng(state.driverLatitude, state.driverLongitude)
+        : storeLoc;
+
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -103,15 +113,56 @@ class _IncomingOrderView extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
           children: [
-            Icon(Icons.map, color: DeliveryAppColors.primary, size: 64),
-            SizedBox(height: 16),
-            Text(
-              'Interactive Route Preview Map',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
+            Positioned.fill(
+              child: AppGoogleMapView(
+                driverLocation: driverLoc,
+                driverHeading: 0.0,
+                vehicleType: 'two_wheeler',
+                storeLocation: storeLoc,
+                storeName: state.storeName.isNotEmpty ? state.storeName : 'Pickup Store',
+                storeAddress: state.storeAddress,
+                customerLocation: customerLoc,
+                customerName: state.customerName.isNotEmpty ? state.customerName : 'Customer Address',
+                customerAddress: state.customerAddress,
+                isPickedUp: false,
+                isDarkMode: true,
+                showControls: true,
+                showProgressCard: true,
+                distanceKm: state.distanceKm > 0 ? state.distanceKm : null,
+                etaText: state.etaMins > 0 ? '${state.etaMins} mins' : 'Calculating ETA...',
+              ),
+            ),
+            Positioned(
+              top: 12,
+              left: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.route, color: DeliveryAppColors.primary, size: 14),
+                    SizedBox(width: 5),
+                    Text(
+                      'ROUTE PREVIEW',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

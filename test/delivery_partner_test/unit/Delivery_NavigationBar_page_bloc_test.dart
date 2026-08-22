@@ -120,7 +120,7 @@ void main() {
         ),
         const DeliveryNavigationBarState(
           status: DeliveryNavigationBarStatus.loaded,
-          selectedIndex: 0,
+          selectedIndex: 4,
           navItems: navItems,
           localeCode: 'en',
           partnerName: 'Ravi Kumar',

@@ -2,15 +2,17 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../services/map_tile_cache_service.dart';
 
-/// Ultra-Fast, Zero-Jitter Cached Map Tile Widget with In-Memory LRU Cache Fallback.
+/// Ultra-Fast, Zero-Jitter Cached Map Tile Widget with Multi-Provider Fallbacks.
 class CachedMapTile extends StatefulWidget {
   final String tileUrl;
   final bool isDarkMode;
+  final String? fallbackTileUrl;
 
   const CachedMapTile({
     super.key,
     required this.tileUrl,
     this.isDarkMode = false,
+    this.fallbackTileUrl,
   });
 
   @override
@@ -19,6 +21,14 @@ class CachedMapTile extends StatefulWidget {
 
 class _CachedMapTileState extends State<CachedMapTile> {
   Uint8List? _cachedBytes;
+  bool _useFallback = false;
+
+  static const List<double> _darkMapMatrix = <double>[
+    -0.80,  0.0,   0.0,   0.0, 215.0,
+     0.0,  -0.80,  0.0,   0.0, 222.0,
+     0.0,   0.0,  -0.75,  0.0, 235.0,
+     0.0,   0.0,   0.0,   1.0,   0.0,
+  ];
 
   @override
   void initState() {
@@ -30,6 +40,8 @@ class _CachedMapTileState extends State<CachedMapTile> {
   void didUpdateWidget(covariant CachedMapTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.tileUrl != oldWidget.tileUrl) {
+      _useFallback = false;
+      _cachedBytes = null;
       _loadTile();
     }
   }
@@ -47,26 +59,59 @@ class _CachedMapTileState extends State<CachedMapTile> {
     }
   }
 
+  Widget _wrapTile(Widget child) {
+    if (widget.isDarkMode &&
+        !widget.tileUrl.contains('World_Imagery') &&
+        !widget.tileUrl.contains('dark_all') &&
+        !widget.tileUrl.contains('lyrs=')) {
+      return ColorFiltered(
+        colorFilter: const ColorFilter.matrix(_darkMapMatrix),
+        child: child,
+      );
+    }
+    return child;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_cachedBytes != null) {
-      return Image.memory(
-        _cachedBytes!,
-        fit: BoxFit.cover,
-        gaplessPlayback: true,
-        errorBuilder: (context, error, stackTrace) => Container(
-          color: widget.isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+      return _wrapTile(
+        Image.memory(
+          _cachedBytes!,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => _buildTileImage(),
         ),
       );
     }
 
+    return _wrapTile(_buildTileImage());
+  }
+
+  Widget _buildTileImage() {
+    final activeUrl = (_useFallback && widget.fallbackTileUrl != null)
+        ? widget.fallbackTileUrl!
+        : widget.tileUrl;
+
     return Image.network(
-      widget.tileUrl,
+      activeUrl,
       fit: BoxFit.cover,
       gaplessPlayback: true,
-      errorBuilder: (context, error, stackTrace) => Container(
-        color: widget.isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-      ),
+      errorBuilder: (context, error, stackTrace) {
+        if (!_useFallback && widget.fallbackTileUrl != null && mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _useFallback = true;
+              });
+            }
+          });
+        }
+        return Container(
+          color: widget.isDarkMode ? const Color(0xFF131E29) : const Color(0xFFE2E8F0),
+        );
+      },
     );
   }
 }
+

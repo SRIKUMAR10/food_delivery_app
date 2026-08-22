@@ -118,6 +118,65 @@ void main() {
     );
 
     blocTest<DeliveryProfileBloc, DeliveryProfileState>(
+      'updates address field with GPS coordinates and recalculates completion',
+      build: () => DeliveryProfileBloc(
+        repository: mockRepository,
+        service: mockService,
+      ),
+      act: (b) => b.add(const DeliveryProfileUpdateFieldEvent(
+        field: 'address',
+        value: '22 Velachery Main Road, Chennai',
+        latitude: 12.9815,
+        longitude: 80.2180,
+        googleMapsUrl: 'https://www.google.com/maps?q=12.981500,80.218000',
+      )),
+      expect: () => [
+        isA<DeliveryProfileState>()
+            .having((s) => s.address, 'address', '22 Velachery Main Road, Chennai')
+            .having((s) => s.latitude, 'latitude', 12.9815)
+            .having((s) => s.longitude, 'longitude', 80.2180)
+            .having((s) => s.googleMapsUrl, 'googleMapsUrl', 'https://www.google.com/maps?q=12.981500,80.218000'),
+      ],
+    );
+
+    blocTest<DeliveryProfileBloc, DeliveryProfileState>(
+      'updates address via UpdateAddressEvent with GPS coordinates persisted',
+      build: () {
+        when(() => mockRepository.updateAddress(
+              any(),
+              latitude: any(named: 'latitude'),
+              longitude: any(named: 'longitude'),
+              googleMapsUrl: any(named: 'googleMapsUrl'),
+            )).thenAnswer((_) async {});
+        return DeliveryProfileBloc(
+          repository: mockRepository,
+          service: mockService,
+        );
+      },
+      act: (b) => b.add(const DeliveryProfileUpdateAddressEvent(
+        '45 T. Nagar, Chennai',
+        latitude: 13.0418,
+        longitude: 80.2341,
+        googleMapsUrl: 'https://www.google.com/maps?q=13.041800,80.234100',
+      )),
+      expect: () => [
+        isA<DeliveryProfileState>()
+            .having((s) => s.address, 'address', '45 T. Nagar, Chennai')
+            .having((s) => s.latitude, 'latitude', 13.0418)
+            .having((s) => s.longitude, 'longitude', 80.2341)
+            .having((s) => s.actionMessage, 'actionMessage', 'Address updated successfully'),
+      ],
+      verify: (_) {
+        verify(() => mockRepository.updateAddress(
+              '45 T. Nagar, Chennai',
+              latitude: 13.0418,
+              longitude: 80.2341,
+              googleMapsUrl: 'https://www.google.com/maps?q=13.041800,80.234100',
+            )).called(1);
+      },
+    );
+
+    blocTest<DeliveryProfileBloc, DeliveryProfileState>(
       'updates vehicle details and recalculates completion',
       build: () {
         when(() => mockRepository.updateVehicle(

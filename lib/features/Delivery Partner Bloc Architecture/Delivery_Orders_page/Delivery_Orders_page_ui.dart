@@ -119,6 +119,8 @@ class DeliveryOrdersStrings {
       'orderIdLabel': 'Order ID',
       'copy': 'Copy',
       'copied': 'Order ID copied',
+      'copyPhone': 'Copy Phone Number',
+      'phoneCopied': 'Phone number copied to clipboard',
       'restaurantLocation': 'Restaurant Location',
       'customerArea': 'Customer Area',
       'estimatedDeliveryTime': 'Estimated Delivery Time',
@@ -229,6 +231,8 @@ class DeliveryOrdersStrings {
       'orderIdLabel': 'ஆர்டர் ஐடி',
       'copy': 'நகலெடு',
       'copied': 'ஆர்டர் ஐடி நகலெடுக்கப்பட்டது',
+      'copyPhone': 'தொலைபேசி எண்ணை நகலெடு',
+      'phoneCopied': 'தொலைபேசி எண் நகலெடுக்கப்பட்டது',
       'restaurantLocation': 'உணவக இடம்',
       'customerArea': 'வாடிக்கையாளர் பகுதி',
       'estimatedDeliveryTime': 'மதிப்பிடப்பட்ட டெலிவரி நேரம்',
@@ -325,20 +329,22 @@ class DeliveryOrdersPageView extends StatelessWidget {
         }
       },
       builder: (context, state) {
+        Widget child;
         if (state.status == DeliveryOrdersPageStatus.initial ||
             state.status == DeliveryOrdersPageStatus.loading) {
-          return const _OrdersLoadingShell();
+          child = const _OrdersLoadingShell();
+        } else if (state.status == DeliveryOrdersPageStatus.error) {
+          child = _OrdersErrorShell(state: state);
+        } else if (state.status == DeliveryOrdersPageStatus.empty) {
+          child = _OrdersEmptyShell(state: state);
+        } else {
+          child = _OrdersLoadedView(state: state);
         }
 
-        if (state.status == DeliveryOrdersPageStatus.error) {
-          return _OrdersErrorShell(state: state);
-        }
-
-        if (state.status == DeliveryOrdersPageStatus.empty) {
-          return _OrdersEmptyShell(state: state);
-        }
-
-        return _OrdersLoadedView(state: state);
+        return Material(
+          type: MaterialType.transparency,
+          child: child,
+        );
       },
     );
   }
@@ -1573,16 +1579,19 @@ class _AvailableOrderCard extends StatelessWidget {
               icon: Icons.store,
               color: DeliveryAppColors.primary,
               label: DeliveryOrdersStrings.of('restaurantLocation', lang),
-              value: order.restaurantName,
-              address: order.displayRestaurantLocation,
+              value: order.restaurantName.isNotEmpty ? order.restaurantName : 'Partner Store',
+              address: order.pickupAddress.isNotEmpty ? order.pickupAddress : order.displayRestaurantLocation,
             ),
             const SizedBox(height: 12),
             _AvailableAddressRow(
               icon: Icons.location_on,
               color: DeliveryAppColors.error,
               label: DeliveryOrdersStrings.of('customerArea', lang),
-              value: order.customerName,
-              address: order.displayCustomerArea,
+              value: order.customerName.isNotEmpty ? order.customerName : 'Customer',
+              address: order.deliveryAddress.isNotEmpty
+                  ? order.deliveryAddress
+                  : (order.customerArea.isNotEmpty ? order.customerArea : order.displayCustomerArea),
+              phone: order.phoneNumber,
             ),
             const SizedBox(height: 14),
             const Divider(color: DeliveryAppColors.border, height: 1),
@@ -1764,6 +1773,7 @@ class _AvailableAddressRow extends StatelessWidget {
   final String label;
   final String value;
   final String address;
+  final String? phone;
 
   const _AvailableAddressRow({
     required this.icon,
@@ -1771,10 +1781,14 @@ class _AvailableAddressRow extends StatelessWidget {
     required this.label,
     required this.value,
     required this.address,
+    this.phone,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasPhone = phone != null && phone!.trim().isNotEmpty;
+    final displayAddress = address.trim();
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1792,12 +1806,49 @@ class _AvailableAddressRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: DeliveryAppTypography.caption.copyWith(
-                  color: DeliveryAppColors.textMuted,
-                  fontWeight: FontWeight.w500,
-                ),
+              Row(
+                children: [
+                  Text(
+                    label,
+                    style: DeliveryAppTypography.caption.copyWith(
+                      color: DeliveryAppColors.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (hasPhone) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: DeliveryAppColors.infoBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: DeliveryAppColors.infoBorder,
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.phone,
+                            size: 11,
+                            color: DeliveryAppColors.info,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            phone!,
+                            style: DeliveryAppTypography.caption.copyWith(
+                              color: DeliveryAppColors.info,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 2),
               Text(
@@ -1809,10 +1860,10 @@ class _AvailableAddressRow extends StatelessWidget {
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
-              if (address.isNotEmpty) ...[
+              if (displayAddress.isNotEmpty) ...[
                 const SizedBox(height: 1),
                 Text(
-                  address,
+                  displayAddress,
                   style: DeliveryAppTypography.bodySmall.copyWith(
                     color: DeliveryAppColors.textMuted,
                   ),
@@ -2138,16 +2189,22 @@ class _OrderCard extends StatelessWidget {
               icon: Icons.store,
               color: DeliveryAppColors.primary,
               label: DeliveryOrdersStrings.of('pickup', lang),
-              value: order.restaurantName,
-              address: order.pickupAddress,
+              value: order.restaurantName.isNotEmpty ? order.restaurantName : 'Partner Store',
+              address: order.pickupAddress.isNotEmpty ? order.pickupAddress : order.displayRestaurantLocation,
             ),
             const SizedBox(height: 12),
             _AddressRow(
               icon: Icons.location_on,
               color: DeliveryAppColors.error,
               label: DeliveryOrdersStrings.of('delivery', lang),
-              value: order.customerName,
-              address: order.deliveryAddress,
+              value: order.customerName.isNotEmpty ? order.customerName : 'Customer',
+              address: order.deliveryAddress.isNotEmpty
+                  ? order.deliveryAddress
+                  : (order.customerArea.isNotEmpty ? order.customerArea : ''),
+              phone: order.phoneNumber,
+              onPhoneTap: order.phoneNumber.isNotEmpty
+                  ? () => _showCallBottomSheet(context, order, lang)
+                  : null,
             ),
             const SizedBox(height: 14),
             _OrderTimeline(status: order.status, lang: lang),
@@ -2217,7 +2274,7 @@ class _OrderCard extends StatelessWidget {
                         ? Icons.flag
                         : Icons.flag_outlined,
                     label:
-                        '${DeliveryOrdersStrings.of('priority', lang)}: $priorityLabel',
+                          '${DeliveryOrdersStrings.of('priority', lang)}: $priorityLabel',
                   ),
                   if (order.expectedTip > 0)
                     DeliveryChip(
@@ -2287,9 +2344,17 @@ class _OrderCard extends StatelessWidget {
                   foregroundColor: DeliveryAppColors.primary,
                   icon: Icons.navigation,
                   label: DeliveryOrdersStrings.of('navigate', lang),
-                  onTap: () => Navigator.of(context).pushNamed(
-                    '/deliveryNavigationScreen',
-                  ),
+                  onTap: () {
+                    _showSnack(
+                      context,
+                      '${DeliveryOrdersStrings.of('directionsHint', lang)} '
+                      '${order.deliveryAddress}',
+                      DeliveryAppColors.primaryDark,
+                    );
+                    Navigator.of(context).pushNamed(
+                      '/deliveryNavigationScreen',
+                    );
+                  },
                 ),
                 _CardActionButton(
                   buttonKey: Key('dp_orders_call_${order.orderId}'),
@@ -2309,9 +2374,11 @@ class _OrderCard extends StatelessWidget {
                     '/deliveryChat',
                     arguments: {
                       'orderId': order.orderId,
-                      'customerId': order.orderId,
+                      'customerId': order.customerId.isNotEmpty ? order.customerId : order.orderId,
                       'customerName': order.customerName,
                       'customerPhone': order.phoneNumber,
+                      'sellerId': order.sellerId,
+                      'sellerName': order.restaurantName,
                       'orderTitle': order.restaurantName,
                       'orderTotal': order.amount,
                     },
@@ -2630,6 +2697,10 @@ class _OrdersFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = state.localeCode;
+    final isOnline = state.isOnline;
+    final isAccepting = state.acceptingOrderId != null;
+    final isToggling = state.isTogglingOnline;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -2638,11 +2709,10 @@ class _OrdersFab extends StatelessWidget {
           fabKey: const Key('dp_orders_fab_accept'),
           icon: Icons.add_circle_outline,
           label: DeliveryOrdersStrings.of('acceptNext', lang),
+          isLoading: isAccepting,
           onTap: () {
-            final pending = state.orders
-                .where((o) => o.status == DeliveryOrderStatus.pending)
-                .firstOrNull;
-            if (pending == null) {
+            final nextOrder = state.nextAvailableOrder;
+            if (nextOrder == null) {
               _showSnack(
                 context,
                 DeliveryOrdersStrings.of('noPending', lang),
@@ -2651,28 +2721,24 @@ class _OrdersFab extends StatelessWidget {
               return;
             }
             context.read<DeliveryOrdersPageBloc>().add(
-                  DeliveryOrdersUpdateStatusEvent(
-                    orderId: pending.orderId,
-                    status: DeliveryOrderStatus.active,
-                  ),
+                  DeliveryOrdersAcceptOrderEvent(nextOrder.orderId),
                 );
-            _showSnack(
-              context,
-              '${DeliveryOrdersStrings.of('accepted', lang)} #${pending.orderId}',
-              DeliveryAppColors.primaryDark,
-            );
           },
         ),
         const SizedBox(height: 10),
         _FabMiniButton(
           fabKey: const Key('dp_orders_fab_offline'),
           icon: Icons.power_settings_new,
-          label: DeliveryOrdersStrings.of('goOffline', lang),
-          onTap: () => _showSnack(
-            context,
-            DeliveryOrdersStrings.of('offlineHint', lang),
-            DeliveryAppColors.error,
-          ),
+          iconColor: isOnline ? DeliveryAppColors.error : DeliveryAppColors.primary,
+          label: isOnline
+              ? DeliveryOrdersStrings.of('goOffline', lang)
+              : DeliveryOrdersStrings.of('stayOnline', lang),
+          isLoading: isToggling,
+          onTap: () {
+            context.read<DeliveryOrdersPageBloc>().add(
+                  DeliveryOrdersToggleOnlineEvent(isOnline: !isOnline),
+                );
+          },
         ),
         const SizedBox(height: 10),
         Material(
@@ -2713,14 +2779,18 @@ class _OrdersFab extends StatelessWidget {
 class _FabMiniButton extends StatelessWidget {
   final Key fabKey;
   final IconData icon;
+  final Color? iconColor;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool isLoading;
 
   const _FabMiniButton({
     required this.fabKey,
     required this.icon,
+    this.iconColor,
     required this.label,
     required this.onTap,
+    this.isLoading = false,
   });
 
   @override
@@ -2731,7 +2801,7 @@ class _FabMiniButton extends StatelessWidget {
       elevation: 4,
       child: InkWell(
         key: fabKey,
-        onTap: onTap,
+        onTap: isLoading ? null : onTap,
         borderRadius: BorderRadius.circular(999),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -2744,7 +2814,18 @@ class _FabMiniButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: DeliveryAppColors.primary, size: 16),
+              if (isLoading)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(DeliveryAppColors.primary),
+                  ),
+                )
+              else
+                Icon(icon, color: iconColor ?? DeliveryAppColors.primary, size: 16),
               const SizedBox(width: 7),
               Text(
                 label,
@@ -2761,12 +2842,15 @@ class _FabMiniButton extends StatelessWidget {
   }
 }
 
+
 class _AddressRow extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String label;
   final String value;
   final String address;
+  final String? phone;
+  final VoidCallback? onPhoneTap;
 
   const _AddressRow({
     required this.icon,
@@ -2774,10 +2858,15 @@ class _AddressRow extends StatelessWidget {
     required this.label,
     required this.value,
     required this.address,
+    this.phone,
+    this.onPhoneTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasPhone = phone != null && phone!.trim().isNotEmpty;
+    final displayAddress = address.trim();
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2795,12 +2884,53 @@ class _AddressRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: DeliveryAppTypography.caption.copyWith(
-                  color: DeliveryAppColors.textMuted,
-                  fontWeight: FontWeight.w500,
-                ),
+              Row(
+                children: [
+                  Text(
+                    label,
+                    style: DeliveryAppTypography.caption.copyWith(
+                      color: DeliveryAppColors.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (hasPhone) ...[
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: onPhoneTap,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: DeliveryAppColors.infoBg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: DeliveryAppColors.infoBorder,
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.phone,
+                              size: 11,
+                              color: DeliveryAppColors.info,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              phone!,
+                              style: DeliveryAppTypography.caption.copyWith(
+                                color: DeliveryAppColors.info,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 2),
               Text(
@@ -2812,15 +2942,17 @@ class _AddressRow extends StatelessWidget {
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 1),
-              Text(
-                address,
-                style: DeliveryAppTypography.bodySmall.copyWith(
-                  color: DeliveryAppColors.textMuted,
+              if (displayAddress.isNotEmpty) ...[
+                const SizedBox(height: 1),
+                Text(
+                  displayAddress,
+                  style: DeliveryAppTypography.bodySmall.copyWith(
+                    color: DeliveryAppColors.textMuted,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              ],
             ],
           ),
         ),
@@ -3461,7 +3593,37 @@ void _showCallBottomSheet(
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            if (hasPhone) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: order.phoneNumber));
+                    Navigator.of(ctx).pop();
+                    _showSnack(
+                      context,
+                      DeliveryOrdersStrings.of('phoneCopied', lang),
+                      DeliveryAppColors.primaryDark,
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: DeliveryAppColors.textSecondary,
+                    side: const BorderSide(color: DeliveryAppColors.border),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: Text(
+                    DeliveryOrdersStrings.of('copyPhone', lang),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(

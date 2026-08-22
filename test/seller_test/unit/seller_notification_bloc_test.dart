@@ -84,7 +84,14 @@ class MockSellerNotificationService extends SellerNotificationService {
       const Stream<SellerNotificationModel>.empty();
 
   @override
-  void playChime() {}
+  void playChime({
+    String ringtoneName = 'Bell Chime',
+    double volume = 0.8,
+    bool loop = false,
+  }) {}
+
+  @override
+  void stopAudio() {}
 
   @override
   void dispose() {}
@@ -300,6 +307,17 @@ void main() {
           }),
         ),
       );
+    });
+
+    test('ConfigureNotificationAudioSettings updates internal sound configuration', () async {
+      bloc.add(const ConfigureNotificationAudioSettings(
+        orderAlertRingtone: 'Digital Siren',
+        soundVolume: 0.9,
+        soundEnabled: true,
+        soundLoopUntilAccepted: true,
+      ));
+      await pumpEventQueue();
+      expect(bloc.state, isA<SellerNotificationInitial>());
     });
   });
 }

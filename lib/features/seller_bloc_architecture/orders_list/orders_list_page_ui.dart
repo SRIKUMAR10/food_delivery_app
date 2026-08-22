@@ -25,6 +25,7 @@ import '../assign_delivery_page_/assign_delivery_page__service.dart';
 import '../assign_delivery_page_/assign_delivery_page__event.dart';
 import '../out_for_delivery_page_/out_for_delivery_page__ui.dart';
 import '../chat_support_page_/chat_support_page_ui.dart';
+import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
 
 class OrdersListPage extends StatelessWidget {
   const OrdersListPage({Key? key}) : super(key: key);
@@ -117,46 +118,88 @@ class OrdersListView extends StatelessWidget {
                             padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Order Management',
-                                      style: TextStyle(
-                                        fontSize: 26,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF0F172A),
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    BlocBuilder<OrdersListBloc, OrdersListState>(
-                                      builder: (context, state) {
-                                        if (state is OrdersListLoaded) {
-                                          final total = state.allOrders.length;
-                                          final pending = state.getCount('New');
-                                          return Text(
-                                            '$total Orders total · $pending New orders pending',
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                              color: Color(0xFF64748B),
+                                Expanded(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      if (SellerDrawerProvider.of(context) != null) ...[
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: SellerDrawerProvider.of(context),
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(12),
+                                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: const Icon(
+                                                Icons.menu_rounded,
+                                                color: Color(0xFF1E293B),
+                                                size: 22,
+                                              ),
                                             ),
-                                          );
-                                        }
-                                        return const Text(
-                                          'Real-time order updates',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF64748B),
                                           ),
-                                        );
-                                      },
-                                    ),
-                                  ],
+                                        ),
+                                        const SizedBox(width: 12),
+                                      ],
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'Order Management',
+                                              style: TextStyle(
+                                                fontSize: constraints.maxWidth < 600 ? 22 : 26,
+                                                fontWeight: FontWeight.w800,
+                                                color: const Color(0xFF0F172A),
+                                                letterSpacing: -0.5,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            BlocBuilder<OrdersListBloc, OrdersListState>(
+                                              builder: (context, state) {
+                                                if (state is OrdersListLoaded) {
+                                                  final total = state.allOrders.length;
+                                                  final pending = state.getCount('New');
+                                                  return Text(
+                                                    '$total Orders total · $pending New orders pending',
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: Color(0xFF64748B),
+                                                    ),
+                                                  );
+                                                }
+                                                return const Text(
+                                                  'Real-time order updates',
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
+                                const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
@@ -165,6 +208,7 @@ class OrdersListView extends StatelessWidget {
                                     border: Border.all(color: const Color(0xFFBBF7D0)),
                                   ),
                                   child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       CircleAvatar(
                                         radius: 4,

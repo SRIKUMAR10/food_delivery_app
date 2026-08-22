@@ -7,6 +7,8 @@ import 'Delivery_Pickup Confirmation_page_repository.dart';
 import 'Delivery_Pickup Confirmation_page_service.dart';
 import 'Delivery_Pickup Confirmation_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../../core/widgets/app_google_map_view.dart';
 
 class DeliveryPickupConfirmationStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -1145,6 +1147,22 @@ class _PickupInfoCard extends StatelessWidget {
               model?.pickupInstructions ??
                   'Show the order code at the counter.',
             ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              height: 160,
+              child: AppGoogleMapView(
+                storeLocation: const LatLng(11.4485, 77.6835),
+                storeName: model?.pickupLocationName ?? 'Pickup Store',
+                storeAddress: model?.pickupAddress ?? 'Store Address',
+                isDarkMode: true,
+                showControls: false,
+                showProgressCard: false,
+                initialZoom: 15.5,
+              ),
+            ),
           ),
         ],
       ),

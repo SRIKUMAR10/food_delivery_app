@@ -10,6 +10,7 @@ import 'Track_Order_page_service.dart';
 import '../../../core/repositories/i_order_repository.dart';
 import '../../../core/models/order_status.dart';
 import '../../../core/services/weather_service.dart';
+import '../../../core/utils/app_exception_formatter.dart';
 
 class TrackOrderBloc extends Bloc<TrackOrderEvent, TrackOrderState> {
   final TrackOrderRepository repository;
@@ -64,7 +65,7 @@ class TrackOrderBloc extends Bloc<TrackOrderEvent, TrackOrderState> {
 
       _syncLocationTracking(details);
     } catch (e) {
-      emit(TrackOrderError(e.toString()));
+      emit(TrackOrderError(AppExceptionFormatter.toUserFriendlyMessage(e)));
     }
   }
 

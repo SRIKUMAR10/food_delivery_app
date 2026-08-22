@@ -55,7 +55,10 @@ void main() {
       () => mockRepository.saveSelectedIndex(any()),
     ).thenAnswer((_) async {});
     when(() => mockService.checkPermission()).thenAnswer((_) async => true);
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'delivery_profile_name': 'Ravi Kumar',
+      'delivery_profile_phone': '+91 98765 43210',
+    });
   });
 
   void setDesktopSize(WidgetTester tester) {

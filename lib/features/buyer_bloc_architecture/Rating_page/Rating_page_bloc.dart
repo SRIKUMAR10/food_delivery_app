@@ -3,6 +3,7 @@ import 'Rating_page_event.dart';
 import 'Rating_page_state.dart';
 import '../../../core/repositories/i_rating_repository.dart';
 import '../../../core/services/i_auth_service.dart';
+import '../../../core/utils/app_exception_formatter.dart';
 
 class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
   final IRatingRepository _ratingRepository;
@@ -98,7 +99,7 @@ class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
       emit(RatingSuccess(rating: event.rating));
     } catch (e) {
       emit(RatingError(
-        message: e.toString().replaceAll("Exception: ", ""), 
+        message: AppExceptionFormatter.toUserFriendlyMessage(e),
         rating: event.rating,
       ));
     }
@@ -135,7 +136,7 @@ class RatingPageBloc extends Bloc<RatingPageEvent, RatingPageState> {
       emit(RatingSuccess(rating: event.rating));
     } catch (e) {
       emit(RatingError(
-        message: e.toString().replaceAll("Exception: ", ""),
+        message: AppExceptionFormatter.toUserFriendlyMessage(e),
         rating: event.rating,
       ));
     }

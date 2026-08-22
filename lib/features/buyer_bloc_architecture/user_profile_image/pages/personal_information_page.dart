@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/core/widgets/app_snack_bar.dart';
+import 'package:food_delivery_app/core/widgets/auth_form_widgets.dart';
 
 import '../user_profile_image_Bloc.dart';
 import '../user_profile_models.dart';
@@ -78,37 +79,11 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     }
   }
 
-  String? _validateName(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Full name is required';
-    }
-    if (value.trim().length < 2) {
-      return 'Name must be at least 2 characters';
-    }
-    return null;
-  }
+  String? _validateName(String? value) => validateRequiredName(value);
 
-  String? _validateEmail(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Email address is required';
-    }
-    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    if (!emailRegex.hasMatch(value.trim())) {
-      return 'Please enter a valid email address';
-    }
-    return null;
-  }
+  String? _validateEmail(String? value) => validateEmailAddress(value);
 
-  String? _validatePhone(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Phone number is required';
-    }
-    final digits = value.trim().replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 10) {
-      return 'Phone number must be at least 10 digits';
-    }
-    return null;
-  }
+  String? _validatePhone(String? value) => validatePhoneNumber(value);
 
   void _onSave(UserProfile? currentProfile) {
     setState(() {
@@ -369,7 +344,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        AuthFieldLabel(
           label,
           style: TextStyle(
             fontSize: 13,
@@ -385,35 +360,19 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
           maxLines: maxLines,
           keyboardType: keyboardType,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-          decoration: InputDecoration(
-            prefixIcon:
-                Icon(icon, size: 20, color: BuyerAppColors.primary),
-            filled: true,
+          decoration: authFieldDecoration(
+            prefixIcon: icon,
             fillColor: enabled ? Colors.white : Colors.grey[100],
+            enabledBorderColor: showError
+                ? BuyerAppColors.primaryDeep
+                : Colors.grey.withValues(alpha: 0.1),
+            focusedBorderColor: showError
+                ? BuyerAppColors.primaryDeep
+                : BuyerAppColors.primary,
+            borderRadius: 12,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: showError
-                    ? BuyerAppColors.primaryDeep
-                    : Colors.grey.withValues(alpha: 0.1),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: showError
-                    ? BuyerAppColors.primaryDeep
-                    : BuyerAppColors.primary,
-                width: 1.5,
-              ),
             ),
           ),
           onChanged: (_) {

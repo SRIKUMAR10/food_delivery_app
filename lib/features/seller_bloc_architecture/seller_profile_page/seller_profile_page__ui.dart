@@ -26,6 +26,9 @@ import '../seller_setting_page/seller_setting_page__bloc.dart';
 import '../seller_setting_page/seller_setting_page__event.dart' show LoadSellerSettings;
 import '../../../core/widgets/hoverable_widgets.dart';
 import '../../../core/widgets/shimmer_loader.dart';
+import '../../../core/services/google_places_service.dart';
+import 'seller_google_address_search_dialog.dart';
+import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
 
 class SellerProfilePageUI extends StatelessWidget {
   const SellerProfilePageUI({Key? key}) : super(key: key);
@@ -154,26 +157,64 @@ class ProfileContent extends StatelessWidget {
                   // Page Title Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'Restaurant Profile',
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF111827),
-                                letterSpacing: -0.5,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (SellerDrawerProvider.of(context) != null) ...[
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: SellerDrawerProvider.of(context),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.menu_rounded,
+                                      color: Color(0xFF1E293B),
+                                      size: 22,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Manage branding, delivery logistics, operations & business settings',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF6B7280),
+                              const SizedBox(width: 12),
+                            ],
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text(
+                                    'Restaurant Profile',
+                                    style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF111827),
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Manage branding, delivery logistics, operations & business settings',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -895,6 +936,7 @@ class _ProfileSectionsGrid extends StatelessWidget {
   }
 
   void _showEditIdentityDialog(BuildContext context) {
+    final bloc = context.read<SellerProfilePageBloc>();
     final nameCtrl = TextEditingController(text: state.storeName);
     final ownerCtrl = TextEditingController(text: state.ownerName ?? '');
     final descCtrl = TextEditingController(text: state.restaurantDescription ?? '');
@@ -903,45 +945,149 @@ class _ProfileSectionsGrid extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Edit Branding & Identity', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Restaurant Name')),
-              TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner / Licensee Name')),
-              TextField(controller: descCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'Description / Bio')),
-              TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Contact Email')),
-              TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Contact Phone')),
-            ],
+      builder: (dialogCtx) => BlocProvider<SellerProfilePageBloc>.value(
+        value: bloc,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 540),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.storefront_outlined, color: Color(0xFFE52929), size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Edit Branding & Identity',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Update store name, owner info and public contact details',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Color(0xFF6B7280), size: 20),
+                        onPressed: () => Navigator.of(dialogCtx).pop(),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 28),
+                  _buildDialogTextField(
+                    controller: nameCtrl,
+                    label: 'Restaurant Name',
+                    hint: 'e.g. Ahbi Food Restaurant',
+                    icon: Icons.business_outlined,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildDialogTextField(
+                    controller: ownerCtrl,
+                    label: 'Owner / Licensee Name',
+                    hint: 'e.g. Ahbi Kumar',
+                    icon: Icons.person_outline,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildDialogTextField(
+                    controller: descCtrl,
+                    label: 'Description / Bio',
+                    hint: 'Describe your specialties, flavors, and history...',
+                    icon: Icons.notes_outlined,
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDialogTextField(
+                          controller: emailCtrl,
+                          label: 'Contact Email',
+                          hint: 'restaurant@gmail.com',
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDialogTextField(
+                          controller: phoneCtrl,
+                          label: 'Contact Phone',
+                          hint: '+91 9876543210',
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogCtx).pop(),
+                        child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          bloc.add(
+                            UpdateRestaurantIdentity(
+                              storeName: nameCtrl.text.trim(),
+                              ownerName: ownerCtrl.text.trim(),
+                              description: descCtrl.text.trim(),
+                              email: emailCtrl.text.trim(),
+                              phone: phoneCtrl.text.trim(),
+                            ),
+                          );
+                          Navigator.of(dialogCtx).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Branding & identity updated successfully!'),
+                              backgroundColor: Color(0xFF10B981),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.check_circle_outline, size: 18),
+                        label: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE52929),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              context.read<SellerProfilePageBloc>().add(
-                    UpdateRestaurantIdentity(
-                      storeName: nameCtrl.text.trim(),
-                      ownerName: ownerCtrl.text.trim(),
-                      description: descCtrl.text.trim(),
-                      email: emailCtrl.text.trim(),
-                      phone: phoneCtrl.text.trim(),
-                    ),
-                  );
-              Navigator.pop(ctx);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE52929), foregroundColor: Colors.white),
-            child: const Text('Save Changes'),
-          ),
-        ],
       ),
     );
   }
 
   void _showEditLogisticsDialog(BuildContext context) {
+    final bloc = context.read<SellerProfilePageBloc>();
     final addrCtrl = TextEditingController(text: state.address ?? '');
     final radiusCtrl = TextEditingController(text: state.deliveryRadius.toString());
     final minOrderCtrl = TextEditingController(text: state.minimumOrderValue.toString());
@@ -949,111 +1095,445 @@ class _ProfileSectionsGrid extends StatelessWidget {
     final baseFeeCtrl = TextEditingController(text: state.deliveryFeeSettings.baseFee.toString());
     final perKmCtrl = TextEditingController(text: state.deliveryFeeSettings.perKmFee.toString());
     final freeThresholdCtrl = TextEditingController(text: state.deliveryFeeSettings.freeDeliveryThreshold.toString());
+    double? pickedLat = state.latitude;
+    double? pickedLng = state.longitude;
+    String? pickedMapsUrl = state.googleMapsUrl;
+    bool isLocatingGps = false;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Edit Location & Delivery Logistics', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: addrCtrl, decoration: const InputDecoration(labelText: 'Physical Address')),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: radiusCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Radius (km)'),
+      builder: (dialogCtx) => BlocProvider<SellerProfilePageBloc>.value(
+        value: bloc,
+        child: StatefulBuilder(
+          builder: (stateCtx, setDialogState) => Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 580),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header with Badge & Close Button
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.local_shipping_outlined, color: Color(0xFF3B82F6), size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Edit Location & Delivery Logistics',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Configure restaurant GPS location, coverage radius, and pricing',
+                                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Color(0xFF6B7280), size: 20),
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: minOrderCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Min Order (₹)'),
+                    const Divider(height: 24),
+
+                    // Section 1: Physical Location & Pinning Actions
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.pin_drop_outlined, color: Color(0xFFE52929), size: 18),
+                              SizedBox(width: 6),
+                              Text(
+                                'Store Address & GPS Location',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: addrCtrl,
+                            maxLines: 2,
+                            style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+                            decoration: InputDecoration(
+                              labelText: 'Physical Address',
+                              hintText: 'Enter complete store address...',
+                              prefixIcon: const Padding(
+                                padding: EdgeInsets.only(bottom: 24),
+                                child: Icon(Icons.store_mall_directory_outlined, color: Color(0xFF6B7280), size: 20),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFE52929), width: 1.5),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  key: const ValueKey('sellerLogisticsGpsButton'),
+                                  onPressed: isLocatingGps
+                                      ? null
+                                      : () async {
+                                          setDialogState(() => isLocatingGps = true);
+                                          try {
+                                            final details = await GooglePlacesService.instance.getCurrentLocationAddress();
+                                            if (details != null && context.mounted) {
+                                              final lat = details.latitude ?? 13.0827;
+                                              final lng = details.longitude ?? 80.2707;
+                                              addrCtrl.text = details.formattedAddress;
+                                              pickedLat = lat;
+                                              pickedLng = lng;
+                                              pickedMapsUrl = 'https://www.google.com/maps?q=$lat,$lng';
+                                              setDialogState(() => isLocatingGps = false);
+                                            } else if (context.mounted) {
+                                              setDialogState(() => isLocatingGps = false);
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Could not retrieve GPS location. Please check location permissions.'),
+                                                ),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              setDialogState(() => isLocatingGps = false);
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Location error: $e')),
+                                              );
+                                            }
+                                          }
+                                        },
+                                  icon: isLocatingGps
+                                      ? const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE52929)),
+                                        )
+                                      : const Icon(Icons.my_location_rounded, color: Color(0xFFE52929), size: 16),
+                                  label: Text(
+                                    isLocatingGps ? 'Locating...' : 'Detect GPS',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFE52929)),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Color(0xFFFCA5A5)),
+                                    backgroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  key: const ValueKey('sellerLogisticsMapButton'),
+                                  onPressed: () async {
+                                    final result = await SellerGoogleAddressSearchDialog.show(
+                                      context: context,
+                                      addressType: 'Restaurant',
+                                      currentAddress: addrCtrl.text.trim(),
+                                      onAddressSelected: (selection) {
+                                        setDialogState(() {
+                                          addrCtrl.text = selection.address;
+                                          pickedLat = selection.latitude;
+                                          pickedLng = selection.longitude;
+                                          pickedMapsUrl = selection.effectiveGoogleMapsUrl;
+                                        });
+                                      },
+                                    );
+                                    if (result != null) {
+                                      setDialogState(() {
+                                        addrCtrl.text = result.address;
+                                        pickedLat = result.latitude;
+                                        pickedLng = result.longitude;
+                                        pickedMapsUrl = result.effectiveGoogleMapsUrl;
+                                      });
+                                    }
+                                  },
+                                  icon: const Icon(Icons.map_outlined, color: Color(0xFF3B82F6), size: 16),
+                                  label: const Text(
+                                    'Pick on Map',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF3B82F6)),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Color(0xFF93C5FD)),
+                                    backgroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (pickedLat != null && pickedLng != null) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFECFDF5),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFA7F3D0)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 14),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Coordinates: ${pickedLat!.toStringAsFixed(4)}, ${pickedLng!.toStringAsFixed(4)}',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF065F46)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+
+                    // Section 2: Coverage & Minimum Order
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.radar_outlined, color: Color(0xFF3B82F6), size: 18),
+                              SizedBox(width: 6),
+                              Text(
+                                'Delivery Coverage & Order Limits',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildDialogTextField(
+                                  controller: radiusCtrl,
+                                  label: 'Radius (km)',
+                                  hint: '10',
+                                  icon: Icons.radar,
+                                  suffixText: 'km',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildDialogTextField(
+                                  controller: minOrderCtrl,
+                                  label: 'Min Order (₹)',
+                                  hint: '150',
+                                  icon: Icons.shopping_bag_outlined,
+                                  prefixText: '₹',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Section 3: Fulfillment & Delivery Fees
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.payments_outlined, color: Color(0xFF10B981), size: 18),
+                              SizedBox(width: 6),
+                              Text(
+                                'Pricing & Preparation Logistics',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildDialogTextField(
+                                  controller: prepCtrl,
+                                  label: 'Prep Time (mins)',
+                                  hint: '25',
+                                  icon: Icons.timer_outlined,
+                                  suffixText: 'mins',
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildDialogTextField(
+                                  controller: baseFeeCtrl,
+                                  label: 'Base Fee (₹)',
+                                  hint: '25',
+                                  icon: Icons.receipt_long_outlined,
+                                  prefixText: '₹',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildDialogTextField(
+                                  controller: perKmCtrl,
+                                  label: 'Per km Fee (₹)',
+                                  hint: '5',
+                                  icon: Icons.add_road_outlined,
+                                  suffixText: '₹/km',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildDialogTextField(
+                                  controller: freeThresholdCtrl,
+                                  label: 'Free Delivery Threshold (₹)',
+                                  hint: '500',
+                                  icon: Icons.local_shipping_outlined,
+                                  prefixText: '₹',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Dialog Actions (Cancel & Save Logistics)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            final double baseFee = double.tryParse(baseFeeCtrl.text.trim()) ?? 20.0;
+                            final double perKmFee = double.tryParse(perKmCtrl.text.trim()) ?? 5.0;
+                            final double freeThreshold = double.tryParse(freeThresholdCtrl.text.trim()) ?? 500.0;
+                            final double minOrder = double.tryParse(minOrderCtrl.text.trim()) ?? 150.0;
+                            final double deliveryRadius = double.tryParse(radiusCtrl.text.trim()) ?? 10.0;
+                            final int prepTime = int.tryParse(prepCtrl.text.trim()) ?? 25;
+
+                            final newSettings = DeliveryFeeSettings(
+                              baseFee: baseFee,
+                              perKmFee: perKmFee,
+                              freeDeliveryThreshold: freeThreshold,
+                            );
+
+                            bloc.add(
+                              UpdateLocationDetails(
+                                address: addrCtrl.text.trim(),
+                                latitude: pickedLat,
+                                longitude: pickedLng,
+                                googleMapsUrl: pickedMapsUrl,
+                              ),
+                            );
+
+                            bloc.add(
+                              UpdateLogisticsSettings(
+                                minimumOrderValue: minOrder,
+                                deliveryRadius: deliveryRadius,
+                                deliveryFeeSettings: newSettings,
+                                estimatedPrepTimeMinutes: prepTime,
+                              ),
+                            );
+
+                            Navigator.of(dialogCtx).pop();
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Location & delivery logistics updated successfully!'),
+                                backgroundColor: Color(0xFF10B981),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.check_circle_outline, size: 18),
+                          label: const Text('Save Logistics', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE52929),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: prepCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Prep Time (mins)'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: baseFeeCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Base Fee (₹)'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: perKmCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Per km Fee (₹)'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: freeThresholdCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Free Delivery Threshold (₹)'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              final newSettings = DeliveryFeeSettings(
-                baseFee: double.tryParse(baseFeeCtrl.text.trim()) ?? 20.0,
-                perKmFee: double.tryParse(perKmCtrl.text.trim()) ?? 5.0,
-                freeDeliveryThreshold: double.tryParse(freeThresholdCtrl.text.trim()) ?? 500.0,
-              );
-              context.read<SellerProfilePageBloc>().add(
-                    UpdateLocationDetails(address: addrCtrl.text.trim()),
-                  );
-              context.read<SellerProfilePageBloc>().add(
-                    UpdateLogisticsSettings(
-                      minimumOrderValue: double.tryParse(minOrderCtrl.text.trim()) ?? 150.0,
-                      deliveryRadius: double.tryParse(radiusCtrl.text.trim()) ?? 10.0,
-                      deliveryFeeSettings: newSettings,
-                      estimatedPrepTimeMinutes: int.tryParse(prepCtrl.text.trim()) ?? 25,
-                    ),
-                  );
-              Navigator.pop(ctx);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE52929), foregroundColor: Colors.white),
-            child: const Text('Save Logistics'),
-          ),
-        ],
       ),
     );
   }
 
   void _showEditCuisinesDialog(BuildContext context) {
+    final bloc = context.read<SellerProfilePageBloc>();
     final available = [
       'South Indian',
       'North Indian',
@@ -1070,53 +1550,124 @@ class _ProfileSectionsGrid extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Manage Cuisine Categories', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: available.map((c) {
-              final isSel = selected.contains(c);
-              return FilterChip(
-                label: Text(c),
-                selected: isSel,
-                selectedColor: const Color(0xFFFEE2E2),
-                checkmarkColor: const Color(0xFFE52929),
-                labelStyle: TextStyle(
-                  color: isSel ? const Color(0xFFE52929) : const Color(0xFF1E293B),
-                  fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+      builder: (dialogCtx) => BlocProvider<SellerProfilePageBloc>.value(
+        value: bloc,
+        child: StatefulBuilder(
+          builder: (stateCtx, setDialogState) => Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.restaurant_menu_outlined, color: Color(0xFFF59E0B), size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Manage Cuisine Categories',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Select cuisines to help customers discover your menu',
+                                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Color(0xFF6B7280), size: 20),
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: available.map((c) {
+                        final isSel = selected.contains(c);
+                        return FilterChip(
+                          label: Text(c),
+                          selected: isSel,
+                          selectedColor: const Color(0xFFFEE2E2),
+                          checkmarkColor: const Color(0xFFE52929),
+                          labelStyle: TextStyle(
+                            color: isSel ? const Color(0xFFE52929) : const Color(0xFF1E293B),
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          onSelected: (val) {
+                            setDialogState(() {
+                              if (val) {
+                                selected.add(c);
+                              } else {
+                                selected.remove(c);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            bloc.add(UpdateCuisines(selected));
+                            Navigator.of(dialogCtx).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Cuisine categories updated successfully!'),
+                                backgroundColor: Color(0xFF10B981),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.check_circle_outline, size: 18),
+                          label: const Text('Save Cuisines', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE52929),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                onSelected: (val) {
-                  setDialogState(() {
-                    if (val) {
-                      selected.add(c);
-                    } else {
-                      selected.remove(c);
-                    }
-                  });
-                },
-              );
-            }).toList(),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                context.read<SellerProfilePageBloc>().add(UpdateCuisines(selected));
-                Navigator.pop(ctx);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE52929), foregroundColor: Colors.white),
-              child: const Text('Save Cuisines'),
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   void _showEditScheduleDialog(BuildContext context) {
+    final bloc = context.read<SellerProfilePageBloc>();
     final openCtrl = TextEditingController(text: state.openingHours ?? '09:00 AM');
     final closeCtrl = TextEditingController(text: state.closingTime ?? '11:00 PM');
     final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -1124,62 +1675,189 @@ class _ProfileSectionsGrid extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Edit Operating Hours & Holidays', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(controller: openCtrl, decoration: const InputDecoration(labelText: 'Opening Time (e.g. 09:00 AM)')),
-                TextField(controller: closeCtrl, decoration: const InputDecoration(labelText: 'Closing Time (e.g. 11:00 PM)')),
-                const SizedBox(height: 16),
-                const Text('Weekly Holidays', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: days.map((d) {
-                    final isHol = selectedHolidays.contains(d);
-                    return FilterChip(
-                      label: Text(d),
-                      selected: isHol,
-                      selectedColor: const Color(0xFFFEE2E2),
-                      checkmarkColor: const Color(0xFFE52929),
-                      onSelected: (val) {
-                        setDialogState(() {
-                          if (val) {
-                            selectedHolidays.add(d);
-                          } else {
-                            selectedHolidays.remove(d);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
+      builder: (dialogCtx) => BlocProvider<SellerProfilePageBloc>.value(
+        value: bloc,
+        child: StatefulBuilder(
+          builder: (stateCtx, setDialogState) => Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECFDF5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.access_time_outlined, color: Color(0xFF10B981), size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Edit Operating Hours & Holidays',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Set standard store hours and select scheduled closed days',
+                                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Color(0xFF6B7280), size: 20),
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDialogTextField(
+                            controller: openCtrl,
+                            label: 'Opening Time',
+                            hint: '09:00 AM',
+                            icon: Icons.schedule_outlined,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildDialogTextField(
+                            controller: closeCtrl,
+                            label: 'Closing Time',
+                            hint: '11:00 PM',
+                            icon: Icons.lock_clock_outlined,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Weekly Holidays', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF374151))),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: days.map((d) {
+                        final isHol = selectedHolidays.contains(d);
+                        return FilterChip(
+                          label: Text(d),
+                          selected: isHol,
+                          selectedColor: const Color(0xFFFEE2E2),
+                          checkmarkColor: const Color(0xFFE52929),
+                          labelStyle: TextStyle(
+                            color: isHol ? const Color(0xFFE52929) : const Color(0xFF1E293B),
+                            fontWeight: isHol ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          onSelected: (val) {
+                            setDialogState(() {
+                              if (val) {
+                                selectedHolidays.add(d);
+                              } else {
+                                selectedHolidays.remove(d);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            bloc.add(
+                              UpdateBusinessHoursSchedule(
+                                openingHours: openCtrl.text.trim(),
+                                closingTime: closeCtrl.text.trim(),
+                                weeklyHoliday: selectedHolidays,
+                              ),
+                            );
+                            Navigator.of(dialogCtx).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Operating schedule updated successfully!'),
+                                backgroundColor: Color(0xFF10B981),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.check_circle_outline, size: 18),
+                          label: const Text('Save Schedule', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE52929),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                context.read<SellerProfilePageBloc>().add(
-                      UpdateBusinessHoursSchedule(
-                        openingHours: openCtrl.text.trim(),
-                        closingTime: closeCtrl.text.trim(),
-                        weeklyHoliday: selectedHolidays,
-                      ),
-                    );
-                Navigator.pop(ctx);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE52929), foregroundColor: Colors.white),
-              child: const Text('Save Schedule'),
-            ),
-          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDialogTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    String? prefixText,
+    String? suffixText,
+    int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon, color: const Color(0xFF6B7280), size: 18),
+        prefixText: prefixText != null ? '$prefixText ' : null,
+        prefixStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+        suffixText: suffixText,
+        suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6B7280), fontSize: 12),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE52929), width: 1.5),
         ),
       ),
     );

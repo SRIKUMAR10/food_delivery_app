@@ -5,10 +5,6 @@ import 'seller_dashboard_page_bloc.dart';
 import 'seller_dashboard_page_event.dart';
 import 'seller_dashboard_page_state.dart';
 import 'seller_dashboard_repository.dart';
-import '../seller_NavigationBarView_page/seller_NavigationBarView_page_bloc.dart';
-import '../seller_NavigationBarView_page/seller_NavigationBarView_page_event.dart';
-import '../orders_list/orders_list_page_bloc.dart';
-import '../orders_list/orders_list_page_event.dart';
 import '../orders_list/orders_list_page_ui.dart';
 
 import '../seller_app_bar_page/seller_app_bar_page_ui.dart';

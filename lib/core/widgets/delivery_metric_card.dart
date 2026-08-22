@@ -8,6 +8,7 @@ class DeliveryMetricCard extends StatelessWidget {
   final String? subtext;
   final IconData icon;
   final Color iconColor;
+  final Color? subtextColor;
   final String? changePercentage;
   final bool isPositiveTrend;
   final VoidCallback? onTap;
@@ -19,6 +20,7 @@ class DeliveryMetricCard extends StatelessWidget {
     this.subtext,
     required this.icon,
     this.iconColor = DeliveryAppColors.primary,
+    this.subtextColor,
     this.changePercentage,
     this.isPositiveTrend = true,
     this.onTap,
@@ -38,7 +40,6 @@ class DeliveryMetricCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -65,21 +66,24 @@ class DeliveryMetricCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                maxLines: 1,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 4),
-            Row(
+            Flexible(
+              child: Row(
               children: [
                 if (changePercentage != null) ...[
                   Icon(
@@ -107,13 +111,14 @@ class DeliveryMetricCard extends StatelessWidget {
                     child: Text(
                       subtext!,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
+                        color: subtextColor ?? Colors.white.withValues(alpha: 0.5),
                         fontSize: 11,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
               ],
+              ),
             ),
           ],
         ),

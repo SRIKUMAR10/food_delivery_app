@@ -14,30 +14,68 @@ enum BuyerNotificationCategory {
   unknown;
 
   static BuyerNotificationCategory fromString(String? raw) {
-    switch ((raw ?? '').trim().toLowerCase()) {
+    final clean = (raw ?? '').trim().toLowerCase();
+    switch (clean) {
       case 'order_update':
       case 'order':
+      case 'orders':
+      case 'order_status':
+      case 'delivery':
+      case 'delivered':
+      case 'out_for_delivery':
+      case 'picked_up':
+      case 'confirmed':
         return BuyerNotificationCategory.orderUpdate;
       case 'payment_status':
       case 'payment':
+      case 'payments':
+      case 'wallet':
+      case 'refund':
+      case 'cashback':
+      case 'transaction':
+      case 'paid':
         return BuyerNotificationCategory.paymentStatus;
       case 'offer_promo':
       case 'offer':
+      case 'offers':
       case 'promo':
+      case 'promotion':
+      case 'discount':
+      case 'coupon':
+      case 'deal':
         return BuyerNotificationCategory.offerPromo;
       case 'chat_message':
       case 'chat':
+      case 'chats':
+      case 'message':
+      case 'messages':
+      case 'store':
+      case 'restaurant':
+      case 'seller':
+      case 'vendor':
+      case 'rider':
+      case 'support':
         return BuyerNotificationCategory.chatMessage;
       case 'driver_tracking':
       case 'tracking':
+      case 'live_tracking':
         return BuyerNotificationCategory.driverTracking;
       case 'review_reminder':
       case 'review':
+      case 'reviews':
+      case 'rating':
+      case 'ratings':
+      case 'feedback':
         return BuyerNotificationCategory.reviewReminder;
       case 'security_alert':
       case 'security':
+      case 'alert':
+      case 'alerts':
+      case 'warning':
         return BuyerNotificationCategory.securityAlert;
       case 'system':
+      case 'general':
+      case 'info':
         return BuyerNotificationCategory.system;
       default:
         return BuyerNotificationCategory.unknown;
@@ -81,30 +119,46 @@ enum BuyerNotificationActionType {
   none;
 
   static BuyerNotificationActionType fromString(String? raw) {
-    switch ((raw ?? '').trim().toLowerCase()) {
+    final clean = (raw ?? '').trim().toLowerCase();
+    switch (clean) {
       case 'navigate_track_order':
       case 'track_order':
+      case 'track':
+      case 'tracking':
         return BuyerNotificationActionType.navigateTrackOrder;
       case 'navigate_order':
       case 'order':
+      case 'orders':
+      case 'view_order':
         return BuyerNotificationActionType.navigateOrder;
       case 'navigate_chat':
       case 'chat':
+      case 'chats':
+      case 'message':
+      case 'reply':
+      case 'store':
         return BuyerNotificationActionType.navigateChat;
       case 'navigate_cart':
       case 'cart':
+      case 'view_cart':
         return BuyerNotificationActionType.navigateCart;
       case 'navigate_wallet':
       case 'wallet':
+      case 'payments':
+      case 'payment':
         return BuyerNotificationActionType.navigateWallet;
       case 'apply_coupon':
       case 'coupon':
+      case 'offer':
+      case 'promo':
         return BuyerNotificationActionType.applyCoupon;
       case 'navigate_details':
       case 'details':
+      case 'view':
         return BuyerNotificationActionType.navigateDetails;
       case 'open_rating':
       case 'rating':
+      case 'review':
         return BuyerNotificationActionType.openRating;
       default:
         return BuyerNotificationActionType.none;
@@ -236,6 +290,83 @@ class BuyerNotificationModel extends Equatable {
     return '$day/$month/${local.year}';
   }
 
+  /// Resolves the effective category intelligently even if category is unspecified/unknown in Firestore.
+  BuyerNotificationCategory get effectiveCategory {
+    if (category != BuyerNotificationCategory.unknown) {
+      return category;
+    }
+    if (orderId != null && orderId!.isNotEmpty) {
+      return BuyerNotificationCategory.orderUpdate;
+    }
+    if (conversationId != null && conversationId!.isNotEmpty) {
+      return BuyerNotificationCategory.chatMessage;
+    }
+    if (couponCode != null && couponCode!.isNotEmpty) {
+      return BuyerNotificationCategory.offerPromo;
+    }
+    if (productId != null && productId!.isNotEmpty) {
+      return BuyerNotificationCategory.reviewReminder;
+    }
+    final text = '$title $body ${subType ?? ''}'.toLowerCase();
+    if (text.contains('order') || text.contains('delivery') || text.contains('driver') || text.contains('track')) {
+      return BuyerNotificationCategory.orderUpdate;
+    }
+    if (text.contains('store') || text.contains('chat') || text.contains('message') || text.contains('seller') || text.contains('support') || text.contains('rider')) {
+      return BuyerNotificationCategory.chatMessage;
+    }
+    if (text.contains('wallet') || text.contains('payment') || text.contains('refund') || text.contains('cashback') || text.contains('paid')) {
+      return BuyerNotificationCategory.paymentStatus;
+    }
+    if (text.contains('offer') || text.contains('promo') || text.contains('coupon') || text.contains('discount') || text.contains('deal') || text.contains('% off')) {
+      return BuyerNotificationCategory.offerPromo;
+    }
+    if (text.contains('review') || text.contains('rate') || text.contains('feedback') || text.contains('star')) {
+      return BuyerNotificationCategory.reviewReminder;
+    }
+    return BuyerNotificationCategory.unknown;
+  }
+
+  /// Resolves the effective action type to ensure every notification navigates to the right page on tap.
+  BuyerNotificationActionType get effectiveActionType {
+    if (actionType != BuyerNotificationActionType.none) {
+      return actionType;
+    }
+    switch (effectiveCategory) {
+      case BuyerNotificationCategory.orderUpdate:
+      case BuyerNotificationCategory.driverTracking:
+        return (orderId != null && orderId!.isNotEmpty)
+            ? BuyerNotificationActionType.navigateTrackOrder
+            : BuyerNotificationActionType.navigateOrder;
+      case BuyerNotificationCategory.chatMessage:
+        return BuyerNotificationActionType.navigateChat;
+      case BuyerNotificationCategory.paymentStatus:
+        return BuyerNotificationActionType.navigateWallet;
+      case BuyerNotificationCategory.offerPromo:
+        return (couponCode != null && couponCode!.isNotEmpty)
+            ? BuyerNotificationActionType.applyCoupon
+            : BuyerNotificationActionType.navigateCart;
+      case BuyerNotificationCategory.reviewReminder:
+        return BuyerNotificationActionType.openRating;
+      case BuyerNotificationCategory.securityAlert:
+      case BuyerNotificationCategory.system:
+      case BuyerNotificationCategory.unknown:
+        final text = '$title $body'.toLowerCase();
+        if (text.contains('order') || text.contains('delivery')) {
+          return BuyerNotificationActionType.navigateOrder;
+        }
+        if (text.contains('store') || text.contains('chat') || text.contains('message') || text.contains('support')) {
+          return BuyerNotificationActionType.navigateChat;
+        }
+        if (text.contains('wallet') || text.contains('payment') || text.contains('refund')) {
+          return BuyerNotificationActionType.navigateWallet;
+        }
+        if (text.contains('coupon') || text.contains('offer') || text.contains('discount')) {
+          return BuyerNotificationActionType.navigateCart;
+        }
+        return BuyerNotificationActionType.navigateDetails;
+    }
+  }
+
   /// Returns true if the notification is expired and should be hidden.
   bool get isExpired {
     final expires = expiresAt;
@@ -249,26 +380,30 @@ class BuyerNotificationModel extends Equatable {
   ) {
     final rawPayload = map['actionPayload'];
     final payload = rawPayload is Map ? Map<String, dynamic>.from(rawPayload) : <String, dynamic>{};
+    final rawCategory = (map['category'] ?? map['type'] ?? map['notificationType']) as String?;
+    final rawAction = (map['actionType'] ?? map['action'] ?? map['clickAction'] ?? map['route']) as String?;
+
     return BuyerNotificationModel(
       id: documentId,
-      userId: map['userId'] as String? ?? '',
-      category: BuyerNotificationCategory.fromString(map['category'] as String?),
+      userId: (map['userId'] ?? map['buyerId'] ?? map['recipientId'] ?? '').toString(),
+      category: BuyerNotificationCategory.fromString(rawCategory),
       subType: map['subType'] as String?,
       title: map['title'] as String? ?? '',
       titleTa: map['titleTa'] as String?,
-      body: map['body'] as String? ?? '',
-      bodyTa: map['bodyTa'] as String?,
-      orderId: map['orderId'] as String?,
-      conversationId: map['conversationId'] as String?,
-      couponCode: map['couponCode'] as String?,
-      productId: map['productId'] as String?,
-      imageUrl: map['imageUrl'] as String?,
+      body: (map['body'] ?? map['message']) as String? ?? '',
+      bodyTa: (map['bodyTa'] ?? map['messageTa']) as String?,
+      orderId: (map['orderId'] ?? payload['orderId'])?.toString(),
+      conversationId: (map['conversationId'] ?? payload['conversationId'] ?? payload['chatId'])?.toString(),
+      couponCode: (map['couponCode'] ?? payload['couponCode'] ?? payload['coupon'])?.toString(),
+      productId: (map['productId'] ?? payload['productId'] ?? payload['foodId'])?.toString(),
+      imageUrl: (map['imageUrl'] ?? map['image']) as String?,
       iconType: map['iconType'] as String?,
       priority: BuyerNotificationPriority.fromString(map['priority'] as String?),
       isRead: map['isRead'] as bool? ?? false,
-      actionType: BuyerNotificationActionType.fromString(map['actionType'] as String?),
+      actionType: BuyerNotificationActionType.fromString(rawAction),
       actionPayload: payload,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ??
+          (map['timestamp'] is Timestamp ? (map['timestamp'] as Timestamp).toDate() : null),
       readAt: (map['readAt'] as Timestamp?)?.toDate(),
       expiresAt: (map['expiresAt'] as Timestamp?)?.toDate(),
     );

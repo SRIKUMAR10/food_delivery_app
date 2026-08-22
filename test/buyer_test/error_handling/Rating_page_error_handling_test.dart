@@ -47,7 +47,11 @@ void main() {
 
       final expectedStates = [
         isA<RatingLoading>(),
-        isA<RatingError>().having((s) => s.message, 'message', contains('network error')),
+        isA<RatingError>().having(
+          (s) => s.message,
+          'message',
+          contains('Network connection error'),
+        ),
       ];
 
       expectLater(bloc.stream, emitsInOrder(expectedStates));

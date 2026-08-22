@@ -14,14 +14,20 @@ class DeliveryProfileInitEvent extends DeliveryProfileEvent {
 class DeliveryProfileUpdateFieldEvent extends DeliveryProfileEvent {
   final String field;
   final String value;
+  final double? latitude;
+  final double? longitude;
+  final String? googleMapsUrl;
 
   const DeliveryProfileUpdateFieldEvent({
     required this.field,
     required this.value,
+    this.latitude,
+    this.longitude,
+    this.googleMapsUrl,
   });
 
   @override
-  List<Object?> get props => [field, value];
+  List<Object?> get props => [field, value, latitude, longitude, googleMapsUrl];
 }
 
 class DeliveryProfilePickImageEvent extends DeliveryProfileEvent {
@@ -48,10 +54,19 @@ class DeliveryProfileRetryEvent extends DeliveryProfileEvent {
 
 class DeliveryProfileUpdateAddressEvent extends DeliveryProfileEvent {
   final String address;
-  const DeliveryProfileUpdateAddressEvent(this.address);
+  final double? latitude;
+  final double? longitude;
+  final String? googleMapsUrl;
+
+  const DeliveryProfileUpdateAddressEvent(
+    this.address, {
+    this.latitude,
+    this.longitude,
+    this.googleMapsUrl,
+  });
 
   @override
-  List<Object?> get props => [address];
+  List<Object?> get props => [address, latitude, longitude, googleMapsUrl];
 }
 
 class DeliveryProfileUpdateVehicleEvent extends DeliveryProfileEvent {

@@ -26,7 +26,10 @@ class DeliveryOrdersPageBloc
     on<DeliveryOrdersAcceptOrderEvent>(_onAcceptOrder);
     on<DeliveryOrdersRejectOrderEvent>(_onRejectOrder);
     on<DeliveryOrdersClearConflictEvent>(_onClearConflict);
+    on<DeliveryOrdersToggleOnlineEvent>(_onToggleOnline);
+    on<DeliveryOrdersAcceptNextOrderEvent>(_onAcceptNextOrder);
   }
+
 
   List<DeliveryOrderCardModel> _applyFilters(DeliveryOrdersPageState source) {
     return service.filterOrders(
@@ -265,8 +268,57 @@ class DeliveryOrdersPageBloc
       ),
     );
   }
+
+  Future<void> _onToggleOnline(
+    DeliveryOrdersToggleOnlineEvent event,
+    Emitter<DeliveryOrdersPageState> emit,
+  ) async {
+    final nextStatus = event.isOnline ?? !state.isOnline;
+    emit(state.copyWith(isTogglingOnline: true));
+    try {
+      await repository.updateOnlineStatus(nextStatus);
+      final msg = nextStatus
+          ? 'You are online. New orders will appear automatically.'
+          : 'You are now offline. New orders will pause.';
+      emit(
+        state.copyWith(
+          isOnline: nextStatus,
+          isTogglingOnline: false,
+          notificationMessage: msg,
+          clearError: true,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isTogglingOnline: false,
+          errorMessage: 'Failed to update online status. Please try again.',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onAcceptNextOrder(
+    DeliveryOrdersAcceptNextOrderEvent event,
+    Emitter<DeliveryOrdersPageState> emit,
+  ) async {
+    final nextOrder = state.nextAvailableOrder;
+    if (nextOrder == null) {
+      emit(
+        state.copyWith(
+          notificationMessage: 'No pending orders right now',
+        ),
+      );
+      return;
+    }
+    await _onAcceptOrder(
+      DeliveryOrdersAcceptOrderEvent(nextOrder.orderId),
+      emit,
+    );
+  }
 }
 
 /// Standardized Feature-Architecture Alias for DeliveryOrderBloc
 typedef DeliveryOrderBloc = DeliveryOrdersPageBloc;
+
 

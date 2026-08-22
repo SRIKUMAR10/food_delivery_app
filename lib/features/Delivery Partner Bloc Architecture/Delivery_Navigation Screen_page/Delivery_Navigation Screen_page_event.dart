@@ -9,7 +9,25 @@ abstract class DeliveryNavigationEvent extends Equatable {
 }
 
 class DeliveryNavigationInitEvent extends DeliveryNavigationEvent {
-  const DeliveryNavigationInitEvent();
+  final String? orderId;
+
+  const DeliveryNavigationInitEvent({this.orderId});
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
+class DeliveryNavigationToggleOnlineStatusEvent extends DeliveryNavigationEvent {
+  const DeliveryNavigationToggleOnlineStatusEvent();
+}
+
+class DeliveryNavigationSelectDemandZoneEvent extends DeliveryNavigationEvent {
+  final DeliveryDemandZone zone;
+
+  const DeliveryNavigationSelectDemandZoneEvent(this.zone);
+
+  @override
+  List<Object?> get props => [zone];
 }
 
 class DeliveryNavigationStartNavigationEvent extends DeliveryNavigationEvent {
@@ -151,3 +169,13 @@ class DeliveryNavigationProfileUpdatedEvent extends DeliveryNavigationEvent {
   @override
   List<Object?> get props => [profile];
 }
+
+class DeliveryNavigationSellersUpdatedEvent extends DeliveryNavigationEvent {
+  final List<Map<String, dynamic>> sellers;
+
+  const DeliveryNavigationSellersUpdatedEvent(this.sellers);
+
+  @override
+  List<Object?> get props => [sellers];
+}
+

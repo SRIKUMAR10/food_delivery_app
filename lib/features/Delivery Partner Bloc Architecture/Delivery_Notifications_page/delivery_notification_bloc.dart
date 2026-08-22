@@ -175,22 +175,22 @@ class DeliveryNotificationBloc
     switch (filter) {
       case DeliveryNotificationFilter.order:
         result = result
-            .where((n) => n.category == DeliveryNotificationCategory.order)
+            .where((n) => n.effectiveCategory == DeliveryNotificationCategory.order)
             .toList();
         break;
       case DeliveryNotificationFilter.earnings:
         result = result
-            .where((n) => n.category == DeliveryNotificationCategory.earnings)
+            .where((n) => n.effectiveCategory == DeliveryNotificationCategory.earnings)
             .toList();
         break;
       case DeliveryNotificationFilter.account:
         result = result
-            .where((n) => n.category == DeliveryNotificationCategory.account)
+            .where((n) => n.effectiveCategory == DeliveryNotificationCategory.account)
             .toList();
         break;
       case DeliveryNotificationFilter.chat:
         result = result
-            .where((n) => n.category == DeliveryNotificationCategory.chat)
+            .where((n) => n.effectiveCategory == DeliveryNotificationCategory.chat)
             .toList();
         break;
       case DeliveryNotificationFilter.unread:

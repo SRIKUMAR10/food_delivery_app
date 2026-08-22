@@ -267,9 +267,11 @@ class UserRepository {
             .where('email', isEqualTo: email)
             .limit(1)
             .get(),
-      ]).timeout(const Duration(seconds: 3));
+      ]).timeout(const Duration(seconds: 2));
 
       return results.any((snap) => snap.docs.isNotEmpty);
+    } on FirebaseException catch (_) {
+      return false;
     } catch (e) {
       return false;
     }
@@ -328,11 +330,13 @@ class UserRepository {
             .where('phoneNumber', whereIn: variants)
             .limit(1)
             .get(),
-      ]).timeout(const Duration(seconds: 3));
+      ]).timeout(const Duration(seconds: 2));
 
       if (results.any((snap) => snap.docs.isNotEmpty)) {
         return true;
       }
+    } on FirebaseException catch (_) {
+      // Unauthenticated reads are restricted by Firestore security rules
     } catch (e) {
       debugPrint('_isAccountRegistered query note: $e');
     }
@@ -365,76 +369,18 @@ class UserRepository {
     }
 
     final digitsOnly = trimmed.replaceAll(RegExp(r'\D'), '');
-    final variants = <String>{
-      trimmed,
-      digitsOnly,
-      '+91 $digitsOnly',
-      '+91$digitsOnly',
-      if (digitsOnly.length == 10) '+91 $digitsOnly',
-      if (digitsOnly.length == 10) '+91$digitsOnly',
-      if (digitsOnly.length > 10 && digitsOnly.startsWith('91'))
-        digitsOnly.substring(2),
-      if (digitsOnly.length == 10) '91$digitsOnly',
-      if (digitsOnly.length == 10) '0$digitsOnly',
-    }.toList();
+    final cleanPhone = trimmed.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
+    final formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : '+91$cleanPhone';
 
-    // STEP 1: Registration Check - verify Firestore buyer_user / users document and registration
-    DocumentSnapshot? userDoc;
+    // 1. Primary Authentication: Call Cloud Function customLogin (Server-side admin authority)
     try {
-      final results = await Future.wait([
-        _userCollection.buyerUserCollection
-            .where('phone', whereIn: variants)
-            .limit(1)
-            .get(),
-        _userCollection.buyerUserCollection
-            .where('mobileNumber', whereIn: variants)
-            .limit(1)
-            .get(),
-        _userCollection.buyerUserCollection
-            .where('phoneNumber', whereIn: variants)
-            .limit(1)
-            .get(),
-        FirebaseFirestore.instance
-            .collection('users')
-            .where('phone', whereIn: variants)
-            .limit(1)
-            .get(),
-        FirebaseFirestore.instance
-            .collection('users')
-            .where('mobileNumber', whereIn: variants)
-            .limit(1)
-            .get(),
-        FirebaseFirestore.instance
-            .collection('users')
-            .where('phoneNumber', whereIn: variants)
-            .limit(1)
-            .get(),
-      ]).timeout(const Duration(seconds: 3));
-
-      for (final snap in results) {
-        if (snap.docs.isNotEmpty) {
-          userDoc = snap.docs.first;
-          break;
-        }
-      }
-    } catch (e) {
-      debugPrint('Firestore phone lookup note: $e');
-    }
-
-    final isRegistered = await _isAccountRegistered(trimmed, userDoc);
-
-    // 2a. Primary Authentication: Call Cloud Function customLogin
-    try {
-      final cleanPhone = trimmed.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
-      final formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : '+91$cleanPhone';
-
       final callable = FirebaseFunctions.instance.httpsCallable('customLogin');
       final response = await callable.call({
         'phoneNumber': formattedPhone,
         'password': trimmedPassword,
         'role': 'user',
         'targetRole': 'user',
-      }).timeout(const Duration(seconds: 6));
+      }).timeout(const Duration(seconds: 15));
 
       final data = Map<String, dynamic>.from(response.data as Map);
       final customToken = data['customToken'] as String?;
@@ -456,14 +402,69 @@ class UserRepository {
           (e.message != null && (e.message!.contains('Password is incorrect') || e.message!.contains('incorrect')))) {
         throw Exception('Invalid mobile number or password.');
       }
-      if (e.code == 'not-found' || e.code == 'internal' || e.code == 'INTERNAL' || e.code == 'unavailable') {
-        debugPrint('customLogin note (${e.code}), falling back to candidate sign-in...');
+      if (e.code == 'not-found' || (e.message != null && e.message!.contains('No registered account'))) {
+        throw Exception('No registered buyer account found for "$trimmed". Please sign up.');
       }
+      if (e.code == 'permission-denied') {
+        throw Exception(e.message ?? 'Account is deactivated or blocked. Please contact support.');
+      }
+      if (e.code == 'invalid-argument') {
+        throw Exception(e.message ?? 'Please check your phone number and password.');
+      }
+      debugPrint('customLogin note (${e.code}), falling back to candidate sign-in...');
     } catch (e) {
       debugPrint('customLogin Cloud Function error, attempting fallback: $e');
     }
 
-    // 2b. Fallback: Candidate email sign-in
+    // 2. Registration and Candidate Resolution Fallback
+    DocumentSnapshot? userDoc;
+    final variants = <String>{
+      trimmed,
+      digitsOnly,
+      '+91 $digitsOnly',
+      '+91$digitsOnly',
+      if (digitsOnly.length == 10) '+91 $digitsOnly',
+      if (digitsOnly.length == 10) '+91$digitsOnly',
+      if (digitsOnly.length > 10 && digitsOnly.startsWith('91'))
+        digitsOnly.substring(2),
+      if (digitsOnly.length == 10) '91$digitsOnly',
+      if (digitsOnly.length == 10) '0$digitsOnly',
+    }.toList();
+
+    try {
+      final results = await Future.wait([
+        _userCollection.buyerUserCollection
+            .where('phone', whereIn: variants)
+            .limit(1)
+            .get(),
+        _userCollection.buyerUserCollection
+            .where('mobileNumber', whereIn: variants)
+            .limit(1)
+            .get(),
+        _userCollection.buyerUserCollection
+            .where('phoneNumber', whereIn: variants)
+            .limit(1)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('users')
+            .where('phone', whereIn: variants)
+            .limit(1)
+            .get(),
+      ]).timeout(const Duration(seconds: 2));
+
+      for (final snap in results) {
+        if (snap.docs.isNotEmpty) {
+          userDoc = snap.docs.first;
+          break;
+        }
+      }
+    } catch (_) {
+      // Ignored for unauthenticated lookups
+    }
+
+    final isRegistered = await _isAccountRegistered(trimmed, userDoc);
+
+    // 3. Fallback: Candidate email sign-in
     final candidates = <String>[];
     if (userDoc != null) {
       final data = userDoc.data() as Map<String, dynamic>?;
@@ -1189,9 +1190,13 @@ class UserRepository {
       final snap = await _userCollection.buyerUserCollection
           .where('phone', whereIn: variants)
           .limit(1)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 2));
 
       return snap.docs.isNotEmpty;
+    } on FirebaseException catch (_) {
+      // Unauthenticated reads are restricted by Firestore security rules
+      return false;
     } catch (e) {
       debugPrint('Buyer phone duplicate check note: $e');
       return false;

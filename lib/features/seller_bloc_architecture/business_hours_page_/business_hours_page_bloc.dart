@@ -1,29 +1,83 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'business_hours_page_event.dart';
 import 'business_hours_page_state.dart';
 import 'business_hours_page_repository.dart';
+import 'business_hours_page_model.dart';
 
 class BusinessHoursBloc extends Bloc<BusinessHoursEvent, BusinessHoursState> {
   final BusinessHoursRepository repository;
   String? _sellerId;
+  StreamSubscription<Map<String, dynamic>>? _scheduleSubscription;
 
   BusinessHoursBloc({required this.repository}) : super(const BusinessHoursInitial()) {
     on<LoadBusinessHoursEvent>(_onLoadBusinessHours);
+    on<BusinessHoursUpdatedStreamEvent>(_onBusinessHoursUpdatedStream);
     on<UpdateBusinessDayEvent>(_onUpdateBusinessDay);
     on<ToggleEmergencyCloseEvent>(_onToggleEmergencyClose);
   }
 
   Future<void> _onLoadBusinessHours(LoadBusinessHoursEvent event, Emitter<BusinessHoursState> emit) async {
     _sellerId = event.sellerId;
-    emit(BusinessHoursLoading());
+    emit(const BusinessHoursLoading());
+
+    await _scheduleSubscription?.cancel();
+    try {
+      final stream = repository.watchSchedule(event.sellerId);
+      _scheduleSubscription = stream.listen(
+        (data) {
+          final rawSchedule = data['schedule'];
+          List<BusinessDayModel> scheduleList = [];
+          if (rawSchedule is List<BusinessDayModel>) {
+            scheduleList = rawSchedule;
+          } else if (rawSchedule is List) {
+            scheduleList = rawSchedule.cast<BusinessDayModel>();
+          }
+          add(BusinessHoursUpdatedStreamEvent(
+            schedule: scheduleList,
+            isEmergencyClosed: data['isEmergencyClosed'] == true,
+          ));
+        },
+        onError: (_) {},
+      );
+    } catch (_) {}
+
     try {
       final data = await repository.getSchedule(event.sellerId);
+      final rawSchedule = data['schedule'];
+      List<BusinessDayModel> scheduleList = [];
+      if (rawSchedule is List<BusinessDayModel>) {
+        scheduleList = rawSchedule;
+      } else if (rawSchedule is List) {
+        scheduleList = rawSchedule.cast<BusinessDayModel>();
+      }
+
       emit(BusinessHoursLoaded(
-        schedule: data['schedule'],
-        isEmergencyClosed: data['isEmergencyClosed'],
+        schedule: scheduleList,
+        isEmergencyClosed: data['isEmergencyClosed'] == true,
       ));
     } catch (e) {
-      emit(BusinessHoursError('Failed to load schedule: $e'));
+      if (state is! BusinessHoursLoaded) {
+        emit(BusinessHoursError('Failed to load schedule: $e'));
+      }
+    }
+  }
+
+  void _onBusinessHoursUpdatedStream(
+    BusinessHoursUpdatedStreamEvent event,
+    Emitter<BusinessHoursState> emit,
+  ) {
+    if (state is BusinessHoursLoaded) {
+      final current = state as BusinessHoursLoaded;
+      emit(current.copyWith(
+        schedule: event.schedule,
+        isEmergencyClosed: event.isEmergencyClosed,
+      ));
+    } else {
+      emit(BusinessHoursLoaded(
+        schedule: event.schedule,
+        isEmergencyClosed: event.isEmergencyClosed,
+      ));
     }
   }
 
@@ -34,11 +88,11 @@ class BusinessHoursBloc extends Bloc<BusinessHoursEvent, BusinessHoursState> {
     emit(currentState.copyWith(isUpdating: true, clearMessages: true));
 
     try {
-      if (_sellerId == null) throw Exception('Seller ID not initialized.');
-      await repository.updateDay(_sellerId!, event.updatedDay);
+      final targetSellerId = _sellerId ?? 'seller1';
+      await repository.updateDay(targetSellerId, event.updatedDay);
       
       final newSchedule = currentState.schedule.map((day) {
-        if (day.dayOfWeek == event.updatedDay.dayOfWeek) {
+        if (day.dayOfWeek.trim().toLowerCase() == event.updatedDay.dayOfWeek.trim().toLowerCase()) {
           return event.updatedDay;
         }
         return day;
@@ -47,7 +101,7 @@ class BusinessHoursBloc extends Bloc<BusinessHoursEvent, BusinessHoursState> {
       emit(currentState.copyWith(
         schedule: newSchedule,
         isUpdating: false,
-        successMessage: 'Schedule updated successfully.',
+        successMessage: '${event.updatedDay.dayOfWeek} schedule updated.',
       ));
     } catch (e) {
       emit(currentState.copyWith(
@@ -64,8 +118,8 @@ class BusinessHoursBloc extends Bloc<BusinessHoursEvent, BusinessHoursState> {
     emit(currentState.copyWith(isUpdating: true, clearMessages: true));
 
     try {
-      if (_sellerId == null) throw Exception('Seller ID not initialized.');
-      await repository.toggleEmergencyClose(_sellerId!, event.isEmergencyClosed);
+      final targetSellerId = _sellerId ?? 'seller1';
+      await repository.toggleEmergencyClose(targetSellerId, event.isEmergencyClosed);
       
       emit(currentState.copyWith(
         isEmergencyClosed: event.isEmergencyClosed,
@@ -79,4 +133,11 @@ class BusinessHoursBloc extends Bloc<BusinessHoursEvent, BusinessHoursState> {
       ));
     }
   }
+
+  @override
+  Future<void> close() {
+    _scheduleSubscription?.cancel();
+    return super.close();
+  }
 }
+

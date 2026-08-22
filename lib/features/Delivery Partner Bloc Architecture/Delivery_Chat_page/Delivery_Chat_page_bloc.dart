@@ -3,10 +3,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/repositories/i_chat_repository.dart';
 import '../../../core/models/chat_message_model.dart';
+import '../../../core/models/conversation_model.dart';
 import 'Delivery_Chat_page_event.dart';
 import 'Delivery_Chat_page_state.dart';
 import 'Delivery_Chat_page_repository.dart';
 import 'Delivery_Chat_page_service.dart';
+
+class _ConversationsUpdatedEvent extends DeliveryChatEvent {
+  final List<ConversationModel> conversations;
+  const _ConversationsUpdatedEvent(this.conversations);
+  @override
+  List<Object?> get props => [conversations];
+}
 
 class _MessagesUpdatedEvent extends DeliveryChatEvent {
   final List<ChatMessageModel> messages;
@@ -35,6 +43,7 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
   final DeliveryChatServiceBase deliveryChatService;
   final ImagePicker _imagePicker = ImagePicker();
 
+  StreamSubscription? _conversationsSub;
   StreamSubscription? _messagesSub;
   StreamSubscription? _typingSub;
 
@@ -43,6 +52,11 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
     required this.deliveryChatRepository,
     required this.deliveryChatService,
   }) : super(const DeliveryChatInitial()) {
+    on<LoadDeliveryConversations>(_onLoadConversations);
+    on<SelectDeliveryConversation>(_onSelectConversation);
+    on<ClearSelectedDeliveryConversation>(_onClearSelectedConversation);
+    on<SetDeliveryChatFilter>(_onSetFilter);
+    on<SearchDeliveryConversations>(_onSearchConversations);
     on<InitDeliveryChatEvent>(_onInitChat);
     on<SendDeliveryMessageEvent>(_onSendMessage);
     on<SendDeliveryMediaMessageEvent>(_onSendMediaMessage);
@@ -51,9 +65,282 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
     on<SendAudioVoiceNoteEvent>(_onSendAudioVoiceNote);
     on<SetDeliveryTypingStatusEvent>(_onSetTypingStatus);
     on<MarkDeliveryChatReadEvent>(_onMarkRead);
+    on<ToggleDeliveryEmojiPicker>(_onToggleEmojiPicker);
+    on<StartDeliveryAudioRecording>(_onStartAudioRecording);
+    on<StopDeliveryAudioRecording>(_onStopAudioRecording);
+    on<CancelDeliveryAudioRecording>(_onCancelAudioRecording);
+    on<UpdateDeliveryAudioRecordingDuration>(_onUpdateRecordingDuration);
+    on<DeleteDeliveryMessage>(_onDeleteMessage);
+    on<_ConversationsUpdatedEvent>(_onConversationsUpdated);
     on<_MessagesUpdatedEvent>(_onMessagesUpdated);
     on<_TypingStatusUpdatedEvent>(_onTypingStatusUpdated);
     on<_ChatErrorEvent>(_onChatError);
+  }
+
+  Future<void> _onLoadConversations(
+    LoadDeliveryConversations event,
+    Emitter<DeliveryChatState> emit,
+  ) async {
+    final riderId = deliveryChatService.currentUserId;
+    final effectiveRiderId = riderId.isNotEmpty ? riderId : 'delivery_partner_session';
+
+    if (state is! DeliveryChatLoaded) {
+      emit(DeliveryChatLoaded(currentUserId: effectiveRiderId));
+    }
+
+    await _conversationsSub?.cancel();
+    _conversationsSub = deliveryChatRepository
+        .getDeliveryConversations(effectiveRiderId)
+        .listen(
+      (convs) {
+        add(_ConversationsUpdatedEvent(convs));
+      },
+      onError: (err) {
+        add(_ChatErrorEvent('Failed to stream conversations: $err'));
+      },
+    );
+  }
+
+  void _onConversationsUpdated(
+    _ConversationsUpdatedEvent event,
+    Emitter<DeliveryChatState> emit,
+  ) {
+    final current = state;
+    final riderId = deliveryChatService.currentUserId;
+    if (current is DeliveryChatLoaded) {
+      final map = <String, ConversationModel>{};
+
+      if (current.conversationId.isNotEmpty) {
+        final active = current.selectedConversation ??
+            ConversationModel(
+              id: current.conversationId,
+              orderId: current.orderId,
+              buyerId: current.customerId,
+              buyerName: current.customerName.isNotEmpty ? current.customerName : 'Customer',
+              sellerId: current.sellerId ?? '',
+              sellerName: current.sellerName ?? '',
+              sellerPhone: current.sellerPhone,
+              conversationType: current.isSellerChat ? 'seller_delivery' : 'buyer_delivery',
+              participants: [riderId, current.recipientId].where((p) => p.isNotEmpty).toList(),
+              shopName: current.orderTitle ?? current.sellerName,
+              orderTitle: current.orderTitle,
+              orderTotal: current.orderTotal,
+              orderImageUrl: current.orderImageUrl,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
+        map[active.id] = active;
+      }
+
+      for (final c in event.conversations) {
+        map[c.id] = c;
+      }
+
+      final mergedList = map.values.toList();
+      mergedList.sort((a, b) {
+        final aTime = a.lastMessageTimestamp ?? a.createdAt;
+        final bTime = b.lastMessageTimestamp ?? b.createdAt;
+        return bTime.compareTo(aTime);
+      });
+
+      emit(current.copyWith(
+        conversations: mergedList,
+        selectedConversationId: current.selectedConversationId ?? current.conversationId,
+      ));
+    } else {
+      emit(DeliveryChatLoaded(
+        currentUserId: riderId,
+        conversations: event.conversations,
+      ));
+    }
+  }
+
+  Future<void> _onSelectConversation(
+    SelectDeliveryConversation event,
+    Emitter<DeliveryChatState> emit,
+  ) async {
+    final current = state;
+    final riderId = deliveryChatService.currentUserId;
+    if (riderId.isEmpty) {
+      emit(const DeliveryChatError('Not authenticated'));
+      return;
+    }
+
+    ConversationModel? target;
+    if (current is DeliveryChatLoaded) {
+      try {
+        target = current.conversations.firstWhere((c) => c.id == event.conversationId);
+      } catch (_) {}
+    }
+
+    final isSeller = target?.conversationType == 'seller_delivery' ||
+        target?.conversationType == 'seller_support' ||
+        target?.conversationType == 'seller';
+
+    final recipientId = target != null
+        ? (isSeller
+            ? target.sellerId
+            : (target.buyerId.isNotEmpty ? target.buyerId : target.sellerId))
+        : '';
+    final recipientName = target != null
+        ? (isSeller
+            ? (target.shopName?.isNotEmpty == true ? target.shopName! : target.sellerName)
+            : (target.buyerName.isNotEmpty && target.buyerName.toLowerCase() != 'customer'
+                ? target.buyerName
+                : (target.buyerName.isNotEmpty ? target.buyerName : 'Anu')))
+        : 'Anu';
+    final recipientPhone = target != null
+        ? (isSeller ? target.sellerPhone : null)
+        : null;
+
+    if (current is DeliveryChatLoaded) {
+      emit(current.copyWith(
+        selectedConversationId: event.conversationId,
+        conversationId: event.conversationId,
+        orderId: target?.orderId ?? current.orderId,
+        recipientRole: isSeller ? 'seller' : 'customer',
+        recipientId: recipientId,
+        recipientName: recipientName,
+        recipientPhone: recipientPhone,
+        sellerId: isSeller ? recipientId : current.sellerId,
+        sellerName: isSeller ? recipientName : current.sellerName,
+        sellerPhone: isSeller ? recipientPhone : current.sellerPhone,
+        customerId: !isSeller ? recipientId : current.customerId,
+        customerName: !isSeller ? recipientName : current.customerName,
+        customerPhone: !isSeller ? recipientPhone : current.customerPhone,
+        orderTitle: target?.orderTitle ?? current.orderTitle,
+        orderTotal: target?.orderTotal ?? current.orderTotal,
+        orderImageUrl: target?.orderImageUrl ?? current.orderImageUrl,
+      ));
+    } else {
+      emit(DeliveryChatLoaded(
+        currentUserId: riderId,
+        selectedConversationId: event.conversationId,
+        conversationId: event.conversationId,
+        orderId: target?.orderId ?? '',
+        recipientRole: isSeller ? 'seller' : 'customer',
+        recipientId: recipientId,
+        recipientName: recipientName,
+        recipientPhone: recipientPhone,
+        orderTitle: target?.orderTitle,
+        orderTotal: target?.orderTotal,
+        orderImageUrl: target?.orderImageUrl,
+      ));
+    }
+
+    await deliveryChatService.markMessagesRead(event.conversationId, riderId);
+    await _subscribeToStreams(event.conversationId);
+  }
+
+  void _onClearSelectedConversation(
+    ClearSelectedDeliveryConversation event,
+    Emitter<DeliveryChatState> emit,
+  ) {
+    final current = state;
+    if (current is DeliveryChatLoaded) {
+      _messagesSub?.cancel();
+      _typingSub?.cancel();
+      emit(current.copyWith(
+        clearSelectedConversationId: true,
+        conversationId: '',
+        messages: const [],
+      ));
+    }
+  }
+
+  void _onSetFilter(
+    SetDeliveryChatFilter event,
+    Emitter<DeliveryChatState> emit,
+  ) {
+    final current = state;
+    if (current is DeliveryChatLoaded) {
+      emit(current.copyWith(activeFilter: event.activeFilter));
+    }
+  }
+
+  void _onSearchConversations(
+    SearchDeliveryConversations event,
+    Emitter<DeliveryChatState> emit,
+  ) {
+    final current = state;
+    if (current is DeliveryChatLoaded) {
+      emit(current.copyWith(searchQuery: event.query));
+    }
+  }
+
+  void _onToggleEmojiPicker(
+    ToggleDeliveryEmojiPicker event,
+    Emitter<DeliveryChatState> emit,
+  ) {
+    final current = state;
+    if (current is DeliveryChatLoaded) {
+      emit(current.copyWith(showEmojiPicker: !current.showEmojiPicker));
+    }
+  }
+
+  void _onStartAudioRecording(
+    StartDeliveryAudioRecording event,
+    Emitter<DeliveryChatState> emit,
+  ) {
+    final current = state;
+    if (current is DeliveryChatLoaded) {
+      emit(current.copyWith(isRecordingAudio: true, recordingDuration: Duration.zero));
+    }
+  }
+
+  void _onStopAudioRecording(
+    StopDeliveryAudioRecording event,
+    Emitter<DeliveryChatState> emit,
+  ) {
+    final current = state;
+    if (current is DeliveryChatLoaded) {
+      emit(current.copyWith(isRecordingAudio: false));
+    }
+  }
+
+  void _onCancelAudioRecording(
+    CancelDeliveryAudioRecording event,
+    Emitter<DeliveryChatState> emit,
+  ) {
+    final current = state;
+    if (current is DeliveryChatLoaded) {
+      emit(current.copyWith(isRecordingAudio: false, recordingDuration: Duration.zero));
+    }
+  }
+
+  void _onUpdateRecordingDuration(
+    UpdateDeliveryAudioRecordingDuration event,
+    Emitter<DeliveryChatState> emit,
+  ) {
+    final current = state;
+    if (current is DeliveryChatLoaded) {
+      emit(current.copyWith(recordingDuration: event.duration));
+    }
+  }
+
+  Future<void> _onDeleteMessage(
+    DeleteDeliveryMessage event,
+    Emitter<DeliveryChatState> emit,
+  ) async {
+    final current = state;
+    if (current is! DeliveryChatLoaded) return;
+    if (current.currentUserId.isEmpty) return;
+    try {
+      final int index = current.messages.indexWhere(
+        (m) => m.id == event.messageId,
+      );
+      final message = index != -1 ? current.messages[index] : null;
+      if (message == null) return;
+      await chatRepository.deleteMessage(
+        conversationId: current.conversationId,
+        messageId: message.id,
+        messageType: message.messageType,
+        forEveryone: message.senderId != current.currentUserId,
+        userId: current.currentUserId,
+      );
+    } catch (e) {
+      emit(current.copyWith(errorMessage: 'Failed to delete message: $e'));
+    }
   }
 
   Future<void> _onInitChat(
@@ -70,6 +357,19 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
         emit(const DeliveryChatError('Not authenticated'));
         return;
       }
+
+      // Start conversations stream in background
+      await _conversationsSub?.cancel();
+      _conversationsSub = deliveryChatRepository
+          .getDeliveryConversations(riderId)
+          .listen(
+        (convs) {
+          add(_ConversationsUpdatedEvent(convs));
+        },
+        onError: (err) {
+          add(_ChatErrorEvent('Failed to stream conversations: $err'));
+        },
+      );
 
       final isSeller = event.isSellerChat;
       final recipientId = event.effectiveRecipientId;
@@ -104,8 +404,36 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
       await deliveryChatService.markMessagesRead(conversationId, riderId);
       await _subscribeToStreams(conversationId);
 
+      final activeConv = ConversationModel(
+        id: conversationId,
+        orderId: event.orderId,
+        buyerId: isSeller ? '' : recipientId,
+        buyerName: isSeller ? '' : (recipientName.isNotEmpty ? recipientName : 'Customer'),
+        sellerId: isSeller ? recipientId : (event.sellerId ?? ''),
+        sellerName: isSeller ? recipientName : (event.sellerName ?? ''),
+        sellerPhone: isSeller ? recipientPhone : event.sellerPhone,
+        conversationType: isSeller ? 'seller_delivery' : 'buyer_delivery',
+        participants: [riderId, recipientId].where((p) => p.isNotEmpty).toList(),
+        shopName: isSeller ? (event.sellerName ?? recipientName) : (event.orderTitle),
+        orderTitle: event.orderTitle,
+        orderTotal: event.orderTotal,
+        orderImageUrl: event.orderImageUrl,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        lastMessage: '',
+      );
+
+      final currentLoaded = state is DeliveryChatLoaded ? (state as DeliveryChatLoaded) : null;
+      final existingConvs = currentLoaded?.conversations ?? <ConversationModel>[];
+      final mergedList = [
+        activeConv,
+        ...existingConvs.where((c) => c.id != conversationId),
+      ];
+
       emit(DeliveryChatLoaded(
         conversationId: conversationId,
+        selectedConversationId: conversationId,
+        conversations: mergedList,
         orderId: event.orderId,
         customerId: isSeller ? '' : recipientId,
         customerName: isSeller ? '' : recipientName,
@@ -119,6 +447,7 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
         recipientPhone: recipientPhone,
         orderTitle: event.orderTitle,
         orderTotal: event.orderTotal,
+        orderImageUrl: event.orderImageUrl,
         currentUserId: riderId,
       ));
     } catch (e) {
@@ -132,8 +461,8 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
   ) async {
     final current = state;
     if (current is! DeliveryChatLoaded) return;
-
     if (event.text.trim().isEmpty) return;
+    if (current.conversationId.isEmpty) return;
 
     emit(current.copyWith(isSendingMessage: true, clearError: true));
 
@@ -166,6 +495,7 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
   ) async {
     final current = state;
     if (current is! DeliveryChatLoaded) return;
+    if (current.conversationId.isEmpty) return;
 
     emit(current.copyWith(isSendingMessage: true, clearError: true));
 
@@ -208,6 +538,7 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
   ) async {
     final current = state;
     if (current is! DeliveryChatLoaded) return;
+    if (current.conversationId.isEmpty) return;
 
     try {
       final source = event.fromCamera ? ImageSource.camera : ImageSource.gallery;
@@ -252,6 +583,7 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
   ) async {
     final current = state;
     if (current is! DeliveryChatLoaded) return;
+    if (current.conversationId.isEmpty) return;
 
     emit(current.copyWith(isUploadingAttachment: true, clearError: true));
 
@@ -289,6 +621,7 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
   ) async {
     final current = state;
     if (current is! DeliveryChatLoaded) return;
+    if (current.conversationId.isEmpty) return;
 
     try {
       await deliveryChatRepository.setTypingStatus(
@@ -305,6 +638,7 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
   ) async {
     final current = state;
     if (current is! DeliveryChatLoaded) return;
+    if (current.conversationId.isEmpty) return;
 
     try {
       await deliveryChatService.markMessagesRead(
@@ -367,6 +701,7 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
 
   @override
   Future<void> close() {
+    _conversationsSub?.cancel();
     _messagesSub?.cancel();
     _typingSub?.cancel();
     return super.close();
@@ -375,4 +710,3 @@ class DeliveryChatBloc extends Bloc<DeliveryChatEvent, DeliveryChatState> {
 
 /// Standardized Feature-Architecture Alias for ChatBloc
 typedef ChatBloc = DeliveryChatBloc;
-

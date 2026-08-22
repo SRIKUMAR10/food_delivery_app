@@ -84,7 +84,9 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
             } else if (state.status == SellerForgotPasswordStatus.failure) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.errorMessage ?? 'An error occurred'),
+                  content: Text(state.errorMessage.isNotEmpty
+                      ? state.errorMessage
+                      : 'An error occurred'),
                   backgroundColor: const Color(0xFFEF4444),
                 ),
               );

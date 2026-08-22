@@ -14,4 +14,21 @@ abstract interface class IUserProfileRepository {
   Stream<UserProfile?> watchProfile(String userId);
   Stream<String?> watchProfileImageUrl(String userId);
   Stream<List<Map<String, dynamic>>> watchTransactions(String userId);
+
+  /// Returns a stream of the user's wallet balance.
+  Stream<double?> watchWalletBalance(String userId);
+
+  /// Fetches the user's current wallet balance.
+  Future<double?> loadWalletBalance(String userId);
+
+  /// Adds a wallet transaction and updates the balance atomically.
+  Future<void> addWalletTransaction({
+    required String userId,
+    required double amount,
+    required String title,
+    required bool isCredit,
+    String? paymentId,
+    String? orderId,
+    String status = 'success',
+  });
 }

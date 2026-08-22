@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_bloc.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_event.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_ui.dart';
@@ -42,6 +43,11 @@ void main() {
       WidgetTester tester,
     ) async {
       final bloc = DeliveryOrderDetailsPageBloc(repository: mockRepo);
+      bloc.add(FetchOrderDetailsEvent('ORD12345'));
+
+      tester.view.physicalSize = const Size(1000, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(
         MaterialApp(
@@ -57,18 +63,24 @@ void main() {
       // Step 1: Initial Assigned state -> START GOING TO RESTAURANT button
       final startGoingBtn = find.text('START GOING TO RESTAURANT');
       expect(startGoingBtn, findsOneWidget);
+      await tester.ensureVisible(startGoingBtn);
+      await tester.pumpAndSettle();
       await tester.tap(startGoingBtn);
       await tester.pumpAndSettle();
 
       // Step 2: Going to Restaurant state -> I HAVE ARRIVED AT RESTAURANT
       final arrivedBtn = find.text('I HAVE ARRIVED AT RESTAURANT');
       expect(arrivedBtn, findsOneWidget);
+      await tester.ensureVisible(arrivedBtn);
+      await tester.pumpAndSettle();
       await tester.tap(arrivedBtn);
       await tester.pumpAndSettle();
 
       // Step 3: Arrived -> CONFIRM PICKUP & START DELIVERY
       final confirmBtn = find.text('CONFIRM PICKUP & START DELIVERY');
       expect(confirmBtn, findsOneWidget);
+      await tester.ensureVisible(confirmBtn);
+      await tester.pumpAndSettle();
       await tester.tap(confirmBtn);
       await tester.pumpAndSettle();
 

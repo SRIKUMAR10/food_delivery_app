@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -5,15 +6,15 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/seller_payou
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_payout_history_page/seller_payout_history_page__event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_payout_history_page/seller_payout_history_page__state.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_wallet_page/seller_wallet_page__state.dart';
-import 'package:food_delivery_app/repositories/seller_payout_history_repository.dart';
+import 'package:food_delivery_app/repositories/seller_wallet_repository.dart';
 
-class MockSellerPayoutHistoryRepository extends Mock
-    implements SellerPayoutHistoryRepository {}
+class MockSellerWalletRepository extends Mock implements SellerWalletRepository {}
 
 void main() {
   group('SellerPayoutHistoryBloc Tests', () {
-    late SellerPayoutHistoryRepository repository;
+    late SellerWalletRepository repository;
     late SellerPayoutHistoryBloc bloc;
+    late StreamController<List<PayoutItem>> payoutStreamController;
 
     final mockPayouts = [
       PayoutItem(
@@ -25,12 +26,26 @@ void main() {
       ),
     ];
 
+    final updatedPayouts = [
+      PayoutItem(
+        id: 'payout_3',
+        title: 'Payout #0003',
+        amount: 5000.0,
+        status: 'Paid',
+        date: DateTime(2024, 5, 3),
+      ),
+    ];
+
     setUp(() {
-      repository = MockSellerPayoutHistoryRepository();
+      repository = MockSellerWalletRepository();
+      payoutStreamController = StreamController<List<PayoutItem>>();
+      when(() => repository.streamPayoutHistory())
+          .thenAnswer((_) => payoutStreamController.stream);
       bloc = SellerPayoutHistoryBloc(repository: repository);
     });
 
     tearDown(() {
+      payoutStreamController.close();
       bloc.close();
     });
 
@@ -143,6 +158,39 @@ void main() {
           ],
           isPaginatedLoading: false,
           hasReachedMax: true,
+        ),
+      ],
+    );
+
+    blocTest<SellerPayoutHistoryBloc, SellerPayoutHistoryState>(
+      'refreshes with fresh data when the real-time payout stream emits',
+      build: () {
+        var callCount = 0;
+        when(
+          () => repository.getPayoutHistory(offset: 0, limit: 10),
+        ).thenAnswer((_) async {
+          callCount++;
+          return callCount == 1 ? mockPayouts : updatedPayouts;
+        });
+        return bloc;
+      },
+      act: (bloc) async {
+        bloc.add(const LoadPayoutHistory());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        payoutStreamController.add(updatedPayouts);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      },
+      expect: () => [
+        const SellerPayoutHistoryLoading(),
+        SellerPayoutHistoryLoaded(
+          payouts: mockPayouts,
+          hasReachedMax: true,
+          isPaginatedLoading: false,
+        ),
+        SellerPayoutHistoryLoaded(
+          payouts: updatedPayouts,
+          hasReachedMax: true,
+          isPaginatedLoading: false,
         ),
       ],
     );

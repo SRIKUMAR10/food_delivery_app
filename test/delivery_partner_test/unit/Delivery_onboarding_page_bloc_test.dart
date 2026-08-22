@@ -91,5 +91,24 @@ void main() {
         const DeliveryOnboardingPageState(selectedLanguage: 'Tamil'),
       ],
     );
+
+    blocTest<DeliveryOnboardingPageBloc, DeliveryOnboardingPageState>(
+      'emits isStarted: true on DeliveryOnboardingGetStartedClickedEvent',
+      build: () => bloc,
+      act: (bloc) =>
+          bloc.add(const DeliveryOnboardingGetStartedClickedEvent()),
+      expect: () => [
+        const DeliveryOnboardingPageState(isStarted: true),
+      ],
+    );
+
+    blocTest<DeliveryOnboardingPageBloc, DeliveryOnboardingPageState>(
+      'emits isNavigatingToLogin: true on DeliveryOnboardingLoginClickedEvent',
+      build: () => bloc,
+      act: (bloc) => bloc.add(const DeliveryOnboardingLoginClickedEvent()),
+      expect: () => [
+        const DeliveryOnboardingPageState(isNavigatingToLogin: true),
+      ],
+    );
   });
 }

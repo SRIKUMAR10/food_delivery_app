@@ -43,6 +43,9 @@ class SubmitVerificationForm extends SellerProfilePageEvent {
   final String fssaiLicense;
   final String bankAccountNumber;
   final String ifscCode;
+  final double? latitude;
+  final double? longitude;
+  final String? googleMapsUrl;
 
   const SubmitVerificationForm({
     required this.storeName,
@@ -54,6 +57,9 @@ class SubmitVerificationForm extends SellerProfilePageEvent {
     required this.fssaiLicense,
     required this.bankAccountNumber,
     required this.ifscCode,
+    this.latitude,
+    this.longitude,
+    this.googleMapsUrl,
   });
 
   @override
@@ -67,6 +73,9 @@ class SubmitVerificationForm extends SellerProfilePageEvent {
         fssaiLicense,
         bankAccountNumber,
         ifscCode,
+        latitude,
+        longitude,
+        googleMapsUrl,
       ];
 }
 

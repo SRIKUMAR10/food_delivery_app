@@ -39,7 +39,7 @@ void main() {
     testWidgets('renders English strings by default', (tester) async {
       desktop(tester);
       await tester.pumpWidget(page());
-      expect(find.text('My Wallet'), findsOneWidget);
+      expect(find.text('My Wallet'), findsWidgets);
       expect(find.text('Transaction History'), findsOneWidget);
       expect(find.text('Payment Methods'), findsOneWidget);
     });
@@ -55,7 +55,7 @@ void main() {
         ),
       );
       await tester.pumpWidget(page());
-      expect(find.text('என் வாலட்'), findsOneWidget);
+      expect(find.text('என் வாலட்'), findsWidgets);
       expect(find.text('பரிவர்த்தனை வரலாறு'), findsOneWidget);
       expect(find.text('கட்டண முறைகள்'), findsOneWidget);
     });

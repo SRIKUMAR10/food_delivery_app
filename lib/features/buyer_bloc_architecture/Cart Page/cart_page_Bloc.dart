@@ -28,12 +28,10 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   final IUserProfileRepository _userProfileRepository;
   final RazorpayApiService _razorpayApiService;
 
-  final FirebaseFirestore? _firestore;
-
   StreamSubscription<String?>? _authSubscription;
   StreamSubscription<List<AppliedCoupon>>? _couponSubscription;
   StreamSubscription<UserProfile?>? _profileSubscription;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _walletSubscription;
+  StreamSubscription<double?>? _walletSubscription;
 
   CartBloc({
     required ICartRepository cartRepository,
@@ -51,7 +49,6 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         _sellerStatusService = sellerStatusService ?? SellerStatusService(),
         _userProfileRepository = userProfileRepository ?? _DefaultUserProfileRepository(),
         _razorpayApiService = razorpayApiService ?? RazorpayApiService(),
-        _firestore = firestore,
         super(const CartLoading()) {
     
     _authSubscription = _authService.authStateChanges.listen((userId) {
@@ -130,14 +127,10 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   void _subscribeToWallet(String userId) {
     _walletSubscription?.cancel();
     try {
-      final db = _firestore ?? FirebaseFirestore.instance;
-      _walletSubscription = db
-          .collection('buyer_user')
-          .doc(userId)
-          .snapshots()
-          .listen((snap) {
-        if (snap.exists && !isClosed) {
-          final balance = (snap.data()?['wallet'] as num?)?.toDouble() ?? 0.0;
+      _walletSubscription = _userProfileRepository
+          .watchWalletBalance(userId)
+          .listen((balance) {
+        if (!isClosed && balance != null) {
           add(_WalletBalanceUpdated(balance));
         }
       }, onError: (_) {});
@@ -997,6 +990,34 @@ class _DefaultUserProfileRepository implements IUserProfileRepository {
   @override
   Stream<List<Map<String, dynamic>>> watchTransactions(String userId) =>
       _getDelegate().watchTransactions(userId);
+
+  @override
+  Stream<double?> watchWalletBalance(String userId) =>
+      _getDelegate().watchWalletBalance(userId);
+
+  @override
+  Future<double?> loadWalletBalance(String userId) =>
+      _getDelegate().loadWalletBalance(userId);
+
+  @override
+  Future<void> addWalletTransaction({
+    required String userId,
+    required double amount,
+    required String title,
+    required bool isCredit,
+    String? paymentId,
+    String? orderId,
+    String status = 'success',
+  }) =>
+      _getDelegate().addWalletTransaction(
+        userId: userId,
+        amount: amount,
+        title: title,
+        isCredit: isCredit,
+        paymentId: paymentId,
+        orderId: orderId,
+        status: status,
+      );
 }
 
 class _NoopUserProfileRepository implements IUserProfileRepository {
@@ -1029,5 +1050,22 @@ class _NoopUserProfileRepository implements IUserProfileRepository {
   @override
   Stream<List<Map<String, dynamic>>> watchTransactions(String userId) =>
       const Stream.empty();
+
+  @override
+  Stream<double?> watchWalletBalance(String userId) => const Stream.empty();
+
+  @override
+  Future<double?> loadWalletBalance(String userId) async => null;
+
+  @override
+  Future<void> addWalletTransaction({
+    required String userId,
+    required double amount,
+    required String title,
+    required bool isCredit,
+    String? paymentId,
+    String? orderId,
+    String status = 'success',
+  }) async {}
 }
 

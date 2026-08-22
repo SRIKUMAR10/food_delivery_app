@@ -34,6 +34,9 @@ InputDecoration authFieldDecoration({
   EdgeInsetsGeometry? contentPadding,
   bool showErrorStyles = false,
   String? counterText,
+  Color? fillColor,
+  Color? enabledBorderColor,
+  Color? focusedBorderColor,
 }) {
   return InputDecoration(
     hintText: hintText,
@@ -44,7 +47,7 @@ InputDecoration authFieldDecoration({
     prefix: prefix,
     suffixIcon: suffixIcon,
     filled: true,
-    fillColor: const Color(0xFFEEF0F5),
+    fillColor: fillColor ?? const Color(0xFFEEF0F5),
     contentPadding: contentPadding ??
         const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     counterText: counterText,
@@ -53,12 +56,23 @@ InputDecoration authFieldDecoration({
       borderRadius: BorderRadius.circular(borderRadius),
       borderSide: BorderSide.none,
     ),
-    focusedBorder: showErrorStyles
+    enabledBorder: enabledBorderColor != null
         ? OutlineInputBorder(
             borderRadius: BorderRadius.circular(borderRadius),
-            borderSide: const BorderSide(color: Color(0xFFE52121), width: 1.5),
+            borderSide: BorderSide(color: enabledBorderColor),
           )
         : null,
+    focusedBorder: focusedBorderColor != null
+        ? OutlineInputBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+            borderSide: BorderSide(color: focusedBorderColor, width: 1.5),
+          )
+        : showErrorStyles
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: const BorderSide(color: Color(0xFFE52121), width: 1.5),
+              )
+            : null,
     errorBorder: showErrorStyles
         ? OutlineInputBorder(
             borderRadius: BorderRadius.circular(borderRadius),
@@ -66,6 +80,43 @@ InputDecoration authFieldDecoration({
           )
         : null,
   );
+}
+
+// ─── Shared validation helpers ──────────────────────────────────────────────
+
+/// Validates a full name: required and at least 2 characters.
+String? validateRequiredName(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return 'Full name is required';
+  }
+  if (value.trim().length < 2) {
+    return 'Name must be at least 2 characters';
+  }
+  return null;
+}
+
+/// Validates an email address: required and well-formed.
+String? validateEmailAddress(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return 'Email address is required';
+  }
+  final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  if (!emailRegex.hasMatch(value.trim())) {
+    return 'Please enter a valid email address';
+  }
+  return null;
+}
+
+/// Validates a phone number: required and at least 10 digits.
+String? validatePhoneNumber(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return 'Phone number is required';
+  }
+  final digits = value.trim().replaceAll(RegExp(r'\D'), '');
+  if (digits.length < 10) {
+    return 'Phone number must be at least 10 digits';
+  }
+  return null;
 }
 
 class AuthPrimaryButton extends StatelessWidget {

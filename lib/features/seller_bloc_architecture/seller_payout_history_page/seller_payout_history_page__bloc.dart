@@ -1,13 +1,19 @@
+// Real-Time BLoC Stream Binding Standardized
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../repositories/seller_payout_history_repository.dart';
+import '../../../repositories/seller_wallet_repository.dart';
+import '../seller_wallet_page/seller_wallet_page__state.dart';
 import 'seller_payout_history_page__event.dart';
 import 'seller_payout_history_page__state.dart';
 
-class SellerPayoutHistoryBloc extends Bloc<SellerPayoutHistoryEvent, SellerPayoutHistoryState> {
-  final SellerPayoutHistoryRepository repository;
+class SellerPayoutHistoryBloc
+    extends Bloc<SellerPayoutHistoryEvent, SellerPayoutHistoryState> {
+  final SellerWalletRepository repository;
   static const int _pageSize = 10;
+  StreamSubscription<List<PayoutItem>>? _payoutsSubscription;
 
-  SellerPayoutHistoryBloc({required this.repository}) : super(const SellerPayoutHistoryInitial()) {
+  SellerPayoutHistoryBloc({required this.repository})
+      : super(const SellerPayoutHistoryInitial()) {
     on<LoadPayoutHistory>(_onLoadPayoutHistory);
     on<RefreshPayoutHistory>(_onRefreshPayoutHistory);
     on<LoadMorePayoutHistory>(_onLoadMorePayoutHistory);
@@ -19,15 +25,30 @@ class SellerPayoutHistoryBloc extends Bloc<SellerPayoutHistoryEvent, SellerPayou
   ) async {
     emit(const SellerPayoutHistoryLoading());
     try {
+      await _payoutsSubscription?.cancel();
+
       final payouts = await repository.getPayoutHistory(offset: 0, limit: _pageSize);
       emit(SellerPayoutHistoryLoaded(
         payouts: payouts,
         hasReachedMax: payouts.length < _pageSize,
         isPaginatedLoading: false,
       ));
+
+      _payoutsSubscription = repository.streamPayoutHistory().listen((newPayouts) {
+        final currentState = state;
+        if (currentState is SellerPayoutHistoryLoaded && newPayouts.isNotEmpty) {
+          add(RefreshPayoutHistory());
+        }
+      });
     } catch (e) {
       emit(SellerPayoutHistoryError(e.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _payoutsSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onRefreshPayoutHistory(

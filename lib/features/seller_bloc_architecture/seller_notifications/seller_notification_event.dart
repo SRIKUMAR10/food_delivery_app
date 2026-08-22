@@ -114,3 +114,25 @@ class TriggerSellerInAppToast extends SellerNotificationEvent {
 class DismissSellerInAppToast extends SellerNotificationEvent {
   const DismissSellerInAppToast();
 }
+
+class ConfigureNotificationAudioSettings extends SellerNotificationEvent {
+  final String orderAlertRingtone;
+  final double soundVolume;
+  final bool soundEnabled;
+  final bool soundLoopUntilAccepted;
+
+  const ConfigureNotificationAudioSettings({
+    this.orderAlertRingtone = 'Bell Chime',
+    this.soundVolume = 0.8,
+    this.soundEnabled = true,
+    this.soundLoopUntilAccepted = false,
+  });
+
+  @override
+  List<Object?> get props => [
+        orderAlertRingtone,
+        soundVolume,
+        soundEnabled,
+        soundLoopUntilAccepted,
+      ];
+}

@@ -102,6 +102,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
+      await tester.ensureVisible(
+        find.byKey(const Key('dp_earnings_media_upload_button')),
+      );
+      await tester.pump();
       await tester.tap(
         find.byKey(const Key('dp_earnings_media_upload_button')),
       );
@@ -112,7 +116,7 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 500));
       expect(find.text('Upload complete'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

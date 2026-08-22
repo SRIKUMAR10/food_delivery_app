@@ -55,7 +55,7 @@ void main() {
       'sanitizes exception messages so internals are not leaked',
       build: () {
         when(
-          () => mockRepository.fetchOrderHistory(),
+          () => mockRepository.watchOrderHistory(),
         ).thenThrow(Exception('Internal server token mismatch'));
         return DeliveryOrderHistoryPageBloc(
           repository: mockRepository,
@@ -73,7 +73,7 @@ void main() {
         ),
       ],
       verify: (_) {
-        verify(() => mockRepository.fetchOrderHistory()).called(1);
+        verify(() => mockRepository.watchOrderHistory()).called(1);
       },
     );
 

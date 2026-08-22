@@ -17,6 +17,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(const DeliveryOnboardingInitEvent());
     registerFallbackValue(const DeliveryOnboardingGetStartedClickedEvent());
+    registerFallbackValue(const DeliveryOnboardingLoginClickedEvent());
   });
 
   setUp(() {
@@ -104,6 +105,28 @@ void main() {
 
       verify(
         () => mockBloc.add(const DeliveryOnboardingGetStartedClickedEvent()),
+      ).called(1);
+    });
+
+    testWidgets('triggers LoginClickedEvent on Login link tap', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(buildTestableWidget());
+      await tester.pump(const Duration(milliseconds: 1000));
+
+      final loginFinder = find.textContaining('Login', findRichText: true);
+      expect(loginFinder, findsWidgets);
+      await tester.ensureVisible(loginFinder.first);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.tap(loginFinder.first, warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 200));
+
+      verify(
+        () => mockBloc.add(const DeliveryOnboardingLoginClickedEvent()),
       ).called(1);
     });
   });

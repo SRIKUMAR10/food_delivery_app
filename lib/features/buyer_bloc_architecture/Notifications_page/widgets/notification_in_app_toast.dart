@@ -22,8 +22,9 @@ class NotificationInAppToast extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = NotificationVisuals.colorFor(notification.category);
-    final icon = NotificationVisuals.iconFor(notification.category);
+    final category = notification.effectiveCategory;
+    final color = NotificationVisuals.colorFor(category);
+    final icon = NotificationVisuals.iconFor(category);
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),

@@ -85,7 +85,7 @@ void main() {
         ),
         DeliveryNavigationBarState(
           status: DeliveryNavigationBarStatus.loaded,
-          selectedIndex: 0,
+          selectedIndex: 4,
           navItems: DeliveryNavigationBarRepository.defaultNavItems,
           localeCode: 'ta',
           partnerName: 'Ravi Kumar',

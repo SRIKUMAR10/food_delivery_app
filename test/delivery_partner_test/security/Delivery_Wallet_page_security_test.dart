@@ -35,8 +35,11 @@ void main() {
       );
       await service.fetchWalletData();
       final result = await service.withdraw(100);
-      expect(result['success'], isTrue);
-      expect(result.toString(), isNot(contains('authorization')));
+      expect(result['success'], isFalse);
+      expect(
+        result.toString().toLowerCase(),
+        isNot(contains('authorization')),
+      );
       expect(
         result.toString().contains(
               RegExp(r'(password|passwd|secret)', caseSensitive: false),

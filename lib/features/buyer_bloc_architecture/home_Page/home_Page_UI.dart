@@ -27,8 +27,12 @@ import '../../../repositories/category_repository.dart';
 import 'home_Page_Bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
 import '../user_profile_image/user_profile_image.dart';
+import '../user_profile_image/pages/google_address_search_dialog.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
 import '../Notifications_page/widgets/notification_bell_button.dart';
+import '../../../core/widgets/empty_state_view.dart';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 // ─── HomePage (entry point) ────────────────────────────────────────────────────
@@ -686,12 +690,9 @@ class _ProductGrid extends StatelessWidget {
     // ── Error ──
     if (state is HomePageError) {
       return SliverFillRemaining(
-        child: Center(
-          child: Text(
-            (state as HomePageError).message,
-            style: TextStyle(fontSize: 16, color: Colors.red),
-            textAlign: TextAlign.center,
-          ),
+        child: EmptyStateView(
+          icon: Icons.error_outline_rounded,
+          title: (state as HomePageError).message,
         ),
       );
     }
@@ -699,11 +700,9 @@ class _ProductGrid extends StatelessWidget {
     // ── Category empty ──
     if (state is HomePageEmpty) {
       return SliverFillRemaining(
-        child: Center(
-          child: Text(
-            'No products available in ${(state as HomePageEmpty).categoryName}',
-            style: TextStyle(fontSize: 16),
-          ),
+        child: EmptyStateView(
+          icon: Icons.inventory_2_outlined,
+          title: 'No products available in ${(state as HomePageEmpty).categoryName}',
         ),
       );
     }
@@ -711,11 +710,9 @@ class _ProductGrid extends StatelessWidget {
     // ── Search returned no results ──
     if (state is HomePageSearchEmpty) {
       return SliverFillRemaining(
-        child: Center(
-          child: Text(
-            'No products match "${(state as HomePageSearchEmpty).query}"',
-            style: TextStyle(fontSize: 16),
-          ),
+        child: EmptyStateView(
+          icon: Icons.search_off_rounded,
+          title: 'No products match "${(state as HomePageSearchEmpty).query}"',
         ),
       );
     }
@@ -1268,8 +1265,43 @@ class _LocationHeader extends StatelessWidget {
     this.isDesktop = false,
   });
 
+  Future<void> _openAddressPicker(BuildContext context, String currentAddr) async {
+    final bloc = context.read<HomePageBloc>();
+    final initialAddr = (currentAddr == 'Fetching location...' ||
+            currentAddr == 'Fetching live location...' ||
+            currentAddr == 'Select delivery address')
+        ? ''
+        : currentAddr;
+
+    await GoogleAddressSearchDialog.show(
+      context: context,
+      addressType: 'Delivery Address',
+      currentAddress: initialAddr,
+      onAddressSelected: (selectedAddress) async {
+        final cleanAddress = selectedAddress.trim();
+        if (cleanAddress.isNotEmpty) {
+          bloc.add(BuyerLocationUpdated(0.0, 0.0, cleanAddress));
+          final uid = FirebaseAuth.instance.currentUser?.uid;
+          if (uid != null) {
+            try {
+              await FirebaseFirestore.instance.collection('buyer_user').doc(uid).set({
+                'address': cleanAddress,
+                'deliveryAddress': cleanAddress,
+                'updatedAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+            } catch (e) {
+              debugPrint('Error saving address to Firestore: $e');
+            }
+          }
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool isFetching = address == 'Fetching location...' || address == 'Fetching live location...';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -1292,57 +1324,72 @@ class _LocationHeader extends StatelessWidget {
               color: Color(0xFFFFF0F1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.location_on_rounded,
-              color: BuyerAppColors.primary,
-              size: 20,
-            ),
+            child: isFetching
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: BuyerAppColors.primary,
+                    ),
+                  )
+                : const Icon(
+                    Icons.location_on_rounded,
+                    color: BuyerAppColors.primary,
+                    size: 20,
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'DELIVER TO',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey,
-                    letterSpacing: 0.5,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _openAddressPicker(context, address),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'DELIVER TO',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        address.isNotEmpty ? address : 'No. 12, Main Street, Central Park, City',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1C1C1C),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          isFetching
+                              ? 'Fetching live location...'
+                              : (address.isNotEmpty
+                                  ? address
+                                  : 'Select delivery address'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: isFetching ? Colors.grey : const Color(0xFF1C1C1C),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: BuyerAppColors.primary,
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: BuyerAppColors.primary,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 8),
           InkWell(
-            onTap: () {
-              context.read<HomePageBloc>().add(const FetchUserLocation());
-            },
+            onTap: () => _openAddressPicker(context, address),
             borderRadius: BorderRadius.circular(20),
             child: Container(
               constraints: const BoxConstraints(minWidth: 64, minHeight: 38),

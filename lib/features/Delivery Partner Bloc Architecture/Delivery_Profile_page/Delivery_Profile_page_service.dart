@@ -49,18 +49,24 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
 
   @override
   Stream<Map<String, dynamic>> watchProfileData() {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) {
-      return const Stream.empty();
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) {
+        return Stream<Map<String, dynamic>>.value(<String, dynamic>{});
+      }
+      return _firestore
+          .collection('delivery_partners')
+          .doc(uid)
+          .snapshots()
+          .map<Map<String, dynamic>>((doc) {
+        if (!doc.exists) {
+          return <String, dynamic>{};
+        }
+        return _mapProfileData(uid, doc.data() ?? {});
+      }).handleError((_) => <String, dynamic>{});
+    } catch (_) {
+      return Stream<Map<String, dynamic>>.value(<String, dynamic>{});
     }
-    return _firestore
-        .collection('delivery_partners')
-        .doc(uid)
-        .snapshots()
-        .map((doc) {
-      if (!doc.exists) return const <String, dynamic>{};
-      return _mapProfileData(uid, doc.data() ?? {});
-    });
   }
 
   Map<String, dynamic> _mapProfileData(String uid, Map<String, dynamic> data) {
@@ -89,6 +95,9 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
       'email': data['email'] ?? '',
       'photoUrl': data['photoUrl'] ?? '',
       'address': data['address'] ?? '',
+      'latitude': (data['latitude'] as num?)?.toDouble(),
+      'longitude': (data['longitude'] as num?)?.toDouble(),
+      'googleMapsUrl': data['googleMapsUrl'] as String?,
       'dob': data['dob'] ?? '',
       'gender': data['gender'] ?? '',
       'vehicleType': data['vehicleType'] ?? '',

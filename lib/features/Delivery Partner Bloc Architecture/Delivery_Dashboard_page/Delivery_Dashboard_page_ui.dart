@@ -16,6 +16,18 @@ import '../../../core/widgets/delivery_chip.dart';
 import '../../../core/widgets/delivery_floating_online_pill.dart';
 import 'delivery_ratings_reviews_view.dart';
 import '../Delivery_Notifications_page/delivery_notification_ui.dart';
+import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_bloc.dart';
+import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_event.dart';
+import '../Delivery_Orders_page/Delivery_Orders_page_ui.dart';
+import '../Delivery_Earnings Dashboard_page/Delivery_Earnings Dashboard_page_ui.dart';
+import '../Delivery_Wallet_page/Delivery_Wallet_page_ui.dart';
+import '../Delivery_Incentives Dashboard_page/Delivery_Incentives Dashboard_page_ui.dart';
+import '../Delivery_Profile_page/Delivery_Profile_page_ui.dart';
+import '../Delivery_Order_Details_page/Delivery_Order_Details_page_ui.dart';
+import '../Delivery_Order History_page/Delivery_Order History_page_ui.dart';
+import '../Delivery_Navigation Screen_page/Delivery_Navigation Screen_page_ui.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../../core/widgets/app_google_map_view.dart';
 
 class DeliveryDashboardStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -580,42 +592,52 @@ class _DashboardHeader extends StatelessWidget {
               onTap: () {},
             ),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-              decoration: BoxDecoration(
-                color: DeliveryAppColors.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: DeliveryAppColors.primaryDark.withValues(alpha: 0.3),
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                _handleQuickActionNavigation(
+                  context,
+                  navItemId: 'wallet',
+                  fallbackWidget: const DeliveryWalletPage(),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                decoration: BoxDecoration(
+                  color: DeliveryAppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: DeliveryAppColors.primaryDark.withValues(alpha: 0.3),
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.account_balance_wallet_outlined,
-                    color: DeliveryAppColors.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        DeliveryDashboardStrings.of('walletBalance', lang),
-                        style: DeliveryAppTypography.caption.copyWith(
-                          color: DeliveryAppColors.textMuted,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: DeliveryAppColors.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          DeliveryDashboardStrings.of('walletBalance', lang),
+                          style: DeliveryAppTypography.caption.copyWith(
+                            color: DeliveryAppColors.textMuted,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '₹${state.walletBalance.toStringAsFixed(2)}',
-                        style: DeliveryAppTypography.titleMedium.copyWith(
-                          color: DeliveryAppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
+                        Text(
+                          '₹${state.walletBalance.toStringAsFixed(2)}',
+                          style: DeliveryAppTypography.titleMedium.copyWith(
+                            color: DeliveryAppColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -1485,6 +1507,54 @@ class _LiveMapCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final lang = state.localeCode;
 
+    // Real-Time Seller Restaurant Markers from Firestore
+    final Set<Marker> realSellerMarkers = {};
+    for (final seller in state.nearbySellers) {
+      final lat = (seller['latitude'] as num?)?.toDouble() ?? 0.0;
+      final lng = (seller['longitude'] as num?)?.toDouble() ?? 0.0;
+      final name = (seller['name'] ?? 'Restaurant').toString();
+      final phone = (seller['phone'] ?? '').toString();
+      if (lat != 0.0 && lng != 0.0) {
+        realSellerMarkers.add(
+          Marker(
+            markerId: MarkerId('seller_${seller['id'] ?? name}'),
+            position: LatLng(lat, lng),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+            infoWindow: InfoWindow(
+              title: name,
+              snippet: phone.isNotEmpty ? '📞 $phone · Active Store' : 'Active Restaurant Partner',
+            ),
+          ),
+        );
+      }
+    }
+
+    final bool hasActiveOrder = state.activeOrderStoreLat != 0.0 && state.activeOrderStoreLng != 0.0;
+    final LatLng driverLoc = (state.partnerLatitude != 0.0 && state.partnerLongitude != 0.0)
+        ? LatLng(state.partnerLatitude, state.partnerLongitude)
+        : const LatLng(11.4485, 77.6835);
+
+    final LatLng? storeLoc = hasActiveOrder
+        ? LatLng(state.activeOrderStoreLat, state.activeOrderStoreLng)
+        : (state.nearbySellers.isNotEmpty
+            ? LatLng(
+                (state.nearbySellers.first['latitude'] as num).toDouble(),
+                (state.nearbySellers.first['longitude'] as num).toDouble(),
+              )
+            : null);
+
+    final String storeName = hasActiveOrder
+        ? (state.activeOrderStoreName.isNotEmpty ? state.activeOrderStoreName : 'Pickup Restaurant')
+        : (state.nearbySellers.isNotEmpty ? (state.nearbySellers.first['name'] ?? 'Restaurant Partner').toString() : '');
+
+    final LatLng? customerLoc = (state.activeOrderCustomerLat != 0.0 && state.activeOrderCustomerLng != 0.0)
+        ? LatLng(state.activeOrderCustomerLat, state.activeOrderCustomerLng)
+        : null;
+
+    final String customerName = state.activeOrderCustomerName.isNotEmpty
+        ? state.activeOrderCustomerName
+        : 'Customer Drop-off';
+
     return Container(
       key: const Key('dp_dashboard_map_card'),
       padding: const EdgeInsets.all(DeliveryAppSpacing.lg),
@@ -1511,7 +1581,7 @@ class _LiveMapCard extends StatelessWidget {
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: DeliveryAppColors.error,
                       shape: BoxShape.circle,
                     ),
@@ -1531,7 +1601,7 @@ class _LiveMapCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Container(
-            height: 180,
+            height: 380,
             decoration: BoxDecoration(
               color: const Color(0xFF071016),
               borderRadius: BorderRadius.circular(DeliveryAppSpacing.radiusLg),
@@ -1542,67 +1612,113 @@ class _LiveMapCard extends StatelessWidget {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: CustomPaint(painter: _MapGridPainter()),
-                  ),
-                  Center(
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: DeliveryAppColors.primary.withValues(
-                          alpha: 0.15,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.navigation,
-                        color: DeliveryAppColors.primary,
-                        size: 32,
-                      ),
+                    child: AppGoogleMapView(
+                      driverLocation: driverLoc,
+                      driverHeading: 45.0,
+                      vehicleType: 'two_wheeler',
+                      storeLocation: storeLoc,
+                      storeName: storeName,
+                      storeAddress: state.activeOrderStoreAddress,
+                      customerLocation: customerLoc,
+                      customerName: customerName,
+                      customerAddress: state.activeOrderCustomerAddress,
+                      additionalMarkers: realSellerMarkers,
+                      isPickedUp: state.activeOrderIsPickedUp,
+                      isDarkMode: true,
+                      showControls: true,
+                      showProgressCard: hasActiveOrder,
+                      distanceKm: state.activeOrderDistanceKm > 0 ? state.activeOrderDistanceKm : null,
+                      etaText: hasActiveOrder ? '~12-15 mins' : null,
+                      initialZoom: 14.5,
+                      driverName: state.partnerName.isNotEmpty ? state.partnerName : 'Delivery Partner',
+                      driverVehicleNumber: state.vehicleNumber,
                     ),
                   ),
                   Positioned(
-                    left: 24,
-                    top: 28,
-                    child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: DeliveryAppColors.warning,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 28,
-                    bottom: 32,
-                    child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: DeliveryAppColors.info,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 12,
-                    left: 12,
+                    bottom: 14,
+                    left: 14,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                        horizontal: 12,
+                        vertical: 7,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
+                        color: Colors.black.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            blurRadius: 8,
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        DeliveryDashboardStrings.of('highDemandZone', lang),
-                        style: DeliveryAppTypography.caption.copyWith(
-                          color: Colors.white,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            hasActiveOrder ? Icons.directions_bike : Icons.storefront,
+                            color: hasActiveOrder ? const Color(0xFF10B981) : const Color(0xFFEA580C),
+                            size: 15,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            hasActiveOrder
+                                ? 'Active Trip: $storeName → $customerName'
+                                : (state.nearbySellers.isNotEmpty
+                                    ? '${state.nearbySellers.length} Live Restaurants in Operational Zone'
+                                    : DeliveryDashboardStrings.of('highDemandZone', lang)),
+                            style: DeliveryAppTypography.caption.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 14,
+                    left: 14,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const DeliveryNavigationScreenPageUi(),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: DeliveryAppColors.primary,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.navigation, color: Colors.black, size: 15),
+                              SizedBox(width: 6),
+                              Text(
+                                'OPEN NAVIGATION',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -2391,11 +2507,17 @@ class _RecentActivityCard extends StatelessWidget {
                 ),
               ),
               TextButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  _handleQuickActionNavigation(
+                    context,
+                    navItemId: 'history',
+                    fallbackWidget: const DeliveryOrderHistoryPage(),
+                  );
+                },
                 icon: const Icon(
-                  Icons.keyboard_arrow_down,
+                  Icons.arrow_forward,
                   color: DeliveryAppColors.primary,
-                  size: 18,
+                  size: 16,
                 ),
                 label: Text(
                   DeliveryDashboardStrings.of('viewAll', lang),
@@ -2701,78 +2823,108 @@ class _IncentivesGoalCard extends StatelessWidget {
       1.0,
     );
 
-    return DeliveryCard(
-      key: const Key('dp_dashboard_earn_banner'),
-      padding: const EdgeInsets.all(DeliveryAppSpacing.lg),
-      borderRadius: DeliveryAppSpacing.radiusXl,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  DeliveryDashboardStrings.of('incentivesTitle', lang),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: DeliveryAppTypography.titleLarge.copyWith(
-                    color: DeliveryAppColors.textPrimary,
-                    fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onTap: () {
+        _handleQuickActionNavigation(
+          context,
+          navItemId: 'incentives',
+          fallbackWidget: const DeliveryIncentivesDashboardPage(),
+        );
+      },
+      child: DeliveryCard(
+        key: const Key('dp_dashboard_earn_banner'),
+        padding: const EdgeInsets.all(DeliveryAppSpacing.lg),
+        borderRadius: DeliveryAppSpacing.radiusXl,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    DeliveryDashboardStrings.of('incentivesTitle', lang),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DeliveryAppTypography.titleLarge.copyWith(
+                      color: DeliveryAppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-              const Icon(
-                Icons.stars,
-                color: DeliveryAppColors.warning,
-                size: 20,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  '₹${state.incentiveEarned.toStringAsFixed(0)} ${DeliveryDashboardStrings.of('incentiveEarned', lang)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: DeliveryAppTypography.titleLarge.copyWith(
-                    color: DeliveryAppColors.primary,
-                    fontWeight: FontWeight.bold,
+                const Icon(
+                  Icons.stars,
+                  color: DeliveryAppColors.warning,
+                  size: 20,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    '₹${state.incentiveEarned.toStringAsFixed(0)} ${DeliveryDashboardStrings.of('incentiveEarned', lang)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DeliveryAppTypography.titleLarge.copyWith(
+                      color: DeliveryAppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-              Flexible(
-                child: Text(
-                  '${DeliveryDashboardStrings.of('incentiveTarget', lang)}: ₹${state.incentiveTarget.toStringAsFixed(0)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: DeliveryAppTypography.bodySmall.copyWith(
-                    color: DeliveryAppColors.textMuted,
+                Flexible(
+                  child: Text(
+                    '${DeliveryDashboardStrings.of('incentiveTarget', lang)}: ₹${state.incentiveTarget.toStringAsFixed(0)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: DeliveryAppTypography.bodySmall.copyWith(
+                      color: DeliveryAppColors.textMuted,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(DeliveryAppSpacing.radiusSm),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 10,
-              backgroundColor: Colors.white10,
-              valueColor: const AlwaysStoppedAnimation(
-                DeliveryAppColors.primary,
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(DeliveryAppSpacing.radiusSm),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 10,
+                backgroundColor: Colors.white10,
+                valueColor: const AlwaysStoppedAnimation(
+                  DeliveryAppColors.primary,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+
+void _handleQuickActionNavigation(
+  BuildContext context, {
+  required String navItemId,
+  required Widget fallbackWidget,
+}) {
+  try {
+    final navBloc = context.read<DeliveryNavigationBarPageBloc>();
+    final navIndex =
+        navBloc.state.navItems.indexWhere((item) => item.id == navItemId);
+    if (navIndex != -1) {
+      navBloc.add(DeliveryNavigationBarTabChangedEvent(navIndex));
+      return;
+    }
+  } catch (_) {
+    // If DeliveryNavigationBarPageBloc is not in ancestor context, fallback to direct push
+  }
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => fallbackWidget),
+  );
 }
 
 class _QuickActionsCard extends StatelessWidget {
@@ -2786,6 +2938,7 @@ class _QuickActionsCard extends StatelessWidget {
 
     final actions = [
       (
+        key: 'dp_quick_action_toggle_online',
         icon: state.isOnline ? Icons.power_settings_new : Icons.power,
         label: DeliveryDashboardStrings.of('goOnlineOfflineAction', lang),
         color: state.isOnline ? DeliveryAppColors.error : DeliveryAppColors.primary,
@@ -2796,6 +2949,7 @@ class _QuickActionsCard extends StatelessWidget {
         },
       ),
       (
+        key: 'dp_quick_action_available_orders',
         icon: Icons.list_alt_rounded,
         label: DeliveryDashboardStrings.of('availableOrdersAction', lang),
         color: DeliveryAppColors.info,
@@ -2803,9 +2957,15 @@ class _QuickActionsCard extends StatelessWidget {
           context.read<DeliveryDashboardPageBloc>().add(
             const DeliveryDashboardQuickActionExecutedEvent('available_orders'),
           );
+          _handleQuickActionNavigation(
+            context,
+            navItemId: 'orders',
+            fallbackWidget: const DeliveryOrdersPage(),
+          );
         },
       ),
       (
+        key: 'dp_quick_action_current_order',
         icon: Icons.delivery_dining_outlined,
         label: DeliveryDashboardStrings.of('currentOrderAction', lang),
         color: DeliveryAppColors.warning,
@@ -2813,9 +2973,30 @@ class _QuickActionsCard extends StatelessWidget {
           context.read<DeliveryDashboardPageBloc>().add(
             const DeliveryDashboardQuickActionExecutedEvent('current_order'),
           );
+          final activeOrderId = (state.currentOrderId != null &&
+                  state.currentOrderId!.isNotEmpty)
+              ? state.currentOrderId
+              : (state.recentActivities.isNotEmpty
+                  ? state.recentActivities.first.id
+                  : null);
+          if (activeOrderId != null && activeOrderId.isNotEmpty) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    DeliveryOrderDetailsPageUi(orderId: activeOrderId),
+              ),
+            );
+          } else {
+            _handleQuickActionNavigation(
+              context,
+              navItemId: 'orders',
+              fallbackWidget: const DeliveryOrdersPage(),
+            );
+          }
         },
       ),
       (
+        key: 'dp_quick_action_earnings',
         icon: Icons.account_balance_wallet_outlined,
         label: DeliveryDashboardStrings.of('earningsAction', lang),
         color: const Color(0xFF7C4DFF),
@@ -2823,9 +3004,15 @@ class _QuickActionsCard extends StatelessWidget {
           context.read<DeliveryDashboardPageBloc>().add(
             const DeliveryDashboardQuickActionExecutedEvent('earnings'),
           );
+          _handleQuickActionNavigation(
+            context,
+            navItemId: 'earnings',
+            fallbackWidget: const DeliveryEarningsDashboardPage(),
+          );
         },
       ),
       (
+        key: 'dp_quick_action_wallet',
         icon: Icons.account_balance,
         label: DeliveryDashboardStrings.of('walletAction', lang),
         color: const Color(0xFF00E676),
@@ -2833,9 +3020,15 @@ class _QuickActionsCard extends StatelessWidget {
           context.read<DeliveryDashboardPageBloc>().add(
             const DeliveryDashboardQuickActionExecutedEvent('wallet'),
           );
+          _handleQuickActionNavigation(
+            context,
+            navItemId: 'wallet',
+            fallbackWidget: const DeliveryWalletPage(),
+          );
         },
       ),
       (
+        key: 'dp_quick_action_incentives',
         icon: Icons.stars_rounded,
         label: DeliveryDashboardStrings.of('incentivesAction', lang),
         color: const Color(0xFFAB47BC),
@@ -2843,15 +3036,26 @@ class _QuickActionsCard extends StatelessWidget {
           context.read<DeliveryDashboardPageBloc>().add(
             const DeliveryDashboardQuickActionExecutedEvent('incentives'),
           );
+          _handleQuickActionNavigation(
+            context,
+            navItemId: 'incentives',
+            fallbackWidget: const DeliveryIncentivesDashboardPage(),
+          );
         },
       ),
       (
+        key: 'dp_quick_action_profile',
         icon: Icons.person_outline_rounded,
         label: DeliveryDashboardStrings.of('profileAction', lang),
         color: const Color(0xFF00E5FF),
         onTap: () {
           context.read<DeliveryDashboardPageBloc>().add(
             const DeliveryDashboardQuickActionExecutedEvent('profile'),
+          );
+          _handleQuickActionNavigation(
+            context,
+            navItemId: 'profile',
+            fallbackWidget: const DeliveryProfilePage(),
           );
         },
       ),
@@ -2883,6 +3087,7 @@ class _QuickActionsCard extends StatelessWidget {
                     SizedBox(
                       width: itemWidth,
                       child: _QuickActionButton(
+                        itemKey: Key(action.key),
                         icon: action.icon,
                         label: action.label,
                         color: action.color,
@@ -2900,12 +3105,14 @@ class _QuickActionsCard extends StatelessWidget {
 }
 
 class _QuickActionButton extends StatelessWidget {
+  final Key? itemKey;
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
 
   const _QuickActionButton({
+    this.itemKey,
     required this.icon,
     required this.label,
     required this.color,
@@ -2914,37 +3121,51 @@ class _QuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(DeliveryAppSpacing.radiusLg),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: itemKey,
+          onTap: onTap,
           borderRadius: BorderRadius.circular(DeliveryAppSpacing.radiusLg),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 22),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(DeliveryAppSpacing.radiusLg),
+              border: Border.all(color: color.withValues(alpha: 0.2)),
             ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: DeliveryAppTypography.bodySmall.copyWith(
-                color: DeliveryAppColors.textSecondary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 22),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    label,
+                    style: DeliveryAppTypography.bodySmall.copyWith(
+                      color: DeliveryAppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

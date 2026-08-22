@@ -15,6 +15,18 @@ class AudioNotificationService {
 
   static const String defaultRingtone = 'Bell Chime';
 
+  static double _globalVolume = 0.8;
+  static String _globalRingtone = defaultRingtone;
+
+  /// Updates global audio preferences so all callers automatically use the saved volume and ringtone.
+  static void setGlobalAudioConfig({double? volume, String? ringtone}) {
+    if (volume != null) _globalVolume = volume.clamp(0.0, 1.0);
+    if (ringtone != null && ringtone.isNotEmpty) _globalRingtone = ringtone;
+  }
+
+  static double get globalVolume => _globalVolume;
+  static String get globalRingtone => _globalRingtone;
+
   AudioPlayer? _audioPlayer;
   final Logger _logger = Logger();
   bool _isPreviewPlaying = false;
@@ -47,18 +59,23 @@ class AudioNotificationService {
   /// When [loop] is true the tone repeats until [stop] is called.
   Future<void> playRingtone({
     required String ringtoneName,
-    double volume = 1.0,
+    double? volume,
     bool loop = false,
   }) async {
+    final effectiveVolume = (volume ?? _globalVolume).clamp(0.0, 1.0);
+    _globalVolume = effectiveVolume;
+    _globalRingtone = ringtoneName;
+
     try {
       final player = _audioPlayer;
       if (player == null) return;
       await player.stop();
-      await player.setVolume(volume.clamp(0.0, 1.0));
+      await player.setVolume(effectiveVolume);
       await player.setReleaseMode(loop ? ReleaseMode.loop : ReleaseMode.stop);
       _isPreviewPlaying = true;
       await player.play(AssetSource(assetForRingtone(ringtoneName)));
-      _logger.i('Played ringtone: $ringtoneName at volume $volume');
+      await player.setVolume(effectiveVolume);
+      _logger.i('Played ringtone: $ringtoneName at volume $effectiveVolume (loop: $loop)');
     } catch (e) {
       _logger.e('Error playing ringtone $ringtoneName: $e');
       _isPreviewPlaying = false;
@@ -69,17 +86,31 @@ class AudioNotificationService {
   Future<void> stop() async {
     _isPreviewPlaying = false;
     try {
-      await _audioPlayer?.stop();
+      final player = _audioPlayer;
+      if (player != null) {
+        await player.stop();
+        await player.setReleaseMode(ReleaseMode.stop);
+      }
     } catch (e) {
       _logger.e('Error stopping audio: $e');
     }
   }
 
-  Future<void> playNewOrderSound() async {
+  Future<void> playNewOrderSound({
+    String? ringtoneName,
+    double? volume,
+    bool loop = false,
+  }) async {
+    final targetRingtone = ringtoneName ?? _globalRingtone;
+    final targetVolume = (volume ?? _globalVolume).clamp(0.0, 1.0);
     try {
       if (_audioPlayer == null) return;
-      await _audioPlayer!.play(AssetSource('audio/new_order.wav'));
-      _logger.i('Played new order sound');
+      await playRingtone(
+        ringtoneName: targetRingtone,
+        volume: targetVolume,
+        loop: loop,
+      );
+      _logger.i('Played new order sound: $targetRingtone (vol: $targetVolume, loop: $loop)');
     } catch (e) {
       _logger.e('Error playing new order sound: $e');
     }

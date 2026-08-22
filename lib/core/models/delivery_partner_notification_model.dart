@@ -233,6 +233,30 @@ class DeliveryPartnerNotificationModel extends Equatable {
     this.actionRoute,
   });
 
+  /// Intelligently resolves the effective category for routing and visual styling
+  DeliveryNotificationCategory get effectiveCategory {
+    if (category != DeliveryNotificationCategory.unknown && category != DeliveryNotificationCategory.all) {
+      return category;
+    }
+    if (type != DeliveryPartnerNotificationType.unknown) {
+      return type.category;
+    }
+    final text = '${title.toLowerCase()} ${body.toLowerCase()}';
+    if (text.contains('order') || text.contains('delivery') || text.contains('pickup') || text.contains('drop') || data.containsKey('orderId')) {
+      return DeliveryNotificationCategory.order;
+    }
+    if (text.contains('earning') || text.contains('payout') || text.contains('wallet') || text.contains('bonus') || text.contains('incentive') || text.contains('payment')) {
+      return DeliveryNotificationCategory.earnings;
+    }
+    if (text.contains('message') || text.contains('chat') || text.contains('customer') || text.contains('seller')) {
+      return DeliveryNotificationCategory.chat;
+    }
+    if (text.contains('account') || text.contains('profile') || text.contains('verify') || text.contains('kyc')) {
+      return DeliveryNotificationCategory.account;
+    }
+    return DeliveryNotificationCategory.order;
+  }
+
   DeliveryPartnerNotificationModel copyWith({
     String? id,
     String? recipientId,

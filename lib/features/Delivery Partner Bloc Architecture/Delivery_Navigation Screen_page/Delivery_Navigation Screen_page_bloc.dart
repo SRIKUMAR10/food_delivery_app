@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/repositories/delivery_active_order_session_repository.dart';
 import 'Delivery_Navigation Screen_page_event.dart';
 import 'Delivery_Navigation Screen_page_state.dart';
 import 'Delivery_Navigation Screen_page_repository.dart';
@@ -11,17 +12,22 @@ class DeliveryNavigationBloc
     extends Bloc<DeliveryNavigationEvent, DeliveryNavigationState> {
   final DeliveryNavigationRepositoryBase repository;
   final DeliveryNavigationServiceBase service;
+  final DeliveryActiveOrderSessionRepository? _sessionRepo;
 
   StreamSubscription<Map<String, dynamic>>? _locationSub;
   StreamSubscription<Map<String, dynamic>?>? _orderSub;
   StreamSubscription<Map<String, dynamic>?>? _profileSub;
+  StreamSubscription<List<Map<String, dynamic>>>? _sellersSub;
+  StreamSubscription<DeliverySessionState>? _sessionSub;
 
   String? _activeOrderId;
 
   DeliveryNavigationBloc({
     required this.repository,
     required this.service,
-  }) : super(const DeliveryNavigationState()) {
+    DeliveryActiveOrderSessionRepository? sessionRepository,
+  })  : _sessionRepo = sessionRepository,
+        super(const DeliveryNavigationState()) {
     on<DeliveryNavigationInitEvent>(_onInit);
     on<DeliveryNavigationStartNavigationEvent>(_onStartNavigation);
     on<DeliveryNavigationExitNavigationEvent>(_onExitNavigation);
@@ -32,6 +38,8 @@ class DeliveryNavigationBloc
     on<DeliveryNavigationLocaleChangedEvent>(_onLocaleChanged);
     on<DeliveryNavigationLocationTickEvent>(_onLocationTick);
     on<DeliveryNavigationToggleMapEvent>(_onToggleMap);
+    on<DeliveryNavigationToggleOnlineStatusEvent>(_onToggleOnlineStatus);
+    on<DeliveryNavigationSelectDemandZoneEvent>(_onSelectDemandZone);
     on<DeliveryNavigationLocationUpdatedEvent>(_onLocationUpdated);
     on<DeliveryNavigationStageChangedEvent>(_onStageChanged);
     on<DeliveryNavigationGpsStatusChangedEvent>(_onGpsStatusChanged);
@@ -45,6 +53,7 @@ class DeliveryNavigationBloc
     on<DeliveryNavigationConfirmDeliveryEvent>(_onConfirmDelivery);
     on<DeliveryNavigationCollectCodCashEvent>(_onCollectCodCash);
     on<DeliveryNavigationProfileUpdatedEvent>(_onProfileUpdated);
+    on<DeliveryNavigationSellersUpdatedEvent>(_onSellersUpdated);
   }
 
   @override
@@ -54,6 +63,10 @@ class DeliveryNavigationBloc
     _orderSub = null;
     await _profileSub?.cancel();
     _profileSub = null;
+    await _sellersSub?.cancel();
+    _sellersSub = null;
+    await _sessionSub?.cancel();
+    _sessionSub = null;
     await super.close();
   }
 
@@ -110,6 +123,26 @@ class DeliveryNavigationBloc
     NavigationStage stage,
   ) {
     final toRestaurant = stage == NavigationStage.toRestaurant;
+    final destLat = toRestaurant ? state.restaurantLat : state.customerLat;
+    final destLng = toRestaurant ? state.restaurantLng : state.customerLng;
+
+    double dist = state.distanceToDestinationKm;
+    int eta = state.etaToDestinationMinutes;
+    if (state.hasDriverPosition && destLat != 0.0 && destLng != 0.0) {
+      dist = service.calculateDistanceKm(
+        state.driverLat,
+        state.driverLng,
+        destLat,
+        destLng,
+      );
+      eta = service
+          .calculateEtaMinutes(
+            dist,
+            state.driverSpeedKmh > 0 ? state.driverSpeedKmh : 22.0,
+          )
+          .round();
+    }
+
     return state.copyWith(
       navigationStage: stage,
       destinationName:
@@ -118,8 +151,10 @@ class DeliveryNavigationBloc
           toRestaurant ? state.restaurantAddress : state.customerAddress,
       destinationPhone:
           toRestaurant ? state.restaurantPhone : state.customerPhone,
-      destinationLat: toRestaurant ? state.restaurantLat : state.customerLat,
-      destinationLng: toRestaurant ? state.restaurantLng : state.customerLng,
+      destinationLat: destLat,
+      destinationLng: destLng,
+      distanceToDestinationKm: dist > 0 ? dist : state.distanceToDestinationKm,
+      etaToDestinationMinutes: eta > 0 ? eta : state.etaToDestinationMinutes,
     );
   }
 
@@ -128,22 +163,35 @@ class DeliveryNavigationBloc
     Map<String, dynamic> data,
   ) {
     final stage = _determineStage(data['status'] as String?);
+
+    double rLat = (data['sellerLat'] as num?)?.toDouble() ?? state.restaurantLat;
+    double rLng = (data['sellerLng'] as num?)?.toDouble() ?? state.restaurantLng;
+    double cLat = (data['customerLat'] as num?)?.toDouble() ?? state.customerLat;
+    double cLng = (data['customerLng'] as num?)?.toDouble() ?? state.customerLng;
+
+    if (rLat == 0.0 && rLng == 0.0) {
+      rLat = 11.4485;
+      rLng = 77.6835;
+    }
+    if (cLat == 0.0 && cLng == 0.0) {
+      cLat = 11.4580;
+      cLng = 77.6980;
+    }
+
     final withTargets = state.copyWith(
       restaurantName: data['sellerName'] as String? ?? state.restaurantName,
       restaurantAddress:
           data['sellerAddress'] as String? ?? state.restaurantAddress,
       restaurantPhone: data['sellerPhone'] as String? ?? state.restaurantPhone,
-      restaurantLat:
-          (data['sellerLat'] as num?)?.toDouble() ?? state.restaurantLat,
-      restaurantLng:
-          (data['sellerLng'] as num?)?.toDouble() ?? state.restaurantLng,
+      restaurantLat: rLat,
+      restaurantLng: rLng,
       customerName: data['customerName'] as String? ?? state.customerName,
       customerAddress:
           data['customerAddress'] as String? ?? state.customerAddress,
       customerPhone: data['customerPhone'] as String? ?? state.customerPhone,
       customerNotes: data['customerNotes'] as String? ?? state.customerNotes,
-      customerLat: (data['customerLat'] as num?)?.toDouble() ?? state.customerLat,
-      customerLng: (data['customerLng'] as num?)?.toDouble() ?? state.customerLng,
+      customerLat: cLat,
+      customerLng: cLng,
       paymentMethod:
           data['paymentMethod'] as String? ?? state.paymentMethod,
       codAmount: (data['codAmount'] as num?)?.toDouble() ?? state.codAmount,
@@ -153,6 +201,31 @@ class DeliveryNavigationBloc
       activeOrderId: data['orderId'] as String? ?? state.activeOrderId,
     );
     return _withDestination(withTargets, stage);
+  }
+
+  List<DeliveryDemandZone> _parseDemandZones(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return const [];
+    return raw
+        .map((z) => DeliveryDemandZone(
+              name: z['name'] as String? ?? 'Hotspot',
+              latitude: (z['latitude'] as num?)?.toDouble() ?? 0.0,
+              longitude: (z['longitude'] as num?)?.toDouble() ?? 0.0,
+              estimatedDemand: (z['estimatedDemand'] as num?)?.toInt() ?? 0,
+              tags: (z['tags'] as List?)
+                      ?.map((e) => e.toString())
+                      .toList() ??
+                  const [],
+            ))
+        .toList();
+  }
+
+  Future<List<DeliveryDemandZone>> _loadDemandZones() async {
+    try {
+      final raw = await service.fetchDemandZones();
+      return _parseDemandZones(raw);
+    } catch (_) {
+      return const [];
+    }
   }
 
   Future<void> _onInit(
@@ -165,17 +238,23 @@ class DeliveryNavigationBloc
       final hasPermission = await service.checkLocationPermission();
       final gpsEnabled = await service.checkGpsStatus();
       final order = await repository.fetchOrderSummary();
-      final rawOrder = await repository.fetchActiveOrderData();
+      final rawOrder = (event.orderId != null && event.orderId!.isNotEmpty)
+          ? await repository.fetchActiveOrderData(orderId: event.orderId)
+          : await repository.fetchActiveOrderData();
       final pickup = await repository.fetchPickup();
       final drop = await repository.fetchDrop();
       final profile = await repository.fetchPartnerProfile();
       final audioEnabled = await repository.getAudioEnabled();
       final emergencyMode = await repository.getEmergencyMode();
       final localeCode = await repository.getLocaleCode();
+      final demandZones = await _loadDemandZones();
+      final nearbySellers = await repository.fetchNearbySellers();
 
       _activeOrderId = rawOrder?['orderId'] as String?;
       _subscribeToOrderStream();
       _subscribeToProfileStream();
+      _subscribeToSellersStream();
+      _subscribeToSession();
 
       final gpsStatus = !hasPermission
           ? DeliveryGpsStatus.permissionDenied
@@ -191,13 +270,24 @@ class DeliveryNavigationBloc
         audioEnabled: audioEnabled,
         emergencyMode: emergencyMode,
         localeCode: localeCode,
+        demandZones: demandZones,
+        nearbySellers: nearbySellers,
         errorMessage: null,
         clearError: true,
       );
       next = _applyProfile(next, profile);
 
       if (order.orderId.trim().isEmpty) {
-        emit(next.copyWith(status: DeliveryNavigationStatus.empty));
+        // Idle driver console: keep the map live while waiting for orders.
+        if (isOnline && hasPermission && gpsEnabled) {
+          _startLiveLocationStream();
+        }
+        emit(next.copyWith(
+          status: DeliveryNavigationStatus.loaded,
+          order: order,
+          pickup: pickup,
+          drop: drop,
+        ));
         return;
       }
 
@@ -236,6 +326,58 @@ class DeliveryNavigationBloc
       (profile) {
         if (isClosed || profile == null) return;
         add(DeliveryNavigationProfileUpdatedEvent(profile));
+      },
+      onError: (Object _) {},
+    );
+  }
+
+  void _subscribeToSellersStream() {
+    _sellersSub?.cancel();
+    _sellersSub = repository.watchNearbySellers().listen(
+      (sellers) {
+        if (isClosed) return;
+        add(DeliveryNavigationSellersUpdatedEvent(sellers));
+      },
+      onError: (Object _) {},
+    );
+  }
+
+  void _onSellersUpdated(
+    DeliveryNavigationSellersUpdatedEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) {
+    emit(state.copyWith(
+      nearbySellers: event.sellers,
+    ));
+  }
+
+  /// Cross-BLoC session bridge: any order accepted elsewhere (incoming order,
+  /// orders dashboard, pickup confirmation) instantly propagates here.
+  void _subscribeToSession() {
+    if (_sessionRepo == null) return;
+    _sessionSub?.cancel();
+    _sessionSub = _sessionRepo.sessionStream.listen(
+      (session) async {
+        if (isClosed) return;
+        final orderId = session.activeOrderId;
+        if (orderId == null || orderId.trim().isEmpty) {
+          if (_activeOrderId != null && _activeOrderId!.isNotEmpty) {
+            add(DeliveryNavigationOrderUpdatedEvent(null));
+          }
+          return;
+        }
+        if (orderId != _activeOrderId) {
+          try {
+            final data = await repository.fetchActiveOrderData(orderId: orderId);
+            if (!isClosed) {
+              add(DeliveryNavigationOrderUpdatedEvent(data));
+            }
+          } catch (_) {
+            add(
+              DeliveryNavigationInitEvent(orderId: orderId),
+            );
+          }
+        }
       },
       onError: (Object _) {},
     );
@@ -311,6 +453,31 @@ class DeliveryNavigationBloc
     ));
   }
 
+  void _onToggleOnlineStatus(
+    DeliveryNavigationToggleOnlineStatusEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) {
+    final newOnline = !state.isOnline;
+    _sessionRepo?.setOnlineStatus(newOnline);
+    emit(state.copyWith(
+      isOnline: newOnline,
+      errorMessage: null,
+      clearError: true,
+    ));
+  }
+
+  void _onSelectDemandZone(
+    DeliveryNavigationSelectDemandZoneEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) {
+    emit(state.copyWith(
+      selectedDemandZone: event.zone,
+      mapZoomLevel: 16.0,
+      errorMessage: null,
+      clearError: true,
+    ));
+  }
+
   Future<void> _onSOSClicked(
     DeliveryNavigationSOSClickedEvent event,
     Emitter<DeliveryNavigationState> emit,
@@ -337,6 +504,7 @@ class DeliveryNavigationBloc
       final drop = await repository.fetchDrop();
       final audioEnabled = await repository.getAudioEnabled();
       final emergencyMode = await repository.getEmergencyMode();
+      final demandZones = await _loadDemandZones();
 
       _activeOrderId = rawOrder?['orderId'] as String?;
 
@@ -351,13 +519,21 @@ class DeliveryNavigationBloc
                 : DeliveryGpsStatus.disabled),
         audioEnabled: audioEnabled,
         emergencyMode: emergencyMode,
+        demandZones: demandZones,
         errorMessage: null,
         clearError: true,
       );
 
       if (order.orderId.trim().isEmpty) {
-        _stopLocationStream();
-        emit(next.copyWith(status: DeliveryNavigationStatus.empty));
+        if (isOnline && hasPermission && gpsEnabled) {
+          _startLiveLocationStream();
+        }
+        emit(next.copyWith(
+          status: DeliveryNavigationStatus.loaded,
+          order: order,
+          pickup: pickup,
+          drop: drop,
+        ));
         return;
       }
 
@@ -454,6 +630,14 @@ class DeliveryNavigationBloc
           stage: state.navigationStage.firestoreValue,
         ),
       );
+    } else if (!state.isOffline && state.hasLocationPermission) {
+      // Idle rider console: keep the partner location doc fresh on the live map.
+      unawaited(
+        service.updateDriverLocation(
+          latitude: event.lat,
+          longitude: event.lng,
+        ),
+      );
     }
   }
 
@@ -491,10 +675,13 @@ class DeliveryNavigationBloc
   ) {
     final data = event.orderData;
     if (data == null) {
-      // Battery/data saver: no active order -> suspend location stream.
-      _stopLocationStream();
+      // No active order: fall back to the live idle radar map. GPS streaming
+      // continues so the rider still sees their position and demand hotspots.
+      _activeOrderId = null;
       emit(state.copyWith(
-        status: DeliveryNavigationStatus.empty,
+        status: DeliveryNavigationStatus.loaded,
+        activeOrderId: '',
+        selectedDemandZone: null,
         errorMessage: null,
         clearError: true,
       ));

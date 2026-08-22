@@ -735,53 +735,59 @@ class _WalletSummaryGrid extends StatelessWidget {
     final lang = state.localeCode;
 
     final cards = [
-      _WalletMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_wallet_summary_balance'),
         title: DeliveryWalletStrings.of('currentBalance', lang),
         value: '₹${state.walletBalance.toStringAsFixed(2)}',
         subtext: DeliveryWalletStrings.of('walletTitle', lang),
         icon: Icons.account_balance_wallet,
-        color: DeliveryAppColors.primary,
+        iconColor: DeliveryAppColors.primary,
+        subtextColor: DeliveryAppColors.primary,
       ),
-      _WalletMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_wallet_summary_available'),
         title: DeliveryWalletStrings.of('availableBalance', lang),
         value: '₹${state.availableBalance.toStringAsFixed(2)}',
         subtext: DeliveryWalletStrings.of('withdrawFunds', lang),
         icon: Icons.check_circle_outline,
-        color: const Color(0xFF10B981),
+        iconColor: const Color(0xFF10B981),
+        subtextColor: const Color(0xFF10B981),
       ),
-      _WalletMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_wallet_summary_pending'),
         title: DeliveryWalletStrings.of('pendingBalance', lang),
         value: '₹${state.pendingBalance.toStringAsFixed(2)}',
         subtext: DeliveryWalletStrings.of('statusPending', lang),
         icon: Icons.hourglass_top,
-        color: DeliveryAppColors.warning,
+        iconColor: DeliveryAppColors.warning,
+        subtextColor: DeliveryAppColors.warning,
       ),
-      _WalletMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_wallet_summary_withdrawable'),
         title: DeliveryWalletStrings.of('withdrawableAmount', lang),
         value: '₹${state.withdrawableAmount.toStringAsFixed(2)}',
         subtext: DeliveryWalletStrings.of('withdraw', lang),
         icon: Icons.payments_outlined,
-        color: const Color(0xFF00E5FF),
+        iconColor: const Color(0xFF00E5FF),
+        subtextColor: const Color(0xFF00E5FF),
       ),
-      _WalletMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_wallet_summary_cod'),
         title: DeliveryWalletStrings.of('codAdjustment', lang),
         value: '₹${state.codAdjustment.toStringAsFixed(2)}',
         subtext: DeliveryWalletStrings.of('adjustments', lang),
         icon: Icons.account_tree_outlined,
-        color: const Color(0xFFFF9100),
+        iconColor: const Color(0xFFFF9100),
+        subtextColor: const Color(0xFFFF9100),
       ),
-      _WalletMetricCard(
+      DeliveryMetricCard(
         key: const Key('dp_wallet_summary_earnings'),
         title: DeliveryWalletStrings.of('earningsCredit', lang),
         value: '₹${state.totalEarnings.toStringAsFixed(2)}',
         subtext: DeliveryWalletStrings.of('earningsOverview', lang),
         icon: Icons.trending_up,
-        color: DeliveryAppColors.info,
+        iconColor: DeliveryAppColors.info,
+        subtextColor: DeliveryAppColors.info,
       ),
     ];
 
@@ -799,87 +805,6 @@ class _WalletSummaryGrid extends StatelessWidget {
       mainAxisSpacing: 16,
       childAspectRatio: isDesktop ? 2.1 : (isTablet ? 1.9 : 1.35),
       children: cards,
-    );
-  }
-}
-
-class _WalletMetricCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtext;
-  final IconData icon;
-  final Color color;
-
-  const _WalletMetricCard({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.subtext,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: DeliveryAppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 18),
-              ),
-            ],
-          ),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Text(
-            subtext,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -907,7 +832,7 @@ class _WalletPeriodSelector extends StatelessWidget {
           for (final item in periods)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: _WalletPeriodChip(
+              child: DeliverySelectableChip(
                 key: Key(
                   'dp_wallet_period_${switch (item.$1) {
                     DeliveryWalletPeriod.thisWeek => 'thisWeek',
@@ -926,60 +851,6 @@ class _WalletPeriodSelector extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _WalletPeriodChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _WalletPeriodChip({
-    super.key,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      selected: isSelected,
-      button: true,
-      label: label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? DeliveryAppColors.primary.withValues(alpha: 0.15)
-                  : Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: isSelected
-                    ? DeliveryAppColors.primary.withValues(alpha: 0.5)
-                    : Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? DeliveryAppColors.primary
-                    : Colors.white.withValues(alpha: 0.7),
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -1287,176 +1158,38 @@ class _WalletCashReconciliationSection extends StatelessWidget {
   }
 
   Future<void> _openSubmitDialog(BuildContext context, String lang) async {
-    final controller = TextEditingController();
-    var selectedMethod =
-        DeliveryWalletStrings.of('hubDeposit', lang);
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            final parsed = double.tryParse(controller.text);
-            final valid = parsed != null &&
-                parsed > 0 &&
-                parsed <= state.cashInHand;
-            final remaining = parsed == null
-                ? state.cashInHand
-                : (state.cashInHand - parsed).clamp(0, double.infinity);
-
-            return AlertDialog(
-              backgroundColor: DeliveryAppColors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Text(
-                DeliveryWalletStrings.of('submitCashDialogTitle', lang),
-                style: const TextStyle(color: Colors.white),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      DeliveryWalletStrings.of('submitCashDialogSub', lang),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: controller,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: DeliveryWalletStrings.of('amount', lang),
-                        prefixText: '\u{20B9} ',
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: DeliveryAppColors.primary,
-                          ),
-                        ),
-                      ),
-                      onChanged: (_) => setDialogState(() {}),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      DeliveryWalletStrings.of('depositMethod', lang),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      key: ValueKey('wallet_submit_method_$selectedMethod'),
-                      initialValue: selectedMethod,
-                      dropdownColor: DeliveryAppColors.surface,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
-                        ),
-                      ),
-                      items: [
-                        DeliveryWalletStrings.of('hubDeposit', lang),
-                        DeliveryWalletStrings.of('bankDeposit', lang),
-                        DeliveryWalletStrings.of('upiTransfer', lang),
-                      ].map((method) {
-                        return DropdownMenuItem<String>(
-                          value: method,
-                          child: Text(method),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setDialogState(
-                          () => selectedMethod = value ?? selectedMethod,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: valid
-                            ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                            : const Color(0xFFEF4444).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        valid
-                            ? '${DeliveryWalletStrings.of('remainingCashInHand', lang)}: '
-                                '\u{20B9}${remaining.toStringAsFixed(2)}'
-                            : parsed != null && parsed > state.cashInHand
-                                ? DeliveryWalletStrings.of(
-                                    'exceedsCashInHand', lang)
-                                : DeliveryWalletStrings.of(
-                                    'enterValidAmount', lang),
-                        style: TextStyle(
-                          color: valid
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFFEF4444),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+    await DeliveryWithdrawDialog.show(
+      context,
+      walletBalance: state.cashInHand,
+      title: DeliveryWalletStrings.of('submitCashDialogTitle', lang),
+      subtitle: DeliveryWalletStrings.of('submitCashDialogSub', lang),
+      amountLabel: DeliveryWalletStrings.of('amount', lang),
+      availableBalanceText: DeliveryWalletStrings.of('cashInHand', lang),
+      confirmText: DeliveryWalletStrings.of('confirm', lang),
+      cancelText: DeliveryWalletStrings.of('cancel', lang),
+      depositMethods: [
+        DeliveryWalletStrings.of('hubDeposit', lang),
+        DeliveryWalletStrings.of('bankDeposit', lang),
+        DeliveryWalletStrings.of('upiTransfer', lang),
+      ],
+      depositMethodLabel: DeliveryWalletStrings.of('depositMethod', lang),
+      remainingBalanceText: DeliveryWalletStrings.of(
+        'remainingCashInHand',
+        lang,
+      ),
+      exceedsBalanceText: DeliveryWalletStrings.of('exceedsCashInHand', lang),
+      enterValidAmountText: DeliveryWalletStrings.of('enterValidAmount', lang),
+      currencySymbol: '\u{20B9}',
+      onConfirm: (_) {},
+      onConfirmWithMethod: (amount, method) {
+        if (context.mounted) {
+          context.read<DeliveryWalletPageBloc>().add(
+                DeliveryWalletSubmitCashEvent(
+                  amount: amount,
+                  method: method,
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(
-                    DeliveryWalletStrings.of('cancel', lang),
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ),
-                ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: controller,
-                  builder: (context, value, _) {
-                    final amount = double.tryParse(value.text);
-                    final canSubmit = amount != null &&
-                        amount > 0 &&
-                        amount <= state.cashInHand;
-                    return FilledButton(
-                      onPressed: canSubmit
-                          ? () {
-                              Navigator.of(dialogContext).pop();
-                              context.read<DeliveryWalletPageBloc>().add(
-                                    DeliveryWalletSubmitCashEvent(
-                                      amount: amount,
-                                      method: selectedMethod,
-                                    ),
-                                  );
-                            }
-                          : null,
-                      child: const Text('Confirm'),
-                    );
-                  },
-                ),
-              ],
-            );
-          },
-        );
+              );
+        }
       },
     );
   }
@@ -1888,7 +1621,7 @@ class _WalletTransactionsPanelState extends State<_WalletTransactionsPanel> {
             runSpacing: 8,
             children: [
               for (final filter in filters)
-                _WalletTransactionFilterChip(
+                DeliverySelectableChip(
                   key: Key(filter.$3),
                   label: DeliveryWalletStrings.of(filter.$2, lang),
                   isSelected: state.activeFilter == filter.$1,
@@ -1960,60 +1693,6 @@ class _WalletTransactionsPanelState extends State<_WalletTransactionsPanel> {
             },
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _WalletTransactionFilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _WalletTransactionFilterChip({
-    super.key,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      selected: isSelected,
-      button: true,
-      label: label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? DeliveryAppColors.primary.withValues(alpha: 0.15)
-                  : Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: isSelected
-                    ? DeliveryAppColors.primary.withValues(alpha: 0.5)
-                    : Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? DeliveryAppColors.primary
-                    : Colors.white.withValues(alpha: 0.7),
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

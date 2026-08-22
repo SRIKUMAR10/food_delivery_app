@@ -21,6 +21,15 @@ void main() {
   setUp(() {
     mockRepository = MockDeliveryNavigationRepository();
     mockService = MockDeliveryNavigationService();
+    when(() => mockService.checkGpsStatus()).thenAnswer((_) async => true);
+    when(() => mockService.streamLiveLocation(highAccuracy: any(named: 'highAccuracy')))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockService.streamLiveLocation()).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.simulateLiveLocation()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.fetchActiveOrderData()).thenAnswer((_) async => null);
+    when(() => mockRepository.fetchPartnerProfile()).thenAnswer((_) async => null);
+    when(() => mockRepository.watchActiveOrder()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.watchPartnerProfile()).thenAnswer((_) => const Stream.empty());
   });
 
   DeliveryNavigationBloc buildBloc() {
@@ -67,7 +76,9 @@ void main() {
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
           audioEnabled: true,
+          gpsStatus: DeliveryGpsStatus.active,
           order: DeliveryNavigationRepository.defaultOrder,
           pickup: DeliveryNavigationRepository.defaultPickup,
           drop: DeliveryNavigationRepository.defaultDrop,
@@ -93,8 +104,10 @@ void main() {
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
           emergencyMode: true,
           localeCode: 'ta',
+          gpsStatus: DeliveryGpsStatus.active,
           order: DeliveryNavigationRepository.defaultOrder,
           pickup: DeliveryNavigationRepository.defaultPickup,
           drop: DeliveryNavigationRepository.defaultDrop,
@@ -122,7 +135,9 @@ void main() {
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
           turnDistanceMeters: 120.0,
+          gpsStatus: DeliveryGpsStatus.active,
           order: DeliveryNavigationRepository.defaultOrder,
           pickup: DeliveryNavigationRepository.defaultPickup,
           drop: DeliveryNavigationRepository.defaultDrop,

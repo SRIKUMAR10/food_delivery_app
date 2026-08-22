@@ -10,13 +10,13 @@ class DeliveryNavigationBarPageBloc
     extends Bloc<DeliveryNavigationBarEvent, DeliveryNavigationBarState> {
   final DeliveryNavigationBarRepositoryBase repository;
   final DeliveryNavigationBarServiceBase service;
-  final DeliveryPartnerRepository _partnerRepo;
+  final DeliveryPartnerRepository? _partnerRepo;
 
   DeliveryNavigationBarPageBloc({
     required this.repository,
     required this.service,
     DeliveryPartnerRepository? partnerRepo,
-  })  : _partnerRepo = partnerRepo ?? DeliveryPartnerRepository(),
+  })  : _partnerRepo = partnerRepo,
         super(const DeliveryNavigationBarState()) {
     on<DeliveryNavigationBarInitEvent>(_onInit);
     on<DeliveryNavigationBarTabChangedEvent>(_onTabChanged);
@@ -36,21 +36,12 @@ class DeliveryNavigationBarPageBloc
   ) async {
     emit(state.copyWith(status: DeliveryNavigationBarStatus.loading));
     try {
-      final results = await Future.wait([
-        service.checkConnectivity(),
-        repository.getNavItems(),
-        repository.getSavedSelectedIndex(),
-        repository.getLocaleCode(),
-        repository.getPartnerName(),
-        service.checkPermission(),
-      ]);
-
-      final isOnline = results[0] as bool;
-      final navItems = results[1] as List<DeliveryNavigationBarItem>;
-      final savedIndex = results[2] as int;
-      final localeCode = results[3] as String;
-      final partnerName = results[4] as String;
-      final hasPermission = results[5] as bool;
+      final isOnline = await service.checkConnectivity().catchError((_) => false);
+      final navItems = await repository.getNavItems();
+      final savedIndex = await repository.getSavedSelectedIndex().catchError((_) => -1);
+      final localeCode = await repository.getLocaleCode().catchError((_) => 'en');
+      final partnerName = await repository.getPartnerName().catchError((_) => 'Delivery Partner');
+      final hasPermission = await service.checkPermission().catchError((_) => true);
 
       if (navItems.isEmpty) {
         emit(state.copyWith(
@@ -65,23 +56,27 @@ class DeliveryNavigationBarPageBloc
 
       int indexToUse = savedIndex >= 0 && savedIndex < navItems.length
           ? savedIndex
-          : 0;
+          : state.selectedIndex;
 
-      final session = await _partnerRepo.getSession();
-      final uid = _partnerRepo.currentUser?.uid ?? session['uid'];
-
-      if (uid != null && uid.isNotEmpty) {
+      if (_partnerRepo != null) {
         try {
-          final partner = await _partnerRepo.getDeliveryPartner(uid);
-          if (partner != null) {
-            _cachedIsProfileComplete = partner.displayName.trim().isNotEmpty &&
-                partner.phoneNumber.trim().isNotEmpty &&
-                partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
-                partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
-                partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
+          final session = await _partnerRepo.getSession();
+          final uid = _partnerRepo.currentUser?.uid ?? session['uid'];
 
-            if (_cachedIsProfileComplete == false) {
-              indexToUse = 11;
+          if (uid != null && uid.isNotEmpty) {
+            final partner = await _partnerRepo.getDeliveryPartner(uid);
+            if (partner != null) {
+              _cachedIsProfileComplete = partner.displayName.trim().isNotEmpty &&
+                  partner.phoneNumber.trim().isNotEmpty &&
+                  partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
+                  partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
+                  partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
+
+              if (_cachedIsProfileComplete == false) {
+                indexToUse = 11;
+              }
+            } else {
+              _cachedIsProfileComplete = true;
             }
           } else {
             _cachedIsProfileComplete = true;
@@ -89,8 +84,6 @@ class DeliveryNavigationBarPageBloc
         } catch (_) {
           _cachedIsProfileComplete = true;
         }
-      } else {
-        _cachedIsProfileComplete = true;
       }
 
 
@@ -158,24 +151,26 @@ class DeliveryNavigationBarPageBloc
       final hasPermission = await service.checkPermission();
 
       int indexToUse = state.selectedIndex;
-      if (isOnline) {
-        final uid = _partnerRepo.currentUser?.uid;
-        if (uid != null) {
-          final partner = await _partnerRepo.getDeliveryPartner(uid);
-          if (partner != null) {
-            final isProfileComplete = partner.displayName.trim().isNotEmpty &&
-                partner.phoneNumber.trim().isNotEmpty &&
-                partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
-                partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
-                partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
+      if (isOnline && _partnerRepo != null) {
+        try {
+          final uid = _partnerRepo.currentUser?.uid;
+          if (uid != null) {
+            final partner = await _partnerRepo.getDeliveryPartner(uid);
+            if (partner != null) {
+              final isProfileComplete = partner.displayName.trim().isNotEmpty &&
+                  partner.phoneNumber.trim().isNotEmpty &&
+                  partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
+                  partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
+                  partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
 
-            if (!isProfileComplete) {
+              if (!isProfileComplete) {
+                indexToUse = 11;
+              }
+            } else {
               indexToUse = 11;
             }
-          } else {
-            indexToUse = 11;
           }
-        }
+        } catch (_) {}
       }
 
       emit(state.copyWith(
@@ -247,7 +242,7 @@ class DeliveryNavigationBarPageBloc
   ) async {
     emit(state.copyWith(status: DeliveryNavigationBarStatus.loading));
     try {
-      await _partnerRepo.signOut();
+      await _partnerRepo?.signOut();
       emit(state.copyWith(status: DeliveryNavigationBarStatus.loggedOut));
     } catch (e) {
       emit(state.copyWith(

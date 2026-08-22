@@ -168,5 +168,24 @@ void main() {
         verify(() => mockRepository.updateOrderStatus('1', OrderStatus.accepted, reason: null)).called(1);
       },
     );
+
+    blocTest<OrdersListBloc, OrdersListState>(
+      'LoadOrdersStream suppresses audio chime on initial load with existing new orders',
+      build: () {
+        when(() => mockRepository.getSellerOrdersStream('s1')).thenAnswer(
+          (_) => Stream.value([order1]), // Existing new order on page load
+        );
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const LoadOrdersStream('s1')),
+      expect: () => [
+        isA<OrdersListLoading>(),
+        isA<OrdersListLoaded>().having(
+          (s) => s.filteredOrders.length,
+          'filtered length',
+          1,
+        ),
+      ],
+    );
   });
 }

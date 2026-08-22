@@ -8,8 +8,11 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_service.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_repository.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_state.dart';
 
 import '../../font_loader_helper.dart';
+import '../helpers/demo_orders.dart';
 
 class MockDeliveryNavigationBarRepository extends Mock
     implements DeliveryNavigationBarRepositoryBase {}
@@ -17,9 +20,13 @@ class MockDeliveryNavigationBarRepository extends Mock
 class MockDeliveryNavigationBarService extends Mock
     implements DeliveryNavigationBarServiceBase {}
 
+class MockDeliveryOrdersRepository extends Mock
+    implements DeliveryOrdersRepositoryBase {}
+
 void main() {
   late MockDeliveryNavigationBarRepository mockRepository;
   late MockDeliveryNavigationBarService mockService;
+  late MockDeliveryOrdersRepository mockOrdersRepository;
 
   const List<DeliveryNavigationBarItem> navItems =
       DeliveryNavigationBarRepository.defaultNavItems;
@@ -39,12 +46,14 @@ void main() {
   setUp(() {
     mockRepository = MockDeliveryNavigationBarRepository();
     mockService = MockDeliveryNavigationBarService();
+    mockOrdersRepository = MockDeliveryOrdersRepository();
+    registerFallbackValue(DeliveryOrderStatus.pending);
 
     when(() => mockService.checkConnectivity()).thenAnswer((_) async => true);
     when(() => mockRepository.getNavItems()).thenAnswer((_) async => navItems);
     when(
       () => mockRepository.getSavedSelectedIndex(),
-    ).thenAnswer((_) async => -1);
+    ).thenAnswer((_) async => 0);
     when(() => mockRepository.getLocaleCode()).thenAnswer((_) async => 'en');
     when(
       () => mockRepository.getPartnerName(),
@@ -53,6 +62,21 @@ void main() {
       () => mockRepository.saveSelectedIndex(any()),
     ).thenAnswer((_) async {});
     when(() => mockService.checkPermission()).thenAnswer((_) async => true);
+    when(
+      () => mockOrdersRepository.watchOrders(),
+    ).thenAnswer((_) => Stream.value(demoOrders()));
+    when(
+      () => mockOrdersRepository.fetchOrders(),
+    ).thenAnswer((_) async => demoOrders());
+    when(
+      () => mockOrdersRepository.updateOrderStatus(any(), any()),
+    ).thenAnswer((invocation) async {
+      final orderId = invocation.positionalArguments[0] as String;
+      final status = invocation.positionalArguments[1] as DeliveryOrderStatus;
+      return demoOrders().firstWhere((o) => o.orderId == orderId).copyWith(
+            status: status,
+          );
+    });
 
     SharedPreferences.setMockInitialValues({});
   });
@@ -69,6 +93,7 @@ void main() {
         home: DeliveryNavigationBarPage(
           repository: mockRepository,
           service: mockService,
+          ordersRepository: mockOrdersRepository,
         ),
       ),
     );
@@ -84,7 +109,7 @@ void main() {
   }
 
   Future<void> switchToProfile(WidgetTester tester) async {
-    await tester.tap(find.text('Profile'), warnIfMissed: false);
+    await tester.tap(find.text('Earnings'), warnIfMissed: false);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
   }

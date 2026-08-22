@@ -414,10 +414,10 @@ void main() {
         expect(data['participants'], containsAll([buyerId, 'rider_1']));
       });
 
-      test('getConversationsForUser with role delivery_partner returns chat', () async {
+      test('getConversationsForUser with role delivery_partner returns chat including customer Anu', () async {
         await repository.createConversation(
-          buyerId: buyerId,
-          buyerName: buyerName,
+          buyerId: 'buyer_anu',
+          buyerName: 'Anu',
           sellerId: '',
           sellerName: '',
           deliveryPartnerId: 'rider_1',
@@ -431,6 +431,7 @@ void main() {
 
         expect(conversations.length, 1);
         expect(conversations.first.deliveryPartnerId, 'rider_1');
+        expect(conversations.first.buyerName, 'Anu');
       });
 
       test('getConversationBetween finds delivery chat by participants', () async {

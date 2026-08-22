@@ -6,6 +6,8 @@ import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/theme/delivery_design_system.dart';
 import '../Delivery_Chat_page/Delivery_Chat_page_ui.dart';
 import '../Delivery_Earnings Dashboard_page/Delivery_Earnings Dashboard_page_ui.dart';
+import '../Delivery_Incentives Dashboard_page/Delivery_Incentives Dashboard_page_ui.dart';
+import '../Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_ui.dart';
 import '../Delivery_Order_Details_page/Delivery_Order_Details_page_ui.dart';
 import '../Delivery_Orders_page/Delivery_Orders_page_ui.dart';
 import '../Delivery_Profile_page/Delivery_Profile_page_ui.dart';
@@ -105,14 +107,23 @@ class _DeliveryNotificationsViewState
         .read<DeliveryNotificationBloc>()
         .add(DeliveryNotificationMarkAsReadEvent(notif.id));
 
-    // Handle deep navigation based on category & data
-    switch (notif.category) {
+    final effectiveCat = notif.effectiveCategory;
+    final orderId = notif.data['orderId']?.toString() ??
+        (notif.data['id']?.toString() ?? '');
+
+    // Handle deep navigation based on category, specific type & payload
+    switch (effectiveCat) {
       case DeliveryNotificationCategory.order:
-        final orderId = notif.data['orderId']?.toString();
-        if (orderId != null && orderId.isNotEmpty) {
+        if (notif.type == DeliveryPartnerNotificationType.newDeliveryRequest) {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => const DeliveryOrdersPage(),
+              builder: (_) => const DeliveryIncomingOrderPageUi(),
+            ),
+          );
+        } else if (orderId.isNotEmpty) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => DeliveryOrderDetailsPageUi(orderId: orderId),
             ),
           );
         } else {
@@ -125,11 +136,20 @@ class _DeliveryNotificationsViewState
         break;
 
       case DeliveryNotificationCategory.earnings:
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => const DeliveryWalletPage(),
-          ),
-        );
+        if (notif.type == DeliveryPartnerNotificationType.bonus ||
+            notif.type == DeliveryPartnerNotificationType.incentive) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const DeliveryIncentivesDashboardPage(),
+            ),
+          );
+        } else {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const DeliveryWalletPage(),
+            ),
+          );
+        }
         break;
 
       case DeliveryNotificationCategory.account:
@@ -148,7 +168,21 @@ class _DeliveryNotificationsViewState
         );
         break;
 
-      default:
+      case DeliveryNotificationCategory.all:
+      case DeliveryNotificationCategory.unknown:
+        if (orderId.isNotEmpty) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => DeliveryOrderDetailsPageUi(orderId: orderId),
+            ),
+          );
+        } else {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const DeliveryOrdersPage(),
+            ),
+          );
+        }
         break;
     }
   }

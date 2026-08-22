@@ -40,6 +40,28 @@ class DeliveryNavigationRoutePoint extends Equatable {
   List<Object?> get props => [label, address, iconKey];
 }
 
+/// A high-demand zone / hotspot surfaced on the rider's idle map so they can
+/// position themselves where orders are surging.
+class DeliveryDemandZone extends Equatable {
+  final String name;
+  final double latitude;
+  final double longitude;
+  final int estimatedDemand;
+  final List<String> tags;
+
+  const DeliveryDemandZone({
+    required this.name,
+    required this.latitude,
+    required this.longitude,
+    this.estimatedDemand = 0,
+    this.tags = const [],
+  });
+
+  @override
+  List<Object?> get props =>
+      [name, latitude, longitude, estimatedDemand, tags];
+}
+
 class DeliveryNavigationOrderSummary extends Equatable {
   final String orderId;
   final String pickupLabel;
@@ -168,6 +190,13 @@ class DeliveryNavigationState extends Equatable {
   // Full Firestore id of the active order (for COD writes).
   final String activeOrderId;
 
+  // Idle radar mode: high-demand hotspot zones for the rider console.
+  final List<DeliveryDemandZone> demandZones;
+  final DeliveryDemandZone? selectedDemandZone;
+
+  // Real-time seller restaurant markers in active operational zone
+  final List<Map<String, dynamic>> nearbySellers;
+
   const DeliveryNavigationState({
     this.status = DeliveryNavigationStatus.initial,
     this.errorMessage,
@@ -214,19 +243,19 @@ class DeliveryNavigationState extends Equatable {
     this.destinationName = '',
     this.destinationAddress = '',
     this.destinationPhone = '',
-    this.destinationLat = 0.0,
-    this.destinationLng = 0.0,
+    this.destinationLat = 11.4580,
+    this.destinationLng = 77.6980,
     this.restaurantName = 'Reliance Digital Store',
     this.restaurantAddress = '23, Whites Road, Royapettah, Chennai',
     this.restaurantPhone = '',
-    this.restaurantLat = 0.0,
-    this.restaurantLng = 0.0,
+    this.restaurantLat = 11.4485,
+    this.restaurantLng = 77.6835,
     this.customerName = 'Arun Kumar',
     this.customerAddress = '45, 3rd Cross Street, Anna Nagar West, Chennai',
     this.customerPhone = '+91 98765 43210',
     this.customerNotes = '',
-    this.customerLat = 0.0,
-    this.customerLng = 0.0,
+    this.customerLat = 11.4580,
+    this.customerLng = 77.6980,
     this.distanceToDestinationKm = 6.2,
     this.etaToDestinationMinutes = 18,
     this.isOnline = false,
@@ -244,9 +273,23 @@ class DeliveryNavigationState extends Equatable {
     this.codMessage,
     this.isArrivedAtCustomer = false,
     this.activeOrderId = '',
+    this.demandZones = const [],
+    this.selectedDemandZone,
+    this.nearbySellers = const [],
   });
 
   bool get isNavigating => status == DeliveryNavigationStatus.navigating;
+
+  /// True when a non-terminal order is bound to this rider and the console must
+  /// show turn-by-turn navigation instead of the idle radar map. An order may be
+  /// signalled either by the active-order id or by a non-empty order summary.
+  bool get hasActiveOrder =>
+      status != DeliveryNavigationStatus.empty &&
+      (activeOrderId.isNotEmpty || order.orderId.isNotEmpty);
+
+  /// True when the screen is in the enterprise idle-map experience: online,
+  /// no active order, and the live map remains fully interactive.
+  bool get isIdle => status == DeliveryNavigationStatus.loaded && !hasActiveOrder;
 
   bool get isStageToRestaurant =>
       navigationStage == NavigationStage.toRestaurant;
@@ -327,6 +370,9 @@ class DeliveryNavigationState extends Equatable {
     String? codMessage,
     bool? isArrivedAtCustomer,
     String? activeOrderId,
+    List<DeliveryDemandZone>? demandZones,
+    DeliveryDemandZone? selectedDemandZone,
+    List<Map<String, dynamic>>? nearbySellers,
   }) {
     return DeliveryNavigationState(
       status: status ?? this.status,
@@ -390,6 +436,9 @@ class DeliveryNavigationState extends Equatable {
       codMessage: codMessage ?? this.codMessage,
       isArrivedAtCustomer: isArrivedAtCustomer ?? this.isArrivedAtCustomer,
       activeOrderId: activeOrderId ?? this.activeOrderId,
+      demandZones: demandZones ?? this.demandZones,
+      selectedDemandZone: selectedDemandZone ?? this.selectedDemandZone,
+      nearbySellers: nearbySellers ?? this.nearbySellers,
     );
   }
 
@@ -453,5 +502,8 @@ class DeliveryNavigationState extends Equatable {
         codMessage,
         isArrivedAtCustomer,
         activeOrderId,
+        demandZones,
+        selectedDemandZone,
+        nearbySellers,
       ];
 }

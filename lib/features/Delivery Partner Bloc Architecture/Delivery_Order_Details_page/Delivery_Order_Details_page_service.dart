@@ -230,6 +230,23 @@ class DeliveryOrderDetailsService
               }
             }
 
+            // Fallback: Check buyer_user/{customerId}/addresses subcollection
+            if (uAddr.isEmpty) {
+              try {
+                final subColl = await firestore.collection('buyer_user').doc(customerId).collection('addresses').limit(2).get();
+                if (subColl.docs.isNotEmpty) {
+                  for (final doc in subColl.docs) {
+                    final d = doc.data();
+                    final sub = d['address'] ?? d['fullAddress'] ?? d['street'] ?? d['formattedAddress'] ?? d['displayAddress'] ?? d['locationAddress'];
+                    if (sub != null && sub.toString().trim().isNotEmpty && sub.toString().trim() != 'Primary Address') {
+                      uAddr = sub.toString().trim();
+                      break;
+                    }
+                  }
+                }
+              } catch (_) {}
+            }
+
             _userCache[customerId] = {
               'name': uName,
               'phone': uPhone,
@@ -247,7 +264,7 @@ class DeliveryOrderDetailsService
         final cAddr = cached['address']?.toString() ?? '';
 
         if (customerName.isEmpty || customerName == 'Customer' || _isRawUid(customerName) || customerName == customerId) {
-          if (cName.isNotEmpty && cName != 'Customer') {
+          if (cName.isNotEmpty && cName != 'Customer' && !_isRawUid(cName)) {
             customerName = cName;
           }
         }

@@ -42,12 +42,25 @@
 
   <!-- Fonts loaded via standard stylesheet -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
-  <!-- Google Maps Auth Failure Interceptor for Seamless Interactive Canvas Fallback -->
+  <!-- Google Maps Auth Failure & ApiNotActivated Interceptor for Seamless Interactive Canvas Fallback -->
   <script>
     window.gm_authFailure = function() {
       window._gmAuthFailed = true;
       window.dispatchEvent(new CustomEvent('gm-auth-failed'));
     };
+
+    (function() {
+      var origError = console.error;
+      console.error = function() {
+        var args = Array.prototype.slice.call(arguments);
+        var msg = args.join(' ');
+        if (msg.indexOf('ApiNotActivatedMapError') !== -1 || msg.indexOf('InvalidKeyMapError') !== -1 || msg.indexOf('BillingNotEnabledMapError') !== -1 || msg.indexOf('DeletedKeyMapError') !== -1) {
+          window._gmAuthFailed = true;
+          window.dispatchEvent(new CustomEvent('gm-auth-failed'));
+        }
+        if (origError) origError.apply(console, args);
+      };
+    })();
   </script>
   <!-- Google Maps JavaScript API for Web Live Maps -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBwTsgY7b5lSrYZVR7KX76Fkq4ijzZkBrA&libraries=places,geometry"></script>

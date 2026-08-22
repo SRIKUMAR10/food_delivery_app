@@ -31,7 +31,7 @@ class DeliveryNotificationTileCard extends StatelessWidget {
     final body = service.getLocalizedBody(notification, localeCode);
 
     final iconData = _getIconForType(notification.type);
-    final iconColor = _getColorForCategory(notification.category);
+    final iconColor = _getColorForCategory(notification.effectiveCategory);
 
     return Dismissible(
       key: Key('notif_dismiss_${notification.id}'),

@@ -26,10 +26,18 @@ class DeliveryChatService implements DeliveryChatServiceBase {
         firestore = firestore ?? FirebaseFirestore.instance;
 
   @override
-  String get currentUserId => auth.currentUser?.uid ?? '';
+  String get currentUserId {
+    final uid = auth.currentUser?.uid;
+    if (uid != null && uid.isNotEmpty) return uid;
+    return 'delivery_partner_session';
+  }
 
   @override
-  String get currentUserName => auth.currentUser?.displayName ?? 'Delivery Partner';
+  String get currentUserName {
+    final name = auth.currentUser?.displayName;
+    if (name != null && name.isNotEmpty) return name;
+    return 'Delivery Partner';
+  }
 
   @override
   Future<Map<String, dynamic>?> fetchCustomerDetails(String customerId) async {

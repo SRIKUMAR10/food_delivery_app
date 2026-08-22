@@ -22,6 +22,11 @@ void main() {
   setUp(() {
     mockRepository = MockDeliveryNavigationRepository();
     mockService = MockDeliveryNavigationService();
+    when(() => mockService.checkGpsStatus()).thenAnswer((_) async => true);
+    when(() => mockRepository.fetchActiveOrderData()).thenAnswer((_) async => null);
+    when(() => mockRepository.fetchPartnerProfile()).thenAnswer((_) async => null);
+    when(() => mockRepository.watchActiveOrder()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.watchPartnerProfile()).thenAnswer((_) => const Stream.empty());
   });
 
   group('DeliveryNavigationScreenPage Localization Tests', () {
@@ -81,6 +86,8 @@ void main() {
         DeliveryNavigationState(
           status: DeliveryNavigationStatus.loaded,
           hasLocationPermission: true,
+          isGpsServiceEnabled: true,
+          gpsStatus: DeliveryGpsStatus.active,
           localeCode: 'ta',
           order: DeliveryNavigationRepository.defaultOrder,
           pickup: DeliveryNavigationRepository.defaultPickup,

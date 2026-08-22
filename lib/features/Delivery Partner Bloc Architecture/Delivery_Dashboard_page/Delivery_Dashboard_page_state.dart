@@ -93,6 +93,23 @@ class DeliveryDashboardState extends Equatable {
   final List<DeliveryActivityItem> incomingSellerOrders;
   final int unreadNotificationCount;
 
+  // Real-Time Active Map & Order Tracking Fields
+  final String activeOrderStoreName;
+  final String activeOrderStoreAddress;
+  final double activeOrderStoreLat;
+  final double activeOrderStoreLng;
+  final String activeOrderCustomerName;
+  final String activeOrderCustomerAddress;
+  final double activeOrderCustomerLat;
+  final double activeOrderCustomerLng;
+  final double activeOrderDistanceKm;
+  final double activeOrderAmount;
+  final String activeOrderStatus;
+  final bool activeOrderIsPickedUp;
+  final double partnerLatitude;
+  final double partnerLongitude;
+  final List<Map<String, dynamic>> nearbySellers;
+
   int get totalDeliveries => completedDeliveriesCount > 0 ? completedDeliveriesCount : todayTotalDeliveries;
 
   const DeliveryDashboardState({
@@ -132,6 +149,21 @@ class DeliveryDashboardState extends Equatable {
     this.localeCode = 'en',
     this.incomingSellerOrders = const [],
     this.unreadNotificationCount = 0,
+    this.activeOrderStoreName = '',
+    this.activeOrderStoreAddress = '',
+    this.activeOrderStoreLat = 0.0,
+    this.activeOrderStoreLng = 0.0,
+    this.activeOrderCustomerName = '',
+    this.activeOrderCustomerAddress = '',
+    this.activeOrderCustomerLat = 0.0,
+    this.activeOrderCustomerLng = 0.0,
+    this.activeOrderDistanceKm = 0.0,
+    this.activeOrderAmount = 0.0,
+    this.activeOrderStatus = '',
+    this.activeOrderIsPickedUp = false,
+    this.partnerLatitude = 0.0,
+    this.partnerLongitude = 0.0,
+    this.nearbySellers = const [],
   });
 
   DeliveryDashboardState copyWith({
@@ -172,6 +204,21 @@ class DeliveryDashboardState extends Equatable {
     String? localeCode,
     List<DeliveryActivityItem>? incomingSellerOrders,
     int? unreadNotificationCount,
+    String? activeOrderStoreName,
+    String? activeOrderStoreAddress,
+    double? activeOrderStoreLat,
+    double? activeOrderStoreLng,
+    String? activeOrderCustomerName,
+    String? activeOrderCustomerAddress,
+    double? activeOrderCustomerLat,
+    double? activeOrderCustomerLng,
+    double? activeOrderDistanceKm,
+    double? activeOrderAmount,
+    String? activeOrderStatus,
+    bool? activeOrderIsPickedUp,
+    double? partnerLatitude,
+    double? partnerLongitude,
+    List<Map<String, dynamic>>? nearbySellers,
   }) {
     return DeliveryDashboardState(
       status: status ?? this.status,
@@ -210,6 +257,21 @@ class DeliveryDashboardState extends Equatable {
       localeCode: localeCode ?? this.localeCode,
       incomingSellerOrders: incomingSellerOrders ?? this.incomingSellerOrders,
       unreadNotificationCount: unreadNotificationCount ?? this.unreadNotificationCount,
+      activeOrderStoreName: activeOrderStoreName ?? this.activeOrderStoreName,
+      activeOrderStoreAddress: activeOrderStoreAddress ?? this.activeOrderStoreAddress,
+      activeOrderStoreLat: activeOrderStoreLat ?? this.activeOrderStoreLat,
+      activeOrderStoreLng: activeOrderStoreLng ?? this.activeOrderStoreLng,
+      activeOrderCustomerName: activeOrderCustomerName ?? this.activeOrderCustomerName,
+      activeOrderCustomerAddress: activeOrderCustomerAddress ?? this.activeOrderCustomerAddress,
+      activeOrderCustomerLat: activeOrderCustomerLat ?? this.activeOrderCustomerLat,
+      activeOrderCustomerLng: activeOrderCustomerLng ?? this.activeOrderCustomerLng,
+      activeOrderDistanceKm: activeOrderDistanceKm ?? this.activeOrderDistanceKm,
+      activeOrderAmount: activeOrderAmount ?? this.activeOrderAmount,
+      activeOrderStatus: activeOrderStatus ?? this.activeOrderStatus,
+      activeOrderIsPickedUp: activeOrderIsPickedUp ?? this.activeOrderIsPickedUp,
+      partnerLatitude: partnerLatitude ?? this.partnerLatitude,
+      partnerLongitude: partnerLongitude ?? this.partnerLongitude,
+      nearbySellers: nearbySellers ?? this.nearbySellers,
     );
   }
 
@@ -251,5 +313,20 @@ class DeliveryDashboardState extends Equatable {
         localeCode,
         incomingSellerOrders,
         unreadNotificationCount,
+        activeOrderStoreName,
+        activeOrderStoreAddress,
+        activeOrderStoreLat,
+        activeOrderStoreLng,
+        activeOrderCustomerName,
+        activeOrderCustomerAddress,
+        activeOrderCustomerLat,
+        activeOrderCustomerLng,
+        activeOrderDistanceKm,
+        activeOrderAmount,
+        activeOrderStatus,
+        activeOrderIsPickedUp,
+        partnerLatitude,
+        partnerLongitude,
+        nearbySellers,
       ];
 }

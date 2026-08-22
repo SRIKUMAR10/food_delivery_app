@@ -1,25 +1,29 @@
 // Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'package:food_delivery_app/api_service/RazorpayApiService.dart';
+import 'package:food_delivery_app/core/repositories/i_user_profile_repository.dart';
 import 'package:food_delivery_app/core/services/i_auth_service.dart';
+import 'package:food_delivery_app/repositories/firebase_user_profile_repository.dart';
 
 import 'WalletScreen_Event.dart';
 import 'WalletScreen_State.dart';
 
 // ─────────────────────────────────────────────
-// WALLET DATABASE (REPOSITORY)
+// WALLET DATABASE (REPOSITORY ADAPTER)
 // ─────────────────────────────────────────────
 
-/// Handles database operations related to the user's wallet.
+/// Thin adapter exposing wallet database operations through the shared
+/// [IUserProfileRepository] contract. All Firestore access lives in
+/// `FirebaseUserProfileRepository`; this adapter keeps the legacy
+/// `WalletDatabase` API stable for callers and tests.
 class WalletDatabase {
   final IAuthService authService;
+  final IUserProfileRepository _repository;
 
-  WalletDatabase({required this.authService});
-
-  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  WalletDatabase({required this.authService, IUserProfileRepository? repository})
+    : _repository = repository ?? FirebaseUserProfileRepository();
 
   String? get _uid => authService.currentUserId;
 
@@ -27,50 +31,21 @@ class WalletDatabase {
   Stream<double?> getWalletBalanceStream() {
     final uid = _uid;
     if (uid == null) return const Stream.empty();
-    return _firestore.collection('buyer_user').doc(uid).snapshots().map((snapshot) {
-      if (!snapshot.exists) return null;
-      final data = snapshot.data();
-      return (data?['wallet'] as num?)?.toDouble();
-    });
+    return _repository.watchWalletBalance(uid);
   }
 
   /// Returns a stream of transactions, sorted by createdAt descending.
   Stream<List<Map<String, dynamic>>> getTransactionsStream() {
     final uid = _uid;
     if (uid == null) return const Stream.empty();
-    return _firestore
-        .collection('buyer_user')
-        .doc(uid)
-        .collection('transactions')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        if (data['createdAt'] is Timestamp) {
-          data['createdAt'] = (data['createdAt'] as Timestamp).toDate();
-        }
-        if (data['timestamp'] is Timestamp) {
-          data['timestamp'] = (data['timestamp'] as Timestamp).toDate();
-        }
-        return data;
-      }).toList();
-    });
+    return _repository.watchTransactions(uid);
   }
 
   /// Fetches the initial wallet balance.
   Future<double?> getInitialBalance() async {
     final uid = _uid;
     if (uid == null) return null;
-    try {
-      final doc = await _firestore.collection('buyer_user').doc(uid).get();
-      if (doc.exists) {
-        final data = doc.data();
-        if (data == null) return null;
-        return (data['wallet'] as num?)?.toDouble();
-      }
-    } catch (_) {}
-    return null;
+    return _repository.loadWalletBalance(uid);
   }
 
   /// Adds a transaction to the user's wallet and updates their balance.
@@ -84,32 +59,15 @@ class WalletDatabase {
   }) async {
     final uid = _uid;
     if (uid == null) return;
-
-    final userRef = _firestore.collection('buyer_user').doc(uid);
-
-    await _firestore.runTransaction((transaction) async {
-      DocumentSnapshot snapshot = await transaction.get(userRef);
-      final data = snapshot.data() as Map<String, dynamic>?;
-      double currentBalance =
-          ((data?['wallet'] as num?)?.toDouble()) ??
-          0.0;
-
-      transaction.set(userRef, {
-        'wallet': isCredit ? currentBalance + amount : currentBalance - amount,
-      }, SetOptions(merge: true));
-
-      transaction.set(userRef.collection('transactions').doc(), {
-        'amount': amount,
-        'title': title,
-        'isCredit': isCredit,
-        'status': status,
-        if (paymentId != null) 'paymentId': paymentId,
-        if (orderId != null) 'orderId': orderId,
-        'createdAt': FieldValue.serverTimestamp(),
-        'timestamp':
-            FieldValue.serverTimestamp(),
-      });
-    });
+    await _repository.addWalletTransaction(
+      userId: uid,
+      amount: amount,
+      title: title,
+      isCredit: isCredit,
+      paymentId: paymentId,
+      orderId: orderId,
+      status: status,
+    );
   }
 }
 

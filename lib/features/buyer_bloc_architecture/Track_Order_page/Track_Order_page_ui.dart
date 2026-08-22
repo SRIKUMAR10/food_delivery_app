@@ -26,6 +26,8 @@ import '../../../core/models/order_status.dart';
 import '../../../core/services/map_marker_service.dart';
 import '../../../core/services/arrival_alert_service.dart';
 import '../../../core/widgets/app_google_map_view.dart';
+import '../../../core/widgets/empty_state_view.dart';
+import '../../../core/widgets/shimmer_loader.dart';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 String _tr(BuildContext context, String key) {
@@ -1190,17 +1192,19 @@ class _TrackOrderView extends StatelessWidget {
               ),
           Column(
             children: [
-              _buildActionSquare(
-                Icons.call,
-                const Color(0xFF22C55E),
+              _buildActionButton(
+                icon: Icons.phone_rounded,
+                label: _tr(context, 'Call'),
+                color: const Color(0xFF16A34A),
                 onTap: partner.phone.isNotEmpty
                     ? () => _handlePhoneCall(context, partner.phone)
                     : null,
               ),
-              const SizedBox(height: 10),
-              _buildActionSquare(
-                Icons.message,
-                const Color(0xFF2563EB),
+              const SizedBox(height: 8),
+              _buildActionButton(
+                icon: Icons.chat_bubble_rounded,
+                label: _tr(context, 'Chat'),
+                color: const Color(0xFF2563EB),
                 onTap: () => _navigateToDeliveryChat(context, state),
               ),
             ],
@@ -1344,28 +1348,20 @@ class _TrackOrderView extends StatelessWidget {
                     ],
                   ),
                 ),
-                SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: _buildDesktopActionButton(
-                    icon: Icons.call,
-                    label: 'Call',
-                    color: const Color(0xFF22C55E),
-                    onTap: partner.phone.isNotEmpty
-                        ? () => _handlePhoneCall(context, partner.phone)
-                        : null,
-                  ),
+                _buildActionButton(
+                  icon: Icons.phone_rounded,
+                  label: _tr(context, 'Call'),
+                  color: const Color(0xFF16A34A),
+                  onTap: partner.phone.isNotEmpty
+                      ? () => _handlePhoneCall(context, partner.phone)
+                      : null,
                 ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 70,
-                  height: 60,
-                  child: _buildDesktopActionButton(
-                    icon: Icons.chat_bubble_outline,
-                    label: _tr(context, 'Chat'),
-                    color: const Color(0xFF2563EB),
-                    onTap: () => _navigateToDeliveryChat(context, state),
-                  ),
+                const SizedBox(width: 10),
+                _buildActionButton(
+                  icon: Icons.chat_bubble_rounded,
+                  label: _tr(context, 'Chat'),
+                  color: const Color(0xFF2563EB),
+                  onTap: () => _navigateToDeliveryChat(context, state),
                 ),
               ],
             ),
@@ -1398,6 +1394,10 @@ class _TrackOrderView extends StatelessWidget {
     final openStatus = profile.openStatus?.toString().toLowerCase() == 'closed' ? 'Closed' : 'Open';
     final statusColor = openStatus == 'Closed' ? BuyerAppColors.primaryDeep : const Color(0xFF22C55E);
     final hours = profile.openingHours;
+    final isValidHours = hours != null &&
+        hours.trim().isNotEmpty &&
+        hours.trim() != '{}' &&
+        hours.trim() != 'null';
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1517,17 +1517,19 @@ class _TrackOrderView extends StatelessWidget {
               ),
               Column(
                 children: [
-                  _buildActionSquare(
-                    Icons.call,
-                    const Color(0xFF22C55E),
+                  _buildActionButton(
+                    icon: Icons.phone_rounded,
+                    label: _tr(context, 'Call'),
+                    color: const Color(0xFF16A34A),
                     onTap: profile.phone.isNotEmpty
                         ? () => _handlePhoneCall(context, profile.phone)
                         : null,
                   ),
-                  const SizedBox(height: 10),
-                  _buildActionSquare(
-                    Icons.message,
-                    const Color(0xFF2563EB),
+                  const SizedBox(height: 8),
+                  _buildActionButton(
+                    icon: Icons.chat_bubble_rounded,
+                    label: _tr(context, 'Chat'),
+                    color: const Color(0xFF2563EB),
                     onTap: () => _openSupportChat(context, state),
                   ),
                 ],
@@ -1542,7 +1544,7 @@ class _TrackOrderView extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              hours != null ? '$openStatus • $hours' : openStatus,
+              isValidHours ? '$openStatus • $hours' : openStatus,
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 color: statusColor,
@@ -2053,39 +2055,26 @@ class _TrackOrderView extends StatelessWidget {
     final displayMessage = message.contains('permission-denied')
         ? 'Unable to load live tracking details due to permission limits. Please retry.'
         : message;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: BuyerAppColors.primaryDeep, size: 48),
-            const SizedBox(height: 16),
-            Text(
-              displayMessage,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: BuyerAppColors.primaryDeep, fontSize: 14, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFF0F0),
-                foregroundColor: BuyerAppColors.primaryDeep,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-              onPressed: () {
-                context.read<TrackOrderBloc>().add(
-                  RefreshTrackOrder(
-                    orderId: order?.id ?? 'FG125678',
-                    orderDate: order?.date ?? DateTime.now(),
-                  ),
-                );
-              },
-              child: const Text('Retry'),
-            ),
-          ],
+    return EmptyStateView(
+      icon: Icons.error_outline,
+      iconColor: BuyerAppColors.primaryDeep,
+      title: displayMessage,
+      action: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFFF0F0),
+          foregroundColor: BuyerAppColors.primaryDeep,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
+        onPressed: () {
+          context.read<TrackOrderBloc>().add(
+            RefreshTrackOrder(
+              orderId: order?.id ?? 'FG125678',
+              orderDate: order?.date ?? DateTime.now(),
+            ),
+          );
+        },
+        child: const Text('Retry'),
       ),
     );
   }
@@ -2095,13 +2084,9 @@ class _TrackOrderView extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       itemCount: 4,
       itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 32),
-          height: 60,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(12),
-          ),
+        return const Padding(
+          padding: EdgeInsets.only(bottom: 32),
+          child: SkeletonBox(height: 60, borderRadius: 12),
         );
       },
     );
@@ -2162,29 +2147,62 @@ class _TrackOrderView extends StatelessWidget {
     }
   }
 
-  Widget _buildActionSquare(IconData icon, Color color, {VoidCallback? onTap}) {
+  Widget _buildActionButton({
+    required IconData icon,
+    required Color color,
+    String? label,
+    VoidCallback? onTap,
+    bool compact = false,
+  }) {
+    final isEnabled = onTap != null;
+    final effectiveColor = isEnabled ? color : const Color(0xFF9CA3AF);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 44,
-          height: 44,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: label != null && !compact
+              ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
+              : const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: effectiveColor.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.15),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: Border.all(
+              color: effectiveColor.withValues(alpha: 0.2),
+              width: 1,
+            ),
           ),
-          child: Icon(icon, color: color, size: 22),
+          child: label != null && !compact
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: effectiveColor, size: 16),
+                    const SizedBox(width: 5),
+                    Text(
+                      label,
+                      style: GoogleFonts.poppins(
+                        color: effectiveColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                )
+              : Icon(icon, color: effectiveColor, size: 20),
         ),
       ),
+    );
+  }
+
+  Widget _buildActionSquare(IconData icon, Color color, {VoidCallback? onTap}) {
+    return _buildActionButton(
+      icon: icon,
+      color: color,
+      onTap: onTap,
+      compact: true,
     );
   }
 
@@ -2194,35 +2212,11 @@ class _TrackOrderView extends StatelessWidget {
     required Color color,
     VoidCallback? onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 70,
-          height: 60,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return _buildActionButton(
+      icon: icon,
+      color: color,
+      label: label,
+      onTap: onTap,
     );
   }
 

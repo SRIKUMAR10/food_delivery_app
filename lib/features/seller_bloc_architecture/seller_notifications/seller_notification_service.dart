@@ -66,8 +66,21 @@ class SellerNotificationService {
   }
 
   /// Plays a notification sound chime (safe across Web, Android, iOS, Windows, macOS, Linux).
-  void playChime() {
-    _audio.playNewOrderSound();
+  void playChime({
+    String ringtoneName = AudioNotificationService.defaultRingtone,
+    double volume = 0.8,
+    bool loop = false,
+  }) {
+    _audio.playNewOrderSound(
+      ringtoneName: ringtoneName,
+      volume: volume,
+      loop: loop,
+    );
+  }
+
+  /// Halts active audio playback.
+  void stopAudio() {
+    _audio.stop();
   }
 
   void dispose() {

@@ -12,7 +12,12 @@ abstract class DeliveryProfileRepositoryBase {
   Future<String?> pickProfileImage();
   Future<String?> getAvatarPath();
   Future<void> saveAvatarPath(String? path);
-  Future<void> updateAddress(String address);
+  Future<void> updateAddress(
+    String address, {
+    double? latitude,
+    double? longitude,
+    String? googleMapsUrl,
+  });
   Future<void> updateVehicle({required String vehicleType, required String vehicleNumber});
   Future<void> updatePhone(String phone);
   Future<void> updateEmail(String email);
@@ -25,7 +30,7 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
   static const String _profileKey = 'dp_profile_data';
   static const String _avatarKey = 'dp_profile_avatar';
 
-  final SharedPreferences? _prefs;
+  SharedPreferences? _prefs;
   final DeliveryProfileServiceBase _service;
 
   DeliveryProfileRepository({
@@ -158,6 +163,13 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
         phone: map['phone'] as String? ?? '',
         email: map['email'] as String? ?? '',
         address: map['address'] as String? ?? '',
+        latitude: map['latitude'] != null
+            ? double.tryParse(map['latitude'].toString())
+            : null,
+        longitude: map['longitude'] != null
+            ? double.tryParse(map['longitude'].toString())
+            : null,
+        googleMapsUrl: map['googleMapsUrl'] as String?,
         dob: map['dob'] as String? ?? '',
         gender: map['gender'] as String? ?? '',
         vehicleType: map['vehicleType'] as String? ?? '',
@@ -175,51 +187,117 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
   DeliveryProfileState buildDefaultProfile({String? avatarPath}) {
     final profile = DeliveryProfileState(
       status: DeliveryProfileStatus.loaded,
-      avatarPath: avatarPath,
+      fullName: _prefs?.getString('delivery_profile_name') ?? '',
+      phone: _prefs?.getString('delivery_profile_phone') ?? '',
+      email: _prefs?.getString('delivery_profile_email') ?? '',
+      dob: _prefs?.getString('delivery_profile_dob') ?? '',
+      gender: _prefs?.getString('delivery_profile_gender') ?? '',
+      address: _prefs?.getString('delivery_profile_address') ?? '',
+      vehicleType: _prefs?.getString('delivery_profile_vehicle_type') ?? '',
+      vehicleNumber: _prefs?.getString('delivery_profile_vehicle_number') ?? '',
+      licenseNumber: _prefs?.getString('delivery_profile_license') ?? '',
+      licenseValidTill:
+          _prefs?.getString('delivery_profile_license_valid') ?? '',
+      completionPercentage: 0,
+      avatarPath: avatarPath ?? _prefs?.getString(_avatarKey),
       documents: defaultDocuments,
       verificationStatuses: defaultVerificationStatuses,
-      localeCode: 'en',
+      localeCode: _prefs?.getString('delivery_locale') ?? 'en',
     );
     final checklist = buildDefaultChecklist(profile: profile);
-    return profile.copyWith(checklist: checklist);
+    final completion = computeDeliveryProfileCompletion(
+      fullName: profile.fullName,
+      phone: profile.phone,
+      email: profile.email,
+      dob: profile.dob,
+      address: profile.address,
+      vehicleType: profile.vehicleType,
+      vehicleNumber: profile.vehicleNumber,
+      licenseNumber: profile.licenseNumber,
+      licenseValidTill: profile.licenseValidTill,
+      documents: profile.documents,
+    );
+    return profile.copyWith(
+      checklist: checklist,
+      completionPercentage: completion,
+    );
   }
 
   @override
-  Stream<DeliveryProfileState> watchProfile() {
-    return _service.watchProfileData().map((data) {
+  Stream<DeliveryProfileState> watchProfile() async* {
+    _prefs ??= await SharedPreferences.getInstance();
+    yield* _service.watchProfileData().map((data) {
       final defaultProfile = buildDefaultProfile();
       final profile = _mapDataToProfile(data, defaultProfile);
       final checklist = buildDefaultChecklist(profile: profile);
+      final completion = computeDeliveryProfileCompletion(
+        fullName: profile.fullName,
+        phone: profile.phone,
+        email: profile.email,
+        dob: profile.dob,
+        address: profile.address,
+        vehicleType: profile.vehicleType,
+        vehicleNumber: profile.vehicleNumber,
+        licenseNumber: profile.licenseNumber,
+        licenseValidTill: profile.licenseValidTill,
+        documents: profile.documents,
+      );
       return profile.copyWith(
         checklist: checklist,
-        status: profile.fullName.trim().isEmpty &&
-                profile.phone.trim().isEmpty &&
-                profile.email.trim().isEmpty
-            ? DeliveryProfileStatus.empty
-            : DeliveryProfileStatus.loaded,
+        completionPercentage: completion,
+        status: DeliveryProfileStatus.loaded,
       );
     });
   }
 
   DeliveryProfileState _mapDataToProfile(
       Map<String, dynamic> data, DeliveryProfileState defaultProfile) {
-    final partnerId = data['id'] ?? '';
-    final displayName = data['displayName'] ?? '';
-    final phone = data['phoneNumber'] ?? '';
-    final email = data['email'] ?? '';
-    final address = data['address'] ?? '';
-    final vehicleType = data['vehicleType'] ?? '';
-    final vehicleNumber = data['vehicleNumber'] ?? '';
-    final drivingLicense = data['drivingLicense'] ?? '';
+    final partnerId = (data['id'] as String?)?.isNotEmpty == true
+        ? data['id'] as String
+        : defaultProfile.partnerId;
+    final displayName = (data['displayName'] as String?)?.isNotEmpty == true
+        ? data['displayName'] as String
+        : defaultProfile.fullName;
+    final phone = (data['phoneNumber'] as String?)?.isNotEmpty == true
+        ? data['phoneNumber'] as String
+        : defaultProfile.phone;
+    final email = (data['email'] as String?)?.isNotEmpty == true
+        ? data['email'] as String
+        : defaultProfile.email;
+    final address = (data['address'] as String?)?.isNotEmpty == true
+        ? data['address'] as String
+        : defaultProfile.address;
+    final vehicleType = (data['vehicleType'] as String?)?.isNotEmpty == true
+        ? data['vehicleType'] as String
+        : defaultProfile.vehicleType;
+    final vehicleNumber = (data['vehicleNumber'] as String?)?.isNotEmpty == true
+        ? data['vehicleNumber'] as String
+        : defaultProfile.vehicleNumber;
+    final drivingLicense = (data['drivingLicense'] as String?)?.isNotEmpty == true
+        ? data['drivingLicense'] as String
+        : defaultProfile.licenseNumber;
+    final licenseValidTill =
+        (data['licenseValidTill'] as String?)?.isNotEmpty == true
+            ? data['licenseValidTill'] as String
+            : defaultProfile.licenseValidTill;
     final vehicleRcUrl = data['vehicleRcUrl'] ?? '';
     final insuranceUrl = data['insuranceUrl'] ?? '';
     final panNumber = data['panNumber'] ?? '';
     final status = data['status'] ?? 'pending';
     final kycStatus = data['kycStatus'] ?? 'pending';
     final isActive = data['isActive'] ?? true;
-    final rating = (data['rating'] as num?)?.toDouble() ?? 5.0;
-    final totalDeliveries = (data['totalDeliveries'] as num?)?.toInt() ?? 0;
-    final joiningDate = data['joiningDate'] ?? '';
+    final rating = (data['rating'] as num?)?.toDouble() ?? defaultProfile.rating;
+    final totalDeliveries =
+        (data['totalDeliveries'] as num?)?.toInt() ?? defaultProfile.totalDeliveries;
+    final joiningDate = (data['joiningDate'] as String?)?.isNotEmpty == true
+        ? data['joiningDate'] as String
+        : defaultProfile.joiningDate;
+    final dob = (data['dob'] as String?)?.isNotEmpty == true
+        ? data['dob'] as String
+        : defaultProfile.dob;
+    final gender = (data['gender'] as String?)?.isNotEmpty == true
+        ? data['gender'] as String
+        : defaultProfile.gender;
 
     final updatedDocs = defaultDocuments.map((doc) {
       if (doc.id == 'drivingLicense' && drivingLicense.isNotEmpty) {
@@ -271,6 +349,9 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
       phone: phone,
       email: email,
       address: address,
+      latitude: (data['latitude'] as num?)?.toDouble(),
+      longitude: (data['longitude'] as num?)?.toDouble(),
+      googleMapsUrl: data['googleMapsUrl'] as String?,
       dob: data['dob'] ?? '',
       gender: data['gender'] ?? '',
       vehicleType: vehicleType,
@@ -299,6 +380,9 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
         'phone': profile.phone,
         'email': profile.email,
         'address': profile.address,
+        if (profile.latitude != null) 'latitude': profile.latitude.toString(),
+        if (profile.longitude != null) 'longitude': profile.longitude.toString(),
+        if (profile.googleMapsUrl != null) 'googleMapsUrl': profile.googleMapsUrl!,
         'dob': profile.dob,
         'gender': profile.gender,
         'vehicleType': profile.vehicleType,
@@ -320,6 +404,9 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
         'phoneNumber': profile.phone,
         'email': profile.email,
         'address': profile.address,
+        'latitude': profile.latitude,
+        'longitude': profile.longitude,
+        'googleMapsUrl': profile.googleMapsUrl,
         'vehicleType': profile.vehicleType,
         'vehicleNumber': profile.vehicleNumber,
         'drivingLicense': profile.licenseNumber,
@@ -328,8 +415,18 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
   }
 
   @override
-  Future<void> updateAddress(String address) async {
-    await _service.updateProfile({'address': address});
+  Future<void> updateAddress(
+    String address, {
+    double? latitude,
+    double? longitude,
+    String? googleMapsUrl,
+  }) async {
+    await _service.updateProfile({
+      'address': address,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (googleMapsUrl != null) 'googleMapsUrl': googleMapsUrl,
+    });
   }
 
   @override

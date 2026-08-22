@@ -11,6 +11,7 @@ import '../../../../core/widgets/filter_chips_bar.dart';
 import 'overall_rating_page__bloc.dart';
 import 'overall_rating_page__event.dart';
 import 'overall_rating_page__state.dart';
+import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
 
 const _bg = Color(0xFFF8FAFC);
 const _ink = Color(0xFF1E293B);
@@ -55,12 +56,19 @@ class _OverallRatingContentView extends StatelessWidget {
         scrolledUnderElevation: 4,
         shadowColor: Colors.black.withValues(alpha: 0.1),
         centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: _ink, size: 20),
-          onPressed: () {
-            if (Navigator.canPop(context)) Navigator.of(context).pop();
-          },
-        ),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, color: _ink, size: 20),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              )
+            : (SellerDrawerProvider.of(context) != null
+                ? IconButton(
+                    icon: const Icon(Icons.menu_rounded, color: _ink, size: 22),
+                    onPressed: SellerDrawerProvider.of(context),
+                  )
+                : null),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

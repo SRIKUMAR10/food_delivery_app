@@ -172,7 +172,7 @@ void main() {
       expect(find.text('₹12850.00'), findsWidgets);
     });
 
-    testWidgets('shows validation snackbar when withdrawal exceeds balance', (
+    testWidgets('shows validation error when withdrawal exceeds balance', (
       tester,
     ) async {
       setDesktopSize(tester);
@@ -193,9 +193,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(
-        find.text('Withdrawal amount exceeds your available wallet balance.'),
+        find.text('Please enter a valid amount.'),
         findsOneWidget,
       );
+      expect(find.text('Withdraw Funds'), findsOneWidget);
       expect(find.text('₹12850.00'), findsWidgets);
     });
   });

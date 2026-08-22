@@ -115,6 +115,46 @@ void main() {
       await expectation;
     });
 
+    test('BuyerLocationUpdated updates coordinates and address in state', () async {
+      homePageBloc.add(const HomePageStarted());
+      await homePageBloc.stream.firstWhere((s) => s is HomePageEmpty);
+
+      final expectation = expectLater(
+        homePageBloc.stream,
+        emitsThrough(isA<HomePageEmpty>().having(
+          (s) => s.currentAddress,
+          'currentAddress',
+          '100 Marine Drive, Mumbai',
+        ).having(
+          (s) => s.userLat,
+          'userLat',
+          18.9438,
+        ).having(
+          (s) => s.userLng,
+          'userLng',
+          72.8232,
+        )),
+      );
+
+      homePageBloc.add(const BuyerLocationUpdated(18.9438, 72.8232, '100 Marine Drive, Mumbai'));
+      await expectation;
+    });
+
+    test('FetchUserLocation falls back gracefully to Select delivery address when unauthenticated', () async {
+      homePageBloc.add(const HomePageStarted());
+      await homePageBloc.stream.firstWhere((s) => s is HomePageEmpty);
+
+      homePageBloc.add(const FetchUserLocation());
+      await expectLater(
+        homePageBloc.stream,
+        emitsThrough(isA<HomePageEmpty>().having(
+          (s) => s.currentAddress,
+          'currentAddress',
+          isNot('Fetching location...'),
+        )),
+      );
+    });
+
     test('SearchQueryChanged and SearchCleared update search query in state', () async {
       homePageBloc.add(const HomePageStarted());
       await homePageBloc.stream.firstWhere((s) => s is HomePageEmpty);

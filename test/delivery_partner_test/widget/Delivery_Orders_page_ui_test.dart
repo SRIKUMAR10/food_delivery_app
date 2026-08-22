@@ -123,7 +123,10 @@ void main() {
         status: DeliveryOrderStatus.active,
       ),
     );
+    registerFallbackValue(const DeliveryOrdersAcceptOrderEvent('ORD12345'));
+    registerFallbackValue(const DeliveryOrdersToggleOnlineEvent(isOnline: false));
   });
+
 
   setUp(() {
     mockBloc = MockDeliveryOrdersPageBloc();
@@ -706,5 +709,91 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets('taps FAB Accept Next Order and dispatches accept event for next pending order', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(loadedState);
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('dp_orders_fab_accept')));
+      await tester.pump();
+
+      verify(
+        () => mockBloc.add(const DeliveryOrdersAcceptOrderEvent('ORD12345')),
+      ).called(1);
+    });
+
+
+    testWidgets('shows warning snackbar when tapping FAB Accept Next Order with no pending orders', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          orders: [activeOrder, completedOrder],
+          filteredOrders: [activeOrder, completedOrder],
+        ),
+      );
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('dp_orders_fab_accept')));
+      await tester.pump();
+
+      expect(find.text('No pending orders right now'), findsOneWidget);
+    });
+
+    testWidgets('taps FAB Go Offline and dispatches toggle online event with isOnline=false', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          isOnline: true,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+        ),
+      );
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      expect(find.text('Go Offline'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('dp_orders_fab_offline')));
+      await tester.pump();
+
+      verify(
+        () => mockBloc.add(const DeliveryOrdersToggleOnlineEvent(isOnline: false)),
+      ).called(1);
+    });
+
+    testWidgets('taps FAB Stay Online when offline and dispatches toggle online event with isOnline=true', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(
+        const DeliveryOrdersPageState(
+          status: DeliveryOrdersPageStatus.loaded,
+          isOnline: false,
+          orders: sampleOrders,
+          filteredOrders: sampleOrders,
+        ),
+      );
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      expect(find.text('Stay Online'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('dp_orders_fab_offline')));
+      await tester.pump();
+
+      verify(
+        () => mockBloc.add(const DeliveryOrdersToggleOnlineEvent(isOnline: true)),
+      ).called(1);
+    });
   });
 }
+

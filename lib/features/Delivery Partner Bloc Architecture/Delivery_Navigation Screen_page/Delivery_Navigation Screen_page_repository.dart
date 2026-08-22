@@ -6,10 +6,12 @@ abstract class DeliveryNavigationRepositoryBase {
   Future<DeliveryNavigationOrderSummary> fetchOrderSummary();
   Future<DeliveryNavigationRoutePoint> fetchPickup();
   Future<DeliveryNavigationRoutePoint> fetchDrop();
-  Future<Map<String, dynamic>?> fetchActiveOrderData();
+  Future<Map<String, dynamic>?> fetchActiveOrderData({String? orderId});
   Stream<Map<String, dynamic>?> watchActiveOrder();
   Future<Map<String, dynamic>?> fetchPartnerProfile();
   Stream<Map<String, dynamic>?> watchPartnerProfile();
+  Future<List<Map<String, dynamic>>> fetchNearbySellers();
+  Stream<List<Map<String, dynamic>>> watchNearbySellers();
   Future<Map<String, dynamic>> collectCodCash({
     required String orderId,
     required double amountReceived,
@@ -74,13 +76,13 @@ class DeliveryNavigationRepository implements DeliveryNavigationRepositoryBase {
     }
   }
 
-  Future<Map<String, dynamic>?> _fetchOrderData() async {
-    return await _service.fetchActiveOrder();
+  Future<Map<String, dynamic>?> _fetchOrderData({String? orderId}) async {
+    return await _service.fetchActiveOrder(orderId: orderId);
   }
 
   @override
-  Future<Map<String, dynamic>?> fetchActiveOrderData() async {
-    return await _service.fetchActiveOrder();
+  Future<Map<String, dynamic>?> fetchActiveOrderData({String? orderId}) async {
+    return await _service.fetchActiveOrder(orderId: orderId);
   }
 
   @override
@@ -99,6 +101,16 @@ class DeliveryNavigationRepository implements DeliveryNavigationRepositoryBase {
   @override
   Stream<Map<String, dynamic>?> watchPartnerProfile() {
     return _service.watchPartnerProfile();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchNearbySellers() async {
+    return await _service.fetchNearbySellers();
+  }
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchNearbySellers() {
+    return _service.watchNearbySellers();
   }
 
   @override

@@ -56,5 +56,28 @@ void main() {
       expect(completed, isFalse);
       service.dispose();
     });
+
+    test('playNewOrderSound runs safely with custom ringtone, volume, loop', () async {
+      final service = AudioNotificationService();
+      await service.playNewOrderSound(
+        ringtoneName: 'Kitchen Buzzer',
+        volume: 0.9,
+        loop: true,
+      );
+      await service.stop();
+      service.dispose();
+    });
+
+    test('setGlobalAudioConfig updates and retrieves global volume and ringtone', () {
+      AudioNotificationService.setGlobalAudioConfig(volume: 0.4, ringtone: 'Digital Siren');
+      expect(AudioNotificationService.globalVolume, equals(0.4));
+      expect(AudioNotificationService.globalRingtone, equals('Digital Siren'));
+
+      AudioNotificationService.setGlobalAudioConfig(volume: 1.5);
+      expect(AudioNotificationService.globalVolume, equals(1.0));
+
+      AudioNotificationService.setGlobalAudioConfig(volume: -0.2);
+      expect(AudioNotificationService.globalVolume, equals(0.0));
+    });
   });
 }

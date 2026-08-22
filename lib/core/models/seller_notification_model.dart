@@ -301,6 +301,61 @@ class SellerNotificationModel extends Equatable {
     return body;
   }
 
+  /// Intelligently resolves the effective category even if raw category was unknown or missing.
+  SellerNotificationCategory get effectiveCategory {
+    if (category != SellerNotificationCategory.unknown) return category;
+    if (orderId != null && orderId!.isNotEmpty) return SellerNotificationCategory.orderAccepted;
+    if (conversationId != null && conversationId!.isNotEmpty) return SellerNotificationCategory.customerMessage;
+    if (stockQuantity != null) return SellerNotificationCategory.lowStock;
+    if (rating != null && rating! > 0) return SellerNotificationCategory.newReview;
+    if (amount != null && amount! > 0) return SellerNotificationCategory.paymentUpdate;
+    if (payoutId != null && payoutId!.isNotEmpty) return SellerNotificationCategory.payoutCompleted;
+    final text = '${title.toLowerCase()} ${body.toLowerCase()}';
+    if (text.contains('new order') || text.contains('incoming')) return SellerNotificationCategory.newOrder;
+    if (text.contains('order') || text.contains('delivery') || text.contains('pickup')) return SellerNotificationCategory.orderAccepted;
+    if (text.contains('message') || text.contains('chat') || text.contains('buyer') || text.contains('customer')) return SellerNotificationCategory.customerMessage;
+    if (text.contains('stock') || text.contains('inventory') || text.contains('item')) return SellerNotificationCategory.lowStock;
+    if (text.contains('review') || text.contains('rating') || text.contains('star')) return SellerNotificationCategory.newReview;
+    if (text.contains('payout') || text.contains('wallet') || text.contains('payment') || text.contains('earning')) return SellerNotificationCategory.paymentUpdate;
+    if (text.contains('promo') || text.contains('coupon') || text.contains('offer') || text.contains('discount')) return SellerNotificationCategory.promotional;
+    return SellerNotificationCategory.system;
+  }
+
+  /// Resolves the target action type to navigate to on tap.
+  SellerNotificationActionType get effectiveActionType {
+    if (actionType != SellerNotificationActionType.none) return actionType;
+    switch (effectiveCategory) {
+      case SellerNotificationCategory.newOrder:
+        return SellerNotificationActionType.navigateNewOrders;
+      case SellerNotificationCategory.orderAccepted:
+      case SellerNotificationCategory.orderCancelled:
+      case SellerNotificationCategory.deliveryPartnerAssigned:
+      case SellerNotificationCategory.pickupNotification:
+        return SellerNotificationActionType.navigateOrder;
+      case SellerNotificationCategory.customerMessage:
+        return SellerNotificationActionType.navigateChat;
+      case SellerNotificationCategory.newReview:
+        return SellerNotificationActionType.navigateReviews;
+      case SellerNotificationCategory.lowStock:
+      case SellerNotificationCategory.outOfStock:
+        return SellerNotificationActionType.navigateInventory;
+      case SellerNotificationCategory.paymentUpdate:
+      case SellerNotificationCategory.payoutCompleted:
+        return SellerNotificationActionType.navigateWallet;
+      case SellerNotificationCategory.promotional:
+        return SellerNotificationActionType.navigatePromotions;
+      case SellerNotificationCategory.system:
+      case SellerNotificationCategory.unknown:
+        if (orderId != null && orderId!.isNotEmpty) return SellerNotificationActionType.navigateOrder;
+        if (conversationId != null && conversationId!.isNotEmpty) return SellerNotificationActionType.navigateChat;
+        final text = '${title.toLowerCase()} ${body.toLowerCase()}';
+        if (text.contains('order')) return SellerNotificationActionType.navigateOrder;
+        if (text.contains('chat') || text.contains('message')) return SellerNotificationActionType.navigateChat;
+        if (text.contains('wallet') || text.contains('payment')) return SellerNotificationActionType.navigateWallet;
+        return SellerNotificationActionType.navigateOrder;
+    }
+  }
+
   factory SellerNotificationModel.fromMap(String id, Map<String, dynamic> map) {
     DateTime? parseDate(dynamic value) {
       if (value == null) return null;

@@ -63,6 +63,9 @@ void main() {
   setUpAll(() {
     registerFallbackValue(const DeliveryDashboardInitEvent());
     registerFallbackValue(const DeliveryDashboardToggleOnlineEvent(true));
+    registerFallbackValue(
+      const DeliveryDashboardQuickActionExecutedEvent('available_orders'),
+    );
   });
 
   setUp(() {
@@ -185,6 +188,86 @@ void main() {
       expect(find.text('Active Zone Map'), findsOneWidget);
       expect(find.text('Quick Actions'), findsOneWidget);
       expect(find.text('Today Incentive Goal'), findsOneWidget);
+    });
+
+    testWidgets('taps all 7 quick action buttons and verifies bloc events', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      Future<void> tapAndVerify(Key key, void Function() verifyCall) async {
+        final btn = find.byKey(key);
+        expect(btn, findsOneWidget);
+        await tester.ensureVisible(btn);
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(btn);
+        await tester.pump(const Duration(milliseconds: 300));
+        verifyCall();
+        final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+        if (navigator.canPop()) {
+          navigator.pop();
+          await tester.pump(const Duration(milliseconds: 300));
+        }
+      }
+
+      // 1. Go Online / Offline
+      await tapAndVerify(const Key('dp_quick_action_toggle_online'), () {
+        verify(
+          () =>
+              mockBloc.add(any(that: isA<DeliveryDashboardToggleOnlineEvent>())),
+        ).called(1);
+      });
+
+      // 2. Available Orders
+      await tapAndVerify(
+          const Key('dp_quick_action_available_orders'), () {
+        verify(
+          () => mockBloc
+              .add(const DeliveryDashboardQuickActionExecutedEvent('available_orders')),
+        ).called(1);
+      });
+
+      // 3. Current Order
+      await tapAndVerify(const Key('dp_quick_action_current_order'), () {
+        verify(
+          () => mockBloc
+              .add(const DeliveryDashboardQuickActionExecutedEvent('current_order')),
+        ).called(1);
+      });
+
+      // 4. Earnings
+      await tapAndVerify(const Key('dp_quick_action_earnings'), () {
+        verify(
+          () => mockBloc
+              .add(const DeliveryDashboardQuickActionExecutedEvent('earnings')),
+        ).called(1);
+      });
+
+      // 5. Wallet
+      await tapAndVerify(const Key('dp_quick_action_wallet'), () {
+        verify(
+          () => mockBloc
+              .add(const DeliveryDashboardQuickActionExecutedEvent('wallet')),
+        ).called(1);
+      });
+
+      // 6. Incentives
+      await tapAndVerify(const Key('dp_quick_action_incentives'), () {
+        verify(
+          () => mockBloc
+              .add(const DeliveryDashboardQuickActionExecutedEvent('incentives')),
+        ).called(1);
+      });
+
+      // 7. Profile
+      await tapAndVerify(const Key('dp_quick_action_profile'), () {
+        verify(
+          () => mockBloc
+              .add(const DeliveryDashboardQuickActionExecutedEvent('profile')),
+        ).called(1);
+      });
     });
 
     testWidgets('hides floating online pill when isOnline is false in mobile view', (

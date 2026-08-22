@@ -189,7 +189,7 @@ void main() {
       final map = partner.toMap();
       expect(map['phoneNumber'], '+919876543210');
       expect(map['displayName'], 'John Rider');
-      expect(map['password'], 'securePassword123');
+      expect(map.containsKey('password'), isFalse);
 
       final copied = partner.copyWith(password: 'newPassword456');
       expect(copied.password, 'newPassword456');

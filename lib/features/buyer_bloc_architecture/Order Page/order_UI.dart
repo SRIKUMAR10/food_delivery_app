@@ -10,6 +10,7 @@ import '../../../core/repositories/i_cart_repository.dart';
 import '../Cart Page/cart_models.dart';
 import 'package:intl/intl.dart';
 import '../Track_Order_page/Track_Order_page_ui.dart';
+import '../../../core/widgets/empty_state_view.dart';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class OrderPageUI extends StatelessWidget {
@@ -395,32 +396,19 @@ class _OrderPageContentState extends State<_OrderPageContent> {
             child: CircularProgressIndicator(color: BuyerAppColors.primaryDeep),
           );
         } else if (state is OrderError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline_rounded, size: 48, color: BuyerAppColors.primaryDeep),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Error: ${state.message}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 15, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<OrderBloc>().add(const LoadOrdersRequested());
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: BuyerAppColors.primaryDeep,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Try Again'),
-                  ),
-                ],
+          return EmptyStateView(
+            icon: Icons.error_outline_rounded,
+            iconColor: BuyerAppColors.primaryDeep,
+            title: 'Error: ${state.message}',
+            action: ElevatedButton(
+              onPressed: () {
+                context.read<OrderBloc>().add(const LoadOrdersRequested());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BuyerAppColors.primaryDeep,
+                foregroundColor: Colors.white,
               ),
+              child: const Text('Try Again'),
             ),
           );
         } else if (state is OrderLoaded) {
@@ -490,62 +478,28 @@ class _OrderPageContentState extends State<_OrderPageContent> {
       subtitle = 'You have no cancelled or rejected orders.';
     }
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 110,
-              height: 110,
-              decoration: BoxDecoration(
-                color: BuyerAppColors.primary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
+    return EmptyStateView(
+      icon: Icons.receipt_long_outlined,
+      iconContainerColor: BuyerAppColors.primary.withValues(alpha: 0.08),
+      iconContainerSize: 110,
+      iconColor: BuyerAppColors.primary.withValues(alpha: 0.6),
+      iconSize: 52,
+      title: title,
+      subtitle: subtitle,
+      action: widget.onNavigateToHome != null
+          ? ElevatedButton.icon(
+              onPressed: widget.onNavigateToHome!,
+              icon: const Icon(Icons.restaurant_menu, size: 18),
+              label: const Text('Explore Food'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BuyerAppColors.primaryDeep,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
               ),
-              child: Icon(
-                Icons.receipt_long_outlined,
-                size: 52,
-                color: BuyerAppColors.primary.withValues(alpha: 0.6),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1C1C1C),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 13.5,
-                color: Colors.black54,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (widget.onNavigateToHome != null) ...[
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: widget.onNavigateToHome!,
-                icon: const Icon(Icons.restaurant_menu, size: 18),
-                label: const Text('Explore Food'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: BuyerAppColors.primaryDeep,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+            )
+          : null,
     );
   }
 

@@ -37,6 +37,10 @@ void main() {
     mockService = MockDeliveryNavigationService();
 
     when(() => mockService.checkConnectivity()).thenAnswer((_) async => true);
+    when(() => mockService.checkGpsStatus()).thenAnswer((_) async => true);
+    when(() => mockService.streamLiveLocation(highAccuracy: any(named: 'highAccuracy')))
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockService.streamLiveLocation()).thenAnswer((_) => const Stream.empty());
     when(
       () => mockService.checkLocationPermission(),
     ).thenAnswer((_) async => true);
@@ -49,6 +53,10 @@ void main() {
     when(
       () => mockRepository.fetchDrop(),
     ).thenAnswer((_) async => DeliveryNavigationRepository.defaultDrop);
+    when(() => mockRepository.fetchActiveOrderData()).thenAnswer((_) async => null);
+    when(() => mockRepository.fetchPartnerProfile()).thenAnswer((_) async => null);
+    when(() => mockRepository.watchActiveOrder()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.watchPartnerProfile()).thenAnswer((_) => const Stream.empty());
     when(() => mockRepository.getAudioEnabled()).thenAnswer((_) async => false);
     when(
       () => mockRepository.getEmergencyMode(),
@@ -157,7 +165,7 @@ void main() {
       switchStopwatch.stop();
 
       expect(switchStopwatch.elapsedMilliseconds, lessThan(1500));
-      expect(find.text('Follow Route'), findsOneWidget);
+      expect(find.text('Complete Delivery'), findsOneWidget);
     });
   });
 }

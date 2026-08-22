@@ -1,10 +1,12 @@
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:food_delivery_app/core/services/google_places_service.dart';
 import 'package:food_delivery_app/core/services/google_maps_loader.dart';
+import 'package:food_delivery_app/core/widgets/cached_map_tile.dart';
 
 enum _AddressPickerTab { search, map }
 
@@ -104,8 +106,30 @@ class _GoogleAddressSearchDialogState extends State<GoogleAddressSearchDialog>
   GoogleMapController? _mapController;
   LatLng _cameraCenter = const LatLng(13.0827, 80.2707); // Chennai center default
   late AnimationController _pinAnimController;
+  double _fallbackZoom = 16.0;
+  bool _forceFallbackCanvas = false;
 
   static const Color _primaryRed = BuyerAppColors.primary;
+
+  int _lonToTileX(double lon, int zoom) {
+    return ((lon + 180.0) / 360.0 * (1 << zoom)).floor();
+  }
+
+  int _latToTileY(double lat, int zoom) {
+    final latRad = (lat.clamp(-85.0, 85.0)) * math.pi / 180.0;
+    final n = math.log(math.tan(latRad) + 1.0 / math.cos(latRad));
+    return ((1.0 - (n / math.pi)) / 2.0 * (1 << zoom)).floor();
+  }
+
+  double _lonToTileXFrac(double lon, int zoom) {
+    return (lon + 180.0) / 360.0 * (1 << zoom);
+  }
+
+  double _latToTileYFrac(double lat, int zoom) {
+    final latRad = (lat.clamp(-85.0, 85.0)) * math.pi / 180.0;
+    final n = math.log(math.tan(latRad) + 1.0 / math.cos(latRad));
+    return (1.0 - (n / math.pi)) / 2.0 * (1 << zoom);
+  }
 
   @override
   void initState() {
@@ -124,8 +148,16 @@ class _GoogleAddressSearchDialogState extends State<GoogleAddressSearchDialog>
     }
 
     if (kIsWeb) {
+      registerGoogleMapsAuthFailureListener(() {
+        if (mounted) {
+          setState(() {
+            _forceFallbackCanvas = true;
+          });
+        }
+      });
+
       ensureGoogleMapsJsLoaded().then((ready) {
-        if (ready && mounted) {
+        if (ready && mounted && !_forceFallbackCanvas) {
           setState(() {});
         }
       });
@@ -525,13 +557,90 @@ class _GoogleAddressSearchDialogState extends State<GoogleAddressSearchDialog>
     );
   }
 
+  Widget _buildInteractiveFallbackMap() {
+    final int zoom = _fallbackZoom.round().clamp(10, 19);
+    final int centerTileX = _lonToTileX(_cameraCenter.longitude, zoom);
+    final int centerTileY = _latToTileY(_cameraCenter.latitude, zoom);
+    final double fracX = _lonToTileXFrac(_cameraCenter.longitude, zoom) - centerTileX;
+    final double fracY = _latToTileYFrac(_cameraCenter.latitude, zoom) - centerTileY;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final centerX = constraints.maxWidth / 2;
+        final centerY = constraints.maxHeight / 2;
+
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onPanStart: (_) => _onCameraMoveStarted(),
+          onPanUpdate: (details) {
+            final double worldSize = 256.0 * (1 << zoom);
+            final double dLng = (details.delta.dx / worldSize) * 360.0;
+            final double dLat = (details.delta.dy / worldSize) * 360.0 * math.cos(_cameraCenter.latitude * math.pi / 180.0);
+            final newLat = (_cameraCenter.latitude + dLat).clamp(-85.0, 85.0);
+            final newLng = (_cameraCenter.longitude - dLng).clamp(-180.0, 180.0);
+
+            _onCameraMove(CameraPosition(target: LatLng(newLat, newLng), zoom: _fallbackZoom));
+            setState(() {});
+          },
+          onPanEnd: (_) => _onCameraIdle(),
+          child: ClipRect(
+            child: Container(
+              color: const Color(0xFFF1F5F9),
+              child: Stack(
+                children: [
+                  for (int dx = -2; dx <= 2; dx++)
+                    for (int dy = -2; dy <= 2; dy++)
+                      Positioned(
+                        left: centerX + (dx * 256.0) - (fracX * 256.0),
+                        top: centerY + (dy * 256.0) - (fracY * 256.0),
+                        width: 256,
+                        height: 256,
+                        child: CachedMapTile(
+                          tileUrl: 'https://basemaps.cartocdn.com/rastertiles/voyager/$zoom/${centerTileX + dx}/${centerTileY + dy}.png',
+                          isDarkMode: false,
+                        ),
+                      ),
+                  Positioned(
+                    top: 14,
+                    left: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 4),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.touch_app_rounded, size: 14, color: Colors.amberAccent),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Interactive Pin: ${_cameraCenter.latitude.toStringAsFixed(4)}, ${_cameraCenter.longitude.toStringAsFixed(4)}',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildMapPickerModeView() {
     final bool isNativeDesktop = !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.windows ||
          defaultTargetPlatform == TargetPlatform.linux ||
          defaultTargetPlatform == TargetPlatform.macOS);
 
-    final bool shouldUseFallback = isNativeDesktop || (kIsWeb && !isGoogleMapsJsReady());
+    final bool shouldUseFallback = isNativeDesktop || (kIsWeb && !isGoogleMapsJsReady()) || _forceFallbackCanvas;
 
     return Column(
       children: [
@@ -540,22 +649,7 @@ class _GoogleAddressSearchDialogState extends State<GoogleAddressSearchDialog>
             alignment: Alignment.center,
             children: [
               if (shouldUseFallback)
-                Container(
-                  color: const Color(0xFFE2E8F0),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.map_outlined, size: 48, color: Colors.black38),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Interactive Pin: ${_cameraCenter.latitude.toStringAsFixed(4)}, ${_cameraCenter.longitude.toStringAsFixed(4)}',
-                          style: const TextStyle(color: Colors.black54, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
+                _buildInteractiveFallbackMap()
               else
                 GoogleMap(
                   initialCameraPosition: CameraPosition(
@@ -647,8 +741,35 @@ class _GoogleAddressSearchDialogState extends State<GoogleAddressSearchDialog>
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black87,
                       elevation: 3,
-                      onPressed: () => _mapController?.animateCamera(CameraUpdate.zoomIn()),
+                      onPressed: () {
+                        if (shouldUseFallback) {
+                          setState(() {
+                            _fallbackZoom = (_fallbackZoom + 1).clamp(10.0, 19.0);
+                          });
+                          _onCameraIdle();
+                        } else {
+                          _mapController?.animateCamera(CameraUpdate.zoomIn());
+                        }
+                      },
                       child: const Icon(Icons.add, size: 20),
+                    ),
+                    const SizedBox(height: 8),
+                    FloatingActionButton.small(
+                      heroTag: 'zoomOutMapBtn',
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black87,
+                      elevation: 3,
+                      onPressed: () {
+                        if (shouldUseFallback) {
+                          setState(() {
+                            _fallbackZoom = (_fallbackZoom - 1).clamp(10.0, 19.0);
+                          });
+                          _onCameraIdle();
+                        } else {
+                          _mapController?.animateCamera(CameraUpdate.zoomOut());
+                        }
+                      },
+                      child: const Icon(Icons.remove, size: 20),
                     ),
                   ],
                 ),

@@ -31,7 +31,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             routes: {
-              '/deliverylogin': (context) =>
+              '/deliveryLogin': (context) =>
                   const Scaffold(body: Center(child: Text('Delivery Login'))),
             },
             home: BlocProvider<DeliveryOnboardingPageBloc>.value(

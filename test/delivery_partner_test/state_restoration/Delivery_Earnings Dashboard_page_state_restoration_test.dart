@@ -20,6 +20,79 @@ class MockDeliveryEarningsDashboardRepository extends Mock
 class MockDeliveryEarningsDashboardService extends Mock
     implements DeliveryEarningsDashboardServiceBase {}
 
+class _FakeEarningsService implements DeliveryEarningsDashboardServiceBase {
+  Map<String, dynamic> _payload() => {
+        'totalEarnings': 12850.00,
+        'walletBalance': 12850.00,
+        'totalWithdrawn': 0.00,
+        'todayEarnings': 2450.00,
+        'weeklyEarnings': 12850.00,
+        'monthlyEarnings': 48900.00,
+        'rangeEarnings': {
+          'today': [
+            {'label': '6AM', 'value': 180.0, 'date': '2026-07-31T06:00:00'},
+          ],
+        },
+        'transactions': [
+          {
+            'id': 'tx_1',
+            'title': 'Delivery Earnings',
+            'date': '2026-07-31T10:00:00',
+            'amount': 240.00,
+            'type': 'credit',
+            'status': 'completed',
+          },
+        ],
+        'withdrawals': [
+          {
+            'id': 'wd_1',
+            'amount': 2000.00,
+            'method': 'Bank Transfer',
+            'date': '2026-07-31T09:00:00',
+            'status': 'completed',
+          },
+        ],
+      };
+
+  @override
+  Future<Map<String, dynamic>> fetchEarningsData() async => _payload();
+
+  @override
+  Stream<Map<String, dynamic>> watchEarningsData() =>
+      Stream.value(_payload());
+
+  @override
+  Future<Map<String, dynamic>> withdraw(double amount) async => {
+        'success': true,
+        'walletBalance': 12850.00 - amount,
+        'transaction': {
+          'id': 'tx_withdraw',
+          'title': 'Withdrawal',
+          'date': DateTime(2026, 7, 31).toIso8601String(),
+          'amount': -amount,
+          'type': 'withdrawal',
+          'status': 'pending',
+        },
+        'withdrawal': {
+          'id': 'wd_new',
+          'amount': amount,
+          'method': 'Bank Transfer',
+          'date': DateTime(2026, 7, 31).toIso8601String(),
+          'status': 'pending',
+        },
+      };
+
+  @override
+  Future<Map<String, dynamic>> submitCash({
+    required double amount,
+    required String method,
+  }) async =>
+      {'success': true};
+
+  @override
+  Stream<double> simulateMediaUpload() => Stream.fromIterable([1.0]);
+}
+
 DeliveryEarningsDashboardState buildLoadedState() {
   return DeliveryEarningsDashboardState(
     status: DeliveryEarningsStatus.loaded,
@@ -104,7 +177,15 @@ void main() {
     ) async {
       setDesktopSize(tester);
       SharedPreferences.setMockInitialValues({});
-      await tester.pumpWidget(buildPage());
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        buildPage(
+          repository: DeliveryEarningsDashboardRepository(
+            service: _FakeEarningsService(),
+            prefs: prefs,
+          ),
+        ),
+      );
       await loadDashboard(tester);
 
       await tester.tap(find.byKey(const Key('dp_earnings_withdraw_button')));
@@ -136,7 +217,14 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
 
-      await tester.pumpWidget(buildPage());
+      await tester.pumpWidget(
+        buildPage(
+          repository: DeliveryEarningsDashboardRepository(
+            service: _FakeEarningsService(),
+            prefs: prefs,
+          ),
+        ),
+      );
       await loadDashboard(tester);
       await tester.tap(find.byKey(const Key('dp_earnings_withdraw_button')));
       await tester.pump();

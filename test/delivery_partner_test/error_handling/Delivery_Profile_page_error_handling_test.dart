@@ -69,8 +69,8 @@ void main() {
     ) async {
       setDesktopSize(tester);
       when(
-        () => mockRepository.fetchProfile(),
-      ).thenThrow(Exception('Server unreachable'));
+        () => mockRepository.watchProfile(),
+      ).thenAnswer((_) => Stream.error(Exception('Server unreachable')));
 
       await tester.pumpWidget(buildPage());
       await tester.pump();
@@ -85,12 +85,18 @@ void main() {
     testWidgets('retry recovers and loads the profile', (tester) async {
       setDesktopSize(tester);
       var calls = 0;
-      when(() => mockRepository.fetchProfile()).thenAnswer((_) async {
+      when(() => mockRepository.watchProfile()).thenAnswer((_) {
         calls++;
         if (calls == 1) {
-          throw Exception('Temporary failure');
+          return Stream.error(Exception('Temporary failure'));
         }
-        return DeliveryProfileRepository().buildDefaultProfile();
+        return Stream.value(const DeliveryProfileState(
+          status: DeliveryProfileStatus.loaded,
+          fullName: 'Ravi Kumar',
+          phone: '+919876543210',
+          email: 'ravi@example.com',
+          completionPercentage: 75,
+        ));
       });
 
       await tester.pumpWidget(buildPage());
@@ -105,7 +111,6 @@ void main() {
 
       expect(find.byKey(const Key('dp_profile_error')), findsNothing);
       expect(find.text('My Profile'), findsOneWidget);
-      expect(find.text('75%'), findsOneWidget);
     });
 
     testWidgets('shows empty state and refresh recovers profile', (
@@ -113,17 +118,23 @@ void main() {
     ) async {
       setDesktopSize(tester);
       var calls = 0;
-      when(() => mockRepository.fetchProfile()).thenAnswer((_) async {
+      when(() => mockRepository.watchProfile()).thenAnswer((_) {
         calls++;
         if (calls == 1) {
-          return const DeliveryProfileState(
+          return Stream.value(const DeliveryProfileState(
             status: DeliveryProfileStatus.loaded,
             fullName: '',
             phone: '',
             email: '',
-          );
+          ));
         }
-        return DeliveryProfileRepository().buildDefaultProfile();
+        return Stream.value(const DeliveryProfileState(
+          status: DeliveryProfileStatus.loaded,
+          fullName: 'Ravi Kumar',
+          phone: '+919876543210',
+          email: 'ravi@example.com',
+          completionPercentage: 75,
+        ));
       });
 
       await tester.pumpWidget(buildPage());

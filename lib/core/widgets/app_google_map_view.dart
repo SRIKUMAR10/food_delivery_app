@@ -60,6 +60,8 @@ class AppGoogleMapView extends StatefulWidget {
   final VoidCallback? onStoreTap;
   final VoidCallback? onDriverTap;
   final VoidCallback? onCustomerTap;
+  final bool showProgressCard;
+  final bool autoFitEntireRoute;
 
   const AppGoogleMapView({
     super.key,
@@ -75,6 +77,7 @@ class AppGoogleMapView extends StatefulWidget {
     this.isFullScreen = false,
     this.showControls = true,
     this.autoFollowDriver = true,
+    this.autoFitEntireRoute = true,
     this.initialZoom = 15.0,
     this.padding = EdgeInsets.zero,
     this.additionalMarkers,
@@ -107,6 +110,7 @@ class AppGoogleMapView extends StatefulWidget {
     this.onStoreTap,
     this.onDriverTap,
     this.onCustomerTap,
+    this.showProgressCard = true,
   });
 
   @override
@@ -189,6 +193,14 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
       ensureGoogleMapsJsLoaded().then((ready) {
         if (ready && mounted && !_forceFallbackCanvas) {
           setState(() {});
+        }
+      });
+    }
+
+    if (widget.autoFitEntireRoute) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _fitAllRouteBounds();
         }
       });
     }
@@ -322,6 +334,13 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
             ((widget.driverLocation!.latitude - oldWidget.driverLocation!.latitude).abs() > 0.0008 ||
                 (widget.driverLocation!.longitude - oldWidget.driverLocation!.longitude).abs() > 0.0008))) {
       _fetchRoadPolylines();
+      if (widget.autoFitEntireRoute) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _fitAllRouteBounds();
+          }
+        });
+      }
     }
 
     if (widget.driverLocation != null &&
@@ -384,23 +403,31 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
     } catch (_) {}
   }
 
+  bool _isValidCoord(LatLng? pos) {
+    if (pos == null) return false;
+    return pos.latitude.abs() > 0.001 || pos.longitude.abs() > 0.001;
+  }
+
   LatLng get _initialCenter {
-    if (widget.driverLocation != null) return widget.driverLocation!;
-    if (widget.customerLocation != null) return widget.customerLocation!;
-    if (widget.storeLocation != null) return widget.storeLocation!;
-    if (_deviceGpsLocation != null) return _deviceGpsLocation!;
+    if (_isValidCoord(widget.driverLocation)) return widget.driverLocation!;
+    if (_isValidCoord(widget.customerLocation)) return widget.customerLocation!;
+    if (_isValidCoord(widget.storeLocation)) return widget.storeLocation!;
+    if (_isValidCoord(_deviceGpsLocation)) return _deviceGpsLocation!;
     return const LatLng(11.4485, 77.6835);
   }
 
   LatLng get _effectiveCenter {
-    if (widget.driverLocation != null) return widget.driverLocation!;
-    if (widget.storeLocation != null && widget.customerLocation != null) {
+    if (_isValidCoord(widget.driverLocation)) return widget.driverLocation!;
+    if (_isValidCoord(widget.storeLocation) && _isValidCoord(widget.customerLocation)) {
       return LatLng(
         (widget.storeLocation!.latitude + widget.customerLocation!.latitude) / 2,
         (widget.storeLocation!.longitude + widget.customerLocation!.longitude) / 2,
       );
     }
-    return widget.customerLocation ?? _deviceGpsLocation ?? widget.storeLocation ?? const LatLng(11.4485, 77.6835);
+    if (_isValidCoord(widget.customerLocation)) return widget.customerLocation!;
+    if (_isValidCoord(widget.storeLocation)) return widget.storeLocation!;
+    if (_isValidCoord(_deviceGpsLocation)) return _deviceGpsLocation!;
+    return const LatLng(11.4485, 77.6835);
   }
 
   Set<Marker> _buildMarkers() {
@@ -1126,21 +1153,47 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
   }
 
   void _fitAllRouteBounds() {
-    setState(() {
-      _canvasZoom = 1.0;
-      _canvasPanOffset = Offset.zero;
-      _tileZoom = 14.0;
-    });
     final points = <LatLng>[
-      if (widget.storeLocation != null) widget.storeLocation!,
-      if (widget.driverLocation != null) widget.driverLocation!,
-      if (widget.customerLocation != null) widget.customerLocation!,
+      if (widget.storeLocation != null && _isValidCoord(widget.storeLocation)) widget.storeLocation!,
+      if (widget.driverLocation != null && _isValidCoord(widget.driverLocation)) widget.driverLocation!,
+      if (widget.customerLocation != null && _isValidCoord(widget.customerLocation)) widget.customerLocation!,
+      if (_deviceGpsLocation != null && _isValidCoord(_deviceGpsLocation)) _deviceGpsLocation!,
+      if (widget.additionalMarkers != null)
+        for (final m in widget.additionalMarkers!)
+          if (_isValidCoord(m.position)) m.position,
     ];
     if (points.isEmpty) return;
 
     final bounds = RoutePolylineService.instance.computeBounds(points);
+    final double latSpan = (bounds.northeast.latitude - bounds.southwest.latitude).abs();
+    final double lngSpan = (bounds.northeast.longitude - bounds.southwest.longitude).abs();
+    final double maxSpan = math.max(latSpan, lngSpan);
+
+    double optimalZoom = 15.0;
+    if (maxSpan > 0.5) {
+      optimalZoom = 9.5;
+    } else if (maxSpan > 0.2) {
+      optimalZoom = 11.0;
+    } else if (maxSpan > 0.1) {
+      optimalZoom = 12.5;
+    } else if (maxSpan > 0.05) {
+      optimalZoom = 13.5;
+    } else if (maxSpan > 0.02) {
+      optimalZoom = 14.5;
+    } else if (maxSpan > 0.008) {
+      optimalZoom = 15.0;
+    } else {
+      optimalZoom = 15.8;
+    }
+
+    setState(() {
+      _canvasZoom = 1.0;
+      _canvasPanOffset = Offset.zero;
+      _tileZoom = optimalZoom;
+    });
+
     _mapController?.animateCamera(
-      CameraUpdate.newLatLngBounds(bounds, 60),
+      CameraUpdate.newLatLngBounds(bounds, 50),
     );
   }
 
@@ -1169,7 +1222,11 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
          defaultTargetPlatform == TargetPlatform.linux ||
          defaultTargetPlatform == TargetPlatform.macOS);
 
-    if (isNativeDesktop || (kIsWeb && !isGoogleMapsJsReady()) || _forceFallbackCanvas) {
+    final bool shouldUseFallback = isNativeDesktop ||
+        kIsWeb ||
+        _forceFallbackCanvas;
+
+    if (shouldUseFallback) {
       return _buildFallbackCanvasView(context);
     }
 
@@ -1234,6 +1291,9 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
   }
 
   Widget _buildLiveProgressAndEtaChip() {
+    if (!widget.showProgressCard) {
+      return const SizedBox.shrink();
+    }
     final hasDriver = widget.driverLocation != null;
     final isBike = MapMarkerService.isTwoWheeler(widget.vehicleType);
     final etaLabel = widget.etaText ?? (hasDriver ? 'Arriving in ~10-15 mins' : 'Order Placed · Partner Assigning');
@@ -1599,23 +1659,34 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
             final double tileLeft = (c * 256.0) - minX;
             final double tileTop = (r * 256.0) - minY;
 
+            final subdomains = ['a', 'b', 'c', 'd'];
+            final sub = subdomains[(c + r).abs() % subdomains.length];
+            final int googleSub = (c + r).abs() % 4;
+
             final String tileUrl;
+            final String fallbackUrl;
             if (isSatellite) {
               tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/$z/$r/$normCol';
+              fallbackUrl = 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/$z/$r/$normCol';
             } else if (widget.isDarkMode) {
-              tileUrl = 'https://basemaps.cartocdn.com/rastertiles/dark_all/$z/$normCol/$r.png';
+              tileUrl = 'https://$sub.basemaps.cartocdn.com/rastertiles/dark_all/$z/$normCol/$r.png';
+              fallbackUrl = 'https://a.basemaps.cartocdn.com/rastertiles/dark_all/$z/$normCol/$r.png';
             } else {
-              tileUrl = 'https://basemaps.cartocdn.com/rastertiles/voyager/$z/$normCol/$r.png';
+              tileUrl = 'https://$sub.basemaps.cartocdn.com/rastertiles/voyager/$z/$normCol/$r.png';
+              fallbackUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/$z/$r/$normCol';
             }
 
             tileWidgets.add(
               Positioned(
+                key: ValueKey('tile_pos_${tileUrl}_${normCol}_$r'),
                 left: tileLeft,
                 top: tileTop,
                 width: 256,
                 height: 256,
                 child: CachedMapTile(
+                  key: ValueKey('tile_$tileUrl'),
                   tileUrl: tileUrl,
+                  fallbackTileUrl: fallbackUrl,
                   isDarkMode: widget.isDarkMode,
                 ),
               ),
@@ -1624,46 +1695,62 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
         }
 
         return Container(
+          width: width,
+          height: height,
           decoration: BoxDecoration(
-            color: isSatellite
-                ? const Color(0xFF0F172A)
-                : (widget.isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC)),
+            color: widget.isDarkMode ? const Color(0xFF131E29) : const Color(0xFFE2E8F0),
           ),
           clipBehavior: Clip.hardEdge,
           child: Stack(
+            fit: StackFit.expand,
             children: [
-              GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    _canvasPanOffset += details.delta;
-                  });
-                },
-                onTapUp: (details) => _handleCanvasPinTap(context, details.localPosition, minX, minY, zoom),
-                child: Stack(
-                  children: [
-                    ...tileWidgets,
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: _RealTileMapOverlayPainter(
-                          minX: minX,
-                          minY: minY,
-                          zoom: zoom,
-                          roadPolylines: _roadPolylines,
-                          driverPos: widget.driverLocation != null ? LatLng(_animatedLat, _animatedLng) : null,
-                          driverHeading: _animatedHeading,
-                          vehicleType: widget.vehicleType,
-                          storePos: widget.storeLocation,
-                          storeName: widget.storeName,
-                          customerPos: widget.customerLocation,
-                          customerName: widget.customerName,
-                          deviceGpsPos: _deviceGpsLocation,
-                          trafficEnabled: _trafficEnabled,
-                          isSatellite: isSatellite,
-                          isDarkMode: widget.isDarkMode,
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _canvasPanOffset += details.delta;
+                    });
+                  },
+                  onTapUp: (details) => _handleCanvasPinTap(context, details.localPosition, minX, minY, zoom),
+                  child: SizedBox(
+                    width: width,
+                    height: height,
+                    child: Stack(
+                      clipBehavior: Clip.hardEdge,
+                      children: [
+                        Container(
+                          width: width,
+                          height: height,
+                          color: widget.isDarkMode ? const Color(0xFF131E29) : const Color(0xFFE2E8F0),
                         ),
-                      ),
+                        ...tileWidgets,
+                        Positioned.fill(
+                          child: CustomPaint(
+                            size: Size(width, height),
+                            painter: _RealTileMapOverlayPainter(
+                              minX: minX,
+                              minY: minY,
+                              zoom: zoom,
+                              roadPolylines: _roadPolylines,
+                              driverPos: widget.driverLocation != null ? LatLng(_animatedLat, _animatedLng) : null,
+                              driverHeading: _animatedHeading,
+                              vehicleType: widget.vehicleType,
+                              storePos: widget.storeLocation,
+                              storeName: widget.storeName,
+                              customerPos: widget.customerLocation,
+                              customerName: widget.customerName,
+                              deviceGpsPos: _deviceGpsLocation,
+                              additionalMarkers: widget.additionalMarkers,
+                              trafficEnabled: _trafficEnabled,
+                              isSatellite: isSatellite,
+                              isDarkMode: widget.isDarkMode,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
               if (widget.isRaining && _showWeatherOverlay)
@@ -1746,6 +1833,7 @@ class _RealTileMapOverlayPainter extends CustomPainter {
   final LatLng? customerPos;
   final String customerName;
   final LatLng? deviceGpsPos;
+  final Set<Marker>? additionalMarkers;
   final bool trafficEnabled;
   final bool isSatellite;
   final bool isDarkMode;
@@ -1763,6 +1851,7 @@ class _RealTileMapOverlayPainter extends CustomPainter {
     required this.customerPos,
     required this.customerName,
     this.deviceGpsPos,
+    this.additionalMarkers,
     required this.trafficEnabled,
     required this.isSatellite,
     required this.isDarkMode,
@@ -1816,26 +1905,64 @@ class _RealTileMapOverlayPainter extends CustomPainter {
         canvas.drawPath(path, corePaint);
       }
     } else if (storePos != null && customerPos != null) {
-      // Direct Line fallback if polylines still fetching
+      // Direct Route Line between Store and Customer
       final start = _latLngToScreen(storePos!);
       final end = _latLngToScreen(customerPos!);
-      final directPath = Path()..moveTo(start.dx, start.dy)..lineTo(end.dx, end.dy);
+      final midX = (start.dx + end.dx) / 2;
+      final midY = (start.dy + end.dy) / 2 - 20;
+      final directPath = Path()
+        ..moveTo(start.dx, start.dy)
+        ..quadraticBezierTo(midX, midY, end.dx, end.dy);
 
-      final directPaint = Paint()
-        ..color = const Color(0xFF2563EB)
-        ..strokeWidth = 4.5
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round;
-      canvas.drawPath(directPath, directPaint);
+      // Route Shadow
+      canvas.drawPath(
+        directPath,
+        Paint()
+          ..color = const Color(0xFF047857).withValues(alpha: 0.35)
+          ..strokeWidth = 10.0
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round,
+      );
+      // Route Glow
+      canvas.drawPath(
+        directPath,
+        Paint()
+          ..color = const Color(0xFF10B981)
+          ..strokeWidth = 5.0
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round,
+      );
+      // Core White Line
+      canvas.drawPath(
+        directPath,
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.8)
+          ..strokeWidth = 2.0
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round,
+      );
     }
 
-    // 2. Draw Store Location Pin (Real GPS coordinates)
+    // 2. Draw Demand Zones / Hotspots
+    if (additionalMarkers != null && additionalMarkers!.isNotEmpty) {
+      for (final marker in additionalMarkers!) {
+        final pos = _latLngToScreen(marker.position);
+        _drawDemandZonePin(
+          canvas,
+          pos,
+          marker.infoWindow.title ?? 'Hotspot',
+          marker.infoWindow.snippet ?? '',
+        );
+      }
+    }
+
+    // 3. Draw Store Location Pin (Real GPS coordinates)
     if (storePos != null) {
       final storeOffset = _latLngToScreen(storePos!);
-      _drawMarkerPin(canvas, storeOffset, const Color(0xFFEA580C), Icons.storefront_rounded, storeName.isNotEmpty ? storeName : 'Restaurant');
+      _drawMarkerPin(canvas, storeOffset, const Color(0xFFEA580C), Icons.storefront_rounded, storeName.isNotEmpty ? storeName : 'Restaurant', isAbove: true);
     }
 
-    // 3. Draw Customer Location Pin & Geofence Drop-Off Zone (Real GPS coordinates)
+    // 4. Draw Customer Location Pin & Geofence Drop-Off Zone (Real GPS coordinates)
     if (customerPos != null) {
       final customerOffset = _latLngToScreen(customerPos!);
 
@@ -1859,20 +1986,69 @@ class _RealTileMapOverlayPainter extends CustomPainter {
       _drawMarkerPin(canvas, customerOffset, const Color(0xFF10B981), Icons.home_rounded, customerName.isNotEmpty ? customerName : 'Delivery Address');
     }
 
-    // 4. Draw Real-time Live Driver Vehicle (Real GPS coordinates + Animated Heading)
+    // 5. Draw Real-time Live Driver Vehicle (Real GPS coordinates + Animated Heading)
     if (driverPos != null) {
       final driverOffset = _latLngToScreen(driverPos!);
       _drawRealisticDeliveryVehicle(canvas, driverOffset, driverHeading);
     } else if (storePos != null) {
       final storeOffset = _latLngToScreen(storePos!);
       _drawDispatchPulse(canvas, storeOffset);
+    } else {
+      final centerOffset = Offset(size.width / 2, size.height / 2);
+      _drawRealisticDeliveryVehicle(canvas, centerOffset, driverHeading);
     }
 
-    // 5. Draw Device Current GPS Location Marker if available
-    if (deviceGpsPos != null && customerPos == null) {
+    // 6. Draw Device Current GPS Location Marker if available
+    if (deviceGpsPos != null && customerPos == null && driverPos == null) {
       final gpsOffset = _latLngToScreen(deviceGpsPos!);
       _drawDeviceGpsPulse(canvas, gpsOffset);
     }
+  }
+
+  void _drawDemandZonePin(Canvas canvas, Offset pos, String title, String snippet) {
+    // Pulsing aura
+    canvas.drawCircle(
+      pos,
+      28,
+      Paint()
+        ..color = const Color(0xFFF59E0B).withValues(alpha: 0.22)
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawCircle(
+      pos,
+      18,
+      Paint()
+        ..color = const Color(0xFFF59E0B).withValues(alpha: 0.4)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+
+    // Inner Pin
+    canvas.drawCircle(pos, 12, Paint()..color = const Color(0xFFEA580C));
+    canvas.drawCircle(pos, 9, Paint()..color = Colors.white);
+    canvas.drawCircle(pos, 6, Paint()..color = const Color(0xFFEA580C));
+
+    final label = snippet.isNotEmpty ? '$title ($snippet)' : title;
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 9.5,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    final badgeOffset = Offset(pos.dx - (textPainter.width / 2), pos.dy + 15);
+    final badgeRRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(badgeOffset.dx - 5, badgeOffset.dy - 2, textPainter.width + 10, textPainter.height + 4),
+      const Radius.circular(5),
+    );
+
+    canvas.drawRRect(badgeRRect, Paint()..color = const Color(0xFF0F172A).withValues(alpha: 0.90));
+    textPainter.paint(canvas, badgeOffset);
   }
 
   void _drawDeviceGpsPulse(Canvas canvas, Offset pos) {
@@ -2004,7 +2180,9 @@ class _RealTileMapOverlayPainter extends CustomPainter {
     );
   }
 
-  void _drawMarkerPin(Canvas canvas, Offset pos, Color color, IconData icon, String label) {
+  void _drawMarkerPin(Canvas canvas, Offset pos, Color color, IconData icon, String label, {bool isAbove = false}) {
+    if (label.isEmpty) return;
+
     // Pin Shadow
     canvas.drawCircle(Offset(pos.dx, pos.dy + 3), 13, Paint()..color = Colors.black.withValues(alpha: 0.25));
 
@@ -2026,7 +2204,8 @@ class _RealTileMapOverlayPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
 
-    final badgeOffset = Offset(pos.dx - (textPainter.width / 2), pos.dy + 18);
+    final double badgeY = isAbove ? (pos.dy - 32) : (pos.dy + 18);
+    final badgeOffset = Offset(pos.dx - (textPainter.width / 2), badgeY);
     final badgeRRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(badgeOffset.dx - 6, badgeOffset.dy - 2, textPainter.width + 12, textPainter.height + 4),
       const Radius.circular(6),

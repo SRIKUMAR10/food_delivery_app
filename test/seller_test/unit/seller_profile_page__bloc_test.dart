@@ -187,6 +187,108 @@ void main() {
     );
 
     blocTest<SellerProfilePageBloc, SellerProfilePageState>(
+      'UpdateLocationDetails persists GPS coordinates to Firestore and state',
+      build: () {
+        when(() => mockProfileRepository.updateProfile(
+              'seller_123',
+              any(),
+            )).thenAnswer((_) async {});
+        return bloc;
+      },
+      seed: () => ProfileLoaded(
+        storeName: 'Test Kitchen',
+        email: 'test@kitchen.com',
+        phone: '1234567890',
+        profileImageUrl: '',
+        notificationsEnabled: true,
+        role: 'seller',
+        createdAt: DateTime(2025, 1, 1),
+        isVerified: true,
+      ),
+      act: (bloc) => bloc.add(const UpdateLocationDetails(
+        address: '123 Food Street, T. Nagar, Chennai',
+        latitude: 13.0418,
+        longitude: 80.2341,
+        googleMapsUrl: 'https://www.google.com/maps?q=13.041800,80.234100',
+      )),
+      expect: () => [
+        isA<ProfileLoaded>()
+            .having((s) => s.address, 'address', '123 Food Street, T. Nagar, Chennai')
+            .having((s) => s.latitude, 'latitude', 13.0418)
+            .having((s) => s.longitude, 'longitude', 80.2341)
+            .having((s) => s.googleMapsUrl, 'googleMapsUrl', 'https://www.google.com/maps?q=13.041800,80.234100'),
+      ],
+      verify: (_) {
+        verify(() => mockProfileRepository.updateProfile('seller_123', {
+              'address': '123 Food Street, T. Nagar, Chennai',
+              'latitude': 13.0418,
+              'longitude': 80.2341,
+              'googleMapsUrl': 'https://www.google.com/maps?q=13.041800,80.234100',
+            })).called(1);
+      },
+    );
+
+    blocTest<SellerProfilePageBloc, SellerProfilePageState>(
+      'SubmitVerificationForm persists address with GPS coordinates to Firestore',
+      build: () {
+        when(() => mockProfileRepository.updateProfile(
+              'seller_123',
+              any(),
+            )).thenAnswer((_) async {});
+        return bloc;
+      },
+      seed: () => ProfileLoaded(
+        storeName: 'Test Kitchen',
+        email: 'test@kitchen.com',
+        phone: '1234567890',
+        profileImageUrl: '',
+        notificationsEnabled: true,
+        role: 'seller',
+        createdAt: DateTime(2025, 1, 1),
+        isVerified: true,
+      ),
+      act: (bloc) => bloc.add(const SubmitVerificationForm(
+        storeName: 'Spice Garden',
+        address: '45 Anna Nagar, Chennai',
+        email: 'spice@garden.com',
+        phone: '9876543210',
+        gstNumber: '33ABCDE1234F1Z5',
+        taxConfiguration: '18%',
+        fssaiLicense: '12345678901234',
+        bankAccountNumber: '123456789012',
+        ifscCode: 'HDFC0001234',
+        latitude: 13.0850,
+        longitude: 80.2100,
+        googleMapsUrl: 'https://www.google.com/maps?q=13.085000,80.210000',
+      )),
+      expect: () => [
+        isA<ProfileLoaded>()
+            .having((s) => s.storeName, 'storeName', 'Spice Garden')
+            .having((s) => s.address, 'address', '45 Anna Nagar, Chennai')
+            .having((s) => s.latitude, 'latitude', 13.0850)
+            .having((s) => s.longitude, 'longitude', 80.2100)
+            .having((s) => s.gstNumber, 'gstNumber', '33ABCDE1234F1Z5'),
+      ],
+      verify: (_) {
+        verify(() => mockProfileRepository.updateProfile('seller_123', {
+              'shopName': 'Spice Garden',
+              'email': 'spice@garden.com',
+              'phoneNumber': '9876543210',
+              'businessDetails': '45 Anna Nagar, Chennai',
+              'address': '45 Anna Nagar, Chennai',
+              'gstNumber': '33ABCDE1234F1Z5',
+              'fssaiNumber': '12345678901234',
+              'bankAccountNumber': '123456789012',
+              'ifscCode': 'HDFC0001234',
+              'taxConfiguration': '18%',
+              'latitude': 13.0850,
+              'longitude': 80.2100,
+              'googleMapsUrl': 'https://www.google.com/maps?q=13.085000,80.210000',
+            })).called(1);
+      },
+    );
+
+    blocTest<SellerProfilePageBloc, SellerProfilePageState>(
       'UpdateCuisines updates state and calls updateProfile',
       build: () {
         when(() => mockProfileRepository.updateProfile(

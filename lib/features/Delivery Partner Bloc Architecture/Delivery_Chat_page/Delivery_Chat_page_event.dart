@@ -7,6 +7,41 @@ abstract class DeliveryChatEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+class LoadDeliveryConversations extends DeliveryChatEvent {
+  const LoadDeliveryConversations();
+}
+
+class SelectDeliveryConversation extends DeliveryChatEvent {
+  final String conversationId;
+
+  const SelectDeliveryConversation(this.conversationId);
+
+  @override
+  List<Object?> get props => [conversationId];
+}
+
+class ClearSelectedDeliveryConversation extends DeliveryChatEvent {
+  const ClearSelectedDeliveryConversation();
+}
+
+class SetDeliveryChatFilter extends DeliveryChatEvent {
+  final String activeFilter; // 'all', 'seller', 'customer'
+
+  const SetDeliveryChatFilter(this.activeFilter);
+
+  @override
+  List<Object?> get props => [activeFilter];
+}
+
+class SearchDeliveryConversations extends DeliveryChatEvent {
+  final String query;
+
+  const SearchDeliveryConversations(this.query);
+
+  @override
+  List<Object?> get props => [query];
+}
+
 class InitDeliveryChatEvent extends DeliveryChatEvent {
   final String orderId;
   final String customerId;
@@ -21,6 +56,7 @@ class InitDeliveryChatEvent extends DeliveryChatEvent {
   final String? recipientPhone;
   final String? orderTitle;
   final double? orderTotal;
+  final String? orderImageUrl;
 
   const InitDeliveryChatEvent({
     required this.orderId,
@@ -36,6 +72,7 @@ class InitDeliveryChatEvent extends DeliveryChatEvent {
     this.recipientPhone,
     this.orderTitle,
     this.orderTotal,
+    this.orderImageUrl,
   });
 
   String get effectiveRecipientId {
@@ -76,6 +113,7 @@ class InitDeliveryChatEvent extends DeliveryChatEvent {
         recipientPhone,
         orderTitle,
         orderTotal,
+        orderImageUrl,
       ];
 }
 
@@ -151,4 +189,36 @@ class SetDeliveryTypingStatusEvent extends DeliveryChatEvent {
 
 class MarkDeliveryChatReadEvent extends DeliveryChatEvent {
   const MarkDeliveryChatReadEvent();
+}
+
+class ToggleDeliveryEmojiPicker extends DeliveryChatEvent {
+  const ToggleDeliveryEmojiPicker();
+}
+
+class StartDeliveryAudioRecording extends DeliveryChatEvent {
+  const StartDeliveryAudioRecording();
+}
+
+class StopDeliveryAudioRecording extends DeliveryChatEvent {
+  const StopDeliveryAudioRecording();
+}
+
+class CancelDeliveryAudioRecording extends DeliveryChatEvent {
+  const CancelDeliveryAudioRecording();
+}
+
+class UpdateDeliveryAudioRecordingDuration extends DeliveryChatEvent {
+  final Duration duration;
+  const UpdateDeliveryAudioRecordingDuration(this.duration);
+
+  @override
+  List<Object?> get props => [duration];
+}
+
+class DeleteDeliveryMessage extends DeliveryChatEvent {
+  final String messageId;
+  const DeleteDeliveryMessage(this.messageId);
+
+  @override
+  List<Object?> get props => [messageId];
 }

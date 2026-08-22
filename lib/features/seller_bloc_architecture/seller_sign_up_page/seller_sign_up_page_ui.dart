@@ -1,25 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:food_delivery_app/core/widgets/primary_button.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_state.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_event.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Design tokens (Material 3 green theme — pixel-perfect from UI image)
-// ─────────────────────────────────────────────────────────────────────────────
-class _AppColors {
-  static const primary = Color(0xFF2E7D32);
-  static const primaryLight = Color(0xFF4CAF50);
-  static const primarySurface = Color(0xFFE8F5E9);
-  static const background = Color(0xFFFFFFFF);
-  static const textDark = Color(0xFF1B1B1B);
-  static const textLight = Color(0xFF888888);
-  static const inputBorder = Color(0xFFDDDDDD);
-  static const error = Color(0xFFD32F2F);
-}
+import '../seller_auth_shared/seller_auth_shared_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry point widget (provides BLoC)
@@ -63,7 +48,7 @@ class _SellerSignUpPageView extends StatelessWidget {
         }
       },
       child: Scaffold(
-        backgroundColor: _AppColors.background,
+        backgroundColor: SellerAuthColors.background,
         body: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
           buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
             builder: (context, state) {
@@ -98,7 +83,39 @@ class _SellerSignUpPageView extends StatelessWidget {
       case SellerSignUpStep.contactPassword:
         return const _ContactPasswordScreen(key: ValueKey('contact_password'));
       case SellerSignUpStep.otpVerification:
-        return const _OtpVerificationScreen(key: ValueKey('otp_verify'));
+        return BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
+          buildWhen: (previous, current) =>
+              previous.runtimeType != current.runtimeType ||
+              previous != current,
+          builder: (context, state) => SellerOtpVerificationScreen(
+            key: const ValueKey('otp_verify'),
+            title: 'OTP Verification',
+            subtitleValue: state.phone,
+            verifyLabel: 'Verify OTP',
+            verifyButtonKey: const Key('verifyOtpButton'),
+            isLoading: state.status == SellerSignUpStatus.loading,
+            countdown: state.otpCountdown,
+            resendAvailable: state.otpCountdown <= 0,
+            otpError: state.otpError,
+            onBack: () =>
+                context.read<SellerSignUpPageBloc>().add(
+                  const SellerSignUpBackPressed(),
+                ),
+            onDigitChanged: (index, digit) =>
+                context.read<SellerSignUpPageBloc>().add(
+                  SellerSignUpOtpDigitChanged(
+                    index: index,
+                    digit: digit,
+                  ),
+                ),
+            onResend: () => context.read<SellerSignUpPageBloc>().add(
+              const SellerSignUpOtpResendRequested(),
+            ),
+            onVerify: () => context.read<SellerSignUpPageBloc>().add(
+              const SellerSignUpOtpVerifySubmitted(),
+            ),
+          ),
+        );
       case SellerSignUpStep.emailVerification:
         return const _EmailVerificationScreen(key: ValueKey('email_verify'));
       case SellerSignUpStep.signUpSuccess:
@@ -115,7 +132,7 @@ class _SellerSignUpPageView extends StatelessWidget {
             message,
             style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
           ),
-          backgroundColor: _AppColors.error,
+          backgroundColor: SellerAuthColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.all(16),
@@ -126,56 +143,8 @@ class _SellerSignUpPageView extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Responsive wrapper
+// Screen 2 – Personal Details
 // ─────────────────────────────────────────────────────────────────────────────
-class _ResponsiveContainer extends StatelessWidget {
-  final Widget child;
-  const _ResponsiveContainer({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final maxWidth = width > 600 ? 480.0 : double.infinity;
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: child,
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared widgets
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PrimaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
-  final bool isLoading;
-
-  const _PrimaryButton({
-    super.key,
-    required this.label,
-    this.onPressed,
-    this.isLoading = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return PrimaryButton(
-      text: label,
-      isLoading: isLoading,
-      onPressed: onPressed,
-      height: 52,
-      borderRadius: 12,
-      elevation: 2,
-      shadowColor: _AppColors.primary.withValues(alpha: 0.4),
-      backgroundColor: _AppColors.primary,
-    );
-  }
-}
-
 class _SignUpTextField extends StatelessWidget {
   final String hintText;
   final IconData prefixIcon;
@@ -211,30 +180,30 @@ class _SignUpTextField extends StatelessWidget {
           onChanged: onChanged,
           keyboardType: keyboardType,
           textInputAction: textInputAction,
-          style: GoogleFonts.inter(fontSize: 14, color: _AppColors.textDark),
+          style: GoogleFonts.inter(fontSize: 14, color: SellerAuthColors.textDark),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: GoogleFonts.inter(fontSize: 14, color: _AppColors.textLight),
-            prefixIcon: Icon(prefixIcon, color: _AppColors.textLight, size: 20),
+            hintStyle: GoogleFonts.inter(fontSize: 14, color: SellerAuthColors.textLight),
+            prefixIcon: Icon(prefixIcon, color: SellerAuthColors.textLight, size: 20),
             suffixIcon: suffixWidget,
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: _AppColors.inputBorder, width: 1),
+              borderSide: const BorderSide(color: SellerAuthColors.inputBorder, width: 1),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: _AppColors.inputBorder, width: 1),
+              borderSide: const BorderSide(color: SellerAuthColors.inputBorder, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: _AppColors.primary, width: 1.5),
+              borderSide: const BorderSide(color: SellerAuthColors.primary, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: _AppColors.error, width: 1.5),
+              borderSide: const BorderSide(color: SellerAuthColors.error, width: 1.5),
             ),
             errorText: errorText,
           ),
@@ -244,58 +213,6 @@ class _SignUpTextField extends StatelessWidget {
   }
 }
 
-class _ScreenIllustration extends StatelessWidget {
-  final Widget child;
-  final String heroTag;
-
-  const _ScreenIllustration({required this.child, required this.heroTag});
-
-  @override
-  Widget build(BuildContext context) {
-    return Hero(
-      tag: heroTag,
-      child: Container(
-        width: 120,
-        height: 120,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: _AppColors.primarySurface,
-          boxShadow: [
-            BoxShadow(
-              color: _AppColors.primary.withValues(alpha: 0.12),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Center(child: child),
-      ),
-    );
-  }
-}
-
-class _BackButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _BackButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        child: const Icon(
-          Icons.arrow_back_ios_new_rounded,
-          size: 18,
-          color: _AppColors.textDark,
-        ),
-      ),
-    );
-  }
-}
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen 2 – Personal Details
 // ─────────────────────────────────────────────────────────────────────────────
@@ -304,7 +221,7 @@ class _PersonalDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ResponsiveContainer(
+    return SellerResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
           buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
@@ -315,21 +232,21 @@ class _PersonalDetailsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
-                  _BackButton(
+                  SellerBackButton(
                     onTap: () => Navigator.pop(context),
                   ),
                   const SizedBox(height: 24),
                   Center(
-                    child: _ScreenIllustration(
+                    child: SellerScreenIllustration(
                       heroTag: 'personal_details_ill',
-                      child: const Icon(Icons.person_rounded, size: 52, color: _AppColors.primary),
+                      child: const Icon(Icons.person_rounded, size: 52, color: SellerAuthColors.primary),
                     ),
                   ),
                   const SizedBox(height: 24),
                   Center(
                     child: Text(
                       'Personal Details',
-                      style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: _AppColors.textDark),
+                      style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: SellerAuthColors.textDark),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -360,7 +277,7 @@ class _PersonalDetailsScreen extends StatelessWidget {
                     errorText: state.businessDetailsError,
                   ),
                   const SizedBox(height: 32),
-                  _PrimaryButton(
+                  SellerPrimaryButton(
                     label: 'Next',
                     onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpPersonalDetailsSubmitted()),
                   ),
@@ -382,7 +299,7 @@ class _ContactPasswordScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ResponsiveContainer(
+    return SellerResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
           buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
@@ -393,21 +310,21 @@ class _ContactPasswordScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
-                  _BackButton(
+                  SellerBackButton(
                     onTap: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpBackPressed()),
                   ),
                   const SizedBox(height: 24),
                   Center(
-                    child: _ScreenIllustration(
+                    child: SellerScreenIllustration(
                       heroTag: 'contact_details_ill',
-                      child: const Icon(Icons.contact_mail_rounded, size: 52, color: _AppColors.primary),
+                      child: const Icon(Icons.contact_mail_rounded, size: 52, color: SellerAuthColors.primary),
                     ),
                   ),
                   const SizedBox(height: 24),
                   Center(
                     child: Text(
                       'Contact & Security',
-                      style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: _AppColors.textDark),
+                      style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: SellerAuthColors.textDark),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -442,7 +359,7 @@ class _ContactPasswordScreen extends StatelessWidget {
                     suffixWidget: IconButton(
                       icon: Icon(
                         state.isPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: _AppColors.textLight,
+                        color: SellerAuthColors.textLight,
                         size: 20,
                       ),
                       onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpPasswordVisibilityToggled()),
@@ -461,7 +378,7 @@ class _ContactPasswordScreen extends StatelessWidget {
                     suffixWidget: IconButton(
                       icon: Icon(
                         state.isConfirmPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: _AppColors.textLight,
+                        color: SellerAuthColors.textLight,
                         size: 20,
                       ),
                       onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpConfirmPasswordVisibilityToggled()),
@@ -473,18 +390,18 @@ class _ContactPasswordScreen extends StatelessWidget {
                       Checkbox(
                         value: state.termsAccepted,
                         onChanged: (v) => context.read<SellerSignUpPageBloc>().add(const SellerSignUpTermsToggled()),
-                        activeColor: _AppColors.primary,
+                        activeColor: SellerAuthColors.primary,
                       ),
                       Expanded(
                         child: Text(
                           'I accept the terms and conditions',
-                          style: GoogleFonts.inter(fontSize: 13, color: _AppColors.textDark),
+                          style: GoogleFonts.inter(fontSize: 13, color: SellerAuthColors.textDark),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 24),
-                  _PrimaryButton(
+                  SellerPrimaryButton(
                     label: 'Create Account / Send OTP',
                     isLoading: state.status == SellerSignUpStatus.loading,
                     onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpContactSubmitted()),
@@ -501,178 +418,6 @@ class _ContactPasswordScreen extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Screen 4 – OTP Verification
-// ─────────────────────────────────────────────────────────────────────────────
-class _OtpVerificationScreen extends StatefulWidget {
-  const _OtpVerificationScreen({super.key});
-
-  @override
-  State<_OtpVerificationScreen> createState() => _OtpVerificationScreenState();
-}
-
-class _OtpVerificationScreenState extends State<_OtpVerificationScreen> {
-  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
-
-  @override
-  void dispose() {
-    for (var c in _controllers) c.dispose();
-    for (var f in _focusNodes) f.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _ResponsiveContainer(
-      child: SafeArea(
-        child: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
-          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: _BackButton(
-                      onTap: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpBackPressed()),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  _ScreenIllustration(
-                    heroTag: 'otp_illustration',
-                    child: Stack(
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        const Icon(Icons.mark_email_read_rounded, size: 52, color: _AppColors.primary),
-                        Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: const BoxDecoration(color: _AppColors.primaryLight, shape: BoxShape.circle),
-                          child: const Icon(Icons.check, size: 14, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'OTP Verification',
-                    style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: _AppColors.textDark),
-                  ),
-                  const SizedBox(height: 10),
-                  Text.rich(
-                    TextSpan(
-                      text: "We've sent a 6-digit OTP to\n",
-                      style: GoogleFonts.inter(fontSize: 14, color: _AppColors.textLight),
-                      children: [
-                        TextSpan(
-                          text: state.phone,
-                          style: GoogleFonts.inter(color: _AppColors.primary, fontWeight: FontWeight.w600),
-                        ),
-                        TextSpan(
-                          text: '\nEnter the OTP below to verify',
-                          style: GoogleFonts.inter(fontSize: 14, color: _AppColors.textLight),
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  _OtpBoxRow(
-                    controllers: _controllers,
-                    focusNodes: _focusNodes,
-                    onDigitChanged: (index, digit) =>
-                        context.read<SellerSignUpPageBloc>().add(SellerSignUpOtpDigitChanged(index: index, digit: digit)),
-                  ),
-                  if (state.otpError != null) ...[
-                    const SizedBox(height: 8),
-                    Text(state.otpError!, style: GoogleFonts.inter(color: _AppColors.error, fontSize: 13)),
-                  ],
-                  const SizedBox(height: 16),
-                  if (state.otpCountdown > 0)
-                    Text(
-                      'Resend OTP in 00:${state.otpCountdown.toString().padLeft(2, '0')}',
-                      style: GoogleFonts.inter(fontSize: 13, color: _AppColors.textLight),
-                    )
-                  else
-                    TextButton(
-                      onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpOtpResendRequested()),
-                      child: Text(
-                        'Resend OTP',
-                        style: GoogleFonts.inter(color: _AppColors.primary, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  const SizedBox(height: 24),
-                  _PrimaryButton(
-                    key: const Key('verifyOtpButton'),
-                    label: 'Verify OTP',
-                    isLoading: state.status == SellerSignUpStatus.loading,
-                    onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpOtpVerifySubmitted()),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _OtpBoxRow extends StatelessWidget {
-  final List<TextEditingController> controllers;
-  final List<FocusNode> focusNodes;
-  final void Function(int index, String digit) onDigitChanged;
-
-  const _OtpBoxRow({
-    required this.controllers,
-    required this.focusNodes,
-    required this.onDigitChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(6, (i) {
-        return SizedBox(
-          width: 46,
-          height: 52,
-          child: TextField(
-            controller: controllers[i],
-            focusNode: focusNodes[i],
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            maxLength: 1,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: _AppColors.textDark),
-            decoration: InputDecoration(
-              counterText: '',
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: EdgeInsets.zero,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _AppColors.inputBorder),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: _AppColors.primary, width: 2),
-              ),
-            ),
-            onChanged: (v) {
-              onDigitChanged(i, v);
-              if (v.isNotEmpty && i < 5) focusNodes[i + 1].requestFocus();
-              else if (v.isEmpty && i > 0) focusNodes[i - 1].requestFocus();
-            },
-          ),
-        );
-      }),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Screen 5 – Email Verification
 // ─────────────────────────────────────────────────────────────────────────────
 class _EmailVerificationScreen extends StatelessWidget {
@@ -680,30 +425,30 @@ class _EmailVerificationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ResponsiveContainer(
+    return SellerResponsiveContainer(
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _ScreenIllustration(
+              SellerScreenIllustration(
                 heroTag: 'email_verif_ill',
-                child: const Icon(Icons.mark_email_unread_rounded, size: 52, color: _AppColors.primary),
+                child: const Icon(Icons.mark_email_unread_rounded, size: 52, color: SellerAuthColors.primary),
               ),
               const SizedBox(height: 32),
               Text(
                 'Verification Email Sent!',
-                style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: _AppColors.textDark),
+                style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: SellerAuthColors.textDark),
               ),
               const SizedBox(height: 10),
               Text(
                 'Please check your email and verify to continue.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 14, color: _AppColors.textLight),
+                style: GoogleFonts.inter(fontSize: 14, color: SellerAuthColors.textLight),
               ),
               const SizedBox(height: 48),
-              _PrimaryButton(
+              SellerPrimaryButton(
                 label: 'I have verified',
                 onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpEmailVerifyCheckPressed()),
               ),
@@ -745,7 +490,7 @@ class _SignUpSuccessScreenState extends State<_SignUpSuccessScreen> with SingleT
 
   @override
   Widget build(BuildContext context) {
-    return _ResponsiveContainer(
+    return SellerResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
           buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
@@ -762,10 +507,10 @@ class _SignUpSuccessScreenState extends State<_SignUpSuccessScreen> with SingleT
                       height: 120,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: const RadialGradient(colors: [_AppColors.primaryLight, _AppColors.primary]),
+                        gradient: const RadialGradient(colors: [SellerAuthColors.primaryLight, SellerAuthColors.primary]),
                         boxShadow: [
                           BoxShadow(
-                            color: _AppColors.primary.withValues(alpha: 0.35),
+                            color: SellerAuthColors.primary.withValues(alpha: 0.35),
                             blurRadius: 30,
                             offset: const Offset(0, 10),
                           ),
@@ -777,15 +522,15 @@ class _SignUpSuccessScreenState extends State<_SignUpSuccessScreen> with SingleT
                   const SizedBox(height: 32),
                   Text(
                     'Welcome, ${state.name}!',
-                    style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.bold, color: _AppColors.textDark),
+                    style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.bold, color: SellerAuthColors.textDark),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Account created successfully.',
-                    style: GoogleFonts.inter(fontSize: 15, color: _AppColors.textLight),
+                    style: GoogleFonts.inter(fontSize: 15, color: SellerAuthColors.textLight),
                   ),
                   const SizedBox(height: 48),
-                  _PrimaryButton(
+                  SellerPrimaryButton(
                     key: const Key('goToDashboardButton'),
                     label: 'Go to Dashboard',
                     onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpGoToDashboardPressed()),

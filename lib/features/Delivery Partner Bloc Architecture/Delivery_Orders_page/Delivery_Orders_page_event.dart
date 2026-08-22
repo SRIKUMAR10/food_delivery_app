@@ -96,3 +96,17 @@ class DeliveryOrdersRejectOrderEvent extends DeliveryOrdersPageEvent {
 class DeliveryOrdersClearConflictEvent extends DeliveryOrdersPageEvent {
   const DeliveryOrdersClearConflictEvent();
 }
+
+class DeliveryOrdersToggleOnlineEvent extends DeliveryOrdersPageEvent {
+  final bool? isOnline;
+
+  const DeliveryOrdersToggleOnlineEvent({this.isOnline});
+
+  @override
+  List<Object?> get props => [isOnline];
+}
+
+class DeliveryOrdersAcceptNextOrderEvent extends DeliveryOrdersPageEvent {
+  const DeliveryOrdersAcceptNextOrderEvent();
+}
+

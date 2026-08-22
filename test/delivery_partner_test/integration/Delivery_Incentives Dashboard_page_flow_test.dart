@@ -112,7 +112,7 @@ void main() {
       setDesktopSize(tester);
       await loadDashboard(tester);
 
-      expect(find.text('1 to 5 of 32 rewards'), findsOneWidget);
+      expect(find.text('1 to 5 of 16 rewards'), findsOneWidget);
 
       await tester.ensureVisible(
         find.byKey(const Key('dp_incentives_filter_peakhour')),
@@ -129,7 +129,7 @@ void main() {
       setDesktopSize(tester);
       await loadDashboard(tester);
 
-      expect(find.text('1 to 5 of 32 rewards'), findsOneWidget);
+      expect(find.text('1 to 5 of 16 rewards'), findsOneWidget);
 
       await tester.ensureVisible(
         find.byKey(const Key('dp_incentives_page_next')),
@@ -137,7 +137,7 @@ void main() {
       await tester.tap(find.byKey(const Key('dp_incentives_page_next')));
       await tester.pump();
 
-      expect(find.text('6 to 10 of 32 rewards'), findsOneWidget);
+      expect(find.text('6 to 10 of 16 rewards'), findsOneWidget);
 
       await tester.ensureVisible(
         find.byKey(const Key('dp_incentives_page_next')),
@@ -145,7 +145,7 @@ void main() {
       await tester.tap(find.byKey(const Key('dp_incentives_page_next')));
       await tester.pump();
 
-      expect(find.text('11 to 15 of 32 rewards'), findsOneWidget);
+      expect(find.text('11 to 15 of 16 rewards'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

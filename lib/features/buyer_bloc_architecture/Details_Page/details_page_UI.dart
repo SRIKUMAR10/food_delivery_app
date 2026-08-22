@@ -23,6 +23,7 @@ import 'package:food_delivery_app/core/services/seller_status_service.dart';
 import 'details_page_Bloc.dart';
 import 'details_page_Event.dart';
 import 'details_page_State.dart';
+import 'package:food_delivery_app/core/widgets/shimmer_loader.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
@@ -703,34 +704,16 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     if (_isLoadingSeller) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
+        child: const Row(
           children: [
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            const SizedBox(width: 12),
+            SkeletonBox(width: 40, height: 40, borderRadius: 8),
+            SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 120, height: 12,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  width: 80, height: 10,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
+                SkeletonBox(width: 120, height: 12, borderRadius: 4),
+                SizedBox(height: 6),
+                SkeletonBox(width: 80, height: 10, borderRadius: 4),
               ],
             ),
           ],

@@ -66,7 +66,7 @@ void main() {
         const DeliveryDashboardState(status: DeliveryDashboardStatus.loading),
         const DeliveryDashboardState(
           status: DeliveryDashboardStatus.error,
-          errorMessage: 'Exception: Disk full',
+          errorMessage: 'Disk full',
         ),
       ],
     );

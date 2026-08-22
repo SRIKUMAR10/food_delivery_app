@@ -1,81 +1,45 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/repositories/i_rating_repository.dart';
 import '../../../core/services/i_auth_service.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../repositories/firebase_rating_repository.dart';
 
 class DetailsRepository {
-  final FirebaseFirestore _firestore;
+  final IRatingRepository _ratingRepository;
   final IAuthService _authService;
 
   DetailsRepository({
+    IRatingRepository? ratingRepository,
     FirebaseFirestore? firestore,
     IAuthService? authService,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+  })  : _ratingRepository =
+            ratingRepository ?? FirebaseRatingRepository(firestore: firestore),
         _authService = authService ?? FirebaseAuthService();
 
   bool get isUserLoggedIn => _authService.currentUserId != null;
   String? get currentUserId => _authService.currentUserId;
 
   Stream<double> getUserRatingStream(String userId, String foodId) {
-    return _firestore
-        .collection('buyer_user')
-        .doc(userId)
-        .collection('ratings')
-        .doc(foodId)
-        .snapshots()
-        .map((snapshot) {
-      if (snapshot.exists) {
-        final data = snapshot.data() as Map<String, dynamic>;
-        return (data['rating'] as num?)?.toDouble() ?? 0.0;
-      }
-      return 0.0;
-    });
+    return _ratingRepository
+        .getUserRatingStream(userId, foodId)
+        .map((rating) => rating ?? 0.0);
   }
 
   Future<void> submitRating(String userId, String foodId, double rating) async {
     if (foodId.trim().isEmpty || userId.trim().isEmpty) return;
-    final batch = _firestore.batch();
-
-    final userRatingRef = _firestore
-        .collection('buyer_user')
-        .doc(userId)
-        .collection('ratings')
-        .doc(foodId);
-    batch.set(userRatingRef, {
-      'rating': rating,
-      'timestamp': FieldValue.serverTimestamp(),
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    final reviewRef = _firestore
-        .collection('products')
-        .doc(foodId)
-        .collection('reviews')
-        .doc(userId);
-    batch.set(reviewRef, {
-      'userId': userId,
-      'rating': rating,
-      'createdAt': FieldValue.serverTimestamp(),
-      'timestamp': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    await batch.commit();
+    await _ratingRepository.submitRating(
+      userId: userId,
+      foodId: foodId,
+      rating: rating,
+      reviewText: '',
+      reviewerName: '',
+    );
   }
 
   Stream<double> getAverageProductRatingStream(String foodId) {
     if (foodId.trim().isEmpty) return Stream.value(0.0);
-    return _firestore
-        .collection('products')
-        .doc(foodId.trim())
-        .collection('reviews')
-        .snapshots()
-        .map((snapshot) {
-      if (snapshot.docs.isEmpty) return 0.0;
-      double total = 0;
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        total += (data['rating'] as num?)?.toDouble() ?? 0.0;
-      }
-      return total / snapshot.docs.length;
-    }).handleError((_) => 0.0);
+    return _ratingRepository
+        .watchProductRatingSummary(foodId)
+        .map((summary) => (summary['overallRating'] as num?)?.toDouble() ?? 0.0);
   }
 }

@@ -104,12 +104,15 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
 
       when(() => mockRepository.fetchProfile()).thenAnswer(
-        (_) async =>
-            DeliveryProfileRepository(prefs: prefs).buildDefaultProfile(),
+        (_) async => DeliveryProfileRepository(prefs: prefs)
+            .buildDefaultProfile()
+            .copyWith(fullName: 'Ravi Kumar'),
       );
       when(() => mockRepository.watchProfile()).thenAnswer(
         (_) => Stream.value(
-          DeliveryProfileRepository(prefs: prefs).buildDefaultProfile(),
+          DeliveryProfileRepository(prefs: prefs)
+              .buildDefaultProfile()
+              .copyWith(fullName: 'Ravi Kumar'),
         ),
       );
       when(() => mockRepository.saveProfile(any())).thenAnswer((_) async {});
@@ -128,7 +131,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('My Profile'), findsOneWidget);
-      expect(find.text('0%'), findsOneWidget);
+      expect(find.text('Ravi Kumar'), findsWidgets);
     });
   });
 }

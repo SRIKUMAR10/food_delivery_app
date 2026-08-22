@@ -101,6 +101,9 @@ void main() {
       expect(find.text('டெலிவரி அமைப்புகள்'), findsOneWidget);
       expect(find.text('அமைப்புகளை சேமிக்கவும்'), findsOneWidget);
 
+      await tester.tap(find.byKey(const Key('dp_settings_save_button')));
+      await tester.pumpAndSettle();
+
       final persisted = await repository.fetchSettings();
       expect(persisted.languageCode, 'ta');
     });
@@ -127,6 +130,9 @@ void main() {
           find.byKey(const Key('dp_settings_radius_slider')),
         );
         expect(after.value, greaterThan(5.0));
+
+        await tester.tap(find.byKey(const Key('dp_settings_save_button')));
+        await tester.pumpAndSettle();
 
         final persisted = await repository.fetchSettings();
         expect(persisted.deliveryRadius, after.value);

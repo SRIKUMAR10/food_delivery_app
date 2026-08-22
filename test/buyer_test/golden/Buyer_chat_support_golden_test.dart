@@ -19,7 +19,7 @@ void main() {
       mockRepository = MockIChatRepository();
       mockAuthService = MockIAuthService();
       when(() => mockAuthService.authStateChanges)
-          .thenAnswer((_) => const Stream.empty());
+          .thenAnswer((_) => Stream.value('buyer_1'));
       when(() => mockAuthService.currentUserId).thenReturn('buyer_1');
     });
 
@@ -46,6 +46,8 @@ void main() {
         buyerName: 'John',
         sellerName: 'Sarah',
         shopName: 'Pizza Palace',
+        sellerImageUrl: 'https://example.com/sarah.png',
+        sellerPhone: '1234567890',
         lastMessage: 'Hello',
         lastMessageTimestamp: DateTime(2026, 7, 20),
         createdAt: DateTime(2026, 7, 20),

@@ -317,17 +317,45 @@ void main() {
       ).called(1);
     });
 
-    testWidgets('renders empty state when no active delivery', (tester) async {
+    testWidgets('renders idle radar map when no active delivery', (
+      tester,
+    ) async {
       setDesktopSize(tester);
       when(() => mockBloc.state).thenReturn(
-        const DeliveryNavigationState(status: DeliveryNavigationStatus.empty),
+        const DeliveryNavigationState(
+          status: DeliveryNavigationStatus.loaded,
+          hasLocationPermission: true,
+          isOnline: true,
+          gpsStatus: DeliveryGpsStatus.active,
+          order: DeliveryNavigationOrderSummary(
+            orderId: '',
+            pickupLabel: '',
+            pickupAddress: '',
+            dropLabel: '',
+            dropAddress: '',
+            customerName: '',
+            customerPhone: '',
+            status: '',
+          ),
+          demandZones: [
+            DeliveryDemandZone(
+              name: 'Anna Salai',
+              latitude: 13.0475,
+              longitude: 80.2573,
+              estimatedDemand: 12,
+            ),
+          ],
+        ),
       );
       await tester.pumpWidget(buildPage());
       await tester.pump();
 
-      expect(find.byKey(const Key('dp_navscreen_empty')), findsOneWidget);
-      expect(find.text('No Active Delivery'), findsOneWidget);
-      expect(find.text('Retry'), findsOneWidget);
+      expect(find.byKey(const Key('dp_navscreen_idle_map')), findsOneWidget);
+      expect(find.byKey(const Key('dp_navscreen_idle_online_pill')), findsOneWidget);
+      expect(find.byKey(const Key('dp_navscreen_idle_side')), findsOneWidget);
+      expect(find.text('You are Online & Available'), findsOneWidget);
+      expect(find.text('View Available Orders'), findsOneWidget);
+      expect(find.text('Anna Salai'), findsOneWidget);
     });
 
     testWidgets('renders mobile layout with bottom action controls', (
@@ -384,5 +412,89 @@ void main() {
         () => mockBloc.add(const DeliveryNavigationToggleMapEvent()),
       ).called(1);
     });
+
+    testWidgets('renders active zone map pill during active delivery', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(
+        const DeliveryNavigationState(
+          status: DeliveryNavigationStatus.loaded,
+          hasLocationPermission: true,
+          restaurantName: 'The Spicy Feast',
+          customerName: 'Karthik Raja',
+          nearbySellers: [
+            {
+              'id': 'seller_1',
+              'name': 'The Spicy Feast',
+              'latitude': 13.0418,
+              'longitude': 80.2341,
+              'phone': '9876543210',
+            },
+          ],
+        ),
+      );
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('dp_navscreen_active_zone_pill')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Active Trip: The Spicy Feast → Karthik Raja'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('renders active zone map pill with seller count during idle state', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(
+        const DeliveryNavigationState(
+          status: DeliveryNavigationStatus.loaded,
+          hasLocationPermission: true,
+          isOnline: true,
+          gpsStatus: DeliveryGpsStatus.active,
+          order: DeliveryNavigationOrderSummary(
+            orderId: '',
+            pickupLabel: '',
+            pickupAddress: '',
+            dropLabel: '',
+            dropAddress: '',
+            customerName: '',
+            customerPhone: '',
+            status: '',
+          ),
+          nearbySellers: [
+            {
+              'id': 'seller_1',
+              'name': 'Burger Bistro',
+              'latitude': 13.0418,
+              'longitude': 80.2341,
+            },
+            {
+              'id': 'seller_2',
+              'name': 'Dosa Corner',
+              'latitude': 13.0475,
+              'longitude': 80.2573,
+            },
+          ],
+        ),
+      );
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('dp_navscreen_idle_active_zone_pill')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('2 Live Restaurants in Operational Zone'),
+        findsOneWidget,
+      );
+    });
   });
 }
+

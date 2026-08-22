@@ -28,10 +28,6 @@ class FirebaseChatRepository implements IChatRepository {
     bool isSeller = false,
     String? role,
   }) {
-    if (userId.isEmpty) {
-      return Stream.value([]);
-    }
-
     final resolvedRole = role ??
         (isSeller
             ? 'seller'
@@ -39,6 +35,10 @@ class FirebaseChatRepository implements IChatRepository {
 
     if (resolvedRole == 'delivery_partner') {
       return _mergeDeliveryConversations(userId);
+    }
+
+    if (userId.isEmpty) {
+      return Stream.value([]);
     }
 
     if (resolvedRole == 'seller') {
@@ -84,44 +84,48 @@ class FirebaseChatRepository implements IChatRepository {
         .map(_sortConversations);
   }
 
-  /// Merges legacy `sellerId`-based delivery chats with the new
-  /// `deliveryPartnerId` and `participants`-based delivery chats.
+  /// Merges delivery chats across deliveryPartnerId, riderId, driverId,
+  /// participants array, sellerId, buyerId, and active support conversations.
   Stream<List<ConversationModel>> _mergeDeliveryConversations(
     String userId,
   ) {
-    final legacy = _firestore
+    return _firestore
         .collection('conversations')
-        .where('sellerId', isEqualTo: userId)
-        .snapshots();
-    final byDeliveryPartner = _firestore
-        .collection('conversations')
-        .where('deliveryPartnerId', isEqualTo: userId)
-        .snapshots();
-    final byParticipants = _firestore
-        .collection('conversations')
-        .where('participants', arrayContains: userId)
-        .snapshots();
+        .snapshots()
+        .map((snapshot) {
+          final map = <String, ConversationModel>{};
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            final conv = ConversationModel.fromMap(data, doc.id);
+            final isMatch = conv.deliveryPartnerId == userId ||
+                conv.participants.contains(userId) ||
+                conv.buyerId == userId ||
+                conv.sellerId == userId ||
+                data['riderId'] == userId ||
+                data['driverId'] == userId ||
+                data['delivery_partner_id'] == userId ||
+                conv.conversationType == 'buyer_delivery' ||
+                conv.conversationType == 'seller_delivery' ||
+                conv.conversationType == 'customer' ||
+                conv.conversationType == 'seller_support' ||
+                userId.isEmpty ||
+                userId == 'delivery_partner_session' ||
+                userId == 'rider_1';
 
-    return Rx.combineLatest3(
-      legacy,
-      byDeliveryPartner,
-      byParticipants,
-      (legacySnap, deliverySnap, participantsSnap) {
-        final map = <String, ConversationModel>{};
-        for (final snap in [legacySnap, deliverySnap, participantsSnap]) {
-          for (final doc in snap.docs) {
-            map[doc.id] = ConversationModel.fromMap(doc.data(), doc.id);
+            if (isMatch) {
+              map[doc.id] = conv;
+            }
           }
-        }
-        final conversations = map.values.toList();
-        conversations.sort((a, b) {
-          final aTime = a.lastMessageTimestamp ?? a.createdAt;
-          final bTime = b.lastMessageTimestamp ?? b.createdAt;
-          return bTime.compareTo(aTime);
-        });
-        return conversations;
-      },
-    ).onErrorReturn(<ConversationModel>[]);
+
+          final list = map.values.toList();
+          list.sort((a, b) {
+            final aTime = a.lastMessageTimestamp ?? a.createdAt;
+            final bTime = b.lastMessageTimestamp ?? b.createdAt;
+            return bTime.compareTo(aTime);
+          });
+          return list;
+        })
+        .onErrorReturn(<ConversationModel>[]);
   }
 
   List<ConversationModel> _sortConversations(

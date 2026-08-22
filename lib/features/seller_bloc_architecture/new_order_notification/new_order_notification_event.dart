@@ -51,3 +51,20 @@ class NewOrderNotificationErrorEvent extends NewOrderNotificationEvent {
   @override
   List<Object?> get props => [message];
 }
+
+class ConfigureNewOrderAudio extends NewOrderNotificationEvent {
+  final String ringtoneName;
+  final double volume;
+  final bool soundEnabled;
+  final bool soundLoop;
+
+  const ConfigureNewOrderAudio({
+    this.ringtoneName = 'Bell Chime',
+    this.volume = 0.8,
+    this.soundEnabled = true,
+    this.soundLoop = true,
+  });
+
+  @override
+  List<Object?> get props => [ringtoneName, volume, soundEnabled, soundLoop];
+}

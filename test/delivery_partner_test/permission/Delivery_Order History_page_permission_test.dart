@@ -156,12 +156,15 @@ void main() {
     testWidgets('sidebar navigation toggle is reachable and tappable', (
       tester,
     ) async {
-      setDesktopSize(tester);
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
       await tester.pumpWidget(buildPage());
       await tester.pump();
 
-      expect(find.byKey(const Key('dp_oh_sidebar')), findsOneWidget);
-      expect(find.text('DELIVERY PARTNER'), findsOneWidget);
+      expect(find.byKey(const Key('dp_oh_sidebar_toggle')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('dp_oh_sidebar_toggle')));
+      await tester.pump();
     });
 
     testWidgets('pagination controls are reachable and tappable', (

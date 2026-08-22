@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/models/buyer_notification_model.dart';
 import '../../../core/repositories/i_buyer_notification_repository.dart';
+import '../../../core/utils/app_exception_formatter.dart';
 import 'buyer_notification_event.dart';
 import 'buyer_notification_service.dart';
 import 'buyer_notification_state.dart';
@@ -60,7 +61,9 @@ class BuyerNotificationBloc
       },
       onError: (Object error) {
         if (isClosed) return;
-        add(NotificationsStreamFailed(error.toString()));
+        add(NotificationsStreamFailed(
+          AppExceptionFormatter.toUserFriendlyMessage(error),
+        ));
       },
     );
   }
@@ -244,23 +247,24 @@ class BuyerNotificationBloc
     BuyerNotificationModel n,
     NotificationFilter filter,
   ) {
+    final cat = n.effectiveCategory;
     switch (filter) {
       case NotificationFilter.all:
         return true;
       case NotificationFilter.orders:
-        return n.category == BuyerNotificationCategory.orderUpdate ||
-            n.category == BuyerNotificationCategory.driverTracking;
+        return cat == BuyerNotificationCategory.orderUpdate ||
+            cat == BuyerNotificationCategory.driverTracking;
       case NotificationFilter.payments:
-        return n.category == BuyerNotificationCategory.paymentStatus;
+        return cat == BuyerNotificationCategory.paymentStatus;
       case NotificationFilter.offers:
-        return n.category == BuyerNotificationCategory.offerPromo;
+        return cat == BuyerNotificationCategory.offerPromo;
       case NotificationFilter.chats:
-        return n.category == BuyerNotificationCategory.chatMessage;
+        return cat == BuyerNotificationCategory.chatMessage;
       case NotificationFilter.alerts:
-        return n.category == BuyerNotificationCategory.securityAlert ||
-            n.category == BuyerNotificationCategory.system ||
-            n.category == BuyerNotificationCategory.reviewReminder ||
-            n.category == BuyerNotificationCategory.unknown;
+        return cat == BuyerNotificationCategory.securityAlert ||
+            cat == BuyerNotificationCategory.system ||
+            cat == BuyerNotificationCategory.reviewReminder ||
+            cat == BuyerNotificationCategory.unknown;
     }
   }
 

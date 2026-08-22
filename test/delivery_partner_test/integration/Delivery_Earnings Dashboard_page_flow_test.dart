@@ -1,13 +1,76 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Earnings%20Dashboard_page/Delivery_Earnings%20Dashboard_page_repository.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Earnings%20Dashboard_page/Delivery_Earnings%20Dashboard_page_service.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Earnings%20Dashboard_page/Delivery_Earnings%20Dashboard_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Earnings%20Dashboard_page/Delivery_Earnings%20Dashboard_page_ui.dart';
 
 import '../../font_loader_helper.dart';
 
+class MockDeliveryEarningsDashboardRepository extends Mock
+    implements DeliveryEarningsDashboardRepositoryBase {}
+
+class MockDeliveryEarningsDashboardService extends Mock
+    implements DeliveryEarningsDashboardServiceBase {}
+
+DeliveryEarningsDashboardState buildLoadedState() {
+  final now = DateTime(2026, 7, 31);
+  return DeliveryEarningsDashboardState(
+    status: DeliveryEarningsStatus.loaded,
+    totalEarnings: 12850.00,
+    todayEarnings: 2450.00,
+    weeklyEarnings: 12850.00,
+    monthlyEarnings: 48900.00,
+    earningsGrowth: 18.5,
+    walletBalance: 12850.00,
+    pendingWithdrawal: 1200.00,
+    totalWithdrawn: 48250.00,
+    rangeEarnings: {
+      EarningsDateRange.today: [
+        DeliveryEarningsPoint(label: '6AM', value: 180.0, date: now),
+        DeliveryEarningsPoint(label: '9AM', value: 220.0, date: now),
+        DeliveryEarningsPoint(label: '12PM', value: 320.0, date: now),
+        DeliveryEarningsPoint(label: '3PM', value: 410.0, date: now),
+      ],
+    },
+    transactions: [
+      DeliveryEarningsTransaction(
+        id: 'tx_1',
+        title: 'Delivery Earnings',
+        date: now,
+        amount: 240.00,
+        type: EarningsTransactionType.credit,
+        status: 'completed',
+      ),
+      DeliveryEarningsTransaction(
+        id: 'tx_2',
+        title: 'Peak Hour Bonus',
+        date: now,
+        amount: 60.00,
+        type: EarningsTransactionType.credit,
+        status: 'completed',
+      ),
+    ],
+    withdrawalHistory: [
+      DeliveryWithdrawalRecord(
+        id: 'wd_1',
+        amount: 2000.00,
+        method: 'Bank Transfer',
+        date: now,
+        status: 'completed',
+      ),
+    ],
+  );
+}
+
 void main() {
+  late MockDeliveryEarningsDashboardRepository mockRepository;
+  late MockDeliveryEarningsDashboardService mockService;
+
   setUpAll(() {
     overrideFontAssetLoading();
 
@@ -22,6 +85,30 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+
+    mockRepository = MockDeliveryEarningsDashboardRepository();
+    mockService = MockDeliveryEarningsDashboardService();
+    when(() => mockRepository.watchEarningsData()).thenAnswer(
+      (_) => Stream.value(buildLoadedState()),
+    );
+    when(() => mockRepository.loadEarningsData()).thenAnswer(
+      (_) async => buildLoadedState(),
+    );
+    when(() => mockRepository.withdraw(any())).thenAnswer(
+      (_) async => buildLoadedState().copyWith(
+        walletBalance: 12350.00,
+        totalEarnings: 12350.00,
+      ),
+    );
+    when(() => mockRepository.mediaUploadStream()).thenAnswer(
+      (_) => Stream<double>.multi((controller) async {
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        controller.add(0.5);
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        controller.add(1.0);
+        await controller.close();
+      }),
+    );
   });
 
   void setDesktopSize(WidgetTester tester) {
@@ -36,7 +123,12 @@ void main() {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0D131E),
       ),
-      home: Scaffold(body: DeliveryEarningsDashboardPage()),
+      home: Scaffold(
+        body: DeliveryEarningsDashboardPage(
+          repository: mockRepository,
+          service: mockService,
+        ),
+      ),
     );
   }
 
@@ -139,12 +231,22 @@ void main() {
       setDesktopSize(tester);
       await loadDashboard(tester);
 
+      await tester.ensureVisible(
+        find.byKey(const Key('dp_earnings_media_upload_button')),
+      );
+      await tester.pump();
       await tester.tap(
         find.byKey(const Key('dp_earnings_media_upload_button')),
       );
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 60));
 
+      expect(
+        find.byKey(const Key('dp_earnings_media_upload_progress')),
+        findsOneWidget,
+      );
+
+      await tester.pump(const Duration(milliseconds: 500));
       expect(find.text('Upload complete'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

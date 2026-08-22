@@ -131,6 +131,21 @@ class DeliveryDashboardRepository implements DeliveryDashboardRepositoryBase {
       recentActivities: activities,
       incomingSellerOrders: incomingSellerOrders,
       unreadNotificationCount: (raw['unreadNotificationCount'] as num?)?.toInt() ?? 0,
+      activeOrderStoreName: raw['activeOrderStoreName'] ?? '',
+      activeOrderStoreAddress: raw['activeOrderStoreAddress'] ?? '',
+      activeOrderStoreLat: (raw['activeOrderStoreLat'] as num?)?.toDouble() ?? 0.0,
+      activeOrderStoreLng: (raw['activeOrderStoreLng'] as num?)?.toDouble() ?? 0.0,
+      activeOrderCustomerName: raw['activeOrderCustomerName'] ?? '',
+      activeOrderCustomerAddress: raw['activeOrderCustomerAddress'] ?? '',
+      activeOrderCustomerLat: (raw['activeOrderCustomerLat'] as num?)?.toDouble() ?? 0.0,
+      activeOrderCustomerLng: (raw['activeOrderCustomerLng'] as num?)?.toDouble() ?? 0.0,
+      activeOrderDistanceKm: (raw['activeOrderDistanceKm'] as num?)?.toDouble() ?? 0.0,
+      activeOrderAmount: (raw['activeOrderAmount'] as num?)?.toDouble() ?? 0.0,
+      activeOrderStatus: raw['activeOrderStatus'] ?? '',
+      activeOrderIsPickedUp: raw['activeOrderIsPickedUp'] ?? false,
+      partnerLatitude: (raw['partnerLatitude'] as num?)?.toDouble() ?? 0.0,
+      partnerLongitude: (raw['partnerLongitude'] as num?)?.toDouble() ?? 0.0,
+      nearbySellers: (raw['nearbySellers'] as List?)?.cast<Map<String, dynamic>>() ?? const [],
     );
   }
 

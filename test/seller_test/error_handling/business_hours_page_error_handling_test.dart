@@ -15,6 +15,7 @@ void main() {
 
     setUp(() {
       mockRepository = MockBusinessHoursRepository();
+      when(() => mockRepository.watchSchedule(any())).thenAnswer((_) => const Stream.empty());
       bloc = BusinessHoursBloc(repository: mockRepository);
     });
 

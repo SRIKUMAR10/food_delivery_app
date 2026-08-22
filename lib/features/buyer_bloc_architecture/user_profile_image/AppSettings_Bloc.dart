@@ -9,6 +9,7 @@ import 'package:food_delivery_app/core/services/i_auth_service.dart';
 import 'package:food_delivery_app/core/services/app_logout_service.dart';
 import 'package:food_delivery_app/core/services/theme_manager.dart';
 import 'package:food_delivery_app/core/services/locale_manager.dart';
+import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
 import 'AppSettings_Event.dart';
 import 'AppSettings_State.dart';
 
@@ -67,13 +68,17 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
         onError: (Object error, StackTrace stackTrace) {
           return state.copyWith(
             isLoading: false,
-            error: error.toString(),
+            error: AppExceptionFormatter.toUserFriendlyMessage(error),
             isInitialized: true,
           );
         },
       );
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString(), isInitialized: true));
+      emit(state.copyWith(
+        isLoading: false,
+        error: AppExceptionFormatter.toUserFriendlyMessage(e),
+        isInitialized: true,
+      ));
     }
   }
 
@@ -176,7 +181,10 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
       }
       emit(state.copyWith(isLoading: false));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      emit(state.copyWith(
+        isLoading: false,
+        error: AppExceptionFormatter.toUserFriendlyMessage(e),
+      ));
     }
   }
 
@@ -191,7 +199,7 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
       await _repository.deleteUserData(uid);
       add(const LogoutRequested());
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      emit(state.copyWith(error: AppExceptionFormatter.toUserFriendlyMessage(e)));
     }
   }
 
@@ -203,7 +211,7 @@ class AppSettingsBloc extends Bloc<AppSettingsEvent, AppSettingsState> {
       await AppLogoutService.signOut(authService);
       emit(state.copyWith(isLoggedOut: true));
     } catch (e) {
-      emit(state.copyWith(error: e.toString()));
+      emit(state.copyWith(error: AppExceptionFormatter.toUserFriendlyMessage(e)));
     }
   }
 

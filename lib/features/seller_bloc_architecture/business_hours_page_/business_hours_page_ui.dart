@@ -35,11 +35,19 @@ class BusinessHoursView extends StatelessWidget {
             if (state is BusinessHoursLoaded) {
               if (state.errorMessage != null) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.errorMessage!), backgroundColor: const Color(0xFFE52929)),
+                  SnackBar(
+                    content: Text(state.errorMessage!),
+                    backgroundColor: const Color(0xFFE52929),
+                    behavior: SnackBarBehavior.floating,
+                  ),
                 );
               } else if (state.successMessage != null) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.successMessage!), backgroundColor: const Color(0xFF22C55E)),
+                  SnackBar(
+                    content: Text(state.successMessage!),
+                    backgroundColor: const Color(0xFF22C55E),
+                    behavior: SnackBarBehavior.floating,
+                  ),
                 );
               }
             }
@@ -64,16 +72,17 @@ class BusinessHoursView extends StatelessWidget {
                                     Text(
                                       'Business Hours',
                                       style: TextStyle(
-                                        fontSize: 40,
+                                        fontSize: 32,
                                         fontWeight: FontWeight.w800,
                                         color: Color(0xFF111827),
+                                        letterSpacing: -0.5,
                                       ),
                                     ),
-                                    SizedBox(height: 8),
+                                    SizedBox(height: 6),
                                     Text(
                                       'Set your store opening and closing times',
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 15,
                                         color: Color(0xFF6B7280),
                                       ),
                                     ),
@@ -84,6 +93,7 @@ class BusinessHoursView extends StatelessWidget {
                                 icon: const Icon(Icons.arrow_back),
                                 onPressed: () => Navigator.pop(context),
                                 color: const Color(0xFF111827),
+                                tooltip: 'Back',
                               ),
                             ],
                           ),
@@ -91,11 +101,29 @@ class BusinessHoursView extends StatelessWidget {
                         if (state is BusinessHoursLoading || state is BusinessHoursInitial)
                           const Expanded(child: Center(child: CircularProgressIndicator(color: Color(0xFF3B82F6))))
                         else if (state is BusinessHoursError)
-                          Expanded(child: Center(child: Text(state.message, style: const TextStyle(color: Color(0xFFE52929)))))
+                          Expanded(
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.error_outline_rounded, size: 48, color: Color(0xFFE52929)),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      state.message,
+                                      style: const TextStyle(color: Color(0xFFE52929), fontSize: 16),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
                         else if (state is BusinessHoursLoaded)
                           Expanded(
                             child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(24),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -103,16 +131,29 @@ class BusinessHoursView extends StatelessWidget {
                                     isEmergencyClosed: state.isEmergencyClosed,
                                     isUpdating: state.isUpdating,
                                   ),
-                                  const SizedBox(height: 32),
-                                  const Text(
-                                    'Weekly Schedule',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF1E293B),
-                                    ),
+                                  const SizedBox(height: 28),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: const [
+                                      Text(
+                                        'Weekly Schedule',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                      Text(
+                                        'Tap time to edit',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF64748B),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 14),
                                   Container(
                                     decoration: BoxDecoration(
                                       color: Colors.white,
@@ -126,19 +167,28 @@ class BusinessHoursView extends StatelessWidget {
                                         ),
                                       ],
                                     ),
-                                    child: ListView.separated(
-                                      shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
-                                      itemCount: state.schedule.length,
-                                      separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                                      itemBuilder: (context, index) {
-                                        return _DayScheduleRow(
-                                          day: state.schedule[index],
-                                          isUpdating: state.isUpdating,
-                                        );
-                                      },
-                                    ),
+                                    child: state.schedule.isEmpty
+                                        ? const Padding(
+                                            padding: EdgeInsets.all(32.0),
+                                            child: Center(
+                                              child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
+                                            ),
+                                          )
+                                        : ListView.separated(
+                                            shrinkWrap: true,
+                                            physics: const NeverScrollableScrollPhysics(),
+                                            itemCount: state.schedule.length,
+                                            separatorBuilder: (context, index) =>
+                                                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                                            itemBuilder: (context, index) {
+                                              return _DayScheduleRow(
+                                                day: state.schedule[index],
+                                                isUpdating: state.isUpdating,
+                                              );
+                                            },
+                                          ),
                                   ),
+                                  const SizedBox(height: 40),
                                 ],
                               ),
                             ),
@@ -232,18 +282,73 @@ class _DayScheduleRow extends StatelessWidget {
 
   const _DayScheduleRow({required this.day, required this.isUpdating});
 
+  TimeOfDay _parseTimeString(String timeStr) {
+    try {
+      final parts = timeStr.trim().split(' ');
+      if (parts.isEmpty) return const TimeOfDay(hour: 9, minute: 0);
+      final timeParts = parts[0].split(':');
+      int hour = int.tryParse(timeParts[0]) ?? 9;
+      final minute = timeParts.length > 1 ? (int.tryParse(timeParts[1]) ?? 0) : 0;
+      if (parts.length > 1) {
+        final period = parts[1].toUpperCase();
+        if (period == 'PM' && hour != 12) hour += 12;
+        if (period == 'AM' && hour == 12) hour = 0;
+      }
+      return TimeOfDay(hour: hour, minute: minute);
+    } catch (_) {
+      return const TimeOfDay(hour: 9, minute: 0);
+    }
+  }
+
+  String _formatTimeOfDay(TimeOfDay time) {
+    final hourOfPeriod = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '${hourOfPeriod.toString().padLeft(2, '0')}:$minute $period';
+  }
+
+  Future<void> _pickTime(BuildContext context, bool isOpenTime) async {
+    if (isUpdating || !day.isOpen) return;
+
+    final initialTime = _parseTimeString(isOpenTime ? day.openTime : day.closeTime);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (pickerContext, child) {
+        return Theme(
+          data: Theme.of(pickerContext).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF3B82F6),
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF1E293B),
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
+
+    if (picked != null && context.mounted) {
+      final formatted = _formatTimeOfDay(picked);
+      final updatedDay = isOpenTime
+          ? day.copyWith(openTime: formatted)
+          : day.copyWith(closeTime: formatted);
+      context.read<BusinessHoursBloc>().add(UpdateBusinessDayEvent(updatedDay));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         children: [
           SizedBox(
-            width: 100,
+            width: 105,
             child: Text(
               day.dayOfWeek,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1E293B),
               ),
@@ -254,18 +359,37 @@ class _DayScheduleRow extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (day.isOpen) ...[
-                  _TimeBox(time: day.openTime),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('-', style: TextStyle(color: Color(0xFF94A3B8))),
+                  _TimeBox(
+                    time: day.openTime,
+                    label: 'opening time',
+                    isInteractive: !isUpdating,
+                    onTap: () => _pickTime(context, true),
                   ),
-                  _TimeBox(time: day.closeTime),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6),
+                    child: Text('–', style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+                  ),
+                  _TimeBox(
+                    time: day.closeTime,
+                    label: 'closing time',
+                    isInteractive: !isUpdating,
+                    onTap: () => _pickTime(context, false),
+                  ),
                 ] else
-                  const Text(
-                    'Closed',
-                    style: TextStyle(
-                      color: Color(0xFFEF4444),
-                      fontWeight: FontWeight.w600,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: const Text(
+                      'Closed',
+                      style: TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
               ],
@@ -287,25 +411,59 @@ class _DayScheduleRow extends StatelessWidget {
 
 class _TimeBox extends StatelessWidget {
   final String time;
-  const _TimeBox({required this.time});
+  final String label;
+  final VoidCallback? onTap;
+  final bool isInteractive;
+
+  const _TimeBox({
+    required this.time,
+    required this.label,
+    this.onTap,
+    this.isInteractive = true,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Text(
-        time,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: Color(0xFF334155),
+    return Tooltip(
+      message: isInteractive ? 'Click to change $label' : time,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isInteractive ? onTap : null,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isInteractive ? const Color(0xFFCBD5E1) : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.access_time_rounded,
+                  size: 13,
+                  color: Color(0xFF64748B),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  time,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF334155),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
+

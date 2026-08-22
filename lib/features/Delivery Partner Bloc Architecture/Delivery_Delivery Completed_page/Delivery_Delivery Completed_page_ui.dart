@@ -6,6 +6,8 @@ import 'Delivery_Delivery Completed_page_repository.dart';
 import 'Delivery_Delivery Completed_page_service.dart';
 import 'Delivery_Delivery Completed_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../../core/widgets/app_google_map_view.dart';
 
 class DeliveryCompletedStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -1563,6 +1565,25 @@ class _DeliverySummaryCard extends StatelessWidget {
             icon: Icons.payments_outlined,
             label: DeliveryCompletedStrings.of('paymentMethod', locale),
             value: model?.paymentMethod ?? 'UPI • Google Pay',
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              height: 150,
+              child: AppGoogleMapView(
+                storeLocation: const LatLng(11.4485, 77.6835),
+                storeName: 'Restaurant Pickup',
+                customerLocation: const LatLng(11.4580, 77.6980),
+                customerName: model?.customerName ?? 'Customer',
+                customerAddress: model?.deliveryAddress,
+                isPickedUp: true,
+                isDarkMode: true,
+                showControls: false,
+                showProgressCard: false,
+                initialZoom: 14.5,
+              ),
+            ),
           ),
         ],
       ),
