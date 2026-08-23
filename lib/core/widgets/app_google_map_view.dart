@@ -1223,7 +1223,7 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
          defaultTargetPlatform == TargetPlatform.macOS);
 
     final bool shouldUseFallback = isNativeDesktop ||
-        kIsWeb ||
+        (kIsWeb && !isGoogleMapsJsReady()) ||
         _forceFallbackCanvas;
 
     if (shouldUseFallback) {

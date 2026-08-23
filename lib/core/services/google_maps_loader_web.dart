@@ -51,7 +51,7 @@ Future<bool> ensureGoogleMapsJsLoaded() async {
           dotenv.env['API_KEY'] ??
           'AIzaSyBwTsgY7b5lSrYZVR7KX76Fkq4ijzZkBrA';
       final script = html.ScriptElement()
-        ..src = 'https://maps.googleapis.com/maps/api/js?key=$apiKey&libraries=places,geometry&v=weekly'
+        ..src = 'https://maps.googleapis.com/maps/api/js?key=$apiKey&libraries=places,geometry&v=weekly&loading=async'
         ..async = true
         ..defer = true;
       html.document.head?.append(script);

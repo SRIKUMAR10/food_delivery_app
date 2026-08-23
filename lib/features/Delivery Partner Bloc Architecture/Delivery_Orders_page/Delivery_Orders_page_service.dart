@@ -85,19 +85,18 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
         } catch (e) {
           debugPrint('fetchOrdersData deliveryPartnerId query fallback: $e');
         }
-      }
-
-      if (docMap.isEmpty) {
-        try {
-          final q3 = await currentFirestore
-              .collection('orders')
-              .where('status', whereIn: _availableStatuses)
-              .get();
-          for (var doc in q3.docs) {
-            docMap[doc.id] = doc;
+        if (docMap.isEmpty) {
+          try {
+            final q3 = await currentFirestore
+                .collection('orders')
+                .where('status', whereIn: _availableStatuses)
+                .get();
+            for (var doc in q3.docs) {
+              docMap[doc.id] = doc;
+            }
+          } catch (e) {
+            debugPrint('fetchOrdersData status query fallback: $e');
           }
-        } catch (e) {
-          debugPrint('fetchOrdersData status query fallback: $e');
         }
       }
 
@@ -471,14 +470,16 @@ class DeliveryOrdersService implements DeliveryOrdersServiceBase {
             })
         : Stream.value(null);
 
-    final Stream<QuerySnapshot<Map<String, dynamic>>?> s3 = currentFirestore
-        .collection('orders')
-        .where('status', whereIn: _availableStatuses)
-        .snapshots()
-        .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
-        .onErrorReturnWith((e, st) {
-          return null;
-        });
+    final Stream<QuerySnapshot<Map<String, dynamic>>?> s3 = (uid != null && uid.isNotEmpty)
+        ? currentFirestore
+            .collection('orders')
+            .where('status', whereIn: _availableStatuses)
+            .snapshots()
+            .map<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+            .onErrorReturnWith((e, st) {
+              return null;
+            })
+        : Stream.value(null);
 
     return Rx.combineLatest3<
         QuerySnapshot<Map<String, dynamic>>?,

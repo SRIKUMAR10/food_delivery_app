@@ -917,6 +917,7 @@ class _MapAreaState extends State<_MapArea> {
                     customerName: widget.state.customerName.isNotEmpty ? widget.state.customerName : 'Customer',
                     additionalMarkers: realSellerMarkers,
                     isPickedUp: isStage2 || isCompleted,
+                    isDarkMode: true,
                     isFullScreen: widget.isFullScreen,
                     onToggleFullScreen: widget.onToggleFullScreen,
                     showControls: false,

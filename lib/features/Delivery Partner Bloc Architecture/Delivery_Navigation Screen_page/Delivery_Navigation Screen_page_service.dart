@@ -309,7 +309,7 @@ class DeliveryNavigationService implements DeliveryNavigationServiceBase {
           }
         }
         return sellers;
-      });
+      }).handleError((Object _) => <Map<String, dynamic>>[]);
     } catch (_) {
       return Stream.value(const []);
     }
