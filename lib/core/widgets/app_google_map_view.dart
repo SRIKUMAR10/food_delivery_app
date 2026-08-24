@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app_google_map_bloc/app_google_map_bloc.dart';
 import 'app_google_map_bloc/app_google_map_event.dart';
 import 'app_google_map_bloc/app_google_map_state.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -132,6 +134,7 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
   Offset _canvasPanOffset = Offset.zero;
 
   // Custom BitmapDescriptors
+  bool _isDraggingMap = false;
   BitmapDescriptor? _vehicleIcon;
   BitmapDescriptor? _storeIcon;
   BitmapDescriptor? _customerIcon;
@@ -215,6 +218,34 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
           _fitAllRouteBounds();
         }
       });
+    }
+  }
+
+  Future<void> _loadCustomIcons() async {
+    try {
+      final vehicleIcon = await MapMarkerService.instance.getVehicleMarker(
+        vehicleType: widget.vehicleType,
+        heading: 0.0,
+        size: 130.0,
+      );
+      final storeIcon = await MapMarkerService.instance.getStoreMarker(
+        storeName: widget.storeName.isNotEmpty ? widget.storeName : 'Restaurant',
+        size: 120.0,
+      );
+      final customerIcon = await MapMarkerService.instance.getCustomerMarker(
+        customerName: widget.customerName.isNotEmpty ? widget.customerName : 'Customer',
+        size: 120.0,
+      );
+
+      if (mounted) {
+        setState(() {
+          _vehicleIcon = vehicleIcon;
+          _storeIcon = storeIcon;
+          _customerIcon = customerIcon;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading custom map markers: $e');
     }
   }
 
@@ -382,7 +413,7 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
         _currentDriverPos = telemetry.currentPosition;
       });
 
-      if (_mapBloc.state.autoFollowDriver && _mapController != null) {
+      if (!_isDraggingMap && _mapBloc.state.autoFollowDriver && _mapController != null) {
         _mapController!.animateCamera(
           CameraUpdate.newCameraPosition(
             CameraPosition(
@@ -407,26 +438,6 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
     _mapController?.dispose();
     _mapBloc.close();
     super.dispose();
-  }
-
-  Future<void> _loadCustomIcons() async {
-    try {
-      final vehicle = await MapMarkerService.instance.getVehicleMarker(
-        vehicleType: widget.vehicleType,
-        heading: widget.driverHeading,
-        primaryColor: const Color(0xFFE52121),
-      );
-      final store = await MapMarkerService.instance.getStoreMarker();
-      final customer = await MapMarkerService.instance.getCustomerMarker();
-
-      if (mounted) {
-        setState(() {
-          _vehicleIcon = vehicle;
-          _storeIcon = store;
-          _customerIcon = customer;
-        });
-      }
-    } catch (_) {}
   }
 
   bool _isValidCoord(LatLng? pos) {
@@ -513,24 +524,8 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
       );
     }
 
-    // 3. Live Device GPS Location Marker
-    if (_mapBloc.state.deviceGpsLocation != null && widget.customerLocation == null) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('marker_device_live_gps'),
-          position: _mapBloc.state.deviceGpsLocation!,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-          infoWindow: const InfoWindow(
-            title: 'Your Current Location',
-            snippet: 'Live Device GPS',
-          ),
-          anchor: const Offset(0.5, 0.5),
-        ),
-      );
-    }
-
     // 4. Animated Driver / Courier Marker
-    if (widget.driverLocation != null || _previousDriverPos != null) {
+    if (widget.driverLocation != null || _previousDriverPos != null || _currentDriverPos != null) {
       final currentPos = LatLng(_animatedLat, _animatedLng);
       markers.add(
         Marker(
@@ -1280,6 +1275,21 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                 _applyDarkStyle(controller);
               }
             },
+            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+              Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+              Factory<PanGestureRecognizer>(() => PanGestureRecognizer()),
+              Factory<ScaleGestureRecognizer>(() => ScaleGestureRecognizer()),
+              Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
+            },
+            zoomGesturesEnabled: true,
+            scrollGesturesEnabled: true,
+            rotateGesturesEnabled: true,
+            onCameraMoveStarted: () {
+              _isDraggingMap = true;
+            },
+            onCameraIdle: () {
+              _isDraggingMap = false;
+            },
             markers: _buildMarkers(),
             polylines: _buildPolylines(),
             mapType: _mapBloc.state.mapType,
@@ -1550,12 +1560,6 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
               ),
               const SizedBox(height: 5),
               _mapIconButton(
-                Icons.crop_free_rounded,
-                _fitAllRouteBounds,
-                tooltip: 'Fit Entire Route',
-              ),
-              const SizedBox(height: 5),
-              _mapIconButton(
                 isSatellite ? Icons.satellite_alt_rounded : Icons.layers_outlined,
                 _toggleMapType,
                 tooltip: isSatellite ? 'Satellite Layer Active' : 'Switch to Satellite View',
@@ -1575,15 +1579,6 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                   _toggleWeatherLayer,
                   tooltip: _mapBloc.state.showWeatherOverlay ? 'Weather Alert: ON' : 'Weather Alert: OFF',
                   color: _mapBloc.state.showWeatherOverlay ? const Color(0xFF0284C7) : Colors.black87,
-                ),
-              ],
-              if (widget.onToggleFullScreen != null) ...[
-                const SizedBox(height: 5),
-                _mapIconButton(
-                  widget.isFullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
-                  widget.onToggleFullScreen!,
-                  tooltip: widget.isFullScreen ? 'Exit Full Screen' : 'Full Screen',
-                  color: widget.isFullScreen ? const Color(0xFFE52121) : Colors.black87,
                 ),
               ],
             ],
@@ -1755,50 +1750,105 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
             fit: StackFit.expand,
             children: [
               Positioned.fill(
-                child: GestureDetector(
+                child: Listener(
                   behavior: HitTestBehavior.opaque,
-                  onPanUpdate: (details) {
+                  onPointerDown: (event) {
                     setState(() {
-                      _canvasPanOffset += details.delta;
+                      _isDraggingMap = true;
                     });
                   },
-                  onTapUp: (details) => _handleCanvasPinTap(context, details.localPosition, minX, minY, zoom),
-                  child: SizedBox(
-                    width: width,
-                    height: height,
-                    child: Stack(
-                      clipBehavior: Clip.hardEdge,
-                      children: [
-                        Container(
-                          width: width,
-                          height: height,
-                          color: widget.isDarkMode ? const Color(0xFF131E29) : const Color(0xFFE2E8F0),
-                        ),
-                        ...tileWidgets,
-                        Positioned.fill(
-                          child: CustomPaint(
-                            size: Size(width, height),
-                            painter: _RealTileMapOverlayPainter(
-                              minX: minX,
-                              minY: minY,
-                              zoom: zoom,
-                              roadPolylines: _mapBloc.state.roadPolylines,
-                              driverPos: widget.driverLocation != null ? LatLng(_animatedLat, _animatedLng) : null,
-                              driverHeading: _animatedHeading,
-                              vehicleType: widget.vehicleType,
-                              storePos: widget.storeLocation,
-                              storeName: widget.storeName,
-                              customerPos: widget.customerLocation,
-                              customerName: widget.customerName,
-                              deviceGpsPos: _mapBloc.state.deviceGpsLocation,
-                              additionalMarkers: widget.additionalMarkers,
-                              trafficEnabled: _mapBloc.state.trafficEnabled,
-                              isSatellite: isSatellite,
-                              isDarkMode: widget.isDarkMode,
+                  onPointerMove: (event) {
+                    if (event.delta != Offset.zero) {
+                      setState(() {
+                        _canvasPanOffset += event.delta;
+                      });
+                    }
+                  },
+                  onPointerUp: (event) {
+                    setState(() {
+                      _isDraggingMap = false;
+                    });
+                  },
+                  onPointerCancel: (event) {
+                    setState(() {
+                      _isDraggingMap = false;
+                    });
+                  },
+                  onPointerSignal: (pointerSignal) {
+                    if (pointerSignal is PointerScrollEvent) {
+                      if (pointerSignal.scrollDelta.dy < 0) {
+                        _zoomIn();
+                      } else if (pointerSignal.scrollDelta.dy > 0) {
+                        _zoomOut();
+                      }
+                    }
+                  },
+                  child: MouseRegion(
+                    cursor: _isDraggingMap ? SystemMouseCursors.grabbing : SystemMouseCursors.grab,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onScaleStart: (details) {
+                        setState(() {
+                          _isDraggingMap = true;
+                        });
+                      },
+                      onScaleUpdate: (details) {
+                        setState(() {
+                          if (details.scale != 1.0) {
+                            _tileZoom = (_tileZoom + (details.scale - 1.0) * 0.4).clamp(3.0, 19.0);
+                          }
+                          if (details.focalPointDelta != Offset.zero) {
+                            _canvasPanOffset += details.focalPointDelta;
+                          }
+                        });
+                      },
+                      onScaleEnd: (details) {
+                        setState(() {
+                          _isDraggingMap = false;
+                        });
+                      },
+                      onTapUp: (details) => _handleCanvasPinTap(context, details.localPosition, minX, minY, zoom),
+                      onSecondaryTapUp: (details) => _handleCanvasPinTap(context, details.localPosition, minX, minY, zoom),
+                      child: SizedBox(
+                        width: width,
+                        height: height,
+                        child: Stack(
+                          clipBehavior: Clip.hardEdge,
+                          children: [
+                            Container(
+                              width: width,
+                              height: height,
+                              color: widget.isDarkMode ? const Color(0xFF131E29) : const Color(0xFFE2E8F0),
                             ),
-                          ),
+                            ...tileWidgets,
+                            Positioned.fill(
+                              child: CustomPaint(
+                                size: Size(width, height),
+                                painter: _RealTileMapOverlayPainter(
+                                  minX: minX,
+                                  minY: minY,
+                                  zoom: zoom,
+                                  roadPolylines: _mapBloc.state.roadPolylines,
+                                  driverPos: (widget.driverLocation != null || _currentDriverPos != null)
+                                      ? LatLng(_animatedLat, _animatedLng)
+                                      : null,
+                                  driverHeading: _animatedHeading,
+                                  vehicleType: widget.vehicleType,
+                                  storePos: widget.storeLocation,
+                                  storeName: widget.storeName,
+                                  customerPos: widget.customerLocation,
+                                  customerName: widget.customerName,
+                                  deviceGpsPos: _mapBloc.state.deviceGpsLocation,
+                                  additionalMarkers: widget.additionalMarkers,
+                                  trafficEnabled: _mapBloc.state.trafficEnabled,
+                                  isSatellite: isSatellite,
+                                  isDarkMode: widget.isDarkMode,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -2015,12 +2065,6 @@ class _RealTileMapOverlayPainter extends CustomPainter {
       final storeOffset = _latLngToScreen(storePos!);
       _drawDispatchPulse(canvas, storeOffset);
     }
-
-    // 6. Draw Device Current GPS Location Marker if available
-    if (deviceGpsPos != null && customerPos == null && driverPos == null) {
-      final gpsOffset = _latLngToScreen(deviceGpsPos!);
-      _drawDeviceGpsPulse(canvas, gpsOffset);
-    }
   }
 
   void _drawDemandZonePin(Canvas canvas, Offset pos, String title, String snippet) {
@@ -2093,29 +2137,17 @@ class _RealTileMapOverlayPainter extends CustomPainter {
   }
 
   void _drawRealisticDeliveryVehicle(Canvas canvas, Offset pos, double heading) {
-    // Radar Pulse Halo
-    final pulsePaint = Paint()
-      ..color = const Color(0xFF2563EB).withValues(alpha: 0.2)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(pos, 24, pulsePaint);
-
-    final pulseRing = Paint()
-      ..color = const Color(0xFF2563EB).withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawCircle(pos, 18, pulseRing);
-
     final isBike = MapMarkerService.isTwoWheeler(vehicleType);
     if (isBike) {
-      _drawRealisticBike(canvas, pos, heading * (math.pi / 180));
+      _drawRealistic3DBike(canvas, pos, heading * (math.pi / 180));
     } else {
-      _drawRealisticCar(canvas, pos, heading * (math.pi / 180));
+      _drawRealistic3DCar(canvas, pos, heading * (math.pi / 180));
     }
 
-    // Live Partner Label Badge
+    // 3D Glassmorphic Live Partner Tag
     final textPainter = TextPainter(
       text: const TextSpan(
-        text: '🛵 Partner (Live)',
+        text: '🛵 Partner (Live 3D)',
         style: TextStyle(
           color: Colors.white,
           fontSize: 9.5,
@@ -2126,94 +2158,379 @@ class _RealTileMapOverlayPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
 
-    final badgeOffset = Offset(pos.dx - (textPainter.width / 2), pos.dy + 16);
+    final badgeOffset = Offset(pos.dx - (textPainter.width / 2), pos.dy + 20);
     final badgeRRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(badgeOffset.dx - 5, badgeOffset.dy - 2, textPainter.width + 10, textPainter.height + 4),
-      const Radius.circular(5),
+      Rect.fromLTWH(badgeOffset.dx - 6, badgeOffset.dy - 3, textPainter.width + 12, textPainter.height + 6),
+      const Radius.circular(6),
     );
 
-    canvas.drawRRect(badgeRRect, Paint()..color = const Color(0xFF1E293B).withValues(alpha: 0.92));
+    // 3D Tag Shadow & Glass Surface
+    canvas.drawRRect(badgeRRect, Paint()..color = Colors.black.withValues(alpha: 0.35)..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 3));
+    canvas.drawRRect(badgeRRect, Paint()..color = const Color(0xFF0F172A).withValues(alpha: 0.94));
     canvas.drawRRect(
       badgeRRect,
       Paint()
-        ..color = const Color(0xFFE52121).withValues(alpha: 0.8)
+        ..shader = ui.Gradient.linear(
+          const Offset(0, 0),
+          const Offset(60, 0),
+          [const Color(0xFF38BDF8), const Color(0xFFE52121)],
+        )
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
+        ..strokeWidth = 1.2,
     );
     textPainter.paint(canvas, badgeOffset);
   }
 
-  void _drawRealisticCar(Canvas canvas, Offset pos, double angle) {
+  void _drawRealistic3DCar(Canvas canvas, Offset pos, double angle) {
     canvas.save();
     canvas.translate(pos.dx, pos.dy);
     canvas.rotate(angle);
 
-    // Car Shadow
+    // 1. Volumetric Dual Headlight Beam
+    final Path carBeamPath = Path()
+      ..moveTo(-7, -16)
+      ..lineTo(-20, -52)
+      ..lineTo(20, -52)
+      ..lineTo(7, -16)
+      ..close();
+
+    final Paint beamPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(0, -16),
+        const Offset(0, -52),
+        [
+          const Color(0xFFFEF08A).withValues(alpha: 0.45),
+          const Color(0xFF38BDF8).withValues(alpha: 0.1),
+          Colors.transparent,
+        ],
+        [0.0, 0.4, 1.0],
+      );
+    canvas.drawPath(carBeamPath, beamPaint);
+
+    // 2. 3D Car Ground Shadow
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.35)
+      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 5);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-8, -14, 16, 28), const Radius.circular(5)),
-      Paint()..color = Colors.black.withValues(alpha: 0.25),
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-10, -17, 20, 34), const Radius.circular(7)),
+      shadowPaint,
     );
 
-    // Car Body (Yellow Cab / Uber Gold)
+    // 3. 3D Car Body (Metallic Uber/Zomato Crimson or Gold)
+    final Paint bodyPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(-9, -16),
+        const Offset(9, 16),
+        [
+          const Color(0xFFFBBF24),
+          const Color(0xFFF59E0B),
+          const Color(0xFFD97706),
+        ],
+        [0.0, 0.5, 1.0],
+      );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-7, -13, 14, 26), const Radius.circular(4)),
-      Paint()..color = const Color(0xFFFBBF24),
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-9, -16, 18, 32), const Radius.circular(6)),
+      bodyPaint,
     );
 
-    // Windshield (Dark Blue-Grey)
+    // 4. 3D Windshield & Windows (Tinted Glass)
+    final Paint glassPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(-7, -8),
+        const Offset(7, 8),
+        [
+          const Color(0xFF1E293B),
+          const Color(0xFF0F172A),
+        ],
+      );
+    // Front Windshield
     canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-5, -6, 10, 8), const Radius.circular(2)),
-      Paint()..color = const Color(0xFF1E293B),
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-7, -8, 14, 7), const Radius.circular(2.5)),
+      glassPaint,
+    );
+    // Rear Window
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-6.5, 6, 13, 5), const Radius.circular(2)),
+      glassPaint,
     );
 
-    // Roof Center
+    // 5. 3D Roof with Bevel
     canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-4, -1, 8, 8), const Radius.circular(2)),
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-6, -1, 12, 7), const Radius.circular(3)),
       Paint()..color = const Color(0xFFF59E0B),
     );
 
-    // Headlights
-    canvas.drawCircle(const Offset(-4, -12), 1.5, Paint()..color = const Color(0xFFFEF08A));
-    canvas.drawCircle(const Offset(4, -12), 1.5, Paint()..color = const Color(0xFFFEF08A));
+    // 6. Dual Xenon Headlights
+    canvas.drawCircle(const Offset(-6, -15), 2.2, Paint()..color = const Color(0xFFFFFFFF));
+    canvas.drawCircle(const Offset(6, -15), 2.2, Paint()..color = const Color(0xFFFFFFFF));
+
+    // 7. Dual LED Taillights
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-8, 15, 4, 1.8), const Radius.circular(1)),
+      Paint()..color = const Color(0xFFFF2222),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(4, 15, 4, 1.8), const Radius.circular(1)),
+      Paint()..color = const Color(0xFFFF2222),
+    );
 
     canvas.restore();
   }
 
-  void _drawRealisticBike(Canvas canvas, Offset pos, double angle) {
+  void _drawRealistic3DBike(Canvas canvas, Offset pos, double angle) {
     canvas.save();
     canvas.translate(pos.dx, pos.dy);
     canvas.rotate(angle);
 
-    // Shadow
-    canvas.drawOval(
-      const Rect.fromLTWH(-6, -11, 12, 22),
-      Paint()..color = Colors.black.withValues(alpha: 0.25),
-    );
+    // 1. Dynamic 3D Volumetric Headlight Light Cone (Front Projection)
+    final Path lightBeamPath = Path()
+      ..moveTo(0, -12)
+      ..lineTo(-18, -48)
+      ..lineTo(18, -48)
+      ..close();
 
-    // Bike Body (Yellow / Red Delivery Bike)
+    final Paint headlightBeamPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(0, -12),
+        const Offset(0, -48),
+        [
+          const Color(0xFFFEF08A).withValues(alpha: 0.45),
+          const Color(0xFF38BDF8).withValues(alpha: 0.15),
+          Colors.transparent,
+        ],
+        [0.0, 0.5, 1.0],
+      )
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(lightBeamPath, headlightBeamPaint);
+
+    // 2. Realistic 3D Ground Drop Shadow with Perspective Offset
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.32)
+      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 4.0);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-4, -9, 8, 18), const Radius.circular(3)),
-      Paint()..color = const Color(0xFFFBBF24),
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-7, -12, 14, 28), const Radius.circular(7)),
+      shadowPaint,
     );
 
-    // Rider Helmet (Dark Grey & Red Accent)
-    canvas.drawCircle(const Offset(0, -1), 4.0, Paint()..color = const Color(0xFF1F2937));
-    canvas.drawCircle(const Offset(0, -1), 2.5, Paint()..color = const Color(0xFFE52121));
+    // 3. 3D Bike Main Frame & Footboard
+    final Paint chassisPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(-6, 0),
+        const Offset(6, 0),
+        [
+          const Color(0xFF1E293B),
+          const Color(0xFF334155),
+          const Color(0xFF0F172A),
+        ],
+        [0.0, 0.5, 1.0],
+      );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-5.5, -10, 11, 22), const Radius.circular(5.5)),
+      chassisPaint,
+    );
 
-    // Handlebar
-    canvas.drawLine(
-      const Offset(-5, -6),
-      const Offset(5, -6),
+    // 4. Sporty Aerodynamic Front Fairing / Fender (3D Red Gloss Shading)
+    final Path frontFairingPath = Path()
+      ..moveTo(0, -15)
+      ..cubicTo(-6, -13, -6.5, -8, -5, -4)
+      ..lineTo(5, -4)
+      ..cubicTo(6.5, -8, 6, -13, 0, -15)
+      ..close();
+
+    final Paint fairingPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(-6, -15),
+        const Offset(6, -4),
+        [
+          const Color(0xFFFF5252),
+          const Color(0xFFE52121),
+          const Color(0xFF991B1B),
+        ],
+        [0.0, 0.5, 1.0],
+      );
+    canvas.drawPath(frontFairingPath, fairingPaint);
+
+    // Bevel highlight on fairing
+    canvas.drawPath(
+      frontFairingPath,
       Paint()
-        ..color = const Color(0xFF111827)
-        ..strokeWidth = 2,
+        ..color = Colors.white.withValues(alpha: 0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
     );
 
-    // Rear Delivery Bag (Red Swiggy/Zomato style thermal box)
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-4.5, 4, 9, 6), const Radius.circular(2)),
-      Paint()..color = const Color(0xFFE52121),
+    // 5. Dual Xenon LED Headlights with Crystal Corona
+    final Paint headlightGlow = Paint()
+      ..color = const Color(0xFFFFFFFF)
+      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.solid, 2.0);
+    canvas.drawCircle(const Offset(-2.5, -13), 2.2, headlightGlow);
+    canvas.drawCircle(const Offset(2.5, -13), 2.2, headlightGlow);
+    canvas.drawCircle(const Offset(-2.5, -13), 1.2, Paint()..color = const Color(0xFF38BDF8));
+    canvas.drawCircle(const Offset(2.5, -13), 1.2, Paint()..color = const Color(0xFF38BDF8));
+
+    // 6. Handlebars & Ergonomic Chrome Mirrors
+    final Paint handlebarPaint = Paint()
+      ..color = const Color(0xFF0F172A)
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(const Offset(-8, -7), const Offset(8, -7), handlebarPaint);
+
+    // Grip Caps
+    canvas.drawCircle(const Offset(-8, -7), 1.5, Paint()..color = const Color(0xFFE52121));
+    canvas.drawCircle(const Offset(8, -7), 1.5, Paint()..color = const Color(0xFFE52121));
+
+    // Chrome Mirrors with Reflection
+    canvas.drawLine(
+      const Offset(-5, -8),
+      const Offset(-8.5, -11),
+      Paint()..color = const Color(0xFF94A3B8)..strokeWidth = 1.2,
     );
+    canvas.drawLine(
+      const Offset(5, -8),
+      const Offset(8.5, -11),
+      Paint()..color = const Color(0xFF94A3B8)..strokeWidth = 1.2,
+    );
+    canvas.drawOval(
+      const Rect.fromLTWH(-10.5, -13, 4, 3),
+      Paint()..color = const Color(0xFF38BDF8).withValues(alpha: 0.9),
+    );
+    canvas.drawOval(
+      const Rect.fromLTWH(6.5, -13, 4, 3),
+      Paint()..color = const Color(0xFF38BDF8).withValues(alpha: 0.9),
+    );
+
+    // 7. 3D Rider Torso & Shoulders
+    final Paint riderVestPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(-7, -4),
+        const Offset(7, 4),
+        [
+          const Color(0xFFDC2626),
+          const Color(0xFFB91C1C),
+          const Color(0xFF7F1D1D),
+        ],
+        [0.0, 0.5, 1.0],
+      );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-6, -5, 12, 10), const Radius.circular(4)),
+      riderVestPaint,
+    );
+
+    // Silver Reflective Safety Straps on Rider's Back
+    canvas.drawLine(
+      const Offset(-4.5, -4),
+      const Offset(-4.5, 4),
+      Paint()..color = Colors.white.withValues(alpha: 0.8)..strokeWidth = 1.0,
+    );
+    canvas.drawLine(
+      const Offset(4.5, -4),
+      const Offset(4.5, 4),
+      Paint()..color = Colors.white.withValues(alpha: 0.8)..strokeWidth = 1.0,
+    );
+
+    // 8. 3D Rider Helmet with Metallic Finish & Gradient Cyan Visor
+    final Paint helmetPaint = Paint()
+      ..shader = ui.Gradient.radial(
+        const Offset(-1.5, -2),
+        6.0,
+        [
+          const Color(0xFF475569),
+          const Color(0xFF1E293B),
+          const Color(0xFF0F172A),
+        ],
+        [0.0, 0.5, 1.0],
+      );
+    canvas.drawCircle(const Offset(0, -1), 5.0, helmetPaint);
+
+    // Glossy Highlight Ring on Helmet Top
+    canvas.drawArc(
+      const Rect.fromLTWH(-4, -5, 8, 8),
+      math.pi * 1.1,
+      math.pi * 0.8,
+      false,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.45)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+
+    // Aerodynamic Cyan Reflective Visor
+    final Path visorPath = Path()
+      ..moveTo(-3.5, -4)
+      ..quadraticBezierTo(0, -5.5, 3.5, -4)
+      ..lineTo(3.0, -3)
+      ..quadraticBezierTo(0, -4.5, -3.0, -3)
+      ..close();
+
+    final Paint visorPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(-3.5, -5),
+        const Offset(3.5, -3),
+        [
+          const Color(0xFF0284C7),
+          const Color(0xFF38BDF8),
+          const Color(0xFFE0F2FE),
+        ],
+        [0.0, 0.5, 1.0],
+      );
+    canvas.drawPath(visorPath, visorPaint);
+
+    // 9. 3D Thermal Delivery Box (Isometric Perspective with Depth)
+    final Paint boxShadow = Paint()
+      ..color = Colors.black.withValues(alpha: 0.35)
+      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 2.5);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-6.5, 5, 13, 10), const Radius.circular(2.5)),
+      boxShadow,
+    );
+
+    // Box Main Face (Vibrant Delivery Red)
+    final Paint boxBodyPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(-6, 5),
+        const Offset(6, 15),
+        [
+          const Color(0xFFEF4444),
+          const Color(0xFFDC2626),
+          const Color(0xFF991B1B),
+        ],
+        [0.0, 0.5, 1.0],
+      );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-6, 5, 12, 9.5), const Radius.circular(2.5)),
+      boxBodyPaint,
+    );
+
+    // Box Top Lid Bevel Highlight
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-5.5, 5.2, 11, 3.2), const Radius.circular(1.5)),
+      Paint()..color = const Color(0xFFFCA5A5).withValues(alpha: 0.65),
+    );
+
+    // High-visibility Silver Reflective Center Band
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-6, 9.5, 12, 2.2), const Radius.circular(0.5)),
+      Paint()..color = Colors.white.withValues(alpha: 0.95),
+    );
+
+    // Delivery Icon on Box
+    canvas.drawCircle(const Offset(0, 10.6), 1.2, Paint()..color = const Color(0xFFE52121));
+
+    // 10. Glowing Ruby LED Taillight
+    final Paint taillightGlow = Paint()
+      ..color = const Color(0xFFFF2222)
+      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.solid, 2.5);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-3.5, 14.5, 7, 2), const Radius.circular(1)),
+      taillightGlow,
+    );
+
+    // Exhaust Pipe on Right Side with Chrome Tip
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(5.5, 6, 2.2, 7), const Radius.circular(1)),
+      Paint()..color = const Color(0xFF64748B),
+    );
+    canvas.drawCircle(const Offset(6.6, 13), 1.0, Paint()..color = const Color(0xFFCBD5E1));
 
     canvas.restore();
   }
@@ -2228,38 +2545,117 @@ class _RealTileMapOverlayPainter extends CustomPainter {
     );
   }
 
-  void _drawMarkerPin(Canvas canvas, Offset pos, Color color, IconData icon, String label, {bool isAbove = false}) {
+  void _drawMarkerPin(Canvas canvas, Offset pos, Color color, IconData icon, String label, {bool isAbove = false, bool isStore = false}) {
     if (label.isEmpty) return;
 
-    // Pin Shadow
-    canvas.drawCircle(Offset(pos.dx, pos.dy + 3), 13, Paint()..color = Colors.black.withValues(alpha: 0.25));
+    final isStoreType = isStore || icon == Icons.storefront_rounded;
+    final prefix = isStoreType ? '🏪 ' : '📍 ';
+    final cleanLabel = label.length > 22 ? '${label.substring(0, 20)}..' : label;
 
-    // Outer Pin Circle
-    canvas.drawCircle(pos, 14, Paint()..color = color);
-    canvas.drawCircle(pos, 11, Paint()..color = Colors.white);
-    canvas.drawCircle(pos, 7, Paint()..color = color);
+    // 1. Ground Radiant Aura Halo
+    final Paint auraPaint = Paint()
+      ..color = (isStoreType ? const Color(0xFFEA580C) : const Color(0xFF10B981)).withValues(alpha: 0.22)
+      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 5);
+    canvas.drawCircle(pos, 22, auraPaint);
 
-    // Label Badge
-    final textPainter = TextPainter(
+    // 2. 3D Beveled Teardrop Pin
+    final Path pinPath = Path()
+      ..addArc(Rect.fromCircle(center: Offset(pos.dx, pos.dy - 16), radius: 14), math.pi * 0.78, math.pi * 1.44)
+      ..lineTo(pos.dx, pos.dy)
+      ..close();
+
+    final Paint pinPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(pos.dx - 14, pos.dy - 30),
+        Offset(pos.dx + 14, pos.dy),
+        isStoreType
+            ? [const Color(0xFFFF6B00), const Color(0xFFEA580C), const Color(0xFFB91C1C)]
+            : [const Color(0xFF34D399), const Color(0xFF10B981), const Color(0xFF047857)],
+        [0.0, 0.5, 1.0],
+      );
+    canvas.drawPath(pinPath, pinPaint);
+
+    // Bevel Edge Rim
+    canvas.drawPath(
+      pinPath,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0,
+    );
+
+    // Inner White Pearl Circle
+    canvas.drawCircle(Offset(pos.dx, pos.dy - 16), 9.5, Paint()..color = Colors.white);
+
+    // Inner Glyph Icon
+    final TextPainter iconPainter = TextPainter(textDirection: TextDirection.ltr);
+    iconPainter.text = TextSpan(
+      text: String.fromCharCode(icon.codePoint),
+      style: TextStyle(
+        fontSize: 13,
+        fontFamily: icon.fontFamily,
+        package: icon.fontPackage,
+        color: color,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    iconPainter.layout();
+    iconPainter.paint(
+      canvas,
+      Offset(pos.dx - (iconPainter.width / 2), pos.dy - 16 - (iconPainter.height / 2)),
+    );
+
+    // Rating star for store
+    if (isStoreType) {
+      final starCenter = Offset(pos.dx + 10, pos.dy - 26);
+      canvas.drawCircle(starCenter, 6, Paint()..color = const Color(0xFFFEF08A));
+      canvas.drawCircle(starCenter, 6, Paint()..color = const Color(0xFFF59E0B)..style = PaintingStyle.stroke..strokeWidth = 0.8);
+      final TextPainter starPainter = TextPainter(
+        text: const TextSpan(
+          text: '★',
+          style: TextStyle(color: Color(0xFFD97706), fontSize: 7.5, fontWeight: FontWeight.w900),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      starPainter.paint(canvas, Offset(starCenter.dx - (starPainter.width / 2), starCenter.dy - (starPainter.height / 2)));
+    }
+
+    // 3. Floating 3D Frosted Glassmorphic Name Card
+    final TextPainter textPainter = TextPainter(
       text: TextSpan(
-        text: label,
+        text: '$prefix$cleanLabel',
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.2,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
 
-    final double badgeY = isAbove ? (pos.dy - 32) : (pos.dy + 18);
+    final double badgeY = isAbove ? (pos.dy - 44) : (pos.dy + 8);
     final badgeOffset = Offset(pos.dx - (textPainter.width / 2), badgeY);
     final badgeRRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(badgeOffset.dx - 6, badgeOffset.dy - 2, textPainter.width + 12, textPainter.height + 4),
-      const Radius.circular(6),
+      Rect.fromLTWH(badgeOffset.dx - 8, badgeOffset.dy - 3, textPainter.width + 16, textPainter.height + 6),
+      const Radius.circular(8),
     );
 
-    canvas.drawRRect(badgeRRect, Paint()..color = Colors.black.withValues(alpha: 0.85));
+    canvas.drawRRect(badgeRRect, Paint()..color = Colors.black.withValues(alpha: 0.35)..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 3));
+    canvas.drawRRect(badgeRRect, Paint()..color = const Color(0xFF0F172A).withValues(alpha: 0.94));
+    canvas.drawRRect(
+      badgeRRect,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          Offset(badgeOffset.dx, badgeOffset.dy),
+          Offset(badgeOffset.dx + textPainter.width, badgeOffset.dy),
+          isStoreType
+              ? [const Color(0xFFF59E0B), const Color(0xFFEA580C)]
+              : [const Color(0xFF34D399), const Color(0xFF10B981)],
+        )
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
     textPainter.paint(canvas, badgeOffset);
   }
 

@@ -290,6 +290,9 @@ class OutForDeliveryRepository {
         (orderData['storeLng'] as num?)?.toDouble() ??
         77.6759418;
 
+    riderLat ??= sellerLat;
+    riderLng ??= sellerLng;
+
     final sellerName = orderData['sellerName'] as String? ??
         orderData['restaurantName'] as String? ??
         orderData['storeName'] as String? ??

@@ -235,6 +235,12 @@
     window.addEventListener('webglcontextlost', function (event) {
       event.preventDefault();
     }, false);
+    // Allow seamless right-click dragging on Flutter map canvas
+    window.addEventListener('contextmenu', function (e) {
+      if (e.target && (e.target.tagName === 'CANVAS' || e.target.closest('flt-glass-pane, flt-scene-host'))) {
+        e.preventDefault();
+      }
+    }, false);
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = "F52886E2-8A9E-4295-B292-AE501B770BEE";
 
     // Prevent 'Blocked aria-hidden on an element because its descendant retained focus'
