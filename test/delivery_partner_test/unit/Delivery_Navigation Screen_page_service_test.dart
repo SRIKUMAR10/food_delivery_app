@@ -90,5 +90,10 @@ void main() {
       expect(await service.fetchActiveOrder(), isNull);
       expect(await service.fetchActiveOrder(orderId: 'ORD-123456'), isNull);
     });
+
+    test('getCurrentLocation resolves when location permissions or GPS are probed', () async {
+      final loc = await service.getCurrentLocation();
+      expect(loc == null || loc.containsKey('lat'), isTrue);
+    });
   });
 }

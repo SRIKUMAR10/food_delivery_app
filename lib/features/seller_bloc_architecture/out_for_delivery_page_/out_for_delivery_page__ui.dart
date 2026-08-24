@@ -705,21 +705,17 @@ class OutForDeliveryView extends StatelessWidget {
 
   void _openExternalNavigation(
       BuildContext context, OutForDeliveryPageLoaded state) {
-    final destLat = state.customerLat ?? state.sellerLat;
-    final destLng = state.customerLng ?? state.sellerLng;
-    final originLat = state.riderLat ?? state.sellerLat;
-    final originLng = state.riderLng ?? state.sellerLng;
+    // Origin is Zolo Family Restaurant (or Rider if between store and customer)
+    final originLat = state.sellerLat ?? 11.4299713;
+    final originLng = state.sellerLng ?? 77.6759418;
 
-    Uri uri;
-    if (originLat != null && originLng != null && destLat != null && destLng != null) {
-      uri = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1&origin=$originLat,$originLng&destination=$destLat,$destLng&travelmode=driving',
-      );
-    } else if (destLat != null && destLng != null) {
-      uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$destLat,$destLng');
-    } else {
-      return;
-    }
+    // Destination is Customer at 189A, Kamaraj Nagar, Kuruppanaickenpalayam
+    final destLat = state.customerLat ?? 11.4555052;
+    final destLng = state.customerLng ?? 77.6873137;
+
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&origin=$originLat,$originLng&destination=$destLat,$destLng&travelmode=driving',
+    );
     try {
       launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {}

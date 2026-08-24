@@ -66,7 +66,13 @@ void main() {
   }
 
   Widget buildPage() {
-    return MaterialApp(home: DeliveryNavigationScreenPage(bloc: mockBloc));
+    return MaterialApp(
+      routes: {
+        '/deliveryCompleted': (context) =>
+            const Scaffold(body: Text('Delivery Completed Screen')),
+      },
+      home: DeliveryNavigationScreenPage(bloc: mockBloc),
+    );
   }
 
   group('DeliveryNavigationScreenPage Widget Tests', () {
@@ -495,6 +501,39 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets(
+      'navigates to /deliveryCompleted when primary button tapped while navigating',
+      (tester) async {
+        setDesktopSize(tester);
+        when(() => mockBloc.state).thenReturn(
+          const DeliveryNavigationState(
+            status: DeliveryNavigationStatus.navigating,
+            hasLocationPermission: true,
+            order: DeliveryNavigationOrderSummary(
+              orderId: 'ORD-NAV-777',
+              pickupLabel: 'Pizza House',
+              pickupAddress: '10 Main Rd',
+              dropLabel: 'Aravind',
+              dropAddress: '15 Cross St',
+              customerName: 'Aravind',
+              customerPhone: '9876543210',
+              status: 'on_the_way',
+            ),
+          ),
+        );
+        await tester.pumpWidget(buildPage());
+        await tester.pump();
+
+        await tester.tap(
+          find.byKey(const Key('dp_navscreen_start_button')),
+          warnIfMissed: false,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Delivery Completed Screen'), findsOneWidget);
+      },
+    );
   });
 }
 

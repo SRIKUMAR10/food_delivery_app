@@ -102,16 +102,91 @@ void main() {
 
       expect(polylines.isNotEmpty, isTrue);
       expect(polylines.any((p) => p.polylineId.value == 'driver_to_store_active'), isTrue);
+      expect(polylines.any((p) => p.polylineId.value == 'store_to_customer_upcoming'), isTrue);
     });
 
-    test('fetchRoadRoute caches generated routes between coordinates', () async {
-      const start = LatLng(13.0827, 80.2707);
-      const end = LatLng(13.0927, 80.2807);
+    test('fetchRoadRoute caches verified real road routes between coordinates', () async {
+      const start = LatLng(11.4555052, 77.6873137);
+      const end = LatLng(11.4299713, 77.6759418);
 
       final route1 = await service.fetchRoadRoute(start, end);
       final route2 = await service.fetchRoadRoute(start, end);
 
       expect(identical(route1, route2), isTrue);
+    });
+
+    test('fetchRoadRouteAndETA returns instant result for identical coordinates', () async {
+      const point = LatLng(13.0827, 80.2707);
+      final result = await service.fetchRoadRouteAndETA(point, point);
+      expect(result.points.length, equals(2));
+      expect(result.durationText, equals('0 mins'));
+      expect(result.distanceText, equals('0 km'));
+    });
+
+    test('RouteAndEtaResult.fromDirectionsJson parses intermediate step polylines', () {
+      final mockDirectionsJson = {
+        'routes': [
+          {
+            'bounds': {
+              'northeast': {'lat': 13.10, 'lng': 80.30},
+              'southwest': {'lat': 13.00, 'lng': 80.20},
+            },
+            'legs': [
+              {
+                'distance': {'text': '10 km', 'value': 10000},
+                'duration': {'text': '20 mins', 'value': 1200},
+                'steps': [
+                  {
+                    'polyline': {'points': '_p~iF~ps|U_ulLnnqC'},
+                  },
+                  {
+                    'polyline': {'points': '_ulLnnqC_mqNvxq`@'},
+                  }
+                ]
+              }
+            ],
+            'overview_polyline': {
+              'points': '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+            }
+          }
+        ],
+        'status': 'OK'
+      };
+
+      final result = RouteAndEtaResult.fromDirectionsJson(mockDirectionsJson);
+      expect(result.points.length, greaterThanOrEqualTo(2));
+    });
+
+    test('snapToPolyline accurately snaps raw coordinate to closest road segment', () {
+      final polyline = [
+        const LatLng(13.0000, 80.0000),
+        const LatLng(13.0100, 80.0000),
+        const LatLng(13.0100, 80.0100),
+      ];
+
+      const rawGps = LatLng(13.0050, 80.0005);
+      final snap = service.snapToPolyline(rawGps, polyline);
+
+      expect(snap.segmentIndex, equals(0));
+      expect(snap.snappedPosition.latitude, closeTo(13.0050, 0.0001));
+      expect(snap.snappedPosition.longitude, closeTo(80.0000, 0.0001));
+      expect(snap.bearing, closeTo(0.0, 1.0));
+      expect(snap.remainingPoints.length, equals(3));
+    });
+
+    test('getRemainingPolyline slices polyline starting from current position', () {
+      final polyline = [
+        const LatLng(13.0000, 80.0000),
+        const LatLng(13.0100, 80.0000),
+        const LatLng(13.0200, 80.0000),
+      ];
+
+      const current = LatLng(13.0050, 80.0000);
+      final remaining = service.getRemainingPolyline(current, polyline);
+
+      expect(remaining.length, equals(3));
+      expect(remaining.first.latitude, closeTo(13.0050, 0.0001));
+      expect(remaining.last, equals(polyline.last));
     });
   });
 }

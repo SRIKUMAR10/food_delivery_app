@@ -283,46 +283,53 @@ class OutForDeliveryRepository {
 
     final sellerLat = (orderData['sellerLat'] as num?)?.toDouble() ??
         (orderData['restaurantLat'] as num?)?.toDouble() ??
-        (orderData['storeLat'] as num?)?.toDouble();
+        (orderData['storeLat'] as num?)?.toDouble() ??
+        11.4299713;
     final sellerLng = (orderData['sellerLng'] as num?)?.toDouble() ??
         (orderData['restaurantLng'] as num?)?.toDouble() ??
-        (orderData['storeLng'] as num?)?.toDouble();
+        (orderData['storeLng'] as num?)?.toDouble() ??
+        77.6759418;
 
     final sellerName = orderData['sellerName'] as String? ??
         orderData['restaurantName'] as String? ??
         orderData['storeName'] as String? ??
-        'My Kitchen';
+        "Zolo Family Restaurant - Fried Chicken's / Burgers / Pizza's / Milkshake's / Ice Creams";
     final sellerPhone = orderData['sellerPhone'] as String? ??
-        orderData['restaurantPhone'] as String?;
+        orderData['restaurantPhone'] as String? ??
+        '+91 98420 12345';
     final sellerAddress = orderData['sellerAddress'] as String? ??
-        orderData['restaurantAddress'] as String?;
+        orderData['restaurantAddress'] as String? ??
+        '8/1223, Salem Kovai, NH-47 Bye Pass Road, Lakshmi Nagar, Bhavani, Tamil Nadu 638316';
 
     final customerLat = (orderData['customerLat'] as num?)?.toDouble() ??
         (orderData['deliveryLat'] as num?)?.toDouble() ??
-        (orderData['lat'] as num?)?.toDouble();
+        (orderData['lat'] as num?)?.toDouble() ??
+        11.4555052;
     final customerLng = (orderData['customerLng'] as num?)?.toDouble() ??
         (orderData['deliveryLng'] as num?)?.toDouble() ??
-        (orderData['lng'] as num?)?.toDouble();
+        (orderData['lng'] as num?)?.toDouble() ??
+        77.6873137;
 
     final customerName = orderData['customerName'] as String? ??
         orderData['buyerName'] as String? ??
         orderData['userName'] as String? ??
-        'Customer';
+        'Senthilkumar';
     final customerPhone = orderData['customerPhone'] as String? ??
         orderData['buyerPhone'] as String? ??
-        orderData['userPhone'] as String?;
+        orderData['userPhone'] as String? ??
+        '+91 98420 54321';
     final customerId = orderData['customerId'] as String? ??
         orderData['buyerId'] as String? ??
         orderData['userId'] as String? ??
         orderData['uid'] as String?;
     final customerNotes = orderData['deliveryNotes'] as String? ??
         orderData['deliveryInstructions'] as String? ??
-        orderData['instructions'] as String?;
-
+        orderData['instructions'] as String? ??
+        '189A, Kamaraj Nagar, Kuruppanaickenpalayam, Tamil Nadu 638301';
     final deliveryAddress = orderData['deliveryAddress'] as String? ??
         orderData['address'] as String? ??
         orderData['fullAddress'] as String? ??
-        '';
+        '189A, Kamaraj Nagar, Kuruppanaickenpalayam, Tamil Nadu 638301';
     final totalAmount = (orderData['totalAmount'] as num?)?.toDouble() ??
         (orderData['total'] as num?)?.toDouble() ??
         (orderData['amount'] as num?)?.toDouble();

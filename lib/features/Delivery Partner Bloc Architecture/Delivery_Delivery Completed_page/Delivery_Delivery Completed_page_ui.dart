@@ -1527,14 +1527,15 @@ class _DeliverySummaryCard extends StatelessWidget {
             key: const Key('dp_completed_summary_customer'),
             icon: Icons.person_outline,
             label: DeliveryCompletedStrings.of('customer', locale),
-            value: model?.customerName ?? 'Arun Kumar',
+            value: model?.customerName ?? 'Senthilkumar',
           ),
           const SizedBox(height: 10),
           _SummaryRow(
             key: const Key('dp_completed_summary_address'),
             icon: Icons.location_on_outlined,
             label: DeliveryCompletedStrings.of('address', locale),
-            value: model?.deliveryAddress ?? '12, Beach Road, Chennai - 600001',
+            value: model?.deliveryAddress ??
+                '189A, Kamaraj Nagar, Kuruppanaickenpalayam, Tamil Nadu 638301',
           ),
           const SizedBox(height: 10),
           _SummaryRow(
@@ -1572,9 +1573,9 @@ class _DeliverySummaryCard extends StatelessWidget {
             child: SizedBox(
               height: 150,
               child: AppGoogleMapView(
-                storeLocation: const LatLng(11.4485, 77.6835),
-                storeName: 'Restaurant Pickup',
-                customerLocation: const LatLng(11.4580, 77.6980),
+                storeLocation: const LatLng(11.4299713, 77.6759418),
+                storeName: 'Zolo Family Restaurant',
+                customerLocation: const LatLng(11.4555052, 77.6873137),
                 customerName: model?.customerName ?? 'Customer',
                 customerAddress: model?.deliveryAddress,
                 isPickedUp: true,

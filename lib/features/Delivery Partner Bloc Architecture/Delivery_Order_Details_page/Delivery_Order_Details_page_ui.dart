@@ -442,10 +442,10 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
   ) {
     final storeLoc = (order.restaurantLatitude != 0 && order.restaurantLongitude != 0)
         ? LatLng(order.restaurantLatitude, order.restaurantLongitude)
-        : const LatLng(11.4485, 77.6835);
+        : const LatLng(11.4299713, 77.6759418);
     final customerLoc = (order.customerLatitude != 0 && order.customerLongitude != 0)
         ? LatLng(order.customerLatitude, order.customerLongitude)
-        : const LatLng(11.4580, 77.6980);
+        : const LatLng(11.4555052, 77.6873137);
 
     return DeliveryCard(
       padding: EdgeInsets.all(DeliveryAppSpacing.md),

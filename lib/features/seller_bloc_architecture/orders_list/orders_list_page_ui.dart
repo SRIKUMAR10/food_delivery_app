@@ -502,27 +502,35 @@ class _OrderListCardState extends State<_OrderListCard> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '#${widget.order.id}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1E293B),
+                        Expanded(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '#${widget.order.id}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1E293B),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildOrderStatusBadge(widget.order.status),
-                          ],
+                              const SizedBox(width: 8),
+                              _buildOrderStatusBadge(widget.order.status),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(widget.order.amount),
                           style: const TextStyle(
@@ -1061,6 +1069,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             ),
             title: Text(
               'Order #${order.id}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Color(0xFF0F172A),
                 fontSize: 18,

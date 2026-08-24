@@ -27,6 +27,12 @@ void main() {
     when(() => mockRepository.fetchPartnerProfile()).thenAnswer((_) async => null);
     when(() => mockRepository.watchActiveOrder()).thenAnswer((_) => const Stream.empty());
     when(() => mockRepository.watchPartnerProfile()).thenAnswer((_) => const Stream.empty());
+    when(() => mockRepository.fetchNearbySellers()).thenAnswer((_) async => const []);
+    when(() => mockRepository.watchNearbySellers()).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.streamLiveLocation(highAccuracy: any(named: 'highAccuracy'))).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.streamLiveLocation()).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.getCurrentLocation(highAccuracy: any(named: 'highAccuracy'))).thenAnswer((_) async => null);
+    when(() => mockService.fetchDemandZones()).thenAnswer((_) async => const []);
   });
 
   group('DeliveryNavigationScreenPage Localization Tests', () {

@@ -50,6 +50,13 @@ class _FakeNavigationRepository implements DeliveryNavigationRepositoryBase {
       const Stream<Map<String, dynamic>?>.empty();
 
   @override
+  Future<List<Map<String, dynamic>>> fetchNearbySellers() async => const [];
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchNearbySellers() =>
+      const Stream<List<Map<String, dynamic>>>.empty();
+
+  @override
   Future<Map<String, dynamic>> collectCodCash({
     required String orderId,
     required double amountReceived,
@@ -198,6 +205,17 @@ class _FakeNavigationService implements DeliveryNavigationServiceBase {
   @override
   Stream<Map<String, dynamic>?> watchPartnerProfile() =>
       const Stream<Map<String, dynamic>?>.empty();
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchNearbySellers() async => const [];
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchNearbySellers() =>
+      const Stream<List<Map<String, dynamic>>>.empty();
+
+  @override
+  Future<Map<String, dynamic>?> getCurrentLocation({bool highAccuracy = true}) async =>
+      null;
 
   @override
   Future<Map<String, dynamic>> collectCodCash(

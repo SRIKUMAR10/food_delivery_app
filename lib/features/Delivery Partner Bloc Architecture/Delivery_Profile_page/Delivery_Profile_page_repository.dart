@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Delivery_Profile_page_service.dart';
 import 'Delivery_Profile_page_state.dart';
+import 'package:food_delivery_app/core/services/google_places_service.dart';
 
 abstract class DeliveryProfileRepositoryBase {
   Future<DeliveryProfileState> fetchProfile();
@@ -373,6 +374,21 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
 
   @override
   Future<void> saveProfile(DeliveryProfileState profile) async {
+    double? lat = profile.latitude;
+    double? lng = profile.longitude;
+    String? gUrl = profile.googleMapsUrl;
+
+    if ((lat == null || lng == null || (lat == 0.0 && lng == 0.0)) && profile.address.trim().isNotEmpty) {
+      try {
+        final details = await GooglePlacesService.instance.getPlaceDetails('', fallbackAddress: profile.address.trim());
+        if (details != null && details.latitude != null && details.longitude != null) {
+          lat = details.latitude;
+          lng = details.longitude;
+          gUrl ??= 'https://www.google.com/maps?q=${lat!.toStringAsFixed(6)},${lng!.toStringAsFixed(6)}';
+        }
+      } catch (_) {}
+    }
+
     final prefs = await _getPrefs();
     if (prefs != null) {
       final map = <String, String>{
@@ -380,9 +396,9 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
         'phone': profile.phone,
         'email': profile.email,
         'address': profile.address,
-        if (profile.latitude != null) 'latitude': profile.latitude.toString(),
-        if (profile.longitude != null) 'longitude': profile.longitude.toString(),
-        if (profile.googleMapsUrl != null) 'googleMapsUrl': profile.googleMapsUrl!,
+        if (lat != null) 'latitude': lat.toString(),
+        if (lng != null) 'longitude': lng.toString(),
+        if (gUrl != null) 'googleMapsUrl': gUrl,
         'dob': profile.dob,
         'gender': profile.gender,
         'vehicleType': profile.vehicleType,
@@ -404,9 +420,9 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
         'phoneNumber': profile.phone,
         'email': profile.email,
         'address': profile.address,
-        'latitude': profile.latitude,
-        'longitude': profile.longitude,
-        'googleMapsUrl': profile.googleMapsUrl,
+        'latitude': lat,
+        'longitude': lng,
+        'googleMapsUrl': gUrl,
         'vehicleType': profile.vehicleType,
         'vehicleNumber': profile.vehicleNumber,
         'drivingLicense': profile.licenseNumber,
@@ -421,11 +437,26 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
     double? longitude,
     String? googleMapsUrl,
   }) async {
+    double? lat = latitude;
+    double? lng = longitude;
+    String? gUrl = googleMapsUrl;
+
+    if ((lat == null || lng == null || (lat == 0.0 && lng == 0.0)) && address.trim().isNotEmpty) {
+      try {
+        final details = await GooglePlacesService.instance.getPlaceDetails('', fallbackAddress: address.trim());
+        if (details != null && details.latitude != null && details.longitude != null) {
+          lat = details.latitude;
+          lng = details.longitude;
+          gUrl ??= 'https://www.google.com/maps?q=${lat!.toStringAsFixed(6)},${lng!.toStringAsFixed(6)}';
+        }
+      } catch (_) {}
+    }
+
     await _service.updateProfile({
       'address': address,
-      if (latitude != null) 'latitude': latitude,
-      if (longitude != null) 'longitude': longitude,
-      if (googleMapsUrl != null) 'googleMapsUrl': googleMapsUrl,
+      if (lat != null) 'latitude': lat,
+      if (lng != null) 'longitude': lng,
+      if (gUrl != null) 'googleMapsUrl': gUrl,
     });
   }
 

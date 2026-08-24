@@ -80,8 +80,14 @@ class _IncomingOrderView extends StatelessWidget {
                           )
                         : Column(
                             children: [
-                              Expanded(child: _buildMapPane(state)),
-                              _buildDetailsPane(state),
+                              Expanded(
+                                flex: 3,
+                                child: _buildMapPane(state),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: _buildDetailsPane(state),
+                              ),
                             ],
                           ),
                   ),
@@ -98,10 +104,10 @@ class _IncomingOrderView extends StatelessWidget {
   Widget _buildMapPane(DeliveryIncomingOrderState state) {
     final storeLoc = (state.storeLatitude != 0 && state.storeLongitude != 0)
         ? LatLng(state.storeLatitude, state.storeLongitude)
-        : const LatLng(11.4485, 77.6835);
+        : const LatLng(11.4299713, 77.6759418);
     final customerLoc = (state.customerLatitude != 0 && state.customerLongitude != 0)
         ? LatLng(state.customerLatitude, state.customerLongitude)
-        : const LatLng(11.4580, 77.6980);
+        : const LatLng(11.4555052, 77.6873137);
     final driverLoc = (state.driverLatitude != 0 && state.driverLongitude != 0)
         ? LatLng(state.driverLatitude, state.driverLongitude)
         : storeLoc;
@@ -184,56 +190,58 @@ class _IncomingOrderView extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'DELIVERY PATHWAYS',
-                  style: TextStyle(
-                    color: DeliveryAppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    letterSpacing: 1.1,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'DELIVERY PATHWAYS',
+                    style: TextStyle(
+                      color: DeliveryAppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      letterSpacing: 1.1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                _buildStatRow(Icons.store, 'Pickup Store', state.storeName),
-                const SizedBox(height: 16),
-                _buildRouteNode(
-                  icon: Icons.location_on,
-                  color: Colors.redAccent,
-                  title: 'Drop Address',
-                  address: state.customerAddress,
-                ),
-                const SizedBox(height: 4),
-                _buildRouteNode(
-                  icon: Icons.person,
-                  color: Colors.amberAccent,
-                  title: 'Customer',
-                  address: state.customerName,
-                ),
-                const Spacer(),
-                const Divider(color: Colors.white10),
-                const SizedBox(height: 16),
-                _buildStatRow(
-                  Icons.route,
-                  'Distance',
-                  state.distanceKm > 0
-                      ? '${state.distanceKm.toStringAsFixed(1)} km'
-                      : '-',
-                ),
-                _buildStatRow(
-                  Icons.timer,
-                  'Estimated Time',
-                  state.etaMins > 0 ? '${state.etaMins} min' : '-',
-                ),
-                _buildStatRow(
-                  Icons.payment,
-                  'Payment',
-                  state.paymentMethod.isEmpty ? '-' : state.paymentMethod,
-                ),
-                _buildStatRow(Icons.currency_rupee, 'Order Value', '₹${state.orderAmount.toStringAsFixed(2)}'),
-              ],
+                  const SizedBox(height: 16),
+                  _buildStatRow(Icons.store, 'Pickup Store', state.storeName),
+                  const SizedBox(height: 16),
+                  _buildRouteNode(
+                    icon: Icons.location_on,
+                    color: Colors.redAccent,
+                    title: 'Drop Address',
+                    address: state.customerAddress,
+                  ),
+                  const SizedBox(height: 4),
+                  _buildRouteNode(
+                    icon: Icons.person,
+                    color: Colors.amberAccent,
+                    title: 'Customer',
+                    address: state.customerName,
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 16),
+                  _buildStatRow(
+                    Icons.route,
+                    'Distance',
+                    state.distanceKm > 0
+                        ? '${state.distanceKm.toStringAsFixed(1)} km'
+                        : '-',
+                  ),
+                  _buildStatRow(
+                    Icons.timer,
+                    'Estimated Time',
+                    state.etaMins > 0 ? '${state.etaMins} min' : '-',
+                  ),
+                  _buildStatRow(
+                    Icons.payment,
+                    'Payment',
+                    state.paymentMethod.isEmpty ? '-' : state.paymentMethod,
+                  ),
+                  _buildStatRow(Icons.currency_rupee, 'Order Value', '₹${state.orderAmount.toStringAsFixed(2)}'),
+                ],
+              ),
             ),
           ),
         ),

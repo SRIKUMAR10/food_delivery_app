@@ -1014,34 +1014,36 @@ class _TrackOrderView extends StatelessWidget {
   Future<void> _openMap(BuildContext context, dynamic target, [double? maybeLng]) async {
     if (target is TrackOrderLoaded) {
       final state = target;
-      final destLat = state.customerLat ?? state.sellerLat;
-      final destLng = state.customerLng ?? state.sellerLng;
-      final originLat = state.driverLat ?? state.sellerLat;
-      final originLng = state.driverLng ?? state.sellerLng;
+      final destLat = state.customerLat ?? 11.4555052;
+      final destLng = state.customerLng ?? 77.6873137;
+      final originLat = (state.driverLat != null && (state.driverLat != destLat || state.driverLng != destLng))
+          ? state.driverLat!
+          : (state.sellerLat ?? 11.4299713);
+      final originLng = (state.driverLng != null && (state.driverLat != destLat || state.driverLng != destLng))
+          ? state.driverLng!
+          : (state.sellerLng ?? 77.6759418);
 
-      if (originLat != null && originLng != null && destLat != null && destLng != null && (originLat != destLat || originLng != destLng)) {
-        final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&origin=$originLat,$originLng&destination=$destLat,$destLng&travelmode=driving');
-        try {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-          return;
-        } catch (_) {}
-      }
+      final dirUri = Uri.parse('https://www.google.com/maps/dir/?api=1&origin=$originLat,$originLng&destination=$destLat,$destLng&travelmode=driving');
+      try {
+        await launchUrl(dirUri, mode: LaunchMode.externalApplication);
+        return;
+      } catch (_) {}
 
       final lat = state.driverLat ?? state.customerLat ?? state.sellerLat;
       final lng = state.driverLng ?? state.customerLng ?? state.sellerLng;
 
       if (lat != null && lng != null) {
-        final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+        final searchUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
         try {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          await launchUrl(searchUri, mode: LaunchMode.externalApplication);
           return;
         } catch (_) {}
       }
 
-      final address = state.customerInfo?.deliveryAddress ?? state.sellerInfo?.address ?? 'Bhavani, Erode, Tamil Nadu 638301, India';
-      final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}');
+      final address = state.customerInfo?.deliveryAddress ?? state.sellerInfo?.address ?? '189A, Kamaraj Nagar, Kuruppanaickenpalayam, Tamil Nadu 638301';
+      final addressUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}');
       try {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        await launchUrl(addressUri, mode: LaunchMode.externalApplication);
       } catch (_) {}
       return;
     }
@@ -1050,16 +1052,16 @@ class _TrackOrderView extends StatelessWidget {
     final double? lng = maybeLng;
 
     if (lat != null && lng != null) {
-      final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+      final coordUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
       try {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        await launchUrl(coordUri, mode: LaunchMode.externalApplication);
         return;
       } catch (_) {}
     }
 
-    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=Bhavani,+Erode,+Tamil+Nadu+638301');
+    final defaultUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=189A,+Kamaraj+Nagar,+Kuruppanaickenpalayam,+Tamil+Nadu+638301');
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(defaultUri, mode: LaunchMode.externalApplication);
     } catch (_) {}
   }
 
@@ -2453,31 +2455,39 @@ class _LiveTrackingMapCard extends StatelessWidget {
           Positioned(
             top: 16,
             left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    MapMarkerService.isTwoWheeler(vehicleType)
-                        ? Icons.two_wheeler_rounded
-                        : Icons.directions_car_filled_rounded,
-                    color: BuyerAppColors.primaryDeep,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    etaParts,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                ],
+            right: 68,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      MapMarkerService.isTwoWheeler(vehicleType)
+                          ? Icons.two_wheeler_rounded
+                          : Icons.directions_car_filled_rounded,
+                      color: BuyerAppColors.primaryDeep,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        etaParts,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

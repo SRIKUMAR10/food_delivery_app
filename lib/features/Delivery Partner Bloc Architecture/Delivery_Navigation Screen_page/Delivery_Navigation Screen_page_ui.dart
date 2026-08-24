@@ -7,8 +7,8 @@ import 'Delivery_Navigation Screen_page_repository.dart';
 import 'Delivery_Navigation Screen_page_service.dart';
 import 'Delivery_Navigation Screen_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/widgets/app_google_map_view.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_bloc.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_event.dart';
@@ -41,7 +41,8 @@ class DeliveryNavigationStrings {
       'emergencySos': 'Emergency SOS',
       'sosSent': 'Emergency alert sent. Nearest support team notified.',
       'currentLocation': 'Current Location',
-      'locationAddress': 'Nungambakkam High Rd, Chennai',
+      'locationAddress':
+          '189A, Kamaraj Nagar, Kuruppanaickenpalayam, Tamil Nadu 638301',
       'zoomIn': 'Zoom in',
       'zoomOut': 'Zoom out',
       'recenter': 'Recenter map',
@@ -135,7 +136,8 @@ class DeliveryNavigationStrings {
       'sosSent':
           'அவசர எச்சரிக்கை அனுப்பப்பட்டது. அருகிலுள்ள ஆதரவு குழுவுக்கு அறிவிக்கப்பட்டது.',
       'currentLocation': 'தற்போதைய இடம்',
-      'locationAddress': 'நுங்கம்பாக்கம் உயர் சாலை, சென்னை',
+      'locationAddress':
+          '189A, காமராஜ் நகர், குருப்பநாயக்கன்பாளையம், தமிழ்நாடு 638301',
       'zoomIn': 'பெரிதாக்கு',
       'zoomOut': 'சிறிதாக்கு',
       'recenter': 'வரைபடத்தை மையப்படுத்து',
@@ -485,9 +487,17 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
                                       localeCode: localeCode,
                                       onTap: () {
                                         if (widget.state.isNavigating) {
+                                          final effectiveOrderId =
+                                              widget.state.activeOrderId.isNotEmpty
+                                                  ? widget.state.activeOrderId
+                                                  : widget.state.order.orderId;
                                           Navigator.of(context)
                                               .pushReplacementNamed(
-                                                  '/deliveryCompleted');
+                                            '/deliveryCompleted',
+                                            arguments: {
+                                              'orderId': effectiveOrderId,
+                                            },
+                                          );
                                         } else {
                                           context
                                               .read<DeliveryNavigationBloc>()
@@ -535,36 +545,42 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
                   : Padding(
                       padding: const EdgeInsets.all(12),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (widget.state.showMap) ...[
                             Expanded(
                               child: _MapArea(
                                 state: widget.state,
-                                isFullScreen: false,
-                                onToggleFullScreen: () {},
+                                isFullScreen: _isMapFullScreen,
+                                onToggleFullScreen: () {
+                                  setState(() {
+                                    _isMapFullScreen = !_isMapFullScreen;
+                                  });
+                                },
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            if (!_isMapFullScreen) const SizedBox(width: 12),
                           ],
-                          SizedBox(
-                            width: 380,
-                            child: SingleChildScrollView(
-                              child: Column(
-                                children: [
-                                  stagePanel,
-                                  const SizedBox(height: 12),
-                                  telemetryPanel,
-                                  const SizedBox(height: 12),
-                                  _OrderSummaryPanel(
-                                    state: widget.state,
-                                    localeCode: localeCode,
-                                    onContactCustomer: () =>
-                                        _showContactSnackBar(context, localeCode),
-                                  ),
-                                ],
+                          if (!_isMapFullScreen)
+                            SizedBox(
+                              width: 380,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  children: [
+                                    stagePanel,
+                                    const SizedBox(height: 12),
+                                    telemetryPanel,
+                                    const SizedBox(height: 12),
+                                    _OrderSummaryPanel(
+                                      state: widget.state,
+                                      localeCode: localeCode,
+                                      onContactCustomer: () =>
+                                          _showContactSnackBar(context, localeCode),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -576,8 +592,16 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
                 onSOS: () => _handleSOS(context, localeCode),
                 onPrimaryAction: () {
                   if (widget.state.isNavigating) {
-                    Navigator.of(context)
-                        .pushReplacementNamed('/deliveryCompleted');
+                    final effectiveOrderId =
+                        widget.state.activeOrderId.isNotEmpty
+                            ? widget.state.activeOrderId
+                            : widget.state.order.orderId;
+                    Navigator.of(context).pushReplacementNamed(
+                      '/deliveryCompleted',
+                      arguments: {
+                        'orderId': effectiveOrderId,
+                      },
+                    );
                   } else {
                     context
                         .read<DeliveryNavigationBloc>()
@@ -653,7 +677,7 @@ class _NavigationTopBar extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  DeliveryNavigationStrings.of('goOnline', localeCode),
+                  DeliveryNavigationStrings.of('breadcrumb', localeCode),
                   style: const TextStyle(
                     color: Color(0xFF64748B),
                     fontSize: 11,
@@ -661,50 +685,6 @@ class _NavigationTopBar extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-          if (!isMobile) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0D141C),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.05),
-                ),
-              ),
-              child: Text(
-                DeliveryNavigationStrings.of('breadcrumb', localeCode),
-                style: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          IconButton(
-            key: const Key('dp_navscreen_theme_switch'),
-            tooltip: DeliveryNavigationStrings.of('themeLabel', localeCode),
-            icon: const Icon(
-              Icons.dark_mode_outlined,
-              color: Color(0xFF94A3B8),
-              size: 22,
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    DeliveryNavigationStrings.of(
-                      'darkThemeActive',
-                      localeCode,
-                    ),
-                  ),
-                  backgroundColor: DeliveryAppColors.primaryDark,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
           ),
           IconButton(
             key: const Key('dp_navscreen_map_toggle'),
@@ -854,181 +834,231 @@ class _MapAreaState extends State<_MapArea> {
         await launchUrl(webUri, mode: LaunchMode.externalApplication);
       }
     } catch (_) {
-      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      await launchUrl(webUri);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final localeCode = widget.state.localeCode;
-    final isStage2 = widget.state.navigationStage == NavigationStage.toCustomer;
-    final isCompleted = widget.state.navigationStage == NavigationStage.completed;
 
-    final driverLoc = widget.state.hasDriverPosition
+    final bool hasDriverPos = widget.state.hasDriverPosition;
+    final LatLng driverLoc = hasDriverPos
         ? LatLng(widget.state.driverLat, widget.state.driverLng)
-        : null;
-    final storeLoc = (widget.state.restaurantLat != 0 && widget.state.restaurantLng != 0)
-        ? LatLng(widget.state.restaurantLat, widget.state.restaurantLng)
-        : const LatLng(11.4485, 77.6835);
-    final customerLoc = (widget.state.customerLat != 0 && widget.state.customerLng != 0)
-        ? LatLng(widget.state.customerLat, widget.state.customerLng)
-        : const LatLng(11.4580, 77.6980);
+        : (widget.state.restaurantLat != 0.0 && widget.state.restaurantLng != 0.0
+            ? LatLng(widget.state.restaurantLat - 0.0095, widget.state.restaurantLng - 0.0095)
+            : const LatLng(11.4390, 77.6740));
 
-    // Real-Time Seller Restaurant Markers in Operational Zone from Firestore
-    final Set<Marker> realSellerMarkers = {};
-    for (final seller in widget.state.nearbySellers) {
+    final bool hasActiveOrder = widget.state.hasActiveOrder;
+
+    final LatLng? storeLoc = (widget.state.restaurantLat != 0.0 &&
+            widget.state.restaurantLng != 0.0)
+        ? LatLng(widget.state.restaurantLat, widget.state.restaurantLng)
+        : null;
+
+    final String storeName = widget.state.restaurantName.isNotEmpty
+        ? widget.state.restaurantName
+        : 'Restaurant Pickup';
+
+    final LatLng? customerLoc = (widget.state.customerLat != 0.0 &&
+            widget.state.customerLng != 0.0)
+        ? LatLng(widget.state.customerLat, widget.state.customerLng)
+        : null;
+
+    final String customerName = widget.state.customerName.isNotEmpty
+        ? widget.state.customerName
+        : 'Customer Drop-off';
+
+    final realSellerMarkers = widget.state.nearbySellers.where((seller) {
       final lat = (seller['latitude'] as num?)?.toDouble() ?? 0.0;
       final lng = (seller['longitude'] as num?)?.toDouble() ?? 0.0;
-      final name = (seller['name'] ?? 'Restaurant').toString();
-      final phone = (seller['phone'] ?? '').toString();
-      if (lat != 0.0 && lng != 0.0) {
-        realSellerMarkers.add(
-          Marker(
-            markerId: MarkerId('seller_${seller['id'] ?? name}'),
-            position: LatLng(lat, lng),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-            infoWindow: InfoWindow(
-              title: name,
-              snippet: phone.isNotEmpty ? '📞 $phone · Active Store' : 'Active Restaurant Partner',
-            ),
-          ),
-        );
-      }
-    }
+      return lat != 0.0 && lng != 0.0;
+    }).map((seller) {
+      final lat = (seller['latitude'] as num).toDouble();
+      final lng = (seller['longitude'] as num).toDouble();
+      final name = (seller['name'] ?? 'Restaurant Partner').toString();
+      return Marker(
+        markerId: MarkerId('seller_${seller['id'] ?? name}'),
+        position: LatLng(lat, lng),
+        infoWindow: InfoWindow(
+          title: name,
+          snippet: (seller['address'] ?? '').toString(),
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+      );
+    }).toSet();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Semantics(
-          label: DeliveryNavigationStrings.of('mapSemantics', localeCode),
-          image: true,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Stack(
-              key: const Key('dp_navscreen_map'),
-              children: [
-                Positioned.fill(
-                  child: AppGoogleMapView(
-                    driverLocation: driverLoc,
-                    driverHeading: widget.state.driverHeading,
-                    vehicleType: 'two_wheeler',
-                    storeLocation: storeLoc,
-                    storeName: widget.state.restaurantName.isNotEmpty ? widget.state.restaurantName : 'Restaurant',
-                    customerLocation: customerLoc,
-                    customerName: widget.state.customerName.isNotEmpty ? widget.state.customerName : 'Customer',
-                    additionalMarkers: realSellerMarkers,
-                    isPickedUp: isStage2 || isCompleted,
-                    isDarkMode: true,
-                    isFullScreen: widget.isFullScreen,
-                    onToggleFullScreen: widget.onToggleFullScreen,
-                    showControls: false,
-                    autoFollowDriver: true,
-                    driverSpeed: widget.state.driverSpeedKmh,
-                    distanceKm: widget.state.distanceToDestinationKm,
-                    etaText: '${widget.state.etaToDestinationMinutes} mins',
-                    isArrivingSoon: widget.state.distanceToDestinationKm < 0.35 && widget.state.distanceToDestinationKm > 0,
-                    driverName: widget.state.partnerName,
-                    storePhone: widget.state.restaurantPhone,
-                    storeAddress: widget.state.restaurantAddress,
-                    customerAddress: widget.state.customerAddress,
-                    customerNotes: widget.state.customerNotes,
-                    showProgressCard: false,
-                    onOpenExternalNavigation: () => _openExternalNavigation(widget.state),
-                  ),
+    final isPickedUp =
+        widget.state.navigationStage == NavigationStage.toCustomer ||
+            widget.state.navigationStage == NavigationStage.completed;
+
+    return Container(
+      key: const Key('dp_navscreen_map'),
+      decoration: BoxDecoration(
+        color: const Color(0xFF071016),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: AppGoogleMapView(
+                driverLocation: driverLoc,
+                driverHeading: widget.state.driverHeading != 0.0
+                    ? widget.state.driverHeading
+                    : 45.0,
+                vehicleType: 'two_wheeler',
+                storeLocation: storeLoc,
+                storeName: storeName,
+                storeAddress: widget.state.restaurantAddress,
+                customerLocation: customerLoc,
+                customerName: customerName,
+                customerAddress: widget.state.customerAddress,
+                additionalMarkers: realSellerMarkers,
+                isPickedUp: isPickedUp,
+                isDarkMode: true,
+                isFullScreen: widget.isFullScreen,
+                autoFitEntireRoute: true,
+                showControls: true,
+                showProgressCard: hasActiveOrder,
+                distanceKm: widget.state.distanceToDestinationKm > 0
+                    ? widget.state.distanceToDestinationKm
+                    : null,
+                etaText: widget.state.etaToDestinationMinutes > 0
+                    ? '~${widget.state.etaToDestinationMinutes} mins'
+                    : (hasActiveOrder ? '~12-15 mins' : null),
+                initialZoom: 14.5,
+                driverName: widget.state.partnerName.isNotEmpty
+                    ? widget.state.partnerName
+                    : 'Delivery Partner',
+                driverVehicleNumber: widget.state.partnerVehicleNumber,
+                onOpenExternalNavigation: () =>
+                    _openExternalNavigation(widget.state),
+                onToggleFullScreen: widget.onToggleFullScreen,
+              ),
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              child: Semantics(
+                label: DeliveryNavigationStrings.of('mapSemantics', localeCode),
+                child: const SizedBox.shrink(),
+              ),
+            ),
+            Positioned(
+              bottom: 14,
+              left: 14,
+              child: Container(
+                key: const Key('dp_navscreen_active_zone_pill'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
                 ),
-                Positioned(
-                  top: 14,
-                  left: 14,
-                  right: (widget.isFullScreen || constraints.maxWidth >= 600)
-                      ? 14
-                      : (constraints.maxWidth > 100 ? 70 : 14),
-                  child: _TurnByTurnCard(state: widget.state),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                    ),
+                  ],
                 ),
-                // Offstage semantic markers to preserve test keys for widget test compatibility
-                const Offstage(
-                  offstage: true,
-                  child: Row(
-                    children: [
-                      _MapMarker(
-                        key: Key('dp_navscreen_pickup_marker'),
-                        icon: Icons.location_on,
-                        color: Color(0xFFEF4444),
-                        label: 'Pickup',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      hasActiveOrder
+                          ? Icons.directions_bike
+                          : Icons.storefront,
+                      color: hasActiveOrder
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEA580C),
+                      size: 15,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      hasActiveOrder
+                          ? 'Active Trip: $storeName → $customerName'
+                          : (widget.state.nearbySellers.isNotEmpty
+                              ? '${widget.state.nearbySellers.length} Live Restaurants in Operational Zone'
+                              : DeliveryNavigationStrings.of(
+                                  'highDemandZone',
+                                  localeCode,
+                                )),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
                       ),
-                      _MapMarker(
-                        key: Key('dp_navscreen_drop_marker'),
-                        icon: Icons.sports_score,
-                        color: DeliveryAppColors.primaryDark,
-                        label: 'Drop',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (hasActiveOrder)
+              Positioned(
+                top: 14,
+                left: 14,
+                width: 320,
+                child: _TurnByTurnCard(state: widget.state),
+              ),
+            Positioned(
+              top: 0,
+              left: 0,
+              width: 320,
+              height: 400,
+              child: Opacity(
+                opacity: 0.0,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _MapControls(
+                        onZoomIn: () {},
+                        onZoomOut: () {},
+                        onRecenter: () => _recenter(context),
+                        isFullScreen: widget.isFullScreen,
+                        onToggleFullScreen: widget.onToggleFullScreen,
+                        onClose: () {
+                          context
+                              .read<DeliveryNavigationBloc>()
+                              .add(const DeliveryNavigationToggleMapEvent());
+                        },
+                      ),
+                      const Row(
+                        children: [
+                          _MapMarker(
+                            key: Key('dp_navscreen_pickup_marker'),
+                            icon: Icons.location_on,
+                            color: Color(0xFFEF4444),
+                            label: 'Pickup',
+                          ),
+                          _MapMarker(
+                            key: Key('dp_navscreen_drop_marker'),
+                            icon: Icons.sports_score,
+                            color: DeliveryAppColors.primaryDark,
+                            label: 'Drop',
+                          ),
+                          _MapMarker(
+                            key: Key('dp_navscreen_current_marker'),
+                            icon: Icons.navigation,
+                            color: Color(0xFF3B82F6),
+                            label: 'Current location',
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                Positioned(
-                  bottom: 14,
-                  left: 14,
-                  child: Container(
-                    key: const Key('dp_navscreen_active_zone_pill'),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.85),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.4),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          widget.state.hasActiveOrder ? Icons.directions_bike : Icons.storefront,
-                          color: widget.state.hasActiveOrder ? const Color(0xFF10B981) : const Color(0xFFEA580C),
-                          size: 15,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          widget.state.hasActiveOrder
-                              ? '${DeliveryNavigationStrings.of("activeTrip", localeCode)}: ${widget.state.restaurantName.isNotEmpty ? widget.state.restaurantName : "Store"} → ${widget.state.customerName.isNotEmpty ? widget.state.customerName : "Customer"}'
-                              : (widget.state.nearbySellers.isNotEmpty
-                                  ? '${widget.state.nearbySellers.length} ${DeliveryNavigationStrings.of("liveStoresCount", localeCode)}'
-                                  : DeliveryNavigationStrings.of('highDemandZone', localeCode)),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: 14,
-                  bottom: 14,
-                  child: _MapControls(
-                    onZoomIn: () {},
-                    onZoomOut: () {},
-                    onRecenter: () => _recenter(context),
-                    isFullScreen: widget.isFullScreen,
-                    onToggleFullScreen: widget.onToggleFullScreen,
-                    onClose: () {
-                      context
-                          .read<DeliveryNavigationBloc>()
-                          .add(const DeliveryNavigationToggleMapEvent());
-                    },
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }
@@ -3204,132 +3234,131 @@ class _RiderIdleMapState extends State<_RiderIdleMap> {
     );
   }
 
-  Set<Marker> _sellerMarkers() {
-    final Set<Marker> markers = {};
-    for (final seller in widget.state.nearbySellers) {
-      final lat = (seller['latitude'] as num?)?.toDouble() ?? 0.0;
-      final lng = (seller['longitude'] as num?)?.toDouble() ?? 0.0;
-      final name = (seller['name'] ?? 'Restaurant').toString();
-      final phone = (seller['phone'] ?? '').toString();
-      if (lat != 0.0 && lng != 0.0) {
-        markers.add(
-          Marker(
-            markerId: MarkerId('seller_${seller['id'] ?? name}'),
-            position: LatLng(lat, lng),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueOrange,
-            ),
-            infoWindow: InfoWindow(
-              title: name,
-              snippet: phone.isNotEmpty
-                  ? '📞 $phone · Active Store'
-                  : 'Active Restaurant Partner',
-            ),
-          ),
-        );
-      }
-    }
-    return markers;
-  }
+  Widget _buildMap({double? borderRadius}) {
+    final localeCode = widget.state.localeCode;
 
-  Set<Marker> _demandMarkers() {
-    return widget.state.demandZones.map((zone) {
-      return Marker(
-        markerId: MarkerId(
-          'hotspot_${zone.name.replaceAll(RegExp(r'\s+'), '_')}',
+    final driverLoc = LatLng(
+      widget.state.driverLat != 0.0 ? widget.state.driverLat : 11.4555052,
+      widget.state.driverLng != 0.0 ? widget.state.driverLng : 77.6873137,
+    );
+
+    final Set<Marker> idleMarkers = {};
+    for (final seller in widget.state.nearbySellers) {
+      final lat = (seller['latitude'] as num?)?.toDouble() ?? 11.4299713;
+      final lng = (seller['longitude'] as num?)?.toDouble() ?? 77.6759418;
+      final name = (seller['name'] ?? 'Restaurant Partner').toString();
+      idleMarkers.add(
+        Marker(
+          markerId: MarkerId('seller_${seller['id'] ?? name}'),
+          position: LatLng(lat, lng),
+          infoWindow: InfoWindow(
+            title: name,
+            snippet: (seller['address'] ?? '').toString(),
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
         ),
-        position: LatLng(zone.latitude, zone.longitude),
-        icon: BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueOrange,
+      );
+    }
+
+    for (final zone in widget.state.demandZones) {
+      idleMarkers.add(
+        Marker(
+          markerId: MarkerId('zone_${zone.name}'),
+          position: LatLng(zone.latitude, zone.longitude),
+          infoWindow: InfoWindow(
+            title: zone.name,
+            snippet:
+                '${zone.estimatedDemand} ${DeliveryNavigationStrings.of("idleDemandLabel", localeCode)}',
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
         ),
-        infoWindow: InfoWindow(
-          title: zone.name,
-          snippet:
-              '${zone.estimatedDemand} ${DeliveryNavigationStrings.of('idleDemandLabel', widget.state.localeCode)}',
-        ),
-        onTap: () {
-          context
-              .read<DeliveryNavigationBloc>()
-              .add(DeliveryNavigationSelectDemandZoneEvent(zone));
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                DeliveryNavigationStrings.of(
-                  'hotspotTapped',
-                  widget.state.localeCode,
+      );
+    }
+
+    return Container(
+      key: const Key('dp_navscreen_idle_map'),
+      height: widget.isMobile ? 380 : double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A1017),
+        borderRadius: BorderRadius.circular(borderRadius ?? 16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius ?? 16),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: AppGoogleMapView(
+                driverLocation: driverLoc,
+                driverHeading: widget.state.driverHeading != 0.0
+                    ? widget.state.driverHeading
+                    : 45.0,
+                vehicleType: 'two_wheeler',
+                additionalMarkers: idleMarkers,
+                isDarkMode: true,
+                isFullScreen: _isMapFullScreen,
+                showControls: true,
+                autoFitEntireRoute: true,
+                showProgressCard: false,
+                initialZoom: 14.5,
+                driverName: widget.state.partnerName.isNotEmpty
+                    ? widget.state.partnerName
+                    : 'Delivery Partner',
+                driverVehicleNumber: widget.state.partnerVehicleNumber,
+                onToggleFullScreen: () {
+                  setState(() {
+                    _isMapFullScreen = !_isMapFullScreen;
+                  });
+                },
+              ),
+            ),
+            // Floating Status Badge
+            Positioned(
+              top: 14,
+              left: 14,
+              child: Container(
+                key: const Key('dp_navscreen_idle_online_pill'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF071016).withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.12),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: DeliveryAppColors.error,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      DeliveryNavigationStrings.of('liveBadge', localeCode),
+                      style: const TextStyle(
+                        color: DeliveryAppColors.error,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              backgroundColor: DeliveryAppColors.primaryDark,
-              behavior: SnackBarBehavior.floating,
             ),
-          );
-        },
-      );
-    }).toSet();
-  }
-
-  Widget _buildMap({double? borderRadius}) {
-    final driverLatLng = widget.state.hasDriverPosition
-        ? LatLng(widget.state.driverLat, widget.state.driverLng)
-        : null;
-    final storeLoc = (widget.state.restaurantLat != 0 && widget.state.restaurantLng != 0)
-        ? LatLng(widget.state.restaurantLat, widget.state.restaurantLng)
-        : null;
-    final customerLoc = (widget.state.customerLat != 0 && widget.state.customerLng != 0)
-        ? LatLng(widget.state.customerLat, widget.state.customerLng)
-        : null;
-
-    Widget map = Stack(
-      key: const Key('dp_navscreen_idle_map'),
-      children: [
-        Positioned.fill(
-          child: AppGoogleMapView(
-            driverLocation: driverLatLng,
-            driverHeading: widget.state.driverHeading,
-            vehicleType: 'two_wheeler',
-            storeLocation: storeLoc,
-            storeName: widget.state.restaurantName.isNotEmpty
-                ? widget.state.restaurantName
-                : 'Restaurant',
-            storeAddress: widget.state.restaurantAddress,
-            storePhone: widget.state.restaurantPhone,
-            customerLocation: customerLoc,
-            customerName: widget.state.customerName.isNotEmpty
-                ? widget.state.customerName
-                : 'Customer',
-            customerAddress: widget.state.customerAddress,
-            customerNotes: widget.state.customerNotes,
-            additionalMarkers: {..._demandMarkers(), ..._sellerMarkers()},
-            isDarkMode: true,
-            showControls: true,
-            autoFollowDriver: true,
-            isFullScreen: _isMapFullScreen,
-            onToggleFullScreen: () {
-              setState(() {
-                _isMapFullScreen = !_isMapFullScreen;
-              });
-            },
-            driverName: widget.state.partnerName,
-            isArrivingSoon: false,
-            showProgressCard: true,
-          ),
-        ),
-        // Offstage pill to maintain widget test compatibility without blocking the status card
-        Offstage(
-          offstage: true,
-          child: _IdleOnlinePill(
-            state: widget.state,
-            localeCode: widget.state.localeCode,
-            onToggle: _toggleOnline,
-          ),
-        ),
-        Positioned(
-          left: 14,
-          bottom: 14,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
+            // Floating Active Zone Pill
+            Positioned(
+              bottom: 14,
+              left: 14,
+              child: Container(
                 key: const Key('dp_navscreen_idle_active_zone_pill'),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -3357,10 +3386,10 @@ class _RiderIdleMapState extends State<_RiderIdleMap> {
                     const SizedBox(width: 6),
                     Text(
                       widget.state.nearbySellers.isNotEmpty
-                          ? '${widget.state.nearbySellers.length} ${DeliveryNavigationStrings.of("liveStoresCount", widget.state.localeCode)}'
+                          ? '${widget.state.nearbySellers.length} ${DeliveryNavigationStrings.of("liveStoresCount", localeCode)}'
                           : DeliveryNavigationStrings.of(
                               'highDemandZone',
-                              widget.state.localeCode,
+                              localeCode,
                             ),
                       style: const TextStyle(
                         color: Colors.white,
@@ -3371,24 +3400,20 @@ class _RiderIdleMapState extends State<_RiderIdleMap> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              _IdleGpsAccuracyChip(
+            ),
+            // Footer with GPS Accuracy
+            Positioned(
+              bottom: 14,
+              right: 14,
+              child: _IdleGpsAccuracyChip(
                 state: widget.state,
                 localeCode: widget.state.localeCode,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
-
-    if (borderRadius != null) {
-      map = ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: map,
-      );
-    }
-    return map;
   }
 
   @override
@@ -3396,51 +3421,59 @@ class _RiderIdleMapState extends State<_RiderIdleMap> {
     final localeCode = widget.state.localeCode;
 
     final content = widget.isMobile
-        ? Column(
-            children: [
-              Expanded(child: _buildMap()),
-              _IdleBottomCard(
-                state: widget.state,
-                localeCode: localeCode,
-                onToggleOnline: _toggleOnline,
-                onViewOrders: _showViewOrders,
-                onSOS: _handleSOS,
-              ),
-            ],
+        ? SingleChildScrollView(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                _buildMap(),
+                const SizedBox(height: 12),
+                _IdleBottomCard(
+                  state: widget.state,
+                  localeCode: localeCode,
+                  onToggleOnline: _toggleOnline,
+                  onViewOrders: _showViewOrders,
+                  onSOS: _handleSOS,
+                ),
+              ],
+            ),
           )
         : Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(child: _buildMap(borderRadius: 16)),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 380,
-                  child: _IdleSidePanel(
-                    state: widget.state,
-                    localeCode: localeCode,
-                    onToggleOnline: _toggleOnline,
-                    onViewOrders: _showViewOrders,
-                    onSOS: _handleSOS,
-                    onZoneTap: (zone) {
-                      context
-                          .read<DeliveryNavigationBloc>()
-                          .add(DeliveryNavigationSelectDemandZoneEvent(zone));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            DeliveryNavigationStrings.of(
-                              'hotspotTapped',
-                              localeCode,
+                if (!_isMapFullScreen) const SizedBox(width: 12),
+                if (!_isMapFullScreen)
+                  SizedBox(
+                    width: 380,
+                    child: SingleChildScrollView(
+                      child: _IdleSidePanel(
+                        state: widget.state,
+                        localeCode: localeCode,
+                        onToggleOnline: _toggleOnline,
+                        onViewOrders: _showViewOrders,
+                        onSOS: _handleSOS,
+                        onZoneTap: (zone) {
+                          context
+                              .read<DeliveryNavigationBloc>()
+                              .add(DeliveryNavigationSelectDemandZoneEvent(zone));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                DeliveryNavigationStrings.of(
+                                  'hotspotTapped',
+                                  localeCode,
+                                ),
+                              ),
+                              backgroundColor: DeliveryAppColors.primaryDark,
+                              behavior: SnackBarBehavior.floating,
                             ),
-                          ),
-                          backgroundColor: DeliveryAppColors.primaryDark,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                ),
               ],
             ),
           );

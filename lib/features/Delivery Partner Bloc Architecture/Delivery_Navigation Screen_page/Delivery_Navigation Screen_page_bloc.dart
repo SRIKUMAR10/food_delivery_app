@@ -2,7 +2,9 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/repositories/delivery_active_order_session_repository.dart';
+import '../../../core/services/realtime_vehicle_route_navigator.dart';
 import 'Delivery_Navigation Screen_page_event.dart';
 import 'Delivery_Navigation Screen_page_state.dart';
 import 'Delivery_Navigation Screen_page_repository.dart';
@@ -15,6 +17,7 @@ class DeliveryNavigationBloc
   final DeliveryActiveOrderSessionRepository? _sessionRepo;
 
   StreamSubscription<Map<String, dynamic>>? _locationSub;
+  StreamSubscription<VehicleTelemetry>? _roadNavSub;
   StreamSubscription<Map<String, dynamic>?>? _orderSub;
   StreamSubscription<Map<String, dynamic>?>? _profileSub;
   StreamSubscription<List<Map<String, dynamic>>>? _sellersSub;
@@ -105,6 +108,9 @@ class DeliveryNavigationBloc
     Map<String, dynamic>? profile,
   ) {
     if (profile == null) return state;
+    final pLat = (profile['partnerLatitude'] as num?)?.toDouble() ?? 0.0;
+    final pLng = (profile['partnerLongitude'] as num?)?.toDouble() ?? 0.0;
+
     return state.copyWith(
       partnerName: profile['partnerName'] as String? ?? state.partnerName,
       partnerPhotoUrl:
@@ -115,6 +121,8 @@ class DeliveryNavigationBloc
       partnerRating:
           (profile['partnerRating'] as num?)?.toDouble() ?? state.partnerRating,
       isOnline: profile['isOnline'] as bool? ?? state.isOnline,
+      driverLat: (state.driverLat == 0.0 && pLat != 0.0) ? pLat : state.driverLat,
+      driverLng: (state.driverLng == 0.0 && pLng != 0.0) ? pLng : state.driverLng,
     );
   }
 
@@ -125,23 +133,36 @@ class DeliveryNavigationBloc
     final toRestaurant = stage == NavigationStage.toRestaurant;
     final destLat = toRestaurant ? state.restaurantLat : state.customerLat;
     final destLng = toRestaurant ? state.restaurantLng : state.customerLng;
+    final targetName = toRestaurant ? state.restaurantName : state.customerName;
+    final nextTurn = toRestaurant
+        ? 'Heading to ${targetName.isNotEmpty ? targetName : "Restaurant"} · Pickup'
+        : 'Heading to ${targetName.isNotEmpty ? targetName : "Customer"} · Delivery';
+
+    final effectiveDriverLat = state.hasDriverPosition
+        ? state.driverLat
+        : (state.restaurantLat != 0.0 ? state.restaurantLat - 0.0095 : 11.4390);
+    final effectiveDriverLng = state.hasDriverPosition
+        ? state.driverLng
+        : (state.restaurantLng != 0.0 ? state.restaurantLng - 0.0095 : 77.6740);
 
     double dist = state.distanceToDestinationKm;
     int eta = state.etaToDestinationMinutes;
-    if (state.hasDriverPosition && destLat != 0.0 && destLng != 0.0) {
+    if (destLat != 0.0 && destLng != 0.0) {
       dist = service.calculateDistanceKm(
-        state.driverLat,
-        state.driverLng,
+        effectiveDriverLat,
+        effectiveDriverLng,
         destLat,
         destLng,
       );
       eta = service
           .calculateEtaMinutes(
             dist,
-            state.driverSpeedKmh > 0 ? state.driverSpeedKmh : 22.0,
+            state.driverSpeedKmh > 0 ? state.driverSpeedKmh : 24.0,
           )
           .round();
     }
+
+    final double turnMeters = (dist * 1000).clamp(50.0, 450.0);
 
     return state.copyWith(
       navigationStage: stage,
@@ -153,8 +174,12 @@ class DeliveryNavigationBloc
           toRestaurant ? state.restaurantPhone : state.customerPhone,
       destinationLat: destLat,
       destinationLng: destLng,
+      nextTurnInstruction: nextTurn,
+      turnDistanceMeters: turnMeters,
       distanceToDestinationKm: dist > 0 ? dist : state.distanceToDestinationKm,
       etaToDestinationMinutes: eta > 0 ? eta : state.etaToDestinationMinutes,
+      distanceKm: dist > 0 ? dist : state.distanceKm,
+      etaMinutes: eta > 0 ? eta : state.etaMinutes,
     );
   }
 
@@ -164,19 +189,14 @@ class DeliveryNavigationBloc
   ) {
     final stage = _determineStage(data['status'] as String?);
 
-    double rLat = (data['sellerLat'] as num?)?.toDouble() ?? state.restaurantLat;
-    double rLng = (data['sellerLng'] as num?)?.toDouble() ?? state.restaurantLng;
-    double cLat = (data['customerLat'] as num?)?.toDouble() ?? state.customerLat;
-    double cLng = (data['customerLng'] as num?)?.toDouble() ?? state.customerLng;
-
-    if (rLat == 0.0 && rLng == 0.0) {
-      rLat = 11.4485;
-      rLng = 77.6835;
-    }
-    if (cLat == 0.0 && cLng == 0.0) {
-      cLat = 11.4580;
-      cLng = 77.6980;
-    }
+    final double rLat =
+        (data['sellerLat'] as num?)?.toDouble() ?? state.restaurantLat;
+    final double rLng =
+        (data['sellerLng'] as num?)?.toDouble() ?? state.restaurantLng;
+    final double cLat =
+        (data['customerLat'] as num?)?.toDouble() ?? state.customerLat;
+    final double cLng =
+        (data['customerLng'] as num?)?.toDouble() ?? state.customerLng;
 
     final withTargets = state.copyWith(
       restaurantName: data['sellerName'] as String? ?? state.restaurantName,
@@ -277,11 +297,11 @@ class DeliveryNavigationBloc
       );
       next = _applyProfile(next, profile);
 
+      if (isOnline && hasPermission && gpsEnabled) {
+        _startLiveLocationStream();
+      }
+
       if (order.orderId.trim().isEmpty) {
-        // Idle driver console: keep the map live while waiting for orders.
-        if (isOnline && hasPermission && gpsEnabled) {
-          _startLiveLocationStream();
-        }
         emit(next.copyWith(
           status: DeliveryNavigationStatus.loaded,
           order: order,
@@ -392,6 +412,34 @@ class DeliveryNavigationBloc
     }
     await repository.saveAudioEnabled(true);
     _startLiveLocationStream();
+
+    final startLat = state.hasDriverPosition ? state.driverLat : 11.4555052;
+    final startLng = state.hasDriverPosition ? state.driverLng : 77.6873137;
+    final destLat = state.restaurantLat != 0.0 ? state.restaurantLat : 11.4299713;
+    final destLng = state.restaurantLng != 0.0 ? state.restaurantLng : 77.6759418;
+    final destName = state.restaurantName.isNotEmpty ? state.restaurantName : 'Zolo Family Restaurant';
+
+    _roadNavSub?.cancel();
+    _roadNavSub = RealtimeVehicleRouteNavigator.instance.startNavigation(
+      start: LatLng(startLat, startLng),
+      destination: LatLng(destLat, destLng),
+      destinationName: destName,
+      cruisingSpeedKmh: 80.0,
+      simulationSpeedMultiplier: 2.5,
+    ).listen((telemetry) {
+      if (isClosed) return;
+      add(DeliveryNavigationLocationUpdatedEvent(
+        lat: telemetry.currentPosition.latitude,
+        lng: telemetry.currentPosition.longitude,
+        heading: telemetry.heading,
+        speed: telemetry.speedKmh,
+        timestamp: DateTime.now(),
+      ));
+      if (telemetry.isArrived) {
+        add(const DeliveryNavigationArrivedAtPickupEvent());
+      }
+    });
+
     emit(state.copyWith(
       status: DeliveryNavigationStatus.navigating,
       audioEnabled: true,
@@ -605,6 +653,8 @@ class DeliveryNavigationBloc
       }
     }
 
+    final double turnMeters = (distance * 1000).clamp(50.0, 450.0);
+
     emit(state.copyWith(
       driverLat: event.lat,
       driverLng: event.lng,
@@ -615,6 +665,7 @@ class DeliveryNavigationBloc
       etaToDestinationMinutes: eta,
       distanceKm: distance,
       etaMinutes: eta,
+      turnDistanceMeters: turnMeters,
       gpsStatus: DeliveryGpsStatus.active,
     ));
 
@@ -799,6 +850,21 @@ class DeliveryNavigationBloc
 
   void _startLiveLocationStream() {
     _locationSub?.cancel();
+    unawaited(
+      service.getCurrentLocation(highAccuracy: true).then((loc) {
+        if (loc != null && !isClosed) {
+          add(
+            DeliveryNavigationLocationUpdatedEvent(
+              lat: (loc['lat'] as num).toDouble(),
+              lng: (loc['lng'] as num).toDouble(),
+              heading: (loc['heading'] as num?)?.toDouble() ?? 0.0,
+              speed: (loc['speedKmh'] as num?)?.toDouble() ?? 0.0,
+              timestamp: (loc['timestamp'] as DateTime?) ?? DateTime.now(),
+            ),
+          );
+        }
+      }),
+    );
     _locationSub = service.streamLiveLocation(highAccuracy: true).listen(
       (loc) {
         if (isClosed) return;
@@ -824,6 +890,9 @@ class DeliveryNavigationBloc
   }
 
   void _stopLocationStream() {
+    _roadNavSub?.cancel();
+    _roadNavSub = null;
+    RealtimeVehicleRouteNavigator.instance.stopNavigation();
     _locationSub?.cancel();
     _locationSub = null;
   }

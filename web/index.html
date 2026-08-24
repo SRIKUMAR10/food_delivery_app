@@ -42,7 +42,7 @@
 
   <!-- Fonts loaded via standard stylesheet -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
-  <!-- Google Maps Auth Failure & ApiNotActivated Interceptor for Seamless Interactive Canvas Fallback -->
+  <!-- Google Maps Auth Failure, Deprecation & ApiNotActivated Interceptor for Seamless Interactive Canvas Fallback -->
   <script>
     window.gm_authFailure = function() {
       window._gmAuthFailed = true;
@@ -51,19 +51,181 @@
 
     (function() {
       var origError = console.error;
+      var origWarn = console.warn;
+
+      console.warn = function() {
+        var args = Array.prototype.slice.call(arguments);
+        var msg = args.join(' ');
+        // Suppress benign Marker and DirectionsService deprecation warnings on Flutter Web
+        if (msg.indexOf('google.maps.Marker is deprecated') !== -1 || 
+            msg.indexOf('AdvancedMarkerElement') !== -1 ||
+            msg.indexOf('DirectionsService is deprecated') !== -1 ||
+            msg.indexOf('computeRoutes instead') !== -1 ||
+            msg.indexOf('DirectionsService.route') !== -1) {
+          return;
+        }
+        if (origWarn) origWarn.apply(console, args);
+      };
+
       console.error = function() {
         var args = Array.prototype.slice.call(arguments);
         var msg = args.join(' ');
-        if (msg.indexOf('ApiNotActivatedMapError') !== -1 || msg.indexOf('InvalidKeyMapError') !== -1 || msg.indexOf('BillingNotEnabledMapError') !== -1 || msg.indexOf('DeletedKeyMapError') !== -1) {
+        if (msg.indexOf('ApiNotActivatedMapError') !== -1 ||
+            msg.indexOf('ApiTargetBlockedMapError') !== -1 ||
+            msg.indexOf('InvalidKeyMapError') !== -1 ||
+            msg.indexOf('BillingNotEnabledMapError') !== -1 ||
+            msg.indexOf('DeletedKeyMapError') !== -1 ||
+            msg.indexOf('RefererNotAllowedMapError') !== -1 ||
+            msg.indexOf('MissingKeyMapError') !== -1 ||
+            msg.indexOf('OverQuotaMapError') !== -1 ||
+            msg.indexOf('UnauthorizedURLForClientIdMapError') !== -1) {
           window._gmAuthFailed = true;
           window.dispatchEvent(new CustomEvent('gm-auth-failed'));
         }
+        if (msg.indexOf('Directions Service: This API key is not authorized') !== -1 ||
+            msg.indexOf('DIRECTIONS_ROUTE: REQUEST_DENIED') !== -1 ||
+            msg.indexOf('MapsRequestError: DIRECTIONS_ROUTE') !== -1) {
+          window._googleDirectionsAuthDenied = true;
+          return; // Suppress red console noise since OSRM router seamlessly handles routing
+        }
+        if (msg.indexOf('GetViewportInfo') !== -1 ||
+            msg.indexOf('ERR_CONNECTION_CLOSED') !== -1 ||
+            msg.indexOf('MapsJsInternalService') !== -1) {
+          return; // Suppress internal RPC connection errors
+        }
         if (origError) origError.apply(console, args);
+      };
+
+      // Intercept Google Maps constructor to disable intrusive cameraControl and floating buttons on Web
+      var checkGmInterval = setInterval(function() {
+        if (window.google && window.google.maps && window.google.maps.Map) {
+          clearInterval(checkGmInterval);
+          var OrigMap = window.google.maps.Map;
+          window.google.maps.Map = function(elem, opts) {
+            opts = opts || {};
+            if (opts.cameraControl === undefined) opts.cameraControl = false;
+            if (opts.mapTypeControl === undefined) opts.mapTypeControl = false;
+            if (opts.streetViewControl === undefined) opts.streetViewControl = false;
+            if (opts.fullscreenControl === undefined) opts.fullscreenControl = false;
+            if (opts.zoomControl === undefined) opts.zoomControl = false;
+            return new OrigMap(elem, opts);
+          };
+          window.google.maps.Map.prototype = OrigMap.prototype;
+        }
+      }, 50);
+
+      // Helper function for legacy DirectionsService fallback
+      function executeDirectionsServiceFallback(originLat, originLng, destLat, destLng, successCb, errorCb) {
+        if (window._googleDirectionsAuthDenied) {
+          if (errorCb) errorCb("Directions API unauthorized in Google Cloud Console");
+          return;
+        }
+        if (!window.google || !window.google.maps || !window.google.maps.DirectionsService) {
+          if (errorCb) errorCb("DirectionsService not available");
+          return;
+        }
+        try {
+          var ds = new window.google.maps.DirectionsService();
+          ds.route({
+            origin: new window.google.maps.LatLng(originLat, originLng),
+            destination: new window.google.maps.LatLng(destLat, destLng),
+            travelMode: window.google.maps.TravelMode.DRIVING
+          }, function(res, status) {
+            if (status === window.google.maps.DirectionsStatus.OK && res && res.routes && res.routes.length > 0) {
+              var r = res.routes[0];
+              var leg = r.legs[0];
+              var points = [];
+              if (r.overview_path && r.overview_path.length > 0) {
+                for (var i = 0; i < r.overview_path.length; i++) {
+                  var p = r.overview_path[i];
+                  points.push({ lat: p.lat(), lng: p.lng() });
+                }
+              }
+              var result = {
+                points: points,
+                overview_polyline: (r.overview_polyline && r.overview_polyline.points) || r.overview_polyline || "",
+                durationText: leg && leg.duration ? leg.duration.text : "",
+                durationSeconds: leg && leg.duration ? leg.duration.value : 0,
+                distanceText: leg && leg.distance ? leg.distance.text : "",
+                distanceMeters: leg && leg.distance ? leg.distance.value : 0,
+                status: "OK"
+              };
+              if (successCb) successCb(JSON.stringify(result));
+            } else {
+              if (status === "REQUEST_DENIED" || status === "OVER_QUERY_LIMIT") {
+                window._googleDirectionsAuthDenied = true;
+              }
+              if (errorCb) errorCb("DirectionsService error: " + status);
+            }
+          });
+        } catch (e) {
+          if (errorCb) errorCb(e ? e.toString() : "DirectionsService exception");
+        }
+      }
+
+      // Google Maps Web Road Routing Engine (Supports Routes API computeRoutes & DirectionsService fallback)
+      window.getGoogleDirectionsRoute = function(originLat, originLng, destLat, destLng, successCb, errorCb) {
+        if (window._googleDirectionsAuthDenied) {
+          if (errorCb) errorCb("Directions API unauthorized in Google Cloud Console");
+          return;
+        }
+        if (!window.google || !window.google.maps) {
+          if (errorCb) errorCb("Google Maps JS API not available");
+          return;
+        }
+
+        // 1. Try Modern Google Maps Routes API (computeRoutes) if available
+        if (window.google.maps.routes && window.google.maps.routes.Route && typeof window.google.maps.routes.Route.computeRoutes === 'function') {
+          try {
+            window.google.maps.routes.Route.computeRoutes({
+              origin: { location: { latLng: { lat: originLat, lng: originLng } } },
+              destination: { location: { latLng: { lat: destLat, lng: destLng } } },
+              travelMode: 'DRIVE',
+              fields: ['routes.polyline.encodedPolyline', 'routes.duration', 'routes.distanceMeters', 'routes.legs']
+            }).then(function(res) {
+              if (res && res.routes && res.routes.length > 0) {
+                var r = res.routes[0];
+                var poly = (r.polyline && r.polyline.encodedPolyline) || "";
+                var leg = (r.legs && r.legs[0]) || {};
+                var durSec = 0;
+                if (r.duration) {
+                  durSec = typeof r.duration === 'string' ? parseInt(r.duration, 10) : (r.duration.seconds || 0);
+                }
+                var distMeters = r.distanceMeters || 0;
+                var result = {
+                  points: [],
+                  overview_polyline: poly,
+                  durationText: durSec > 0 ? Math.round(durSec / 60) + " mins" : "",
+                  durationSeconds: durSec,
+                  distanceText: distMeters > 0 ? (distMeters / 1000).toFixed(1) + " km" : "",
+                  distanceMeters: distMeters,
+                  status: "OK"
+                };
+                if (successCb) successCb(JSON.stringify(result));
+              } else {
+                executeDirectionsServiceFallback(originLat, originLng, destLat, destLng, successCb, errorCb);
+              }
+            }).catch(function(err) {
+              var errStr = err ? err.toString() : "";
+              if (errStr.indexOf("REQUEST_DENIED") !== -1 || errStr.indexOf("not authorized") !== -1) {
+                window._googleDirectionsAuthDenied = true;
+              }
+              executeDirectionsServiceFallback(originLat, originLng, destLat, destLng, successCb, errorCb);
+            });
+            return;
+          } catch(e) {
+            executeDirectionsServiceFallback(originLat, originLng, destLat, destLng, successCb, errorCb);
+            return;
+          }
+        }
+
+        // 2. Fallback to DirectionsService
+        executeDirectionsServiceFallback(originLat, originLng, destLat, destLng, successCb, errorCb);
       };
     })();
   </script>
   <!-- Google Maps JavaScript API for Web Live Maps -->
-  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBwTsgY7b5lSrYZVR7KX76Fkq4ijzZkBrA&libraries=places,geometry&loading=async"></script>
+  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCo2p5qPkTyj2zl3hxVvH1C5B-mN9vOXFs&libraries=places,geometry,routes&v=weekly&loading=async"></script>
 </head>
 
 <body>
@@ -74,6 +236,121 @@
       event.preventDefault();
     }, false);
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = "F52886E2-8A9E-4295-B292-AE501B770BEE";
+
+    // Prevent 'Blocked aria-hidden on an element because its descendant retained focus'
+    // Replace aria-hidden with 'inert' attribute directly on flt-platform-view (e.g. Google Maps)
+    (function () {
+      function safeBlurFocus(el) {
+        try {
+          if (document.activeElement && document.activeElement !== document.body) {
+            if (el === document.activeElement || (el && el.contains && el.contains(document.activeElement)) || (document.activeElement.closest && document.activeElement.closest('flt-platform-view, [slot*="flt-pv"]'))) {
+              document.activeElement.blur();
+              if (document.body && typeof document.body.focus === 'function') {
+                document.body.focus();
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      var origSetAttribute = Element.prototype.setAttribute;
+      Element.prototype.setAttribute = function (name, value) {
+        if (name === 'aria-hidden' && (value === 'true' || value === true)) {
+          try {
+            safeBlurFocus(this);
+            this.inert = true;
+            if (typeof this.toggleAttribute === 'function') {
+              this.toggleAttribute('inert', true);
+            }
+            // For flt-platform-view, replacing aria-hidden with inert directly satisfies WAI-ARIA spec
+            if (this.tagName && this.tagName.toLowerCase().indexOf('platform-view') !== -1) {
+              return;
+            }
+          } catch (_) {}
+        } else if (name === 'aria-hidden' && (value === 'false' || value === false)) {
+          try {
+            this.inert = false;
+            if (typeof this.toggleAttribute === 'function') {
+              this.toggleAttribute('inert', false);
+            }
+          } catch (_) {}
+        }
+        return origSetAttribute.call(this, name, value);
+      };
+
+      var origRemoveAttribute = Element.prototype.removeAttribute;
+      Element.prototype.removeAttribute = function (name) {
+        if (name === 'aria-hidden') {
+          try {
+            this.inert = false;
+            if (typeof this.toggleAttribute === 'function') {
+              this.toggleAttribute('inert', false);
+            }
+          } catch (_) {}
+        }
+        return origRemoveAttribute.call(this, name);
+      };
+
+      // Also intercept ariaHidden property setter
+      try {
+        var origAriaHiddenDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'ariaHidden');
+        Object.defineProperty(Element.prototype, 'ariaHidden', {
+          set: function (val) {
+            if (val === 'true' || val === true) {
+              safeBlurFocus(this);
+              this.inert = true;
+              if (typeof this.toggleAttribute === 'function') {
+                this.toggleAttribute('inert', true);
+              }
+              if (this.tagName && this.tagName.toLowerCase().indexOf('platform-view') !== -1) {
+                return;
+              }
+            } else if (val === 'false' || val === false || val === null || val === '') {
+              this.inert = false;
+              if (typeof this.toggleAttribute === 'function') {
+                this.toggleAttribute('inert', false);
+              }
+            }
+            if (origAriaHiddenDesc && origAriaHiddenDesc.set) {
+              origAriaHiddenDesc.set.call(this, val);
+            } else {
+              origSetAttribute.call(this, 'aria-hidden', val);
+            }
+          },
+          get: function () {
+            if (origAriaHiddenDesc && origAriaHiddenDesc.get) {
+              return origAriaHiddenDesc.get.call(this);
+            }
+            return this.getAttribute('aria-hidden');
+          },
+          configurable: true,
+        });
+      } catch (_) {}
+
+      // Prevent sticky focus traps on Google Maps control buttons
+      document.addEventListener('pointerup', function (e) {
+        if (e.target && (e.target.closest('.gm-control-active') || e.target.closest('button[aria-label*="camera"]'))) {
+          setTimeout(function () {
+            if (document.activeElement && (document.activeElement.closest('.gm-control-active') || document.activeElement.closest('flt-platform-view'))) {
+              document.activeElement.blur();
+              if (document.body) document.body.focus();
+            }
+          }, 0);
+        }
+      }, true);
+
+      // Cleanly shift focus during route changes and UI transitions
+      window.addEventListener('hashchange', function () {
+        if (document.activeElement && document.activeElement !== document.body) {
+          document.activeElement.blur();
+        }
+      });
+      window.addEventListener('popstate', function () {
+        if (document.activeElement && document.activeElement !== document.body) {
+          document.activeElement.blur();
+        }
+      });
+    })();
   </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.

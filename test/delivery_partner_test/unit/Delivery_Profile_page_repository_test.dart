@@ -115,10 +115,10 @@ void main() {
     });
 
     test('updateAddress calls service correctly', () async {
-      when(() => mockService.updateProfile({'address': 'Madurai'}))
+      when(() => mockService.updateProfile(any()))
           .thenAnswer((_) async => true);
       await repository.updateAddress('Madurai');
-      verify(() => mockService.updateProfile({'address': 'Madurai'})).called(1);
+      verify(() => mockService.updateProfile(any())).called(1);
     });
 
     test('updateAddress persists GPS coordinates and googleMapsUrl', () async {

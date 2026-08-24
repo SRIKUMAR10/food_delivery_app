@@ -667,21 +667,25 @@ class _DeliveryGoogleAddressSearchDialogState
               if (shouldUseFallback)
                 _buildInteractiveFallbackMap()
               else
-                GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: _cameraCenter,
-                    zoom: 16.5,
+                Focus(
+                  canRequestFocus: false,
+                  descendantsAreFocusable: false,
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: _cameraCenter,
+                      zoom: 16.5,
+                    ),
+                    onMapCreated: (controller) {
+                      _mapController = controller;
+                    },
+                    onCameraMoveStarted: _onCameraMoveStarted,
+                    onCameraMove: _onCameraMove,
+                    onCameraIdle: _onCameraIdle,
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                    compassEnabled: true,
                   ),
-                  onMapCreated: (controller) {
-                    _mapController = controller;
-                  },
-                  onCameraMoveStarted: _onCameraMoveStarted,
-                  onCameraMove: _onCameraMove,
-                  onCameraIdle: _onCameraIdle,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
-                  compassEnabled: true,
                 ),
 
               // Central Floating Bouncing Pin

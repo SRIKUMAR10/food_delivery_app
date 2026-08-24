@@ -25,7 +25,7 @@ class GooglePlacePrediction {
     final structured = json['structured_formatting'] as Map<String, dynamic>?;
     final main = structured?['main_text']?.toString() ??
         json['name']?.toString() ??
-        json['display_name']?.toString()?.split(',').first ??
+        (json['display_name']?.toString().split(',').first) ??
         '';
     final secondary = structured?['secondary_text']?.toString() ??
         (json['display_name'] != null
@@ -254,7 +254,7 @@ class GooglePlacesService {
 
       final response = await _httpClient.get(
         uri,
-        headers: {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
+        headers: kIsWeb ? null : {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
       ).timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
@@ -329,7 +329,7 @@ class GooglePlacesService {
 
       final response = await _httpClient.get(
         uri,
-        headers: {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
+        headers: kIsWeb ? null : {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
       ).timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
@@ -389,7 +389,7 @@ class GooglePlacesService {
 
       final response = await _httpClient.get(
         uri,
-        headers: {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
+        headers: kIsWeb ? null : {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
       ).timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {

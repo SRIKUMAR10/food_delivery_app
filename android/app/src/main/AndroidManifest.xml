@@ -18,7 +18,7 @@
         <!-- Google Maps Mobile SDK API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDummyMapsApiKeyForDevelopmentAndTesting" />
+            android:value="AIzaSyCo2p5qPkTyj2zl3hxVvH1C5B-mN9vOXFs" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

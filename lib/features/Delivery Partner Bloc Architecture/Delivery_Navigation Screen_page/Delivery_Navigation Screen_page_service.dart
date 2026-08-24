@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:food_delivery_app/core/services/google_places_service.dart';
 
 abstract class DeliveryNavigationServiceBase {
   Future<bool> checkConnectivity();
@@ -19,6 +20,7 @@ abstract class DeliveryNavigationServiceBase {
   double calculateDistanceKm(double lat1, double lon1, double lat2, double lon2);
   double calculateEtaMinutes(double distanceKm, double currentSpeedKmh);
   double calculateBearing(double lat1, double lon1, double lat2, double lon2);
+  Future<Map<String, dynamic>?> getCurrentLocation({bool highAccuracy = true});
   Stream<Map<String, dynamic>> streamLiveLocation({bool highAccuracy = true});
   Stream<double> simulateLiveLocation();
   Future<String?> currentDriverId();
@@ -397,7 +399,9 @@ class DeliveryNavigationService implements DeliveryNavigationServiceBase {
           data['deliveryLat'] ??
           data['dropLocation'] ??
           data['deliveryLocation'] ??
-          data['location'],
+          data['location'] ??
+          (data['customer'] is Map ? data['customer']['lat'] ?? data['customer']['latitude'] : null) ??
+          (data['customerInfo'] is Map ? data['customerInfo']['lat'] ?? data['customerInfo']['latitude'] : null),
     );
 
     final custLng = _parseLngCoord(
@@ -411,7 +415,9 @@ class DeliveryNavigationService implements DeliveryNavigationServiceBase {
           data['deliveryLng'] ??
           data['dropLocation'] ??
           data['deliveryLocation'] ??
-          data['location'],
+          data['location'] ??
+          (data['customer'] is Map ? data['customer']['lng'] ?? data['customer']['longitude'] : null) ??
+          (data['customerInfo'] is Map ? data['customerInfo']['lng'] ?? data['customerInfo']['longitude'] : null),
     );
 
     final sellLat = _parseCoord(
@@ -424,7 +430,9 @@ class DeliveryNavigationService implements DeliveryNavigationServiceBase {
           data['storeLat'] ??
           data['storeLatitude'] ??
           data['pickupLocation'] ??
-          data['restaurantLocation'],
+          data['restaurantLocation'] ??
+          (data['seller'] is Map ? data['seller']['lat'] ?? data['seller']['latitude'] : null) ??
+          (data['sellerInfo'] is Map ? data['sellerInfo']['lat'] ?? data['sellerInfo']['latitude'] : null),
     );
 
     final sellLng = _parseLngCoord(
@@ -437,7 +445,9 @@ class DeliveryNavigationService implements DeliveryNavigationServiceBase {
           data['storeLng'] ??
           data['storeLongitude'] ??
           data['pickupLocation'] ??
-          data['restaurantLocation'],
+          data['restaurantLocation'] ??
+          (data['seller'] is Map ? data['seller']['lng'] ?? data['seller']['longitude'] : null) ??
+          (data['sellerInfo'] is Map ? data['sellerInfo']['lng'] ?? data['sellerInfo']['longitude'] : null),
     );
 
     return {
@@ -494,13 +504,47 @@ class DeliveryNavigationService implements DeliveryNavigationServiceBase {
 
   Map<String, dynamic> _mapPartnerDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
+    final pLat = _parseCoord(data['latitude'] ?? data['lat'] ?? data['currentLocation']);
+    final pLng = _parseLngCoord(data['longitude'] ?? data['lng'] ?? data['currentLocation']);
     return {
       'partnerName': data['displayName'] ?? data['name'] ?? '',
       'partnerPhotoUrl': data['photoUrl'] ?? data['profilePhotoUrl'] ?? '',
       'partnerVehicleNumber': data['vehicleNumber'] ?? '',
       'partnerRating': (data['rating'] as num?)?.toDouble() ?? 0.0,
       'isOnline': data['isOnline'] as bool? ?? false,
+      'address': data['address'] ?? '',
+      'partnerLatitude': pLat,
+      'partnerLongitude': pLng,
     };
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getCurrentLocation({bool highAccuracy = true}) async {
+    try {
+      final hasPermission = await checkLocationPermission();
+      if (!hasPermission) return null;
+      final gpsEnabled = await checkGpsStatus();
+      if (!gpsEnabled) return null;
+
+      Position? pos;
+      try {
+        pos = await Geolocator.getLastKnownPosition();
+      } catch (_) {}
+
+      try {
+        pos ??= await Geolocator.getCurrentPosition(
+          desiredAccuracy: highAccuracy ? LocationAccuracy.high : LocationAccuracy.medium,
+          timeLimit: const Duration(seconds: 4),
+        );
+      } catch (_) {}
+
+      if (pos != null) {
+        return _mapPosition(pos);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   @override

@@ -60,10 +60,14 @@ import 'features/Delivery Partner Bloc Architecture/Delivery_OTP_Verification_pa
 import 'features/Delivery Partner Bloc Architecture/Delivery_Chat_page/Delivery_Chat_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_ui.dart';
 import 'features/Delivery Partner Bloc Architecture/Delivery_Navigation Screen_page/Delivery_Navigation Screen_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Delivery Completed_page/Delivery_Delivery Completed_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Incoming_Order_page/Delivery_Incoming_Order_page_ui.dart';
+import 'features/Delivery Partner Bloc Architecture/Delivery_Pickup Confirmation_page/Delivery_Pickup Confirmation_page_ui.dart';
+import 'features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_ui.dart';
 import 'core/utils/app_role_helper.dart';
 
 // Global Role Toggle Switch (Default fallback when no tab session or URL param is present)
-const AppRole activeRole = AppRole.delivery;
+const AppRole activeRole = AppRole.seller;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -261,14 +265,24 @@ class MyApp extends StatelessWidget {
                   home: _getHomeWidget(),
                   routes: {
                     '/sellerlogin': (context) => const SellerLoginPageUI(),
+                    '/login': (context) => const SellerLoginPageUI(),
                     '/sellerDashboard': (context) =>
                         const SellerNavigationBarViewPageUI(),
+                    '/sellerSignUp': (context) => const SellerSignUpPageUI(),
                     '/deliveryLogin': (context) => const DeliveryLoginPage(),
                     '/deliveryNavigationBar': (context) =>
                         const DeliveryNavigationBarPage(),
                     '/deliverySignUp': (context) => const DeliverySignUpPage(),
                     '/deliveryForgotPassword': (context) =>
                         const DeliveryForgotPasswordPage(),
+                    '/deliveryIncomingOrder': (context) =>
+                        const DeliveryIncomingOrderPageUi(),
+                    '/deliveryPickupConfirmation': (context) =>
+                        const DeliveryPickupConfirmationPage(orderId: ''),
+                    '/deliveryNavigationScreen': (context) =>
+                        const DeliveryNavigationScreenPage(),
+                    '/deliveryCompleted': (context) =>
+                        const DeliveryCompletedPage(orderId: ''),
                   },
                   onGenerateRoute: (settings) {
                     final args =
@@ -297,7 +311,8 @@ class MyApp extends StatelessWidget {
                           sellerPhone: args['sellerPhone'] as String?,
                           orderTitle: args['orderTitle'] as String?,
                           orderTotal: (args['orderTotal'] as num?)?.toDouble(),
-                          recipientRole: args['recipientRole'] as String? ?? 'customer',
+                          recipientRole:
+                              args['recipientRole'] as String? ?? 'customer',
                         ),
                       );
                     }
@@ -310,7 +325,50 @@ class MyApp extends StatelessWidget {
                     }
                     if (settings.name == '/deliveryNavigationScreen') {
                       return MaterialPageRoute(
-                        builder: (context) => const DeliveryNavigationScreenPage(),
+                        builder: (context) => DeliveryNavigationScreenPage(
+                          orderId: args['orderId'] as String?,
+                          pickupAddress: args['pickupAddress'] as String?,
+                          dropoffAddress: args['dropoffAddress'] as String?,
+                          restaurantName: args['restaurantName'] as String?,
+                          customerName: args['customerName'] as String?,
+                          destinationLatitude:
+                              (args['destinationLatitude'] as num?)?.toDouble(),
+                          destinationLongitude:
+                              (args['destinationLongitude'] as num?)
+                                  ?.toDouble(),
+                          isStoreRoute: args['isStoreRoute'] as bool?,
+                        ),
+                      );
+                    }
+                    if (settings.name == '/deliveryIncomingOrder') {
+                      return MaterialPageRoute(
+                        builder: (context) =>
+                            const DeliveryIncomingOrderPageUi(),
+                      );
+                    }
+                    if (settings.name == '/deliveryPickupConfirmation') {
+                      return MaterialPageRoute(
+                        builder: (context) => DeliveryPickupConfirmationPage(
+                          orderId: args['orderId'] as String? ?? '',
+                        ),
+                      );
+                    }
+                    if (settings.name == '/deliveryCompleted') {
+                      return MaterialPageRoute(
+                        builder: (context) => DeliveryCompletedPage(
+                          orderId: args['orderId'] as String? ?? '',
+                        ),
+                      );
+                    }
+                    if (settings.name == '/sellerSignUp') {
+                      return MaterialPageRoute(
+                        builder: (context) => const SellerSignUpPageUI(),
+                      );
+                    }
+                    if (settings.name == '/sellerlogin' ||
+                        settings.name == '/login') {
+                      return MaterialPageRoute(
+                        builder: (context) => const SellerLoginPageUI(),
                       );
                     }
                     return null;

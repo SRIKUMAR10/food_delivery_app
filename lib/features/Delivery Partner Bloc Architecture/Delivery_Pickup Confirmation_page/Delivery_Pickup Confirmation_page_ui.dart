@@ -1125,8 +1125,9 @@ class _PickupInfoCard extends StatelessWidget {
             icon: Icons.location_on,
             title: DeliveryPickupConfirmationStrings.of('location', locale),
             lines: [
-              model?.pickupLocationName ?? 'Green Mart',
-              model?.pickupAddress ?? '24, Anna Salai, Chennai',
+              model?.pickupLocationName ?? 'Zolo Family Restaurant',
+              model?.pickupAddress ??
+                  '8/1223, Salem Kovai, NH-47 Bye Pass Road, Lakshmi Nagar, Bhavani, Tamil Nadu 638316',
             ],
             isFirst: true,
           ),
@@ -1154,7 +1155,7 @@ class _PickupInfoCard extends StatelessWidget {
             child: SizedBox(
               height: 160,
               child: AppGoogleMapView(
-                storeLocation: const LatLng(11.4485, 77.6835),
+                storeLocation: const LatLng(11.4299713, 77.6759418),
                 storeName: model?.pickupLocationName ?? 'Pickup Store',
                 storeAddress: model?.pickupAddress ?? 'Store Address',
                 isDarkMode: true,

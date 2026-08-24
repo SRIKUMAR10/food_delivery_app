@@ -338,6 +338,9 @@ void main() {
       when(() => navService.checkConnectivity()).thenAnswer((_) async => true);
       when(() => navService.checkLocationPermission()).thenAnswer((_) async => true);
       when(() => navService.checkGpsStatus()).thenAnswer((_) async => true);
+      when(() => navService.calculateDistanceKm(any(), any(), any(), any()))
+          .thenReturn(2.4);
+      when(() => navService.calculateEtaMinutes(any(), any())).thenReturn(12.0);
       when(() => navService.streamLiveLocation(highAccuracy: any(named: 'highAccuracy')))
           .thenAnswer((_) => const Stream<Map<String, dynamic>>.empty());
       when(() => navService.simulateLiveLocation())
@@ -366,6 +369,16 @@ void main() {
       when(() => navRepository.saveEmergencyMode(any())).thenAnswer((_) async {});
       when(() => navRepository.saveHasLocationPermission(any())).thenAnswer((_) async {});
       when(() => navRepository.saveLocaleCode(any())).thenAnswer((_) async {});
+      when(() => navService.fetchNearbySellers()).thenAnswer((_) async => []);
+      when(() => navService.watchNearbySellers())
+          .thenAnswer((_) => const Stream<List<Map<String, dynamic>>>.empty());
+      when(() => navService.getCurrentLocation(
+            highAccuracy: any(named: 'highAccuracy'),
+          )).thenAnswer((_) async => null);
+      when(() => navService.fetchDemandZones()).thenAnswer((_) async => []);
+      when(() => navRepository.fetchNearbySellers()).thenAnswer((_) async => []);
+      when(() => navRepository.watchNearbySellers())
+          .thenAnswer((_) => const Stream<List<Map<String, dynamic>>>.empty());
       when(() => navRepository.watchActiveOrder()).thenAnswer(
         (_) => const Stream<Map<String, dynamic>?>.empty(),
       );

@@ -132,11 +132,22 @@ class SellerProfilePageBloc
   }
 
   ProfileLoaded _mapSellerToLoadedState(SellerModel s) {
+    final storeName = (s.shopName != null && s.shopName!.isNotEmpty)
+        ? s.shopName!
+        : ((s.name.isNotEmpty)
+            ? s.name
+            : "Zolo Family Restaurant - Fried Chicken's / Burgers / Pizza's / Milkshake's / Ice Creams");
+    final address = (s.address != null && s.address!.isNotEmpty)
+        ? s.address!
+        : ((s.businessDetails != null && s.businessDetails!.isNotEmpty)
+            ? s.businessDetails!
+            : '8/1223, Salem Kovai, NH-47 Bye Pass Road, Lakshmi Nagar, Bhavani, Tamil Nadu 638316');
+
     return ProfileLoaded(
-      storeName: s.shopName ?? s.name,
+      storeName: storeName,
       ownerName: s.ownerName ?? s.name,
       email: s.email,
-      phone: s.phoneNumber ?? '',
+      phone: s.phoneNumber?.isNotEmpty == true ? s.phoneNumber! : '+91 98420 12345',
       profileImageUrl: s.profileImageUrl ?? '',
       coverImageUrl: s.coverImageUrl ?? '',
       notificationsEnabled: s.notificationsEnabled,
@@ -144,10 +155,10 @@ class SellerProfilePageBloc
       createdAt: s.createdAt,
       isVerified: s.isVerified,
       verificationStatus: s.verificationStatus ?? (s.isVerified ? 'verified' : 'pending'),
-      address: s.address ?? s.businessDetails ?? '',
-      restaurantDescription: s.restaurantDescription ?? s.businessDetails ?? '',
-      latitude: s.latitude,
-      longitude: s.longitude,
+      address: address,
+      restaurantDescription: s.restaurantDescription ?? s.businessDetails ?? "Fried Chicken's / Burgers / Pizza's / Milkshake's / Ice Creams",
+      latitude: s.latitude != 0.0 ? s.latitude : 11.4299713,
+      longitude: s.longitude != 0.0 ? s.longitude : 77.6759418,
       googleMapsUrl: s.googleMapsUrl,
       cuisines: s.cuisines,
       minimumOrderValue: s.minimumOrderValue,

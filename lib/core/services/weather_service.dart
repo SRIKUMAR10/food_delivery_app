@@ -69,8 +69,8 @@ class WeatherService {
 
   /// Fetches real-time weather status for given latitude and longitude.
   Future<WeatherInfo> fetchWeather({
-    double lat = 11.4485,
-    double lng = 77.6835,
+    double lat = 11.4427872,
+    double lng = 77.6760544,
     String locationName = 'Bhavani',
   }) async {
     if (_mockRain) {

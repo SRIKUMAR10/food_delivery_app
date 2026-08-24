@@ -62,7 +62,8 @@ void main() {
     when(() => mockRepository.saveLocaleCode(any())).thenAnswer((_) async {});
     when(() => mockRepository.getHasLocationPermission()).thenAnswer((_) async => true);
     when(() => mockRepository.saveHasLocationPermission(any())).thenAnswer((_) async {});
-    when(() => mockService.streamLiveLocation()).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.getCurrentLocation(highAccuracy: any(named: 'highAccuracy'))).thenAnswer((_) async => null);
+    when(() => mockService.streamLiveLocation(highAccuracy: any(named: 'highAccuracy'))).thenAnswer((_) => const Stream.empty());
     when(() => mockService.watchActiveOrder(any())).thenAnswer((_) => const Stream.empty());
     when(() => mockService.updateDriverLocation(
       latitude: any(named: 'latitude'),

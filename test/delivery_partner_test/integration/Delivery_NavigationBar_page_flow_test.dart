@@ -8,6 +8,7 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_state.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_service.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_ui.dart';
 
 import '../../font_loader_helper.dart';
 import '../helpers/delivery_test_utils.dart';
@@ -127,7 +128,7 @@ void main() {
 
       await switchTab(tester, 'Orders');
 
-      expect(find.byKey(const Key('dp_orders_loading')), findsOneWidget);
+      expect(find.byType(DeliveryOrdersPage), findsOneWidget);
       verify(() => mockRepository.saveSelectedIndex(1)).called(1);
 
       await switchTab(tester, 'Bank Details');

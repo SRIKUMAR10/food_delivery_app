@@ -36,26 +36,26 @@ class DeliveryNavigationRepository implements DeliveryNavigationRepositoryBase {
   static const DeliveryNavigationOrderSummary defaultOrder =
       DeliveryNavigationOrderSummary(
     orderId: '#ORD-789456',
-    pickupLabel: 'Reliance Digital Store',
-    pickupAddress: '23, Whites Road, Royapettah, Chennai',
-    dropLabel: 'Arun Kumar',
-    dropAddress: '45, 3rd Cross Street, Anna Nagar West, Chennai',
-    customerName: 'Arun Kumar',
-    customerPhone: '+91 98765 43210',
+    pickupLabel: 'Zolo Family Restaurant',
+    pickupAddress: '8/1223, Salem Kovai, NH-47 Bye Pass Road, Lakshmi Nagar, Bhavani, Tamil Nadu 638316',
+    dropLabel: '189A, Kamaraj Nagar, Kuruppanaickenpalayam',
+    dropAddress: '189A, Kamaraj Nagar, Kuruppanaickenpalayam, Tamil Nadu 638301',
+    customerName: 'Senthilkumar',
+    customerPhone: '+91 98420 54321',
     status: 'On the Way',
   );
 
   static const DeliveryNavigationRoutePoint defaultPickup =
       DeliveryNavigationRoutePoint(
     label: 'Pickup',
-    address: 'Reliance Digital Store, 23, Whites Road, Royapettah, Chennai',
+    address: '8/1223, Salem Kovai, NH-47 Bye Pass Road, Lakshmi Nagar, Bhavani, Tamil Nadu 638316',
     iconKey: 'pickup',
   );
 
   static const DeliveryNavigationRoutePoint defaultDrop =
       DeliveryNavigationRoutePoint(
     label: 'Drop',
-    address: '45, 3rd Cross Street, Anna Nagar West, Chennai',
+    address: '189A, Kamaraj Nagar, Kuruppanaickenpalayam, Tamil Nadu 638301',
     iconKey: 'drop',
   );
 

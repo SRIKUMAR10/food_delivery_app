@@ -9,6 +9,8 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_service.dart';
 
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_ui.dart';
+
 import '../../font_loader_helper.dart';
 import '../helpers/delivery_test_utils.dart';
 
@@ -107,7 +109,7 @@ void main() {
       expect(find.text('AVAILABLE'), findsOneWidget);
 
       await switchTab(tester, 'Orders');
-      expect(find.byKey(const Key('dp_orders_loading')), findsOneWidget);
+      expect(find.byType(DeliveryOrdersPage), findsOneWidget);
 
       await switchTab(tester, 'Dashboard');
 
@@ -125,7 +127,7 @@ void main() {
       expect(find.text('₹0.00'), findsWidgets);
 
       await switchTab(tester, 'Orders');
-      expect(find.byKey(const Key('dp_orders_loading')), findsOneWidget);
+      expect(find.byType(DeliveryOrdersPage), findsOneWidget);
 
       await switchTab(tester, 'Dashboard');
 
@@ -151,7 +153,7 @@ void main() {
       );
 
       await switchTab(tester, 'Orders');
-      expect(find.byKey(const Key('dp_orders_loading')), findsOneWidget);
+      expect(find.byType(DeliveryOrdersPage), findsOneWidget);
 
       await switchTab(tester, 'Dashboard');
 

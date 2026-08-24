@@ -14,12 +14,16 @@ class SellerWalletService {
     if (sellerId == null) {
       return Stream.value(0.0);
     }
-    return _firestore.collection('sellers').doc(sellerId).snapshots().map((snapshot) {
+    return _firestore
+        .collection('sellers')
+        .doc(sellerId)
+        .snapshots()
+        .map((snapshot) {
       if (snapshot.exists && snapshot.data() != null) {
         return (snapshot.data()!['walletBalance'] as num?)?.toDouble() ?? 0.0;
       }
       return 0.0;
-    });
+    }).handleError((_) => 0.0);
   }
 
   Stream<List<Map<String, dynamic>>> streamPayoutHistory() {
@@ -43,7 +47,7 @@ class SellerWalletService {
           'date': (data['date'] as Timestamp?)?.toDate().toIso8601String() ?? DateTime.now().toIso8601String(),
         };
       }).toList();
-    });
+    }).handleError((_) => <Map<String, dynamic>>[]);
   }
 
   Future<double> fetchWalletBalance() async {

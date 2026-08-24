@@ -1529,19 +1529,24 @@ class _LiveMapCard extends StatelessWidget {
       }
     }
 
-    final bool hasActiveOrder = state.activeOrderStoreLat != 0.0 && state.activeOrderStoreLng != 0.0;
-    final LatLng driverLoc = (state.partnerLatitude != 0.0 && state.partnerLongitude != 0.0)
+    final bool hasActiveOrder = state.activeOrderStoreLat != 0.0 &&
+        state.activeOrderStoreLng != 0.0;
+    final bool hasDriverPos =
+        state.partnerLatitude != 0.0 && state.partnerLongitude != 0.0;
+    final LatLng? driverLoc = hasDriverPos
         ? LatLng(state.partnerLatitude, state.partnerLongitude)
-        : const LatLng(11.4485, 77.6835);
+        : (hasActiveOrder
+            ? LatLng(state.activeOrderStoreLat, state.activeOrderStoreLng)
+            : (state.nearbySellers.isNotEmpty
+                ? LatLng(
+                    (state.nearbySellers.first['latitude'] as num).toDouble(),
+                    (state.nearbySellers.first['longitude'] as num).toDouble(),
+                  )
+                : null));
 
     final LatLng? storeLoc = hasActiveOrder
         ? LatLng(state.activeOrderStoreLat, state.activeOrderStoreLng)
-        : (state.nearbySellers.isNotEmpty
-            ? LatLng(
-                (state.nearbySellers.first['latitude'] as num).toDouble(),
-                (state.nearbySellers.first['longitude'] as num).toDouble(),
-              )
-            : null);
+        : null;
 
     final String storeName = hasActiveOrder
         ? (state.activeOrderStoreName.isNotEmpty ? state.activeOrderStoreName : 'Pickup Restaurant')

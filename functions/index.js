@@ -14,7 +14,9 @@ const cors = require("cors");
 const crypto = require("crypto");
 
 if (!admin.apps.length) {
-  admin.initializeApp();
+  admin.initializeApp({
+    projectId: process.env.GCLOUD_PROJECT || "food-delivery-app-cd4ca",
+  });
 }
 
 const corsHandler = cors({ origin: true });
@@ -4538,6 +4540,211 @@ exports.onDeliveryPartnerRatingCreated = functions.firestore
     }
     return null;
   });
+
+/**
+ * Delivery Route & ETA calculation with Google Directions API & Server-side In-Memory Cache
+ */
+const _routeCache = new Map();
+const ROUTE_CACHE_TTL_MS = 60 * 1000; // 1 minute TTL
+
+function fetchGoogleDirectionsApi(origin, destination, apiKey) {
+  const https = require("https");
+  const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=driving&key=${apiKey}`;
+
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      let data = "";
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(data);
+          resolve(parsed);
+        } catch (e) {
+          reject(new Error("Invalid JSON from Google Maps API"));
+        }
+      });
+    }).on("error", (err) => {
+      reject(err);
+    });
+  });
+}
+
+function fetchOsrmRoute(originLat, originLng, destLat, destLng) {
+  const https = require("https");
+  const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=polyline&steps=true`;
+
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { "User-Agent": "FoodDeliveryApp/1.0" } }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.code === "Ok" && parsed.routes && parsed.routes.length > 0) {
+            const route = parsed.routes[0];
+            const distKm = (route.distance || 0) / 1000.0;
+            const durSecs = Math.round(route.duration || 0);
+            const durMins = Math.max(1, Math.round(durSecs / 60));
+            resolve({
+              points: route.geometry || "",
+              durationText: `${durMins} mins`,
+              durationValue: durSecs,
+              distanceText: `${distKm.toFixed(1)} km`,
+              distanceValue: Math.round(route.distance || 0),
+              status: "OK",
+            });
+          } else {
+            reject(new Error("OSRM returned no route"));
+          }
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }).on("error", (err) => {
+      reject(err);
+    });
+  });
+}
+
+exports.getDeliveryRouteAndETA = functions.https.onCall(async (data, context) => {
+  const { originLat, originLng, destLat, destLng } = data || {};
+
+  if (
+    typeof originLat !== "number" ||
+    typeof originLng !== "number" ||
+    typeof destLat !== "number" ||
+    typeof destLng !== "number"
+  ) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Valid originLat, originLng, destLat, and destLng numeric coordinates are required."
+    );
+  }
+
+  const cacheKey = `${originLat.toFixed(4)},${originLng.toFixed(4)}->${destLat.toFixed(4)},${destLng.toFixed(4)}`;
+  const cached = _routeCache.get(cacheKey);
+
+  if (cached && Date.now() - cached.timestamp < ROUTE_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const apiKey =
+    process.env.GOOGLE_MAPS_API_KEY ||
+    process.env.GOOGLE_DIRECTIONS_API_KEY ||
+    (functions.config().google && functions.config().google.maps_key) ||
+    "";
+
+  // 1. Try Google Directions API if apiKey is present
+  if (apiKey) {
+    try {
+      const origin = `${originLat},${originLng}`;
+      const destination = `${destLat},${destLng}`;
+      const responseData = await fetchGoogleDirectionsApi(origin, destination, apiKey);
+
+      if (responseData.status === "OK" && responseData.routes && responseData.routes.length > 0) {
+        const route = responseData.routes[0];
+        const leg = (route.legs && route.legs[0]) || {};
+
+        const result = {
+          points: (route.overview_polyline && route.overview_polyline.points) || "",
+          durationText: (leg.duration && leg.duration.text) || "-- mins",
+          durationValue: (leg.duration && leg.duration.value) || 0,
+          distanceText: (leg.distance && leg.distance.text) || "-- km",
+          distanceValue: (leg.distance && leg.distance.value) || 0,
+          status: "OK",
+        };
+
+        _routeCache.set(cacheKey, { timestamp: Date.now(), data: result });
+        if (_routeCache.size > 500) {
+          const oldestKey = _routeCache.keys().next().value;
+          _routeCache.delete(oldestKey);
+        }
+        return result;
+      }
+    } catch (gErr) {
+      console.warn("Google Directions API failed in cloud function, trying OSRM fallback:", gErr.message);
+    }
+  }
+
+  // 2. Fallback to OSRM high-speed real road router in Cloud Function
+  try {
+    const osrmResult = await fetchOsrmRoute(originLat, originLng, destLat, destLng);
+    _routeCache.set(cacheKey, { timestamp: Date.now(), data: osrmResult });
+    if (_routeCache.size > 500) {
+      const oldestKey = _routeCache.keys().next().value;
+      _routeCache.delete(oldestKey);
+    }
+    return osrmResult;
+  } catch (osrmErr) {
+    console.error("OSRM fallback also failed in cloud function:", osrmErr);
+    throw new functions.https.HttpsError(
+      "internal",
+      "Unable to fetch delivery route and ETA."
+    );
+  }
+});
+
+exports.getDeliveryRouteAndETAHttp = functions.https.onRequest((req, res) => {
+  corsHandler(req, res, async () => {
+    try {
+      const originLat = parseFloat(req.query.originLat || (req.body && req.body.originLat));
+      const originLng = parseFloat(req.query.originLng || (req.body && req.body.originLng));
+      const destLat = parseFloat(req.query.destLat || (req.body && req.body.destLat));
+      const destLng = parseFloat(req.query.destLng || (req.body && req.body.destLng));
+
+      if (isNaN(originLat) || isNaN(originLng) || isNaN(destLat) || isNaN(destLng)) {
+        return res.status(400).json({ error: "Valid originLat, originLng, destLat, and destLng numeric coordinates are required." });
+      }
+
+      const cacheKey = `${originLat.toFixed(4)},${originLng.toFixed(4)}->${destLat.toFixed(4)},${destLng.toFixed(4)}`;
+      const cached = _routeCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < ROUTE_CACHE_TTL_MS) {
+        return res.status(200).json(cached.data);
+      }
+
+      const apiKey =
+        process.env.GOOGLE_MAPS_API_KEY ||
+        process.env.GOOGLE_DIRECTIONS_API_KEY ||
+        (functions.config().google && functions.config().google.maps_key) ||
+        "";
+
+      if (apiKey) {
+        try {
+          const origin = `${originLat},${originLng}`;
+          const destination = `${destLat},${destLng}`;
+          const responseData = await fetchGoogleDirectionsApi(origin, destination, apiKey);
+          if (responseData.status === "OK" && responseData.routes && responseData.routes.length > 0) {
+            const route = responseData.routes[0];
+            const leg = (route.legs && route.legs[0]) || {};
+            const result = {
+              points: (route.overview_polyline && route.overview_polyline.points) || "",
+              durationText: (leg.duration && leg.duration.text) || "-- mins",
+              durationValue: (leg.duration && leg.duration.value) || 0,
+              distanceText: (leg.distance && leg.distance.text) || "-- km",
+              distanceValue: (leg.distance && leg.distance.value) || 0,
+              status: "OK",
+            };
+            _routeCache.set(cacheKey, { timestamp: Date.now(), data: result });
+            return res.status(200).json(result);
+          }
+        } catch (gErr) {
+          console.warn("Google Directions API failed in cloud function HTTP handler:", gErr.message);
+        }
+      }
+
+      const osrmResult = await fetchOsrmRoute(originLat, originLng, destLat, destLng);
+      _routeCache.set(cacheKey, { timestamp: Date.now(), data: osrmResult });
+      return res.status(200).json(osrmResult);
+    } catch (err) {
+      return res.status(500).json({ error: "Internal server error fetching route" });
+    }
+  });
+});
+
 
 
 

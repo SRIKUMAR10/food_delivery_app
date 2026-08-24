@@ -51,8 +51,8 @@ class TrackOrderBloc extends Bloc<TrackOrderEvent, TrackOrderState> {
       unawaited(
         WeatherService.instance
             .fetchWeather(
-              lat: custLat ?? 11.4485,
-              lng: custLng ?? 77.6835,
+              lat: custLat ?? 11.4555052,
+              lng: custLng ?? 77.6873137,
               locationName: 'Bhavani',
             )
             .then((info) => _weatherInfo = info)
@@ -201,12 +201,12 @@ class TrackOrderBloc extends Bloc<TrackOrderEvent, TrackOrderState> {
     }
 
     final partnerData = details['driverIsAssigned'] == true;
-    final driverLat = _dbl(details['driverLat']);
-    final driverLng = _dbl(details['driverLng']);
-    final sellerLat = _dbl(details['sellerLat']);
-    final sellerLng = _dbl(details['sellerLng']);
-    final customerLat = _dbl(details['customerLat']);
-    final customerLng = _dbl(details['customerLng']);
+    final driverLat = _dbl(details['driverLat']) ?? 11.4555052;
+    final driverLng = _dbl(details['driverLng']) ?? 77.6873137;
+    final sellerLat = _dbl(details['sellerLat']) ?? 11.4299713;
+    final sellerLng = _dbl(details['sellerLng']) ?? 77.6759418;
+    final customerLat = _dbl(details['customerLat']) ?? 11.4555052;
+    final customerLng = _dbl(details['customerLng']) ?? 77.6873137;
 
     final deliveryPartner = DeliveryPartner(
       name: _str(details['driverName']),

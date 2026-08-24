@@ -470,8 +470,8 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
       activeOrderIsPickedUp = stLower == 'picked_up' || stLower == 'outfordelivery';
     }
 
-    final partnerLat = (data['latitude'] as num?)?.toDouble() ?? (data['lat'] as num?)?.toDouble() ?? (activeOrderStoreLat != 0.0 ? activeOrderStoreLat : 11.4485);
-    final partnerLng = (data['longitude'] as num?)?.toDouble() ?? (data['lng'] as num?)?.toDouble() ?? (activeOrderStoreLng != 0.0 ? activeOrderStoreLng : 77.6835);
+    final partnerLat = (data['latitude'] as num?)?.toDouble() ?? (data['lat'] as num?)?.toDouble() ?? (activeOrderStoreLat != 0.0 ? activeOrderStoreLat : 11.4555052);
+    final partnerLng = (data['longitude'] as num?)?.toDouble() ?? (data['lng'] as num?)?.toDouble() ?? (activeOrderStoreLng != 0.0 ? activeOrderStoreLng : 77.6873137);
 
     return {
       'isOnline': isOnline,
