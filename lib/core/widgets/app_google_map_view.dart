@@ -1544,15 +1544,6 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                 tooltip: 'Fit Route to Screen (4-Corner View)',
                 color: const Color(0xFF6366F1),
               ),
-              if (widget.onToggleFullScreen != null) ...[
-                const SizedBox(height: 5),
-                _mapIconButton(
-                  widget.isFullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
-                  widget.onToggleFullScreen!,
-                  tooltip: widget.isFullScreen ? 'Exit Full Screen (Half Screen View)' : 'Expand to Full Screen View',
-                  color: widget.isFullScreen ? const Color(0xFFE11D48) : const Color(0xFF0284C7),
-                ),
-              ],
               const SizedBox(height: 5),
               _mapIconButton(
                 _mapBloc.state.autoFollowDriver ? Icons.gps_fixed_rounded : Icons.gps_not_fixed_rounded,
@@ -1588,6 +1579,15 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                 tooltip: 'Live Traffic Flow',
                 color: _mapBloc.state.trafficEnabled ? const Color(0xFFEA580C) : (widget.isDarkMode ? Colors.white70 : Colors.black87),
               ),
+              if (widget.onToggleFullScreen != null) ...[
+                const SizedBox(height: 5),
+                _mapIconButton(
+                  widget.isFullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+                  widget.onToggleFullScreen!,
+                  tooltip: widget.isFullScreen ? 'Exit Full Screen (Half Screen View)' : 'Expand to Full Screen View',
+                  color: widget.isFullScreen ? const Color(0xFFE11D48) : const Color(0xFF0284C7),
+                ),
+              ],
               if (widget.isRaining) ...[
                 const SizedBox(height: 5),
                 _mapIconButton(
