@@ -1539,6 +1539,22 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
               _mapIconButton(Icons.remove, _zoomOut, tooltip: 'Zoom Out'),
               const SizedBox(height: 5),
               _mapIconButton(
+                Icons.crop_free_rounded,
+                _fitAllRouteBounds,
+                tooltip: 'Fit Route to Screen (4-Corner View)',
+                color: const Color(0xFF6366F1),
+              ),
+              if (widget.onToggleFullScreen != null) ...[
+                const SizedBox(height: 5),
+                _mapIconButton(
+                  widget.isFullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+                  widget.onToggleFullScreen!,
+                  tooltip: widget.isFullScreen ? 'Exit Full Screen (Half Screen View)' : 'Expand to Full Screen View',
+                  color: widget.isFullScreen ? const Color(0xFFE11D48) : const Color(0xFF0284C7),
+                ),
+              ],
+              const SizedBox(height: 5),
+              _mapIconButton(
                 _mapBloc.state.autoFollowDriver ? Icons.gps_fixed_rounded : Icons.gps_not_fixed_rounded,
                 _toggleAutoFollow,
                 tooltip: _mapBloc.state.autoFollowDriver ? 'Auto-Follow: ON' : 'Auto-Follow: OFF',
@@ -1563,14 +1579,14 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                 isSatellite ? Icons.satellite_alt_rounded : Icons.layers_outlined,
                 _toggleMapType,
                 tooltip: isSatellite ? 'Satellite Layer Active' : 'Switch to Satellite View',
-                color: isSatellite ? const Color(0xFF2563EB) : Colors.black87,
+                color: isSatellite ? const Color(0xFF2563EB) : (widget.isDarkMode ? Colors.white70 : Colors.black87),
               ),
               const SizedBox(height: 5),
               _mapIconButton(
                 _mapBloc.state.trafficEnabled ? Icons.traffic_rounded : Icons.traffic_outlined,
                 _toggleTraffic,
                 tooltip: 'Live Traffic Flow',
-                color: _mapBloc.state.trafficEnabled ? const Color(0xFFEA580C) : Colors.black87,
+                color: _mapBloc.state.trafficEnabled ? const Color(0xFFEA580C) : (widget.isDarkMode ? Colors.white70 : Colors.black87),
               ),
               if (widget.isRaining) ...[
                 const SizedBox(height: 5),
@@ -1578,7 +1594,7 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                   _mapBloc.state.showWeatherOverlay ? Icons.water_drop_rounded : Icons.water_drop_outlined,
                   _toggleWeatherLayer,
                   tooltip: _mapBloc.state.showWeatherOverlay ? 'Weather Alert: ON' : 'Weather Alert: OFF',
-                  color: _mapBloc.state.showWeatherOverlay ? const Color(0xFF0284C7) : Colors.black87,
+                  color: _mapBloc.state.showWeatherOverlay ? const Color(0xFF0284C7) : (widget.isDarkMode ? Colors.white70 : Colors.black87),
                 ),
               ],
             ],
@@ -1652,20 +1668,31 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
     String? tooltip,
     Color color = Colors.black87,
   }) {
+    final bool isDark = widget.isDarkMode;
     return Tooltip(
       message: tooltip ?? '',
+      waitDuration: const Duration(milliseconds: 250),
       child: Material(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
         elevation: 3,
         shadowColor: Colors.black26,
-        borderRadius: BorderRadius.circular(8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+            width: 1.0,
+          ),
+        ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
           child: SizedBox(
-            width: 34,
-            height: 34,
-            child: Icon(icon, size: 18, color: color),
+            width: 36,
+            height: 36,
+            child: Icon(icon, size: 19, color: color),
           ),
         ),
       ),
@@ -1838,7 +1865,6 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                                   storeName: widget.storeName,
                                   customerPos: widget.customerLocation,
                                   customerName: widget.customerName,
-                                  deviceGpsPos: _mapBloc.state.deviceGpsLocation,
                                   additionalMarkers: widget.additionalMarkers,
                                   trafficEnabled: _mapBloc.state.trafficEnabled,
                                   isSatellite: isSatellite,
@@ -1940,7 +1966,6 @@ class _RealTileMapOverlayPainter extends CustomPainter {
   final String storeName;
   final LatLng? customerPos;
   final String customerName;
-  final LatLng? deviceGpsPos;
   final Set<Marker>? additionalMarkers;
   final bool trafficEnabled;
   final bool isSatellite;
@@ -1958,7 +1983,6 @@ class _RealTileMapOverlayPainter extends CustomPainter {
     required this.storeName,
     required this.customerPos,
     required this.customerName,
-    this.deviceGpsPos,
     this.additionalMarkers,
     required this.trafficEnabled,
     required this.isSatellite,
@@ -2033,27 +2057,9 @@ class _RealTileMapOverlayPainter extends CustomPainter {
       _drawMarkerPin(canvas, storeOffset, const Color(0xFFEA580C), Icons.storefront_rounded, storeName.isNotEmpty ? storeName : 'Restaurant', isAbove: true);
     }
 
-    // 4. Draw Customer Location Pin & Geofence Drop-Off Zone (Real GPS coordinates)
+    // 4. Draw Customer Location Pin (Real GPS coordinates)
     if (customerPos != null) {
       final customerOffset = _latLngToScreen(customerPos!);
-
-      // Translucent Drop-Off Geofence Halo
-      canvas.drawCircle(
-        customerOffset,
-        34,
-        Paint()
-          ..color = const Color(0xFF10B981).withValues(alpha: 0.15)
-          ..style = PaintingStyle.fill,
-      );
-      canvas.drawCircle(
-        customerOffset,
-        34,
-        Paint()
-          ..color = const Color(0xFF10B981).withValues(alpha: 0.45)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      );
-
       _drawMarkerPin(canvas, customerOffset, const Color(0xFF10B981), Icons.home_rounded, customerName.isNotEmpty ? customerName : 'Delivery Address');
     }
 
@@ -2113,28 +2119,7 @@ class _RealTileMapOverlayPainter extends CustomPainter {
     textPainter.paint(canvas, badgeOffset);
   }
 
-  void _drawDeviceGpsPulse(Canvas canvas, Offset pos) {
-    // Outer Ripple
-    canvas.drawCircle(
-      pos,
-      22,
-      Paint()
-        ..color = const Color(0xFF0284C7).withValues(alpha: 0.25)
-        ..style = PaintingStyle.fill,
-    );
-    // Outer Ring
-    canvas.drawCircle(
-      pos,
-      14,
-      Paint()
-        ..color = const Color(0xFF0284C7).withValues(alpha: 0.7)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-    // Inner Solid Circle
-    canvas.drawCircle(pos, 8, Paint()..color = Colors.white);
-    canvas.drawCircle(pos, 5, Paint()..color = const Color(0xFF0284C7));
-  }
+
 
   void _drawRealisticDeliveryVehicle(Canvas canvas, Offset pos, double heading) {
     final isBike = MapMarkerService.isTwoWheeler(vehicleType);

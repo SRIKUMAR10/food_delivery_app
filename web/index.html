@@ -42,6 +42,42 @@
 
   <!-- Fonts loaded via standard stylesheet -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
+  <!-- Styles to suppress default Google Maps overlay controls in favor of custom UI -->
+  <style>
+    .gm-fullscreen-control,
+    .gm-style .gm-fullscreen-control,
+    .gm-bundled-control,
+    .gm-bundled-control-on-bottom,
+    .gm-control-active.gm-fullscreen-control,
+    div[style*="z-index: 1000000"] button,
+    div[style*="z-index: 1000001"] button,
+    .gmnoprint button[title*="fullscreen" i],
+    .gmnoprint button[aria-label*="fullscreen" i],
+    button[aria-label*="Toggle fullscreen view" i],
+    button[title*="Toggle fullscreen view" i],
+    button[aria-label*="Fullscreen" i],
+    button[title*="Fullscreen" i],
+    button[aria-label*="முழுத்திரை" i],
+    button[title*="முழுத்திரை" i],
+    button[aria-label*="முழுத்திரை பார்வை" i],
+    button[title*="முழுத்திரை பார்வை" i],
+    div:has(> button[title*="fullscreen" i]),
+    div:has(> button[aria-label*="fullscreen" i]) {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      opacity: 0 !important;
+      width: 0px !important;
+      height: 0px !important;
+      min-width: 0px !important;
+      min-height: 0px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      position: absolute !important;
+      left: -99999px !important;
+      top: -99999px !important;
+    }
+  </style>
   <!-- Google Maps Auth Failure, Deprecation & ApiNotActivated Interceptor for Seamless Interactive Canvas Fallback -->
   <script>
     window.gm_authFailure = function() {
@@ -96,23 +132,83 @@
         if (origError) origError.apply(console, args);
       };
 
-      // Intercept Google Maps constructor to disable intrusive cameraControl and floating buttons on Web
+      // Aggressive automatic DOM scrubber to permanently destroy any default fullscreen/zoom buttons
+      function scrubGoogleMapControls() {
+        var selectors = [
+          '.gm-fullscreen-control',
+          '.gm-control-active.gm-fullscreen-control',
+          'button[title*="fullscreen" i]',
+          'button[aria-label*="fullscreen" i]',
+          'button[title*="Toggle fullscreen view" i]',
+          'button[aria-label*="Toggle fullscreen view" i]',
+          'button[title*="முழுத்திரை" i]',
+          'button[aria-label*="முழுத்திரை" i]'
+        ];
+        for (var s = 0; s < selectors.length; s++) {
+          var els = document.querySelectorAll(selectors[s]);
+          for (var i = 0; i < els.length; i++) {
+            var el = els[i];
+            el.style.setProperty('display', 'none', 'important');
+            el.style.setProperty('visibility', 'hidden', 'important');
+            if (el.parentElement && el.parentElement.classList.contains('gmnoprint')) {
+              el.parentElement.style.setProperty('display', 'none', 'important');
+            }
+          }
+        }
+      }
+
+      setInterval(scrubGoogleMapControls, 150);
+      try {
+        var obs = new MutationObserver(scrubGoogleMapControls);
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+      } catch(_) {}
+
+      // Intercept Google Maps constructor and setOptions to disable intrusive controls on Web
       var checkGmInterval = setInterval(function() {
         if (window.google && window.google.maps && window.google.maps.Map) {
           clearInterval(checkGmInterval);
           var OrigMap = window.google.maps.Map;
           window.google.maps.Map = function(elem, opts) {
             opts = opts || {};
-            if (opts.cameraControl === undefined) opts.cameraControl = false;
-            if (opts.mapTypeControl === undefined) opts.mapTypeControl = false;
-            if (opts.streetViewControl === undefined) opts.streetViewControl = false;
-            if (opts.fullscreenControl === undefined) opts.fullscreenControl = false;
-            if (opts.zoomControl === undefined) opts.zoomControl = false;
-            return new OrigMap(elem, opts);
+            opts.fullscreenControl = false;
+            opts.cameraControl = false;
+            opts.mapTypeControl = false;
+            opts.streetViewControl = false;
+            opts.zoomControl = false;
+            opts.rotateControl = false;
+            opts.scaleControl = false;
+            var m = new OrigMap(elem, opts);
+            if (m && m.setOptions) {
+              var origSet = m.setOptions;
+              m.setOptions = function(newOpts) {
+                if (newOpts) {
+                  newOpts.fullscreenControl = false;
+                  newOpts.cameraControl = false;
+                  newOpts.mapTypeControl = false;
+                  newOpts.streetViewControl = false;
+                  newOpts.zoomControl = false;
+                }
+                return origSet.call(this, newOpts);
+              };
+            }
+            return m;
           };
           window.google.maps.Map.prototype = OrigMap.prototype;
+          if (OrigMap.prototype.setOptions) {
+            var protoSet = OrigMap.prototype.setOptions;
+            OrigMap.prototype.setOptions = function(o) {
+              if (o) {
+                o.fullscreenControl = false;
+                o.cameraControl = false;
+                o.mapTypeControl = false;
+                o.streetViewControl = false;
+                o.zoomControl = false;
+              }
+              return protoSet.call(this, o);
+            };
+          }
         }
-      }, 50);
+      }, 20);
 
       // Helper function for legacy DirectionsService fallback
       function executeDirectionsServiceFallback(originLat, originLng, destLat, destLng, successCb, errorCb) {

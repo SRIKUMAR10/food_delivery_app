@@ -461,8 +461,8 @@ class OutForDeliveryView extends StatelessWidget {
 
     final isDesktop = MediaQuery.of(context).size.width >= 800;
     final double cardHeight = state.isMapExpanded
-        ? (isDesktop ? 540.0 : 480.0)
-        : (isDesktop ? 390.0 : 370.0);
+        ? (isDesktop ? 680.0 : 560.0)
+        : (isDesktop ? 390.0 : 360.0);
 
     final isBike = MapMarkerService.isTwoWheeler(state.rider.vehicleType);
     final shortDistance = _shortDistanceLabel(state.distanceKm);
