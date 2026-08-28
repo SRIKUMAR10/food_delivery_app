@@ -43,13 +43,6 @@ void main() {
       expect(polylineIds.contains('driver_to_customer_active'), isTrue);
     });
 
-    test('generateSmoothPath produces interpolated curved points', () {
-      final path = service.generateSmoothPath(storeLoc, customerLoc, steps: 10);
-      expect(path.length, 11);
-      expect(path.first.latitude, storeLoc.latitude);
-      expect(path.last.latitude, customerLoc.latitude);
-    });
-
     test('calculateBearing calculates valid angle between coordinates', () {
       final bearing = service.calculateBearing(
         const LatLng(0.0, 0.0),
@@ -86,29 +79,26 @@ void main() {
       expect(service.decodePolyline('???invalid???'), isA<List<LatLng>>());
     });
 
-    test('Spline fallback is not cached to prevent locking into straight line approximations', () async {
+    test('Cache is verified properly with isCached check', () async {
       const p1 = LatLng(12.9716, 77.5946);
       const p2 = LatLng(12.9750, 77.6000);
 
-      // Verify not in cache initially
-      expect(service.isCached(p1, p2), isFalse);
-
-      // Fetch fallback path (without network)
-      final smoothPath = service.generateSmoothPath(p1, p2);
-      expect(smoothPath.length, greaterThanOrEqualTo(2));
-
-      // Ensure generateSmoothPath did not contaminate _routeCache
       expect(service.isCached(p1, p2), isFalse);
     });
 
-    test('Ground truth routes are recognized and have realistic road waypoints', () {
-      const zolo = LatLng(11.4299713, 77.6759418);
-      const urachi = LatLng(11.4740, 77.6850);
-
-      final route = service.generateSmoothPath(zolo, urachi);
-      expect(route.length, equals(RoutePolylineService.zoloToUrachikottaiRoadRoute.length));
-      expect(route.first.latitude, closeTo(zolo.latitude, 0.001));
-      expect(route.last.latitude, closeTo(urachi.latitude, 0.001));
+    test('RouteStepInfo.fromGoogleStep parses step instructions and distance', () {
+      final stepJson = {
+        'html_instructions': 'Turn <b>left</b> onto <b>NH-47</b>',
+        'maneuver': 'turn-left',
+        'distance': {'text': '500 m', 'value': 500},
+        'duration': {'text': '1 min', 'value': 60},
+        'start_location': {'lat': 11.4299, 'lng': 77.6759},
+        'end_location': {'lat': 11.4350, 'lng': 77.6800},
+      };
+      final step = RouteStepInfo.fromGoogleStep(stepJson);
+      expect(step.maneuver, RouteManeuver.turnLeft);
+      expect(step.distanceMeters, 500);
+      expect(step.durationText, '1 min');
     });
 
     test('Haversine and path distance calculations are accurate', () {

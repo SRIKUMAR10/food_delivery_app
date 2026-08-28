@@ -160,7 +160,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
           color: Color(0xFF0F172A),
           size: 20,
         ),
-        onPressed: () => Navigator.maybePop(context),
+        onPressed: () => Navigator.of(context).pop(),
       ),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

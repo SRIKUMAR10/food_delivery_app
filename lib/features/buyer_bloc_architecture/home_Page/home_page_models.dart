@@ -179,6 +179,8 @@ class FoodItem {
   final List<String> ingredients;
   final bool isActive;
   final String status;
+  final int availableStock;
+  final bool hasUnlimitedStock;
 
   const FoodItem({
     required this.id,
@@ -202,7 +204,16 @@ class FoodItem {
     this.ingredients = const [],
     this.isActive = true,
     this.status = 'inStock',
+    this.availableStock = 999,
+    this.hasUnlimitedStock = true,
   });
+
+  bool get isOutOfStock =>
+      !isActive ||
+      status.toLowerCase().contains('outofstock') ||
+      (!hasUnlimitedStock && availableStock <= 0);
+
+  bool get isInStock => !isOutOfStock;
 
   @override
   bool operator ==(Object other) =>

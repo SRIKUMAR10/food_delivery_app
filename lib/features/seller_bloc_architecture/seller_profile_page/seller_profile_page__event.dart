@@ -199,3 +199,69 @@ class ToggleStoreOpenStatus extends SellerProfilePageEvent {
   List<Object?> get props => [isOpen];
 }
 
+class LoadSellerKycDocuments extends SellerProfilePageEvent {}
+
+class KycDocumentsStreamUpdated extends SellerProfilePageEvent {
+  final Map<String, dynamic> kycData;
+
+  const KycDocumentsStreamUpdated(this.kycData);
+
+  @override
+  List<Object?> get props => [kycData];
+}
+
+class SubmitSellerKycDocuments extends SellerProfilePageEvent {
+  final String fssaiNumber;
+  final String? fssaiCertificateUrl;
+  final String gstNumber;
+  final String? gstCertificateUrl;
+  final String panNumber;
+  final String? panCardUrl;
+  final String bankAccountNumber;
+  final String ifscCode;
+  final String? bankChequeUrl;
+  final String? shopLicenseUrl;
+
+  const SubmitSellerKycDocuments({
+    required this.fssaiNumber,
+    this.fssaiCertificateUrl,
+    required this.gstNumber,
+    this.gstCertificateUrl,
+    required this.panNumber,
+    this.panCardUrl,
+    required this.bankAccountNumber,
+    required this.ifscCode,
+    this.bankChequeUrl,
+    this.shopLicenseUrl,
+  });
+
+  @override
+  List<Object?> get props => [
+        fssaiNumber,
+        fssaiCertificateUrl,
+        gstNumber,
+        gstCertificateUrl,
+        panNumber,
+        panCardUrl,
+        bankAccountNumber,
+        ifscCode,
+        bankChequeUrl,
+        shopLicenseUrl,
+      ];
+}
+
+class UploadKycDocumentFileEvent extends SellerProfilePageEvent {
+  final String docType;
+  final String fileName;
+  final Uint8List fileBytes;
+
+  const UploadKycDocumentFileEvent({
+    required this.docType,
+    required this.fileName,
+    required this.fileBytes,
+  });
+
+  @override
+  List<Object?> get props => [docType, fileName, fileBytes];
+}
+

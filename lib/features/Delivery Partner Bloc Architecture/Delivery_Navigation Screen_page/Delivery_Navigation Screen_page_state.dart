@@ -25,6 +25,8 @@ enum DeliveryGpsStatus { active, searching, disabled, permissionDenied }
 
 enum CodCollectStatus { initial, collecting, success, failed }
 
+enum DeliveryOtpVerificationStatus { initial, verifying, success, invalid }
+
 class DeliveryNavigationRoutePoint extends Equatable {
   final String label;
   final String address;
@@ -187,6 +189,12 @@ class DeliveryNavigationState extends Equatable {
   final String? codMessage;
   final bool isArrivedAtCustomer;
 
+  // Delivery OTP Verification
+  final String enteredDeliveryOtp;
+  final DeliveryOtpVerificationStatus deliveryOtpStatus;
+  final String? deliveryOtpErrorMessage;
+  final bool isDeliveryOtpVerified;
+
   // Full Firestore id of the active order (for COD writes).
   final String activeOrderId;
 
@@ -272,6 +280,10 @@ class DeliveryNavigationState extends Equatable {
     this.codChangeAmount = 0.0,
     this.codMessage,
     this.isArrivedAtCustomer = false,
+    this.enteredDeliveryOtp = '',
+    this.deliveryOtpStatus = DeliveryOtpVerificationStatus.initial,
+    this.deliveryOtpErrorMessage,
+    this.isDeliveryOtpVerified = false,
     this.activeOrderId = '',
     this.demandZones = const [],
     this.selectedDemandZone,
@@ -369,6 +381,10 @@ class DeliveryNavigationState extends Equatable {
     double? codChangeAmount,
     String? codMessage,
     bool? isArrivedAtCustomer,
+    String? enteredDeliveryOtp,
+    DeliveryOtpVerificationStatus? deliveryOtpStatus,
+    String? deliveryOtpErrorMessage,
+    bool? isDeliveryOtpVerified,
     String? activeOrderId,
     List<DeliveryDemandZone>? demandZones,
     DeliveryDemandZone? selectedDemandZone,
@@ -435,6 +451,10 @@ class DeliveryNavigationState extends Equatable {
       codChangeAmount: codChangeAmount ?? this.codChangeAmount,
       codMessage: codMessage ?? this.codMessage,
       isArrivedAtCustomer: isArrivedAtCustomer ?? this.isArrivedAtCustomer,
+      enteredDeliveryOtp: enteredDeliveryOtp ?? this.enteredDeliveryOtp,
+      deliveryOtpStatus: deliveryOtpStatus ?? this.deliveryOtpStatus,
+      deliveryOtpErrorMessage: deliveryOtpErrorMessage ?? this.deliveryOtpErrorMessage,
+      isDeliveryOtpVerified: isDeliveryOtpVerified ?? this.isDeliveryOtpVerified,
       activeOrderId: activeOrderId ?? this.activeOrderId,
       demandZones: demandZones ?? this.demandZones,
       selectedDemandZone: selectedDemandZone ?? this.selectedDemandZone,
@@ -501,6 +521,10 @@ class DeliveryNavigationState extends Equatable {
         codChangeAmount,
         codMessage,
         isArrivedAtCustomer,
+        enteredDeliveryOtp,
+        deliveryOtpStatus,
+        deliveryOtpErrorMessage,
+        isDeliveryOtpVerified,
         activeOrderId,
         demandZones,
         selectedDemandZone,

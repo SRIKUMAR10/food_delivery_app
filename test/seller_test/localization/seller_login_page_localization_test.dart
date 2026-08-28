@@ -28,37 +28,41 @@ Widget buildLocalizationTestWidget(
   String errorMsg = '',
 }) {
   return MaterialApp(
-    locale: locale,
-    supportedLocales: const [Locale('en'), Locale('ta'), Locale('ar')],
-    home: BlocProvider<SellerLoginPageBloc>.value(
-      value: bloc,
-      child: Scaffold(
-        body: BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
-          builder: (context, state) {
-            return Column(
-              children: [
-                TextField(
-                  key: const Key('emailField'),
-                  decoration: const InputDecoration(
-                    hintText: 'Email / Phone',
-                  ),
+    home: Directionality(
+      textDirection:
+          locale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+      child: BlocProvider<SellerLoginPageBloc>.value(
+        value: bloc,
+        child: Scaffold(
+          body: BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
+            builder: (context, state) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      key: const Key('emailField'),
+                      decoration: const InputDecoration(
+                        hintText: 'Phone Number',
+                      ),
+                    ),
+                    TextField(
+                      key: const Key('passwordField'),
+                      decoration: const InputDecoration(
+                        hintText: 'Password',
+                      ),
+                    ),
+                    ElevatedButton(
+                      key: const Key('loginButton'),
+                      onPressed: () {},
+                      child: const Text('Login'),
+                    ),
+                    if (errorMsg.isNotEmpty)
+                      Text(errorMsg, key: const Key('localizedError')),
+                  ],
                 ),
-                TextField(
-                  key: const Key('passwordField'),
-                  decoration: const InputDecoration(
-                    hintText: 'Password',
-                  ),
-                ),
-                ElevatedButton(
-                  key: const Key('loginButton'),
-                  onPressed: () {},
-                  child: const Text('Login'),
-                ),
-                if (errorMsg.isNotEmpty)
-                  Text(errorMsg, key: const Key('localizedError')),
-              ],
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     ),
@@ -80,11 +84,11 @@ void main() {
   // Group 1 – English (en) Locale
   // ──────────────────────────────────────────────────────────────────────────
   group('Localization – English (en)', () {
-    testWidgets('email hint shows English text in en locale', (tester) async {
+    testWidgets('phone hint shows English text in en locale', (tester) async {
       await tester.pumpWidget(
         buildLocalizationTestWidget(bloc, const Locale('en')),
       );
-      expect(find.text('Email / Phone'), findsOneWidget);
+      expect(find.text('Phone Number'), findsOneWidget);
     });
 
     testWidgets('password hint shows English text', (tester) async {
@@ -174,13 +178,7 @@ void main() {
 
     testWidgets('Arabic (RTL) locale does not cause overflow', (tester) async {
       await tester.pumpWidget(
-        MediaQuery(
-          data: const MediaQueryData(textScaler: TextScaler.linear(1.0)),
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: buildLocalizationTestWidget(bloc, const Locale('ar')),
-          ),
-        ),
+        buildLocalizationTestWidget(bloc, const Locale('ar')),
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

@@ -12,6 +12,7 @@ class SellerProfilePageBloc
   final IAuthService authService;
   final ISellerProfileRepository profileRepository;
   StreamSubscription<Map<String, dynamic>>? _profileSubscription;
+  StreamSubscription<Map<String, dynamic>>? _kycSubscription;
 
   SellerProfilePageBloc({
     required this.authService,
@@ -32,6 +33,10 @@ class SellerProfilePageBloc
     on<UpdateBusinessHoursSchedule>(_onUpdateBusinessHoursSchedule);
     on<ToggleAcceptingOrders>(_onToggleAcceptingOrders);
     on<ToggleStoreOpenStatus>(_onToggleStoreOpenStatus);
+    on<LoadSellerKycDocuments>(_onLoadSellerKycDocuments);
+    on<KycDocumentsStreamUpdated>(_onKycDocumentsStreamUpdated);
+    on<SubmitSellerKycDocuments>(_onSubmitSellerKycDocuments);
+    on<UploadKycDocumentFileEvent>(_onUploadKycDocumentFileEvent);
   }
 
   Future<void> _onLoadProfile(
@@ -50,6 +55,7 @@ class SellerProfilePageBloc
     }
 
     await _profileSubscription?.cancel();
+    await _kycSubscription?.cancel();
     final String uid = authService.currentUserId ?? '';
 
     if (uid.isEmpty) {
@@ -83,6 +89,15 @@ class SellerProfilePageBloc
           debugPrint('SellerProfilePageBloc Stream Error: $error');
         },
       );
+
+      _kycSubscription = profileRepository.watchKycDocuments(uid).listen(
+        (kycData) {
+          add(KycDocumentsStreamUpdated(kycData));
+        },
+        onError: (error) {
+          debugPrint('SellerProfilePageBloc KYC Stream Error: $error');
+        },
+      );
     } catch (e) {
       emit(ProfileError(e.toString()));
     }
@@ -97,12 +112,19 @@ class SellerProfilePageBloc
       final newState = _mapSellerToLoadedState(event.seller!);
       
       // Preserve local upload states if upload in progress
-      if (currentLoaded != null && (currentLoaded.isImageUploading || currentLoaded.isCoverUploading)) {
+      if (currentLoaded != null && (currentLoaded.isImageUploading || currentLoaded.isCoverUploading || currentLoaded.isKycUploading)) {
         emit(newState.copyWith(
           isImageUploading: currentLoaded.isImageUploading,
           localImageBytes: currentLoaded.localImageBytes,
           isCoverUploading: currentLoaded.isCoverUploading,
           localCoverBytes: currentLoaded.localCoverBytes,
+          isKycUploading: currentLoaded.isKycUploading,
+          kycStatus: currentLoaded.kycStatus.isNotEmpty ? currentLoaded.kycStatus : newState.kycStatus,
+          fssaiCertificateUrl: currentLoaded.fssaiCertificateUrl ?? newState.fssaiCertificateUrl,
+          gstCertificateUrl: currentLoaded.gstCertificateUrl ?? newState.gstCertificateUrl,
+          panCardUrl: currentLoaded.panCardUrl ?? newState.panCardUrl,
+          bankChequeUrl: currentLoaded.bankChequeUrl ?? newState.bankChequeUrl,
+          shopLicenseUrl: currentLoaded.shopLicenseUrl ?? newState.shopLicenseUrl,
         ));
       } else {
         emit(newState);
@@ -126,6 +148,7 @@ class SellerProfilePageBloc
           isOpen: true,
           isAcceptingOrders: true,
           isActive: true,
+          kycStatus: 'pending',
         ),
       );
     }
@@ -136,18 +159,20 @@ class SellerProfilePageBloc
         ? s.shopName!
         : ((s.name.isNotEmpty)
             ? s.name
-            : "Zolo Family Restaurant - Fried Chicken's / Burgers / Pizza's / Milkshake's / Ice Creams");
+            : '');
     final address = (s.address != null && s.address!.isNotEmpty)
         ? s.address!
         : ((s.businessDetails != null && s.businessDetails!.isNotEmpty)
             ? s.businessDetails!
-            : '8/1223, Salem Kovai, NH-47 Bye Pass Road, Lakshmi Nagar, Bhavani, Tamil Nadu 638316');
+            : '');
 
     return ProfileLoaded(
       storeName: storeName,
       ownerName: s.ownerName ?? s.name,
       email: s.email,
-      phone: s.phoneNumber?.isNotEmpty == true ? s.phoneNumber! : '+91 98420 12345',
+      phone: (s.phoneNumber != null && s.phoneNumber!.isNotEmpty)
+          ? s.phoneNumber!
+          : '',
       profileImageUrl: s.profileImageUrl ?? '',
       coverImageUrl: s.coverImageUrl ?? '',
       notificationsEnabled: s.notificationsEnabled,
@@ -156,9 +181,9 @@ class SellerProfilePageBloc
       isVerified: s.isVerified,
       verificationStatus: s.verificationStatus ?? (s.isVerified ? 'verified' : 'pending'),
       address: address,
-      restaurantDescription: s.restaurantDescription ?? s.businessDetails ?? "Fried Chicken's / Burgers / Pizza's / Milkshake's / Ice Creams",
-      latitude: s.latitude != 0.0 ? s.latitude : 11.4299713,
-      longitude: s.longitude != 0.0 ? s.longitude : 77.6759418,
+      restaurantDescription: s.restaurantDescription ?? s.businessDetails ?? '',
+      latitude: s.latitude,
+      longitude: s.longitude,
       googleMapsUrl: s.googleMapsUrl,
       cuisines: s.cuisines,
       minimumOrderValue: s.minimumOrderValue,
@@ -183,6 +208,13 @@ class SellerProfilePageBloc
       deliveryTime: s.deliveryTime,
       deliveryArea: s.deliveryArea,
       businessDetails: s.businessDetails,
+      kycStatus: s.kycStatus,
+      fssaiCertificateUrl: s.fssaiCertificateUrl,
+      gstCertificateUrl: s.gstCertificateUrl,
+      panCardUrl: s.panCardUrl,
+      bankChequeUrl: s.bankChequeUrl,
+      shopLicenseUrl: s.shopLicenseUrl,
+      kycRejectionReason: s.kycRejectionReason,
     );
   }
 
@@ -191,6 +223,7 @@ class SellerProfilePageBloc
     Emitter<SellerProfilePageState> emit,
   ) async {
     await _profileSubscription?.cancel();
+    await _kycSubscription?.cancel();
     emit(ProfileInitial());
   }
 
@@ -425,10 +458,14 @@ class SellerProfilePageBloc
         try {
           await profileRepository.updateProfile(uid, {
             'shopName': event.storeName,
+            'name': event.storeName,
+            'sellerName': event.storeName,
             'email': event.email,
             'phoneNumber': event.phone,
+            'contactNumber': event.phone,
             'businessDetails': event.address,
             'address': event.address,
+            'fullAddress': event.address,
             'gstNumber': event.gstNumber,
             'fssaiNumber': event.fssaiLicense,
             'bankAccountNumber': event.bankAccountNumber,
@@ -437,6 +474,7 @@ class SellerProfilePageBloc
             'latitude': event.latitude,
             'longitude': event.longitude,
             'googleMapsUrl': event.googleMapsUrl,
+            'kycStatus': 'in_review',
           });
         } catch (e) {
           debugPrint('Error updating verification form: $e');
@@ -533,10 +571,168 @@ class SellerProfilePageBloc
     }
   }
 
+  Future<void> _onLoadSellerKycDocuments(
+    LoadSellerKycDocuments event,
+    Emitter<SellerProfilePageState> emit,
+  ) async {
+    final String uid = authService.currentUserId ?? '';
+    if (uid.isEmpty) return;
+
+    try {
+      final kycData = await profileRepository.loadKycDocuments(uid);
+      if (kycData.isNotEmpty && state is ProfileLoaded) {
+        final current = state as ProfileLoaded;
+        emit(current.copyWith(
+          kycStatus: kycData['kycStatus'] as String? ?? current.kycStatus,
+          fssaiCertificateUrl: kycData['fssaiCertificateUrl'] as String? ?? current.fssaiCertificateUrl,
+          gstCertificateUrl: kycData['gstCertificateUrl'] as String? ?? current.gstCertificateUrl,
+          panCardUrl: kycData['panCardUrl'] as String? ?? current.panCardUrl,
+          bankChequeUrl: kycData['bankChequeUrl'] as String? ?? current.bankChequeUrl,
+          shopLicenseUrl: kycData['shopLicenseUrl'] as String? ?? current.shopLicenseUrl,
+          kycRejectionReason: kycData['rejectionReason'] as String? ?? current.kycRejectionReason,
+        ));
+      }
+    } catch (e) {
+      debugPrint('Error loading seller KYC documents: $e');
+    }
+  }
+
+  void _onKycDocumentsStreamUpdated(
+    KycDocumentsStreamUpdated event,
+    Emitter<SellerProfilePageState> emit,
+  ) {
+    if (state is ProfileLoaded && event.kycData.isNotEmpty) {
+      final current = state as ProfileLoaded;
+      final kycData = event.kycData;
+      emit(current.copyWith(
+        kycStatus: kycData['kycStatus'] as String? ?? current.kycStatus,
+        fssaiCertificateUrl: kycData['fssaiCertificateUrl'] as String? ?? current.fssaiCertificateUrl,
+        gstCertificateUrl: kycData['gstCertificateUrl'] as String? ?? current.gstCertificateUrl,
+        panCardUrl: kycData['panCardUrl'] as String? ?? current.panCardUrl,
+        bankChequeUrl: kycData['bankChequeUrl'] as String? ?? current.bankChequeUrl,
+        shopLicenseUrl: kycData['shopLicenseUrl'] as String? ?? current.shopLicenseUrl,
+        kycRejectionReason: kycData['rejectionReason'] as String? ?? current.kycRejectionReason,
+      ));
+    }
+  }
+
+  Future<void> _onSubmitSellerKycDocuments(
+    SubmitSellerKycDocuments event,
+    Emitter<SellerProfilePageState> emit,
+  ) async {
+    if (state is ProfileLoaded) {
+      final current = state as ProfileLoaded;
+      emit(current.copyWith(
+        kycStatus: 'in_review',
+        fssaiLicense: event.fssaiNumber,
+        fssaiCertificateUrl: event.fssaiCertificateUrl ?? current.fssaiCertificateUrl,
+        gstNumber: event.gstNumber,
+        gstCertificateUrl: event.gstCertificateUrl ?? current.gstCertificateUrl,
+        panNumber: event.panNumber,
+        panCardUrl: event.panCardUrl ?? current.panCardUrl,
+        bankAccountNumber: event.bankAccountNumber,
+        ifscCode: event.ifscCode,
+        bankChequeUrl: event.bankChequeUrl ?? current.bankChequeUrl,
+        shopLicenseUrl: event.shopLicenseUrl ?? current.shopLicenseUrl,
+      ));
+
+      final String uid = authService.currentUserId ?? '';
+      if (uid.isNotEmpty) {
+        try {
+          final payload = {
+            'sellerId': uid,
+            'fssaiNumber': event.fssaiNumber,
+            'fssaiCertificateUrl': event.fssaiCertificateUrl ?? current.fssaiCertificateUrl ?? '',
+            'gstNumber': event.gstNumber,
+            'gstCertificateUrl': event.gstCertificateUrl ?? current.gstCertificateUrl ?? '',
+            'panNumber': event.panNumber,
+            'panCardUrl': event.panCardUrl ?? current.panCardUrl ?? '',
+            'bankAccountNumber': event.bankAccountNumber,
+            'ifscCode': event.ifscCode,
+            'bankChequeUrl': event.bankChequeUrl ?? current.bankChequeUrl ?? '',
+            'shopLicenseUrl': event.shopLicenseUrl ?? current.shopLicenseUrl ?? '',
+            'kycStatus': 'in_review',
+            'submittedAt': DateTime.now().toIso8601String(),
+          };
+
+          await profileRepository.updateKycDocuments(uid, payload);
+          await profileRepository.updateProfile(uid, {
+            'fssaiNumber': event.fssaiNumber,
+            'gstNumber': event.gstNumber,
+            'panNumber': event.panNumber,
+            'bankAccountNumber': event.bankAccountNumber,
+            'ifscCode': event.ifscCode,
+            'kycStatus': 'in_review',
+            'verificationStatus': 'pending',
+          });
+        } catch (e) {
+          debugPrint('Error submitting KYC documents: $e');
+        }
+      }
+    }
+  }
+
+  Future<void> _onUploadKycDocumentFileEvent(
+    UploadKycDocumentFileEvent event,
+    Emitter<SellerProfilePageState> emit,
+  ) async {
+    if (state is ProfileLoaded) {
+      final current = state as ProfileLoaded;
+      emit(current.copyWith(isKycUploading: true));
+
+      final String uid = authService.currentUserId ?? '';
+      if (uid.isEmpty) {
+        emit(current.copyWith(isKycUploading: false));
+        return;
+      }
+
+      try {
+        final downloadUrl = await profileRepository.uploadKycDocumentFile(
+          sellerId: uid,
+          docType: event.docType,
+          fileName: event.fileName,
+          fileBytes: event.fileBytes,
+        );
+
+        final Map<String, dynamic> kycUpdates = {};
+        final docTypeLower = event.docType.toLowerCase();
+
+        ProfileLoaded updatedState = current;
+        if (docTypeLower.contains('fssai')) {
+          kycUpdates['fssaiCertificateUrl'] = downloadUrl;
+          updatedState = updatedState.copyWith(fssaiCertificateUrl: downloadUrl);
+        } else if (docTypeLower.contains('gst')) {
+          kycUpdates['gstCertificateUrl'] = downloadUrl;
+          updatedState = updatedState.copyWith(gstCertificateUrl: downloadUrl);
+        } else if (docTypeLower.contains('pan')) {
+          kycUpdates['panCardUrl'] = downloadUrl;
+          updatedState = updatedState.copyWith(panCardUrl: downloadUrl);
+        } else if (docTypeLower.contains('cheque') || docTypeLower.contains('bank')) {
+          kycUpdates['bankChequeUrl'] = downloadUrl;
+          updatedState = updatedState.copyWith(bankChequeUrl: downloadUrl);
+        } else if (docTypeLower.contains('shop') || docTypeLower.contains('license')) {
+          kycUpdates['shopLicenseUrl'] = downloadUrl;
+          updatedState = updatedState.copyWith(shopLicenseUrl: downloadUrl);
+        }
+
+        if (kycUpdates.isNotEmpty) {
+          await profileRepository.updateKycDocuments(uid, kycUpdates);
+        }
+
+        emit(updatedState.copyWith(isKycUploading: false));
+      } catch (e) {
+        emit(current.copyWith(isKycUploading: false));
+        debugPrint('Error uploading KYC document: $e');
+      }
+    }
+  }
+
   @override
   Future<void> close() {
     _profileSubscription?.cancel();
+    _kycSubscription?.cancel();
     return super.close();
   }
 }
+
 

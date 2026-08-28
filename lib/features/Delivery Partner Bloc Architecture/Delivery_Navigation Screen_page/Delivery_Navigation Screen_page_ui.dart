@@ -280,9 +280,22 @@ class DeliveryNavigationScreenPageView extends StatelessWidget {
     return BlocConsumer<DeliveryNavigationBloc, DeliveryNavigationState>(
       listenWhen: (previous, current) =>
           previous.status != current.status ||
+          previous.isDeliveryOtpVerified != current.isDeliveryOtpVerified ||
+          previous.navigationStage != current.navigationStage ||
           (previous.errorMessage != current.errorMessage &&
               current.errorMessage != null),
       listener: (context, state) {
+        if (state.isDeliveryOtpVerified ||
+            state.navigationStage == NavigationStage.completed) {
+          final effectiveOrderId = state.activeOrderId.isNotEmpty
+              ? state.activeOrderId
+              : state.order.orderId;
+          Navigator.of(context).pushReplacementNamed(
+            '/deliveryCompleted',
+            arguments: {'orderId': effectiveOrderId},
+          );
+          return;
+        }
         if (state.status == DeliveryNavigationStatus.error &&
             state.errorMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -410,15 +423,77 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
     if (widget.state.isStageToRestaurant) {
       bloc.add(const DeliveryNavigationConfirmPickupEvent());
     } else {
-      bloc.add(const DeliveryNavigationConfirmDeliveryEvent());
+      _showDeliveryOtpVerificationSheet(context, widget.state);
     }
+  }
+
+  void _showDeliveryOtpVerificationSheet(
+    BuildContext context,
+    DeliveryNavigationState state,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return BlocProvider.value(
+          value: context.read<DeliveryNavigationBloc>(),
+          child: _DeliveryOtpVerificationModal(
+            orderId: state.activeOrderId.isNotEmpty
+                ? state.activeOrderId
+                : state.order.orderId,
+            customerName: state.customerName,
+            isCOD: state.isCOD,
+            codAmount: state.codAmountToCollect,
+            localeCode: state.localeCode,
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final localeCode = widget.state.localeCode;
-    return LayoutBuilder(
-      builder: (context, constraints) {
+    final hasActiveOrder = widget.state.activeOrderId.isNotEmpty;
+
+    return PopScope(
+      canPop: !hasActiveOrder,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            title: const Text(
+              'Exit Navigation?',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            content: const Text(
+              'Your active delivery journey is in progress. Are you sure you want to return to Dashboard?',
+              style: TextStyle(color: Color(0xFF94A3B8)),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Stay', style: TextStyle(color: Color(0xFF94A3B8))),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEA580C),
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Exit to Dashboard', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+        if (shouldExit == true && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
         final stagePanel = _StageBanner(
           state: widget.state,
           localeCode: localeCode,
@@ -615,8 +690,9 @@ class _NavigationDashboardState extends State<_NavigationDashboard> {
           ],
         );
       },
-    );
-  }
+    ),
+  );
+}
 }
 
 class _NavigationTopBar extends StatelessWidget {
@@ -3971,3 +4047,260 @@ class _HotspotTile extends StatelessWidget {
     );
   }
 }
+
+class _DeliveryOtpVerificationModal extends StatefulWidget {
+  final String orderId;
+  final String customerName;
+  final bool isCOD;
+  final double codAmount;
+  final String localeCode;
+
+  const _DeliveryOtpVerificationModal({
+    required this.orderId,
+    required this.customerName,
+    required this.isCOD,
+    required this.codAmount,
+    required this.localeCode,
+  });
+
+  @override
+  State<_DeliveryOtpVerificationModal> createState() =>
+      _DeliveryOtpVerificationModalState();
+}
+
+class _DeliveryOtpVerificationModalState
+    extends State<_DeliveryOtpVerificationModal> {
+  final TextEditingController _otpController = TextEditingController();
+  final TextEditingController _cashController = TextEditingController();
+
+  @override
+  void dispose() {
+    _otpController.disposenatural();
+    _cashController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<DeliveryNavigationBloc, DeliveryNavigationState>(
+      builder: (context, state) {
+        final isVerifying =
+            state.deliveryOtpStatus == DeliveryOtpVerificationStatus.verifying;
+        final hasError =
+            state.deliveryOtpStatus == DeliveryOtpVerificationStatus.invalid;
+
+        return Container(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E293B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF64748B),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEA580C).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.pin_drop_rounded,
+                      color: Color(0xFFEA580C),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Customer Drop-Off Verification',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Order ${widget.orderId} · ${widget.customerName}',
+                          style: const TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (widget.isCOD) ...[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF334155)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'COD Cash to Collect:',
+                            style: TextStyle(
+                              color: Color(0xFF94A3B8),
+                              fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            '\u{20B9}${widget.codAmount.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: Color(0xFF10B981),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              const Text(
+                'Enter 4-Digit Delivery OTP from Customer:',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                key: const Key('dp_delivery_otp_input'),
+                controller: _otpController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 8,
+                ),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: '· · · ·',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFF64748B),
+                    letterSpacing: 8,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF334155)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFEA580C), width: 2),
+                  ),
+                ),
+                onChanged: (val) {
+                  context
+                      .read<DeliveryNavigationBloc>()
+                      .add(DeliveryNavigationOtpInputChangedEvent(val));
+                },
+              ),
+              if (hasError) ...[
+                const SizedBox(height: 8),
+                Text(
+                  state.deliveryOtpErrorMessage ??
+                      'Invalid OTP. Please ask the customer for the correct code.',
+                  style: const TextStyle(
+                    color: Color(0xFFEF4444),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 20),
+              ElevatedButton(
+                key: const Key('dp_verify_delivery_otp_btn'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEA580C),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: isVerifying
+                    ? null
+                    : () {
+                        final otp = _otpController.text.trim();
+                        if (otp.isEmpty) return;
+                        context.read<DeliveryNavigationBloc>().add(
+                              DeliveryNavigationVerifyDeliveryOtpEvent(
+                                orderId: widget.orderId,
+                                otp: otp,
+                              ),
+                            );
+                      },
+                child: isVerifying
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Verify OTP & Complete Delivery',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+extension on TextEditingController {
+  void disposenatural() {
+    dispose();
+  }
+}
+

@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Incentives%20Dashboard_page/Delivery_Incentives%20Dashboard_page_service.dart';
 
 class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockUser extends Mock implements User {}
 
 void main() {
   group('DeliveryIncentivesDashboardPage Service Tests', () {
@@ -21,52 +22,52 @@ void main() {
       );
     });
 
-    test('fetchIncentivesData returns valid incentive metric data', () async {
+    test('fetchIncentivesData returns empty state when partnerDoc does not exist', () async {
       final data = await service.fetchIncentivesData();
 
-      expect(data['walletBalance'], 2450.00);
-      expect(data['todayBonus'], 350.00);
-      expect(data['todayBonusGrowth'], 12.5);
-      expect(data['weeklyBonus'], 1250.00);
-      expect(data['weeklyBonusGrowth'], 18.6);
-      expect(data['monthlyBonus'], 4750.00);
-      expect(data['monthlyBonusGrowth'], 24.3);
-      expect(data['targetProgress'], 76.0);
-      expect(data['targetEarned'], 7650.00);
+      expect(data['walletBalance'], 0.0);
+      expect(data['todayBonus'], 0.0);
+      expect(data['weeklyBonus'], 0.0);
+      expect(data['monthlyBonus'], 0.0);
+      expect(data['targetProgress'], 0.0);
+      expect(data['targetEarned'], 0.0);
       expect(data['targetGoal'], 10000.00);
+      expect(data['rewards'], isEmpty);
     });
 
-    test(
-      'fetchIncentivesData includes chart ranges, achievements and slices',
-      () async {
-        final data = await service.fetchIncentivesData();
+    test('fetchIncentivesData calculates metrics correctly from Firestore', () async {
+      const testUid = 'partner_123';
+      final mockAuth = MockFirebaseAuth();
+      final mockUser = MockUser();
+      when(() => mockAuth.currentUser).thenReturn(mockUser);
+      when(() => mockUser.uid).thenReturn(testUid);
 
-        final ranges = data['rangePoints'] as Map<String, dynamic>;
-        expect(ranges['today'], hasLength(6));
-        expect(ranges['last7Days'], hasLength(7));
-        expect(ranges['thisWeek'], hasLength(7));
-        expect(ranges['thisMonth'], hasLength(4));
+      await fakeFirestore.collection('delivery_partners').doc(testUid).set({
+        'walletBalance': 1500.0,
+        'totalEarnings': 1500.0,
+        'bonusEarnings': 500.0,
+        'incentiveEarnings': 300.0,
+        'totalDeliveries': 25,
+        'todayDeliveries': 10,
+        'weeklyDeliveries': 50,
+        'currentStreakDays': 7,
+      });
 
-        expect(data['achievements'], hasLength(4));
-        expect((data['achievements'] as List).first['title'], 'Early Bird');
+      final authService = DeliveryIncentivesDashboardService(
+        firestore: fakeFirestore,
+        auth: mockAuth,
+      );
 
-        final slices = data['donutSlices'] as List;
-        final sliceTotal = slices.fold<double>(
-          0.0,
-          (sum, s) => sum + ((s as Map)['value'] as num).toDouble(),
-        );
-        expect(sliceTotal, 4750.00);
+      final data = await authService.fetchIncentivesData();
 
-        expect(data['milestones'], hasLength(5));
-      },
-    );
-
-    test('fetchIncentivesData generates reward history', () async {
-      final data = await service.fetchIncentivesData();
-
-      final rewards = data['rewards'] as List;
-      expect(rewards, isNotEmpty);
-      expect((rewards.first as Map)['referenceId'], 'REF-1040');
+      expect(data['walletBalance'], 1500.0);
+      expect(data['todayBonus'], 300.0);
+      expect(data['weeklyBonus'], 1500.0);
+      expect(data['monthlyBonus'], 800.0);
+      expect(data['currentStreakDays'], 7);
+      expect(data['todayDeliveries'], 10);
+      expect(data['weeklyDeliveries'], 50);
+      expect(data['totalDeliveries'], 25);
     });
 
     test('fetchIncentivesData does not expose secrets in the payload', () async {

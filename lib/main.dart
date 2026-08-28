@@ -38,12 +38,16 @@ import 'core/repositories/i_seller_notification_repository.dart';
 import 'repositories/firebase_seller_notification_repository.dart';
 import 'core/services/theme_manager.dart';
 import 'core/services/locale_manager.dart';
+import 'core/routes/app_router.dart';
 
 import 'features/buyer_bloc_architecture/CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import 'features/buyer_bloc_architecture/onboarding_page/onboarding_page_UI.dart';
 import 'features/buyer_bloc_architecture/Cart Page/cart_page_Bloc.dart';
 import 'features/buyer_bloc_architecture/Favorites_Page/favorites_bloc.dart';
 import 'features/buyer_bloc_architecture/home_Page/home_Page_Bloc.dart';
+import 'features/buyer_bloc_architecture/Notifications_page/buyer_notification_bloc.dart';
+import 'features/buyer_bloc_architecture/Notifications_page/buyer_notification_event.dart';
+import 'features/buyer_bloc_architecture/Notifications_page/buyer_notification_service.dart';
 
 import 'features/seller_bloc_architecture/seller_onboard_page/seller_onboard_page_ui.dart';
 import 'features/seller_bloc_architecture/seller_login_page/seller_login_page_ui.dart';
@@ -238,6 +242,24 @@ class MyApp extends StatelessWidget {
                 categoryRepository: effectiveCategoryRepo,
               )..add(const HomePageStarted()),
             ),
+          BlocProvider<BuyerNotificationBloc>(
+            create: (context) {
+              final bloc = BuyerNotificationBloc(
+                repository: effectiveBuyerNotificationRepo,
+                service: BuyerNotificationService(),
+              );
+              final uid = effectiveAuthService.currentUserId;
+              if (uid != null && uid.isNotEmpty) {
+                bloc.add(StartListeningNotifications(uid));
+              }
+              effectiveAuthService.authStateChanges.listen((newUid) {
+                if (newUid != null && newUid.isNotEmpty) {
+                  bloc.add(StartListeningNotifications(newUid));
+                }
+              });
+              return bloc;
+            },
+          ),
         ],
         child: ValueListenableBuilder<ThemeMode>(
           valueListenable: effectiveThemeManager.themeModeNotifier,
@@ -263,116 +285,8 @@ class MyApp extends StatelessWidget {
                     useMaterial3: true,
                   ),
                   home: _getHomeWidget(),
-                  routes: {
-                    '/sellerlogin': (context) => const SellerLoginPageUI(),
-                    '/login': (context) => const SellerLoginPageUI(),
-                    '/sellerDashboard': (context) =>
-                        const SellerNavigationBarViewPageUI(),
-                    '/sellerSignUp': (context) => const SellerSignUpPageUI(),
-                    '/deliveryLogin': (context) => const DeliveryLoginPage(),
-                    '/deliveryNavigationBar': (context) =>
-                        const DeliveryNavigationBarPage(),
-                    '/deliverySignUp': (context) => const DeliverySignUpPage(),
-                    '/deliveryForgotPassword': (context) =>
-                        const DeliveryForgotPasswordPage(),
-                    '/deliveryIncomingOrder': (context) =>
-                        const DeliveryIncomingOrderPageUi(),
-                    '/deliveryPickupConfirmation': (context) =>
-                        const DeliveryPickupConfirmationPage(orderId: ''),
-                    '/deliveryNavigationScreen': (context) =>
-                        const DeliveryNavigationScreenPage(),
-                    '/deliveryCompleted': (context) =>
-                        const DeliveryCompletedPage(orderId: ''),
-                  },
-                  onGenerateRoute: (settings) {
-                    final args =
-                        settings.arguments as Map<String, dynamic>? ?? {};
-                    if (settings.name == '/deliveryOtpVerification') {
-                      return MaterialPageRoute(
-                        builder: (context) => DeliveryOtpVerificationPage(
-                          verificationId:
-                              args['verificationId'] as String? ?? '',
-                          name: args['name'] as String? ?? '',
-                          phone: args['phone'] as String? ?? '',
-                          email: args['email'] as String? ?? '',
-                          password: args['password'] as String? ?? '',
-                        ),
-                      );
-                    }
-                    if (settings.name == '/deliveryChat') {
-                      return MaterialPageRoute(
-                        builder: (context) => DeliveryChatPage(
-                          orderId: args['orderId'] as String? ?? '',
-                          customerId: args['customerId'] as String? ?? '',
-                          customerName: args['customerName'] as String? ?? '',
-                          customerPhone: args['customerPhone'] as String?,
-                          sellerId: args['sellerId'] as String?,
-                          sellerName: args['sellerName'] as String?,
-                          sellerPhone: args['sellerPhone'] as String?,
-                          orderTitle: args['orderTitle'] as String?,
-                          orderTotal: (args['orderTotal'] as num?)?.toDouble(),
-                          recipientRole:
-                              args['recipientRole'] as String? ?? 'customer',
-                        ),
-                      );
-                    }
-                    if (settings.name == '/deliveryOrderDetails') {
-                      return MaterialPageRoute(
-                        builder: (context) => DeliveryOrderDetailsPageUi(
-                          orderId: args['orderId'] as String? ?? '',
-                        ),
-                      );
-                    }
-                    if (settings.name == '/deliveryNavigationScreen') {
-                      return MaterialPageRoute(
-                        builder: (context) => DeliveryNavigationScreenPage(
-                          orderId: args['orderId'] as String?,
-                          pickupAddress: args['pickupAddress'] as String?,
-                          dropoffAddress: args['dropoffAddress'] as String?,
-                          restaurantName: args['restaurantName'] as String?,
-                          customerName: args['customerName'] as String?,
-                          destinationLatitude:
-                              (args['destinationLatitude'] as num?)?.toDouble(),
-                          destinationLongitude:
-                              (args['destinationLongitude'] as num?)
-                                  ?.toDouble(),
-                          isStoreRoute: args['isStoreRoute'] as bool?,
-                        ),
-                      );
-                    }
-                    if (settings.name == '/deliveryIncomingOrder') {
-                      return MaterialPageRoute(
-                        builder: (context) =>
-                            const DeliveryIncomingOrderPageUi(),
-                      );
-                    }
-                    if (settings.name == '/deliveryPickupConfirmation') {
-                      return MaterialPageRoute(
-                        builder: (context) => DeliveryPickupConfirmationPage(
-                          orderId: args['orderId'] as String? ?? '',
-                        ),
-                      );
-                    }
-                    if (settings.name == '/deliveryCompleted') {
-                      return MaterialPageRoute(
-                        builder: (context) => DeliveryCompletedPage(
-                          orderId: args['orderId'] as String? ?? '',
-                        ),
-                      );
-                    }
-                    if (settings.name == '/sellerSignUp') {
-                      return MaterialPageRoute(
-                        builder: (context) => const SellerSignUpPageUI(),
-                      );
-                    }
-                    if (settings.name == '/sellerlogin' ||
-                        settings.name == '/login') {
-                      return MaterialPageRoute(
-                        builder: (context) => const SellerLoginPageUI(),
-                      );
-                    }
-                    return null;
-                  },
+                  onGenerateRoute: AppRouter.generateRoute,
+                  onUnknownRoute: AppRouter.unknownRoute,
                 );
               },
             );

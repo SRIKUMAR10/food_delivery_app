@@ -143,7 +143,7 @@ void main() {
       );
     });
 
-    test('emits failure with Invalid mobile number or password. when credentials are wrong', () async {
+    test('emits failure with Please check the mobile number and password when credentials are wrong', () async {
       when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => true);
       when(() => mockRepo.login(phone: '+919876543210', password: 'wrongpassword')).thenThrow(
         Exception('invalid-credential'),
@@ -156,7 +156,7 @@ void main() {
           const BuyerLoginState(status: BuyerLoginStatus.loading),
           const BuyerLoginState(
             status: BuyerLoginStatus.failure,
-            errorMessage: 'Invalid mobile number or password.',
+            errorMessage: 'Please check the mobile number and password',
           ),
         ]),
       );

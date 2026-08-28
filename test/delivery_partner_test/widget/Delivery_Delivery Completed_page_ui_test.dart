@@ -187,7 +187,7 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('dp_completed_upload_proof')));
       await tester.pump();
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Proof uploaded'), findsOneWidget);
       expect(tester.takeException(), isNull);

@@ -178,7 +178,7 @@ void main() {
         customerPhone: any(named: 'customerPhone'),
         appliedCoupon: any(named: 'appliedCoupon'),
         paymentMethod: any(named: 'paymentMethod'),
-      )).thenAnswer((_) async => {});
+      )).thenAnswer((_) async => 'order_123');
 
       when(() => mockSellerStatusService.checkAvailability(any())).thenAnswer(
         (_) async => const SellerAvailability(isOnline: true, isOpen: true),
@@ -424,7 +424,7 @@ void main() {
             deliveryAddress: any(named: 'deliveryAddress'),
             customerPhone: any(named: 'customerPhone'),
             appliedCoupon: any(named: 'appliedCoupon'),
-          )).thenAnswer((_) async => {});
+          )).thenAnswer((_) async => 'order_123');
 
       cartBloc.close();
       cartBloc = CartBloc(
@@ -488,7 +488,7 @@ void main() {
         customerPhone: any(named: 'customerPhone'),
         appliedCoupon: any(named: 'appliedCoupon'),
         paymentMethod: any(named: 'paymentMethod'),
-      )).thenAnswer((_) async => {});
+      )).thenAnswer((_) async => 'order_123');
 
       when(() => mockSellerStatusService.checkAvailability(any())).thenAnswer(
         (_) async => const SellerAvailability(isOnline: true, isOpen: true),
@@ -605,6 +605,114 @@ void main() {
 
       verify(() => mockCartRepository.updateItemPrice('test_uid', 'cake1', 142.0)).called(1);
       expect(failureMessage, contains('price has been automatically updated from ₹120 to ₹142'));
+    });
+
+    test('DeliveryAddressTypeChanged updates selected address type and resolves correct address', () async {
+      when(() => mockCartRepository.getCartItemsStream('test_uid'))
+          .thenAnswer((_) => Stream.value([]));
+      when(() => mockUserProfileRepository.watchProfile('test_uid'))
+          .thenAnswer((_) => Stream.value(const UserProfile(
+                name: 'Test Buyer',
+                email: 'buyer@test.com',
+                phone: '9876543210',
+                address: '123 Main St',
+                homeAddress: 'Home Address 101',
+                workAddress: 'Work Office 202',
+                otherAddress: 'Other Place 303',
+                selectedAddressType: 'Home',
+              )));
+      when(() => mockUserProfileRepository.loadProfile('test_uid'))
+          .thenAnswer((_) async => const UserProfile(
+                name: 'Test Buyer',
+                email: 'buyer@test.com',
+                phone: '9876543210',
+                address: '123 Main St',
+                homeAddress: 'Home Address 101',
+                workAddress: 'Work Office 202',
+                otherAddress: 'Other Place 303',
+                selectedAddressType: 'Home',
+              ));
+
+      cartBloc.close();
+      cartBloc = CartBloc(
+        cartRepository: mockCartRepository,
+        couponRepository: mockCouponRepository,
+        productRepository: mockProductRepository,
+        authService: mockAuthService,
+        sellerStatusService: mockSellerStatusService,
+        razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final stateBefore = cartBloc.state as CartLoaded;
+      expect(stateBefore.selectedAddressType, 'Home');
+      expect(stateBefore.deliveryAddress, 'Home Address 101');
+      expect(stateBefore.homeAddress, 'Home Address 101');
+      expect(stateBefore.workAddress, 'Work Office 202');
+
+      cartBloc.add(const DeliveryAddressTypeChanged('Work'));
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final stateAfter = cartBloc.state as CartLoaded;
+      expect(stateAfter.selectedAddressType, 'Work');
+      expect(stateAfter.deliveryAddress, 'Work Office 202');
+      verify(() => mockUserProfileRepository.saveProfile('test_uid', any())).called(1);
+    });
+
+    test('DeliveryAddressUpdated updates specific address and persists to repository', () async {
+      when(() => mockCartRepository.getCartItemsStream('test_uid'))
+          .thenAnswer((_) => Stream.value([]));
+      when(() => mockUserProfileRepository.watchProfile('test_uid'))
+          .thenAnswer((_) => Stream.value(const UserProfile(
+                name: 'Test Buyer',
+                email: 'buyer@test.com',
+                phone: '9876543210',
+                address: '',
+                homeAddress: '',
+                workAddress: '',
+                otherAddress: '',
+                selectedAddressType: 'Home',
+              )));
+      when(() => mockUserProfileRepository.loadProfile('test_uid'))
+          .thenAnswer((_) async => const UserProfile(
+                name: 'Test Buyer',
+                email: 'buyer@test.com',
+                phone: '9876543210',
+                address: '',
+                homeAddress: '',
+                workAddress: '',
+                otherAddress: '',
+                selectedAddressType: 'Home',
+              ));
+
+      cartBloc.close();
+      cartBloc = CartBloc(
+        cartRepository: mockCartRepository,
+        couponRepository: mockCouponRepository,
+        productRepository: mockProductRepository,
+        authService: mockAuthService,
+        sellerStatusService: mockSellerStatusService,
+        razorpayApiService: mockRazorpayApiService,
+        userProfileRepository: mockUserProfileRepository,
+        firestore: FakeFirebaseFirestore(),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      cartBloc.add(const DeliveryAddressUpdated(
+        addressType: 'Home',
+        address: '456 New Home Road',
+      ));
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final updatedState = cartBloc.state as CartLoaded;
+      expect(updatedState.selectedAddressType, 'Home');
+      expect(updatedState.homeAddress, '456 New Home Road');
+      expect(updatedState.deliveryAddress, '456 New Home Road');
+      verify(() => mockUserProfileRepository.saveProfile('test_uid', any())).called(1);
     });
   });
 }

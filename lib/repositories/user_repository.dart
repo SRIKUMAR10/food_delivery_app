@@ -170,7 +170,7 @@ class UserRepository {
           e.code == 'INVALID_LOGIN_CREDENTIALS' ||
           e.code == 'wrong_password' ||
           e.code == 'invalid_credential') {
-        throw Exception('Invalid mobile number or password.');
+        throw Exception('Please check the mobile number and password');
       }
 
       if (e.code == 'user-not-found') {
@@ -178,7 +178,7 @@ class UserRepository {
         if (!isRegistered) {
           throw Exception('No registered buyer account found for "$trimmedEmail". Please sign up.');
         }
-        throw Exception('Invalid mobile number or password.');
+        throw Exception('Please check the mobile number and password');
       }
 
       if (e.code == 'account-exists-with-different-credential') {
@@ -217,8 +217,9 @@ class UserRepository {
     } on FirebaseFunctionsException catch (fe) {
       debugPrint('customLogin FirebaseFunctionsException in signIn: ${fe.code} - ${fe.message}');
       if (fe.code == 'unauthenticated' ||
-          (fe.message != null && (fe.message!.contains('Password is incorrect') || fe.message!.contains('incorrect')))) {
-        throw Exception('Invalid mobile number or password.');
+          fe.code == 'internal' ||
+          (fe.message != null && (fe.message!.contains('Password is incorrect') || fe.message!.contains('incorrect') || fe.message!.contains('INTERNAL') || fe.message!.contains('internal')))) {
+        throw Exception('Please check the mobile number and password');
       }
     } catch (ce) {
       debugPrint('customLogin fallback note: $ce');
@@ -230,7 +231,7 @@ class UserRepository {
       throw Exception('No registered buyer account found for "$trimmedEmail". Please sign up.');
     }
 
-    throw Exception('Invalid mobile number or password.');
+    throw Exception('Please check the mobile number and password');
   }
 
   Future<bool> _doesEmailExistInAuth(String email) async {
@@ -399,8 +400,9 @@ class UserRepository {
     } on FirebaseFunctionsException catch (e) {
       debugPrint('customLogin FirebaseFunctionsException: ${e.code} - ${e.message}');
       if (e.code == 'unauthenticated' ||
-          (e.message != null && (e.message!.contains('Password is incorrect') || e.message!.contains('incorrect')))) {
-        throw Exception('Invalid mobile number or password.');
+          e.code == 'internal' ||
+          (e.message != null && (e.message!.contains('Password is incorrect') || e.message!.contains('incorrect') || e.message!.contains('INTERNAL') || e.message!.contains('internal')))) {
+        throw Exception('Please check the mobile number and password');
       }
       if (e.code == 'not-found' || (e.message != null && e.message!.contains('No registered account'))) {
         throw Exception('No registered buyer account found for "$trimmed". Please sign up.');

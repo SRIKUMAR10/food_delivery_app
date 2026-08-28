@@ -121,6 +121,11 @@ class ChatSupportPage extends StatelessWidget {
     this.orderTotal,
   }) : super(key: key);
 
+  bool get isDirectChat =>
+      (initialConversationId != null && initialConversationId!.isNotEmpty) ||
+      (initialOrderId != null && initialOrderId!.isNotEmpty) ||
+      (partnerId != null && partnerId!.isNotEmpty);
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -137,13 +142,14 @@ class ChatSupportPage extends StatelessWidget {
           orderTitle: orderTitle,
           orderTotal: orderTotal,
         )),
-      child: const ChatSupportView(),
+      child: ChatSupportView(isDirectChat: isDirectChat),
     );
   }
 }
 
 class ChatSupportView extends StatelessWidget {
-  const ChatSupportView({Key? key}) : super(key: key);
+  final bool isDirectChat;
+  const ChatSupportView({Key? key, this.isDirectChat = false}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -184,6 +190,24 @@ class ChatSupportView extends StatelessWidget {
           if (isDesktop) {
             content = Scaffold(
               backgroundColor: _AppTheme.background,
+              appBar: Navigator.canPop(context) || SellerDrawerProvider.of(context) != null
+                  ? AppBar(
+                      title: const Text('Support Chat Console'),
+                      backgroundColor: _AppTheme.card,
+                      elevation: 0.5,
+                      leading: Navigator.canPop(context)
+                          ? IconButton(
+                              icon: const Icon(Icons.arrow_back_rounded, color: _AppTheme.textPrimary),
+                              onPressed: () => Navigator.of(context).pop(),
+                            )
+                          : (SellerDrawerProvider.of(context) != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.menu_rounded, color: _AppTheme.textPrimary),
+                                  onPressed: SellerDrawerProvider.of(context),
+                                )
+                              : null),
+                    )
+                  : null,
               body: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
@@ -225,6 +249,7 @@ class ChatSupportView extends StatelessWidget {
                                   messages: state.messages,
                                   isSending: state.isSendingMessage,
                                   isDesktop: true,
+                                  isDirectChat: isDirectChat,
                                   isOtherUserTyping: state.isOtherUserTyping,
                                   otherUserTypingName: state.otherUserTypingName,
                                 ),
@@ -254,6 +279,7 @@ class ChatSupportView extends StatelessWidget {
               messages: state.messages,
               isSending: state.isSendingMessage,
               isDesktop: false,
+              isDirectChat: isDirectChat,
               isOtherUserTyping: state.isOtherUserTyping,
               otherUserTypingName: state.otherUserTypingName,
             );
@@ -268,10 +294,10 @@ class ChatSupportView extends StatelessWidget {
           }
 
           return PopScope(
-            canPop: state.selectedConversationId == null,
+            canPop: isDirectChat ? true : (state.selectedConversationId == null),
             onPopInvokedWithResult: (didPop, result) {
               if (didPop) return;
-              if (state.selectedConversationId != null) {
+              if (!isDirectChat && state.selectedConversationId != null) {
                 context.read<ChatSupportBloc>().add(SelectChatSessionEvent(''));
               }
             },
@@ -436,7 +462,7 @@ class _ChatListViewState extends State<_ChatListView> {
         leading: Navigator.canPop(context)
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded, color: _AppTheme.textPrimary),
-                onPressed: () => Navigator.maybePop(context),
+                onPressed: () => Navigator.of(context).pop(),
               )
             : (SellerDrawerProvider.of(context) != null
                 ? IconButton(
@@ -920,6 +946,7 @@ class _ChatDetailsView extends StatefulWidget {
   final List<ChatMessageModel> messages;
   final bool isSending;
   final bool isDesktop;
+  final bool isDirectChat;
   final bool isOtherUserTyping;
   final String? otherUserTypingName;
 
@@ -928,6 +955,7 @@ class _ChatDetailsView extends StatefulWidget {
     required this.messages,
     required this.isSending,
     required this.isDesktop,
+    this.isDirectChat = false,
     this.isOtherUserTyping = false,
     this.otherUserTypingName,
   });
@@ -1087,6 +1115,7 @@ class _ChatDetailsViewState extends State<_ChatDetailsView> {
             _SellerChatHeader(
               conversation: widget.conversation,
               isDesktop: widget.isDesktop,
+              isDirectChat: widget.isDirectChat,
               onCameraTap: _openCamera,
               onInvoiceTap: _generateInvoice,
               isOtherUserTyping: widget.isOtherUserTyping,
@@ -1386,6 +1415,7 @@ class _TypingDotsAnimationState extends State<_TypingDotsAnimation>
 class _SellerChatHeader extends StatelessWidget {
   final ConversationModel conversation;
   final bool isDesktop;
+  final bool isDirectChat;
   final VoidCallback onCameraTap;
   final VoidCallback onInvoiceTap;
   final bool isOtherUserTyping;
@@ -1394,6 +1424,7 @@ class _SellerChatHeader extends StatelessWidget {
   const _SellerChatHeader({
     required this.conversation,
     required this.isDesktop,
+    this.isDirectChat = false,
     required this.onCameraTap,
     required this.onInvoiceTap,
     this.isOtherUserTyping = false,
@@ -1422,14 +1453,18 @@ class _SellerChatHeader extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
             onPressed: () {
-              final bloc = context.read<ChatSupportBloc>();
-              final state = bloc.state;
-              if (state is ChatSupportLoaded &&
-                  state.selectedConversationId != null &&
-                  state.selectedConversationId!.isNotEmpty) {
-                bloc.add(SelectChatSessionEvent(''));
-              } else if (Navigator.canPop(context)) {
-                Navigator.maybePop(context);
+              if (isDirectChat && Navigator.canPop(context)) {
+                Navigator.of(context).pop();
+              } else {
+                final bloc = context.read<ChatSupportBloc>();
+                final state = bloc.state;
+                if (state is ChatSupportLoaded &&
+                    state.selectedConversationId != null &&
+                    state.selectedConversationId!.isNotEmpty) {
+                  bloc.add(SelectChatSessionEvent(''));
+                } else if (Navigator.canPop(context)) {
+                  Navigator.of(context).pop();
+                }
               }
             },
           ),

@@ -90,5 +90,46 @@ void main() {
         emits(predicate<Map<String, dynamic>>((map) => map['storeName'] == 'Realtime Grill')),
       );
     });
+
+    test('watchKycDocuments emits real-time KYC updates', () async {
+      final stream = Stream.value({
+        'kycStatus': 'in_review',
+        'fssaiLicense': '12345678901234',
+      });
+      when(() => mockRepository.watchKycDocuments('seller_123'))
+          .thenAnswer((_) => stream);
+
+      final resultStream = mockRepository.watchKycDocuments('seller_123');
+
+      expect(
+        resultStream,
+        emits(predicate<Map<String, dynamic>>((map) => map['kycStatus'] == 'in_review')),
+      );
+    });
+
+    test('loadKycDocuments returns KYC document map on success', () async {
+      final kycData = {
+        'kycStatus': 'verified',
+        'gstNumber': '33AAAAA0000A1Z5',
+      };
+      when(() => mockRepository.loadKycDocuments('seller_123'))
+          .thenAnswer((_) async => kycData);
+
+      final result = await mockRepository.loadKycDocuments('seller_123');
+
+      expect(result['kycStatus'], 'verified');
+      expect(result['gstNumber'], '33AAAAA0000A1Z5');
+      verify(() => mockRepository.loadKycDocuments('seller_123')).called(1);
+    });
+
+    test('updateKycDocuments updates KYC data', () async {
+      final kycData = {'kycStatus': 'in_review'};
+      when(() => mockRepository.updateKycDocuments('seller_123', kycData))
+          .thenAnswer((_) async {});
+
+      await mockRepository.updateKycDocuments('seller_123', kycData);
+
+      verify(() => mockRepository.updateKycDocuments('seller_123', kycData)).called(1);
+    });
   });
 }

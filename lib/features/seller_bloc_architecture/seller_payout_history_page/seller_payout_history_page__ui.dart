@@ -86,7 +86,7 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
             color: Color(0xFF0F172A),
             size: 20,
           ),
-          onPressed: () => Navigator.maybePop(context),
+          onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           'Payout History',

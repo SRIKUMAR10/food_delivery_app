@@ -18,6 +18,14 @@ class AppGoogleMapState extends Equatable {
   final DistanceMatrixResult? distanceMatrixResult;
   final String? computedEtaText;
   final double? computedDistanceKm;
+  final bool isVoiceGuidanceEnabled;
+  final bool is3DTiltMode;
+  final bool isRouteLoading;
+  final String? routeErrorMessage;
+  final List<RouteStepInfo> navigationSteps;
+  final RouteStepInfo? currentManeuverStep;
+  final double distanceToNextTurnMeters;
+  final bool showHeatmapLayer;
 
   const AppGoogleMapState({
     this.mapType = MapType.normal,
@@ -34,6 +42,14 @@ class AppGoogleMapState extends Equatable {
     this.distanceMatrixResult,
     this.computedEtaText,
     this.computedDistanceKm,
+    this.isVoiceGuidanceEnabled = true,
+    this.is3DTiltMode = false,
+    this.isRouteLoading = false,
+    this.routeErrorMessage,
+    this.navigationSteps = const [],
+    this.currentManeuverStep,
+    this.distanceToNextTurnMeters = 0.0,
+    this.showHeatmapLayer = false,
   });
 
   AppGoogleMapState copyWith({
@@ -51,6 +67,14 @@ class AppGoogleMapState extends Equatable {
     DistanceMatrixResult? distanceMatrixResult,
     String? computedEtaText,
     double? computedDistanceKm,
+    bool? isVoiceGuidanceEnabled,
+    bool? is3DTiltMode,
+    bool? isRouteLoading,
+    String? routeErrorMessage,
+    List<RouteStepInfo>? navigationSteps,
+    RouteStepInfo? currentManeuverStep,
+    double? distanceToNextTurnMeters,
+    bool? showHeatmapLayer,
   }) {
     return AppGoogleMapState(
       mapType: mapType ?? this.mapType,
@@ -58,7 +82,8 @@ class AppGoogleMapState extends Equatable {
       autoFollowDriver: autoFollowDriver ?? this.autoFollowDriver,
       showWeatherOverlay: showWeatherOverlay ?? this.showWeatherOverlay,
       deviceGpsLocation: deviceGpsLocation ?? this.deviceGpsLocation,
-      snappedDriverLocation: snappedDriverLocation ?? this.snappedDriverLocation,
+      snappedDriverLocation:
+          snappedDriverLocation ?? this.snappedDriverLocation,
       driverBearing: driverBearing ?? this.driverBearing,
       routeSnapResult: routeSnapResult ?? this.routeSnapResult,
       roadPolylines: roadPolylines ?? this.roadPolylines,
@@ -67,6 +92,16 @@ class AppGoogleMapState extends Equatable {
       distanceMatrixResult: distanceMatrixResult ?? this.distanceMatrixResult,
       computedEtaText: computedEtaText ?? this.computedEtaText,
       computedDistanceKm: computedDistanceKm ?? this.computedDistanceKm,
+      isVoiceGuidanceEnabled:
+          isVoiceGuidanceEnabled ?? this.isVoiceGuidanceEnabled,
+      is3DTiltMode: is3DTiltMode ?? this.is3DTiltMode,
+      isRouteLoading: isRouteLoading ?? this.isRouteLoading,
+      routeErrorMessage: routeErrorMessage ?? this.routeErrorMessage,
+      navigationSteps: navigationSteps ?? this.navigationSteps,
+      currentManeuverStep: currentManeuverStep ?? this.currentManeuverStep,
+      distanceToNextTurnMeters:
+          distanceToNextTurnMeters ?? this.distanceToNextTurnMeters,
+      showHeatmapLayer: showHeatmapLayer ?? this.showHeatmapLayer,
     );
   }
 
@@ -86,6 +121,13 @@ class AppGoogleMapState extends Equatable {
         distanceMatrixResult,
         computedEtaText,
         computedDistanceKm,
+        isVoiceGuidanceEnabled,
+        is3DTiltMode,
+        isRouteLoading,
+        routeErrorMessage,
+        navigationSteps,
+        currentManeuverStep,
+        distanceToNextTurnMeters,
+        showHeatmapLayer,
       ];
 }
-

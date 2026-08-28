@@ -221,5 +221,55 @@ void main() {
 
       expect(find.textContaining('typing'), findsWidgets);
     });
+
+    testWidgets('pops route when back button is tapped in direct chat mode',
+        (tester) async {
+      final mockBloc = MockChatSupportBloc();
+      when(() => mockBloc.stream).thenAnswer((_) => const Stream.empty());
+      when(() => mockBloc.close()).thenAnswer((_) async {});
+      when(() => mockBloc.state).thenReturn(ChatSupportLoaded(
+            currentUserId: 'seller1',
+            conversations: [
+              makeConversation(id: 'conv_1', buyerId: 'buyer_1', buyerName: 'Aarav'),
+            ],
+            selectedConversationId: 'conv_1',
+          ));
+
+      bool didPop = false;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => MultiRepositoryProvider(
+                    providers: [
+                      RepositoryProvider<IChatRepository>.value(value: mockChatRepo),
+                      RepositoryProvider<IOrderRepository>.value(value: mockOrderRepo),
+                    ],
+                    child: BlocProvider<ChatSupportBloc>.value(
+                      value: mockBloc,
+                      child: const ChatSupportView(isDirectChat: true),
+                    ),
+                  ),
+                ),
+              ).then((_) => didPop = true);
+            },
+            child: const Text('Open Direct Chat'),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Open Direct Chat'));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+      await tester.pumpAndSettle();
+
+      expect(didPop, isTrue);
+    });
   });
 }

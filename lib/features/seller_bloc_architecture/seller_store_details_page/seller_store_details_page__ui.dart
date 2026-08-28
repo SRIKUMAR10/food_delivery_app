@@ -11,23 +11,50 @@ class SellerStoreDetailsPage extends StatelessWidget {
   final SellerStoreDetailsBloc? bloc;
   const SellerStoreDetailsPage({super.key, this.bloc});
 
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: const Color(0xFFF8FAFC),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      leading: IconButton(
+        icon: const Icon(
+          Icons.arrow_back_ios_new_rounded,
+          color: Color(0xFF0F172A),
+          size: 20,
+        ),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      title: const Text(
+        'Store Details',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF0F172A),
+        ),
+      ),
+      centerTitle: false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (bloc != null) {
       return BlocProvider<SellerStoreDetailsBloc>.value(
         value: bloc!,
-        child: const Scaffold(
-          backgroundColor: Color(0xFFF8FAFC), // Light grayish-blue background
-          body: SafeArea(child: ResponsiveStoreDetailsLayout()),
+        child: Scaffold(
+          backgroundColor: const Color(0xFFF8FAFC),
+          appBar: _buildAppBar(context),
+          body: const SafeArea(child: ResponsiveStoreDetailsLayout()),
         ),
       );
     }
     return BlocProvider(
       create: (context) =>
           SellerStoreDetailsBloc()..add(LoadStoreDetailsEvent()),
-      child: const Scaffold(
-        backgroundColor: Color(0xFFF8FAFC), // Light grayish-blue background
-        body: SafeArea(child: ResponsiveStoreDetailsLayout()),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        appBar: _buildAppBar(context),
+        body: const SafeArea(child: ResponsiveStoreDetailsLayout()),
       ),
     );
   }
@@ -104,41 +131,14 @@ class StoreDetailsContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Page Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'Store Details',
-                              style: TextStyle(
-                                fontSize: 40,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Manage your store settings and information',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF6B7280),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.pop(context),
-                        color: const Color(0xFF111827),
-                      ),
-                    ],
+                  const Text(
+                    'Manage your store settings and information',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF6B7280),
+                    ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
 
                   // Store Status Banner
                   _AnimatedStatusBanner(state: state),

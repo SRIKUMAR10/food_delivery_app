@@ -51,7 +51,7 @@ void main() {
 
       expect(bloc.state.status, SellerLoginStatus.failure);
       expect(bloc.state.errorMessage, isNotNull);
-      expect(bloc.state.errorMessage, contains('Incorrect password'));
+      expect(bloc.state.errorMessage, contains('Please check the mobile number and password'));
     });
 
     test('user-not-found exception maps to account message', () async {
@@ -67,7 +67,7 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 100));
 
       expect(bloc.state.status, SellerLoginStatus.failure);
-      expect(bloc.state.errorMessage, contains('Account'));
+      expect(bloc.state.errorMessage, contains('Please check the mobile number and password'));
     });
 
     test('too-many-requests maps to throttle message', () async {

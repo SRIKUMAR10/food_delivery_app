@@ -47,6 +47,13 @@ class NotificationService {
       _saveTokenToDatabase(newToken);
     });
 
+    // Automatically sync FCM token on user authentication state change
+    _auth.authStateChanges().listen((User? user) {
+      if (user != null) {
+        _setupFCMToken();
+      }
+    });
+
     // Handle foreground messages (optional visual handling can be added later)
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       _logger.i('Received a foreground message: ${message.messageId}');
@@ -84,7 +91,7 @@ class NotificationService {
         _logger.e('Failed to save FCM token: $e');
       }
     } else {
-      _logger.w('Cannot save FCM token: User is not logged in.');
+      _logger.d('User not logged in yet. FCM token will sync upon login.');
     }
   }
 

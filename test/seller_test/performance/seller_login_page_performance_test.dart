@@ -26,6 +26,7 @@ void main() {
 
   setUp(() {
     mockRepo = MockSellerRepository();
+    when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => true);
     bloc = SellerLoginPageBloc(authRepository: mockRepo);
   });
 
@@ -181,8 +182,7 @@ void main() {
 
       final testBloc = SellerLoginPageBloc(authRepository: mockRepo)
         ..add(const SellerLoginFieldChanged('+919876543210'))
-        ..add(const SellerLoginPasswordChanged('p'))
-        ..add(const SellerLoginSubmitted());
+        ..add(const SellerLoginEmailPhoneContinued());
 
       await Future.delayed(const Duration(milliseconds: 200));
       expect(testBloc.state.step, SellerLoginStep.otpVerification);

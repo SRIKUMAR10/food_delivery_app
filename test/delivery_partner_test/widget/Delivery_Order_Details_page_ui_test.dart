@@ -107,9 +107,9 @@ void main() {
 
         final cancelBtn = find.byKey(const Key('dp_order_details_cancel_btn'));
         await tester.ensureVisible(cancelBtn);
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 300));
         await tester.tap(cancelBtn);
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 300));
 
         expect(find.text('Cancel / Report Failed Delivery'), findsOneWidget);
         expect(find.text('Restaurant Closed'), findsOneWidget);

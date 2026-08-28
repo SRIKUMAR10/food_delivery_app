@@ -1637,7 +1637,7 @@ class _ChatPanelState extends State<_ChatPanel> {
               return const SizedBox.shrink();
             },
           ),
-          if (widget.conversation.isDeliveryChat)
+          if (widget.conversation.isDeliveryChat || (widget.conversation.orderId != null && widget.conversation.orderId!.isNotEmpty))
             _DeliveryQuickActions(conversation: widget.conversation),
           _PremiumComposer(
             controller: _textController,
@@ -2339,48 +2339,102 @@ class _DeliveryQuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final phone = conversation.deliveryPartnerPhone;
+    final phone = conversation.deliveryPartnerPhone ?? conversation.sellerPhone;
+    final isDelivery = conversation.isDeliveryChat;
 
     return Container(
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: _AppTheme.borderLight)),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: Row(
-        children: [
-          if (phone != null && phone.isNotEmpty) ...[
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (phone != null && phone.isNotEmpty) ...[
+              _QuickActionButton(
+                icon: Icons.phone_in_talk_rounded,
+                label: isDelivery ? 'Call Rider' : 'Call Store',
+                color: _AppTheme.success,
+                onTap: () => _launchTel(phone),
+              ),
+              const SizedBox(width: 8),
+            ],
             _QuickActionButton(
-              icon: Icons.call_rounded,
-              label: 'Call rider',
-              color: _AppTheme.success,
-              onTap: () => _launchTel(phone),
+              icon: Icons.location_searching_rounded,
+              label: 'Where are you?',
+              color: _AppTheme.info,
+              onTap: () => context.read<BuyerChatBloc>().add(
+                    SendOrderQuickReply(
+                      conversation.id,
+                      'Where are you?',
+                    ),
+                  ),
             ),
             const SizedBox(width: 8),
+            _QuickActionButton(
+              icon: Icons.meeting_room_outlined,
+              label: 'I am at the gate',
+              color: _AppTheme.warning,
+              onTap: () => context.read<BuyerChatBloc>().add(
+                    SendOrderQuickReply(
+                      conversation.id,
+                      'I am at the gate',
+                    ),
+                  ),
+            ),
+            const SizedBox(width: 8),
+            _QuickActionButton(
+              icon: Icons.door_front_door_outlined,
+              label: 'Please leave at the door',
+              color: const Color(0xFF8B5CF6),
+              onTap: () => context.read<BuyerChatBloc>().add(
+                    SendOrderQuickReply(
+                      conversation.id,
+                      'Please leave at the door 🚪',
+                    ),
+                  ),
+            ),
+            const SizedBox(width: 8),
+            _QuickActionButton(
+              icon: Icons.notifications_active_outlined,
+              label: 'Please ring the bell',
+              color: const Color(0xFF06B6D4),
+              onTap: () => context.read<BuyerChatBloc>().add(
+                    SendOrderQuickReply(
+                      conversation.id,
+                      'Please ring the bell 🔔',
+                    ),
+                  ),
+            ),
+            const SizedBox(width: 8),
+            _QuickActionButton(
+              icon: Icons.electric_scooter_rounded,
+              label: 'On my way down',
+              color: const Color(0xFFEC4899),
+              onTap: () => context.read<BuyerChatBloc>().add(
+                    SendOrderQuickReply(
+                      conversation.id,
+                      'Thank you! On my way down 🛵',
+                    ),
+                  ),
+            ),
+            const SizedBox(width: 8),
+            _QuickActionButton(
+              icon: Icons.ring_volume_rounded,
+              label: 'Call me when you arrive',
+              color: const Color(0xFF10B981),
+              onTap: () => context.read<BuyerChatBloc>().add(
+                    SendOrderQuickReply(
+                      conversation.id,
+                      'Please call me when you arrive 📞',
+                    ),
+                  ),
+            ),
           ],
-          _QuickActionButton(
-            icon: Icons.location_searching_rounded,
-            label: 'Where are you?',
-            color: _AppTheme.info,
-            onTap: () => context.read<BuyerChatBloc>().add(
-                  SendOrderQuickReply(
-                    conversation.id,
-                    'Where are you?',
-                  ),
-                ),
-          ),
-          const SizedBox(width: 8),
-          _QuickActionButton(
-            icon: Icons.storefront_outlined,
-            label: 'I am at the gate',
-            color: _AppTheme.warning,
-            onTap: () => context.read<BuyerChatBloc>().add(
-                  SendOrderQuickReply(
-                    conversation.id,
-                    'I am at the gate',
-                  ),
-                ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -2408,36 +2462,31 @@ class _QuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 15, color: color),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 38),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -74,6 +74,28 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFAFAFA),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF0F172A),
+            size: 20,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Request Payout',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF0F172A),
+          ),
+        ),
+        centerTitle: false,
+      ),
       body: SafeArea(
         child: BlocConsumer<SellerRequestPayoutBloc, SellerRequestPayoutState>(
           listener: (context, state) {
@@ -142,41 +164,14 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Custom Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Request Payout',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 40,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF111827),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Withdraw funds to your account',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16,
-                                color: const Color(0xFF6B7280),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.maybePop(context),
-                        color: const Color(0xFF111827),
-                      ),
-                    ],
+                  Text(
+                    'Withdraw funds to your account',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: const Color(0xFF6B7280),
+                    ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
 
                   // Available Balance Banner
                   Container(
@@ -464,23 +459,7 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    SkeletonBox(width: 200, height: 40, borderRadius: 0),
-                    SizedBox(height: 8),
-                    SkeletonBox(width: 150, height: 16, borderRadius: 0),
-                  ],
-                ),
-              ),
-              const Icon(Icons.arrow_back, color: Colors.grey),
-            ],
-          ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 8),
           const SkeletonBox(
             height: 120,
             width: double.infinity,

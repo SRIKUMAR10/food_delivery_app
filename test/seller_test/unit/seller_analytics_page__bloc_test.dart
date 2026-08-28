@@ -40,6 +40,8 @@ void main() {
 
   setUp(() {
     mockRepository = MockSellerAnalyticsRepository();
+    when(() => mockRepository.streamAnalyticsData(any(), any()))
+        .thenAnswer((_) => const Stream.empty());
     when(() => mockRepository.streamFavoritesAnalytics(any()))
         .thenAnswer((_) => const Stream.empty());
     when(() => mockRepository.streamRatingAnalytics(any()))

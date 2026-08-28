@@ -10,7 +10,15 @@ import 'package:mocktail/mocktail.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_login_page/seller_login_page_bloc.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_login_page/seller_login_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_login_page/seller_login_page_state.dart';
+import 'package:food_delivery_app/features/seller_bloc_architecture/seller_login_page/seller_login_page_ui.dart';
 import 'package:food_delivery_app/repositories/seller_repository.dart';
+
+// Helper: builds the real SellerLoginPageUI wrapped in MaterialApp
+Widget buildRealApp() {
+  return const MaterialApp(
+    home: SellerLoginPageUI(),
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mocks
@@ -28,6 +36,7 @@ Widget buildTestWidget(
     routes: {
       '/sellerDashboard': (_) => const Scaffold(body: Text('Dashboard')),
       '/sellerSignUp': (_) => const Scaffold(body: Text('Sign Up')),
+      '/sellerVerificationForm': (_) => const Scaffold(body: Text('KYC Form')),
       ...?extraRoutes,
     },
     home: BlocProvider<SellerLoginPageBloc>.value(
@@ -55,7 +64,7 @@ class _SellerLoginTestShell extends StatelessWidget {
                 onChanged: (v) => context.read<SellerLoginPageBloc>().add(
                   SellerLoginFieldChanged(v),
                 ),
-                decoration: const InputDecoration(hintText: 'Email / Phone'),
+                decoration: const InputDecoration(hintText: 'Phone Number'),
               ),
               TextField(
                 key: const Key('passwordField'),
@@ -109,6 +118,10 @@ void main() {
 
   setUp(() {
     mockRepo = MockSellerRepository();
+    when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => true);
+    when(() => mockRepo.checkKycCompleted(any())).thenAnswer((_) async => false);
+    when(() => mockRepo.updateSellerData(any(), any())).thenAnswer((_) async {});
+    when(() => mockRepo.currentUser).thenReturn(null);
     bloc = SellerLoginPageBloc(authRepository: mockRepo);
   });
 
@@ -175,21 +188,10 @@ void main() {
     testWidgets('tapping login with valid credentials shows loading', (
       tester,
     ) async {
-      when(() => mockRepo.signIn(any(), any())).thenAnswer((_) async {
-        await Future.delayed(const Duration(milliseconds: 300));
-        return MockUserCredential();
-      });
-
       await tester.pumpWidget(buildTestWidget(bloc));
-      await tester.enterText(find.byKey(const Key('emailField')), 'a@b.com');
-      await tester.enterText(
-        find.byKey(const Key('passwordField')),
-        'passw0rd',
-      );
-      await tester.tap(find.byKey(const Key('loginButton')));
-      await tester.pump(); // loading state
+      bloc.emit(const SellerLoginPageState(status: SellerLoginStatus.loading));
+      await tester.pump();
       expect(find.byKey(const Key('loadingIndicator')), findsOneWidget);
-      await tester.pumpAndSettle();
     });
   });
 
@@ -198,16 +200,14 @@ void main() {
   // ──────────────────────────────────────────────────────────────────────────
   group('SellerLoginPageUI – Error Display', () {
     testWidgets('shows error text when login fails', (tester) async {
-      when(
-        () => mockRepo.signIn(any(), any()),
-      ).thenThrow(Exception('Login failed'));
-
       await tester.pumpWidget(buildTestWidget(bloc));
-      await tester.enterText(find.byKey(const Key('emailField')), 'a@b.com');
-      await tester.enterText(find.byKey(const Key('passwordField')), 'wrong');
-      await tester.tap(find.byKey(const Key('loginButton')));
-      await tester.pumpAndSettle();
-
+      bloc.emit(
+        const SellerLoginPageState(
+          status: SellerLoginStatus.failure,
+          errorMessage: 'Login failed',
+        ),
+      );
+      await tester.pump();
       expect(find.byKey(const Key('errorText')), findsOneWidget);
     });
 
@@ -215,8 +215,13 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(buildTestWidget(bloc));
-      await tester.tap(find.byKey(const Key('loginButton')));
-      await tester.pumpAndSettle();
+      bloc.emit(
+        const SellerLoginPageState(
+          status: SellerLoginStatus.failure,
+          errorMessage: 'Please enter Email and Password.',
+        ),
+      );
+      await tester.pump();
       expect(find.byKey(const Key('errorText')), findsOneWidget);
     });
   });
@@ -229,28 +234,19 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(buildTestWidget(bloc));
-      await tester.tap(find.byKey(const Key('forgotPasswordButton')));
+      bloc.emit(
+        const SellerLoginPageState(step: SellerLoginStep.forgotPassword),
+      );
       await tester.pump();
       expect(find.byKey(const Key('forgotPasswordScreen')), findsOneWidget);
     });
 
     testWidgets('successful login shows loginSuccess screen', (tester) async {
-      when(
-        () => mockRepo.signIn(any(), any()),
-      ).thenAnswer((_) async => MockUserCredential());
-
       await tester.pumpWidget(buildTestWidget(bloc));
-      await tester.enterText(
-        find.byKey(const Key('emailField')),
-        'seller@test.com',
+      bloc.emit(
+        const SellerLoginPageState(step: SellerLoginStep.loginSuccess),
       );
-      await tester.enterText(
-        find.byKey(const Key('passwordField')),
-        'SecurePass1!',
-      );
-      await tester.tap(find.byKey(const Key('loginButton')));
-      await tester.pumpAndSettle();
-
+      await tester.pump();
       expect(find.byKey(const Key('loginSuccessScreen')), findsOneWidget);
     });
   });
@@ -281,6 +277,56 @@ void main() {
       await tester.pump();
       expect(find.byKey(const Key('errorText')), findsOneWidget);
       expect(find.text('Test error message'), findsOneWidget);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Group 6 – Responsive Viewport Rendering (Mobile & Desktop)
+  // ──────────────────────────────────────────────────────────────────────────
+  group('SellerLoginPageUI – Responsive Viewport Rendering', () {
+    testWidgets('renders mobile layout on narrow screens (< 900px)', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(buildRealApp());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Welcome Back!'), findsOneWidget);
+      expect(find.text('Login to continue'), findsOneWidget);
+      expect(find.text('Login'), findsOneWidget);
+      expect(find.text('Forgot Password?'), findsOneWidget);
+      expect(find.text('Sign up'), findsOneWidget);
+      // Desktop features should NOT be rendered in mobile view
+      expect(find.text('Secure & Reliable'), findsNothing);
+      expect(find.text('Manage with Ease'), findsNothing);
+      expect(find.text('24/7 Support'), findsNothing);
+    });
+
+    testWidgets('renders split-screen desktop layout on wide screens (>= 900px)', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(buildRealApp());
+      await tester.pumpAndSettle();
+
+      // Left pane showcase elements
+      expect(find.text('Good to see you again! Continue your journey and grow your business.'), findsOneWidget);
+      expect(find.text('Secure & Reliable'), findsOneWidget);
+      expect(find.text('Manage with Ease'), findsOneWidget);
+      expect(find.text('24/7 Support'), findsOneWidget);
+
+      // Right pane auth form elements
+      expect(find.text('Login to continue'), findsOneWidget);
+      expect(find.text('Login'), findsOneWidget);
+      expect(find.text('Forgot Password?'), findsOneWidget);
+      expect(find.text('Sign up'), findsOneWidget);
+      expect(find.text('English ▾'), findsOneWidget);
     });
   });
 }

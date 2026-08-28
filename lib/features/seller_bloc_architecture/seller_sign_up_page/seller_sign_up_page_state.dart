@@ -54,11 +54,21 @@ class SellerSignUpPageState extends Equatable {
   final String name;
   final String shopName;
   final String businessDetails;
+  final String address;
+  final double? latitude;
+  final double? longitude;
+  final String? googleMapsUrl;
+  final String? fssaiNumber;
+  final String? gstNumber;
+  final bool isLocatingGps;
 
   // ── Field-level validation errors (Screen 2) ───────────────────────────────
   final String? nameError;
   final String? shopNameError;
   final String? businessDetailsError;
+  final String? addressError;
+  final String? fssaiNumberError;
+  final String? gstNumberError;
 
   // ── Screen 3 – Contact & Password ──────────────────────────────────────────
   final String phone;
@@ -93,9 +103,19 @@ class SellerSignUpPageState extends Equatable {
     this.name = '',
     this.shopName = '',
     this.businessDetails = '',
+    this.address = '',
+    this.latitude,
+    this.longitude,
+    this.googleMapsUrl,
+    this.fssaiNumber,
+    this.gstNumber,
+    this.isLocatingGps = false,
     this.nameError,
     this.shopNameError,
     this.businessDetailsError,
+    this.addressError,
+    this.fssaiNumberError,
+    this.gstNumberError,
     // Screen 3
     this.phone = '',
     this.email = '',
@@ -123,11 +143,11 @@ class SellerSignUpPageState extends Equatable {
   /// True when all 6 OTP boxes are filled.
   bool get isOtpComplete => otpDigits.every((d) => d.isNotEmpty);
 
-  /// True when all personal detail fields are non-empty.
+  /// True when personal detail fields and address are valid.
   bool get isPersonalDetailsValid =>
       name.trim().length >= 2 &&
       shopName.trim().length >= 2 &&
-      businessDetails.trim().isNotEmpty;
+      (address.trim().isNotEmpty || businessDetails.trim().isNotEmpty);
 
   /// True when password and confirmPassword match and meet min length.
   bool get isPasswordValid =>
@@ -158,12 +178,25 @@ class SellerSignUpPageState extends Equatable {
     String? name,
     String? shopName,
     String? businessDetails,
+    String? address,
+    double? latitude,
+    double? longitude,
+    String? googleMapsUrl,
+    String? fssaiNumber,
+    String? gstNumber,
+    bool? isLocatingGps,
     String? nameError,
     bool clearNameError = false,
     String? shopNameError,
     bool clearShopNameError = false,
     String? businessDetailsError,
     bool clearBusinessDetailsError = false,
+    String? addressError,
+    bool clearAddressError = false,
+    String? fssaiNumberError,
+    bool clearFssaiNumberError = false,
+    String? gstNumberError,
+    bool clearGstNumberError = false,
     // Screen 3
     String? phone,
     String? email,
@@ -195,11 +228,24 @@ class SellerSignUpPageState extends Equatable {
       name: name ?? this.name,
       shopName: shopName ?? this.shopName,
       businessDetails: businessDetails ?? this.businessDetails,
+      address: address ?? this.address,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      googleMapsUrl: googleMapsUrl ?? this.googleMapsUrl,
+      fssaiNumber: fssaiNumber ?? this.fssaiNumber,
+      gstNumber: gstNumber ?? this.gstNumber,
+      isLocatingGps: isLocatingGps ?? this.isLocatingGps,
       nameError: clearNameError ? null : (nameError ?? this.nameError),
       shopNameError: clearShopNameError ? null : (shopNameError ?? this.shopNameError),
       businessDetailsError: clearBusinessDetailsError
           ? null
           : (businessDetailsError ?? this.businessDetailsError),
+      addressError: clearAddressError ? null : (addressError ?? this.addressError),
+      fssaiNumberError: clearFssaiNumberError
+          ? null
+          : (fssaiNumberError ?? this.fssaiNumberError),
+      gstNumberError:
+          clearGstNumberError ? null : (gstNumberError ?? this.gstNumberError),
       // Screen 3
       phone: phone ?? this.phone,
       email: email ?? this.email,
@@ -217,7 +263,7 @@ class SellerSignUpPageState extends Equatable {
           : (confirmPasswordError ?? this.confirmPasswordError),
       termsAccepted: termsAccepted ?? this.termsAccepted,
       // Screen 4
-      otpDigits: otpDigits ?? List<String>.from(this.otpDigits),
+      otpDigits: otpDigits ?? this.otpDigits,
       otpCountdown: otpCountdown ?? this.otpCountdown,
       isOtpResendAvailable: isOtpResendAvailable ?? this.isOtpResendAvailable,
       otpError: clearOtpError ? null : (otpError ?? this.otpError),
@@ -234,9 +280,19 @@ class SellerSignUpPageState extends Equatable {
         name,
         shopName,
         businessDetails,
+        address,
+        latitude,
+        longitude,
+        googleMapsUrl,
+        fssaiNumber,
+        gstNumber,
+        isLocatingGps,
         nameError,
         shopNameError,
         businessDetailsError,
+        addressError,
+        fssaiNumberError,
+        gstNumberError,
         phone,
         email,
         password,
@@ -248,7 +304,7 @@ class SellerSignUpPageState extends Equatable {
         passwordError,
         confirmPasswordError,
         termsAccepted,
-        otpDigits,
+        ...otpDigits,
         otpCountdown,
         isOtpResendAvailable,
         otpError,

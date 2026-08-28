@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -32,7 +33,8 @@ class NotificationBellButton extends StatefulWidget {
 }
 
 class _NotificationBellButtonState extends State<NotificationBellButton> {
-  BuyerNotificationBloc? _bloc;
+  BuyerNotificationBloc? _internalBloc;
+  StreamSubscription<String?>? _authSubscription;
 
   IAuthService _resolveAuth(BuildContext context) {
     try {
@@ -45,28 +47,54 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_bloc == null) {
+    bool hasParentBloc = false;
+    try {
+      context.read<BuyerNotificationBloc>();
+      hasParentBloc = true;
+    } catch (_) {
+      hasParentBloc = false;
+    }
+
+    if (!hasParentBloc && _internalBloc == null) {
       final auth = widget.authService ?? _resolveAuth(context);
       final repo = widget.repository ?? FirebaseBuyerNotificationRepository();
       final svc = widget.service ?? BuyerNotificationService();
-      _bloc = BuyerNotificationBloc(repository: repo, service: svc);
+      _internalBloc = BuyerNotificationBloc(repository: repo, service: svc);
+
       final uid = auth.currentUserId;
       if (uid != null && uid.isNotEmpty) {
-        _bloc!.add(StartListeningNotifications(uid));
+        _internalBloc!.add(StartListeningNotifications(uid));
       }
+
+      _authSubscription?.cancel();
+      _authSubscription = auth.authStateChanges.listen((newUid) {
+        if (newUid != null && newUid.isNotEmpty) {
+          _internalBloc?.add(StartListeningNotifications(newUid));
+        }
+      });
     }
   }
 
   @override
   void dispose() {
-    _bloc?.close();
+    _authSubscription?.cancel();
+    _internalBloc?.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_internalBloc != null) {
+      return BlocProvider<BuyerNotificationBloc>.value(
+        value: _internalBloc!,
+        child: _buildBellWithBuilder(),
+      );
+    }
+    return _buildBellWithBuilder();
+  }
+
+  Widget _buildBellWithBuilder() {
     return BlocBuilder<BuyerNotificationBloc, BuyerNotificationState>(
-      bloc: _bloc,
       builder: (context, state) {
         final unread =
             state is BuyerNotificationLoaded ? state.unreadCount : 0;
@@ -159,24 +187,24 @@ class _BellBadgeState extends State<_BellBadge>
               size: 22,
             ),
             if (widget.unread > 0)
-              AnimatedBuilder(
-                animation: _controller,
-                builder: (context, child) {
-                  final scale = 1.0 +
-                      (_controller.value < 0.5
-                          ? _controller.value * 2 * 0.4
-                          : (1.0 - _controller.value) * 2 * 0.4);
-                  return Transform.scale(scale: scale, child: child);
-                },
-                child: Positioned(
-                  top: -4,
-                  right: -4,
+              Positioned(
+                top: -6,
+                right: -6,
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    final scale = 1.0 +
+                        (_controller.value < 0.5
+                            ? _controller.value * 2 * 0.4
+                            : (1.0 - _controller.value) * 2 * 0.4);
+                    return Transform.scale(scale: scale, child: child);
+                  },
                   child: Container(
                     constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
                       color: BuyerAppColors.primaryDeep,
-                      borderRadius: BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: Colors.white, width: 1.5),
                     ),
                     alignment: Alignment.center,

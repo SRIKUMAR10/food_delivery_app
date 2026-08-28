@@ -15,11 +15,11 @@ void main() {
     test('formats raw INTERNAL string error to user-friendly message', () {
       final msg1 = AppExceptionFormatter.toUserFriendlyMessage('INTERNAL');
       expect(msg1, isNot(equals('INTERNAL')));
-      expect(msg1, contains('Authentication failed'));
+      expect(msg1, equals('Please check the mobile number and password'));
 
       final msg2 = AppExceptionFormatter.toUserFriendlyMessage(Exception('INTERNAL'));
       expect(msg2, isNot(equals('INTERNAL')));
-      expect(msg2, contains('Authentication failed'));
+      expect(msg2, equals('Please check the mobile number and password'));
     });
 
     test('formats FirebaseFunctionsException internal error to user-friendly message', () {
@@ -29,7 +29,7 @@ void main() {
       );
       final msg = AppExceptionFormatter.toUserFriendlyMessage(exc);
       expect(msg, isNot(equals('INTERNAL')));
-      expect(msg, contains('Authentication failed'));
+      expect(msg, equals('Please check the mobile number and password'));
     });
 
     test('formats unregistered user error message', () {
@@ -41,25 +41,25 @@ void main() {
     test('formats wrong password error message', () {
       final exc = FirebaseAuthException(code: 'wrong-password', message: 'Password is incorrect');
       final msg = AppExceptionFormatter.toUserFriendlyMessage(exc);
-      expect(msg, 'Invalid mobile number or password.');
+      expect(msg, 'Please check the mobile number and password');
 
       final excInvalidCred = FirebaseAuthException(code: 'invalid-credential', message: 'The email address or password is incorrect');
-      expect(AppExceptionFormatter.toUserFriendlyMessage(excInvalidCred), 'Invalid mobile number or password.');
+      expect(AppExceptionFormatter.toUserFriendlyMessage(excInvalidCred), 'Please check the mobile number and password');
 
       final excRawCred = Exception('invalid-credential');
-      expect(AppExceptionFormatter.toUserFriendlyMessage(excRawCred), 'Invalid mobile number or password.');
+      expect(AppExceptionFormatter.toUserFriendlyMessage(excRawCred), 'Please check the mobile number and password');
 
       final excRawWrongPass = Exception('wrong-password');
-      expect(AppExceptionFormatter.toUserFriendlyMessage(excRawWrongPass), 'Invalid mobile number or password.');
+      expect(AppExceptionFormatter.toUserFriendlyMessage(excRawWrongPass), 'Please check the mobile number and password');
 
       final excRawInvalidPass = Exception('invalid password');
-      expect(AppExceptionFormatter.toUserFriendlyMessage(excRawInvalidPass), 'Invalid mobile number or password.');
+      expect(AppExceptionFormatter.toUserFriendlyMessage(excRawInvalidPass), 'Please check the mobile number and password');
 
       final excWrappedInternalCred = FirebaseAuthException(code: 'invalid-credential', message: 'An internal error has occurred. [ INVALID_LOGIN_CREDENTIALS ]');
-      expect(AppExceptionFormatter.toUserFriendlyMessage(excWrappedInternalCred), 'Invalid mobile number or password.');
+      expect(AppExceptionFormatter.toUserFriendlyMessage(excWrappedInternalCred), 'Please check the mobile number and password');
 
       final excInvalidLoginCred = FirebaseAuthException(code: 'INVALID_LOGIN_CREDENTIALS');
-      expect(AppExceptionFormatter.toUserFriendlyMessage(excInvalidLoginCred), 'Invalid mobile number or password.');
+      expect(AppExceptionFormatter.toUserFriendlyMessage(excInvalidLoginCred), 'Please check the mobile number and password');
     });
 
     test('formats network and timeout errors', () {

@@ -114,7 +114,7 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                  onPressed: () => Navigator.of(context).maybePop(),
+                  onPressed: () => Navigator.of(context).pop(),
                   color: const Color(0xFF111827),
                   tooltip: 'Back',
                   padding: EdgeInsets.zero,

@@ -77,15 +77,11 @@ class SellerStoreDetailsBloc
     return SellerStoreDetailsLoaded(
       restaurantName: seller.shopName.isNotEmpty
           ? seller.shopName
-          : (seller.name.isNotEmpty
-              ? seller.name
-              : "Zolo Family Restaurant - Fried Chicken's / Burgers / Pizza's / Milkshake's / Ice Creams"),
+          : seller.name,
       address: seller.businessDetails.isNotEmpty
           ? seller.businessDetails
-          : (seller.fullAddress.isNotEmpty
-              ? seller.fullAddress
-              : '8/1223, Salem Kovai, NH-47 Bye Pass Road, Lakshmi Nagar, Bhavani, Tamil Nadu 638316'),
-      phone: seller.phoneNumber.isNotEmpty ? seller.phoneNumber : '+91 98420 12345',
+          : seller.fullAddress,
+      phone: seller.phoneNumber.isNotEmpty ? seller.phoneNumber : seller.contactNumber,
       openingHours: seller.openingHours.isNotEmpty ? seller.openingHours : '10:00 AM - 11:00 PM',
       deliveryTime: seller.deliveryTime.isNotEmpty ? seller.deliveryTime : '30 - 45 min',
       deliveryArea: seller.deliveryArea.isNotEmpty ? seller.deliveryArea : '5.0 km',

@@ -97,7 +97,8 @@ class FirebaseCartRepository implements ICartRepository {
   }
 
   @override
-  Future<void> checkoutCart(
+  @override
+  Future<String?> checkoutCart(
     String buyerId,
     List<CartItem> selectedItems,
     String customerName,
@@ -106,7 +107,7 @@ class FirebaseCartRepository implements ICartRepository {
     AppliedCoupon? appliedCoupon,
     String paymentMethod = 'COD',
   }) async {
-    if (buyerId.isEmpty || selectedItems.isEmpty) return;
+    if (buyerId.isEmpty || selectedItems.isEmpty) return null;
 
     final selectedCartItemsPayload = selectedItems.map((item) => {
       'id': item.id,
@@ -131,11 +132,19 @@ class FirebaseCartRepository implements ICartRepository {
     }
 
     final httpsCallable = FirebaseFunctions.instance.httpsCallable('createSecureOrder');
-    await httpsCallable.call(payload);
+    final result = await httpsCallable.call(payload);
+    final data = result.data;
+    if (data is Map) {
+      if (data['orderIds'] is List && (data['orderIds'] as List).isNotEmpty) {
+        return (data['orderIds'] as List).first.toString();
+      }
+      return (data['orderId'] ?? data['id'])?.toString();
+    }
+    return null;
   }
 
   @override
-  Future<void> verifyAndCheckoutRazorpay({
+  Future<String?> verifyAndCheckoutRazorpay({
     required String buyerId,
     required String razorpayOrderId,
     required String razorpayPaymentId,
@@ -146,7 +155,7 @@ class FirebaseCartRepository implements ICartRepository {
     String? customerPhone,
     AppliedCoupon? appliedCoupon,
   }) async {
-    if (buyerId.isEmpty || selectedItems.isEmpty) return;
+    if (buyerId.isEmpty || selectedItems.isEmpty) return null;
 
     final selectedCartItemsPayload = selectedItems.map((item) => {
       'id': item.id,
@@ -173,6 +182,14 @@ class FirebaseCartRepository implements ICartRepository {
     }
 
     final httpsCallable = FirebaseFunctions.instance.httpsCallable('verifyPaymentAndCreateOrder');
-    await httpsCallable.call(payload);
+    final result = await httpsCallable.call(payload);
+    final data = result.data;
+    if (data is Map) {
+      if (data['orderIds'] is List && (data['orderIds'] as List).isNotEmpty) {
+        return (data['orderIds'] as List).first.toString();
+      }
+      return (data['orderId'] ?? data['id'])?.toString();
+    }
+    return null;
   }
 }

@@ -18,5 +18,13 @@ abstract interface class ISellerProfileRepository {
     bool? isAcceptingOrders,
     bool? isOnline,
   });
+  Future<Map<String, dynamic>> loadKycDocuments(String sellerId);
+  Stream<Map<String, dynamic>> watchKycDocuments(String sellerId);
+  Future<void> updateKycDocuments(String sellerId, Map<String, dynamic> data);
+  Future<String> uploadKycDocumentFile({
+    required String sellerId,
+    required String docType,
+    required String fileName,
+    required List<int> fileBytes,
+  });
 }
-

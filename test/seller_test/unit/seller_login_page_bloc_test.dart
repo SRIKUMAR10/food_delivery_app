@@ -32,6 +32,9 @@ void main() {
   setUp(() {
     mockRepo = MockSellerRepository();
     when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => true);
+    when(() => mockRepo.checkKycCompleted(any())).thenAnswer((_) async => false);
+    when(() => mockRepo.updateSellerData(any(), any())).thenAnswer((_) async {});
+    when(() => mockRepo.currentUser).thenReturn(null);
     bloc = SellerLoginPageBloc(authRepository: mockRepo);
   });
 
@@ -219,6 +222,66 @@ void main() {
       verify: (_) {
         verify(() => mockRepo.signIn('+919876543210', 'Passw0rd!')).called(1);
       },
+    );
+
+    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
+      'emits isKycCompleted: true when repository reports completed KYC',
+      build: () {
+        final mockUser = MockUser();
+        when(() => mockUser.uid).thenReturn('seller_verified_123');
+        when(() => mockRepo.currentUser).thenReturn(mockUser);
+        when(() => mockRepo.signIn(any(), any()))
+            .thenAnswer((_) async => MockUserCredential());
+        when(() => mockRepo.checkKycCompleted('seller_verified_123'))
+            .thenAnswer((_) async => true);
+        return SellerLoginPageBloc(authRepository: mockRepo);
+      },
+      seed: () => const SellerLoginPageState(
+        emailOrPhone: 'verified@shop.com',
+        password: 'Passw0rd!',
+      ),
+      act: (b) => b.add(const SellerLoginSubmitted()),
+      expect: () => [
+        isA<SellerLoginPageState>().having(
+          (s) => s.status,
+          'status',
+          SellerLoginStatus.loading,
+        ),
+        isA<SellerLoginPageState>()
+            .having((s) => s.status, 'status', SellerLoginStatus.success)
+            .having((s) => s.step, 'step', SellerLoginStep.loginSuccess)
+            .having((s) => s.isKycCompleted, 'isKycCompleted', true),
+      ],
+    );
+
+    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
+      'emits isKycCompleted: false when repository reports pending KYC',
+      build: () {
+        final mockUser = MockUser();
+        when(() => mockUser.uid).thenReturn('seller_unverified_123');
+        when(() => mockRepo.currentUser).thenReturn(mockUser);
+        when(() => mockRepo.signIn(any(), any()))
+            .thenAnswer((_) async => MockUserCredential());
+        when(() => mockRepo.checkKycCompleted('seller_unverified_123'))
+            .thenAnswer((_) async => false);
+        return SellerLoginPageBloc(authRepository: mockRepo);
+      },
+      seed: () => const SellerLoginPageState(
+        emailOrPhone: 'new@shop.com',
+        password: 'Passw0rd!',
+      ),
+      act: (b) => b.add(const SellerLoginSubmitted()),
+      expect: () => [
+        isA<SellerLoginPageState>().having(
+          (s) => s.status,
+          'status',
+          SellerLoginStatus.loading,
+        ),
+        isA<SellerLoginPageState>()
+            .having((s) => s.status, 'status', SellerLoginStatus.success)
+            .having((s) => s.step, 'step', SellerLoginStep.loginSuccess)
+            .having((s) => s.isKycCompleted, 'isKycCompleted', false),
+      ],
     );
   });
 
@@ -490,6 +553,27 @@ void main() {
       ],
     );
 
+    blocTest<SellerLoginPageBloc, SellerLoginPageState>(
+      'emits failure with Please check the mobile number and password when INTERNAL error is thrown',
+      setUp: () {
+        when(() => mockRepo.signIn(any(), any()))
+            .thenThrow(Exception('INTERNAL'));
+      },
+      build: () => bloc,
+      seed: () => const SellerLoginPageState(
+        emailOrPhone: 'seller@test.com',
+        password: 'wrongpassword',
+      ),
+      act: (b) => b.add(const SellerLoginSubmitted()),
+      expect: () => [
+        isA<SellerLoginPageState>()
+            .having((s) => s.status, 'status', SellerLoginStatus.loading),
+        isA<SellerLoginPageState>()
+            .having((s) => s.status, 'status', SellerLoginStatus.failure)
+            .having((s) => s.errorMessage, 'errorMessage',
+                'Please check the mobile number and password'),
+      ],
+    );
   });
 
   // ──────────────────────────────────────────────────────────────────────────

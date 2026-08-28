@@ -167,6 +167,20 @@ class DeliveryAddressTypeChanged extends CartEvent {
   List<Object?> get props => [addressType];
 }
 
+/// Dispatched when the user updates/adds a delivery address directly from Cart.
+class DeliveryAddressUpdated extends CartEvent {
+  final String addressType;
+  final String address;
+
+  const DeliveryAddressUpdated({
+    required this.addressType,
+    required this.address,
+  });
+
+  @override
+  List<Object?> get props => [addressType, address];
+}
+
 class _ProfileUpdated extends CartEvent {
   final dynamic profile;
   const _ProfileUpdated(this.profile);

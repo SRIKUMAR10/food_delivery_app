@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'seller_NavigationBarView_page_bloc.dart';
 import 'seller_NavigationBarView_page_event.dart';
@@ -218,39 +219,56 @@ class _SellerNavigationBarViewContentState extends State<_SellerNavigationBarVie
               );
             }
 
-            return Scaffold(
-              key: _scaffoldKey,
-              backgroundColor: const Color(0xFFF8FAFC),
-              extendBody: true,
-              drawer: Drawer(
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                child: SellerSideDrawer(
+            return PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (didPop, result) {
+                if (didPop) return;
+                if (_scaffoldKey.currentState?.isDrawerOpen == true) {
+                  _scaffoldKey.currentState?.closeDrawer();
+                  return;
+                }
+                if (currentIndex != 0) {
+                  context.read<SellerNavigationBarViewPageBloc>().add(
+                    const TabChangedEvent(0),
+                  );
+                } else {
+                  SystemNavigator.pop();
+                }
+              },
+              child: Scaffold(
+                key: _scaffoldKey,
+                backgroundColor: const Color(0xFFF8FAFC),
+                extendBody: true,
+                drawer: Drawer(
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  child: SellerSideDrawer(
+                    currentIndex: currentIndex,
+                    onTap: (index) {
+                      Navigator.of(context).pop();
+                      context.read<SellerNavigationBarViewPageBloc>().add(
+                        TabChangedEvent(index),
+                      );
+                    },
+                  ),
+                ),
+                body: SellerDrawerProvider(
+                  openDrawer: () {
+                    _scaffoldKey.currentState?.openDrawer();
+                  },
+                  child: pageContent,
+                ),
+                bottomNavigationBar: _MobileFloatingNavigationBar(
                   currentIndex: currentIndex,
                   onTap: (index) {
-                    Navigator.of(context).pop();
                     context.read<SellerNavigationBarViewPageBloc>().add(
                       TabChangedEvent(index),
                     );
                   },
+                  onMoreTap: () {
+                    _scaffoldKey.currentState?.openDrawer();
+                  },
                 ),
-              ),
-              body: SellerDrawerProvider(
-                openDrawer: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-                child: pageContent,
-              ),
-              bottomNavigationBar: _MobileFloatingNavigationBar(
-                currentIndex: currentIndex,
-                onTap: (index) {
-                  context.read<SellerNavigationBarViewPageBloc>().add(
-                    TabChangedEvent(index),
-                  );
-                },
-                onMoreTap: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
               ),
             );
           },

@@ -64,6 +64,18 @@ class BuyerNotificationPageUI extends StatelessWidget {
       uid = auth.currentUserId;
     }
 
+    bool hasParentBloc = false;
+    try {
+      context.read<BuyerNotificationBloc>();
+      hasParentBloc = true;
+    } catch (_) {
+      hasParentBloc = false;
+    }
+
+    if (hasParentBloc) {
+      return _NotificationCenterView(userId: uid);
+    }
+
     return BlocProvider(
       create: (_) => BuyerNotificationBloc(repository: repo, service: svc),
       child: _NotificationCenterView(userId: uid),
@@ -97,9 +109,10 @@ class _NotificationCenterViewState extends State<_NotificationCenterView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final uid = widget.userId;
       if (uid != null && uid.isNotEmpty) {
-        context
-            .read<BuyerNotificationBloc>()
-            .add(StartListeningNotifications(uid));
+        final bloc = context.read<BuyerNotificationBloc>();
+        if (bloc.state is! BuyerNotificationLoaded) {
+          bloc.add(StartListeningNotifications(uid));
+        }
       }
     });
   }

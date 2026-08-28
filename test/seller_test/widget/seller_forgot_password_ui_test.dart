@@ -9,16 +9,21 @@ void main() {
     setupFirebaseAuthMocks();
   });
 
-  testWidgets('Seller ForgotPassword UI renders correctly', (WidgetTester tester) async {
+  testWidgets('Seller ForgotPassword UI renders correctly with phone and OTP fields', (WidgetTester tester) async {
     await Firebase.initializeApp();
     await tester.pumpWidget(
       const MaterialApp(
         home: SellerForgotPasswordPageUI(),
       ),
     );
+    await tester.pumpAndSettle();
 
-    expect(find.text('Change Password'), findsOneWidget);
-    expect(find.text('Send Reset Link'), findsOneWidget);
-    expect(find.byType(TextFormField), findsOneWidget);
+    expect(find.text('Reset Password'), findsWidgets);
+    expect(find.text('Mobile Number'), findsOneWidget);
+    expect(find.text('Get OTP'), findsOneWidget);
+    expect(find.text('OTP Code'), findsOneWidget);
+    expect(find.text('Create Password'), findsOneWidget);
+    expect(find.text('Confirm Password'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNWidgets(4));
   });
 }

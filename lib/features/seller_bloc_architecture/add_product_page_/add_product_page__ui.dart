@@ -2552,9 +2552,8 @@ class _AddProductViewState extends State<AddProductView> {
       isFeatured: state.isFeatured,
       isActive: state.isActive,
       status: ProductStatus.inStock, // Preview assumes in stock
-      // Mock data for fields not in the form
-      rating: 4.5,
-      reviewCount: 120,
+      rating: 0.0,
+      reviewCount: 0,
       prepTime: int.tryParse(_prepTimeController.text) ?? 15,
       calories: int.tryParse(_caloriesController.text) ?? 0,
       createdAt: DateTime.now(),

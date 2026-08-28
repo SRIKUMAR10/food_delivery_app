@@ -87,7 +87,7 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
         backgroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1E293B)),
-          onPressed: () => Navigator.maybePop(context),
+          onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'Coupons & Offers',

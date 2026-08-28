@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../services/route_polyline_service.dart';
 
 abstract class AppGoogleMapEvent extends Equatable {
   const AppGoogleMapEvent();
@@ -71,6 +72,25 @@ class ToggleTrafficEvent extends AppGoogleMapEvent {}
 class ToggleAutoFollowEvent extends AppGoogleMapEvent {}
 
 class ToggleWeatherEvent extends AppGoogleMapEvent {}
+
+class ToggleVoiceGuidanceEvent extends AppGoogleMapEvent {}
+
+class Toggle3DTiltModeEvent extends AppGoogleMapEvent {}
+
+class ToggleHeatmapLayerEvent extends AppGoogleMapEvent {}
+
+class UpdateCurrentManeuverStepEvent extends AppGoogleMapEvent {
+  final RouteStepInfo? step;
+  final double distanceMeters;
+
+  const UpdateCurrentManeuverStepEvent({
+    required this.step,
+    required this.distanceMeters,
+  });
+
+  @override
+  List<Object?> get props => [step, distanceMeters];
+}
 
 class GpsLocationUpdatedEvent extends AppGoogleMapEvent {
   final LatLng location;

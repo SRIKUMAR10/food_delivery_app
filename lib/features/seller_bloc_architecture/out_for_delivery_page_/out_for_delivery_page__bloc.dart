@@ -296,13 +296,13 @@ class OutForDeliveryRepository {
     final sellerName = orderData['sellerName'] as String? ??
         orderData['restaurantName'] as String? ??
         orderData['storeName'] as String? ??
-        "Zolo Family Restaurant - Fried Chicken's / Burgers / Pizza's / Milkshake's / Ice Creams";
+        '';
     final sellerPhone = orderData['sellerPhone'] as String? ??
         orderData['restaurantPhone'] as String? ??
-        '+91 98420 12345';
+        '';
     final sellerAddress = orderData['sellerAddress'] as String? ??
         orderData['restaurantAddress'] as String? ??
-        '8/1223, Salem Kovai, NH-47 Bye Pass Road, Lakshmi Nagar, Bhavani, Tamil Nadu 638316';
+        '';
 
     final customerLat = (orderData['customerLat'] as num?)?.toDouble() ??
         (orderData['deliveryLat'] as num?)?.toDouble() ??

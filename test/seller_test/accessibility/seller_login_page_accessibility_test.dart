@@ -24,15 +24,15 @@ Widget buildAccessibilityTestWidget(SellerLoginPageBloc bloc) {
             return SingleChildScrollView(
               child: Column(
                 children: [
-                  // Semantic label on email field
+                  // Semantic label on phone field
                   Semantics(
-                    label: 'Email or Phone Number input field',
+                    label: 'Phone Number input field',
                     textField: true,
                     child: TextField(
                       key: const Key('emailField'),
                       decoration: const InputDecoration(
-                        hintText: 'Email / Phone',
-                        labelText: 'Email or Phone',
+                        hintText: 'Phone Number',
+                        labelText: 'Phone Number',
                       ),
                     ),
                   ),
@@ -119,13 +119,13 @@ void main() {
   // Group 1 – Semantic Labels
   // ──────────────────────────────────────────────────────────────────────────
   group('Accessibility – Semantic Labels', () {
-    testWidgets('email field has semantic label', (tester) async {
+    testWidgets('phone field has semantic label', (tester) async {
       await tester.pumpWidget(buildAccessibilityTestWidget(bloc));
 
       final semantics = tester.getSemantics(
         find.byKey(const Key('emailField')),
       );
-      expect(semantics.label, contains('Email'));
+      expect(semantics.label, contains('Phone'));
     });
 
     testWidgets('password field has semantic label', (tester) async {

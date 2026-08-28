@@ -28,6 +28,8 @@ void main() {
       when(() => mockAuthService.currentUserId).thenReturn('seller_123');
       when(() => mockProfileRepository.watchProfile('seller_123'))
           .thenAnswer((_) => profileStreamController.stream);
+      when(() => mockProfileRepository.watchKycDocuments('seller_123'))
+          .thenAnswer((_) => const Stream.empty());
 
       bloc = SellerProfilePageBloc(
         authService: mockAuthService,
@@ -272,10 +274,14 @@ void main() {
       verify: (_) {
         verify(() => mockProfileRepository.updateProfile('seller_123', {
               'shopName': 'Spice Garden',
+              'name': 'Spice Garden',
+              'sellerName': 'Spice Garden',
               'email': 'spice@garden.com',
               'phoneNumber': '9876543210',
+              'contactNumber': '9876543210',
               'businessDetails': '45 Anna Nagar, Chennai',
               'address': '45 Anna Nagar, Chennai',
+              'fullAddress': '45 Anna Nagar, Chennai',
               'gstNumber': '33ABCDE1234F1Z5',
               'fssaiNumber': '12345678901234',
               'bankAccountNumber': '123456789012',
@@ -284,6 +290,7 @@ void main() {
               'latitude': 13.0850,
               'longitude': 80.2100,
               'googleMapsUrl': 'https://www.google.com/maps?q=13.085000,80.210000',
+              'kycStatus': 'in_review',
             })).called(1);
       },
     );
@@ -352,5 +359,77 @@ void main() {
         isA<ProfileInitial>(),
       ],
     );
+
+    blocTest<SellerProfilePageBloc, SellerProfilePageState>(
+      'KycDocumentsStreamUpdated updates KYC status and certificates reactively',
+      build: () => bloc,
+      seed: () => ProfileLoaded(
+        storeName: 'Test Kitchen',
+        email: 'test@kitchen.com',
+        phone: '1234567890',
+        profileImageUrl: '',
+        notificationsEnabled: true,
+        role: 'seller',
+        createdAt: DateTime(2025, 1, 1),
+        isVerified: false,
+      ),
+      act: (bloc) => bloc.add(const KycDocumentsStreamUpdated({
+        'kycStatus': 'approved',
+        'fssaiCertificateUrl': 'https://storage.googleapis.com/fssai.pdf',
+        'gstCertificateUrl': 'https://storage.googleapis.com/gst.pdf',
+        'panCardUrl': 'https://storage.googleapis.com/pan.pdf',
+        'bankChequeUrl': 'https://storage.googleapis.com/cheque.pdf',
+      })),
+      expect: () => [
+        isA<ProfileLoaded>()
+            .having((s) => s.kycStatus, 'kycStatus', 'approved')
+            .having((s) => s.isKycApproved, 'isKycApproved', true)
+            .having((s) => s.fssaiCertificateUrl, 'fssaiCertificateUrl', 'https://storage.googleapis.com/fssai.pdf')
+            .having((s) => s.gstCertificateUrl, 'gstCertificateUrl', 'https://storage.googleapis.com/gst.pdf')
+            .having((s) => s.panCardUrl, 'panCardUrl', 'https://storage.googleapis.com/pan.pdf')
+            .having((s) => s.bankChequeUrl, 'bankChequeUrl', 'https://storage.googleapis.com/cheque.pdf'),
+      ],
+    );
+
+    blocTest<SellerProfilePageBloc, SellerProfilePageState>(
+      'SubmitSellerKycDocuments submits data to repository and transitions status to in_review',
+      build: () {
+        when(() => mockProfileRepository.updateKycDocuments('seller_123', any()))
+            .thenAnswer((_) async {});
+        when(() => mockProfileRepository.updateProfile('seller_123', any()))
+            .thenAnswer((_) async {});
+        return bloc;
+      },
+      seed: () => ProfileLoaded(
+        storeName: 'Test Kitchen',
+        email: 'test@kitchen.com',
+        phone: '1234567890',
+        profileImageUrl: '',
+        notificationsEnabled: true,
+        role: 'seller',
+        createdAt: DateTime(2025, 1, 1),
+        isVerified: false,
+      ),
+      act: (bloc) => bloc.add(const SubmitSellerKycDocuments(
+        fssaiNumber: '12345678901234',
+        gstNumber: '33AAAAA0000A1Z5',
+        panNumber: 'ABCDE1234F',
+        bankAccountNumber: '987654321012',
+        ifscCode: 'HDFC0001234',
+      )),
+      expect: () => [
+        isA<ProfileLoaded>()
+            .having((s) => s.kycStatus, 'kycStatus', 'in_review')
+            .having((s) => s.isKycInReview, 'isKycInReview', true)
+            .having((s) => s.fssaiLicense, 'fssaiLicense', '12345678901234')
+            .having((s) => s.gstNumber, 'gstNumber', '33AAAAA0000A1Z5')
+            .having((s) => s.panNumber, 'panNumber', 'ABCDE1234F'),
+      ],
+      verify: (_) {
+        verify(() => mockProfileRepository.updateKycDocuments('seller_123', any())).called(1);
+        verify(() => mockProfileRepository.updateProfile('seller_123', any())).called(1);
+      },
+    );
   });
 }
+

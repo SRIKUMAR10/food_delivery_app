@@ -166,10 +166,11 @@ class DeliveryLoginPageBloc
       final rawMsg = e.toString()
           .replaceAll('Exception: ', '')
           .replaceAll(RegExp(r'\[firebase_[a-zA-Z0-9_\/-]+\]\s*'), '')
+          .replaceAll(RegExp(r'\[cloud_functions\/[a-zA-Z0-9_-]+\]\s*'), '')
           .trim();
       final cleanMsg = (rawMsg == 'INTERNAL' || rawMsg.contains('INTERNAL') || rawMsg.contains('internal'))
-          ? 'Password is incorrect or account not found. Please try again.'
-          : (rawMsg.isEmpty ? 'Authentication failed. Please try again.' : rawMsg);
+          ? 'Please check the mobile number and password'
+          : (rawMsg.isEmpty ? 'Please check the mobile number and password' : rawMsg);
 
       emit(state.copyWith(
         status: DeliveryLoginStatus.error,

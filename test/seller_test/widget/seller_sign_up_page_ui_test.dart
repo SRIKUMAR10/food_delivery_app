@@ -34,11 +34,15 @@ void main() {
   }
 
   group('SellerSignUpPageUI - Widget Tests', () {
-    testWidgets('renders Personal Details screen by default', (tester) async {
+    testWidgets('renders Personal Details screen by default with address and GPS buttons', (tester) async {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('nameField')), findsOneWidget);
       expect(find.byKey(const Key('shopNameField')), findsOneWidget);
+      expect(find.byKey(const Key('fssaiField')), findsOneWidget);
+      expect(find.byKey(const Key('addressField')), findsOneWidget);
+      expect(find.byKey(const Key('gpsLocationButton')), findsOneWidget);
+      expect(find.byKey(const Key('mapPickerButton')), findsOneWidget);
       expect(find.byKey(const Key('businessDetailsField')), findsOneWidget);
     });
 

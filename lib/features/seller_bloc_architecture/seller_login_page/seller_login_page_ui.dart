@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:food_delivery_app/repositories/seller_repository.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
+import '../seller_forgot_password/seller_forgot_password_ui.dart';
 import 'seller_login_page_bloc.dart';
 import 'seller_login_page_event.dart';
 import 'seller_login_page_state.dart';
@@ -37,21 +38,39 @@ class _SellerLoginPageView extends StatelessWidget {
       listener: (context, state) {
         if (state.step == SellerLoginStep.loginSuccess &&
             state.status == SellerLoginStatus.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Login successful! Welcome Seller.',
-                style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+          if (state.isKycCompleted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Login successful! Welcome Seller.',
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                ),
+                backgroundColor: SellerAuthColors.primary,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.all(16),
               ),
-              backgroundColor: SellerAuthColors.primary,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            );
+            Navigator.pushReplacementNamed(context, '/sellerDashboard');
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Login successful! Please complete your KYC verification.',
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                ),
+                backgroundColor: SellerAuthColors.primary,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.all(16),
               ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-          Navigator.pushReplacementNamed(context, '/sellerDashboard');
+            );
+            Navigator.pushReplacementNamed(context, '/sellerVerificationForm');
+          }
         }
         if (state.status == SellerLoginStatus.failure &&
             state.errorMessage != null) {
@@ -319,237 +338,792 @@ class _LoginFormScreenState extends State<_LoginFormScreen>
 
   @override
   Widget build(BuildContext context) {
+    return BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
+      buildWhen: (previous, current) =>
+          previous.runtimeType != current.runtimeType || previous != current,
+      builder: (context, state) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth >= 800) {
+              return _buildDesktopLayout(context, state);
+            }
+            return _buildMobileLayout(context, state);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMobileLayout(
+    BuildContext context,
+    SellerLoginPageState state,
+  ) {
     return SellerResponsiveContainer(
       child: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
           child: SlideTransition(
             position: _slideAnim,
-            child: BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
-              buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  const SizedBox(height: 48),
+
+                  // Language selector
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: TextButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(
+                        Icons.language,
+                        size: 18,
+                        color: SellerAuthColors.textMid,
+                      ),
+                      label: Text(
+                        'English ▾',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: SellerAuthColors.textMid,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Shop illustration
+                  SellerScreenIllustration(
+                    heroTag: 'seller_login_illustration',
+                    child: Image.asset(
+                      'assets/images/Seller_login.png',
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.storefront_rounded,
+                        size: 52,
+                        color: SellerAuthColors.primary,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  Text(
+                    'Welcome Back!',
+                    style: GoogleFonts.inter(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: SellerAuthColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Login to continue',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: SellerAuthColors.textLight,
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Phone Number field
+                  _LoginTextField(
+                    initialValue: state.emailOrPhone,
+                    hintText: 'Phone Number',
+                    prefixIcon: Icons.phone_outlined,
+                    onChanged: (v) => context
+                        .read<SellerLoginPageBloc>()
+                        .add(SellerLoginFieldChanged(v)),
+                    keyboardType: TextInputType.phone,
+                    errorText: state.emailPhoneError,
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Password field
+                  _LoginTextField(
+                    initialValue: state.password,
+                    hintText: 'Password',
+                    prefixIcon: Icons.lock_outline_rounded,
+                    obscureText: state.isPasswordObscured,
+                    onChanged: (v) => context
+                        .read<SellerLoginPageBloc>()
+                        .add(SellerLoginPasswordChanged(v)),
+                    textInputAction: TextInputAction.done,
+                    errorText: state.passwordError,
+                    suffixWidget: IconButton(
+                      icon: Icon(
+                        state.isPasswordObscured
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: SellerAuthColors.textLight,
+                        size: 20,
+                      ),
+                      onPressed: () => context
+                          .read<SellerLoginPageBloc>()
+                          .add(SellerLoginPasswordVisibilityToggled()),
+                    ),
+                  ),
+
+                  // Forgot Password link
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => context
+                          .read<SellerLoginPageBloc>()
+                          .add(const SellerLoginForgotPasswordNavigated()),
+                      child: Text(
+                        'Forgot Password?',
+                        style: GoogleFonts.inter(
+                          color: SellerAuthColors.primary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Login button
+                  SellerPrimaryButton(
+                    label: 'Login',
+                    isLoading: state.status == SellerLoginStatus.loading,
+                    onPressed: () => context
+                        .read<SellerLoginPageBloc>()
+                        .add(const SellerLoginSubmitted()),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Divider
+                  Row(
                     children: [
-                      const SizedBox(height: 48),
-
-                      // Language selector
-                      Align(
-                        alignment: Alignment.topRight,
-                        child: TextButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(
-                            Icons.language,
-                            size: 18,
-                            color: SellerAuthColors.textMid,
-                          ),
-                          label: Text(
-                            'English ▾',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: SellerAuthColors.textMid,
-                            ),
-                          ),
-                          style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                        ),
+                      const Expanded(
+                        child: Divider(color: SellerAuthColors.divider),
                       ),
-
-                      const SizedBox(height: 8),
-
-                      // Shop illustration
-                      SellerScreenIllustration(
-                        heroTag: 'seller_login_illustration',
-                        child: Image.asset(
-                          'assets/images/Seller_login.png',
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.storefront_rounded,
-                            size: 52,
-                            color: SellerAuthColors.primary,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      Text(
-                        'Welcome Back!',
-                        style: GoogleFonts.inter(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: SellerAuthColors.textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Login to continue',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: SellerAuthColors.textLight,
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Email / Phone field
-                      _LoginTextField(
-                        initialValue: state.emailOrPhone,
-                        hintText: 'Email / Phone',
-                        prefixIcon: Icons.email_outlined,
-                        onChanged: (v) => context
-                            .read<SellerLoginPageBloc>()
-                            .add(SellerLoginFieldChanged(v)),
-                        keyboardType: TextInputType.emailAddress,
-                        errorText: state.emailPhoneError,
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      // Password field
-                      _LoginTextField(
-                        initialValue: state.password,
-                        hintText: 'Password',
-                        prefixIcon: Icons.lock_outline_rounded,
-                        obscureText: state.isPasswordObscured,
-                        onChanged: (v) => context
-                            .read<SellerLoginPageBloc>()
-                            .add(SellerLoginPasswordChanged(v)),
-                        textInputAction: TextInputAction.done,
-                        errorText: state.passwordError,
-                        suffixWidget: IconButton(
-                          icon: Icon(
-                            state.isPasswordObscured
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'or continue with',
+                          style: GoogleFonts.inter(
                             color: SellerAuthColors.textLight,
-                            size: 20,
-                          ),
-                          onPressed: () => context
-                              .read<SellerLoginPageBloc>()
-                              .add(SellerLoginPasswordVisibilityToggled()),
-                        ),
-                      ),
-
-                      // Forgot Password link
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => context
-                              .read<SellerLoginPageBloc>()
-                              .add(const SellerLoginForgotPasswordNavigated()),
-                          child: Text(
-                            'Forgot Password?',
-                            style: GoogleFonts.inter(
-                              color: SellerAuthColors.primary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            fontSize: 13,
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 8),
-
-                      // Login button
-                      SellerPrimaryButton(
-                        label: 'Login',
-                        isLoading: state.status == SellerLoginStatus.loading,
-                        onPressed: () => context
-                            .read<SellerLoginPageBloc>()
-                            .add(const SellerLoginSubmitted()),
+                      const Expanded(
+                        child: Divider(color: SellerAuthColors.divider),
                       ),
-
-                      const SizedBox(height: 24),
-
-                      // Divider
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Divider(color: SellerAuthColors.divider),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text(
-                              'or continue with',
-                              style: GoogleFonts.inter(
-                                color: SellerAuthColors.textLight,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                          const Expanded(
-                            child: Divider(color: SellerAuthColors.divider),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Social buttons
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _SocialButton(
-                            label: 'Google',
-                            asset: 'assets/images/google.png',
-                            fallbackIcon: Icons.g_mobiledata,
-                            onTap: () => context
-                                .read<SellerLoginPageBloc>()
-                                .add(const SellerLoginGoogleSignInPressed()),
-                          ),
-                          const SizedBox(width: 16),
-                          _SocialButton(
-                            label: 'Apple',
-                            asset: 'assets/images/apple_logo.png',
-                            fallbackIcon: Icons.apple,
-                            onTap: () => context
-                                .read<SellerLoginPageBloc>()
-                                .add(const SellerLoginAppleSignInPressed()),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Sign up prompt
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Don't have an account? ",
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: SellerAuthColors.textMid,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () =>
-                                Navigator.pushNamed(context, '/sellerSignUp'),
-                            child: Text(
-                              'Sign up',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: SellerAuthColors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 32),
                     ],
                   ),
-                );
-              },
+
+                  const SizedBox(height: 20),
+
+                  // Social buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _SocialButton(
+                        label: 'Google',
+                        asset: 'assets/images/google.png',
+                        fallbackIcon: Icons.g_mobiledata,
+                        onTap: () => context
+                            .read<SellerLoginPageBloc>()
+                            .add(const SellerLoginGoogleSignInPressed()),
+                      ),
+                      const SizedBox(width: 16),
+                      _SocialButton(
+                        label: 'Apple',
+                        asset: 'assets/images/apple_logo.png',
+                        fallbackIcon: Icons.apple,
+                        onTap: () => context
+                            .read<SellerLoginPageBloc>()
+                            .add(const SellerLoginAppleSignInPressed()),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // Sign up prompt
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        "Don't have an account? ",
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: SellerAuthColors.textMid,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () =>
+                            Navigator.pushNamed(context, '/sellerSignUp'),
+                        child: Text(
+                          'Sign up',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: SellerAuthColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
+  Widget _buildDesktopLayout(
+    BuildContext context,
+    SellerLoginPageState state,
+  ) {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: Row(
+        children: [
+          // Left showcase pane (42% width)
+          Expanded(
+            flex: 5,
+            child: _SellerDesktopLeftHero(),
+          ),
+
+          // Right auth form pane (58% width)
+          Expanded(
+            flex: 6,
+            child: Container(
+              color: Colors.white,
+              child: Column(
+                children: [
+                  // Top Language Picker
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24, right: 36),
+                    child: Align(
+                      alignment: Alignment.topRight,
+                      child: TextButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(
+                          Icons.language,
+                          size: 18,
+                          color: SellerAuthColors.textMid,
+                        ),
+                        label: Text(
+                          'English ▾',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: SellerAuthColors.textMid,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Centered Form
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 48,
+                          vertical: 16,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Storefront circular badge
+                              Center(
+                                child: Container(
+                                  width: 84,
+                                  height: 84,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFE8F5E9),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Image.asset(
+                                      'assets/images/Seller_login.png',
+                                      width: 48,
+                                      height: 48,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                        Icons.storefront_rounded,
+                                        size: 42,
+                                        color: SellerAuthColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Center(
+                                child: Text(
+                                  'Welcome Back!',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                    color: SellerAuthColors.textDark,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Center(
+                                child: Text(
+                                  'Login to continue',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    color: SellerAuthColors.textLight,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+
+                              // Phone Number field
+                              _LoginTextField(
+                                initialValue: state.emailOrPhone,
+                                hintText: 'Phone Number',
+                                prefixIcon: Icons.phone_outlined,
+                                keyboardType: TextInputType.phone,
+                                onChanged: (v) => context
+                                    .read<SellerLoginPageBloc>()
+                                    .add(SellerLoginFieldChanged(v)),
+                                errorText: state.emailPhoneError,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Password field
+                              _LoginTextField(
+                                initialValue: state.password,
+                                hintText: 'Password',
+                                prefixIcon: Icons.lock_outline_rounded,
+                                obscureText: state.isPasswordObscured,
+                                onChanged: (v) => context
+                                    .read<SellerLoginPageBloc>()
+                                    .add(SellerLoginPasswordChanged(v)),
+                                textInputAction: TextInputAction.done,
+                                errorText: state.passwordError,
+                                suffixWidget: IconButton(
+                                  icon: Icon(
+                                    state.isPasswordObscured
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    color: SellerAuthColors.textLight,
+                                    size: 20,
+                                  ),
+                                  onPressed: () => context
+                                      .read<SellerLoginPageBloc>()
+                                      .add(
+                                        SellerLoginPasswordVisibilityToggled(),
+                                      ),
+                                ),
+                              ),
+
+                              // Forgot Password link
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: () => context
+                                      .read<SellerLoginPageBloc>()
+                                      .add(
+                                        const SellerLoginForgotPasswordNavigated(),
+                                      ),
+                                  child: Text(
+                                    'Forgot Password?',
+                                    style: GoogleFonts.inter(
+                                      color: SellerAuthColors.primary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Primary Login button
+                              SellerPrimaryButton(
+                                label: 'Login',
+                                isLoading:
+                                    state.status == SellerLoginStatus.loading,
+                                onPressed: () => context
+                                    .read<SellerLoginPageBloc>()
+                                    .add(const SellerLoginSubmitted()),
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Divider
+                              Row(
+                                children: [
+                                  const Expanded(
+                                    child: Divider(
+                                      color: SellerAuthColors.divider,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: Text(
+                                      'or continue with',
+                                      style: GoogleFonts.inter(
+                                        color: SellerAuthColors.textLight,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                  const Expanded(
+                                    child: Divider(
+                                      color: SellerAuthColors.divider,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+
+                              // Social buttons
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _SocialButton(
+                                    label: 'Google',
+                                    asset: 'assets/images/google.png',
+                                    fallbackIcon: Icons.g_mobiledata,
+                                    onTap: () => context
+                                        .read<SellerLoginPageBloc>()
+                                        .add(
+                                          const SellerLoginGoogleSignInPressed(),
+                                        ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  _SocialButton(
+                                    label: 'Apple',
+                                    asset: 'assets/images/apple_logo.png',
+                                    fallbackIcon: Icons.apple,
+                                    onTap: () => context
+                                        .read<SellerLoginPageBloc>()
+                                        .add(
+                                          const SellerLoginAppleSignInPressed(),
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 28),
+
+                              // Sign up prompt
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Text(
+                                    "Don't have an account? ",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: SellerAuthColors.textMid,
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => Navigator.pushNamed(
+                                      context,
+                                      '/sellerSignUp',
+                                    ),
+                                    child: Text(
+                                      'Sign up',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        color: SellerAuthColors.primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 24),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Desktop Left Showcase Panel
+// ─────────────────────────────────────────────────────────────────────────────
+class _SellerDesktopLeftHero extends StatelessWidget {
+  const _SellerDesktopLeftHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFF4FAF5),
+        border: Border(
+          right: BorderSide(color: Color(0xFFEAEAEA), width: 1),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFF7FCF8),
+            Color(0xFFEFF7F1),
+            Color(0xFFE5F3E7),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // Subtle dot matrix pattern in top-left
+          Positioned(
+            left: 0,
+            top: 0,
+            width: 220,
+            height: 220,
+            child: const CustomPaint(
+              painter: _DotPatternPainter(),
+            ),
+          ),
+
+          // Main content
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 48,
+                        top: 48,
+                        right: 48,
+                        bottom: 0,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Small Store Icon Badge
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFFE0ECE1),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: Image.asset(
+                              'assets/images/Seller_login.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.storefront_rounded,
+                                size: 22,
+                                color: SellerAuthColors.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Header
+                          Text(
+                            'Welcome Back!',
+                            style: GoogleFonts.inter(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: SellerAuthColors.textDark,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Subtitle
+                          Text(
+                            'Good to see you again! Continue your journey and grow your business.',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: SellerAuthColors.textMid,
+                              height: 1.45,
+                            ),
+                          ),
+                          const SizedBox(height: 36),
+
+                          // 3 Feature highlights
+                          const _DesktopFeatureRow(
+                            icon: Icons.shield_outlined,
+                            title: 'Secure & Reliable',
+                            description:
+                                'Your data is protected with enterprise-grade security.',
+                          ),
+                          const SizedBox(height: 24),
+                          const _DesktopFeatureRow(
+                            icon: Icons.bar_chart_rounded,
+                            title: 'Manage with Ease',
+                            description:
+                                'Track orders, manage inventory and grow your business.',
+                          ),
+                          const SizedBox(height: 24),
+                          const _DesktopFeatureRow(
+                            icon: Icons.headset_mic_outlined,
+                            title: '24/7 Support',
+                            description:
+                                "We're here to help you anytime, anywhere.",
+                          ),
+                          const Spacer(),
+
+                          // Storefront Illustration at bottom
+                          Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxHeight: 240,
+                                maxWidth: 300,
+                              ),
+                              child: Image.asset(
+                                'assets/images/Seller_login2.png',
+                                height: 220,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.medium,
+                                errorBuilder: (context, error, stackTrace) => const Icon(
+                                  Icons.storefront_rounded,
+                                  size: 100,
+                                  color: SellerAuthColors.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Desktop Feature Item Row
+// ─────────────────────────────────────────────────────────────────────────────
+class _DesktopFeatureRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _DesktopFeatureRow({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: const BoxDecoration(
+            color: Color(0xFFDFF1E2),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              size: 22,
+              color: SellerAuthColors.primary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: SellerAuthColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                description,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: SellerAuthColors.textMid,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Subtle Dot Pattern Painter
+// ─────────────────────────────────────────────────────────────────────────────
+class _DotPatternPainter extends CustomPainter {
+  const _DotPatternPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF2E7D32).withValues(alpha: 0.12)
+      ..style = PaintingStyle.fill;
+    const double spacing = 16.0;
+    const double radius = 1.8;
+    for (double x = 12; x < size.width; x += spacing) {
+      for (double y = 12; y < size.height; y += spacing) {
+        canvas.drawCircle(Offset(x, y), radius, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -596,7 +1170,7 @@ class _SocialButton extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Screen 2 – Enter Email / Phone
+// Screen 2 – Enter Phone Number
 // ─────────────────────────────────────────────────────────────────────────────
 class _EnterEmailPhoneScreen extends StatelessWidget {
   const _EnterEmailPhoneScreen({super.key});
@@ -633,7 +1207,7 @@ class _EnterEmailPhoneScreen extends StatelessWidget {
                   const SizedBox(height: 28),
                   Center(
                     child: Text(
-                      'Enter Email / Phone',
+                      'Enter Phone Number',
                       style: GoogleFonts.inter(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -644,7 +1218,7 @@ class _EnterEmailPhoneScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   Center(
                     child: Text(
-                      'Enter your email address or\nphone number to continue',
+                      'Enter your phone number to continue',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 14,
@@ -656,9 +1230,9 @@ class _EnterEmailPhoneScreen extends StatelessWidget {
                   const SizedBox(height: 32),
                   _LoginTextField(
                     initialValue: state.emailOrPhone,
-                    hintText: 'john@gmail.com',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
+                    hintText: '+91 98765 43210',
+                    prefixIcon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
                     onChanged: (v) => context.read<SellerLoginPageBloc>().add(
                       SellerLoginFieldChanged(v),
                     ),
@@ -676,7 +1250,7 @@ class _EnterEmailPhoneScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   Center(
                     child: Text(
-                      '2. Enter Email / Phone',
+                      '2. Enter Phone Number',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: SellerAuthColors.textLight,
@@ -901,13 +1475,21 @@ class _LoginSuccessScreenState extends State<_LoginSuccessScreen>
                 ),
               ),
               const SizedBox(height: 48),
-              SellerPrimaryButton(
-                label: 'Go to Dashboard',
-                onPressed: () {
-                  context.read<SellerLoginPageBloc>().add(
-                    const SellerLoginGoToDashboardPressed(),
+              BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
+                builder: (context, state) {
+                  final isKyc = state.isKycCompleted;
+                  return SellerPrimaryButton(
+                    label: isKyc ? 'Go to Dashboard' : 'Complete KYC Verification',
+                    onPressed: () {
+                      context.read<SellerLoginPageBloc>().add(
+                        const SellerLoginGoToDashboardPressed(),
+                      );
+                      Navigator.pushReplacementNamed(
+                        context,
+                        isKyc ? '/sellerDashboard' : '/sellerVerificationForm',
+                      );
+                    },
                   );
-                  Navigator.pushReplacementNamed(context, '/sellerDashboard');
                 },
               ),
               const SizedBox(height: 16),
@@ -929,116 +1511,14 @@ class _LoginSuccessScreenState extends State<_LoginSuccessScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Screen 6 – Forgot Password (Send OTP)
+// Screen 6 – Forgot Password (Phone OTP + Password Reset)
 // ─────────────────────────────────────────────────────────────────────────────
 class _ForgotPasswordScreen extends StatelessWidget {
   const _ForgotPasswordScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return SellerResponsiveContainer(
-      child: SafeArea(
-        child: BlocBuilder<SellerLoginPageBloc, SellerLoginPageState>(
-          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  SellerBackButton(
-                    onTap: () => context.read<SellerLoginPageBloc>().add(
-                      const SellerLoginBackPressed(),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Center(
-                    child: SellerScreenIllustration(
-                      heroTag: 'forgot_pw_illustration',
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          const Icon(
-                            Icons.lock_rounded,
-                            size: 52,
-                            color: SellerAuthColors.primary,
-                          ),
-                          Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: Colors.orange,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.question_mark,
-                              size: 12,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Center(
-                    child: Text(
-                      'Forgot Password',
-                      style: GoogleFonts.inter(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: SellerAuthColors.textDark,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Center(
-                    child: Text(
-                      "Enter your email and we'll\nsend you a link to reset\nyour password",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: SellerAuthColors.textLight,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  _LoginTextField(
-                    initialValue: state.forgotPasswordEmail,
-                    hintText: 'john@gmail.com',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    onChanged: (v) => context.read<SellerLoginPageBloc>().add(
-                      SellerLoginForgotPasswordEmailChanged(v),
-                    ),
-                    textInputAction: TextInputAction.done,
-                  ),
-                  const SizedBox(height: 24),
-                  SellerPrimaryButton(
-                    label: 'Send Reset Link',
-                    isLoading: state.status == SellerLoginStatus.loading,
-                    onPressed: () => context.read<SellerLoginPageBloc>().add(
-                      const SellerLoginForgotPasswordLinkSent(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Text(
-                      '6. Forgot Password – Send Link',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: SellerAuthColors.textLight,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    );
+    return const SellerForgotPasswordPageUI();
   }
 }
 

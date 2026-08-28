@@ -1,12 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DeliveryCollection {
+  final FirebaseFirestore _firestore;
   final CollectionReference _collection;
 
   DeliveryCollection({FirebaseFirestore? firestore})
-      : _collection = (firestore ?? FirebaseFirestore.instance)
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _collection = (firestore ?? FirebaseFirestore.instance)
             .collection('delivery_partners');
 
+  CollectionReference get deliveryPartnerCollection => _collection;
   DocumentReference partnerDoc(String uid) => _collection.doc(uid);
 
   CollectionReference ridersSubCollection(String uid) =>
@@ -27,11 +30,17 @@ class DeliveryCollection {
   CollectionReference kycDocumentsSubCollection(String uid) =>
       _collection.doc(uid).collection('kyc_documents');
 
+  CollectionReference shiftLogsSubCollection(String uid) =>
+      _collection.doc(uid).collection('shift_logs');
+
   CollectionReference notificationsSubCollection(String uid) =>
       _collection.doc(uid).collection('notifications');
 
   CollectionReference ordersSubCollection(String uid) =>
       _collection.doc(uid).collection('orders');
+
+  CollectionReference get orderAssignmentsCollection =>
+      _firestore.collection('order_assignments');
 
   Future<void> createDeliveryPartner(
       String uid, Map<String, dynamic> data) async {

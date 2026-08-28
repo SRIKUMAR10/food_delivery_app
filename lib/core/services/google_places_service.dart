@@ -281,8 +281,8 @@ class GooglePlacesService {
       debugPrint('Fallback Nominatim search error: $e');
     }
 
-    // 3. Contextual Offline / Mock Suggestions
-    return _generateContextualPredictions(cleanQuery);
+    // 3. Fallback: Return empty list so UI presents genuine empty/error state when no places are found
+    return const <GooglePlacePrediction>[];
   }
 
   /// Fetches place details including precise coordinates and address components.
@@ -443,73 +443,5 @@ class GooglePlacesService {
       debugPrint('Error getting current location address: $e');
       return null;
     }
-  }
-
-  List<GooglePlacePrediction> _generateContextualPredictions(String query) {
-    final lower = query.toLowerCase();
-    final List<Map<String, String>> popularPlaces = [
-      {
-        'id': 'pop_1',
-        'main': 'Anna Nagar',
-        'sub': 'Chennai, Tamil Nadu, India',
-        'desc': 'Anna Nagar, Chennai, Tamil Nadu 600040, India',
-      },
-      {
-        'id': 'pop_2',
-        'main': 'T. Nagar (Thyagaraya Nagar)',
-        'sub': 'Chennai, Tamil Nadu, India',
-        'desc': 'T. Nagar, Chennai, Tamil Nadu 600017, India',
-      },
-      {
-        'id': 'pop_3',
-        'main': 'Velachery Main Road',
-        'sub': 'Velachery, Chennai, Tamil Nadu, India',
-        'desc': 'Velachery Main Road, Chennai, Tamil Nadu 600042, India',
-      },
-      {
-        'id': 'pop_4',
-        'main': 'Connaught Place',
-        'sub': 'New Delhi, Delhi, India',
-        'desc': 'Connaught Place, New Delhi, Delhi 110001, India',
-      },
-      {
-        'id': 'pop_5',
-        'main': 'Indiranagar 100 Feet Road',
-        'sub': 'Bengaluru, Karnataka, India',
-        'desc': 'Indiranagar, Bengaluru, Karnataka 560038, India',
-      },
-      {
-        'id': 'pop_6',
-        'main': 'Bandra West',
-        'sub': 'Mumbai, Maharashtra, India',
-        'desc': 'Bandra West, Mumbai, Maharashtra 400050, India',
-      },
-    ];
-
-    final matches = popularPlaces.where((p) {
-      return p['main']!.toLowerCase().contains(lower) ||
-          p['sub']!.toLowerCase().contains(lower) ||
-          p['desc']!.toLowerCase().contains(lower);
-    }).toList();
-
-    if (matches.isNotEmpty) {
-      return matches
-          .map((m) => GooglePlacePrediction(
-                placeId: m['id']!,
-                mainText: m['main']!,
-                secondaryText: m['sub']!,
-                description: m['desc']!,
-              ))
-          .toList();
-    }
-
-    return [
-      GooglePlacePrediction(
-        placeId: 'custom_${query.hashCode}',
-        mainText: query,
-        secondaryText: 'Custom Location Address',
-        description: '$query, Landmark, City',
-      ),
-    ];
   }
 }

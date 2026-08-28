@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:food_delivery_app/core/services/google_places_service.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_event.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_state.dart';
 import 'package:food_delivery_app/repositories/seller_repository.dart';
@@ -10,7 +11,7 @@ import 'package:food_delivery_app/repositories/seller_repository.dart';
 ///
 /// Wizard flow:
 ///   Screen 1: welcome
-///   Screen 2: personalDetails   (name, shopName, businessDetails)
+///   Screen 2: personalDetails   (name, shopName, address, GPS coordinates, fssai)
 ///   Screen 3: contactPassword   (phone, email, password, confirmPassword, terms)
 ///   Screen 4: otpVerification   (6-digit OTP + 25s countdown)
 ///   Screen 5: signUpSuccess
@@ -34,6 +35,11 @@ class SellerSignUpPageBloc
     on<SellerSignUpNameChanged>(_onNameChanged);
     on<SellerSignUpShopNameChanged>(_onShopNameChanged);
     on<SellerSignUpBusinessDetailsChanged>(_onBusinessDetailsChanged);
+    on<SellerSignUpAddressChanged>(_onAddressChanged);
+    on<SellerSignUpCoordinatesChanged>(_onCoordinatesChanged);
+    on<SellerSignUpGpsLocationRequested>(_onGpsLocationRequested);
+    on<SellerSignUpFssaiChanged>(_onFssaiChanged);
+    on<SellerSignUpGstChanged>(_onGstChanged);
     on<SellerSignUpPersonalDetailsSubmitted>(_onPersonalDetailsSubmitted);
 
     // ── Screen 3 ──────────────────────────────────────────────────────────────
@@ -81,6 +87,11 @@ class SellerSignUpPageBloc
     if (msg.contains('APPLE_ACCOUNT_EXISTS')) {
       return 'An Apple Account exists for this Email. Please Login with Apple.';
     }
+    if (msg.contains('email-already-in-use') ||
+        msg.contains('The email address is already in use') ||
+        msg.contains('already in use by another account')) {
+      return 'The email address is already in use by another account.';
+    }
     if (msg.contains('already registered')) {
       return msg.replaceAll('Exception: ', '');
     }
@@ -100,7 +111,12 @@ class SellerSignUpPageBloc
     if (msg.contains('sign_in_cancelled') || msg.contains('NSUserCancelled')) {
       return 'Sign in cancelled.';
     }
-    return 'An error occurred: $msg';
+    String cleaned = msg.replaceAll(RegExp(r'\[firebase_auth\/[a-zA-Z0-9_-]+\]\s*'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'^Exception:\s*'), '').trim();
+    if (cleaned.isNotEmpty && !cleaned.startsWith('An error occurred:')) {
+      return cleaned;
+    }
+    return cleaned.isNotEmpty ? cleaned : 'An error occurred. Please try again.';
   }
 
   void _startOtpTimer() {
@@ -168,6 +184,111 @@ class SellerSignUpPageBloc
     );
   }
 
+  void _onAddressChanged(
+    SellerSignUpAddressChanged event,
+    Emitter<SellerSignUpPageState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        address: event.address,
+        businessDetails: state.businessDetails.isEmpty ? event.address : state.businessDetails,
+        clearAddressError: true,
+        clearBusinessDetailsError: true,
+        clearError: true,
+      ),
+    );
+  }
+
+  void _onCoordinatesChanged(
+    SellerSignUpCoordinatesChanged event,
+    Emitter<SellerSignUpPageState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        latitude: event.latitude,
+        longitude: event.longitude,
+        googleMapsUrl: event.googleMapsUrl,
+        address: event.address ?? state.address,
+        businessDetails: (event.address != null && state.businessDetails.isEmpty)
+            ? event.address
+            : state.businessDetails,
+        clearAddressError: true,
+        clearBusinessDetailsError: true,
+        clearError: true,
+      ),
+    );
+  }
+
+  Future<void> _onGpsLocationRequested(
+    SellerSignUpGpsLocationRequested event,
+    Emitter<SellerSignUpPageState> emit,
+  ) async {
+    emit(state.copyWith(isLocatingGps: true, clearError: true));
+    try {
+      final details =
+          await GooglePlacesService.instance.getCurrentLocationAddress();
+      if (details != null) {
+        final lat = details.latitude ?? 13.0827;
+        final lng = details.longitude ?? 80.2707;
+        emit(
+          state.copyWith(
+            address: details.formattedAddress,
+            latitude: lat,
+            longitude: lng,
+            googleMapsUrl: 'https://www.google.com/maps?q=$lat,$lng',
+            businessDetails: state.businessDetails.isEmpty
+                ? details.formattedAddress
+                : state.businessDetails,
+            isLocatingGps: false,
+            clearAddressError: true,
+            clearBusinessDetailsError: true,
+          ),
+        );
+      } else {
+        emit(
+          state.copyWith(
+            isLocatingGps: false,
+            errorMessage:
+                'Could not retrieve GPS location. Please check location permissions.',
+          ),
+        );
+      }
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isLocatingGps: false,
+          errorMessage: 'Location error: $e',
+        ),
+      );
+    }
+  }
+
+  void _onFssaiChanged(
+    SellerSignUpFssaiChanged event,
+    Emitter<SellerSignUpPageState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        fssaiNumber: event.fssai,
+        clearFssaiNumberError: true,
+        clearError: true,
+      ),
+    );
+  }
+
+  void _onGstChanged(
+    SellerSignUpGstChanged event,
+    Emitter<SellerSignUpPageState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        gstNumber: event.gst,
+        clearGstNumberError: true,
+        clearError: true,
+      ),
+    );
+  }
+
   void _onPersonalDetailsSubmitted(
     SellerSignUpPersonalDetailsSubmitted event,
     Emitter<SellerSignUpPageState> emit,
@@ -179,16 +300,20 @@ class SellerSignUpPageBloc
     final shopNameError = state.shopName.trim().length < 2
         ? 'Shop name must be at least 2 characters.'
         : null;
-    final bizError = state.businessDetails.trim().isEmpty
-        ? 'Enter business details.'
+    final addressVal = state.address.trim().isNotEmpty
+        ? state.address.trim()
+        : state.businessDetails.trim();
+    final addressError = addressVal.isEmpty
+        ? 'Enter business details or address.'
         : null;
 
-    if (nameError != null || shopNameError != null || bizError != null) {
+    if (nameError != null || shopNameError != null || addressError != null) {
       emit(
         state.copyWith(
           nameError: nameError,
           shopNameError: shopNameError,
-          businessDetailsError: bizError,
+          businessDetailsError: addressError,
+          addressError: addressError,
           status: SellerSignUpStatus.failure,
           errorMessage: 'Please fill all fields.',
         ),
@@ -203,6 +328,7 @@ class SellerSignUpPageBloc
         clearNameError: true,
         clearShopNameError: true,
         clearBusinessDetailsError: true,
+        clearAddressError: true,
       ),
     );
   }
@@ -341,13 +467,23 @@ class SellerSignUpPageBloc
     emit(state.copyWith(status: SellerSignUpStatus.loading, clearError: true));
 
     try {
+      final effectiveAddress = state.address.trim().isNotEmpty
+          ? state.address.trim()
+          : state.businessDetails.trim();
+
       await _repo.initiateSignUp(
         name: state.name.trim(),
         shopName: state.shopName.trim(),
-        businessDetails: state.businessDetails.trim(),
+        businessDetails: effectiveAddress,
         phoneNumber: state.phone.trim(),
         email: state.email.trim(),
         password: state.password,
+        address: effectiveAddress,
+        latitude: state.latitude,
+        longitude: state.longitude,
+        googleMapsUrl: state.googleMapsUrl,
+        fssaiNumber: state.fssaiNumber,
+        gstNumber: state.gstNumber,
       );
 
       _verificationId = await _repo.sendOtp(state.phone.trim());
@@ -417,15 +553,25 @@ class SellerSignUpPageBloc
     emit(state.copyWith(status: SellerSignUpStatus.loading, clearError: true));
 
     try {
+      final effectiveAddress = state.address.trim().isNotEmpty
+          ? state.address.trim()
+          : state.businessDetails.trim();
+
       final success = await _repo.confirmSignUpOtp(
         otpCode: state.otpCode,
         phoneNumber: state.phone.trim(),
         verificationId: verificationId,
         name: state.name.trim(),
         shopName: state.shopName.trim(),
-        businessDetails: state.businessDetails.trim(),
+        businessDetails: effectiveAddress,
         email: state.email.trim(),
         password: state.password,
+        address: effectiveAddress,
+        latitude: state.latitude,
+        longitude: state.longitude,
+        googleMapsUrl: state.googleMapsUrl,
+        fssaiNumber: state.fssaiNumber,
+        gstNumber: state.gstNumber,
       );
 
       if (success) {

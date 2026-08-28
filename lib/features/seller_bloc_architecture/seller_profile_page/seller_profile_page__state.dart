@@ -57,6 +57,30 @@ class ProfileLoaded extends SellerProfilePageState {
   final Uint8List? localImageBytes;
   final bool isCoverUploading;
   final Uint8List? localCoverBytes;
+  final String kycStatus;
+  final String? fssaiCertificateUrl;
+  final String? gstCertificateUrl;
+  final String? panCardUrl;
+  final String? bankChequeUrl;
+  final String? shopLicenseUrl;
+  final String? kycRejectionReason;
+  final bool isKycUploading;
+
+  bool get isKycApproved =>
+      isVerified ||
+      verificationStatus == 'verified' ||
+      verificationStatus == 'approved' ||
+      kycStatus == 'approved';
+
+  bool get isKycPending =>
+      !isKycApproved &&
+      (kycStatus == 'pending' || verificationStatus == 'pending');
+
+  bool get isKycInReview =>
+      kycStatus == 'in_review' || verificationStatus == 'in_review';
+
+  bool get isKycRejected =>
+      kycStatus == 'rejected' || verificationStatus == 'rejected';
 
   const ProfileLoaded({
     required this.storeName,
@@ -102,6 +126,14 @@ class ProfileLoaded extends SellerProfilePageState {
     this.localImageBytes,
     this.isCoverUploading = false,
     this.localCoverBytes,
+    this.kycStatus = 'pending',
+    this.fssaiCertificateUrl,
+    this.gstCertificateUrl,
+    this.panCardUrl,
+    this.bankChequeUrl,
+    this.shopLicenseUrl,
+    this.kycRejectionReason,
+    this.isKycUploading = false,
   });
 
   ProfileLoaded copyWith({
@@ -148,6 +180,14 @@ class ProfileLoaded extends SellerProfilePageState {
     Uint8List? localImageBytes,
     bool? isCoverUploading,
     Uint8List? localCoverBytes,
+    String? kycStatus,
+    String? fssaiCertificateUrl,
+    String? gstCertificateUrl,
+    String? panCardUrl,
+    String? bankChequeUrl,
+    String? shopLicenseUrl,
+    String? kycRejectionReason,
+    bool? isKycUploading,
   }) {
     return ProfileLoaded(
       storeName: storeName ?? this.storeName,
@@ -193,6 +233,14 @@ class ProfileLoaded extends SellerProfilePageState {
       localImageBytes: localImageBytes ?? this.localImageBytes,
       isCoverUploading: isCoverUploading ?? this.isCoverUploading,
       localCoverBytes: localCoverBytes ?? this.localCoverBytes,
+      kycStatus: kycStatus ?? this.kycStatus,
+      fssaiCertificateUrl: fssaiCertificateUrl ?? this.fssaiCertificateUrl,
+      gstCertificateUrl: gstCertificateUrl ?? this.gstCertificateUrl,
+      panCardUrl: panCardUrl ?? this.panCardUrl,
+      bankChequeUrl: bankChequeUrl ?? this.bankChequeUrl,
+      shopLicenseUrl: shopLicenseUrl ?? this.shopLicenseUrl,
+      kycRejectionReason: kycRejectionReason ?? this.kycRejectionReason,
+      isKycUploading: isKycUploading ?? this.isKycUploading,
     );
   }
 
@@ -241,6 +289,14 @@ class ProfileLoaded extends SellerProfilePageState {
         localImageBytes,
         isCoverUploading,
         localCoverBytes,
+        kycStatus,
+        fssaiCertificateUrl,
+        gstCertificateUrl,
+        panCardUrl,
+        bankChequeUrl,
+        shopLicenseUrl,
+        kycRejectionReason,
+        isKycUploading,
       ];
 }
 
@@ -252,4 +308,3 @@ class ProfileError extends SellerProfilePageState {
   @override
   List<Object?> get props => [message];
 }
-

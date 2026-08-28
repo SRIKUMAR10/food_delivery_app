@@ -54,7 +54,11 @@ class MockSellerNotificationService extends SellerNotificationService {
       const Stream<SellerNotificationModel>.empty();
 
   @override
-  void playChime() {}
+  void playChime({
+    String ringtoneName = 'swiggy_order.mp3',
+    double volume = 0.8,
+    bool loop = false,
+  }) {}
 
   @override
   void dispose() {}

@@ -202,6 +202,25 @@ void main() {
       ).thenThrow(Exception('Google Login failed'));
       expect(() => mockRepo.signInWithGoogle(), throwsException);
     });
+
+    test('syncSellerProfile completes successfully', () async {
+      when(
+        () => mockRepo.syncSellerProfile(
+          uid: 'seller_123',
+          name: 'Test Seller',
+          email: 'seller@test.com',
+        ),
+      ).thenAnswer((_) async {});
+
+      await expectLater(
+        mockRepo.syncSellerProfile(
+          uid: 'seller_123',
+          name: 'Test Seller',
+          email: 'seller@test.com',
+        ),
+        completes,
+      );
+    });
   });
 
   // ──────────────────────────────────────────────────────────────────────────

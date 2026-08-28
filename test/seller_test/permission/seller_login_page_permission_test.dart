@@ -91,6 +91,7 @@ void main() {
 
   setUp(() {
     mockRepo = MockSellerRepository();
+    when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => true);
     bloc = SellerLoginPageBloc(authRepository: mockRepo);
   });
 
@@ -175,7 +176,8 @@ void main() {
 
       await tester.pumpWidget(buildPermissionTestWidget(bloc));
       await tester.tap(find.byKey(const Key('googleSignInButton')));
-      await tester.pumpAndSettle();
+      await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
 
       expect(find.byKey(const Key('errorText')), findsOneWidget);
     });

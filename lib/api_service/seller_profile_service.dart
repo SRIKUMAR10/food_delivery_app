@@ -33,12 +33,12 @@ class SellerProfileService {
         // Create a default profile if it doesn't exist
         final defaultProfile = {
           'id': sellerId,
-          'name': _auth.currentUser?.displayName ?? 'Picarhub Kitchen',
-          'email': _auth.currentUser?.email ?? 'picarhub@foodgo.com',
-          'phone': _auth.currentUser?.phoneNumber ?? '+91 98765 43210',
-          'storeName': 'Picarhub Kitchen',
-          'storeDescription': 'Authentic home-cooked meals with fresh ingredients, delivered hot.',
-          'avatarUrl': _auth.currentUser?.photoURL ?? 'https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=200',
+          'name': _auth.currentUser?.displayName ?? '',
+          'email': _auth.currentUser?.email ?? '',
+          'phone': _auth.currentUser?.phoneNumber ?? '',
+          'storeName': _auth.currentUser?.displayName ?? '',
+          'storeDescription': '',
+          'avatarUrl': _auth.currentUser?.photoURL ?? '',
           'rating': 0.0,
           'totalOrders': 0,
           'memberSince': DateTime.now().toIso8601String(),

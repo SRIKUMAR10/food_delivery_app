@@ -904,15 +904,17 @@ class _FoodCardState extends State<FoodCard> {
                                         ),
                                       ),
                                     ),
-                                  if (!widget.item.isActive || widget.item.status.contains('outOfStock'))
+                                  if (!widget.item.isActive ||
+                                      widget.item.status.toLowerCase().contains('outofstock') ||
+                                      (!widget.item.hasUnlimitedStock && widget.item.availableStock <= 0))
                                     Positioned.fill(
                                       child: Container(
-                                        color: Colors.white.withValues(alpha: 0.6),
+                                        color: Colors.black.withValues(alpha: 0.45),
                                         child: Center(
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                             decoration: BoxDecoration(
-                                              color: Colors.black.withValues(alpha: 0.7),
+                                              color: const Color(0xFFDC2626),
                                               borderRadius: BorderRadius.circular(8),
                                             ),
                                             child: const Text(

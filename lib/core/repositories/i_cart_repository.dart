@@ -8,7 +8,7 @@ abstract interface class ICartRepository {
   Future<void> toggleSelection(String buyerId, String itemId, bool isSelected);
   Future<void> clearCart(String buyerId);
   Future<void> updateItemPrice(String buyerId, String itemId, double newPrice);
-  Future<void> checkoutCart(
+  Future<String?> checkoutCart(
     String buyerId,
     List<CartItem> selectedItems,
     String customerName,
@@ -18,7 +18,7 @@ abstract interface class ICartRepository {
     String paymentMethod = 'COD',
   });
 
-  Future<void> verifyAndCheckoutRazorpay({
+  Future<String?> verifyAndCheckoutRazorpay({
     required String buyerId,
     required String razorpayOrderId,
     required String razorpayPaymentId,

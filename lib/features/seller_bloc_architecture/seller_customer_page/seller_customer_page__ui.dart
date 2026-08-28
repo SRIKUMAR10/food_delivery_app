@@ -101,7 +101,7 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
                   color: Color(0xFF1E293B),
                   size: 20,
                 ),
-                onPressed: () => Navigator.of(context).maybePop(),
+                onPressed: () => Navigator.of(context).pop(),
               )
             : (SellerDrawerProvider.of(context) != null
                 ? IconButton(

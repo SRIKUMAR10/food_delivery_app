@@ -127,13 +127,9 @@ class RealtimeVehicleRouteNavigator {
       } catch (_) {}
     }
 
-    // If route service returns fewer than 2 points, generate curved spline fallback
+    // Under strict real data policy, if real road coordinates are unavailable, do not navigate along fake lines
     if (roadPoints.length < 2) {
-      roadPoints = RoutePolylineService.instance.generateSmoothPath(
-        start,
-        destination,
-        steps: 30,
-      );
+      return;
     }
 
     if (roadPoints.isEmpty || _telemetryController == null || _telemetryController!.isClosed) {

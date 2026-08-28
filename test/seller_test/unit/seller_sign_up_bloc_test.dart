@@ -54,6 +54,56 @@ void main() {
     );
 
     blocTest<SellerSignUpPageBloc, SellerSignUpPageState>(
+      'emits correct state when address changed',
+      build: () => bloc,
+      act: (bloc) => bloc.add(const SellerSignUpAddressChanged('123 Main St, Anna Nagar, Chennai')),
+      expect: () => [
+        const SellerSignUpPageState(
+          address: '123 Main St, Anna Nagar, Chennai',
+          businessDetails: '123 Main St, Anna Nagar, Chennai',
+        ),
+      ],
+    );
+
+    blocTest<SellerSignUpPageBloc, SellerSignUpPageState>(
+      'emits correct state when coordinates changed',
+      build: () => bloc,
+      act: (bloc) => bloc.add(const SellerSignUpCoordinatesChanged(
+        latitude: 13.0827,
+        longitude: 80.2707,
+        googleMapsUrl: 'https://www.google.com/maps?q=13.0827,80.2707',
+        address: 'Marina Beach, Chennai',
+      )),
+      expect: () => [
+        const SellerSignUpPageState(
+          latitude: 13.0827,
+          longitude: 80.2707,
+          googleMapsUrl: 'https://www.google.com/maps?q=13.0827,80.2707',
+          address: 'Marina Beach, Chennai',
+          businessDetails: 'Marina Beach, Chennai',
+        ),
+      ],
+    );
+
+    blocTest<SellerSignUpPageBloc, SellerSignUpPageState>(
+      'emits correct state when fssai changed',
+      build: () => bloc,
+      act: (bloc) => bloc.add(const SellerSignUpFssaiChanged('12345678901234')),
+      expect: () => [
+        const SellerSignUpPageState(fssaiNumber: '12345678901234'),
+      ],
+    );
+
+    blocTest<SellerSignUpPageBloc, SellerSignUpPageState>(
+      'emits correct state when gst changed',
+      build: () => bloc,
+      act: (bloc) => bloc.add(const SellerSignUpGstChanged('33AAAAA0000A1Z5')),
+      expect: () => [
+        const SellerSignUpPageState(gstNumber: '33AAAAA0000A1Z5'),
+      ],
+    );
+
+    blocTest<SellerSignUpPageBloc, SellerSignUpPageState>(
       'emits failure on personal details submitted with empty fields',
       build: () => bloc,
       act: (bloc) => bloc.add(const SellerSignUpPersonalDetailsSubmitted()),
@@ -63,7 +113,8 @@ void main() {
           errorMessage: 'Please fill all fields.',
           nameError: 'Name must be at least 2 characters.',
           shopNameError: 'Shop name must be at least 2 characters.',
-          businessDetailsError: 'Enter business details.',
+          businessDetailsError: 'Enter business details or address.',
+          addressError: 'Enter business details or address.',
         ),
       ],
     );

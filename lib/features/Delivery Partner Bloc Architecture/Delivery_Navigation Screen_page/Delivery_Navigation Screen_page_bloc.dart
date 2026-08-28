@@ -55,6 +55,8 @@ class DeliveryNavigationBloc
     on<DeliveryNavigationArrivedAtCustomerEvent>(_onArrivedAtCustomer);
     on<DeliveryNavigationConfirmDeliveryEvent>(_onConfirmDelivery);
     on<DeliveryNavigationCollectCodCashEvent>(_onCollectCodCash);
+    on<DeliveryNavigationOtpInputChangedEvent>(_onOtpInputChanged);
+    on<DeliveryNavigationVerifyDeliveryOtpEvent>(_onVerifyDeliveryOtp);
     on<DeliveryNavigationProfileUpdatedEvent>(_onProfileUpdated);
     on<DeliveryNavigationSellersUpdatedEvent>(_onSellersUpdated);
   }
@@ -823,6 +825,66 @@ class DeliveryNavigationBloc
       emit(state.copyWith(
         codCollectStatus: CodCollectStatus.failed,
         codMessage: e.toString(),
+        errorMessage: e.toString(),
+      ));
+    }
+  }
+
+  void _onOtpInputChanged(
+    DeliveryNavigationOtpInputChangedEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) {
+    emit(state.copyWith(
+      enteredDeliveryOtp: event.otp,
+      deliveryOtpStatus: DeliveryOtpVerificationStatus.initial,
+      clearError: true,
+    ));
+  }
+
+  Future<void> _onVerifyDeliveryOtp(
+    DeliveryNavigationVerifyDeliveryOtpEvent event,
+    Emitter<DeliveryNavigationState> emit,
+  ) async {
+    final effectiveOrderId = event.orderId.isNotEmpty
+        ? event.orderId
+        : (_activeOrderId ?? state.order.orderId);
+    if (effectiveOrderId.isEmpty) return;
+
+    emit(state.copyWith(
+      deliveryOtpStatus: DeliveryOtpVerificationStatus.verifying,
+      clearError: true,
+    ));
+
+    try {
+      final isValid = await repository.verifyDeliveryOtp(
+        orderId: effectiveOrderId,
+        otp: event.otp,
+      );
+
+      if (isValid) {
+        _stopLocationStream();
+        emit(state.copyWith(
+          isDeliveryOtpVerified: true,
+          deliveryOtpStatus: DeliveryOtpVerificationStatus.success,
+          navigationStage: NavigationStage.completed,
+          status: DeliveryNavigationStatus.loaded,
+          emergencyMode: false,
+          nextTurnInstruction: 'Delivery Completed',
+          turnDistanceMeters: 0,
+          errorMessage: null,
+          clearError: true,
+        ));
+      } else {
+        emit(state.copyWith(
+          deliveryOtpStatus: DeliveryOtpVerificationStatus.invalid,
+          deliveryOtpErrorMessage: 'Invalid Delivery OTP. Please verify with customer.',
+          errorMessage: 'Invalid Delivery OTP. Please check with customer.',
+        ));
+      }
+    } catch (e) {
+      emit(state.copyWith(
+        deliveryOtpStatus: DeliveryOtpVerificationStatus.invalid,
+        deliveryOtpErrorMessage: e.toString(),
         errorMessage: e.toString(),
       ));
     }

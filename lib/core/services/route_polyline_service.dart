@@ -9,6 +9,192 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'google_maps_loader.dart';
 
+/// Represents turn maneuver types parsed strictly from real routing APIs (Google Directions / OSRM)
+enum RouteManeuver {
+  turnLeft,
+  turnRight,
+  turnSlightLeft,
+  turnSlightRight,
+  turnSharpLeft,
+  turnSharpRight,
+  uturn,
+  straight,
+  roundabout,
+  arrive,
+  depart,
+  unknown;
+
+  static RouteManeuver fromString(String? val) {
+    if (val == null || val.isEmpty) return RouteManeuver.unknown;
+    final lower = val.toLowerCase().replaceAll('-', '_').replaceAll(' ', '_');
+    if (lower.contains('slight_left') || lower.contains('turn_slight_left')) {
+      return RouteManeuver.turnSlightLeft;
+    }
+    if (lower.contains('slight_right') || lower.contains('turn_slight_right')) {
+      return RouteManeuver.turnSlightRight;
+    }
+    if (lower.contains('sharp_left') || lower.contains('turn_sharp_left')) {
+      return RouteManeuver.turnSharpLeft;
+    }
+    if (lower.contains('sharp_right') || lower.contains('turn_sharp_right')) {
+      return RouteManeuver.turnSharpRight;
+    }
+    if (lower.contains('u_turn') || lower.contains('uturn')) {
+      return RouteManeuver.uturn;
+    }
+    if (lower.contains('left')) return RouteManeuver.turnLeft;
+    if (lower.contains('right')) return RouteManeuver.turnRight;
+    if (lower.contains('straight') || lower.contains('continue')) {
+      return RouteManeuver.straight;
+    }
+    if (lower.contains('roundabout') || lower.contains('rotary')) {
+      return RouteManeuver.roundabout;
+    }
+    if (lower.contains('arrive') || lower.contains('destination')) {
+      return RouteManeuver.arrive;
+    }
+    if (lower.contains('depart') || lower.contains('start')) {
+      return RouteManeuver.depart;
+    }
+    return RouteManeuver.straight;
+  }
+}
+
+/// Data class representing a verified physical road navigation step from real APIs
+class RouteStepInfo {
+  final String instruction;
+  final RouteManeuver maneuver;
+  final String distanceText;
+  final int distanceMeters;
+  final String durationText;
+  final int durationSeconds;
+  final LatLng startLocation;
+  final LatLng endLocation;
+  final List<LatLng> polylinePoints;
+  final String streetName;
+
+  const RouteStepInfo({
+    required this.instruction,
+    required this.maneuver,
+    required this.distanceText,
+    required this.distanceMeters,
+    required this.durationText,
+    required this.durationSeconds,
+    required this.startLocation,
+    required this.endLocation,
+    this.polylinePoints = const [],
+    this.streetName = '',
+  });
+
+  /// Parse from Google Directions API Step JSON
+  factory RouteStepInfo.fromGoogleStep(Map<String, dynamic> json) {
+    final rawInstruction = json['html_instructions']?.toString() ?? '';
+    final cleanInstruction = rawInstruction
+        .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final maneuverStr = json['maneuver']?.toString() ?? '';
+    final maneuver = RouteManeuver.fromString(
+        maneuverStr.isNotEmpty ? maneuverStr : cleanInstruction);
+
+    final distanceMap = json['distance'] as Map<String, dynamic>? ?? {};
+    final distanceText = distanceMap['text']?.toString() ?? '';
+    final distanceMeters = (distanceMap['value'] as num?)?.toInt() ?? 0;
+
+    final durationMap = json['duration'] as Map<String, dynamic>? ?? {};
+    final durationText = durationMap['text']?.toString() ?? '';
+    final durationSeconds = (durationMap['value'] as num?)?.toInt() ?? 0;
+
+    final startLocMap = json['start_location'] as Map<String, dynamic>? ?? {};
+    final endLocMap = json['end_location'] as Map<String, dynamic>? ?? {};
+
+    final startLat = (startLocMap['lat'] as num?)?.toDouble() ?? 0.0;
+    final startLng = (startLocMap['lng'] as num?)?.toDouble() ?? 0.0;
+    final endLat = (endLocMap['lat'] as num?)?.toDouble() ?? 0.0;
+    final endLng = (endLocMap['lng'] as num?)?.toDouble() ?? 0.0;
+
+    final polyMap = json['polyline'] as Map<String, dynamic>? ?? {};
+    final polyStr = polyMap['points']?.toString() ?? '';
+    final points = polyStr.isNotEmpty
+        ? RoutePolylineService.instance.decodePolyline(polyStr)
+        : <LatLng>[];
+
+    return RouteStepInfo(
+      instruction:
+          cleanInstruction.isNotEmpty ? cleanInstruction : 'Continue on route',
+      maneuver: maneuver,
+      distanceText: distanceText,
+      distanceMeters: distanceMeters,
+      durationText: durationText,
+      durationSeconds: durationSeconds,
+      startLocation: LatLng(startLat, startLng),
+      endLocation: LatLng(endLat, endLng),
+      polylinePoints: points,
+    );
+  }
+
+  /// Parse from OSRM Step JSON
+  factory RouteStepInfo.fromOsrmStep(Map<String, dynamic> json) {
+    final name = json['name']?.toString() ?? '';
+    final maneuverMap = json['maneuver'] as Map<String, dynamic>? ?? {};
+    final type = maneuverMap['type']?.toString() ?? '';
+    final modifier = maneuverMap['modifier']?.toString() ?? '';
+    final maneuver = RouteManeuver.fromString('$type $modifier');
+
+    final distanceM = (json['distance'] as num?)?.toDouble() ?? 0.0;
+    final durationSecs = (json['duration'] as num?)?.toDouble() ?? 0.0;
+
+    String instruction = '';
+    if (type == 'arrive') {
+      instruction = 'You have arrived at your destination';
+    } else if (type == 'depart') {
+      instruction =
+          name.isNotEmpty ? 'Head on $name' : 'Head towards destination';
+    } else if (modifier.isNotEmpty && name.isNotEmpty) {
+      instruction = 'Turn ${modifier.replaceAll('_', ' ')} onto $name';
+    } else if (name.isNotEmpty) {
+      instruction = 'Continue on $name';
+    } else {
+      instruction = 'Continue along the route';
+    }
+
+    final distanceMeters = distanceM.round();
+    final distanceText = distanceMeters >= 1000
+        ? '${(distanceMeters / 1000.0).toStringAsFixed(1)} km'
+        : '$distanceMeters m';
+    final durationSeconds = durationSecs.round();
+    final durationText = '${(durationSeconds / 60).round().clamp(1, 120)} mins';
+
+    final locList = maneuverMap['location'] as List<dynamic>?;
+    final startLat = (locList != null && locList.length >= 2)
+        ? (locList[1] as num).toDouble()
+        : 0.0;
+    final startLng = (locList != null && locList.length >= 2)
+        ? (locList[0] as num).toDouble()
+        : 0.0;
+
+    final geometryStr = json['geometry']?.toString() ?? '';
+    final points = geometryStr.isNotEmpty
+        ? RoutePolylineService.instance.decodePolyline(geometryStr)
+        : <LatLng>[];
+    final endLocation =
+        points.isNotEmpty ? points.last : LatLng(startLat, startLng);
+
+    return RouteStepInfo(
+      instruction: instruction,
+      maneuver: maneuver,
+      distanceText: distanceText,
+      distanceMeters: distanceMeters,
+      durationText: durationText,
+      durationSeconds: durationSeconds,
+      startLocation: LatLng(startLat, startLng),
+      endLocation: endLocation,
+      polylinePoints: points,
+      streetName: name,
+    );
+  }
+}
+
 /// Data class representing the result of snapping a raw GPS coordinate to a polyline route.
 class RouteSnapResult {
   final LatLng snappedPosition;
@@ -28,7 +214,7 @@ class RouteSnapResult {
   });
 }
 
-/// Data class holding decoded route waypoints, ETA information, and API bounds.
+/// Data class holding decoded route waypoints, ETA information, API bounds, and navigation steps.
 class RouteAndEtaResult {
   final List<LatLng> points;
   final String durationText;
@@ -37,6 +223,7 @@ class RouteAndEtaResult {
   final int distanceMeters;
   final bool isFromCloudFunction;
   final LatLngBounds? bounds;
+  final List<RouteStepInfo> steps;
   final DateTime cachedAt;
 
   RouteAndEtaResult({
@@ -47,8 +234,22 @@ class RouteAndEtaResult {
     required this.distanceMeters,
     this.isFromCloudFunction = false,
     this.bounds,
+    this.steps = const [],
     DateTime? cachedAt,
   }) : cachedAt = cachedAt ?? DateTime.now();
+
+  /// Empty result for loading, empty, or unverified error states
+  factory RouteAndEtaResult.empty() {
+    return RouteAndEtaResult(
+      points: const [],
+      durationText: '-- mins',
+      durationSeconds: 0,
+      distanceText: '-- km',
+      distanceMeters: 0,
+      steps: const [],
+      cachedAt: DateTime.now(),
+    );
+  }
 
   /// Parse from Google Directions API JSON response
   factory RouteAndEtaResult.fromDirectionsJson(
@@ -62,34 +263,39 @@ class RouteAndEtaResult {
 
     final primaryRoute = routes.first as Map<String, dynamic>;
     final legs = primaryRoute['legs'] as List<dynamic>?;
-    final firstLeg = (legs != null && legs.isNotEmpty) ? legs.first as Map<String, dynamic>? : null;
+    final firstLeg = (legs != null && legs.isNotEmpty)
+        ? legs.first as Map<String, dynamic>?
+        : null;
 
-    final overviewPolyline = primaryRoute['overview_polyline'] as Map<String, dynamic>?;
+    final overviewPolyline =
+        primaryRoute['overview_polyline'] as Map<String, dynamic>?;
     final pointsEncoded = overviewPolyline?['points'] as String?;
 
     List<LatLng> points = decodedPoints ?? <LatLng>[];
+    final List<RouteStepInfo> parsedSteps = [];
+
+    if (legs != null && legs.isNotEmpty) {
+      for (final leg in legs) {
+        final rawSteps =
+            (leg as Map<String, dynamic>?)?['steps'] as List<dynamic>?;
+        if (rawSteps != null) {
+          for (final st in rawSteps) {
+            if (st is Map<String, dynamic>) {
+              parsedSteps.add(RouteStepInfo.fromGoogleStep(st));
+            }
+          }
+        }
+      }
+    }
 
     if (points.isEmpty) {
       final List<LatLng> stepWaypoints = [];
-      if (legs != null && legs.isNotEmpty) {
-        for (final leg in legs) {
-          final steps = (leg as Map<String, dynamic>?)?['steps'] as List<dynamic>?;
-          if (steps != null) {
-            for (final step in steps) {
-              final stepMap = step as Map<String, dynamic>?;
-              final stepPoly = stepMap?['polyline'] as Map<String, dynamic>?;
-              final stepPointsEncoded = stepPoly?['points'] as String?;
-              if (stepPointsEncoded != null && stepPointsEncoded.isNotEmpty) {
-                final decodedStep = RoutePolylineService.instance.decodePolyline(stepPointsEncoded);
-                for (final pt in decodedStep) {
-                  if (stepWaypoints.isEmpty ||
-                      (stepWaypoints.last.latitude - pt.latitude).abs() > 0.000001 ||
-                      (stepWaypoints.last.longitude - pt.longitude).abs() > 0.000001) {
-                    stepWaypoints.add(pt);
-                  }
-                }
-              }
-            }
+      for (final s in parsedSteps) {
+        for (final pt in s.polylinePoints) {
+          if (stepWaypoints.isEmpty ||
+              (stepWaypoints.last.latitude - pt.latitude).abs() > 0.000001 ||
+              (stepWaypoints.last.longitude - pt.longitude).abs() > 0.000001) {
+            stepWaypoints.add(pt);
           }
         }
       }
@@ -135,6 +341,7 @@ class RouteAndEtaResult {
       distanceText: distanceText,
       distanceMeters: distanceMeters,
       bounds: routeBounds,
+      steps: parsedSteps,
       cachedAt: DateTime.now(),
     );
   }
@@ -152,28 +359,31 @@ class RouteAndEtaResult {
     final primaryRoute = routes.first as Map<String, dynamic>;
     final geometry = primaryRoute['geometry'] as String?;
     List<LatLng> points = decodedPoints ?? <LatLng>[];
+    final List<RouteStepInfo> parsedSteps = [];
+
+    final legs = primaryRoute['legs'] as List<dynamic>?;
+    if (legs != null && legs.isNotEmpty) {
+      for (final leg in legs) {
+        final rawSteps =
+            (leg as Map<String, dynamic>?)?['steps'] as List<dynamic>?;
+        if (rawSteps != null) {
+          for (final st in rawSteps) {
+            if (st is Map<String, dynamic>) {
+              parsedSteps.add(RouteStepInfo.fromOsrmStep(st));
+            }
+          }
+        }
+      }
+    }
 
     if (points.isEmpty) {
-      final legs = primaryRoute['legs'] as List<dynamic>?;
       final List<LatLng> stepWaypoints = [];
-      if (legs != null && legs.isNotEmpty) {
-        for (final leg in legs) {
-          final steps = (leg as Map<String, dynamic>?)?['steps'] as List<dynamic>?;
-          if (steps != null) {
-            for (final step in steps) {
-              final stepMap = step as Map<String, dynamic>?;
-              final stepGeometry = stepMap?['geometry'] as String?;
-              if (stepGeometry != null && stepGeometry.isNotEmpty) {
-                final decodedStep = RoutePolylineService.instance.decodePolyline(stepGeometry);
-                for (final pt in decodedStep) {
-                  if (stepWaypoints.isEmpty ||
-                      (stepWaypoints.last.latitude - pt.latitude).abs() > 0.000001 ||
-                      (stepWaypoints.last.longitude - pt.longitude).abs() > 0.000001) {
-                    stepWaypoints.add(pt);
-                  }
-                }
-              }
-            }
+      for (final s in parsedSteps) {
+        for (final pt in s.polylinePoints) {
+          if (stepWaypoints.isEmpty ||
+              (stepWaypoints.last.latitude - pt.latitude).abs() > 0.000001 ||
+              (stepWaypoints.last.longitude - pt.longitude).abs() > 0.000001) {
+            stepWaypoints.add(pt);
           }
         }
       }
@@ -196,6 +406,7 @@ class RouteAndEtaResult {
       durationSeconds: durationSecs.round(),
       distanceText: '${distKm.toStringAsFixed(1)} km',
       distanceMeters: distanceM.round(),
+      steps: parsedSteps,
       cachedAt: DateTime.now(),
     );
   }
@@ -238,11 +449,13 @@ class _CachedRouteEntry {
   bool isExpired(Duration ttl) => DateTime.now().difference(cachedAt) > ttl;
 }
 
-/// Cost-effective, high-performance polyline calculation and styling service
-/// for real-time delivery journeys with Firebase Callable Function, Google Directions API & OSRM fallback.
+/// 100% Real-Data-Source polyline calculation and styling service
+/// for real-time delivery journeys using Google Directions API & OSRM Real Road Engine.
+/// Strictly eliminates fake curves, synthetic splines, and imaginary roads.
 class RoutePolylineService {
   static RoutePolylineService? _instance;
-  static RoutePolylineService get instance => _instance ??= RoutePolylineService();
+  static RoutePolylineService get instance =>
+      _instance ??= RoutePolylineService();
 
   /// Default cache expiration duration (10 minutes)
   static const Duration defaultCacheTtl = Duration(minutes: 10);
@@ -290,142 +503,23 @@ class RoutePolylineService {
     return !entry.isExpired(defaultCacheTtl) && entry.result.points.length >= 2;
   }
 
-  /// Fetches real road waypoints between two coordinates.
-  /// Priority: 1. Same coords fast-path -> 2. Real-road Cache Lookup -> 3. Firebase Callable -> 4. Google Directions API -> 5. OSRM -> 6. Spline Fallback (never cached)
+  /// Fetches 100% real road waypoints between two coordinates.
+  /// Strictly queries verified sources:
+  /// 1. Identical coordinates fast-path
+  /// 2. High-precision Real-Road Cache
+  /// 3. Google Maps JS DirectionsService (Web)
+  /// 4. Firebase Callable Function (Native)
+  /// 5. Google Directions API REST (Native)
+  /// 6. OSM / OSRM Real Road Routing Engine
+  /// If all verified sources fail, returns empty list [] without fabricating fake routes.
   Future<List<LatLng>> fetchRoadRoute(LatLng start, LatLng end) async {
-    // 0a. Identical coordinates fast-path (~1 meter threshold)
-    final latDiff = (end.latitude - start.latitude).abs();
-    final lngDiff = (end.longitude - start.longitude).abs();
-    if (latDiff < 0.00001 && lngDiff < 0.00001) {
-      return [start, end];
-    }
-
-    final cacheKey = _buildCacheKey(start, end);
-
-    // 0b. High-precision Cache lookup with TTL check (5 decimal digits = ~1.1 meters quantization)
-    if (_routeCache.containsKey(cacheKey)) {
-      final entry = _routeCache[cacheKey]!;
-      if (!entry.isExpired(defaultCacheTtl) && entry.result.points.length >= 2) {
-        return entry.result.points;
-      } else if (entry.isExpired(defaultCacheTtl)) {
-        _routeCache.remove(cacheKey);
-      }
-    }
-
-    // 0d. Google Maps JS DirectionsService (Web Platform First: Zero CORS, 100% Real Road Accuracy)
-    if (kIsWeb) {
-      final webJsResult = await _fetchGoogleDirectionsViaWebJs(start, end);
-      if (webJsResult != null && webJsResult.points.isNotEmpty) {
-        _routeCache[cacheKey] = _CachedRouteEntry(webJsResult);
-        return webJsResult.points;
-      }
-    }
-
-    // 1. Firebase Callable Function (Enterprise Security: Zero client-side API Key & Server Cache for Mobile/Native)
-    if (!kIsWeb && _firebaseFunctions != null) {
-      try {
-        final callable = _firebaseFunctions!.httpsCallable(
-          'getDeliveryRouteAndETA',
-          options: HttpsCallableOptions(timeout: const Duration(seconds: 4)),
-        );
-        final response = await callable.call<Map<dynamic, dynamic>>({
-          'originLat': start.latitude,
-          'originLng': start.longitude,
-          'destLat': end.latitude,
-          'destLng': end.longitude,
-        });
-
-        final data = response.data;
-        final result = RouteAndEtaResult.fromCallableData(data);
-        if (result.points.isNotEmpty) {
-          _routeCache[cacheKey] = _CachedRouteEntry(result);
-          return result.points;
-        }
-      } catch (_) {}
-    }
-
-    // 2. Google Directions API (Native platforms only - browser CORS policy prevents direct REST HTTP requests on Flutter Web)
-    if (!kIsWeb && _apiKey.isNotEmpty && !_apiKey.startsWith('your_') && !_apiKey.startsWith('AIzaSyDummy')) {
-      try {
-        final uri = Uri.https('maps.googleapis.com', '/maps/api/directions/json', {
-          'origin': '${start.latitude},${start.longitude}',
-          'destination': '${end.latitude},${end.longitude}',
-          'mode': 'driving',
-          'key': _apiKey,
-        });
-
-        final response = await _httpClient.get(uri).timeout(const Duration(seconds: 4));
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body) as Map<String, dynamic>;
-          final status = data['status'] as String? ?? 'UNKNOWN';
-
-          switch (status) {
-            case 'OK':
-              final result = RouteAndEtaResult.fromDirectionsJson(data);
-              if (result.points.isNotEmpty) {
-                _routeCache[cacheKey] = _CachedRouteEntry(result);
-                return result.points;
-              }
-              break;
-            case 'ZERO_RESULTS':
-              debugPrint('[Directions API] ZERO_RESULTS: No drivable route found between coordinates');
-              break;
-            case 'OVER_QUERY_LIMIT':
-              debugPrint('[Directions API] OVER_QUERY_LIMIT: Directions API quota exceeded, using OSRM fallback');
-              break;
-            case 'REQUEST_DENIED':
-              final errorMsg = data['error_message'] as String? ?? 'API key unauthorized';
-              debugPrint('[Directions API] REQUEST_DENIED: $errorMsg');
-              break;
-            case 'INVALID_REQUEST':
-            case 'NOT_FOUND':
-            default:
-              final errorMsg = data['error_message'] as String? ?? status;
-              debugPrint('[Directions API] Status: $status ($errorMsg)');
-              break;
-          }
-        }
-      } catch (_) {}
-    }
-
-    // 3. High-Performance Road Routing Engine (OSM Routed-Car, OSRM & Cloud Function HTTP Proxy)
-    final routingUrls = [
-      'https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=polyline&steps=true',
-      'https://routing.openstreetmap.de/routed-car/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=polyline&steps=true',
-      'https://us-central1-food-delivery-app-cd4ca.cloudfunctions.net/getDeliveryRouteAndETAHttp?originLat=${start.latitude}&originLng=${start.longitude}&destLat=${end.latitude}&destLng=${end.longitude}',
-    ];
-
-    for (final url in routingUrls) {
-      try {
-        final uri = Uri.parse(url);
-        final response = await _httpClient.get(
-          uri,
-          headers: kIsWeb ? null : {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
-        ).timeout(const Duration(seconds: 5));
-
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body) as Map<String, dynamic>;
-          if (data['code'] == 'Ok' || data['status'] == 'OK') {
-            final result = data['code'] == 'Ok'
-                ? RouteAndEtaResult.fromOsrmJson(data)
-                : RouteAndEtaResult.fromDirectionsJson(data);
-            if (result.points.isNotEmpty) {
-              _routeCache[cacheKey] = _CachedRouteEntry(result);
-              return result.points;
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('[Road Routing] Error for $url: $e');
-      }
-    }
-
-    // 4. Mathematical Spline fallback (never cache temporary fallbacks so next retry fetches real road)
-    return generateSmoothPath(start, end);
+    final result = await fetchRoadRouteAndETA(start, end);
+    return result.points;
   }
 
   /// Helper to fetch route via Google Maps JS DirectionsService on Web
-  Future<RouteAndEtaResult?> _fetchGoogleDirectionsViaWebJs(LatLng start, LatLng end) async {
+  Future<RouteAndEtaResult?> _fetchGoogleDirectionsViaWebJs(
+      LatLng start, LatLng end) async {
     if (!kIsWeb) return null;
     try {
       final res = await fetchWebGoogleDirectionsRoute(
@@ -448,7 +542,9 @@ class RoutePolylineService {
             }
           }
         }
-        if (points.isEmpty && res['overview_polyline'] is String && (res['overview_polyline'] as String).isNotEmpty) {
+        if (points.isEmpty &&
+            res['overview_polyline'] is String &&
+            (res['overview_polyline'] as String).isNotEmpty) {
           points.addAll(decodePolyline(res['overview_polyline'] as String));
         }
         if (points.isNotEmpty) {
@@ -467,9 +563,10 @@ class RoutePolylineService {
     return null;
   }
 
-  /// Fetches real road waypoints and ETA between two coordinates using Tiered Routing
-  Future<RouteAndEtaResult> fetchRoadRouteAndETA(LatLng start, LatLng end) async {
-    // 0a. Identical coordinates fast-path
+  /// Fetches real road waypoints and ETA between two coordinates using 100% verified real data sources
+  Future<RouteAndEtaResult> fetchRoadRouteAndETA(
+      LatLng start, LatLng end) async {
+    // 0a. Identical coordinates fast-path (<1m distance)
     final latDiff = (end.latitude - start.latitude).abs();
     final lngDiff = (end.longitude - start.longitude).abs();
     if (latDiff < 0.00001 && lngDiff < 0.00001) {
@@ -484,17 +581,18 @@ class RoutePolylineService {
 
     final cacheKey = _buildCacheKey(start, end);
 
-    // 0b. High-precision Cache lookup with TTL check (returns full ETA + distance instantly)
+    // 0b. Real-road Cache lookup
     if (_routeCache.containsKey(cacheKey)) {
       final entry = _routeCache[cacheKey]!;
-      if (!entry.isExpired(defaultCacheTtl) && entry.result.points.length >= 2) {
+      if (!entry.isExpired(defaultCacheTtl) &&
+          entry.result.points.length >= 2) {
         return entry.result;
       } else if (entry.isExpired(defaultCacheTtl)) {
         _routeCache.remove(cacheKey);
       }
     }
 
-    // 0d. Google Maps JS DirectionsService (Web Platform First: Zero CORS, 100% Real Road Accuracy)
+    // 0c. Google Maps JS DirectionsService (Web)
     if (kIsWeb) {
       final webJsResult = await _fetchGoogleDirectionsViaWebJs(start, end);
       if (webJsResult != null && webJsResult.points.isNotEmpty) {
@@ -503,7 +601,7 @@ class RoutePolylineService {
       }
     }
 
-    // 1. Firebase Callable Function (Native platforms)
+    // 1. Firebase Callable Function (Native)
     if (!kIsWeb && _firebaseFunctions != null) {
       try {
         final callable = _firebaseFunctions!.httpsCallable(
@@ -526,51 +624,38 @@ class RoutePolylineService {
       } catch (_) {}
     }
 
-    // 2. Google Directions API (Native platforms)
-    if (!kIsWeb && _apiKey.isNotEmpty && !_apiKey.startsWith('your_') && !_apiKey.startsWith('AIzaSyDummy')) {
+    // 2. Google Directions API REST (Native)
+    if (!kIsWeb &&
+        _apiKey.isNotEmpty &&
+        !_apiKey.startsWith('your_') &&
+        !_apiKey.startsWith('AIzaSyDummy')) {
       try {
-        final uri = Uri.https('maps.googleapis.com', '/maps/api/directions/json', {
+        final uri = Uri.https(
+            'maps.googleapis.com', '/maps/api/directions/json', {
           'origin': '${start.latitude},${start.longitude}',
           'destination': '${end.latitude},${end.longitude}',
           'mode': 'driving',
           'key': _apiKey,
         });
 
-        final response = await _httpClient.get(uri).timeout(const Duration(seconds: 4));
+        final response =
+            await _httpClient.get(uri).timeout(const Duration(seconds: 4));
         if (response.statusCode == 200) {
           final data = json.decode(response.body) as Map<String, dynamic>;
           final status = data['status'] as String? ?? 'UNKNOWN';
 
-          switch (status) {
-            case 'OK':
-              final result = RouteAndEtaResult.fromDirectionsJson(data);
-              if (result.points.isNotEmpty) {
-                _routeCache[cacheKey] = _CachedRouteEntry(result);
-                return result;
-              }
-              break;
-            case 'ZERO_RESULTS':
-              debugPrint('[Directions API] ZERO_RESULTS: No drivable route found between coordinates');
-              break;
-            case 'OVER_QUERY_LIMIT':
-              debugPrint('[Directions API] OVER_QUERY_LIMIT: Directions API quota exceeded, using OSRM fallback');
-              break;
-            case 'REQUEST_DENIED':
-              final errorMsg = data['error_message'] as String? ?? 'API key unauthorized';
-              debugPrint('[Directions API] REQUEST_DENIED: $errorMsg');
-              break;
-            case 'INVALID_REQUEST':
-            case 'NOT_FOUND':
-            default:
-              final errorMsg = data['error_message'] as String? ?? status;
-              debugPrint('[Directions API] Status: $status ($errorMsg)');
-              break;
+          if (status == 'OK') {
+            final result = RouteAndEtaResult.fromDirectionsJson(data);
+            if (result.points.isNotEmpty) {
+              _routeCache[cacheKey] = _CachedRouteEntry(result);
+              return result;
+            }
           }
         }
       } catch (_) {}
     }
 
-    // 3. High-Performance Road Routing Engine (OSM Routed-Car, OSRM & Cloud Function HTTP Proxy)
+    // 3. Multi-Source Verified OSRM / OpenStreetMap Live Real Road Engines
     final routingUrls = [
       'https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=polyline&steps=true',
       'https://routing.openstreetmap.de/routed-car/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=polyline&steps=true',
@@ -582,7 +667,9 @@ class RoutePolylineService {
         final uri = Uri.parse(url);
         final response = await _httpClient.get(
           uri,
-          headers: kIsWeb ? null : {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
+          headers: kIsWeb
+              ? null
+              : {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
         ).timeout(const Duration(seconds: 5));
 
         if (response.statusCode == 200) {
@@ -598,25 +685,12 @@ class RoutePolylineService {
           }
         }
       } catch (e) {
-        debugPrint('[Road Routing & ETA] Error for $url: $e');
+        debugPrint('[Road Routing Engine] Error for $url: $e');
       }
     }
 
-    // 4. Spline fallback + Haversine distance estimation (Temporary offline fallback, never cached)
-    final points = generateSmoothPath(start, end);
-    final straightLineDist = haversineDistanceMeters(start, end);
-    final estimatedRoadDistMeters = straightLineDist * 1.3; // 1.3x road tortuosity factor
-    final distKm = estimatedRoadDistMeters / 1000.0;
-    final durSecs = ((distKm / 28.0) * 3600).round();
-    final durMins = (durSecs / 60).round().clamp(1, 120);
-
-    return RouteAndEtaResult(
-      points: points,
-      durationText: '$durMins mins',
-      durationSeconds: durSecs,
-      distanceText: '${distKm.toStringAsFixed(1)} km',
-      distanceMeters: estimatedRoadDistMeters.round(),
-    );
+    // 4. Strict real-data policy: If no verified road data is returned, return empty result
+    return RouteAndEtaResult.empty();
   }
 
   /// Decodes a Google / OSRM encoded polyline string into a list of LatLng waypoints safely.
@@ -669,7 +743,7 @@ class RoutePolylineService {
     return poly;
   }
 
-  /// Generates a set of real road journey polylines connecting Restaurant -> Driver -> Customer asynchronously
+  /// Generates a set of 100% real road journey polylines connecting Restaurant -> Driver -> Customer asynchronously
   Future<Set<Polyline>> generateRealRoadJourneyPolylines({
     required LatLng? storeLocation,
     required LatLng? driverLocation,
@@ -682,63 +756,102 @@ class RoutePolylineService {
   }) async {
     final Set<Polyline> polylines = {};
 
-    if (driverLocation == null && storeLocation == null && customerLocation == null) {
+    if (driverLocation == null &&
+        storeLocation == null &&
+        customerLocation == null) {
       return polylines;
     }
 
-    if (storeLocation != null && driverLocation != null && customerLocation != null) {
+    if (storeLocation != null &&
+        driverLocation != null &&
+        customerLocation != null) {
       if (!isPickedUp) {
         // Leg 1: Driver -> Store (Active)
         final leg1Points = await fetchRoadRoute(driverLocation, storeLocation);
-        polylines.add(
-          Polyline(
-            polylineId: const PolylineId('driver_to_store_active'),
-            points: leg1Points,
-            color: activeColor,
-            width: width,
-            jointType: JointType.round,
-            startCap: Cap.roundCap,
-            endCap: Cap.roundCap,
-            patterns: kIsWeb ? const <PatternItem>[] : [PatternItem.dash(18), PatternItem.gap(8)],
-          ),
-        );
+        if (leg1Points.isNotEmpty) {
+          polylines.add(
+            Polyline(
+              polylineId: const PolylineId('driver_to_store_active'),
+              points: leg1Points,
+              color: activeColor,
+              width: width,
+              jointType: JointType.round,
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+              patterns: kIsWeb
+                  ? const <PatternItem>[]
+                  : [PatternItem.dash(18), PatternItem.gap(8)],
+            ),
+          );
+        }
 
         // Leg 2: Store -> Customer (Upcoming)
-        final leg2Points = await fetchRoadRoute(storeLocation, customerLocation);
-        polylines.add(
-          Polyline(
-            polylineId: const PolylineId('store_to_customer_upcoming'),
-            points: leg2Points,
-            color: upcomingColor.withValues(alpha: 0.6),
-            width: width - 1,
-            jointType: JointType.round,
-            startCap: Cap.roundCap,
-            endCap: Cap.roundCap,
-            patterns: kIsWeb ? const <PatternItem>[] : [PatternItem.dot, PatternItem.gap(6)],
-          ),
-        );
+        final leg2Points =
+            await fetchRoadRoute(storeLocation, customerLocation);
+        if (leg2Points.isNotEmpty) {
+          polylines.add(
+            Polyline(
+              polylineId: const PolylineId('store_to_customer_upcoming'),
+              points: leg2Points,
+              color: upcomingColor.withValues(alpha: 0.6),
+              width: width - 1,
+              jointType: JointType.round,
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+              patterns: kIsWeb
+                  ? const <PatternItem>[]
+                  : [PatternItem.dot, PatternItem.gap(6)],
+            ),
+          );
+        }
       } else {
         // Leg 1: Store -> Driver (Completed)
-        final completedPoints = await fetchRoadRoute(storeLocation, driverLocation);
-        polylines.add(
-          Polyline(
-            polylineId: const PolylineId('store_to_driver_completed'),
-            points: completedPoints,
-            color: completedColor.withValues(alpha: 0.6),
-            width: width - 1,
-            jointType: JointType.round,
-            startCap: Cap.roundCap,
-            endCap: Cap.roundCap,
-            patterns: kIsWeb ? const <PatternItem>[] : [PatternItem.dot, PatternItem.gap(6)],
-          ),
-        );
+        final completedPoints =
+            await fetchRoadRoute(storeLocation, driverLocation);
+        if (completedPoints.isNotEmpty) {
+          polylines.add(
+            Polyline(
+              polylineId: const PolylineId('store_to_driver_completed'),
+              points: completedPoints,
+              color: completedColor.withValues(alpha: 0.6),
+              width: width - 1,
+              jointType: JointType.round,
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+              patterns: kIsWeb
+                  ? const <PatternItem>[]
+                  : [PatternItem.dot, PatternItem.gap(6)],
+            ),
+          );
+        }
 
         // Leg 2: Driver -> Customer (Active Delivery Leg)
-        final activePoints = await fetchRoadRoute(driverLocation, customerLocation);
+        final activePoints =
+            await fetchRoadRoute(driverLocation, customerLocation);
+        if (activePoints.isNotEmpty) {
+          polylines.add(
+            Polyline(
+              polylineId: const PolylineId('driver_to_customer_active'),
+              points: activePoints,
+              color: activeColor,
+              width: width,
+              jointType: JointType.round,
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+            ),
+          );
+        }
+      }
+      return polylines;
+    }
+
+    if (driverLocation != null && customerLocation != null) {
+      final points = await fetchRoadRoute(driverLocation, customerLocation);
+      if (points.isNotEmpty) {
         polylines.add(
           Polyline(
-            polylineId: const PolylineId('driver_to_customer_active'),
-            points: activePoints,
+            polylineId: const PolylineId('driver_to_destination'),
+            points: points,
             color: activeColor,
             width: width,
             jointType: JointType.round,
@@ -747,54 +860,42 @@ class RoutePolylineService {
           ),
         );
       }
-      return polylines;
-    }
-
-    if (driverLocation != null && customerLocation != null) {
-      final points = await fetchRoadRoute(driverLocation, customerLocation);
-      polylines.add(
-        Polyline(
-          polylineId: const PolylineId('driver_to_destination'),
-          points: points,
-          color: activeColor,
-          width: width,
-          jointType: JointType.round,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-        ),
-      );
     } else if (driverLocation != null && storeLocation != null) {
       final points = await fetchRoadRoute(driverLocation, storeLocation);
-      polylines.add(
-        Polyline(
-          polylineId: const PolylineId('driver_to_store'),
-          points: points,
-          color: activeColor,
-          width: width,
-          jointType: JointType.round,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-        ),
-      );
+      if (points.isNotEmpty) {
+        polylines.add(
+          Polyline(
+            polylineId: const PolylineId('driver_to_store'),
+            points: points,
+            color: activeColor,
+            width: width,
+            jointType: JointType.round,
+            startCap: Cap.roundCap,
+            endCap: Cap.roundCap,
+          ),
+        );
+      }
     } else if (storeLocation != null && customerLocation != null) {
       final points = await fetchRoadRoute(storeLocation, customerLocation);
-      polylines.add(
-        Polyline(
-          polylineId: const PolylineId('store_to_customer_direct'),
-          points: points,
-          color: activeColor.withValues(alpha: 0.8),
-          width: width,
-          jointType: JointType.round,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-        ),
-      );
+      if (points.isNotEmpty) {
+        polylines.add(
+          Polyline(
+            polylineId: const PolylineId('store_to_customer_direct'),
+            points: points,
+            color: activeColor.withValues(alpha: 0.8),
+            width: width,
+            jointType: JointType.round,
+            startCap: Cap.roundCap,
+            endCap: Cap.roundCap,
+          ),
+        );
+      }
     }
 
     return polylines;
   }
 
-  /// Instant synchronous multi-point fallback path generator
+  /// Synchronous fallback - returns empty set so no synthetic/fake polylines are fabricated
   Set<Polyline> generateJourneyPolylines({
     required LatLng? storeLocation,
     required LatLng? driverLocation,
@@ -805,144 +906,8 @@ class RoutePolylineService {
     int width = 6,
     bool isPickedUp = false,
   }) {
-    final Set<Polyline> polylines = {};
-
-    if (driverLocation == null && storeLocation == null && customerLocation == null) {
-      return polylines;
-    }
-
-    if (storeLocation != null && driverLocation != null && customerLocation != null) {
-      if (!isPickedUp) {
-        final leg1Points = generateSmoothPath(driverLocation, storeLocation);
-        polylines.add(
-          Polyline(
-            polylineId: const PolylineId('driver_to_store_active'),
-            points: leg1Points,
-            color: activeColor,
-            width: width,
-            jointType: JointType.round,
-            startCap: Cap.roundCap,
-            endCap: Cap.roundCap,
-            patterns: kIsWeb ? const <PatternItem>[] : [PatternItem.dash(18), PatternItem.gap(8)],
-          ),
-        );
-
-        final leg2Points = generateSmoothPath(storeLocation, customerLocation);
-        polylines.add(
-          Polyline(
-            polylineId: const PolylineId('store_to_customer_upcoming'),
-            points: leg2Points,
-            color: upcomingColor.withValues(alpha: 0.6),
-            width: width - 1,
-            jointType: JointType.round,
-            startCap: Cap.roundCap,
-            endCap: Cap.roundCap,
-            patterns: kIsWeb ? const <PatternItem>[] : [PatternItem.dot, PatternItem.gap(6)],
-          ),
-        );
-      } else {
-        final completedPoints = generateSmoothPath(storeLocation, driverLocation);
-        polylines.add(
-          Polyline(
-            polylineId: const PolylineId('store_to_driver_completed'),
-            points: completedPoints,
-            color: completedColor.withValues(alpha: 0.6),
-            width: width - 1,
-            jointType: JointType.round,
-            startCap: Cap.roundCap,
-            endCap: Cap.roundCap,
-            patterns: kIsWeb ? const <PatternItem>[] : [PatternItem.dot, PatternItem.gap(6)],
-          ),
-        );
-
-        final activePoints = generateSmoothPath(driverLocation, customerLocation);
-        polylines.add(
-          Polyline(
-            polylineId: const PolylineId('driver_to_customer_active'),
-            points: activePoints,
-            color: activeColor,
-            width: width,
-            jointType: JointType.round,
-            startCap: Cap.roundCap,
-            endCap: Cap.roundCap,
-          ),
-        );
-      }
-      return polylines;
-    }
-
-    if (driverLocation != null && customerLocation != null) {
-      final points = generateSmoothPath(driverLocation, customerLocation);
-      polylines.add(
-        Polyline(
-          polylineId: const PolylineId('driver_to_destination'),
-          points: points,
-          color: activeColor,
-          width: width,
-          jointType: JointType.round,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-        ),
-      );
-    } else if (driverLocation != null && storeLocation != null) {
-      final points = generateSmoothPath(driverLocation, storeLocation);
-      polylines.add(
-        Polyline(
-          polylineId: const PolylineId('driver_to_store'),
-          points: points,
-          color: activeColor,
-          width: width,
-          jointType: JointType.round,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-        ),
-      );
-    } else if (storeLocation != null && customerLocation != null) {
-      final points = generateSmoothPath(storeLocation, customerLocation);
-      polylines.add(
-        Polyline(
-          polylineId: const PolylineId('store_to_customer_direct'),
-          points: points,
-          color: activeColor.withValues(alpha: 0.8),
-          width: width,
-          jointType: JointType.round,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-        ),
-      );
-    }
-
-    return polylines;
-  }
-
-  /// Generates a realistic intermediate multi-point path between two LatLngs with road curvature
-  List<LatLng> generateSmoothPath(LatLng start, LatLng end, {int steps = 16}) {
-    final List<LatLng> path = [];
-    final double latDiff = end.latitude - start.latitude;
-    final double lngDiff = end.longitude - start.longitude;
-
-    if (latDiff.abs() < 0.00001 && lngDiff.abs() < 0.00001) {
-      return [start, end];
-    }
-
-    final double perpLat = -lngDiff * 0.04;
-    final double perpLng = latDiff * 0.04;
-
-    for (int i = 0; i <= steps; i++) {
-      final double t = i / steps.toDouble();
-      final double u = 1 - t;
-      final double tt = t * t;
-      final double uu = u * u;
-      final double tu2 = 2 * u * t;
-
-      final double ctrlLat = (start.latitude + end.latitude) / 2 + perpLat;
-      final double ctrlLng = (start.longitude + end.longitude) / 2 + perpLng;
-
-      final double lat = uu * start.latitude + tu2 * ctrlLat + tt * end.latitude;
-      final double lng = uu * start.longitude + tu2 * ctrlLng + tt * end.longitude;
-      path.add(LatLng(lat, lng));
-    }
-    return path;
+    // Under strict real data policy, never fabricate imaginary road curves synchronously
+    return const <Polyline>{};
   }
 
   /// Calculates bearing / heading in degrees between two coordinates
@@ -1052,7 +1017,8 @@ class RoutePolylineService {
       final p2 = polyline[i + 1];
 
       // Local Equirectangular projection
-      final double latRad = (p1.latitude + p2.latitude) * 0.5 * (math.pi / 180.0);
+      final double latRad =
+          (p1.latitude + p2.latitude) * 0.5 * (math.pi / 180.0);
       final double cosLat = math.cos(latRad);
 
       final double dx = (p2.longitude - p1.longitude) * cosLat;
@@ -1102,7 +1068,8 @@ class RoutePolylineService {
   }
 
   /// Extracts the remaining road path from the current position to the destination
-  List<LatLng> getRemainingPolyline(LatLng currentPosition, List<LatLng> fullPolyline) {
+  List<LatLng> getRemainingPolyline(
+      LatLng currentPosition, List<LatLng> fullPolyline) {
     if (fullPolyline.isEmpty) return [currentPosition];
     final snap = snapToPolyline(currentPosition, fullPolyline);
     return snap.remainingPoints;

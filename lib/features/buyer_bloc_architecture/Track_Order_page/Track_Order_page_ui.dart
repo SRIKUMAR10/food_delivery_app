@@ -159,27 +159,34 @@ class _TrackOrderView extends StatelessWidget {
       },
       child: isEmbedded
           ? Container(color: Colors.white, child: content)
-          : Scaffold(
-              backgroundColor: Colors.white,
-              appBar: AppBar(
-                centerTitle: false,
-                titleSpacing: 0,
-                leading: Navigator.canPop(context)
-                    ? IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                        onPressed: () => Navigator.pop(context),
-                      )
-                    : null,
-                title: Text(
-                  _tr(context, 'Track Order'),
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1C1C1C),
+          : PopScope(
+              canPop: true,
+              child: Scaffold(
+                backgroundColor: Colors.white,
+                appBar: AppBar(
+                  centerTitle: false,
+                  titleSpacing: 0,
+                  leading: Navigator.canPop(context)
+                      ? IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                          onPressed: () => Navigator.pop(context),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.home_rounded, size: 22),
+                          onPressed: () => Navigator.of(context).pushReplacementNamed('/buyerHome'),
+                          tooltip: 'Return to Home',
+                        ),
+                  title: Text(
+                    _tr(context, 'Track Order'),
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1C1C1C),
+                    ),
                   ),
                 ),
+                body: SafeArea(child: content),
               ),
-              body: SafeArea(child: content),
             ),
     );
   }
@@ -420,6 +427,7 @@ class _TrackOrderView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _buildDeliveryOtpBanner(context, state),
                       _buildOrderInfoCard(context, state),
                       const SizedBox(height: 20),
                       _buildLiveMapCard(context, state),
@@ -689,6 +697,91 @@ class _TrackOrderView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _buildHeaderInfo(context, state),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryOtpBanner(BuildContext context, TrackOrderLoaded state) {
+    if (state.isDelivered || state.isCancelled) return const SizedBox.shrink();
+
+    final orderDigits = state.orderId.replaceAll(RegExp(r'[^0-9]'), '');
+    final deliveryOtp = orderDigits.length >= 4
+        ? orderDigits.substring(orderDigits.length - 4)
+        : '4821';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF7ED), Color(0xFFFFEDD5)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFDBA74)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEA580C).withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEA580C),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.pin_drop_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Delivery Confirmation OTP',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF9A3412),
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Share with rider upon arrival',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFFC2410C),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFF97316), width: 1.5),
+            ),
+            child: Text(
+              deliveryOtp,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 3,
+                color: Color(0xFFEA580C),
+              ),
+            ),
+          ),
         ],
       ),
     );

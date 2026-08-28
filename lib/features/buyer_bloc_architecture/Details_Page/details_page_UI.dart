@@ -273,9 +273,12 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
 
   bool get _isActive {
     final food = _currentFoodItem;
-    final productActive = (food?.status != 'outOfStock') && (food?.isActive ?? true);
+    if (food == null) return false;
+    final isOutOfStock = !food.isActive ||
+        food.status.toLowerCase().contains('outofstock') ||
+        (!food.hasUnlimitedStock && food.availableStock <= 0);
     final sellerAvailable = _sellerAvailability?.isAvailable ?? true;
-    return productActive && sellerAvailable;
+    return !isOutOfStock && sellerAvailable;
   }
 
   String? get _primaryImage {
@@ -884,7 +887,10 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
 
   Widget _buildAvailabilityCard() {
     final food = _currentFoodItem;
-    final isProductInStock = (food?.status != 'outOfStock') && (food?.isActive ?? true);
+    final isProductInStock = food != null &&
+        food.isActive &&
+        !food.status.toLowerCase().contains('outofstock') &&
+        (food.hasUnlimitedStock || food.availableStock > 0);
     final isSellerOpen = _sellerAvailability?.isAvailable ?? true;
     final isAvailableNow = isProductInStock && isSellerOpen;
 

@@ -231,6 +231,67 @@ void main() {
         ).called(1);
       },
     );
+
+    blocTest<SellerSignUpPageBloc, SellerSignUpPageState>(
+      'Emits failure with friendly error when email is already in use',
+      build: () {
+        when(
+          () => mockRepo.initiateSignUp(
+            name: any(named: 'name'),
+            shopName: any(named: 'shopName'),
+            businessDetails: any(named: 'businessDetails'),
+            phoneNumber: any(named: 'phoneNumber'),
+            email: any(named: 'email'),
+            password: any(named: 'password'),
+          ),
+        ).thenThrow(
+          Exception(
+            '[firebase_auth/email-already-in-use] The email address is already in use by another account.',
+          ),
+        );
+        return bloc;
+      },
+      seed: () => const SellerSignUpPageState(
+        step: SellerSignUpStep.contactPassword,
+        name: 'John',
+        shopName: 'Store',
+        businessDetails: 'Biz',
+        phone: '+919876543210',
+        email: 'existing@test.com',
+        password: 'Password@123',
+        confirmPassword: 'Password@123',
+        termsAccepted: true,
+      ),
+      act: (bloc) => bloc.add(const SellerSignUpContactSubmitted()),
+      expect: () => [
+        const SellerSignUpPageState(
+          step: SellerSignUpStep.contactPassword,
+          name: 'John',
+          shopName: 'Store',
+          businessDetails: 'Biz',
+          phone: '+919876543210',
+          email: 'existing@test.com',
+          password: 'Password@123',
+          confirmPassword: 'Password@123',
+          termsAccepted: true,
+          status: SellerSignUpStatus.loading,
+        ),
+        const SellerSignUpPageState(
+          step: SellerSignUpStep.contactPassword,
+          name: 'John',
+          shopName: 'Store',
+          businessDetails: 'Biz',
+          phone: '+919876543210',
+          email: 'existing@test.com',
+          password: 'Password@123',
+          confirmPassword: 'Password@123',
+          termsAccepted: true,
+          status: SellerSignUpStatus.failure,
+          errorMessage:
+              'The email address is already in use by another account.',
+        ),
+      ],
+    );
   });
 
   group('Screen 4 - OTP Verification', () {

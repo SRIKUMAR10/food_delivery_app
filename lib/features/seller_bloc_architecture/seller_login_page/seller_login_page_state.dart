@@ -59,6 +59,9 @@ class SellerLoginPageState extends Equatable {
   // ── Phone login flag ───────────────────────────────────────────────────────
   final bool isPhoneLogin;
 
+  // ── KYC Status flag ────────────────────────────────────────────────────────
+  final bool isKycCompleted;
+
   // ── Screen 4 – Email/Phone OTP digits (6-digit) ────────────────────────────
   final List<String> otpDigits;
   final int otpCountdown; // seconds remaining (00:25 countdown)
@@ -79,6 +82,7 @@ class SellerLoginPageState extends Equatable {
     this.password = '',
     this.isPasswordObscured = true,
     this.isPhoneLogin = false,
+    this.isKycCompleted = false,
     this.otpDigits = const ['', '', '', '', '', ''],
     this.otpCountdown = 25,
     this.isOtpResendAvailable = false,
@@ -113,6 +117,7 @@ class SellerLoginPageState extends Equatable {
     String? password,
     bool? isPasswordObscured,
     bool? isPhoneLogin,
+    bool? isKycCompleted,
     List<String>? otpDigits,
     int? otpCountdown,
     bool? isOtpResendAvailable,
@@ -130,6 +135,7 @@ class SellerLoginPageState extends Equatable {
       password: password ?? this.password,
       isPasswordObscured: isPasswordObscured ?? this.isPasswordObscured,
       isPhoneLogin: isPhoneLogin ?? this.isPhoneLogin,
+      isKycCompleted: isKycCompleted ?? this.isKycCompleted,
       otpDigits: otpDigits ?? this.otpDigits,
       otpCountdown: otpCountdown ?? this.otpCountdown,
       isOtpResendAvailable: isOtpResendAvailable ?? this.isOtpResendAvailable,
@@ -150,6 +156,7 @@ class SellerLoginPageState extends Equatable {
         password,
         isPasswordObscured,
         isPhoneLogin,
+        isKycCompleted,
         otpDigits,
         otpCountdown,
         isOtpResendAvailable,
@@ -160,5 +167,5 @@ class SellerLoginPageState extends Equatable {
 
   @override
   String toString() =>
-      'SellerLoginPageState(step: $step, status: $status, email: $emailOrPhone)';
+      'SellerLoginPageState(step: $step, status: $status, email: $emailOrPhone, kycCompleted: $isKycCompleted)';
 }

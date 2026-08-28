@@ -56,8 +56,14 @@ class MenuCategoryManagementView extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                                onPressed: () => Navigator.of(context).pop(),
+                                color: const Color(0xFF111827),
+                                tooltip: 'Back',
+                              ),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,26 +71,21 @@ class MenuCategoryManagementView extends StatelessWidget {
                                     Text(
                                       'Manage Categories',
                                       style: TextStyle(
-                                        fontSize: 40,
+                                        fontSize: 28,
                                         fontWeight: FontWeight.w800,
                                         color: Color(0xFF111827),
                                       ),
                                     ),
-                                    SizedBox(height: 8),
+                                    SizedBox(height: 4),
                                     Text(
                                       'Select and reorder your menu categories',
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 14,
                                         color: Color(0xFF6B7280),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back),
-                                onPressed: () => Navigator.pop(context),
-                                color: const Color(0xFF111827),
                               ),
                             ],
                           ),

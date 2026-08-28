@@ -20,15 +20,26 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
       final doc = await firestore.collection('buyer_user').doc(userId).get();
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
+        final String address = (data['address'] ?? data['deliveryAddress'] ?? data['fullAddress'] ?? '').toString().trim();
+        String home = (data['homeAddress'] ?? '').toString().trim();
+        String work = (data['workAddress'] ?? '').toString().trim();
+        String other = (data['otherAddress'] ?? '').toString().trim();
+        String selectedType = (data['selectedAddressType'] ?? 'Home').toString().trim();
+        if (selectedType.isEmpty) selectedType = 'Home';
+
+        if (home.isEmpty && work.isEmpty && other.isEmpty && address.isNotEmpty) {
+          home = address;
+        }
+
         return UserProfile(
-          name: (data['name'] ?? data['fullName'] ?? data['displayName'] ?? '').toString(),
-          email: (data['email'] ?? data['emailAddress'] ?? '').toString(),
-          phone: (data['phone'] ?? data['phoneNumber'] ?? data['mobile'] ?? data['contact'] ?? '').toString(),
-          address: (data['address'] ?? data['fullAddress'] ?? '').toString(),
-          homeAddress: (data['homeAddress'] ?? '').toString(),
-          workAddress: (data['workAddress'] ?? '').toString(),
-          otherAddress: (data['otherAddress'] ?? '').toString(),
-          selectedAddressType: (data['selectedAddressType'] ?? 'Home').toString(),
+          name: (data['name'] ?? data['fullName'] ?? data['displayName'] ?? '').toString().trim(),
+          email: (data['email'] ?? data['emailAddress'] ?? '').toString().trim(),
+          phone: (data['phone'] ?? data['phoneNumber'] ?? data['mobile'] ?? data['contact'] ?? '').toString().trim(),
+          address: address,
+          homeAddress: home,
+          workAddress: work,
+          otherAddress: other,
+          selectedAddressType: selectedType,
           imageUrl: (data['imageUrl'] ?? data['photoUrl'] ?? data['profilePic']) as String?,
         );
       }
@@ -42,16 +53,25 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
   @override
   Future<void> saveProfile(String userId, UserProfile profile) async {
     try {
+      final selectedString = profile.selectedAddressType.toLowerCase() == 'home'
+          ? (profile.homeAddress.isNotEmpty ? profile.homeAddress : profile.address)
+          : profile.selectedAddressType.toLowerCase() == 'work'
+              ? (profile.workAddress.isNotEmpty ? profile.workAddress : profile.address)
+              : (profile.otherAddress.isNotEmpty ? profile.otherAddress : profile.address);
+
+      final cleanAddress = (selectedString.isNotEmpty ? selectedString : profile.address).trim();
+
       await firestore.collection('buyer_user').doc(userId).set({
         'name': profile.name.trim(),
         'email': profile.email.trim(),
         'phone': profile.phone.trim(),
         'phoneNumber': profile.phone.trim(),
-        'address': profile.address.trim(),
+        'address': cleanAddress,
+        'deliveryAddress': cleanAddress,
         'homeAddress': profile.homeAddress.trim(),
         'workAddress': profile.workAddress.trim(),
         'otherAddress': profile.otherAddress.trim(),
-        'selectedAddressType': profile.selectedAddressType,
+        'selectedAddressType': profile.selectedAddressType.trim().isNotEmpty ? profile.selectedAddressType.trim() : 'Home',
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {
@@ -99,15 +119,26 @@ class FirebaseUserProfileRepository implements IUserProfileRepository {
       if (!snapshot.exists) return null;
       final data = snapshot.data();
       if (data == null) return null;
+      final String address = (data['address'] ?? data['deliveryAddress'] ?? data['fullAddress'] ?? '').toString().trim();
+      String home = (data['homeAddress'] ?? '').toString().trim();
+      String work = (data['workAddress'] ?? '').toString().trim();
+      String other = (data['otherAddress'] ?? '').toString().trim();
+      String selectedType = (data['selectedAddressType'] ?? 'Home').toString().trim();
+      if (selectedType.isEmpty) selectedType = 'Home';
+
+      if (home.isEmpty && work.isEmpty && other.isEmpty && address.isNotEmpty) {
+        home = address;
+      }
+
       return UserProfile(
-        name: (data['name'] ?? data['fullName'] ?? data['displayName'] ?? '').toString(),
-        email: (data['email'] ?? data['emailAddress'] ?? '').toString(),
-        phone: (data['phone'] ?? data['phoneNumber'] ?? data['mobile'] ?? data['contact'] ?? '').toString(),
-        address: (data['address'] ?? data['fullAddress'] ?? '').toString(),
-        homeAddress: (data['homeAddress'] ?? '').toString(),
-        workAddress: (data['workAddress'] ?? '').toString(),
-        otherAddress: (data['otherAddress'] ?? '').toString(),
-        selectedAddressType: (data['selectedAddressType'] ?? 'Home').toString(),
+        name: (data['name'] ?? data['fullName'] ?? data['displayName'] ?? '').toString().trim(),
+        email: (data['email'] ?? data['emailAddress'] ?? '').toString().trim(),
+        phone: (data['phone'] ?? data['phoneNumber'] ?? data['mobile'] ?? data['contact'] ?? '').toString().trim(),
+        address: address,
+        homeAddress: home,
+        workAddress: work,
+        otherAddress: other,
+        selectedAddressType: selectedType,
         imageUrl: (data['imageUrl'] ?? data['photoUrl'] ?? data['profilePic']) as String?,
       );
     });

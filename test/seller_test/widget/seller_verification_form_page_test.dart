@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,6 +26,18 @@ void main() {
         bankAccountNumber: '',
         ifscCode: '',
       ));
+      registerFallbackValue(const SubmitSellerKycDocuments(
+        fssaiNumber: '',
+        gstNumber: '',
+        panNumber: '',
+        bankAccountNumber: '',
+        ifscCode: '',
+      ));
+      registerFallbackValue(UploadKycDocumentFileEvent(
+        docType: '',
+        fileName: '',
+        fileBytes: Uint8List(0),
+      ));
     });
 
     setUp(() {
@@ -41,12 +54,16 @@ void main() {
         role: 'seller',
         createdAt: DateTime(2025, 1, 1),
         isVerified: false,
+        kycStatus: 'pending',
       ));
     });
 
     Future<void> pumpFormPage(WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          routes: {
+            '/sellerDashboard': (_) => const Scaffold(body: Text('Seller Dashboard')),
+          },
           home: BlocProvider<SellerProfilePageBloc>.value(
             value: mockBloc,
             child: const SellerVerificationFormPage(),
@@ -56,12 +73,14 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('renders business and bank detail sections with GPS/map pickers on address', (tester) async {
+    testWidgets('renders business, bank and KYC detail sections with GPS/map pickers on address', (tester) async {
       await pumpFormPage(tester);
 
-      expect(find.text('Verify Account'), findsOneWidget);
+      expect(find.text('Verify Account & KYC'), findsOneWidget);
+      expect(find.text('KYC Pending'), findsOneWidget);
       expect(find.text('Business Details'), findsOneWidget);
-      expect(find.text('Bank Details'), findsOneWidget);
+      expect(find.text('Bank Account Details'), findsOneWidget);
+      expect(find.text('KYC Document Certificates'), findsOneWidget);
       expect(find.byKey(const ValueKey('verification_address')), findsOneWidget);
       expect(find.byKey(const ValueKey('verification_gps_button')), findsOneWidget);
       expect(find.byKey(const ValueKey('verification_map_button')), findsOneWidget);
@@ -80,7 +99,7 @@ void main() {
       expect(find.text('Pick on Map'), findsOneWidget);
     });
 
-    testWidgets('submitting a valid form dispatches SubmitVerificationForm with address and coordinates', (tester) async {
+    testWidgets('submitting a valid form dispatches SubmitVerificationForm and SubmitSellerKycDocuments', (tester) async {
       await pumpFormPage(tester);
 
       await tester.enterText(
@@ -102,6 +121,10 @@ void main() {
       await tester.enterText(
         find.byKey(const ValueKey('verification_gst')),
         '33ABCDE1234F1Z5',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('verification_pan')),
+        'ABCDE1234F',
       );
       await tester.enterText(
         find.byKey(const ValueKey('verification_fssai')),
@@ -136,6 +159,59 @@ void main() {
           ),
         ),
       ).called(1);
+
+      verify(
+        () => mockBloc.add(
+          any(
+            that: isA<SubmitSellerKycDocuments>()
+                .having((e) => e.panNumber, 'panNumber', 'ABCDE1234F')
+                .having((e) => e.fssaiNumber, 'fssaiNumber', '12345678901234'),
+          ),
+        ),
+      ).called(1);
+    });
+
+    testWidgets('renders correctly when bloc is passed via constructor parameter', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SellerVerificationFormPage(bloc: mockBloc),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Verify Account & KYC'), findsOneWidget);
+      expect(find.text('Spice Garden'), findsOneWidget);
+      expect(find.text('45 Anna Nagar, Chennai'), findsOneWidget);
+    });
+
+    testWidgets('renders correctly without ProviderNotFoundException even when no bloc is in context', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: SellerVerificationFormPage(),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Verify Account & KYC'), findsOneWidget);
+      expect(find.text('Business Details'), findsOneWidget);
+    });
+
+    testWidgets('tapping document upload button dispatches UploadKycDocumentFileEvent', (tester) async {
+      await pumpFormPage(tester);
+
+      await tester.ensureVisible(find.text('Upload').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Upload').first);
+      await tester.pumpAndSettle();
+
+      verify(
+        () => mockBloc.add(
+          any(
+            that: isA<UploadKycDocumentFileEvent>()
+                .having((e) => e.docType, 'docType', 'fssai_certificate'),
+          ),
+        ),
+      ).called(1);
     });
   });
-}
+}

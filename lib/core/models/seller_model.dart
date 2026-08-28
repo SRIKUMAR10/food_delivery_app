@@ -96,6 +96,29 @@ class SellerModel {
   final String? bankBranch;
   final bool notificationsEnabled;
   final String? taxConfiguration;
+  final String kycStatus;
+  final String? fssaiCertificateUrl;
+  final String? gstCertificateUrl;
+  final String? panCardUrl;
+  final String? bankChequeUrl;
+  final String? shopLicenseUrl;
+  final String? kycRejectionReason;
+
+  bool get isKycApproved =>
+      isVerified ||
+      verificationStatus == 'verified' ||
+      verificationStatus == 'approved' ||
+      kycStatus == 'approved';
+
+  bool get isKycPending =>
+      !isKycApproved &&
+      (kycStatus == 'pending' || verificationStatus == 'pending');
+
+  bool get isKycInReview =>
+      kycStatus == 'in_review' || verificationStatus == 'in_review';
+
+  bool get isKycRejected =>
+      kycStatus == 'rejected' || verificationStatus == 'rejected';
 
   SellerModel({
     required this.id,
@@ -144,6 +167,13 @@ class SellerModel {
     this.bankBranch,
     this.notificationsEnabled = true,
     this.taxConfiguration,
+    this.kycStatus = 'pending',
+    this.fssaiCertificateUrl,
+    this.gstCertificateUrl,
+    this.panCardUrl,
+    this.bankChequeUrl,
+    this.shopLicenseUrl,
+    this.kycRejectionReason,
   });
 
   factory SellerModel.fromFirestore(DocumentSnapshot snapshot) {
@@ -262,6 +292,13 @@ class SellerModel {
       bankBranch: data['bankBranch'] as String?,
       notificationsEnabled: data['notificationsEnabled'] as bool? ?? true,
       taxConfiguration: data['taxConfiguration'] as String?,
+      kycStatus: data['kycStatus'] as String? ?? (data['verificationStatus'] as String? ?? 'pending'),
+      fssaiCertificateUrl: data['fssaiCertificateUrl'] as String?,
+      gstCertificateUrl: data['gstCertificateUrl'] as String?,
+      panCardUrl: data['panCardUrl'] as String?,
+      bankChequeUrl: data['bankChequeUrl'] as String?,
+      shopLicenseUrl: data['shopLicenseUrl'] as String?,
+      kycRejectionReason: data['kycRejectionReason'] as String?,
     );
   }
 
@@ -312,6 +349,13 @@ class SellerModel {
       'bankBranch': bankBranch,
       'notificationsEnabled': notificationsEnabled,
       'taxConfiguration': taxConfiguration,
+      'kycStatus': kycStatus,
+      'fssaiCertificateUrl': fssaiCertificateUrl,
+      'gstCertificateUrl': gstCertificateUrl,
+      'panCardUrl': panCardUrl,
+      'bankChequeUrl': bankChequeUrl,
+      'shopLicenseUrl': shopLicenseUrl,
+      'kycRejectionReason': kycRejectionReason,
     };
   }
 
@@ -362,6 +406,13 @@ class SellerModel {
     String? bankBranch,
     bool? notificationsEnabled,
     String? taxConfiguration,
+    String? kycStatus,
+    String? fssaiCertificateUrl,
+    String? gstCertificateUrl,
+    String? panCardUrl,
+    String? bankChequeUrl,
+    String? shopLicenseUrl,
+    String? kycRejectionReason,
   }) {
     return SellerModel(
       id: id ?? this.id,
@@ -412,6 +463,13 @@ class SellerModel {
       bankBranch: bankBranch ?? this.bankBranch,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       taxConfiguration: taxConfiguration ?? this.taxConfiguration,
+      kycStatus: kycStatus ?? this.kycStatus,
+      fssaiCertificateUrl: fssaiCertificateUrl ?? this.fssaiCertificateUrl,
+      gstCertificateUrl: gstCertificateUrl ?? this.gstCertificateUrl,
+      panCardUrl: panCardUrl ?? this.panCardUrl,
+      bankChequeUrl: bankChequeUrl ?? this.bankChequeUrl,
+      shopLicenseUrl: shopLicenseUrl ?? this.shopLicenseUrl,
+      kycRejectionReason: kycRejectionReason ?? this.kycRejectionReason,
     );
   }
 }

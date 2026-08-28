@@ -32,6 +32,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   StreamSubscription<List<AppliedCoupon>>? _couponSubscription;
   StreamSubscription<UserProfile?>? _profileSubscription;
   StreamSubscription<double?>? _walletSubscription;
+  UserProfile? _latestProfile;
 
   CartBloc({
     required ICartRepository cartRepository,
@@ -77,6 +78,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<CouponRemoved>(_onCouponRemoved);
     on<CouponError>(_onCouponError);
     on<DeliveryAddressTypeChanged>(_onDeliveryAddressTypeChanged);
+    on<DeliveryAddressUpdated>(_onDeliveryAddressUpdated);
     on<_ProfileUpdated>(_onProfileUpdated);
   }
 
@@ -122,6 +124,11 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         add(_ProfileUpdated(profile));
       }
     });
+    _userProfileRepository.loadProfile(userId).then((profile) {
+      if (profile != null && !isClosed) {
+        add(_ProfileUpdated(profile));
+      }
+    }).catchError((_) {});
   }
 
   void _subscribeToWallet(String userId) {
@@ -140,7 +147,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   }
 
   String _resolveAddress(UserProfile? profile, String selectedType) {
-    if (profile == null) return 'Primary Address';
+    if (profile == null) return '';
     final type = selectedType.toLowerCase().trim();
     if (type == 'home' && profile.homeAddress.trim().isNotEmpty) {
       return profile.homeAddress.trim();
@@ -148,10 +155,10 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       return profile.workAddress.trim();
     } else if (type == 'other' && profile.otherAddress.trim().isNotEmpty) {
       return profile.otherAddress.trim();
-    } else if (profile.address.trim().isNotEmpty) {
+    } else if (profile.address.trim().isNotEmpty && profile.address.trim() != 'Primary Address') {
       return profile.address.trim();
     }
-    return 'Primary Address';
+    return '';
   }
 
   CartLoaded _computePricing({
@@ -274,7 +281,21 @@ class CartBloc extends Bloc<CartEvent, CartState> {
             );
           }
 
-          return _computePricing(items: items);
+          final selectedType = (_latestProfile?.selectedAddressType.trim().isNotEmpty ?? false)
+              ? _latestProfile!.selectedAddressType
+              : 'Home';
+          final resolvedAddress = _resolveAddress(_latestProfile, selectedType);
+
+          return _computePricing(
+            items: items,
+            selectedAddressType: selectedType,
+            deliveryAddress: resolvedAddress,
+            homeAddress: _latestProfile?.homeAddress ?? '',
+            workAddress: _latestProfile?.workAddress ?? '',
+            otherAddress: _latestProfile?.otherAddress ?? '',
+            customerName: _latestProfile?.name ?? '',
+            customerPhone: _latestProfile?.phone ?? '',
+          );
         },
         onError: (error, stackTrace) =>
             const CartLoaded(items: [], totalAmount: 0, totalCount: 0),
@@ -289,19 +310,25 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     Emitter<CartState> emit,
   ) {
     final profile = event.profile as UserProfile?;
+    _latestProfile = profile;
     final currentState = state;
     if (currentState is CartLoaded) {
-      final selectedType = profile?.selectedAddressType ?? currentState.selectedAddressType;
-      final deliveryAddress = _resolveAddress(profile, selectedType);
+      final selectedType = (profile?.selectedAddressType.trim().isNotEmpty ?? false)
+          ? profile!.selectedAddressType
+          : currentState.selectedAddressType;
+      final homeAddr = profile?.homeAddress.trim() ?? currentState.homeAddress;
+      final workAddr = profile?.workAddress.trim() ?? currentState.workAddress;
+      final otherAddr = profile?.otherAddress.trim() ?? currentState.otherAddress;
+      final resolvedAddress = _resolveAddress(profile, selectedType);
 
       emit(currentState.copyWith(
         selectedAddressType: selectedType,
-        deliveryAddress: deliveryAddress,
-        homeAddress: profile?.homeAddress ?? currentState.homeAddress,
-        workAddress: profile?.workAddress ?? currentState.workAddress,
-        otherAddress: profile?.otherAddress ?? currentState.otherAddress,
-        customerName: profile?.name ?? currentState.customerName,
-        customerPhone: profile?.phone ?? currentState.customerPhone,
+        deliveryAddress: resolvedAddress,
+        homeAddress: homeAddr,
+        workAddress: workAddr,
+        otherAddress: otherAddr,
+        customerName: (profile?.name.trim().isNotEmpty ?? false) ? profile!.name.trim() : currentState.customerName,
+        customerPhone: (profile?.phone.trim().isNotEmpty ?? false) ? profile!.phone.trim() : currentState.customerPhone,
       ));
     }
   }
@@ -313,19 +340,20 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     final uid = _currentUserId;
     final currentState = state;
     if (currentState is CartLoaded) {
-      final resolvedAddress = _resolveAddress(
-        UserProfile(
-          name: currentState.customerName,
-          email: '',
-          phone: currentState.customerPhone,
-          address: currentState.deliveryAddress,
-          homeAddress: currentState.homeAddress,
-          workAddress: currentState.workAddress,
-          otherAddress: currentState.otherAddress,
-          selectedAddressType: event.addressType,
-        ),
-        event.addressType,
-      );
+      final currentProfile = _latestProfile ??
+          UserProfile(
+            name: currentState.customerName,
+            email: '',
+            phone: currentState.customerPhone,
+            address: currentState.deliveryAddress,
+            homeAddress: currentState.homeAddress,
+            workAddress: currentState.workAddress,
+            otherAddress: currentState.otherAddress,
+            selectedAddressType: event.addressType,
+          );
+
+      final updatedProfile = currentProfile.copyWith(selectedAddressType: event.addressType);
+      final resolvedAddress = _resolveAddress(updatedProfile, event.addressType);
 
       emit(currentState.copyWith(
         selectedAddressType: event.addressType,
@@ -334,15 +362,62 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
       if (uid != null) {
         try {
-          final profile = await _userProfileRepository.loadProfile(uid);
-          if (profile != null) {
-            await _userProfileRepository.saveProfile(
-              uid,
-              profile.copyWith(selectedAddressType: event.addressType),
-            );
-          }
+          final loaded = await _userProfileRepository.loadProfile(uid);
+          final toSave = (loaded ?? updatedProfile).copyWith(
+            selectedAddressType: event.addressType,
+            address: resolvedAddress.isNotEmpty ? resolvedAddress : (loaded?.address ?? ''),
+          );
+          _latestProfile = toSave;
+          await _userProfileRepository.saveProfile(uid, toSave);
         } catch (e) {
           debugPrint('Failed to save selected address type: $e');
+        }
+      }
+    }
+  }
+
+  Future<void> _onDeliveryAddressUpdated(
+    DeliveryAddressUpdated event,
+    Emitter<CartState> emit,
+  ) async {
+    final uid = _currentUserId;
+    final currentState = state;
+    if (currentState is CartLoaded) {
+      final type = event.addressType.toLowerCase().trim();
+      String home = currentState.homeAddress;
+      String work = currentState.workAddress;
+      String other = currentState.otherAddress;
+
+      if (type == 'home') {
+        home = event.address.trim();
+      } else if (type == 'work') {
+        work = event.address.trim();
+      } else if (type == 'other') {
+        other = event.address.trim();
+      }
+
+      final profileToSave = (_latestProfile ?? UserProfile.empty()).copyWith(
+        homeAddress: home,
+        workAddress: work,
+        otherAddress: other,
+        selectedAddressType: event.addressType,
+        address: event.address.trim(),
+      );
+      _latestProfile = profileToSave;
+
+      emit(currentState.copyWith(
+        selectedAddressType: event.addressType,
+        deliveryAddress: event.address.trim(),
+        homeAddress: home,
+        workAddress: work,
+        otherAddress: other,
+      ));
+
+      if (uid != null) {
+        try {
+          await _userProfileRepository.saveProfile(uid, profileToSave);
+        } catch (e) {
+          debugPrint('Failed to save updated delivery address: $e');
         }
       }
     }
@@ -628,7 +703,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
           return;
         }
 
-        await _cartRepository.checkoutCart(
+        final placedOrderId = await _cartRepository.checkoutCart(
           uid,
           selectedItems,
           displayName,
@@ -640,13 +715,13 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
         emit(currentState.copyWith(isCheckingOut: false));
         if (event.onSuccess != null) {
-          event.onSuccess!(null);
+          event.onSuccess!(placedOrderId);
         }
         return;
       }
 
       // 3. Cash on Delivery (COD) Flow
-      await _cartRepository.checkoutCart(
+      final placedOrderId = await _cartRepository.checkoutCart(
         uid,
         selectedItems,
         displayName,
@@ -658,7 +733,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
       emit(currentState.copyWith(isCheckingOut: false));
       if (event.onSuccess != null) {
-        event.onSuccess!(null);
+        event.onSuccess!(placedOrderId);
       }
     } catch (e) {
       debugPrint("Checkout Error: $e");
@@ -702,7 +777,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         deliveryAddress = _resolveAddress(profile, profile?.selectedAddressType ?? 'Home');
       }
 
-      await _cartRepository.verifyAndCheckoutRazorpay(
+      final placedOrderId = await _cartRepository.verifyAndCheckoutRazorpay(
         buyerId: uid,
         razorpayOrderId: event.response.orderId ?? '',
         razorpayPaymentId: event.response.paymentId ?? '',
@@ -716,7 +791,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
       emit(currentState.copyWith(isCheckingOut: false));
       if (event.onSuccess != null) {
-        event.onSuccess!(null);
+        event.onSuccess!(placedOrderId);
       }
     } catch (e) {
       debugPrint("Razorpay Verification Error: $e");

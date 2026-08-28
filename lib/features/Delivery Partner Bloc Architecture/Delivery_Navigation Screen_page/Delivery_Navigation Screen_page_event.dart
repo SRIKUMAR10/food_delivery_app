@@ -179,3 +179,25 @@ class DeliveryNavigationSellersUpdatedEvent extends DeliveryNavigationEvent {
   List<Object?> get props => [sellers];
 }
 
+class DeliveryNavigationOtpInputChangedEvent extends DeliveryNavigationEvent {
+  final String otp;
+
+  const DeliveryNavigationOtpInputChangedEvent(this.otp);
+
+  @override
+  List<Object?> get props => [otp];
+}
+
+class DeliveryNavigationVerifyDeliveryOtpEvent extends DeliveryNavigationEvent {
+  final String orderId;
+  final String otp;
+
+  const DeliveryNavigationVerifyDeliveryOtpEvent({
+    required this.orderId,
+    required this.otp,
+  });
+
+  @override
+  List<Object?> get props => [orderId, otp];
+}
+

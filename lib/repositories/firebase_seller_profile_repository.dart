@@ -98,6 +98,53 @@ class FirebaseSellerProfileRepository implements ISellerProfileRepository {
     }
   }
 
+  @override
+  Future<Map<String, dynamic>> loadKycDocuments(String sellerId) async {
+    try {
+      final doc = await _sellerCollection.getKycDocument(sellerId);
+      if (doc.exists && doc.data() != null) {
+        return Map<String, dynamic>.from(doc.data() as Map);
+      }
+      return {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  @override
+  Stream<Map<String, dynamic>> watchKycDocuments(String sellerId) {
+    return _sellerCollection.watchKycDocument(sellerId).map((snapshot) {
+      if (!snapshot.exists || snapshot.data() == null) {
+        return <String, dynamic>{};
+      }
+      return Map<String, dynamic>.from(snapshot.data() as Map);
+    });
+  }
+
+  @override
+  Future<void> updateKycDocuments(String sellerId, Map<String, dynamic> data) async {
+    await _sellerCollection.updateKycDocument(sellerId, data);
+  }
+
+  @override
+  Future<String> uploadKycDocumentFile({
+    required String sellerId,
+    required String docType,
+    required String fileName,
+    required List<int> fileBytes,
+  }) async {
+    final String sanitizedDocType = docType.toLowerCase().replaceAll(' ', '_');
+    final String path = 'seller_kyc_documents/$sellerId/${sanitizedDocType}_$fileName';
+    final Reference ref = storage.ref().child(path);
+    final String contentType = _getContentType(fileName);
+    final UploadTask uploadTask = ref.putData(
+      Uint8List.fromList(fileBytes),
+      SettableMetadata(contentType: contentType),
+    );
+    final TaskSnapshot snapshot = await uploadTask;
+    return snapshot.ref.getDownloadURL();
+  }
+
   String _getContentType(String fileName) {
     final lower = fileName.toLowerCase();
     if (lower.endsWith('.png')) return 'image/png';

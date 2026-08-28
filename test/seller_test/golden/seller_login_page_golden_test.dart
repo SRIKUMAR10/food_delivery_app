@@ -90,12 +90,12 @@ class _GoldenShell extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Email field
+            // Phone field
             TextField(
               controller: TextEditingController(text: state.emailOrPhone),
               decoration: InputDecoration(
-                hintText: 'Email / Phone',
-                prefixIcon: const Icon(Icons.email_outlined),
+                hintText: 'Phone Number',
+                prefixIcon: const Icon(Icons.phone_outlined),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),

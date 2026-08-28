@@ -211,6 +211,7 @@ class FirebaseProductRepository implements IProductRepository {
     try {
       await _firestore.collection('products').doc(productId).update({
         'isActive': isActive,
+        'status': isActive ? 'inStock' : 'outOfStock',
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -221,13 +222,12 @@ class FirebaseProductRepository implements IProductRepository {
   @override
   Future<void> updateProductStock(String productId, int newStock, bool hasUnlimitedStock, String sellerId) async {
     try {
-      String status = 'inStock';
-      if (newStock <= 0 && !hasUnlimitedStock) {
-        status = 'outOfStock';
-      }
+      final bool isStockAvailable = hasUnlimitedStock || newStock > 0;
+      final String status = isStockAvailable ? 'inStock' : 'outOfStock';
       await _firestore.collection('products').doc(productId).update({
         'availableStock': newStock,
         'hasUnlimitedStock': hasUnlimitedStock,
+        'isActive': isStockAvailable,
         'status': status,
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -254,6 +254,7 @@ class FirebaseProductRepository implements IProductRepository {
     try {
       await _firestore.collection('products').doc(productId).update({
         'availableStock': 0,
+        'isActive': false,
         'status': 'outOfStock',
         'updatedAt': FieldValue.serverTimestamp(),
       });

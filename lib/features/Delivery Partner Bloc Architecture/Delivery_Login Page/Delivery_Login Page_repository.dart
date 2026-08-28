@@ -76,17 +76,20 @@ class DeliveryLoginRepository implements DeliveryLoginRepositoryBase {
       return partner;
     } on FirebaseFunctionsException catch (e) {
       debugPrint('customLogin FirebaseFunctionsException: ${e.code} - ${e.message}');
+      if (e.code == 'internal' || (e.message != null && (e.message!.contains('INTERNAL') || e.message!.contains('internal')))) {
+        throw Exception('Please check the mobile number and password');
+      }
       if (e.code == 'not-found' || (e.message != null && e.message!.contains('No registered account'))) {
         throw Exception('No registered delivery partner account found for "$phone". Please sign up.');
       }
       if (e.code == 'permission-denied') {
         throw Exception(e.message ?? 'Account is blocked or deactivated.');
       }
-      if (e.code == 'unauthenticated' || (e.message != null && e.message!.contains('Password is incorrect'))) {
-        throw Exception('Password is incorrect. Please try again.');
+      if (e.code == 'unauthenticated' || (e.message != null && (e.message!.contains('Password is incorrect') || e.message!.contains('incorrect')))) {
+        throw Exception('Please check the mobile number and password');
       }
       if (e.code == 'invalid-argument') {
-        throw Exception(e.message ?? 'Please check your phone number and password.');
+        throw Exception(e.message ?? 'Please check the mobile number and password');
       }
       debugPrint('customLogin returned ${e.code}, attempting client fallback handling...');
     } catch (e) {

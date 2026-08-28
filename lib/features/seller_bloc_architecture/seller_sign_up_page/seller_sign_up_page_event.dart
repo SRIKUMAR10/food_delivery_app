@@ -52,6 +52,53 @@ class SellerSignUpBusinessDetailsChanged extends SellerSignUpPageEvent {
   List<Object?> get props => [businessDetails];
 }
 
+/// Address field changed manually or through search.
+class SellerSignUpAddressChanged extends SellerSignUpPageEvent {
+  final String address;
+  const SellerSignUpAddressChanged(this.address);
+  @override
+  List<Object?> get props => [address];
+}
+
+/// GPS coordinates or address picked via map search.
+class SellerSignUpCoordinatesChanged extends SellerSignUpPageEvent {
+  final double? latitude;
+  final double? longitude;
+  final String? googleMapsUrl;
+  final String? address;
+
+  const SellerSignUpCoordinatesChanged({
+    this.latitude,
+    this.longitude,
+    this.googleMapsUrl,
+    this.address,
+  });
+
+  @override
+  List<Object?> get props => [latitude, longitude, googleMapsUrl, address];
+}
+
+/// User tapped GPS auto-detect button to get current location.
+class SellerSignUpGpsLocationRequested extends SellerSignUpPageEvent {
+  const SellerSignUpGpsLocationRequested();
+}
+
+/// FSSAI license number field changed.
+class SellerSignUpFssaiChanged extends SellerSignUpPageEvent {
+  final String fssai;
+  const SellerSignUpFssaiChanged(this.fssai);
+  @override
+  List<Object?> get props => [fssai];
+}
+
+/// GST number field changed.
+class SellerSignUpGstChanged extends SellerSignUpPageEvent {
+  final String gst;
+  const SellerSignUpGstChanged(this.gst);
+  @override
+  List<Object?> get props => [gst];
+}
+
 /// User taps "Next" on screen 2 to proceed to screen 3.
 class SellerSignUpPersonalDetailsSubmitted extends SellerSignUpPageEvent {
   const SellerSignUpPersonalDetailsSubmitted();

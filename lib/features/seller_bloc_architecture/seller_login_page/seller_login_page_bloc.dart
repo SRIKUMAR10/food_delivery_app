@@ -125,12 +125,15 @@ class SellerLoginPageBloc
         // Phone + Password custom login via Cloud Function
         await authRepository.signIn(state.emailOrPhone, state.password);
         final uid = authRepository.currentUser?.uid;
+        bool isKycCompleted = false;
         if (uid != null) {
           await authRepository.updateSellerData(uid, {'isOnline': true});
+          isKycCompleted = await authRepository.checkKycCompleted(uid);
         }
         emit(state.copyWith(
           status: SellerLoginStatus.success,
           step: SellerLoginStep.loginSuccess,
+          isKycCompleted: isKycCompleted,
         ));
       } else if (state.isPhoneLogin) {
         // Phone login without password → send OTP flow
@@ -148,12 +151,15 @@ class SellerLoginPageBloc
         // Email/password login
         await authRepository.signIn(state.emailOrPhone, state.password);
         final uid = authRepository.currentUser?.uid;
+        bool isKycCompleted = false;
         if (uid != null) {
           await authRepository.updateSellerData(uid, {'isOnline': true});
+          isKycCompleted = await authRepository.checkKycCompleted(uid);
         }
         emit(state.copyWith(
           status: SellerLoginStatus.success,
           step: SellerLoginStep.loginSuccess,
+          isKycCompleted: isKycCompleted,
         ));
       }
     } catch (e) {
@@ -247,12 +253,15 @@ class SellerLoginPageBloc
 
       await authRepository.signIn(state.emailOrPhone, state.password);
       final uid = authRepository.currentUser?.uid;
+      bool isKycCompleted = false;
       if (uid != null) {
         await authRepository.updateSellerData(uid, {'isOnline': true});
+        isKycCompleted = await authRepository.checkKycCompleted(uid);
       }
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
+        isKycCompleted: isKycCompleted,
       ));
     } catch (e) {
       emit(state.copyWith(
@@ -288,12 +297,15 @@ class SellerLoginPageBloc
       if (success) {
         _cancelOtpTimer();
         final uid = authRepository.currentUser?.uid;
+        bool isKycCompleted = false;
         if (uid != null) {
           await authRepository.updateSellerData(uid, {'isOnline': true});
+          isKycCompleted = await authRepository.checkKycCompleted(uid);
         }
         emit(state.copyWith(
           status: SellerLoginStatus.success,
           step: SellerLoginStep.loginSuccess,
+          isKycCompleted: isKycCompleted,
         ));
       } else {
         emit(state.copyWith(
@@ -430,14 +442,17 @@ class SellerLoginPageBloc
         return;
       }
 
-      await authRepository.signInWithGoogle();
-      final uid = authRepository.currentUser?.uid;
+      final credential = await authRepository.signInWithGoogle();
+      final uid = credential.user?.uid ?? authRepository.currentUser?.uid;
+      bool isKycCompleted = false;
       if (uid != null) {
         await authRepository.updateSellerData(uid, {'isOnline': true});
+        isKycCompleted = await authRepository.checkKycCompleted(uid);
       }
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
+        isKycCompleted: isKycCompleted,
       ));
     } catch (e) {
       final str = e.toString();
@@ -471,20 +486,34 @@ class SellerLoginPageBloc
         return;
       }
 
-      await authRepository.signInWithApple();
-      final uid = authRepository.currentUser?.uid;
+      final credential = await authRepository.signInWithApple();
+      final uid = credential.user?.uid ?? authRepository.currentUser?.uid;
+      bool isKycCompleted = false;
       if (uid != null) {
         await authRepository.updateSellerData(uid, {'isOnline': true});
+        isKycCompleted = await authRepository.checkKycCompleted(uid);
       }
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
+        isKycCompleted: isKycCompleted,
       ));
     } catch (e) {
-      emit(state.copyWith(
-        status: SellerLoginStatus.failure,
-        errorMessage: _friendlyError(e.toString()),
-      ));
+      final str = e.toString();
+      if (str.contains('Apple Sign-In was cancelled') ||
+          str.contains('popup-closed-by-user') ||
+          str.contains('aborted by user') ||
+          str.contains('user-cancelled')) {
+        emit(state.copyWith(
+          status: SellerLoginStatus.initial,
+          clearError: true,
+        ));
+      } else {
+        emit(state.copyWith(
+          status: SellerLoginStatus.failure,
+          errorMessage: _friendlyError(str),
+        ));
+      }
     }
   }
 
@@ -528,15 +557,17 @@ class SellerLoginPageBloc
     ));
   }
 
-  void _onAppLifecycleResumed(SellerLoginAppLifecycleResumed event,
-      Emitter<SellerLoginPageState> emit) {
+  Future<void> _onAppLifecycleResumed(SellerLoginAppLifecycleResumed event,
+      Emitter<SellerLoginPageState> emit) async {
     // Re-check current auth state on app resume if needed.
     final user = authRepository.currentUser;
     if (user != null &&
         state.step != SellerLoginStep.loginSuccess) {
+      final isKycCompleted = await authRepository.checkKycCompleted(user.uid);
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
+        isKycCompleted: isKycCompleted,
       ));
     }
   }
@@ -590,6 +621,21 @@ class SellerLoginPageBloc
   }
 
   String _friendlyError(String raw) {
+    if (raw.contains('deadline-exceeded') ||
+        raw.contains('Deadline') ||
+        raw.contains('wrong-password') ||
+        raw.contains('invalid-credential') ||
+        raw.contains('user-not-found') ||
+        raw.contains('unauthenticated') ||
+        raw.contains('not-found') ||
+        raw.contains('Password is incorrect') ||
+        raw.contains('No registered seller account') ||
+        raw.contains('check the mobile number') ||
+        raw.contains('Please check the mobile number or email ID and password') ||
+        raw.contains('INTERNAL') ||
+        raw.contains('internal')) {
+      return 'Please check the mobile number and password';
+    }
     if (raw.contains('PHONE_NOT_REGISTERED')) {
       return 'This Phone Number is not registered. Please sign up.';
     }
@@ -599,11 +645,10 @@ class SellerLoginPageBloc
     if (raw.contains('APPLE_ACCOUNT_EXISTS')) {
       return 'This Email uses an Apple Account. Please log in with Apple.';
     }
-    if (raw.contains('wrong-password') || raw.contains('invalid-credential')) {
-      return 'Incorrect password. Please try again.';
-    }
-    if (raw.contains('user-not-found')) {
-      return 'Account not found. Please sign up.';
+    if (raw.contains('email-already-in-use') ||
+        raw.contains('The email address is already in use') ||
+        raw.contains('already in use by another account')) {
+      return 'The email address is already in use by another account.';
     }
     if (raw.contains('too-many-requests')) {
       return 'Too many failed attempts. Try again after a few minutes.';
@@ -614,9 +659,17 @@ class SellerLoginPageBloc
     if (raw.contains('invalid-recaptcha-token')) {
       return 'reCAPTCHA verification failed. Please refresh and try again.';
     }
-    // Clean up raw Firebase codes like [firebase_auth/popup-closed-by-user]
     String cleaned = raw.replaceAll(RegExp(r'\[firebase_auth\/[a-zA-Z0-9_-]+\]\s*'), '');
-    return cleaned.replaceAll(RegExp(r'^Exception:\s*'), '').trim();
+    cleaned = cleaned.replaceAll(RegExp(r'\[cloud_functions\/[a-zA-Z0-9_-]+\]\s*'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'\[firebase_functions\/[a-zA-Z0-9_-]+\]\s*'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'^Exception:\s*'), '').trim();
+    if (cleaned.isEmpty || cleaned == 'INTERNAL' || cleaned.toUpperCase() == 'INTERNAL') {
+      return 'Please check the mobile number and password';
+    }
+    if (cleaned.isNotEmpty && !cleaned.startsWith('An error occurred:')) {
+      return cleaned;
+    }
+    return 'Please check the mobile number and password';
   }
 
   // ──────────────────────────────────────────────────────────────────────────

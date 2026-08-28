@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'Delivery_NavigationBar_page_bloc.dart';
 import 'Delivery_NavigationBar_page_event.dart';
@@ -268,11 +269,22 @@ class _DeliveryNavigationBarPageViewState
               );
             }
 
-            return Scaffold(
-              backgroundColor: const Color(0xFF000000),
-              drawer: drawer,
-              bottomNavigationBar: bottomNavigationBar,
-              body: body,
+            return PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (didPop, result) {
+                if (didPop) return;
+                if (state.selectedIndex != 0) {
+                  _onNavTap(context, 0);
+                } else {
+                  SystemNavigator.pop();
+                }
+              },
+              child: Scaffold(
+                backgroundColor: const Color(0xFF000000),
+                drawer: drawer,
+                bottomNavigationBar: bottomNavigationBar,
+                body: body,
+              ),
             );
           },
         );

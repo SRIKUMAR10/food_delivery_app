@@ -6,6 +6,8 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../../api_service/RazorpayApiService.dart';
 import '../../../core/widgets/empty_state_view.dart';
+import '../user_profile_image/pages/google_address_search_dialog.dart';
+import '../user_profile_image/pages/address_management_page.dart';
 import 'cart_models.dart';
 import 'cart_page_Bloc.dart';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
@@ -49,9 +51,19 @@ class _CartPageUIState extends State<CartPageUI> {
           context.read<CartBloc>().add(
             CartRazorpaySuccessReceived(
               response: response,
-              onSuccess: (_) {
-                if (widget.onNavigateToOrders != null) {
+              onSuccess: (placedOrderId) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                if (placedOrderId != null && placedOrderId.isNotEmpty) {
+                  Navigator.pushNamed(
+                    context,
+                    '/trackOrder',
+                    arguments: {'orderId': placedOrderId},
+                  );
+                } else if (widget.onNavigateToOrders != null) {
                   widget.onNavigateToOrders!();
+                } else {
+                  Navigator.pushNamed(context, '/orders');
                 }
               },
               onFailure: (err) {
@@ -201,95 +213,167 @@ class _CartPageUIState extends State<CartPageUI> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (bottomSheetContext) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+        return BlocBuilder<CartBloc, CartState>(
+          builder: (context, latestState) {
+            final cartState = latestState is CartLoaded ? latestState : state;
+            final homeText = cartState.homeAddress.isNotEmpty
+                ? cartState.homeAddress
+                : (cartState.selectedAddressType.toLowerCase() == 'home' && cartState.deliveryAddress.isNotEmpty && cartState.deliveryAddress != 'Primary Address'
+                    ? cartState.deliveryAddress
+                    : '');
+            final workText = cartState.workAddress.isNotEmpty
+                ? cartState.workAddress
+                : (cartState.selectedAddressType.toLowerCase() == 'work' && cartState.deliveryAddress.isNotEmpty && cartState.deliveryAddress != 'Primary Address'
+                    ? cartState.deliveryAddress
+                    : '');
+            final otherText = cartState.otherAddress.isNotEmpty
+                ? cartState.otherAddress
+                : (cartState.selectedAddressType.toLowerCase() == 'other' && cartState.deliveryAddress.isNotEmpty && cartState.deliveryAddress != 'Primary Address'
+                    ? cartState.deliveryAddress
+                    : '');
+
+            return Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Choose Delivery Address',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1C1C1C),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(bottomSheetContext),
-                    icon: const Icon(Icons.close_rounded, size: 22),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Choose Delivery Address',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1C1C1C),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(bottomSheetContext),
+                        icon: const Icon(Icons.close_rounded, size: 22),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildAddressOption(
+                    context,
+                    title: 'Home',
+                    icon: Icons.home_rounded,
+                    address: homeText.isNotEmpty ? homeText : 'No home address saved (Tap to add)',
+                    isSelected: cartState.selectedAddressType.toLowerCase() == 'home',
+                    onTap: () {
+                      if (homeText.isEmpty) {
+                        _editAddressDialog(context, 'Home', homeText);
+                      } else {
+                        context.read<CartBloc>().add(const DeliveryAddressTypeChanged('Home'));
+                        Navigator.pop(bottomSheetContext);
+                      }
+                    },
+                    onEdit: () => _editAddressDialog(context, 'Home', homeText),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildAddressOption(
+                    context,
+                    title: 'Work',
+                    icon: Icons.work_rounded,
+                    address: workText.isNotEmpty ? workText : 'No work address saved (Tap to add)',
+                    isSelected: cartState.selectedAddressType.toLowerCase() == 'work',
+                    onTap: () {
+                      if (workText.isEmpty) {
+                        _editAddressDialog(context, 'Work', workText);
+                      } else {
+                        context.read<CartBloc>().add(const DeliveryAddressTypeChanged('Work'));
+                        Navigator.pop(bottomSheetContext);
+                      }
+                    },
+                    onEdit: () => _editAddressDialog(context, 'Work', workText),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildAddressOption(
+                    context,
+                    title: 'Other',
+                    icon: Icons.location_on_rounded,
+                    address: otherText.isNotEmpty ? otherText : 'No other address saved (Tap to add)',
+                    isSelected: cartState.selectedAddressType.toLowerCase() == 'other',
+                    onTap: () {
+                      if (otherText.isEmpty) {
+                        _editAddressDialog(context, 'Other', otherText);
+                      } else {
+                        context.read<CartBloc>().add(const DeliveryAddressTypeChanged('Other'));
+                        Navigator.pop(bottomSheetContext);
+                      }
+                    },
+                    onEdit: () => _editAddressDialog(context, 'Other', otherText),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(bottomSheetContext);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AddressManagementPage(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.edit_location_alt_outlined, size: 18, color: _primaryRed),
+                      label: const Text(
+                        'Manage Addresses in Profile',
+                        style: TextStyle(
+                          color: _primaryRed,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: _primaryRed, width: 1.2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              _buildAddressOption(
-                context,
-                title: 'Home',
-                icon: Icons.home_rounded,
-                address: state.homeAddress.isNotEmpty
-                    ? state.homeAddress
-                    : (state.selectedAddressType.toLowerCase() == 'home' && state.deliveryAddress.isNotEmpty
-                        ? state.deliveryAddress
-                        : 'No home address saved'),
-                isSelected: state.selectedAddressType.toLowerCase() == 'home',
-                onTap: () {
-                  context.read<CartBloc>().add(const DeliveryAddressTypeChanged('Home'));
-                  Navigator.pop(bottomSheetContext);
-                },
-              ),
-              const SizedBox(height: 10),
-              _buildAddressOption(
-                context,
-                title: 'Work',
-                icon: Icons.work_rounded,
-                address: state.workAddress.isNotEmpty
-                    ? state.workAddress
-                    : (state.selectedAddressType.toLowerCase() == 'work' && state.deliveryAddress.isNotEmpty
-                        ? state.deliveryAddress
-                        : 'No work address saved'),
-                isSelected: state.selectedAddressType.toLowerCase() == 'work',
-                onTap: () {
-                  context.read<CartBloc>().add(const DeliveryAddressTypeChanged('Work'));
-                  Navigator.pop(bottomSheetContext);
-                },
-              ),
-              const SizedBox(height: 10),
-              _buildAddressOption(
-                context,
-                title: 'Other',
-                icon: Icons.location_on_rounded,
-                address: state.otherAddress.isNotEmpty
-                    ? state.otherAddress
-                    : (state.selectedAddressType.toLowerCase() == 'other' && state.deliveryAddress.isNotEmpty
-                        ? state.deliveryAddress
-                        : 'No other address saved'),
-                isSelected: state.selectedAddressType.toLowerCase() == 'other',
-                onTap: () {
-                  context.read<CartBloc>().add(const DeliveryAddressTypeChanged('Other'));
-                  Navigator.pop(bottomSheetContext);
-                },
-              ),
-            ],
-          ),
+            );
+          },
         );
+      },
+    );
+  }
+
+  void _editAddressDialog(BuildContext context, String type, String currentAddress) {
+    GoogleAddressSearchDialog.show(
+      context: context,
+      addressType: type,
+      currentAddress: currentAddress.contains('No ') ? '' : currentAddress,
+      onAddressSelected: (newAddress) {
+        final cleanAddress = newAddress.trim();
+        if (cleanAddress.isNotEmpty) {
+          context.read<CartBloc>().add(DeliveryAddressUpdated(
+            addressType: type,
+            address: cleanAddress,
+          ));
+        }
       },
     );
   }
@@ -301,7 +385,10 @@ class _CartPageUIState extends State<CartPageUI> {
     required String address,
     required bool isSelected,
     required VoidCallback onTap,
+    required VoidCallback onEdit,
   }) {
+    final bool isEmpty = address.contains('No ') && address.contains('saved');
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -347,13 +434,23 @@ class _CartPageUIState extends State<CartPageUI> {
                     address,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade600,
+                      color: isEmpty ? Colors.black38 : Colors.grey.shade600,
+                      fontStyle: isEmpty ? FontStyle.italic : FontStyle.normal,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
+            ),
+            IconButton(
+              icon: Icon(
+                isEmpty ? Icons.add_circle_outline_rounded : Icons.edit_outlined,
+                size: 20,
+                color: isSelected ? _primaryRed : Colors.grey.shade600,
+              ),
+              onPressed: onEdit,
+              tooltip: isEmpty ? 'Add $title Address' : 'Edit $title Address',
             ),
             if (isSelected)
               const Icon(
@@ -592,94 +689,111 @@ class _CartPageUIState extends State<CartPageUI> {
   }
 
   Widget _buildDeliveryAddressCard(BuildContext context, CartLoaded state) {
-    final addressText = state.deliveryAddress.isNotEmpty
-        ? state.deliveryAddress
-        : 'Select your delivery address';
+    final String currentAddressText;
+    final type = state.selectedAddressType.toLowerCase().trim();
+    if (type == 'home' && state.homeAddress.trim().isNotEmpty) {
+      currentAddressText = state.homeAddress.trim();
+    } else if (type == 'work' && state.workAddress.trim().isNotEmpty) {
+      currentAddressText = state.workAddress.trim();
+    } else if (type == 'other' && state.otherAddress.trim().isNotEmpty) {
+      currentAddressText = state.otherAddress.trim();
+    } else if (state.deliveryAddress.trim().isNotEmpty && state.deliveryAddress.trim() != 'Primary Address') {
+      currentAddressText = state.deliveryAddress.trim();
+    } else {
+      currentAddressText = 'Select your delivery address';
+    }
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _primaryRed.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+    final bool isUnset = currentAddressText == 'Select your delivery address';
+
+    return InkWell(
+      onTap: () => _showAddressSelectionSheet(context, state),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: const Icon(
-              Icons.location_on_rounded,
-              color: _primaryRed,
-              size: 20,
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _primaryRed.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.location_on_rounded,
+                color: _primaryRed,
+                size: 20,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Delivery to: ${state.selectedAddressType}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1C1C1C),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Delivery to: ${state.selectedAddressType}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1C1C1C),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(6),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          '15-25 min',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green),
+                        ),
                       ),
-                      child: const Text(
-                        '15-25 min',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  addressText,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    currentAddressText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isUnset ? Colors.orange.shade800 : Colors.grey.shade600,
+                      fontWeight: isUnset ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: () => _showAddressSelectionSheet(context, state),
-            style: TextButton.styleFrom(
-              foregroundColor: _primaryRed,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            TextButton(
+              onPressed: () => _showAddressSelectionSheet(context, state),
+              style: TextButton.styleFrom(
+                foregroundColor: _primaryRed,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                'Change',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
             ),
-            child: const Text(
-              'Change',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1637,10 +1751,19 @@ class _CartPageUIState extends State<CartPageUI> {
                                 description: 'Food Order Payment',
                               );
                             },
-                            onSuccess: (_) {
+                            onSuccess: (placedOrderId) {
+                              if (!context.mounted) return;
                               ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                              if (widget.onNavigateToOrders != null) {
+                              if (placedOrderId != null && placedOrderId.isNotEmpty) {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/trackOrder',
+                                  arguments: {'orderId': placedOrderId},
+                                );
+                              } else if (widget.onNavigateToOrders != null) {
                                 widget.onNavigateToOrders!();
+                              } else {
+                                Navigator.pushNamed(context, '/orders');
                               }
                             },
                             onInsufficientBalance: (message) {

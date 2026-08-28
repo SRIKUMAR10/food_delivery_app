@@ -291,9 +291,16 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
       });
 
       if (_mapBloc.state.autoFollowDriver && _mapController != null) {
+        final is3D = _mapBloc.state.is3DTiltMode;
+        final targetZoom = is3D ? math.max(_tileZoom, 17.0) : _tileZoom;
         _mapController!.animateCamera(
           CameraUpdate.newCameraPosition(
-            CameraPosition(target: LatLng(_animatedLat, _animatedLng), zoom: _tileZoom),
+            CameraPosition(
+              target: LatLng(_animatedLat, _animatedLng),
+              zoom: targetZoom,
+              tilt: is3D ? 55.0 : 0.0,
+              bearing: is3D ? _animatedHeading : 0.0,
+            ),
           ),
         );
       }
@@ -354,8 +361,17 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
       _animController.forward(from: 0.0);
 
       if (widget.autoFollowDriver && _mapController != null) {
+        final is3D = _mapBloc.state.is3DTiltMode;
+        final targetZoom = is3D ? math.max(_tileZoom, 17.0) : _tileZoom;
         _mapController!.animateCamera(
-          CameraUpdate.newLatLng(targetDriverPos),
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: targetDriverPos,
+              zoom: targetZoom,
+              tilt: is3D ? 55.0 : 0.0,
+              bearing: is3D ? targetHeading : 0.0,
+            ),
+          ),
         );
       }
     }
@@ -1314,7 +1330,11 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
               ),
             ),
           ),
-        _buildLiveProgressAndEtaChip(),
+        if (state.currentManeuverStep != null)
+          _buildTurnByTurnManeuverHud(state)
+        else
+          _buildLiveProgressAndEtaChip(),
+        if (state.isRouteLoading) _buildRouteLoadingBadge(),
         if (widget.isRaining && _mapBloc.state.showWeatherOverlay) _buildWeatherSafetyBanner(),
         if (widget.showControls) _buildMapOverlayControls(),
       ],
@@ -1335,6 +1355,183 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
     try {
       controller.setMapStyle(darkMapStyle);
     } catch (_) {}
+  }
+
+  IconData _getManeuverIcon(RouteManeuver maneuver) {
+    switch (maneuver) {
+      case RouteManeuver.turnLeft:
+        return Icons.turn_left_rounded;
+      case RouteManeuver.turnRight:
+        return Icons.turn_right_rounded;
+      case RouteManeuver.turnSlightLeft:
+        return Icons.turn_slight_left_rounded;
+      case RouteManeuver.turnSlightRight:
+        return Icons.turn_slight_right_rounded;
+      case RouteManeuver.turnSharpLeft:
+        return Icons.turn_sharp_left_rounded;
+      case RouteManeuver.turnSharpRight:
+        return Icons.turn_sharp_right_rounded;
+      case RouteManeuver.uturn:
+        return Icons.u_turn_left_rounded;
+      case RouteManeuver.roundabout:
+        return Icons.roundabout_left_rounded;
+      case RouteManeuver.arrive:
+        return Icons.place_rounded;
+      case RouteManeuver.depart:
+        return Icons.navigation_rounded;
+      case RouteManeuver.straight:
+      default:
+        return Icons.straight_rounded;
+    }
+  }
+
+  Widget _buildTurnByTurnManeuverHud(AppGoogleMapState state) {
+    final step = state.currentManeuverStep;
+    if (step == null) return const SizedBox.shrink();
+
+    final distStr = state.distanceToNextTurnMeters > 0
+        ? (state.distanceToNextTurnMeters >= 1000
+            ? '${(state.distanceToNextTurnMeters / 1000).toStringAsFixed(1)} km'
+            : '${state.distanceToNextTurnMeters.round()} m')
+        : step.distanceText;
+
+    return Positioned(
+      top: 12,
+      left: 12,
+      right: 70,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0284C7), Color(0xFF2563EB)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _getManeuverIcon(step.maneuver),
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (distStr.isNotEmpty)
+                      Text(
+                        distStr,
+                        style: const TextStyle(
+                          color: Color(0xFF38BDF8),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    Text(
+                      step.instruction,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                icon: Icon(
+                  state.isVoiceGuidanceEnabled
+                      ? Icons.volume_up_rounded
+                      : Icons.volume_off_rounded,
+                  color: state.isVoiceGuidanceEnabled
+                      ? const Color(0xFF38BDF8)
+                      : Colors.white54,
+                  size: 22,
+                ),
+                onPressed: () {
+                  _mapBloc.add(ToggleVoiceGuidanceEvent());
+                },
+                tooltip: state.isVoiceGuidanceEnabled
+                    ? 'Mute Voice'
+                    : 'Unmute Voice',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRouteLoadingBadge() {
+    return Positioned(
+      top: 75,
+      left: 12,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: const Color(0xFF38BDF8).withValues(alpha: 0.3)),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+                ),
+              ),
+              SizedBox(width: 6),
+              Text(
+                'Fetching live real road...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildLiveProgressAndEtaChip() {
@@ -1597,11 +1794,49 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                   color: _mapBloc.state.showWeatherOverlay ? const Color(0xFF0284C7) : (widget.isDarkMode ? Colors.white70 : Colors.black87),
                 ),
               ],
+              const SizedBox(height: 5),
+              _mapIconButton(
+                _mapBloc.state.isVoiceGuidanceEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                _toggleVoiceGuidance,
+                tooltip: _mapBloc.state.isVoiceGuidanceEnabled ? 'Voice Guidance: ON' : 'Voice Guidance: OFF',
+                color: _mapBloc.state.isVoiceGuidanceEnabled ? const Color(0xFF0284C7) : (widget.isDarkMode ? Colors.white70 : Colors.black87),
+              ),
+              const SizedBox(height: 5),
+              _mapIconButton(
+                _mapBloc.state.is3DTiltMode ? Icons.view_in_ar_rounded : Icons.view_in_ar_outlined,
+                _toggle3DTiltMode,
+                tooltip: _mapBloc.state.is3DTiltMode ? '3D Navigation View: ON' : '3D Navigation View: OFF',
+                color: _mapBloc.state.is3DTiltMode ? const Color(0xFF8B5CF6) : (widget.isDarkMode ? Colors.white70 : Colors.black87),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  void _toggleVoiceGuidance() {
+    _mapBloc.add(ToggleVoiceGuidanceEvent());
+  }
+
+  void _toggle3DTiltMode() {
+    _mapBloc.add(Toggle3DTiltModeEvent());
+    final is3D = !_mapBloc.state.is3DTiltMode;
+    final currentPos = _currentDriverPos ?? _initialCenter;
+    final targetZoom = is3D ? math.max(_tileZoom, 17.0) : _tileZoom;
+    _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: currentPos,
+          zoom: targetZoom,
+          tilt: is3D ? 55.0 : 0.0,
+          bearing: is3D ? _animatedHeading : 0.0,
+        ),
+      ),
+    );
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _toggleWeatherLayer() {
@@ -1836,12 +2071,19 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                       },
                       onTapUp: (details) => _handleCanvasPinTap(context, details.localPosition, minX, minY, zoom),
                       onSecondaryTapUp: (details) => _handleCanvasPinTap(context, details.localPosition, minX, minY, zoom),
-                      child: SizedBox(
-                        width: width,
-                        height: height,
-                        child: Stack(
-                          clipBehavior: Clip.hardEdge,
-                          children: [
+                      child: Transform(
+                        transform: _mapBloc.state.is3DTiltMode
+                            ? (Matrix4.identity()
+                              ..setEntry(3, 2, 0.0012)
+                              ..rotateX(-0.48))
+                            : Matrix4.identity(),
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: width,
+                          height: height,
+                          child: Stack(
+                            clipBehavior: Clip.hardEdge,
+                            children: [
                             Container(
                               width: width,
                               height: height,
@@ -1879,7 +2121,8 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                   ),
                 ),
               ),
-              if (widget.isRaining && _mapBloc.state.showWeatherOverlay)
+            ),
+            if (widget.isRaining && _mapBloc.state.showWeatherOverlay)
                 Positioned.fill(
                   child: IgnorePointer(
                     child: AnimatedBuilder(

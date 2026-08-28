@@ -5,6 +5,8 @@ import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_state.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_event.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
+import '../seller_profile_page/seller_google_address_search_dialog.dart';
+import '../../../core/services/google_places_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry point widget (provides BLoC)
@@ -143,7 +145,7 @@ class _SellerSignUpPageView extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Screen 2 – Personal Details
+// Screen 2 – Personal Details & Business Info (Matching KYC Format with GPS)
 // ─────────────────────────────────────────────────────────────────────────────
 class _SignUpTextField extends StatelessWidget {
   final String hintText;
@@ -155,6 +157,9 @@ class _SignUpTextField extends StatelessWidget {
   final String? errorText;
   final TextInputAction textInputAction;
   final String? initialValue;
+  final TextEditingController? controller;
+  final int maxLines;
+  final bool readOnly;
 
   const _SignUpTextField({
     super.key,
@@ -167,6 +172,9 @@ class _SignUpTextField extends StatelessWidget {
     this.errorText,
     this.textInputAction = TextInputAction.next,
     this.initialValue,
+    this.controller,
+    this.maxLines = 1,
+    this.readOnly = false,
   });
 
   @override
@@ -175,8 +183,11 @@ class _SignUpTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          initialValue: initialValue,
+          controller: controller,
+          initialValue: controller == null ? initialValue : null,
           obscureText: obscureText,
+          readOnly: readOnly,
+          maxLines: maxLines,
           onChanged: onChanged,
           keyboardType: keyboardType,
           textInputAction: textInputAction,
@@ -214,18 +225,53 @@ class _SignUpTextField extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Screen 2 – Personal Details
+// Screen 2 – Personal Details & Store GPS Location
 // ─────────────────────────────────────────────────────────────────────────────
-class _PersonalDetailsScreen extends StatelessWidget {
+class _PersonalDetailsScreen extends StatefulWidget {
   const _PersonalDetailsScreen({super.key});
+
+  @override
+  State<_PersonalDetailsScreen> createState() => _PersonalDetailsScreenState();
+}
+
+class _PersonalDetailsScreenState extends State<_PersonalDetailsScreen> {
+  late final TextEditingController _addressController;
+
+  @override
+  void initState() {
+    super.initState();
+    final bloc = context.read<SellerSignUpPageBloc>();
+    _addressController = TextEditingController(
+      text: bloc.state.address.isNotEmpty
+          ? bloc.state.address
+          : bloc.state.businessDetails,
+    );
+  }
+
+  @override
+  void dispose() {
+    _addressController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return SellerResponsiveContainer(
       child: SafeArea(
-        child: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
-          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
+        child: BlocConsumer<SellerSignUpPageBloc, SellerSignUpPageState>(
+          listenWhen: (previous, current) =>
+              previous.address != current.address ||
+              previous.isLocatingGps != current.isLocatingGps,
+          listener: (context, state) {
+            if (_addressController.text != state.address &&
+                state.address.isNotEmpty) {
+              _addressController.text = state.address;
+            }
+          },
+          buildWhen: (previous, current) =>
+              previous.runtimeType != current.runtimeType ||
+              previous != current,
+          builder: (context, state) {
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -239,48 +285,92 @@ class _PersonalDetailsScreen extends StatelessWidget {
                   Center(
                     child: SellerScreenIllustration(
                       heroTag: 'personal_details_ill',
-                      child: const Icon(Icons.person_rounded, size: 52, color: SellerAuthColors.primary),
+                      child: const Icon(
+                        Icons.storefront_rounded,
+                        size: 52,
+                        color: SellerAuthColors.primary,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   Center(
                     child: Text(
-                      'Personal Details',
-                      style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: SellerAuthColors.textDark),
+                      'Store & Business Details',
+                      style: GoogleFonts.inter(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: SellerAuthColors.textDark,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Center(
+                    child: Text(
+                      'Provide your restaurant profile & link GPS address',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: SellerAuthColors.textLight,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   _SignUpTextField(
                     key: const Key('nameField'),
                     initialValue: state.name,
-                    hintText: 'Full Name',
+                    hintText: 'Full Name (Owner)',
                     prefixIcon: Icons.person_outline,
-                    onChanged: (v) => context.read<SellerSignUpPageBloc>().add(SellerSignUpNameChanged(v)),
+                    onChanged: (v) => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(SellerSignUpNameChanged(v)),
                     errorText: state.nameError,
                   ),
                   const SizedBox(height: 16),
                   _SignUpTextField(
                     key: const Key('shopNameField'),
                     initialValue: state.shopName,
-                    hintText: 'Shop Name',
+                    hintText: 'Shop / Restaurant Name',
                     prefixIcon: Icons.storefront_outlined,
-                    onChanged: (v) => context.read<SellerSignUpPageBloc>().add(SellerSignUpShopNameChanged(v)),
+                    onChanged: (v) => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(SellerSignUpShopNameChanged(v)),
                     errorText: state.shopNameError,
                   ),
                   const SizedBox(height: 16),
                   _SignUpTextField(
+                    key: const Key('fssaiField'),
+                    initialValue: state.fssaiNumber,
+                    hintText: 'FSSAI License Number (Optional)',
+                    prefixIcon: Icons.verified_outlined,
+                    onChanged: (v) => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(SellerSignUpFssaiChanged(v)),
+                    errorText: state.fssaiNumberError,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildAddressFieldWithGps(context, state),
+                  if (state.latitude != null && state.longitude != null) ...[
+                    const SizedBox(height: 8),
+                    _buildGpsCoordinatesChip(state.latitude!, state.longitude!),
+                  ],
+                  const SizedBox(height: 16),
+                  _SignUpTextField(
                     key: const Key('businessDetailsField'),
                     initialValue: state.businessDetails,
-                    hintText: 'Business Details',
+                    hintText: 'Business Details / Cuisine / Note',
                     prefixIcon: Icons.business_center_outlined,
-                    onChanged: (v) => context.read<SellerSignUpPageBloc>().add(SellerSignUpBusinessDetailsChanged(v)),
+                    onChanged: (v) => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(SellerSignUpBusinessDetailsChanged(v)),
                     errorText: state.businessDetailsError,
                   ),
                   const SizedBox(height: 32),
                   SellerPrimaryButton(
                     label: 'Next',
-                    onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpPersonalDetailsSubmitted()),
+                    onPressed: () => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(const SellerSignUpPersonalDetailsSubmitted()),
                   ),
+                  const SizedBox(height: 24),
                 ],
               ),
             );
@@ -289,10 +379,183 @@ class _PersonalDetailsScreen extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildAddressFieldWithGps(
+    BuildContext context,
+    SellerSignUpPageState state,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          key: const Key('addressField'),
+          controller: _addressController,
+          maxLines: 2,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            color: SellerAuthColors.textDark,
+          ),
+          onChanged: (v) {
+            context
+                .read<SellerSignUpPageBloc>()
+                .add(SellerSignUpAddressChanged(v));
+          },
+          decoration: InputDecoration(
+            hintText: 'Full Restaurant Address (GPS Linked)',
+            hintStyle: GoogleFonts.inter(
+              fontSize: 14,
+              color: SellerAuthColors.textLight,
+            ),
+            prefixIcon: const Icon(
+              Icons.location_on_outlined,
+              color: SellerAuthColors.textLight,
+              size: 20,
+            ),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  key: const Key('gpsLocationButton'),
+                  tooltip: 'Detect GPS Location',
+                  icon: state.isLocatingGps
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: SellerAuthColors.primary,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.my_location_rounded,
+                          color: SellerAuthColors.primary,
+                          size: 20,
+                        ),
+                  onPressed: state.isLocatingGps
+                      ? null
+                      : () {
+                          context
+                              .read<SellerSignUpPageBloc>()
+                              .add(const SellerSignUpGpsLocationRequested());
+                        },
+                ),
+                IconButton(
+                  key: const Key('mapPickerButton'),
+                  tooltip: 'Pick on Map',
+                  icon: const Icon(
+                    Icons.map_outlined,
+                    color: SellerAuthColors.primary,
+                    size: 20,
+                  ),
+                  onPressed: () async {
+                    final result =
+                        await SellerGoogleAddressSearchDialog.show(
+                      context: context,
+                      addressType: 'Restaurant',
+                      currentAddress: _addressController.text.trim(),
+                      onAddressSelected: (selection) {
+                        _addressController.text = selection.address;
+                        context.read<SellerSignUpPageBloc>().add(
+                              SellerSignUpCoordinatesChanged(
+                                latitude: selection.latitude,
+                                longitude: selection.longitude,
+                                googleMapsUrl:
+                                    selection.effectiveGoogleMapsUrl,
+                                address: selection.address,
+                              ),
+                            );
+                      },
+                    );
+                    if (result != null) {
+                      _addressController.text = result.address;
+                      if (context.mounted) {
+                        context.read<SellerSignUpPageBloc>().add(
+                              SellerSignUpCoordinatesChanged(
+                                latitude: result.latitude,
+                                longitude: result.longitude,
+                                googleMapsUrl:
+                                    result.effectiveGoogleMapsUrl,
+                                address: result.address,
+                              ),
+                            );
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(
+                color: SellerAuthColors.inputBorder,
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(
+                color: SellerAuthColors.inputBorder,
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(
+                color: SellerAuthColors.primary,
+                width: 1.5,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(
+                color: SellerAuthColors.error,
+                width: 1.5,
+              ),
+            ),
+            errorText: state.addressError,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGpsCoordinatesChip(double lat, double lng) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: SellerAuthColors.primarySurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: SellerAuthColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.check_circle_outline_rounded,
+            size: 16,
+            color: SellerAuthColors.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'GPS Linked: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: SellerAuthColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Screen 3 – Contact & Password
+// Screen 3 – Contact & Password (with GST & Security)
 // ─────────────────────────────────────────────────────────────────────────────
 class _ContactPasswordScreen extends StatelessWidget {
   const _ContactPasswordScreen({super.key});
@@ -302,8 +565,10 @@ class _ContactPasswordScreen extends StatelessWidget {
     return SellerResponsiveContainer(
       child: SafeArea(
         child: BlocBuilder<SellerSignUpPageBloc, SellerSignUpPageState>(
-          buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
+          buildWhen: (previous, current) =>
+              previous.runtimeType != current.runtimeType ||
+              previous != current,
+          builder: (context, state) {
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -311,41 +576,66 @@ class _ContactPasswordScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 16),
                   SellerBackButton(
-                    onTap: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpBackPressed()),
+                    onTap: () => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(const SellerSignUpBackPressed()),
                   ),
                   const SizedBox(height: 24),
                   Center(
                     child: SellerScreenIllustration(
                       heroTag: 'contact_details_ill',
-                      child: const Icon(Icons.contact_mail_rounded, size: 52, color: SellerAuthColors.primary),
+                      child: const Icon(
+                        Icons.contact_mail_rounded,
+                        size: 52,
+                        color: SellerAuthColors.primary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   Center(
                     child: Text(
                       'Contact & Security',
-                      style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: SellerAuthColors.textDark),
+                      style: GoogleFonts.inter(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: SellerAuthColors.textDark,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   _SignUpTextField(
                     key: const Key('phoneField'),
                     initialValue: state.phone,
-                    hintText: 'Phone Number',
+                    hintText: 'Business Phone Number',
                     prefixIcon: Icons.phone_outlined,
                     keyboardType: TextInputType.phone,
-                    onChanged: (v) => context.read<SellerSignUpPageBloc>().add(SellerSignUpPhoneChanged(v)),
+                    onChanged: (v) => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(SellerSignUpPhoneChanged(v)),
                     errorText: state.phoneError,
                   ),
                   const SizedBox(height: 16),
                   _SignUpTextField(
                     key: const Key('emailField'),
                     initialValue: state.email,
-                    hintText: 'Email Address',
+                    hintText: 'Business Email Address',
                     prefixIcon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
-                    onChanged: (v) => context.read<SellerSignUpPageBloc>().add(SellerSignUpEmailChanged(v)),
+                    onChanged: (v) => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(SellerSignUpEmailChanged(v)),
                     errorText: state.emailError,
+                  ),
+                  const SizedBox(height: 16),
+                  _SignUpTextField(
+                    key: const Key('gstField'),
+                    initialValue: state.gstNumber,
+                    hintText: 'GST Number (Optional)',
+                    prefixIcon: Icons.receipt_long_outlined,
+                    onChanged: (v) => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(SellerSignUpGstChanged(v)),
+                    errorText: state.gstNumberError,
                   ),
                   const SizedBox(height: 16),
                   _SignUpTextField(
@@ -354,15 +644,21 @@ class _ContactPasswordScreen extends StatelessWidget {
                     hintText: 'Password',
                     prefixIcon: Icons.lock_outline_rounded,
                     obscureText: state.isPasswordObscured,
-                    onChanged: (v) => context.read<SellerSignUpPageBloc>().add(SellerSignUpPasswordChanged(v)),
+                    onChanged: (v) => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(SellerSignUpPasswordChanged(v)),
                     errorText: state.passwordError,
                     suffixWidget: IconButton(
                       icon: Icon(
-                        state.isPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        state.isPasswordObscured
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
                         color: SellerAuthColors.textLight,
                         size: 20,
                       ),
-                      onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpPasswordVisibilityToggled()),
+                      onPressed: () => context
+                          .read<SellerSignUpPageBloc>()
+                          .add(const SellerSignUpPasswordVisibilityToggled()),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -372,16 +668,24 @@ class _ContactPasswordScreen extends StatelessWidget {
                     hintText: 'Confirm Password',
                     prefixIcon: Icons.lock_reset_outlined,
                     obscureText: state.isConfirmPasswordObscured,
-                    onChanged: (v) => context.read<SellerSignUpPageBloc>().add(SellerSignUpConfirmPasswordChanged(v)),
+                    onChanged: (v) => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(SellerSignUpConfirmPasswordChanged(v)),
                     errorText: state.confirmPasswordError,
                     textInputAction: TextInputAction.done,
                     suffixWidget: IconButton(
                       icon: Icon(
-                        state.isConfirmPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        state.isConfirmPasswordObscured
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
                         color: SellerAuthColors.textLight,
                         size: 20,
                       ),
-                      onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpConfirmPasswordVisibilityToggled()),
+                      onPressed: () => context
+                          .read<SellerSignUpPageBloc>()
+                          .add(
+                            const SellerSignUpConfirmPasswordVisibilityToggled(),
+                          ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -389,22 +693,30 @@ class _ContactPasswordScreen extends StatelessWidget {
                     children: [
                       Checkbox(
                         value: state.termsAccepted,
-                        onChanged: (v) => context.read<SellerSignUpPageBloc>().add(const SellerSignUpTermsToggled()),
+                        onChanged: (v) => context
+                            .read<SellerSignUpPageBloc>()
+                            .add(const SellerSignUpTermsToggled()),
                         activeColor: SellerAuthColors.primary,
                       ),
                       Expanded(
                         child: Text(
                           'I accept the terms and conditions',
-                          style: GoogleFonts.inter(fontSize: 13, color: SellerAuthColors.textDark),
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: SellerAuthColors.textDark,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 24),
                   SellerPrimaryButton(
+                    key: const Key('createAccountButton'),
                     label: 'Create Account / Send OTP',
                     isLoading: state.status == SellerSignUpStatus.loading,
-                    onPressed: () => context.read<SellerSignUpPageBloc>().add(const SellerSignUpContactSubmitted()),
+                    onPressed: () => context
+                        .read<SellerSignUpPageBloc>()
+                        .add(const SellerSignUpContactSubmitted()),
                   ),
                   const SizedBox(height: 32),
                 ],

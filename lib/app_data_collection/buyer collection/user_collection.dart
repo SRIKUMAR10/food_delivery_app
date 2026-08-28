@@ -6,6 +6,31 @@ class UserCollection {
 
   /// Primary getter for buyer_user collection
   CollectionReference get buyerUserCollection => _buyerUserCollection;
+  DocumentReference userDoc(String uid) => _buyerUserCollection.doc(uid);
+
+  CollectionReference cartSubCollection(String uid) =>
+      _buyerUserCollection.doc(uid).collection('cart');
+
+  CollectionReference ordersSubCollection(String uid) =>
+      _buyerUserCollection.doc(uid).collection('orders');
+
+  CollectionReference ratingsSubCollection(String uid) =>
+      _buyerUserCollection.doc(uid).collection('ratings');
+
+  CollectionReference favoritesSubCollection(String uid) =>
+      _buyerUserCollection.doc(uid).collection('favorites');
+
+  CollectionReference addressesSubCollection(String uid) =>
+      _buyerUserCollection.doc(uid).collection('addresses');
+
+  CollectionReference transactionsSubCollection(String uid) =>
+      _buyerUserCollection.doc(uid).collection('transactions');
+
+  CollectionReference notificationsSubCollection(String uid) =>
+      _buyerUserCollection.doc(uid).collection('notifications');
+
+  CollectionReference supportTicketsSubCollection(String uid) =>
+      _buyerUserCollection.doc(uid).collection('support_tickets');
 
   Future<void> createBuyerUser(String uid, Map<String, dynamic> userData) async {
     try {

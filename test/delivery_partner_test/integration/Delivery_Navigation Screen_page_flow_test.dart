@@ -69,6 +69,15 @@ class _FakeNavigationRepository implements DeliveryNavigationRepositoryBase {
   }
 
   @override
+  Future<bool> verifyDeliveryOtp({
+    required String orderId,
+    required String otp,
+  }) async => true;
+
+  @override
+  Future<void> creditDeliveryEarnings(String orderId, {double amount = 50.0}) async {}
+
+  @override
   Future<bool> getAudioEnabled() async => audioEnabled;
 
   @override
@@ -228,6 +237,12 @@ class _FakeNavigationService implements DeliveryNavigationServiceBase {
       'collectedAmount': amountReceived,
     };
   }
+
+  @override
+  Future<bool> verifyDeliveryOtp(String orderId, String enteredOtp) async => true;
+
+  @override
+  Future<void> creditDeliveryEarnings(String orderId, {double amount = 50.0}) async {}
 }
 
 void main() {

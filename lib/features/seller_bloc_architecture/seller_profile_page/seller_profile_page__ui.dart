@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/core/models/seller_model.dart';
@@ -28,6 +27,7 @@ import '../../../core/widgets/hoverable_widgets.dart';
 import '../../../core/widgets/shimmer_loader.dart';
 import '../../../core/services/google_places_service.dart';
 import 'seller_google_address_search_dialog.dart';
+import 'seller_verification_form_page.dart';
 import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
 
 class SellerProfilePageUI extends StatelessWidget {
@@ -163,7 +163,36 @@ class ProfileContent extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            if (SellerDrawerProvider.of(context) != null) ...[
+                            if (Navigator.canPop(context)) ...[
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => Navigator.of(context).pop(),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.arrow_back_ios_new_rounded,
+                                      color: Color(0xFF1E293B),
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                            ] else if (SellerDrawerProvider.of(context) != null) ...[
                               Material(
                                 color: Colors.transparent,
                                 child: InkWell(
@@ -711,7 +740,7 @@ class _OperationalQuickBar extends StatelessWidget {
         const SizedBox(width: 16),
         Switch(
           value: state.isAcceptingOrders,
-          activeColor: const Color(0xFF10B981),
+          activeThumbColor: const Color(0xFF10B981),
           onChanged: (val) {
             context.read<SellerProfilePageBloc>().add(ToggleAcceptingOrders(val));
           },
@@ -751,7 +780,7 @@ class _OperationalQuickBar extends StatelessWidget {
         const SizedBox(width: 16),
         Switch(
           value: state.isOpen,
-          activeColor: const Color(0xFF3B82F6),
+          activeThumbColor: const Color(0xFF3B82F6),
           onChanged: (val) {
             context.read<SellerProfilePageBloc>().add(ToggleStoreOpenStatus(val));
           },
@@ -1945,33 +1974,72 @@ class _VerificationStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool verified = isVerified || status.toLowerCase() == 'verified';
-    final Color color = verified ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
-    final Color bgColor = verified ? const Color(0xFFECFDF5) : const Color(0xFFFEF3C7);
-    final IconData icon = verified ? Icons.check_circle_outline : Icons.schedule_outlined;
-    final String label = verified ? 'Verified' : (status.isNotEmpty ? status.toUpperCase() : 'PENDING');
+    final statusLower = status.toLowerCase();
+    final bool verified = isVerified || statusLower == 'verified' || statusLower == 'approved';
+    final bool inReview = statusLower == 'in_review';
+    final bool rejected = statusLower == 'rejected';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: color,
+    Color color;
+    Color bgColor;
+    IconData icon;
+    String label;
+
+    if (verified) {
+      color = const Color(0xFF10B981);
+      bgColor = const Color(0xFFECFDF5);
+      icon = Icons.check_circle_outline;
+      label = 'KYC Verified';
+    } else if (inReview) {
+      color = const Color(0xFFF59E0B);
+      bgColor = const Color(0xFFFFFBEB);
+      icon = Icons.hourglass_top_outlined;
+      label = 'In Review';
+    } else if (rejected) {
+      color = const Color(0xFFEF4444);
+      bgColor = const Color(0xFFFEF2F2);
+      icon = Icons.error_outline;
+      label = 'KYC Rejected';
+    } else {
+      color = const Color(0xFF3B82F6);
+      bgColor = const Color(0xFFEFF6FF);
+      icon = Icons.shield_outlined;
+      label = 'Verify KYC';
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BlocProvider<SellerProfilePageBloc>.value(
+              value: context.read<SellerProfilePageBloc>(),
+              child: const SellerVerificationFormPage(),
             ),
           ),
-        ],
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2011,11 +2079,16 @@ class _EditProfileButtonState extends State<_EditProfileButton> {
             ),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: const [
-              Icon(Icons.tune_outlined, color: Color(0xFFE52929), size: 16),
+              Icon(
+                Icons.storefront_outlined,
+                color: Color(0xFFE52929),
+                size: 16,
+              ),
               SizedBox(width: 6),
               Text(
-                'Store Settings',
+                'Edit Profile',
                 style: TextStyle(
                   color: Color(0xFFE52929),
                   fontWeight: FontWeight.bold,
@@ -2060,6 +2133,26 @@ class _MenuGrid extends StatelessWidget {
         final double itemWidth = isDesktop ? (constraints.maxWidth - 20) / 2 : constraints.maxWidth;
 
         final List<Map<String, dynamic>> menuItems = [
+          {
+            'icon': Icons.verified_user_outlined,
+            'iconColor': state.isKycApproved ? const Color(0xFF10B981) : const Color(0xFFE52929),
+            'iconBgColor': state.isKycApproved ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+            'title': 'KYC & Verification',
+            'subtitle': state.isKycApproved
+                ? 'KYC Verified ✓'
+                : (state.isKycInReview
+                    ? 'In Review ⏳'
+                    : (state.isKycRejected ? 'Rejected ⚠ (Re-upload)' : 'Upload documents for approval')),
+            'onTap': () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BlocProvider<SellerProfilePageBloc>.value(
+                  value: context.read<SellerProfilePageBloc>(),
+                  child: const SellerVerificationFormPage(),
+                ),
+              ),
+            ),
+          },
           {
             'icon': Icons.account_balance_wallet_outlined,
             'iconColor': const Color(0xFF8B5CF6),

@@ -16,6 +16,11 @@ abstract class DeliveryNavigationRepositoryBase {
     required String orderId,
     required double amountReceived,
   });
+  Future<bool> verifyDeliveryOtp({
+    required String orderId,
+    required String otp,
+  });
+  Future<void> creditDeliveryEarnings(String orderId, {double amount = 50.0});
   Future<bool> getAudioEnabled();
   Future<void> saveAudioEnabled(bool enabled);
   Future<bool> getEmergencyMode();
@@ -187,6 +192,19 @@ class DeliveryNavigationRepository implements DeliveryNavigationRepositoryBase {
       address: data['deliveryAddress'] as String? ?? '',
       iconKey: 'drop',
     );
+  }
+
+  @override
+  Future<bool> verifyDeliveryOtp({
+    required String orderId,
+    required String otp,
+  }) async {
+    return await _service.verifyDeliveryOtp(orderId, otp);
+  }
+
+  @override
+  Future<void> creditDeliveryEarnings(String orderId, {double amount = 50.0}) async {
+    await _service.creditDeliveryEarnings(orderId, amount: amount);
   }
 
   @override

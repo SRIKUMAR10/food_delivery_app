@@ -50,6 +50,7 @@ class AppExceptionFormatter {
         lower.contains('wrong password') ||
         lower.contains('incorrect password') ||
         lower.contains('invalid mobile number or password') ||
+        lower.contains('please check the mobile number') ||
         lower.contains('invalid-credential') ||
         lower.contains('invalid_credential') ||
         lower.contains('invalid_login_credentials') ||
@@ -71,7 +72,7 @@ class AppExceptionFormatter {
                 lower.contains('invalid') ||
                 lower.contains('wrong') ||
                 lower.contains('failed')))) {
-      return 'Invalid mobile number or password.';
+      return 'Please check the mobile number and password';
     }
 
     // 1. Cloud Functions / Internal Errors & Raw Exception interceptor
@@ -80,6 +81,7 @@ class AppExceptionFormatter {
         lower.contains('exception: internal') ||
         lower.contains('firebasefunctionsexception: internal') ||
         lower.contains('[firebase_functions/internal]') ||
+        lower.contains('[cloud_functions/internal]') ||
         lower.contains('internal error')) {
       if (lower.contains('phone') || lower.contains('mobile')) {
         return 'Please enter a valid phone number.';
@@ -89,12 +91,12 @@ class AppExceptionFormatter {
           lower.contains('credential') ||
           lower.contains('invalid_login_credentials') ||
           lower.contains('invalid-login-credentials')) {
-        return 'Invalid mobile number or password.';
+        return 'Please check the mobile number and password';
       }
       if (lower.contains('not-found') || lower.contains('no registered')) {
         return 'Mobile number or email is not registered. Please sign up.';
       }
-      return 'Authentication failed. Please check your mobile number or password and try again.';
+      return 'Please check the mobile number and password';
     }
 
     // 2. Connection & Timeout Errors
@@ -175,7 +177,7 @@ class AppExceptionFormatter {
         cleaned.contains('FirebaseAuthException') ||
         cleaned.contains('FirebaseException') ||
         cleaned.contains('FirebaseFunctionsException')) {
-      return 'An error occurred. Please check your credentials and try again.';
+      return 'Please check the mobile number and password';
     }
 
     return cleaned;

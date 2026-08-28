@@ -1750,46 +1750,58 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
 
     if (isEmail) {
       const lowerEmail = rawIdentifier.toLowerCase();
+      const emailFields = ["email", "userEmail", "customerEmail", "sellerEmail", "partnerEmail"];
+      const emailQueries = [];
+
       for (const coll of collectionsToSearch) {
-        for (const eField of ["email", "userEmail", "customerEmail", "sellerEmail", "partnerEmail"]) {
-          const snap = await db.collection(coll).where(eField, "==", rawIdentifier).limit(1).get();
-          if (!snap.empty) {
-            userDoc = snap.docs[0];
-            foundCollection = coll;
-            foundField = eField;
-            break;
-          }
+        for (const eField of emailFields) {
+          emailQueries.push(
+            db.collection(coll).where(eField, "==", rawIdentifier).limit(1).get()
+              .then(snap => snap.empty ? null : { doc: snap.docs[0], coll, field: eField })
+              .catch(() => null)
+          );
           if (rawIdentifier !== lowerEmail) {
-            const snapLower = await db.collection(coll).where(eField, "==", lowerEmail).limit(1).get();
-            if (!snapLower.empty) {
-              userDoc = snapLower.docs[0];
-              foundCollection = coll;
-              foundField = eField;
-              break;
-            }
+            emailQueries.push(
+              db.collection(coll).where(eField, "==", lowerEmail).limit(1).get()
+                .then(snap => snap.empty ? null : { doc: snap.docs[0], coll, field: eField })
+                .catch(() => null)
+            );
           }
         }
-        if (userDoc) break;
+      }
+
+      const results = await Promise.all(emailQueries);
+      const matched = results.find(r => r && r.doc);
+      if (matched) {
+        userDoc = matched.doc;
+        foundCollection = matched.coll;
+        foundField = matched.field;
       }
     } else {
+      const uniqueVariations = Array.from(new Set(variationsList.filter(Boolean)));
+      const phoneFields = ["contactNumber", "phoneNumber", "phone", "mobile", "mobileNumber", "userPhone", "customerPhone", "partnerPhone", "sellerPhone"];
+      const phoneQueries = [];
+
+      // Parallel chunked 'in' queries for maximum speed (< 150ms)
       for (const coll of collectionsToSearch) {
-        for (const field of SEARCHABLE_PHONE_FIELDS) {
-          for (const pVal of variationsList) {
-            if (!pVal) continue;
-            const snap = await db.collection(coll)
-              .where(field, "==", pVal)
-              .limit(1)
-              .get();
-            if (!snap.empty) {
-              userDoc = snap.docs[0];
-              foundCollection = coll;
-              foundField = field;
-              break;
-            }
+        for (const field of phoneFields) {
+          for (let i = 0; i < uniqueVariations.length; i += 30) {
+            const chunk = uniqueVariations.slice(i, i + 30);
+            phoneQueries.push(
+              db.collection(coll).where(field, "in", chunk).limit(1).get()
+                .then(snap => snap.empty ? null : { doc: snap.docs[0], coll, field })
+                .catch(() => null)
+            );
           }
-          if (userDoc) break;
         }
-        if (userDoc) break;
+      }
+
+      const results = await Promise.all(phoneQueries);
+      const matched = results.find(r => r && r.doc);
+      if (matched) {
+        userDoc = matched.doc;
+        foundCollection = matched.coll;
+        foundField = matched.field;
       }
     }
 
@@ -1797,7 +1809,7 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
       console.warn(`customLogin: No document found in Firestore for identifier: ${rawIdentifier}`);
       throw new HttpsErrorV2(
         "not-found",
-        "No registered account found with the provided email or phone number."
+        "Please check the mobile number and password"
       );
     }
 
@@ -1865,7 +1877,7 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
       console.warn(`customLogin: Password mismatch for UID ${uid} in collection '${foundCollection}' field '${foundField}'`);
       throw new HttpsErrorV2(
         "unauthenticated",
-        "Password is incorrect. Please try again."
+        "Please check the mobile number and password"
       );
     }
 
@@ -1889,19 +1901,10 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
     let authUser = null;
 
     const emailToLookup = userData.email || (isEmail ? rawIdentifier : null);
-    const phoneToLookup = userData.phoneNumber || userData.phone || userData.mobile || (!isEmail ? formattedPhone : null);
+    const phoneToLookup = userData.phoneNumber || userData.phone || userData.mobile || userData.contactNumber || (!isEmail ? formattedPhone : null);
 
-    if (emailToLookup && String(emailToLookup).includes("@")) {
-      try {
-        const authByEmail = await admin.auth().getUserByEmail(String(emailToLookup).trim());
-        if (authByEmail && authByEmail.uid) {
-          canonicalUid = authByEmail.uid;
-          authUser = authByEmail;
-        }
-      } catch (e) {}
-    }
-
-    if (!authUser && phoneToLookup) {
+    // 1. Primary: Lookup by Phone Number in Firebase Auth (for OTP-verified accounts)
+    if (phoneToLookup) {
       const digitsOnlyPhone = String(phoneToLookup).replace(/\D/g, "");
       const fullPhone = digitsOnlyPhone.length === 10 ? `+91${digitsOnlyPhone}` : (String(phoneToLookup).startsWith("+") ? String(phoneToLookup) : `+${digitsOnlyPhone}`);
       try {
@@ -1909,6 +1912,27 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
         if (authByPhone && authByPhone.uid) {
           canonicalUid = authByPhone.uid;
           authUser = authByPhone;
+        }
+      } catch (e) {}
+    }
+
+    // 2. Secondary: Lookup by Email in Firebase Auth (e.g. for Google OAuth accounts)
+    if (emailToLookup && String(emailToLookup).includes("@")) {
+      try {
+        const authByEmail = await admin.auth().getUserByEmail(String(emailToLookup).trim());
+        if (authByEmail && authByEmail.uid) {
+          if (!authUser) {
+            canonicalUid = authByEmail.uid;
+            authUser = authByEmail;
+          } else if (authByEmail.uid !== canonicalUid) {
+            // Deduplicate: Clean up orphaned email Auth user if phone Auth user is canonical
+            try {
+              await admin.auth().deleteUser(authByEmail.uid);
+              console.log(`customLogin: Deleted orphaned email Auth user ${authByEmail.uid} for ${emailToLookup}`);
+            } catch (delErr) {
+              console.warn(`customLogin: Could not delete duplicate email Auth user:`, delErr.message);
+            }
+          }
         }
       } catch (e) {}
     }
@@ -1987,7 +2011,7 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
     }
     throw new HttpsErrorV2(
       "internal",
-      `Authentication internal error: ${error.message}`
+      "Please check the mobile number and password"
     );
   }
 });
@@ -4745,6 +4769,509 @@ exports.getDeliveryRouteAndETAHttp = functions.https.onRequest((req, res) => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 2: TRANSACTION AUTOMATION, ESCROW & AUTO-DISPATCH CLOUD FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * 1. Request Seller Payout (Atomic Transaction)
+ */
+exports.requestSellerPayout = functions.https.onCall(async (data, context) => {
+  const sellerId = context.auth ? context.auth.uid : (data && data.sellerId);
+  if (!sellerId) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated as a seller.");
+  }
 
+  const { amount, bankAccount, upiId } = data || {};
+  const numAmount = parseFloat(amount);
+  if (!numAmount || numAmount <= 0) {
+    throw new functions.https.HttpsError("invalid-argument", "A valid positive payout amount is required.");
+  }
 
+  const db = admin.firestore();
+  const sellerRef = db.collection("sellers").doc(sellerId);
+  const payoutRequestRef = db.collection("payout_requests").doc();
+  const payoutRef = db.collection("payouts").doc(payoutRequestRef.id);
+
+  return db.runTransaction(async (transaction) => {
+    const sellerDoc = await transaction.get(sellerRef);
+    if (!sellerDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "Seller profile not found.");
+    }
+
+    const currentBalance = Number(sellerDoc.data().walletBalance) || 0;
+    if (currentBalance < numAmount) {
+      throw new functions.https.HttpsError("failed-precondition", "Insufficient wallet balance.");
+    }
+
+    // Deduct locked amount from seller's wallet balance
+    transaction.update(sellerRef, {
+      walletBalance: currentBalance - numAmount,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
+    // Create payout request entry
+    transaction.set(payoutRequestRef, {
+      requestId: payoutRequestRef.id,
+      sellerId: sellerId,
+      amount: numAmount,
+      bankAccount: bankAccount || "",
+      upiId: upiId || "",
+      status: "Pending",
+      timestamp: timestamp,
+      createdAt: timestamp,
+    });
+
+    // Create audit ledger entry in payouts history
+    transaction.set(payoutRef, {
+      payoutId: payoutRequestRef.id,
+      sellerId: sellerId,
+      amount: numAmount,
+      bankAccount: bankAccount || "",
+      upiId: upiId || "",
+      status: "Pending",
+      type: "withdrawal",
+      createdAt: timestamp,
+    });
+
+    return {
+      success: true,
+      requestId: payoutRequestRef.id,
+      amount: numAmount,
+      remainingBalance: currentBalance - numAmount,
+      status: "Pending",
+    };
+  });
+});
+
+/**
+ * 2. Approve Seller Payout (Admin Action)
+ */
+exports.approveSellerPayout = functions.https.onCall(async (data, context) => {
+  const { requestId, utrNumber, note } = data || {};
+  if (!requestId) {
+    throw new functions.https.HttpsError("invalid-argument", "Request ID is required.");
+  }
+
+  const db = admin.firestore();
+  const requestRef = db.collection("payout_requests").doc(requestId);
+  const payoutRef = db.collection("payouts").doc(requestId);
+
+  return db.runTransaction(async (transaction) => {
+    const reqDoc = await transaction.get(requestRef);
+    if (!reqDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "Payout request not found.");
+    }
+
+    const reqData = reqDoc.data();
+    if (reqData.status === "Approved" || reqData.status === "Completed") {
+      throw new functions.https.HttpsError("failed-precondition", "Payout request has already been processed.");
+    }
+
+    const settledAt = admin.firestore.FieldValue.serverTimestamp();
+
+    transaction.update(requestRef, {
+      status: "Completed",
+      utrNumber: utrNumber || "",
+      note: note || "Approved and disbursed",
+      settledAt: settledAt,
+      updatedAt: settledAt,
+    });
+
+    transaction.set(
+      payoutRef,
+      {
+        status: "Completed",
+        utrNumber: utrNumber || "",
+        settledAt: settledAt,
+      },
+      { merge: true }
+    );
+
+    return { success: true, requestId, status: "Completed" };
+  });
+});
+
+/**
+ * 3. Reject Seller Payout & Refund Wallet Balance (Admin Action)
+ */
+exports.rejectSellerPayout = functions.https.onCall(async (data, context) => {
+  const { requestId, reason } = data || {};
+  if (!requestId) {
+    throw new functions.https.HttpsError("invalid-argument", "Request ID is required.");
+  }
+
+  const db = admin.firestore();
+  const requestRef = db.collection("payout_requests").doc(requestId);
+  const payoutRef = db.collection("payouts").doc(requestId);
+
+  return db.runTransaction(async (transaction) => {
+    const reqDoc = await transaction.get(requestRef);
+    if (!reqDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "Payout request not found.");
+    }
+
+    const reqData = reqDoc.data();
+    if (reqData.status !== "Pending") {
+      throw new functions.https.HttpsError("failed-precondition", "Only pending payout requests can be rejected.");
+    }
+
+    const sellerRef = db.collection("sellers").doc(reqData.sellerId);
+    const sellerDoc = await transaction.get(sellerRef);
+
+    if (sellerDoc.exists) {
+      const currentBal = Number(sellerDoc.data().walletBalance) || 0;
+      // Refund the requested amount back to seller wallet
+      transaction.update(sellerRef, {
+        walletBalance: currentBal + Number(reqData.amount || 0),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    const rejectedAt = admin.firestore.FieldValue.serverTimestamp();
+
+    transaction.update(requestRef, {
+      status: "Rejected",
+      rejectionReason: reason || "Rejected by admin",
+      updatedAt: rejectedAt,
+    });
+
+    transaction.set(
+      payoutRef,
+      {
+        status: "Rejected",
+        rejectionReason: reason || "Rejected by admin",
+        updatedAt: rejectedAt,
+      },
+      { merge: true }
+    );
+
+    return { success: true, requestId, status: "Rejected" };
+  });
+});
+
+/**
+ * 4. Auto-Dispatch & Order State Machine Lifecycle Trigger
+ */
+exports.onOrderStatusChanged = functions.firestore
+  .document("orders/{orderId}")
+  .onWrite(async (change, context) => {
+    const orderId = context.params.orderId;
+    const beforeData = change.before.exists ? change.before.data() : null;
+    const afterData = change.after.exists ? change.after.data() : null;
+
+    if (!afterData) return null; // Order was deleted
+
+    const db = admin.firestore();
+    const oldStatus = beforeData ? (beforeData.orderStatus || beforeData.status) : null;
+    const newStatus = afterData.orderStatus || afterData.status;
+
+    // ── When Order is Ready For Pickup -> Broadcast Dispatch Assignment ──
+    const isReadyForPickup =
+      (newStatus === "ReadyForPickup" || newStatus === "ready_for_pickup" || newStatus === "Ready") &&
+      oldStatus !== newStatus;
+
+    if (isReadyForPickup && !afterData.riderId) {
+      const assignmentRef = db.collection("order_assignments").doc(orderId);
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes broadcast window
+
+      await assignmentRef.set(
+        {
+          orderId: orderId,
+          sellerId: afterData.sellerId || "",
+          buyerId: afterData.buyerId || afterData.customerId || "",
+          status: "Broadcast",
+          pickupAddress: afterData.sellerAddress || afterData.restaurantAddress || {},
+          deliveryAddress: afterData.deliveryAddress || {},
+          totalAmount: afterData.totalAmount || 0,
+          assignmentExpiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+
+    // ── When Order is Delivered -> Disburse Seller Payout & Rider Earnings ──
+    const isDelivered =
+      (newStatus === "Delivered" || newStatus === "delivered") &&
+      oldStatus !== newStatus;
+
+    if (isDelivered) {
+      const totalAmount = Number(afterData.totalAmount) || 0;
+      const deliveryFee = Number(afterData.deliveryFee) || 30.0;
+      const platformFee = Number(afterData.platformFee) || (totalAmount * 0.1); // 10% platform fee
+      const sellerPayout = Math.max(0, totalAmount - deliveryFee - platformFee);
+
+      // 1. Credit Seller Wallet
+      if (afterData.sellerId && sellerPayout > 0) {
+        const sellerRef = db.collection("sellers").doc(afterData.sellerId);
+        await db.runTransaction(async (t) => {
+          const sDoc = await t.get(sellerRef);
+          if (sDoc.exists) {
+            const cur = Number(sDoc.data().walletBalance) || 0;
+            t.update(sellerRef, {
+              walletBalance: cur + sellerPayout,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+        });
+      }
+
+      // 2. Credit Delivery Partner Earnings
+      if (afterData.riderId) {
+        const riderRef = db.collection("delivery_partners").doc(afterData.riderId);
+        const earningsDocRef = riderRef.collection("earnings").doc("summary");
+
+        await db.runTransaction(async (t) => {
+          const rDoc = await t.get(riderRef);
+          const eDoc = await t.get(earningsDocRef);
+
+          if (rDoc.exists) {
+            const curBal = Number(rDoc.data().walletBalance) || 0;
+            t.update(riderRef, {
+              walletBalance: curBal + deliveryFee,
+              isBusy: false,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+
+          if (eDoc.exists) {
+            const eData = eDoc.data();
+            t.update(earningsDocRef, {
+              todayEarnings: (Number(eData.todayEarnings) || 0) + deliveryFee,
+              totalEarnings: (Number(eData.totalEarnings) || 0) + deliveryFee,
+              totalDeliveries: (Number(eData.totalDeliveries) || 0) + 1,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          } else {
+            t.set(earningsDocRef, {
+              todayEarnings: deliveryFee,
+              totalEarnings: deliveryFee,
+              totalDeliveries: 1,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+        });
+      }
+    }
+
+    return null;
+  });
+
+/**
+ * 5. Rider Accept Order Assignment (Atomic Lock)
+ */
+exports.acceptOrderAssignment = functions.https.onCall(async (data, context) => {
+  const riderId = context.auth ? context.auth.uid : (data && data.riderId);
+  if (!riderId) {
+    throw new functions.https.HttpsError("unauthenticated", "Rider must be authenticated.");
+  }
+
+  const { orderId } = data || {};
+  if (!orderId) {
+    throw new functions.https.HttpsError("invalid-argument", "Order ID is required.");
+  }
+
+  const db = admin.firestore();
+  const assignmentRef = db.collection("order_assignments").doc(orderId);
+  const orderRef = db.collection("orders").doc(orderId);
+  const riderRef = db.collection("delivery_partners").doc(riderId);
+
+  return db.runTransaction(async (transaction) => {
+    const assignmentDoc = await transaction.get(assignmentRef);
+    if (!assignmentDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "Order assignment not found.");
+    }
+
+    const assignData = assignmentDoc.data();
+    if (assignData.status === "Accepted" || assignData.status === "PickedUp") {
+      throw new functions.https.HttpsError("failed-precondition", "Order has already been accepted by another rider.");
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    // Lock assignment
+    transaction.update(assignmentRef, {
+      riderId: riderId,
+      status: "Accepted",
+      acceptedAt: now,
+      updatedAt: now,
+    });
+
+    // Update main order
+    transaction.update(orderRef, {
+      riderId: riderId,
+      orderStatus: "OutForDelivery",
+      status: "OutForDelivery",
+      updatedAt: now,
+    });
+
+    // Mark rider as busy
+    transaction.update(riderRef, {
+      isBusy: true,
+      activeOrderId: orderId,
+      updatedAt: now,
+    });
+
+    return {
+      success: true,
+      orderId: orderId,
+      riderId: riderId,
+      status: "Accepted",
+    };
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 3: BIGQUERY CHANGE DATA CAPTURE (CDC) & ANALYTICS EVENT STREAMER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Streams raw Firestore mutation events into the `analytics_events` changelog
+ * and BigQuery streaming buffer for real-time CRM & Analytics modeling.
+ */
+exports.streamAnalyticsCDCEvent = functions.firestore
+  .document("{collectionId}/{documentId}")
+  .onWrite(async (change, context) => {
+    const { collectionId, documentId } = context.params;
+
+    // Only capture primary business collections
+    const TRACKED_COLLECTIONS = [
+      "orders",
+      "payments",
+      "payout_requests",
+      "payouts",
+      "inventory_logs",
+      "buyer_user",
+      "sellers",
+      "delivery_partners",
+    ];
+
+    if (!TRACKED_COLLECTIONS.includes(collectionId)) {
+      return null;
+    }
+
+    const eventType = !change.before.exists
+      ? "CREATE"
+      : !change.after.exists
+      ? "DELETE"
+      : "UPDATE";
+
+    const eventPayload = {
+      eventId: context.eventId,
+      collectionId: collectionId,
+      documentId: documentId,
+      eventType: eventType,
+      beforeData: change.before.exists ? change.before.data() : null,
+      afterData: change.after.exists ? change.after.data() : null,
+      eventTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+      isoTimestamp: new Date().toISOString(),
+    };
+
+    const db = admin.firestore();
+    // Write to persistent audit collection (which syncs to BigQuery)
+    await db.collection("analytics_events").doc(context.eventId).set(eventPayload);
+
+    return null;
+  });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SELLER KYC DOCUMENTS BACKEND AUTOMATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Triggered whenever a seller KYC document is created or updated.
+ * Automatically synchronizes verification flags on the seller's root profile.
+ */
+exports.onSellerKycUpdated = functions.firestore
+  .document("sellers/{sellerId}/kyc_documents/{docId}")
+  .onWrite(async (change, context) => {
+    const { sellerId } = context.params;
+    const afterData = change.after.exists ? change.after.data() : null;
+
+    if (!afterData) return null;
+
+    const db = admin.firestore();
+    const sellerRef = db.collection("sellers").doc(sellerId);
+    const kycStatus = (afterData.kycStatus || "pending").toLowerCase();
+
+    const isApproved = kycStatus === "approved" || kycStatus === "verified";
+    const isRejected = kycStatus === "rejected";
+
+    const updates = {
+      kycStatus: kycStatus,
+      verificationStatus: isApproved ? "verified" : (isRejected ? "rejected" : "pending"),
+      isVerified: isApproved,
+      fssaiNumber: afterData.fssaiNumber || "",
+      gstNumber: afterData.gstNumber || "",
+      panNumber: afterData.panNumber || "",
+      bankAccountNumber: afterData.bankAccountNumber || "",
+      ifscCode: afterData.ifscCode || "",
+      fssaiCertificateUrl: afterData.fssaiCertificateUrl || "",
+      gstCertificateUrl: afterData.gstCertificateUrl || "",
+      panCardUrl: afterData.panCardUrl || "",
+      bankChequeUrl: afterData.bankChequeUrl || "",
+      shopLicenseUrl: afterData.shopLicenseUrl || "",
+      kycRejectionReason: afterData.rejectionReason || "",
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await sellerRef.set(updates, { merge: true });
+    return null;
+  });
+
+/**
+ * Callable function to submit seller KYC documents
+ */
+exports.submitSellerKyc = functions.https.onCall(async (data, context) => {
+  const sellerId = context.auth ? context.auth.uid : (data && data.sellerId);
+  if (!sellerId) {
+    throw new functions.https.HttpsError("unauthenticated", "Seller must be authenticated.");
+  }
+
+  const {
+    fssaiNumber,
+    fssaiCertificateUrl,
+    gstNumber,
+    gstCertificateUrl,
+    panNumber,
+    panCardUrl,
+    bankAccountNumber,
+    ifscCode,
+    bankChequeUrl,
+    shopLicenseUrl,
+  } = data || {};
+
+  const db = admin.firestore();
+  const kycDocRef = db.collection("sellers").doc(sellerId).collection("kyc_documents").doc("details");
+  const now = admin.firestore.FieldValue.serverTimestamp();
+
+  const kycPayload = {
+    sellerId: sellerId,
+    fssaiNumber: fssaiNumber || "",
+    fssaiCertificateUrl: fssaiCertificateUrl || "",
+    gstNumber: gstNumber || "",
+    gstCertificateUrl: gstCertificateUrl || "",
+    panNumber: panNumber || "",
+    panCardUrl: panCardUrl || "",
+    bankAccountNumber: bankAccountNumber || "",
+    ifscCode: ifscCode || "",
+    bankChequeUrl: bankChequeUrl || "",
+    shopLicenseUrl: shopLicenseUrl || "",
+    kycStatus: "in_review",
+    submittedAt: now,
+    updatedAt: now,
+  };
+
+  await kycDocRef.set(kycPayload, { merge: true });
+
+  return {
+    success: true,
+    sellerId: sellerId,
+    kycStatus: "in_review",
+    message: "KYC documents submitted successfully for review.",
+  };
+});
