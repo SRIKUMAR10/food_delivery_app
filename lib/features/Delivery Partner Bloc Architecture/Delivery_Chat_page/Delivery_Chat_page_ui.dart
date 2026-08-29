@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 
 import '../../../core/theme/delivery_app_colors.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../../core/models/chat_message_model.dart';
 import '../../../core/models/conversation_model.dart';
 import '../../../core/repositories/i_chat_repository.dart';
@@ -868,9 +869,9 @@ class _ConversationTile extends StatelessWidget {
     final diff = now.difference(dt);
     if (diff.inMinutes < 1) return 'Just now';
     if (diff.inHours < 1) return '${diff.inMinutes}m';
-    if (diff.inDays == 0) return DateFormat('h:mm a').format(dt);
+    if (diff.inDays == 0) return AppDateFormatter.formatTime(dt);
     if (diff.inDays < 7) return DateFormat('EEEE').format(dt);
-    return DateFormat('dd/MM').format(dt);
+    return AppDateFormatter.formatDisplayDate(dt);
   }
 }
 

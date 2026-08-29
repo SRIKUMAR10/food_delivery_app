@@ -7,6 +7,7 @@ import 'package:food_delivery_app/repositories/seller_repository.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
 import '../seller_login_page/seller_login_page_bloc.dart';
 import '../seller_login_page/seller_login_page_event.dart';
+import '../seller_ui_tokens.dart';
 import 'seller_forgot_password_bloc.dart';
 import 'seller_forgot_password_event.dart';
 import 'seller_forgot_password_state.dart';
@@ -82,7 +83,7 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SellerAuthColors.background,
+      backgroundColor: SellerUiTokens.pageBackground,
       body: SafeArea(
         child: BlocListener<SellerForgotPasswordBloc, SellerForgotPasswordState>(
           listenWhen: (previous, current) =>
@@ -147,7 +148,7 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 800),
+                constraints: const BoxConstraints(maxWidth: SellerUiTokens.maxWidthForm),
                 child: Column(
                   children: [
                     Row(
@@ -689,6 +690,7 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                     return SellerPrimaryButton(
                                       label: 'Reset Password',
                                       isLoading: isLoading,
+                                      borderRadius: SellerUiTokens.radiusButton,
                                       onPressed: isLoading
                                           ? null
                                           : () {

@@ -22,4 +22,16 @@ class BusinessHoursRepository {
   Future<void> toggleEmergencyClose(String sellerId, bool isEmergencyClosed) {
     return service.toggleEmergencyClose(sellerId, isEmergencyClosed);
   }
+
+  Future<void> saveFullSchedule(
+    String sellerId,
+    List<BusinessDayModel> schedule, {
+    bool isEmergencyClosed = false,
+  }) {
+    return service.saveFullSchedule(
+      sellerId,
+      schedule,
+      isEmergencyClosed: isEmergencyClosed,
+    );
+  }
 }

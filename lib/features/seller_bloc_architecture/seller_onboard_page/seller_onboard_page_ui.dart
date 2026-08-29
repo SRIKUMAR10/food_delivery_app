@@ -189,6 +189,7 @@ class _SellerOnboardViewState extends State<SellerOnboardView>
   ) {
     return PrimaryButton(
       text: 'Get Started',
+      backgroundColor: const Color(0xFFE52929),
       isLoading: state is SellerOnboardLoading,
       onPressed: () {
         context.read<SellerOnboardPageBloc>().add(

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/custom_camera_page.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/utils/app_date_formatter.dart';
 
 import 'buyer_chat_bloc.dart';
 import 'buyer_chat_event.dart';
@@ -1148,10 +1149,10 @@ class _ConversationTileState extends State<_ConversationTile> {
       lastMessageTimestamp.day,
     );
     final diff = today.difference(msgDate).inDays;
-    if (diff == 0) return DateFormat('hh:mm a').format(lastMessageTimestamp);
+    if (diff == 0) return AppDateFormatter.formatTime(lastMessageTimestamp);
     if (diff == 1) return 'Yesterday';
     if (diff < 7) return DateFormat('EEEE').format(lastMessageTimestamp);
-    return DateFormat('MMM dd').format(lastMessageTimestamp);
+    return AppDateFormatter.formatDisplayDate(lastMessageTimestamp);
   }
 
   @override
@@ -3198,7 +3199,7 @@ class _DateSeparatorChip extends StatelessWidget {
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
     if (diff < 7) return DateFormat('EEEE').format(dateTime);
-    return DateFormat('d MMMM yyyy').format(dateTime);
+    return AppDateFormatter.formatDisplayDate(dateTime);
   }
 
   @override
@@ -3495,8 +3496,7 @@ class _PremiumOrderContextCardState extends State<_PremiumOrderContextCard> {
   }
 
   Widget _buildOrderDetailsHeader(OrderModel order) {
-    final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
-    final formattedDate = dateFormat.format(order.timestamp);
+    final formattedDate = AppDateFormatter.formatDisplayDateTime(order.timestamp);
 
     return Column(
       children: [

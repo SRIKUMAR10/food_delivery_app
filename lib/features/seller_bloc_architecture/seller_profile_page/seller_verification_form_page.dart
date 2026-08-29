@@ -17,6 +17,7 @@ import 'seller_google_address_search_dialog.dart';
 import '../seller_auth_shared/onboarding_back_handler.dart';
 import '../seller_auth_shared/seller_wizard_container.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
+import '../seller_ui_tokens.dart';
 
 class SellerVerificationFormPage extends StatelessWidget {
   final SellerProfilePageBloc? bloc;
@@ -608,8 +609,8 @@ class _SellerVerificationFormContentViewState
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: allDone ? const Color(0xFF10B981) : const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(12),
+                  color: allDone ? SellerUiTokens.success : SellerUiTokens.borderMuted,
+                  borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   '$uploadedCount/4',
@@ -703,17 +704,17 @@ class _SellerVerificationFormContentViewState
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: isMissingError ? const Color(0xFFFFFBFB) : Colors.white,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
             border: Border.all(
               color: isMissingError
-                  ? const Color(0xFFEF4444)
-                  : (hasValidUrl ? const Color(0xFF10B981) : Colors.grey.shade300),
+                  ? SellerUiTokens.error
+                  : (hasValidUrl ? SellerUiTokens.success : SellerUiTokens.borderMuted),
               width: (isMissingError || hasValidUrl) ? 1.5 : 1.0,
             ),
             boxShadow: hasValidUrl
                 ? [
                     BoxShadow(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                      color: SellerUiTokens.success.withValues(alpha: 0.08),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -721,7 +722,7 @@ class _SellerVerificationFormContentViewState
                 : (isMissingError
                     ? [
                         BoxShadow(
-                          color: const Color(0xFFEF4444).withValues(alpha: 0.08),
+                          color: SellerUiTokens.error.withValues(alpha: 0.08),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -802,7 +803,7 @@ class _SellerVerificationFormContentViewState
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(999),
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,

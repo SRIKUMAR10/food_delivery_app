@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/repositories/i_rating_repository.dart';
 import '../../../repositories/firebase_rating_repository.dart';
+import '../../../core/utils/app_date_formatter.dart';
 
 class DeliveryRatingsStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -637,11 +638,6 @@ class _DeliveryRatingsReviewsSheetState
   }
 
   String _formatDate(String isoString) {
-    try {
-      final dt = DateTime.parse(isoString);
-      return '${dt.day}/${dt.month}/${dt.year}';
-    } catch (_) {
-      return '';
-    }
+    return AppDateFormatter.formatDisplayDate(isoString);
   }
 }

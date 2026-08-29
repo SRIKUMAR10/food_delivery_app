@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import 'Track_Order_page_bloc.dart';
 import 'Track_Order_page_event.dart';
 import 'Track_Order_page_state.dart';
@@ -573,8 +574,9 @@ class _TrackOrderView extends StatelessWidget {
   }
 
   Widget _buildHeaderInfo(BuildContext context, TrackOrderLoaded state) {
-    final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
-    final formattedDate = order != null ? dateFormat.format(order!.date) : dateFormat.format(state.orderDate);
+    final formattedDate = order != null
+        ? AppDateFormatter.formatDisplayDateTime(order!.date)
+        : AppDateFormatter.formatDisplayDateTime(state.orderDate);
 
     return Column(
       children: [

@@ -389,7 +389,7 @@ class _MobileFloatingNavigationBar extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: isSelected
                 ? const LinearGradient(
-                    colors: [Color(0x22FF3B30), Color(0x05FF3B30)],
+                    colors: [Color(0x22E52929), Color(0x05E52929)],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   )

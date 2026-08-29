@@ -10,6 +10,8 @@ import '../../../repositories/seller_repository.dart';
 import '../seller_auth_shared/onboarding_back_handler.dart';
 import '../seller_auth_shared/seller_wizard_container.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
+import '../seller_ui_tokens.dart';
 
 class BusinessHoursPage extends StatelessWidget {
   final String sellerId;
@@ -127,53 +129,20 @@ class BusinessHoursView extends StatelessWidget {
           }
 
           return Scaffold(
-            backgroundColor: const Color(0xFFFAFAFA),
+            backgroundColor: SellerUiTokens.pageBackground,
+            appBar: const SellerAppBarPageUI(
+              title: 'Business Hours',
+              subtitle: 'Set your store opening and closing times',
+              showNotification: false,
+            ),
             body: SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 800),
+                      constraints: const BoxConstraints(maxWidth: SellerUiTokens.maxWidthForm),
                       child: Column(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                            child: Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  color: const Color(0xFF111827),
-                                  tooltip: 'Back',
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: const [
-                                      Text(
-                                        'Business Hours',
-                                        style: TextStyle(
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.w800,
-                                          color: Color(0xFF111827),
-                                          letterSpacing: -0.5,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'Set your store opening and closing times',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF6B7280),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                           Expanded(
                             child: SingleChildScrollView(
                               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
@@ -381,8 +350,10 @@ class _EmergencyCloseToggle extends StatelessWidget {
           else
             Switch(
               value: !isEmergencyClosed,
-              activeThumbColor: const Color(0xFF22C55E),
-              inactiveThumbColor: const Color(0xFFEF4444),
+              activeColor: const Color(0xFF22C55E),
+              activeTrackColor: const Color(0xFFBBF7D0),
+              inactiveThumbColor: const Color(0xFF6B7280),
+              inactiveTrackColor: const Color(0xFFE5E7EB),
               onChanged: (val) {
                 context.read<BusinessHoursBloc>().add(ToggleEmergencyCloseEvent(!val));
               },
@@ -514,7 +485,10 @@ class _DayScheduleRow extends StatelessWidget {
           ),
           Switch(
             value: day.isOpen,
-            activeThumbColor: const Color(0xFF3B82F6),
+            activeColor: const Color(0xFF3B82F6),
+            activeTrackColor: const Color(0xFFBFDBFE),
+            inactiveThumbColor: const Color(0xFF6B7280),
+            inactiveTrackColor: const Color(0xFFE5E7EB),
             onChanged: isUpdating ? null : (val) {
               final updatedDay = day.copyWith(isOpen: val);
               context.read<BusinessHoursBloc>().add(UpdateBusinessDayEvent(updatedDay));

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/repositories/delivery_partner_repository.dart';
+import '../../../core/utils/app_date_formatter.dart';
 
 abstract class DeliveryProfileServiceBase {
   Future<Map<String, dynamic>> fetchProfileData();
@@ -78,15 +79,7 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
       createdAtDate = DateTime.tryParse(createdVal);
     }
 
-    String formattedJoining = '';
-    if (createdAtDate != null) {
-      const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ];
-      final monthName = months[(createdAtDate.month - 1).clamp(0, 11)];
-      formattedJoining = '${createdAtDate.day} $monthName ${createdAtDate.year}';
-    }
+    String formattedJoining = AppDateFormatter.formatDisplayDate(createdAtDate);
 
     return {
       'id': uid,

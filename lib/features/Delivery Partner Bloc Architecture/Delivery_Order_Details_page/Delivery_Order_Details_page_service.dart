@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/core/models/order_status.dart';
 import 'package:food_delivery_app/repositories/firebase_order_repository.dart';
+import '../../../core/utils/app_date_formatter.dart';
 
 abstract class DeliveryOrderDetailsServiceBase {
   Future<Map<String, dynamic>> fetchOrderDetailsData(String orderId);
@@ -83,39 +84,13 @@ class DeliveryOrderDetailsService
   }
 
   String _formatDate(dynamic timestamp) {
-    if (timestamp is Timestamp) {
-      final d = timestamp.toDate();
-      const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ];
-      return '${d.day.toString().padLeft(2, '0')} ${months[d.month - 1]} ${d.year}';
-    } else if (timestamp is String && timestamp.isNotEmpty) {
-      return timestamp;
-    }
-    final now = DateTime.now();
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${now.day.toString().padLeft(2, '0')} ${months[now.month - 1]} ${now.year}';
+    final dt = AppDateFormatter.parseToDateTime(timestamp) ?? DateTime.now();
+    return AppDateFormatter.formatDisplayDate(dt);
   }
 
   String _formatTime(dynamic timestamp) {
-    if (timestamp is Timestamp) {
-      final d = timestamp.toDate();
-      final hour = d.hour > 12 ? d.hour - 12 : (d.hour == 0 ? 12 : d.hour);
-      final minute = d.minute.toString().padLeft(2, '0');
-      final period = d.hour >= 12 ? 'PM' : 'AM';
-      return '$hour:$minute $period';
-    } else if (timestamp is String && timestamp.isNotEmpty) {
-      return timestamp;
-    }
-    final now = DateTime.now();
-    final hour = now.hour > 12 ? now.hour - 12 : (now.hour == 0 ? 12 : now.hour);
-    final minute = now.minute.toString().padLeft(2, '0');
-    final period = now.hour >= 12 ? 'PM' : 'AM';
-    return '$hour:$minute $period';
+    final dt = AppDateFormatter.parseToDateTime(timestamp) ?? DateTime.now();
+    return AppDateFormatter.formatTime(dt);
   }
 
   double _parseDouble(dynamic val) {

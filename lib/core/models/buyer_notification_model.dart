@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
+import '../utils/app_date_formatter.dart';
 
 /// Top-level category for a buyer notification.
 enum BuyerNotificationCategory {
@@ -275,19 +276,9 @@ class BuyerNotificationModel extends Equatable {
     return body;
   }
 
-  /// Relative human readable timestamp, e.g. "Just now", "2m ago", "1h ago".
+  /// Relative human readable timestamp, e.g. "Just now", "2m ago", "1h ago", or "dd MMM, yyyy".
   String get timeAgo {
-    final now = DateTime.now();
-    final created = createdAt ?? now;
-    final diff = now.difference(created);
-    if (diff.inSeconds < 60) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    final local = created.toLocal();
-    final month = '${local.month}'.padLeft(2, '0');
-    final day = '${local.day}'.padLeft(2, '0');
-    return '$day/$month/${local.year}';
+    return AppDateFormatter.formatTimeAgo(createdAt ?? DateTime.now());
   }
 
   /// Resolves the effective category intelligently even if category is unspecified/unknown in Firestore.

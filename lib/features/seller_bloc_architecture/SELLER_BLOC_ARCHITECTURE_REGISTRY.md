@@ -94,3 +94,38 @@ BlocProvider<ProductListBloc>(
   child: const ProductListPageUI(),
 );
 ```
+
+---
+
+## 5. Business Hours & Weekly Schedule Firestore Architecture & Real-Time Sync
+
+### 5.1 Firestore Document Specifications
+
+1. **Subcollection Document**: `sellers/{sellerId}/settings/business_hours`
+   - **`schedule`** (`List<Map<String, dynamic>>`):
+     - `dayOfWeek` (`String`): e.g., `'Monday'`, `'Tuesday'`, ..., `'Sunday'`
+     - `openTime` (`String`): e.g., `'09:00 AM'`
+     - `closeTime` (`String`): e.g., `'10:00 PM'`
+     - `isOpen` (`bool`): `true` if accepting orders, `false` if closed
+   - **`isEmergencyClosed`** (`bool`): `true` when seller temporarily closes store manually.
+   - **`isOpen`** (`bool`): `!isEmergencyClosed`
+   - **`updatedAt`** (`FieldValue.serverTimestamp()`): Timestamp of last schedule update.
+
+2. **Root Seller Document**: `sellers/{sellerId}`
+   - **`isOpen`** (`bool`): Direct boolean for fast querying by buyer apps and status validators.
+   - **`isAcceptingOrders`** (`bool`): Mirror of live order acceptance status.
+   - **`weeklyHoliday`** (`List<String>`): Array of day names currently marked closed (e.g. `['Sunday']`).
+   - **`openingHours`** (`String`): Default opening time of operational days.
+   - **`closingTime`** (`String`): Default closing time of operational days.
+   - **`isBusinessHoursCompleted`** (`bool`): Flag for onboarding stage completion (Step 3 of 8).
+   - **`businessHours`** (`Map<String, dynamic>`): Contains full serialized schedule snapshot.
+   - **`updatedAt`** (`FieldValue.serverTimestamp()`).
+
+### 5.2 Real-Time Reactive Stream Flow
+
+- `BusinessHoursService.watchSchedule(sellerId)` establishes a real-time Firestore stream listener on `sellers/{sellerId}/settings/business_hours.snapshots()`.
+- When an update occurs from any client (Chrome, Android, iOS, Desktop), Firestore broadcasts snapshot changes.
+- `BusinessHoursBloc` receives stream updates via `BusinessHoursUpdatedStreamEvent` and emits immutable `BusinessHoursLoaded` state.
+- `BusinessHoursView` (`BlocConsumer`) re-renders the UI seamlessly without requiring page reloads or pull-to-refresh.
+- Multiplatform real-time responsiveness is guaranteed across all supported operating systems and screen form factors.
+

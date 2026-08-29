@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../../../../core/models/inventory_item_model.dart';
 import '../../../../core/models/inventory_history_log_model.dart';
 import 'inventory_low_stock_page_bloc.dart';
@@ -454,7 +455,7 @@ class _InventoryLowStockViewState extends State<_InventoryLowStockView> {
                               final log = logs[index];
                               final isPos = log.quantityChanged > 0;
                               final sign = isPos ? '+' : '';
-                              final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(log.timestamp);
+                              final dateStr = AppDateFormatter.formatDisplayDateTimeWithComma(log.timestamp);
 
                               return Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,

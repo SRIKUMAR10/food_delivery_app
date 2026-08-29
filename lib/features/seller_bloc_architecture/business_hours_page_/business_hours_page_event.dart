@@ -45,3 +45,17 @@ class ToggleEmergencyCloseEvent extends BusinessHoursEvent {
   List<Object?> get props => [isEmergencyClosed];
 }
 
+class SaveFullBusinessHoursEvent extends BusinessHoursEvent {
+  final List<BusinessDayModel> schedule;
+  final bool? isEmergencyClosed;
+
+  const SaveFullBusinessHoursEvent({
+    required this.schedule,
+    this.isEmergencyClosed,
+  });
+
+  @override
+  List<Object?> get props => [schedule, isEmergencyClosed];
+}
+
+

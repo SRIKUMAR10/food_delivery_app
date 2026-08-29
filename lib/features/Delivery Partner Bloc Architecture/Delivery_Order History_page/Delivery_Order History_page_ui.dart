@@ -11,6 +11,7 @@ import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/theme/delivery_app_theme.dart';
 import '../../../core/theme/delivery_app_typography.dart';
 import '../../../core/theme/delivery_design_system.dart';
+import '../../../core/utils/app_date_formatter.dart';
 
 class DeliveryOrderHistoryStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -1269,7 +1270,7 @@ class _FilterBarState extends State<_FilterBar> {
                                   ).millisecondsSinceEpoch ~/
                               1000;
                           final label =
-                              '${picked.start.day}/${picked.start.month} - ${picked.end.day}/${picked.end.month}';
+                              AppDateFormatter.formatDateRange(picked.start, picked.end);
                           bloc.add(
                             DeliveryOrderHistoryDatePresetChangedEvent(
                               DeliveryOrderHistoryDatePreset.custom,

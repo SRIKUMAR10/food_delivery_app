@@ -12,7 +12,8 @@ import '../chat_support_page_/chat_support_page_ui.dart';
 import 'seller_customer_page__bloc.dart';
 import 'seller_customer_page__event.dart';
 import 'seller_customer_page__state.dart';
-import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
+import '../seller_ui_tokens.dart';
 
 class SellerCustomerPage extends StatelessWidget {
   const SellerCustomerPage({super.key});
@@ -79,103 +80,53 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 900;
-    final isTablet = size.width > 600 && size.width <= 900;
-    final horizontalPadding = isDesktop
-        ? size.width * 0.15
-        : (isTablet ? size.width * 0.08 : 16.0);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.05),
-        centerTitle: false,
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: Color(0xFF1E293B),
-                  size: 20,
-                ),
-                onPressed: () => Navigator.of(context).pop(),
-              )
-            : (SellerDrawerProvider.of(context) != null
-                ? IconButton(
-                    icon: const Icon(
-                      Icons.menu_rounded,
-                      color: Color(0xFF1E293B),
-                      size: 22,
-                    ),
-                    onPressed: SellerDrawerProvider.of(context),
-                  )
-                : null),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Customer Management',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF0F172A),
-              ),
-            ),
-            Text(
-              'Real-time Buyer Insights & History',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFFE11D48)),
-            tooltip: 'Customer Messages',
-            onPressed: () => _navigateToChat(context),
-          ),
-          const SizedBox(width: 8),
-        ],
+      backgroundColor: SellerUiTokens.pageBackground,
+      appBar: const SellerAppBarPageUI(
+        title: 'Customer Management',
+        subtitle: 'Real-time Buyer Insights & History',
+        showNotification: false,
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          color: const Color(0xFFE11D48),
+          color: SellerUiTokens.brand,
           onRefresh: () async {
             context.read<SellerCustomerBloc>().add(const RefreshCustomerData());
           },
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return SingleChildScrollView(
-                controller: _scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: 16.0,
-                ),
-                child: BlocConsumer<SellerCustomerBloc, SellerCustomerState>(
-                  listenWhen: (prev, curr) =>
-                      curr is SellerCustomerLoaded &&
-                      (prev is! SellerCustomerLoaded ||
-                          prev.selectedCustomer != curr.selectedCustomer),
-                  listener: (context, state) {
-                    if (state is SellerCustomerLoaded && state.selectedCustomer != null) {
-                      _showCustomerProfile(context, state.selectedCustomer!);
-                    }
-                  },
-                  buildWhen: (previous, current) =>
-                      previous.runtimeType != current.runtimeType || previous != current,
-                  builder: (context, state) {
-                    return AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _buildStateContent(context, state),
-                    );
-                  },
+              return Center(
+                child: ConstrainedBox(
+                  constraints:
+                      const BoxConstraints(maxWidth: SellerUiTokens.maxWidthGrid),
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      horizontal:
+                          SellerUiTokens.responsivePadding(constraints.maxWidth),
+                      vertical: 16.0,
+                    ),
+                    child: BlocConsumer<SellerCustomerBloc, SellerCustomerState>(
+                      listenWhen: (prev, curr) =>
+                          curr is SellerCustomerLoaded &&
+                          (prev is! SellerCustomerLoaded ||
+                              prev.selectedCustomer != curr.selectedCustomer),
+                      listener: (context, state) {
+                        if (state is SellerCustomerLoaded && state.selectedCustomer != null) {
+                          _showCustomerProfile(context, state.selectedCustomer!);
+                        }
+                      },
+                      buildWhen: (previous, current) =>
+                          previous.runtimeType != current.runtimeType || previous != current,
+                      builder: (context, state) {
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: _buildStateContent(context, state),
+                        );
+                      },
+                    ),
+                  ),
                 ),
               );
             },
@@ -369,16 +320,10 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: SellerUiTokens.surface,
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+        border: Border.all(color: SellerUiTokens.borderMuted),
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,7 +365,7 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE11D48), width: 1.5),
+                borderSide: const BorderSide(color: SellerUiTokens.brand, width: 1.5),
               ),
             ),
           ),
@@ -496,10 +441,10 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE11D48) : const Color(0xFFF1F5F9),
+          color: isSelected ? SellerUiTokens.brand : const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFFE11D48) : const Color(0xFFE2E8F0),
+            color: isSelected ? SellerUiTokens.brand : const Color(0xFFE2E8F0),
           ),
         ),
         child: Row(
@@ -531,9 +476,10 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF1F5F9)),
+          color: SellerUiTokens.surface,
+          borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+          border: Border.all(color: SellerUiTokens.borderSubtle),
+          boxShadow: SellerUiTokens.cardShadow,
         ),
         child: Column(
           children: [
@@ -601,7 +547,7 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20.0),
             child: Center(
-              child: CircularProgressIndicator(color: Color(0xFFE11D48)),
+              child: CircularProgressIndicator(color: SellerUiTokens.brand),
             ),
           ),
       ],
@@ -616,22 +562,22 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
         Row(
           children: [
             Expanded(
-              child: SkeletonBox(height: 90, borderRadius: 16),
+              child: SkeletonBox(height: 90, borderRadius: SellerUiTokens.radiusCard),
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: SkeletonBox(height: 90, borderRadius: 16),
+              child: SkeletonBox(height: 90, borderRadius: SellerUiTokens.radiusCard),
             ),
           ],
         ),
         const SizedBox(height: 24),
-        SkeletonBox(height: 50, borderRadius: 16),
+        SkeletonBox(height: 50, borderRadius: SellerUiTokens.radiusCard),
         const SizedBox(height: 24),
         ...List.generate(
           4,
           (index) => Padding(
             padding: const EdgeInsets.only(bottom: 12.0),
-            child: SkeletonBox(height: 84, borderRadius: 16),
+            child: SkeletonBox(height: 84, borderRadius: SellerUiTokens.radiusCard),
           ),
         ),
       ],
@@ -644,8 +590,10 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: SellerUiTokens.surface,
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+        border: Border.all(color: SellerUiTokens.borderSubtle),
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -684,11 +632,12 @@ class _SellerCustomerViewState extends State<SellerCustomerView> {
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Retry'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE11D48),
+              backgroundColor: SellerUiTokens.brand,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              minimumSize: const Size(0, SellerUiTokens.primaryButtonHeight),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
               ),
             ),
           ),
@@ -745,16 +694,10 @@ class _StatsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: SellerUiTokens.surface,
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+        border: Border.all(color: SellerUiTokens.borderMuted),
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -879,20 +822,14 @@ class _CustomerListItemState extends State<_CustomerListItem>
             color: Colors.transparent,
             child: InkWell(
               onTap: widget.onTap,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFF1F5F9)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.015),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  color: SellerUiTokens.surface,
+                  borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+                  border: Border.all(color: SellerUiTokens.borderSubtle),
+                  boxShadow: SellerUiTokens.cardShadow,
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -1006,14 +943,14 @@ class _CustomerListItemState extends State<_CustomerListItem>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Icon(Icons.chat_bubble_outline,
-                                    size: 14, color: Color(0xFFE11D48)),
+                                    size: 14, color: SellerUiTokens.brand),
                                 const SizedBox(width: 4),
                                 Text(
                                   'Chat',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: const Color(0xFFE11D48),
+                                    color: SellerUiTokens.brand,
                                   ),
                                 ),
                               ],
@@ -1051,7 +988,7 @@ class _CustomerListItemState extends State<_CustomerListItem>
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFFE11D48),
+                      color: SellerUiTokens.brand,
                     ),
                   ),
                 ),
@@ -1170,9 +1107,9 @@ class _CustomerProfileBottomSheet extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  color: SellerUiTokens.surfaceMuted,
+                  borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+                  border: Border.all(color: SellerUiTokens.borderMuted),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -1197,6 +1134,7 @@ class _CustomerProfileBottomSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: SizedBox(
                 width: double.infinity,
+                height: SellerUiTokens.primaryButtonHeight,
                 child: ElevatedButton.icon(
                   onPressed: onChatTap,
                   icon: const Icon(Icons.chat_bubble_rounded, size: 18),
@@ -1208,11 +1146,11 @@ class _CustomerProfileBottomSheet extends StatelessWidget {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE11D48),
+                    backgroundColor: SellerUiTokens.brand,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
                     ),
                   ),
                 ),
@@ -1221,9 +1159,9 @@ class _CustomerProfileBottomSheet extends StatelessWidget {
 
             // Tabs Header
             TabBar(
-              labelColor: const Color(0xFFE11D48),
+              labelColor: SellerUiTokens.brand,
               unselectedLabelColor: const Color(0xFF64748B),
-              indicatorColor: const Color(0xFFE11D48),
+              indicatorColor: SellerUiTokens.brand,
               labelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
               unselectedLabelStyle:
                   GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500, fontSize: 13),
@@ -1280,22 +1218,22 @@ class _CustomerProfileBottomSheet extends StatelessWidget {
         : '?';
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(24),
       child: customer.avatarUrl.isNotEmpty
           ? CachedNetworkImage(
               imageUrl: customer.avatarUrl,
-              width: 56,
-              height: 56,
+              width: 48,
+              height: 48,
               fit: BoxFit.cover,
               errorWidget: (context, url, error) => Container(
                 color: const Color(0xFFE2E8F0),
-                width: 56,
-                height: 56,
+                width: 48,
+                height: 48,
                 child: Center(
                   child: Text(
                     initial,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: const Color(0xFF475569),
                     ),
@@ -1305,13 +1243,13 @@ class _CustomerProfileBottomSheet extends StatelessWidget {
             )
           : Container(
               color: const Color(0xFFE2E8F0),
-              width: 56,
-              height: 56,
+              width: 48,
+              height: 48,
               child: Center(
                 child: Text(
                   initial,
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF475569),
                   ),
@@ -1351,9 +1289,9 @@ class _CustomerProfileBottomSheet extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            color: SellerUiTokens.surfaceMuted,
+            borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+            border: Border.all(color: SellerUiTokens.borderMuted),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1458,9 +1396,9 @@ class _CustomerProfileBottomSheet extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            color: SellerUiTokens.surfaceMuted,
+            borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+            border: Border.all(color: SellerUiTokens.borderMuted),
           ),
           child: Row(
             children: [
@@ -1472,7 +1410,7 @@ class _CustomerProfileBottomSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Center(
-                  child: Icon(Icons.restaurant_rounded, color: Color(0xFFE11D48), size: 22),
+                  child: Icon(Icons.restaurant_rounded, color: SellerUiTokens.brand, size: 22),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1546,9 +1484,9 @@ class _CustomerProfileBottomSheet extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            color: SellerUiTokens.surfaceMuted,
+            borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+            border: Border.all(color: SellerUiTokens.borderMuted),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

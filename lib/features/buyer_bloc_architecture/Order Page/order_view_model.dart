@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import '../Cart Page/cart_models.dart';
 
 class OrderViewModel extends Equatable {
@@ -76,9 +77,9 @@ class OrderViewModel extends Equatable {
     return '${items.first.name} and ${items.length - 1} other items';
   }
 
-  /// Formatted date string (e.g. 'Aug 15, 2026 • 06:30 PM')
+  /// Formatted date string (e.g. '15 Aug, 2026 • 06:30 PM')
   String get formattedDate {
-    return DateFormat('MMM dd, yyyy • hh:mm a').format(date);
+    return AppDateFormatter.formatDisplayDateTime(date);
   }
 
   /// Check if the order is currently ongoing

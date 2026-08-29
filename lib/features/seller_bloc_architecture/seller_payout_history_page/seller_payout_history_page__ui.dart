@@ -11,6 +11,8 @@ import 'seller_payout_history_page__bloc.dart';
 import 'seller_payout_history_page__event.dart';
 import 'seller_payout_history_page__state.dart';
 import '../../../core/widgets/shimmer_loader.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
+import '../seller_ui_tokens.dart';
 
 class SellerPayoutHistoryPage extends StatelessWidget {
   const SellerPayoutHistoryPage({super.key});
@@ -67,54 +69,50 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 900;
-    final isTablet = size.width > 600 && size.width <= 900;
-    final horizontalPadding = isDesktop
-        ? size.width * 0.25
-        : (isTablet ? size.width * 0.15 : 20.0);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFAFA),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Color(0xFF0F172A),
-            size: 20,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Payout History',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF0F172A),
-          ),
-        ),
-        centerTitle: false,
+      backgroundColor: SellerUiTokens.pageBackground,
+      appBar: const SellerAppBarPageUI(
+        title: 'Payout History',
+        showNotification: false,
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          color: const Color(0xFFE11D48),
-          onRefresh: () async {
-            context.read<SellerPayoutHistoryBloc>().add(
-              const RefreshPayoutHistory(),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontalPadding = SellerUiTokens.responsivePadding(
+              constraints.maxWidth,
+            );
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: SellerUiTokens.maxWidthForm,
+                ),
+                child: RefreshIndicator(
+                  color: SellerUiTokens.brand,
+                  onRefresh: () async {
+                    context.read<SellerPayoutHistoryBloc>().add(
+                      const RefreshPayoutHistory(),
+                    );
+                  },
+                  child: BlocBuilder<SellerPayoutHistoryBloc,
+                      SellerPayoutHistoryState>(
+                    buildWhen: (previous, current) =>
+                        previous.runtimeType != current.runtimeType ||
+                        previous != current,
+                    builder: (context, state) {
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: _buildStateContent(
+                          context,
+                          state,
+                          horizontalPadding,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
             );
           },
-          child: BlocBuilder<SellerPayoutHistoryBloc, SellerPayoutHistoryState>(
-            buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
-              return AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: _buildStateContent(context, state, horizontalPadding),
-              );
-            },
-          ),
         ),
       ),
     );
@@ -180,7 +178,7 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
       itemCount: 6,
       itemBuilder: (context, index) => const Padding(
         padding: EdgeInsets.only(bottom: 16),
-        child: SkeletonBox(height: 80, borderRadius: 16),
+        child: SkeletonBox(height: 80, borderRadius: 20),
       ),
     );
   }
@@ -249,9 +247,9 @@ class _SellerPayoutHistoryViewState extends State<SellerPayoutHistoryView> {
                 const LoadPayoutHistory(),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE11D48),
+                backgroundColor: SellerUiTokens.brand,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
                 ),
               ),
               child: const Text('Retry'),
@@ -330,15 +328,9 @@ class _PayoutHistoryItemState extends State<_PayoutHistoryItem>
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFF1F5F9)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.01),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+            border: Border.all(color: SellerUiTokens.borderSubtle),
+            boxShadow: SellerUiTokens.cardShadow,
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

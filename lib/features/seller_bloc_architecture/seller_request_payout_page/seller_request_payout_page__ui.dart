@@ -9,6 +9,8 @@ import 'seller_request_payout_page__bloc.dart';
 import 'seller_request_payout_page__event.dart';
 import 'seller_request_payout_page__state.dart';
 import '../../../core/widgets/shimmer_loader.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
+import '../seller_ui_tokens.dart';
 
 class SellerRequestPayoutPage extends StatelessWidget {
   const SellerRequestPayoutPage({super.key});
@@ -65,62 +67,58 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 900;
-    final isTablet = size.width > 600 && size.width <= 900;
-    final horizontalPadding = isDesktop
-        ? size.width * 0.25
-        : (isTablet ? size.width * 0.15 : 20.0);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFAFA),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF0F172A),
-            size: 20,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Request Payout',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF0F172A),
-          ),
-        ),
-        centerTitle: false,
+      backgroundColor: SellerUiTokens.pageBackground,
+      appBar: const SellerAppBarPageUI(
+        title: 'Request Payout',
+        showNotification: false,
       ),
       body: SafeArea(
-        child: BlocConsumer<SellerRequestPayoutBloc, SellerRequestPayoutState>(
-          listener: (context, state) {
-            if (state is SellerRequestPayoutLoaded) {
-              if (state.isSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Payout request submitted successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else if (state.errorMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.errorMessage!),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            }
-          },
-          builder: (context, state) {
-            return AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _buildContentForState(context, state, horizontalPadding),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontalPadding = SellerUiTokens.responsivePadding(
+              constraints.maxWidth,
+            );
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: SellerUiTokens.maxWidthForm,
+                ),
+                child: BlocConsumer<SellerRequestPayoutBloc,
+                    SellerRequestPayoutState>(
+                  listener: (context, state) {
+                    if (state is SellerRequestPayoutLoaded) {
+                      if (state.isSuccess) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Payout request submitted successfully!',
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } else if (state.errorMessage != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(state.errorMessage!),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  builder: (context, state) {
+                    return AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _buildContentForState(
+                        context,
+                        state,
+                        horizontalPadding,
+                      ),
+                    );
+                  },
+                ),
+              ),
             );
           },
         ),
@@ -178,8 +176,10 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF4F6FB), // Light bluish background matching wallet mockup
-                      borderRadius: BorderRadius.circular(20),
+                      color: SellerUiTokens.surfaceMuted,
+                      borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+                      border: Border.all(color: SellerUiTokens.borderSubtle),
+                      boxShadow: SellerUiTokens.cardShadow,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,7 +334,7 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(
-                          color: Color(0xFFE11D48),
+                          color: SellerUiTokens.brand,
                           width: 1.5,
                         ),
                       ),
@@ -376,7 +376,7 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(
-                          color: Color(0xFFE11D48),
+                          color: SellerUiTokens.brand,
                           width: 1.5,
                         ),
                       ),
@@ -416,9 +416,9 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE52929),
+                  backgroundColor: SellerUiTokens.brand,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
                   ),
                   elevation: 0,
                 ),
@@ -534,9 +534,9 @@ class _SellerRequestPayoutViewState extends State<SellerRequestPayoutView> {
                 const LoadPayoutDetails(),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE11D48),
+                backgroundColor: SellerUiTokens.brand,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
                 ),
               ),
               child: const Text('Retry'),

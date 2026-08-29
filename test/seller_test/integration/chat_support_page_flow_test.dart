@@ -127,7 +127,7 @@ void main() {
           )).called(1);
 
       // Navigate back to the list
-      await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+      await tester.tap(find.byIcon(Icons.arrow_back_ios_new_rounded));
       await tester.pumpAndSettle();
 
       // Filter to delivery partners

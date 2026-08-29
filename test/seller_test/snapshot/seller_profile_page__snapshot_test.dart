@@ -71,7 +71,7 @@ void main() {
       expect(find.text('Store Status'), findsOneWidget);
       expect(find.text('Branding & Description'), findsOneWidget);
       expect(find.text('Location & Delivery Logistics'), findsOneWidget);
-      expect(find.text('Operating Hours & Schedule'), findsOneWidget);
+      expect(find.text('Operating Hours & Schedule'), findsNothing);
       expect(find.text('Store Management & Operations'), findsOneWidget);
       expect(find.text('Wallet'), findsOneWidget);
       expect(find.text('Bank Details'), findsOneWidget);

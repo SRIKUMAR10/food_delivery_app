@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:rxdart/rxdart.dart';
 import 'Delivery_Order History_page_state.dart';
+import '../../../core/utils/app_date_formatter.dart';
 
 abstract class DeliveryOrderHistoryServiceBase {
   Future<Map<String, dynamic>> fetchOrderHistoryData();
@@ -621,13 +622,7 @@ class DeliveryOrderHistoryService
   }
 
   String _formatDate(DateTime date) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
-    return '${months[date.month - 1]} ${date.day}, ${date.year} \u2022 $hour:$minute';
+    return AppDateFormatter.formatDisplayDateTime(date);
   }
 
   @override

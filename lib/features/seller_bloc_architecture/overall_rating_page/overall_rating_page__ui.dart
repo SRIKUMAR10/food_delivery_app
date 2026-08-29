@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import 'package:food_delivery_app/api_service/seller_review_service.dart';
 import 'package:food_delivery_app/core/utils/app_localizations.dart';
 import '../../../../core/widgets/shimmer_loader.dart';
@@ -11,12 +12,11 @@ import '../../../../core/widgets/filter_chips_bar.dart';
 import 'overall_rating_page__bloc.dart';
 import 'overall_rating_page__event.dart';
 import 'overall_rating_page__state.dart';
-import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
+import '../seller_ui_tokens.dart';
+import '../seller_unified_dialog.dart';
 
-const _bg = Color(0xFFF8FAFC);
-const _ink = Color(0xFF1E293B);
-const _muted = Color(0xFF64748B);
-const _primary = Color(0xFFEF2A39);
+const _primary = SellerUiTokens.brand;
 const _star = Color(0xFFFFB800);
 
 class OverallRatingPage extends StatelessWidget {
@@ -48,50 +48,11 @@ class _OverallRatingContentView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: _bg.withValues(alpha: 0.95),
-        elevation: 0,
-        scrolledUnderElevation: 4,
-        shadowColor: Colors.black.withValues(alpha: 0.1),
-        centerTitle: false,
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, color: _ink, size: 20),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              )
-            : (SellerDrawerProvider.of(context) != null
-                ? IconButton(
-                    icon: const Icon(Icons.menu_rounded, color: _ink, size: 22),
-                    onPressed: SellerDrawerProvider.of(context),
-                  )
-                : null),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              AppLocalizations.ratingsAndReviews(context),
-              style: const TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.bold, color: _ink),
-            ),
-            Text(
-              AppLocalizations.customerFeedback(context),
-              style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w500, color: _muted),
-            ),
-          ],
-        ),
-        actions: [
-          StatusBadge(
-            label: AppLocalizations.live(context),
-            color: Colors.green,
-            icon: Icons.circle,
-          ),
-          const SizedBox(width: 16),
-        ],
+      backgroundColor: SellerUiTokens.pageBackground,
+      appBar: SellerAppBarPageUI(
+        title: AppLocalizations.ratingsAndReviews(context),
+        subtitle: AppLocalizations.customerFeedback(context),
+        showNotification: false,
       ),
       body: BlocListener<OverallRatingBloc, OverallRatingState>(
         listener: (context, state) {
@@ -118,10 +79,11 @@ class _OverallRatingContentView extends StatelessWidget {
               context.read<OverallRatingBloc>().add(LoadOverallRatingEvent());
               return Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
+                  constraints:
+                      const BoxConstraints(maxWidth: SellerUiTokens.maxWidthGrid),
                   child: ListView.builder(
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top + kToolbarHeight + 24,
+                    padding: const EdgeInsets.only(
+                      top: 16,
                       left: 16,
                       right: 16,
                       bottom: 32,
@@ -142,10 +104,11 @@ class _OverallRatingContentView extends StatelessWidget {
             } else if (state is OverallRatingLoading) {
               return Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
+                  constraints:
+                      const BoxConstraints(maxWidth: SellerUiTokens.maxWidthGrid),
                   child: ListView.builder(
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top + kToolbarHeight + 24,
+                    padding: const EdgeInsets.only(
+                      top: 16,
                       left: 16,
                       right: 16,
                       bottom: 32,
@@ -200,19 +163,19 @@ class _OverallRatingContentView extends StatelessWidget {
       },
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1100),
+          constraints:
+              const BoxConstraints(maxWidth: SellerUiTokens.maxWidthGrid),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 900;
-              final topPad = MediaQuery.of(context).padding.top +
-                  kToolbarHeight +
-                  24.0;
 
               return ListView(
                 padding: EdgeInsets.only(
-                  top: topPad,
-                  left: 16,
-                  right: 16,
+                  top: SellerUiTokens.spacingMobile,
+                  left: SellerUiTokens.responsivePadding(
+                      constraints.maxWidth),
+                  right: SellerUiTokens.responsivePadding(
+                      constraints.maxWidth),
                   bottom: 32,
                 ),
                 children: [
@@ -309,11 +272,11 @@ class _OverallRatingContentView extends StatelessWidget {
         Text(
           AppLocalizations.customerReviews(context),
           style: const TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: _ink),
+              fontSize: 18, fontWeight: FontWeight.bold, color: SellerUiTokens.textHeading),
         ),
         Text(
           '${state.filteredReviews.length} / ${state.allReviews.length}',
-          style: const TextStyle(fontSize: 14, color: _muted),
+          style: const TextStyle(fontSize: 14, color: SellerUiTokens.textSecondary),
         ),
       ],
     );
@@ -350,35 +313,30 @@ class _OverallRatingCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: SellerUiTokens.surface,
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+        border: Border.all(color: SellerUiTokens.borderMuted),
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       child: Column(
         children: [
           Text(
             AppLocalizations.overallRating(context),
             style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w600, color: _ink),
+                fontSize: 16, fontWeight: FontWeight.w600, color: SellerUiTokens.textHeading),
           ),
           const SizedBox(height: 8),
           Text(
             overallRating.toStringAsFixed(1),
             style: const TextStyle(
-                fontSize: 48, fontWeight: FontWeight.bold, color: _ink),
+                fontSize: 48, fontWeight: FontWeight.bold, color: SellerUiTokens.textHeading),
           ),
           const SizedBox(height: 8),
           _StarRating(rating: overallRating, size: 24),
           const SizedBox(height: 8),
           Text(
             '($totalReviews ${AppLocalizations.reviews(context)})',
-            style: const TextStyle(fontSize: 14, color: _muted),
+            style: const TextStyle(fontSize: 14, color: SellerUiTokens.textSecondary),
           ),
         ],
       ),
@@ -403,15 +361,10 @@ class _RatingBreakdownCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: SellerUiTokens.surface,
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+        border: Border.all(color: SellerUiTokens.borderMuted),
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,7 +372,7 @@ class _RatingBreakdownCard extends StatelessWidget {
           Text(
             AppLocalizations.ratingBreakdown(context),
             style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w600, color: _ink),
+                fontSize: 16, fontWeight: FontWeight.w600, color: SellerUiTokens.textHeading),
           ),
           const SizedBox(height: 16),
           for (var star = 5; star >= 1; star--)
@@ -466,7 +419,7 @@ class _BreakdownRow extends StatelessWidget {
               child: Text(
                 '$star ${AppLocalizations.starShort(context)}',
                 style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600, color: _ink),
+                    fontSize: 13, fontWeight: FontWeight.w600, color: SellerUiTokens.textHeading),
               ),
             ),
             Expanded(
@@ -493,7 +446,7 @@ class _BreakdownRow extends StatelessWidget {
               child: Text(
                 '$count (${percent.toStringAsFixed(0)}%)',
                 textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 12, color: _muted),
+                style: const TextStyle(fontSize: 12, color: SellerUiTokens.textSecondary),
               ),
             ),
           ],
@@ -521,15 +474,10 @@ class _ReviewCardState extends State<_ReviewCard> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: SellerUiTokens.surface,
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+        border: Border.all(color: SellerUiTokens.borderMuted),
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,13 +495,13 @@ class _ReviewCardState extends State<_ReviewCard> {
                       style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: _ink),
+                          color: SellerUiTokens.textHeading),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       _timeAgo(review.date),
                       style:
-                          const TextStyle(fontSize: 12, color: _muted),
+                          const TextStyle(fontSize: 12, color: SellerUiTokens.textSecondary),
                     ),
                   ],
                 ),
@@ -620,7 +568,8 @@ class _ReviewCardState extends State<_ReviewCard> {
                     foregroundColor: _primary,
                     side: const BorderSide(color: _primary),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                        borderRadius:
+                            BorderRadius.circular(SellerUiTokens.radiusButton)),
                   ),
                 ),
               ),
@@ -630,7 +579,7 @@ class _ReviewCardState extends State<_ReviewCard> {
                 onPressed: () => _showReportDialog(context, review),
                 icon: Icon(
                   review.isReported ? Icons.flag : Icons.flag_outlined,
-                  color: review.isReported ? Colors.orange : _muted,
+                  color: review.isReported ? Colors.orange : SellerUiTokens.textSecondary,
                 ),
               ),
             ],
@@ -644,8 +593,10 @@ class _ReviewCardState extends State<_ReviewCard> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: SellerUiTokens.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+            top: Radius.circular(SellerUiTokens.radiusCard)),
       ),
       builder: (sheetContext) {
         final controller = TextEditingController(text: review.sellerReply ?? '');
@@ -663,7 +614,7 @@ class _ReviewCardState extends State<_ReviewCard> {
               Text(
                 AppLocalizations.replyToCustomer(sheetContext),
                 style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold, color: _ink),
+                    fontSize: 18, fontWeight: FontWeight.bold, color: SellerUiTokens.textHeading),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -673,7 +624,7 @@ class _ReviewCardState extends State<_ReviewCard> {
                 decoration: InputDecoration(
                   hintText: AppLocalizations.writeReply(sheetContext),
                   filled: true,
-                  fillColor: _bg,
+                  fillColor: SellerUiTokens.pageBackground,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -687,7 +638,7 @@ class _ReviewCardState extends State<_ReviewCard> {
                       state.isSubmittingReply;
                   return SizedBox(
                     width: double.infinity,
-                    height: 52,
+                    height: SellerUiTokens.primaryButtonHeight,
                     child: ElevatedButton(
                       onPressed: submitting
                           ? null
@@ -708,7 +659,8 @@ class _ReviewCardState extends State<_ReviewCard> {
                         backgroundColor: _primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                            borderRadius:
+                                BorderRadius.circular(SellerUiTokens.radiusButton)),
                       ),
                       child: submitting
                           ? const SizedBox(
@@ -739,29 +691,47 @@ class _ReviewCardState extends State<_ReviewCard> {
       AppLocalizations.reportIrrelevant(context),
       AppLocalizations.other(context),
     ];
+    String selectedReason = reasons.first;
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return SimpleDialog(
-          title: Text(AppLocalizations.reportReview(dialogContext)),
-          children: [
-            for (final reason in reasons)
-              SimpleDialogOption(
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                  context.read<OverallRatingBloc>().add(
-                        ReportReviewEvent(
-                          reviewId: review.id,
-                          reason: reason,
-                        ),
-                      );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(reason),
-                ),
-              ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setModalState) => SellerUnifiedDialog(
+            icon: Icons.flag_outlined,
+            isDanger: true,
+            title: AppLocalizations.reportReview(dialogContext),
+            message: 'Select a reason for reporting this customer review:',
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: reasons
+                  .map((reason) => RadioListTile<String>(
+                        title: Text(reason, style: const TextStyle(fontSize: 14)),
+                        value: reason,
+                        groupValue: selectedReason,
+                        dense: true,
+                        activeColor: SellerUiTokens.brand,
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (val) {
+                          if (val != null) {
+                            setModalState(() => selectedReason = val);
+                          }
+                        },
+                      ))
+                  .toList(),
+            ),
+            cancelLabel: 'Cancel',
+            confirmLabel: 'Report Review',
+            onCancel: () => Navigator.of(dialogContext).pop(),
+            onConfirm: () {
+              Navigator.of(dialogContext).pop();
+              context.read<OverallRatingBloc>().add(
+                    ReportReviewEvent(
+                      reviewId: review.id,
+                      reason: selectedReason,
+                    ),
+                  );
+            },
+          ),
         );
       },
     );
@@ -872,14 +842,14 @@ class _SellerReplyBox extends StatelessWidget {
               if (review.sellerRepliedAt != null)
                 Text(
                   _timeAgo(review.sellerRepliedAt!),
-                  style: const TextStyle(fontSize: 11, color: _muted),
+                  style: const TextStyle(fontSize: 11, color: SellerUiTokens.textSecondary),
                 ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             review.sellerReply ?? '',
-            style: const TextStyle(fontSize: 14, color: _ink, height: 1.4),
+            style: const TextStyle(fontSize: 14, color: SellerUiTokens.textHeading, height: 1.4),
           ),
         ],
       ),
@@ -912,10 +882,5 @@ class _StarRating extends StatelessWidget {
 }
 
 String _timeAgo(DateTime date) {
-  final diff = DateTime.now().difference(date);
-  if (diff.inMinutes < 1) return 'Just now';
-  if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-  if (diff.inDays < 1) return '${diff.inHours}h ago';
-  if (diff.inDays < 30) return '${diff.inDays}d ago';
-  return DateFormat('dd MMM yyyy').format(date);
+  return AppDateFormatter.formatTimeAgo(date);
 }

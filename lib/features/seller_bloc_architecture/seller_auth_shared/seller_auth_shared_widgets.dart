@@ -5,12 +5,12 @@ import 'package:food_delivery_app/core/widgets/primary_button.dart';
 export 'seller_wizard_container.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared design tokens (Material 3 green theme — used by both auth flows)
+// Shared design tokens (Seller Brand Theme — matching login, nav & sub-pages)
 // ─────────────────────────────────────────────────────────────────────────────
 class SellerAuthColors {
-  static const primary = Color(0xFF2E7D32);
-  static const primaryLight = Color(0xFF4CAF50);
-  static const primarySurface = Color(0xFFE8F5E9);
+  static const primary = Color(0xFFE52929);
+  static const primaryLight = Color(0xFFEF4444);
+  static const primarySurface = Color(0xFFFEF2F2);
   static const background = Color(0xFFFFFFFF);
   static const textDark = Color(0xFF1B1B1B);
   static const textMid = Color(0xFF555555);
@@ -48,12 +48,14 @@ class SellerPrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final bool isLoading;
+  final double borderRadius;
 
   const SellerPrimaryButton({
     super.key,
     required this.label,
     this.onPressed,
     this.isLoading = false,
+    this.borderRadius = 12,
   });
 
   @override
@@ -63,7 +65,7 @@ class SellerPrimaryButton extends StatelessWidget {
       isLoading: isLoading,
       onPressed: onPressed,
       height: 52,
-      borderRadius: 12,
+      borderRadius: borderRadius,
       elevation: 2,
       shadowColor: SellerAuthColors.primary.withValues(alpha: 0.4),
       backgroundColor: SellerAuthColors.primary,

@@ -228,3 +228,16 @@ typedef DashboardBloc = SellerDashboardPageBloc;
 typedef OrderBloc = OrdersListBloc;
 typedef ProductFormBloc = AddProductPageBloc;
 typedef ProductCarouselCubit = CarouselCubit;
+
+export 'seller_ui_tokens.dart';
+export 'seller_unified_dialog.dart';
+
+// ============================================================================
+// 10. Backend Data Models & Database Collections
+// ============================================================================
+export '../../core/models/seller_pos_printer_model.dart';
+export '../../core/models/seller_delivery_surge_model.dart';
+export '../../core/models/seller_staff_model.dart';
+export '../../core/models/seller_ledger_model.dart';
+export '../../core/models/seller_performance_model.dart';
+export '../../app_data_collection/seller_collections/seller_collection.dart';

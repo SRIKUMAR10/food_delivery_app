@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import 'promotions_coupons_page_bloc.dart';
 import 'promotions_coupons_page_event.dart';
 import 'promotions_coupons_page_state.dart';
 import 'promotions_coupons_page_repository.dart';
 import 'promotions_coupons_page_service.dart';
 import 'promotions_coupons_page_model.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
+import '../seller_ui_tokens.dart';
 
 class PromotionsCouponsPage extends StatelessWidget {
   final String sellerId;
@@ -81,40 +84,17 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1E293B)),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Coupons & Offers',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
-            letterSpacing: -0.5,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.verified_outlined, color: Color(0xFF3B82F6)),
-            tooltip: 'Test Server-Side Coupon Validation',
-            onPressed: () => _showTestCouponModal(context),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      backgroundColor: SellerUiTokens.pageBackground,
+      appBar: SellerAppBarPageUI(title: 'Coupons & Offers', showNotification: false),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreateEditCouponDialog(context),
-        backgroundColor: const Color(0xFF3B82F6),
+        backgroundColor: SellerUiTokens.brand,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text(
           'Create Offer',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
         ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton)),
       ),
       body: SafeArea(
         child: BlocListener<PromotionsCouponsBloc, PromotionsCouponsState>(
@@ -148,14 +128,19 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
 
               return Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
+                  constraints: const BoxConstraints(maxWidth: SellerUiTokens.maxWidthGrid),
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                     slivers: [
                       // 1. Header Banner & Metrics
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                          padding: EdgeInsets.fromLTRB(
+                            SellerUiTokens.responsivePadding(constraints.maxWidth),
+                            16,
+                            SellerUiTokens.responsivePadding(constraints.maxWidth),
+                            12,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -200,6 +185,11 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                       ),
                                     ),
+                                  IconButton(
+                                    icon: const Icon(Icons.verified_outlined, color: Color(0xFF3B82F6)),
+                                    tooltip: 'Test Server-Side Coupon Validation',
+                                    onPressed: () => _showTestCouponModal(context),
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 16),
@@ -273,7 +263,10 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
                       // 2. Search & Filter Bar
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: SellerUiTokens.responsivePadding(constraints.maxWidth),
+                            vertical: 8,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -344,12 +337,12 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
                                             fontWeight: FontWeight.w600,
                                             color: isSelected ? Colors.white : const Color(0xFF475569),
                                           ),
-                                          selectedColor: const Color(0xFF1D4ED8),
-                                          backgroundColor: Colors.white,
+                                          selectedColor: SellerUiTokens.accent,
+                                          backgroundColor: SellerUiTokens.surface,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(20),
                                             side: BorderSide(
-                                              color: isSelected ? const Color(0xFF1D4ED8) : const Color(0xFFE2E8F0),
+                                              color: isSelected ? SellerUiTokens.accent : SellerUiTokens.borderMuted,
                                             ),
                                           ),
                                         ),
@@ -385,12 +378,12 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
                                             fontWeight: FontWeight.w600,
                                             color: isSelected ? Colors.white : const Color(0xFF475569),
                                           ),
-                                          selectedColor: const Color(0xFF6D28D9),
-                                          backgroundColor: Colors.white,
+                                          selectedColor: SellerUiTokens.accent,
+                                          backgroundColor: SellerUiTokens.surface,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(20),
                                             side: BorderSide(
-                                              color: isSelected ? const Color(0xFF6D28D9) : const Color(0xFFE2E8F0),
+                                              color: isSelected ? SellerUiTokens.accent : SellerUiTokens.borderMuted,
                                             ),
                                           ),
                                         ),
@@ -496,7 +489,10 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
 
                             if (isDesktop || isTablet) {
                               return SliverPadding(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: SellerUiTokens.responsivePadding(constraints.maxWidth),
+                                  vertical: 12,
+                                ),
                                 sliver: SliverGrid(
                                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: isDesktop ? 2 : 2,
@@ -522,7 +518,10 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
                             }
 
                             return SliverPadding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: SellerUiTokens.responsivePadding(constraints.maxWidth),
+                                vertical: 12,
+                              ),
                               sliver: SliverList(
                                 delegate: SliverChildBuilderDelegate(
                                   (context, index) {
@@ -580,15 +579,9 @@ class _MetricCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+        border: Border.all(color: SellerUiTokens.borderSubtle, width: 1),
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       child: Row(
         children: [
@@ -671,30 +664,24 @@ class _CouponCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final discountStr = coupon.isPercentage
         ? '${coupon.discountAmount.toStringAsFixed(0)}% OFF'
-        : '₹${coupon.discountAmount.toStringAsFixed(0)} FLAT OFF';
+        : '${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(coupon.discountAmount)} FLAT OFF';
 
     final isExpired = coupon.isExpired;
     final isUpcoming = coupon.isUpcoming;
     final isUsageMaxed = coupon.isUsageLimitReached;
     final isActive = coupon.isActive && !isExpired && !isUsageMaxed;
 
-    final dateFormat = DateFormat('MMM dd, yyyy');
+    final dateFormat = DateFormat('dd MMM, yyyy');
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isActive ? const Color(0xFFE2E8F0) : const Color(0xFFCBD5E1),
-          width: 1.5,
+          color: isActive ? SellerUiTokens.borderMuted : SellerUiTokens.borderStrong,
+          width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -834,7 +821,7 @@ class _CouponCard extends StatelessWidget {
                             ),
                             if (coupon.isPercentage && coupon.maximumDiscountAmount > 0)
                               Text(
-                                'Max ₹${coupon.maximumDiscountAmount.toStringAsFixed(0)}',
+                                'Max ${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(coupon.maximumDiscountAmount)}',
                                 style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -871,7 +858,7 @@ class _CouponCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              'Min: ₹${coupon.minimumOrderValue.toStringAsFixed(0)}',
+                              'Min: ${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(coupon.minimumOrderValue)}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -1110,6 +1097,20 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
       initialDate: _startDate,
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 730)),
+      initialEntryMode: DatePickerEntryMode.calendar,
+      builder: (pickerCtx, child) {
+        return Theme(
+          data: Theme.of(pickerCtx).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFE52929),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Color(0xFF1E293B),
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
     if (picked != null) {
       setState(() {
@@ -1127,6 +1128,20 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
       initialDate: _expiryDate.isAfter(_startDate) ? _expiryDate : _startDate.add(const Duration(days: 1)),
       firstDate: _startDate,
       lastDate: DateTime.now().add(const Duration(days: 730)),
+      initialEntryMode: DatePickerEntryMode.calendar,
+      builder: (pickerCtx, child) {
+        return Theme(
+          data: Theme.of(pickerCtx).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFE52929),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Color(0xFF1E293B),
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
     if (picked != null) {
       setState(() => _expiryDate = picked);
@@ -1142,8 +1157,8 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
     final isSaving = state is PromotionsCouponsLoaded ? state.isSaving : false;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard)),
+      backgroundColor: SellerUiTokens.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 620, maxHeight: 780),
@@ -1214,8 +1229,8 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
                                 icon: const Icon(Icons.auto_awesome_rounded, size: 16),
                                 label: const Text('Random'),
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  minimumSize: const Size(0, SellerUiTokens.primaryButtonHeight),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton)),
                                 ),
                               ),
                             ),
@@ -1417,7 +1432,7 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
                                     prefixIcon: const Icon(Icons.calendar_month_outlined),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
-                                  child: Text(DateFormat('yyyy-MM-dd').format(_startDate)),
+                                  child: Text(AppDateFormatter.formatSystemDate(_startDate)),
                                 ),
                               ),
                             ),
@@ -1432,7 +1447,7 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
                                     prefixIcon: const Icon(Icons.event_busy_outlined),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
-                                  child: Text(DateFormat('yyyy-MM-dd').format(_expiryDate)),
+                                  child: Text(AppDateFormatter.formatSystemDate(_expiryDate)),
                                 ),
                               ),
                             ),
@@ -1539,8 +1554,9 @@ class _CouponFormDialogState extends State<_CouponFormDialog> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF3B82F6),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        minimumSize: const Size(0, SellerUiTokens.primaryButtonHeight),
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton)),
                       ),
                       child: isSaving
                           ? const SizedBox(
@@ -1610,8 +1626,8 @@ class _TestCouponValidationModalState extends State<_TestCouponValidationModal> 
     final validationResult = state is PromotionsCouponsLoaded ? state.validationResult : null;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard)),
+      backgroundColor: SellerUiTokens.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 500),
@@ -1711,8 +1727,8 @@ class _TestCouponValidationModalState extends State<_TestCouponValidationModal> 
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3B82F6),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    minimumSize: const Size(0, SellerUiTokens.primaryButtonHeight),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton)),
                   ),
                 ),
               ),
@@ -1768,7 +1784,7 @@ class _TestCouponValidationModalState extends State<_TestCouponValidationModal> 
                               style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                             ),
                             Text(
-                              '- ₹${validationResult.discountAmount.toStringAsFixed(2)}',
+                              '- ${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(validationResult.discountAmount)}',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -1786,7 +1802,7 @@ class _TestCouponValidationModalState extends State<_TestCouponValidationModal> 
                               style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                             ),
                             Text(
-                              '₹${validationResult.finalTotal.toStringAsFixed(2)}',
+                              '${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(validationResult.finalTotal)}',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,

@@ -10,6 +10,7 @@ import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/theme/delivery_app_theme.dart';
 import '../../../core/theme/delivery_app_typography.dart';
 import '../../../core/theme/delivery_design_system.dart';
+import '../../../core/utils/app_date_formatter.dart';
 
 class DeliveryWalletStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -1195,10 +1196,7 @@ class _WalletCashReconciliationSection extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    final local = date.toLocal();
-    final hh = local.hour.toString().padLeft(2, '0');
-    final mm = local.minute.toString().padLeft(2, '0');
-    return '${local.day}/${local.month}/${local.year} \u00B7 $hh:$mm';
+    return AppDateFormatter.formatDisplayDateTime(date);
   }
 
   @override
@@ -2426,10 +2424,7 @@ String _walletStatusLabel(String status) {
 }
 
 String _formatWalletDate(DateTime date) {
-  final local = date.toLocal();
-  final hh = local.hour.toString().padLeft(2, '0');
-  final mm = local.minute.toString().padLeft(2, '0');
-  return '${local.day}/${local.month}/${local.year} · $hh:$mm';
+  return AppDateFormatter.formatDisplayDateTime(date);
 }
 
 Color _colorFromHex(String hex) {

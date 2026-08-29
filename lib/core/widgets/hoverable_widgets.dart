@@ -13,6 +13,7 @@ class HoverableButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final Widget child;
   final double hoverScale;
+  final double borderRadius;
 
   const HoverableButton({
     super.key,
@@ -24,6 +25,7 @@ class HoverableButton extends StatefulWidget {
     this.onPressed,
     required this.child,
     this.hoverScale = 1.02,
+    this.borderRadius = 12,
   });
 
   @override
@@ -51,7 +53,7 @@ class _HoverableButtonState extends State<HoverableButton> {
         decoration: BoxDecoration(
           color: widget.color,
           gradient: widget.gradient,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(widget.borderRadius),
           border: widget.borderColor != null
               ? Border.all(color: widget.borderColor!)
               : null,
@@ -71,7 +73,7 @@ class _HoverableButtonState extends State<HoverableButton> {
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(widget.borderRadius),
             ),
           ),
           child: widget.child,

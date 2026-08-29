@@ -349,7 +349,7 @@ class SellerWizardPrimaryButton extends StatelessWidget {
           elevation: 2,
           shadowColor: SellerAuthColors.primary.withValues(alpha: 0.35),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20),
         ),

@@ -1,5 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:food_delivery_app/core/models/seller_model.dart';
+import 'package:food_delivery_app/core/models/seller_pos_printer_model.dart';
+import 'package:food_delivery_app/core/models/seller_delivery_surge_model.dart';
+import 'package:food_delivery_app/core/models/seller_staff_model.dart';
+import 'package:food_delivery_app/core/models/seller_ledger_model.dart';
+import 'package:food_delivery_app/core/models/seller_performance_model.dart';
 
 class SellerCollection {
   final FirebaseFirestore _firestore;
@@ -34,6 +39,24 @@ class SellerCollection {
 
   CollectionReference kycDocumentsSubCollection(String uid) =>
       _firestore.collection('sellers').doc(uid).collection('kyc_documents');
+
+  CollectionReference performanceSubCollection(String uid) =>
+      _firestore.collection('sellers').doc(uid).collection('performance');
+
+  CollectionReference staffMembersSubCollection(String uid) =>
+      _firestore.collection('sellers').doc(uid).collection('staff_members');
+
+  CollectionReference ledgerSubCollection(String uid) =>
+      _firestore.collection('sellers').doc(uid).collection('ledger');
+
+  DocumentReference posPrinterDoc(String uid) =>
+      settingsSubCollection(uid).doc('pos_printer');
+
+  DocumentReference deliverySurgeDoc(String uid) =>
+      settingsSubCollection(uid).doc('delivery_surge');
+
+  DocumentReference performanceSummaryDoc(String uid) =>
+      performanceSubCollection(uid).doc('analytics_summary');
 
   Future<void> addSeller(SellerModel seller) async {
     try {
@@ -108,6 +131,147 @@ class SellerCollection {
     }
   }
 
+  // ── Performance & Analytics Subcollection ──
+  Stream<SellerPerformanceSummaryModel> watchPerformanceSummary(String uid) {
+    return performanceSummaryDoc(uid).snapshots().map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        return SellerPerformanceSummaryModel.fromMap(
+            snapshot.data() as Map<String, dynamic>);
+      }
+      return const SellerPerformanceSummaryModel();
+    });
+  }
+
+  Future<SellerPerformanceSummaryModel> getPerformanceSummary(String uid) async {
+    try {
+      final doc = await performanceSummaryDoc(uid).get();
+      if (doc.exists && doc.data() != null) {
+        return SellerPerformanceSummaryModel.fromMap(
+            doc.data() as Map<String, dynamic>);
+      }
+      return const SellerPerformanceSummaryModel();
+    } catch (e) {
+      throw Exception('Failed to get seller performance summary: $e');
+    }
+  }
+
+  Future<void> updatePerformanceSummary(
+      String uid, Map<String, dynamic> data) async {
+    try {
+      final sanitized = Map<String, dynamic>.from(data);
+      sanitized['updatedAt'] = FieldValue.serverTimestamp();
+      await performanceSummaryDoc(uid).set(sanitized, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to update seller performance summary: $e');
+    }
+  }
+
+  // ── POS Printer Settings Subcollection ──
+  Stream<PosPrinterSettingsModel> watchPosPrinterSettings(String uid) {
+    return posPrinterDoc(uid).snapshots().map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        return PosPrinterSettingsModel.fromMap(
+            snapshot.data() as Map<String, dynamic>);
+      }
+      return const PosPrinterSettingsModel();
+    });
+  }
+
+  Future<void> updatePosPrinterSettings(
+      String uid, Map<String, dynamic> data) async {
+    try {
+      final sanitized = Map<String, dynamic>.from(data);
+      sanitized['updatedAt'] = FieldValue.serverTimestamp();
+      await posPrinterDoc(uid).set(sanitized, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to update POS printer settings: $e');
+    }
+  }
+
+  // ── Delivery Surge Settings Subcollection ──
+  Stream<DeliverySurgeSettingsModel> watchDeliverySurgeSettings(String uid) {
+    return deliverySurgeDoc(uid).snapshots().map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        return DeliverySurgeSettingsModel.fromMap(
+            snapshot.data() as Map<String, dynamic>);
+      }
+      return const DeliverySurgeSettingsModel();
+    });
+  }
+
+  Future<void> updateDeliverySurgeSettings(
+      String uid, Map<String, dynamic> data) async {
+    try {
+      final sanitized = Map<String, dynamic>.from(data);
+      sanitized['updatedAt'] = FieldValue.serverTimestamp();
+      await deliverySurgeDoc(uid).set(sanitized, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to update delivery surge settings: $e');
+    }
+  }
+
+  // ── Staff Members Subcollection ──
+  Stream<List<SellerStaffModel>> watchStaffMembers(String uid) {
+    return staffMembersSubCollection(uid).snapshots().map((snapshot) {
+      return snapshot.docs
+          .map((doc) => SellerStaffModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              id: doc.id))
+          .toList();
+    });
+  }
+
+  Future<void> addOrUpdateStaffMember(
+      String uid, SellerStaffModel staff) async {
+    try {
+      final docId = staff.staffId.isNotEmpty
+          ? staff.staffId
+          : staffMembersSubCollection(uid).doc().id;
+      await staffMembersSubCollection(uid)
+          .doc(docId)
+          .set(staff.copyWith(staffId: docId).toMap(), SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to add/update staff member: $e');
+    }
+  }
+
+  Future<void> deleteStaffMember(String uid, String staffId) async {
+    try {
+      await staffMembersSubCollection(uid).doc(staffId).delete();
+    } catch (e) {
+      throw Exception('Failed to delete staff member: $e');
+    }
+  }
+
+  // ── Financial Ledger Subcollection ──
+  Stream<List<SellerLedgerTransactionModel>> watchLedgerTransactions(
+      String uid) {
+    return ledgerSubCollection(uid)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => SellerLedgerTransactionModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              id: doc.id))
+          .toList();
+    });
+  }
+
+  Future<void> addLedgerEntry(
+      String uid, SellerLedgerTransactionModel entry) async {
+    try {
+      final docId = entry.transactionId.isNotEmpty
+          ? entry.transactionId
+          : ledgerSubCollection(uid).doc().id;
+      await ledgerSubCollection(uid)
+          .doc(docId)
+          .set(entry.copyWith(transactionId: docId).toMap(), SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to add ledger entry: $e');
+    }
+  }
+
   Future<void> createSellerWithSubCollections(String uid, Map<String, dynamic> sellerData) async {
     try {
       final docRef = _firestore.collection('sellers').doc(uid);
@@ -118,6 +282,48 @@ class SellerCollection {
         'notificationsEnabled': true,
         'autoAcceptOrders': true,
         'soundEnabled': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await settingsSubCollection(uid).doc('business_hours').set({
+        'isOpen': true,
+        'isEmergencyClosed': false,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await posPrinterDoc(uid).set({
+        'isAutoPrintEnabled': true,
+        'printerType': 'bluetooth',
+        'printerPaperSize': '80mm',
+        'printKotCopies': 2,
+        'printCustomerReceipt': true,
+        'fssaiLicenseOnBill': true,
+        'gstNumberOnBill': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await deliverySurgeDoc(uid).set({
+        'isSurgeActive': false,
+        'surgeReason': 'manual',
+        'surgeDeliveryMultiplier': 1.0,
+        'extraPrepTimeMinutes': 0,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await performanceSummaryDoc(uid).set({
+        'todayRevenue': 0.0,
+        'todayOrdersCount': 0,
+        'todayCompletedCount': 0,
+        'todayCancelledCount': 0,
+        'thisWeekRevenue': 0.0,
+        'thisMonthRevenue': 0.0,
+        'thisYearRevenue': 0.0,
+        'averageOrderValue': 0.0,
+        'averagePrepTimeMinutes': 20,
+        'customerRetentionRate': 0.0,
+        'totalReviewsCount': 0,
+        'averageStoreRating': 5.0,
+        'popularHours': {},
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
@@ -139,7 +345,14 @@ class SellerCollection {
     }
 
     try {
-      final subcollections = ['settings', 'kyc_documents'];
+      final subcollections = [
+        'settings',
+        'kyc_documents',
+        'performance',
+        'staff_members',
+        'ledger',
+        'menu_preferences',
+      ];
 
       for (final subColl in subcollections) {
         final secSubRef = _firestore.collection('sellers').doc(secondaryUid).collection(subColl);
@@ -165,4 +378,3 @@ class SellerCollection {
     }
   }
 }
-

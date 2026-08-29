@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import 'seller_store_details_page__bloc.dart';
 import 'seller_store_details_page__event.dart';
 import 'seller_store_details_page__state.dart';
@@ -300,12 +302,10 @@ class StoreDetailsContent extends StatelessWidget {
                             iconColor: const Color(0xFFF97316),
                             iconBgColor: const Color(0xFFFFF7ED),
                             title: 'FSSAI Expiry Date',
-                            subtitle: state.fssaiExpiryDate!.isEmpty
-                                ? 'Not set'
-                                : state.fssaiExpiryDate!,
+                            subtitle: _formatDisplayDate(state.fssaiExpiryDate),
                             isEditable: true,
                             onEdit: () {
-                              _showEditDialog(
+                              _showDateEditDialog(
                                 context,
                                 'FSSAI Expiry Date',
                                 state.fssaiExpiryDate ?? '',
@@ -830,6 +830,211 @@ void _showEditValueDialog(
             child: const Text('Save'),
           ),
         ],
+      );
+    },
+  );
+}
+
+String _formatDisplayDate(String? rawDate) {
+  if (rawDate == null || rawDate.trim().isEmpty) return 'Not set';
+  final dt = AppDateFormatter.parseToDateTime(rawDate);
+  if (dt != null) {
+    return AppDateFormatter.formatDisplayDate(dt);
+  }
+  return rawDate;
+}
+
+void _showDateEditDialog(
+  BuildContext context,
+  String title,
+  String initialValue,
+  Function(String) onSave,
+) {
+  DateTime selectedDate = DateTime.tryParse(initialValue.trim()) ?? DateTime.now();
+  final TextEditingController textController = TextEditingController(
+    text: initialValue.trim().isNotEmpty
+        ? (DateTime.tryParse(initialValue.trim()) != null
+            ? DateFormat('yyyy-MM-dd').format(DateTime.parse(initialValue.trim()))
+            : initialValue.trim())
+        : DateFormat('yyyy-MM-dd').format(DateTime.now()),
+  );
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: Color(0xFFF97316),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Select $title',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Choose a date using calendar or enter in YYYY-MM-DD format:',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 16),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () async {
+                      final DateTime now = DateTime.now();
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(now.year - 5, 1, 1),
+                        lastDate: DateTime(now.year + 20, 12, 31),
+                        builder: (pickerCtx, child) {
+                          return Theme(
+                            data: Theme.of(pickerCtx).copyWith(
+                              colorScheme: const ColorScheme.light(
+                                primary: Color(0xFFE52929),
+                                onPrimary: Colors.white,
+                                surface: Colors.white,
+                                onSurface: Color(0xFF1E293B),
+                              ),
+                            ),
+                            child: child ?? const SizedBox.shrink(),
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setDialogState(() {
+                          selectedDate = picked;
+                          textController.text = DateFormat('yyyy-MM-dd').format(picked);
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.event_available_rounded, color: Color(0xFFE52929), size: 22),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Selected System Date',
+                                  style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  DateFormat('EEEE, dd MMMM yyyy').format(selectedDate),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.touch_app_outlined, color: Color(0xFF94A3B8), size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: textController,
+                    keyboardType: TextInputType.datetime,
+                    onChanged: (val) {
+                      final parsed = DateTime.tryParse(val.trim());
+                      if (parsed != null) {
+                        setDialogState(() {
+                          selectedDate = parsed;
+                        });
+                      }
+                    },
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      labelText: '$title (YYYY-MM-DD)',
+                      hintText: '2026-12-31',
+                      prefixIcon: const Icon(Icons.edit_calendar_outlined),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.today_rounded, color: Color(0xFFE52929)),
+                        tooltip: 'Set Today',
+                        onPressed: () {
+                          final today = DateTime.now();
+                          setDialogState(() {
+                            selectedDate = today;
+                            textController.text = DateFormat('yyyy-MM-dd').format(today);
+                          });
+                        },
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFE52929),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE52929),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  final textVal = textController.text.trim();
+                  final DateTime? parsed = DateTime.tryParse(textVal);
+                  final String finalDateStr = parsed != null
+                      ? DateFormat('yyyy-MM-dd').format(parsed)
+                      : (textVal.isNotEmpty ? textVal : DateFormat('yyyy-MM-dd').format(selectedDate));
+                  onSave(finalDateStr);
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('Save Date'),
+              ),
+            ],
+          );
+        },
       );
     },
   );

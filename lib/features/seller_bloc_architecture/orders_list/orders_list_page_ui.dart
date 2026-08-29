@@ -26,6 +26,7 @@ import '../assign_delivery_page_/assign_delivery_page__event.dart';
 import '../out_for_delivery_page_/out_for_delivery_page__ui.dart';
 import '../chat_support_page_/chat_support_page_ui.dart';
 import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
+import '../seller_unified_dialog.dart';
 
 class OrdersListPage extends StatelessWidget {
   const OrdersListPage({Key? key}) : super(key: key);
@@ -2426,20 +2427,21 @@ Future<void> _showRejectModal(BuildContext context, OrderModel order) async {
   final result = await showDialog<String>(
     context: context,
     builder: (ctx) => StatefulBuilder(
-      builder: (context, setModalState) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Reject Order', style: TextStyle(fontWeight: FontWeight.bold)),
+      builder: (context, setModalState) => SellerUnifiedDialog(
+        icon: Icons.cancel_outlined,
+        isDanger: true,
+        title: 'Reject Order',
+        message: 'Please select a reason for rejecting this order:',
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Please select a reason for rejecting this order:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
-            const SizedBox(height: 12),
             ...reasons.map((r) => RadioListTile<String>(
                   title: Text(r, style: const TextStyle(fontSize: 14)),
                   value: r,
                   groupValue: selectedReason,
                   dense: true,
+                  activeColor: const Color(0xFFE52929),
                   contentPadding: EdgeInsets.zero,
                   onChanged: (val) {
                     if (val != null) setModalState(() => selectedReason = val);
@@ -2449,34 +2451,29 @@ Future<void> _showRejectModal(BuildContext context, OrderModel order) async {
               const SizedBox(height: 8),
               TextField(
                 controller: customController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Enter specific reason...',
-                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
                   isDense: true,
                 ),
               ),
             ],
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final finalReason = selectedReason == 'Other reason' && customController.text.trim().isNotEmpty
-                  ? customController.text.trim()
-                  : selectedReason;
-              Navigator.pop(ctx, finalReason);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Confirm Reject'),
-          ),
-        ],
+        cancelLabel: 'Dismiss',
+        confirmLabel: 'Confirm Reject',
+        onCancel: () => Navigator.pop(ctx),
+        onConfirm: () {
+          final finalReason = selectedReason == 'Other reason' && customController.text.trim().isNotEmpty
+              ? customController.text.trim()
+              : selectedReason;
+          Navigator.pop(ctx, finalReason);
+        },
       ),
     ),
   );
@@ -2493,42 +2490,31 @@ Future<void> _showCancelModal(BuildContext context, OrderModel order) async {
 
   final result = await showDialog<String>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text('Cancel Order', style: TextStyle(fontWeight: FontWeight.bold)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Are you sure you want to cancel this order? Please provide a cancellation reason:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
-          const SizedBox(height: 12),
-          TextField(
-            controller: controller,
-            maxLines: 2,
-            decoration: const InputDecoration(
-              hintText: 'e.g. Customer requested cancellation / Kitchen equipment issue',
-              border: OutlineInputBorder(),
-            ),
+    builder: (ctx) => SellerUnifiedDialog(
+      icon: Icons.warning_amber_rounded,
+      isDanger: true,
+      title: 'Cancel Order',
+      message: 'Are you sure you want to cancel this order? Please provide a cancellation reason:',
+      content: TextField(
+        controller: controller,
+        maxLines: 2,
+        decoration: InputDecoration(
+          hintText: 'e.g. Customer requested cancellation / Kitchen equipment issue',
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
           ),
-        ],
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('Dismiss'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            final reason = controller.text.trim().isNotEmpty ? controller.text.trim() : 'Cancelled by store';
-            Navigator.pop(ctx, reason);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFDC2626),
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Confirm Cancel'),
-        ),
-      ],
+      cancelLabel: 'Dismiss',
+      confirmLabel: 'Confirm Cancel',
+      onCancel: () => Navigator.pop(ctx),
+      onConfirm: () {
+        final reason = controller.text.trim().isNotEmpty ? controller.text.trim() : 'Cancelled by store';
+        Navigator.pop(ctx, reason);
+      },
     ),
   );
 

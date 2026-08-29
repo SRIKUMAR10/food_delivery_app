@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/app_date_formatter.dart';
 
 class DeliveryPartnerModel {
   final String id;
@@ -99,14 +100,9 @@ class DeliveryPartnerModel {
     return 'DP-${code.toUpperCase()}';
   }
 
-  /// Formatted joining date for UI (e.g. 15 Aug 2024)
+  /// Formatted joining date for UI (e.g. 15 Aug, 2024)
   String get formattedJoiningDate {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final monthName = months[(createdAt.month - 1).clamp(0, 11)];
-    return '${createdAt.day} $monthName ${createdAt.year}';
+    return AppDateFormatter.formatDisplayDate(createdAt);
   }
 
   bool get isApproved => status == 'approved' || kycStatus == 'approved';

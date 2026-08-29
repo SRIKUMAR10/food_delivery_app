@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/app_date_formatter.dart';
 import 'disputes_refunds_page_bloc.dart';
 import 'disputes_refunds_page_event.dart';
 import 'disputes_refunds_page_state.dart';
@@ -8,6 +9,8 @@ import 'disputes_refunds_page_repository.dart';
 import 'disputes_refunds_page_service.dart';
 import 'disputes_refunds_page_model.dart';
 import '../../../core/widgets/status_badge.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
+import '../seller_ui_tokens.dart';
 
 class DisputesRefundsPage extends StatelessWidget {
   final String sellerId;
@@ -30,18 +33,23 @@ class DisputesRefundsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: SellerUiTokens.pageBackground,
+      appBar: const SellerAppBarPageUI(
+        title: 'Disputes & Refunds',
+        subtitle: 'Manage customer disputes and refund requests',
+        showNotification: false,
+      ),
       body: SafeArea(
         child: BlocConsumer<DisputesRefundsBloc, DisputesRefundsState>(
           listener: (context, state) {
             if (state is DisputesRefundsLoaded) {
               if (state.errorMessage != null) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.errorMessage!), backgroundColor: const Color(0xFFE52929)),
+                  SnackBar(content: Text(state.errorMessage!), backgroundColor: SellerUiTokens.brand),
                 );
               } else if (state.successMessage != null) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.successMessage!), backgroundColor: const Color(0xFF22C55E)),
+                  SnackBar(content: Text(state.successMessage!), backgroundColor: SellerUiTokens.successLight),
                 );
               }
             }
@@ -51,46 +59,9 @@ class DisputesRefundsView extends StatelessWidget {
               builder: (context, constraints) {
                 return Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 800),
+                    constraints: const BoxConstraints(maxWidth: SellerUiTokens.maxWidthForm),
                     child: Column(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                                onPressed: () => Navigator.of(context).pop(),
-                                color: const Color(0xFF111827),
-                                tooltip: 'Back',
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: const [
-                                    Text(
-                                      'Disputes & Refunds',
-                                      style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF111827),
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'Manage customer disputes and refund requests',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Color(0xFF6B7280),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                         if (state is DisputesRefundsLoading || state is DisputesRefundsInitial)
                           const Expanded(child: Center(child: CircularProgressIndicator(color: Color(0xFF3B82F6))))
                         else if (state is DisputesRefundsError)
@@ -140,7 +111,7 @@ class _DisputeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(symbol: '\$');
+    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
     final isPending = dispute.status == 'Pending';
 
     return Container(
@@ -148,15 +119,9 @@ class _DisputeCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+        border: Border.all(color: SellerUiTokens.borderSubtle, width: 1.5),
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,7 +155,7 @@ class _DisputeCard extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF0F172A)),
               ),
               Text(
-                DateFormat('MMM dd, hh:mm a').format(dispute.createdAt),
+                AppDateFormatter.formatDisplayDateTime(dispute.createdAt),
                 style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
               ),
             ],
@@ -210,8 +175,9 @@ class _DisputeCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFFEF4444),
                       side: const BorderSide(color: Color(0xFFFECACA)),
+                      minimumSize: const Size.fromHeight(SellerUiTokens.secondaryButtonHeight),
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton)),
                     ),
                     child: const Text('Decline'),
                   ),
@@ -223,11 +189,12 @@ class _DisputeCard extends StatelessWidget {
                       context.read<DisputesRefundsBloc>().add(ApproveRefundEvent(dispute.id));
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF22C55E),
+                      backgroundColor: SellerUiTokens.successLight,
                       foregroundColor: Colors.white,
                       elevation: 0,
+                      minimumSize: const Size.fromHeight(SellerUiTokens.primaryButtonHeight),
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton)),
                     ),
                     child: isProcessing 
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))

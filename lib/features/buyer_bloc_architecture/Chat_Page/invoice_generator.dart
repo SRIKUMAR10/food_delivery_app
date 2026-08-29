@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
+import '../../../core/utils/app_date_formatter.dart';
 
 class InvoiceGenerator {
   static Future<Uint8List> generateInvoice({
@@ -94,7 +95,7 @@ class InvoiceGenerator {
               style: const pw.TextStyle(fontSize: 12),
             ),
             pw.Text(
-              'Date: ${DateFormat('dd MMM yyyy, hh:mm a').format(date)}',
+              'Date: ${AppDateFormatter.formatDisplayDateTimeWithComma(date)}',
               style: const pw.TextStyle(fontSize: 12),
             ),
           ],

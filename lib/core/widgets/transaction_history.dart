@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_date_formatter.dart';
 
 /// Shared transaction-history building blocks used by the Buyer Profile
 /// (`TransactionsPage`) and the Wallet screen. Centralizes the previously
@@ -6,24 +7,7 @@ import 'package:flutter/material.dart';
 /// formatting found in `transactions_page.dart` and `WalletScreen_UI.dart`.
 
 String formatTransactionDate(DateTime date) {
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  final hour = date.hour > 12 ? date.hour - 12 : date.hour == 0 ? 12 : date.hour;
-  final ampm = date.hour >= 12 ? 'PM' : 'AM';
-  final min = date.minute.toString().padLeft(2, '0');
-  return '${date.day} ${months[date.month - 1]} ${date.year}, $hour:$min $ampm';
+  return AppDateFormatter.formatDisplayDateTimeWithComma(date);
 }
 
 /// Single row inside the transaction detail sheet.

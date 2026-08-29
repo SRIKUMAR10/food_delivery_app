@@ -6,10 +6,13 @@ import 'seller_setting_page__state.dart';
 import '../../../core/services/audio_notification_service.dart';
 import '../../../core/widgets/logout_button.dart';
 import '../../../repositories/seller_repository.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
 import '../seller_store_details_page/seller_store_details_page__ui.dart';
 import '../business_hours_page_/business_hours_page_ui.dart';
 import '../seller_payment_page/seller_payment_page_ui.dart';
+import '../seller_ui_tokens.dart';
 import '../seller_wallet_page/seller_wallet_page__ui.dart';
+import '../seller_unified_dialog.dart';
 
 class SellerSettingPage extends StatefulWidget {
   const SellerSettingPage({Key? key}) : super(key: key);
@@ -64,31 +67,31 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
       builder: (context, state) {
         if (state.isLoading && state.restaurantName.isEmpty) {
           return const Scaffold(
-            backgroundColor: Color(0xFFF9FAFB),
+            backgroundColor: SellerUiTokens.pageBackground,
             body: Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE52929)),
+                valueColor: AlwaysStoppedAnimation<Color>(SellerUiTokens.brand),
               ),
             ),
           );
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF9FAFB),
+          backgroundColor: SellerUiTokens.pageBackground,
+          appBar: SellerAppBarPageUI(
+            title: 'Restaurant Settings',
+            subtitle: state.restaurantName.isNotEmpty
+                ? state.restaurantName
+                : 'App & Account Preferences',
+            showNotification: false,
+          ),
           body: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final isWide = constraints.maxWidth >= 900;
-                return Column(
-                  children: [
-                    _buildTopBar(context, state),
-                    Expanded(
-                      child: isWide
-                          ? _buildWideLayout(context, state)
-                          : _buildMobileLayout(context, state),
-                    ),
-                  ],
-                );
+                return isWide
+                    ? _buildWideLayout(context, state, constraints.maxWidth)
+                    : _buildMobileLayout(context, state, constraints.maxWidth);
               },
             ),
           ),
@@ -97,84 +100,11 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context, SellerSettingState state) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                  onPressed: () => Navigator.of(context).pop(),
-                  color: const Color(0xFF111827),
-                  tooltip: 'Back',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Restaurant Settings',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF111827),
-                          letterSpacing: -0.5,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        state.restaurantName.isNotEmpty
-                            ? state.restaurantName
-                            : 'App & Account Preferences',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF6B7280),
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (state.isDeactivated)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEE2E2),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Text(
-                'Deactivated',
-                style: TextStyle(
-                  color: Color(0xFFDC2626),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWideLayout(BuildContext context, SellerSettingState state) {
+  Widget _buildWideLayout(
+    BuildContext context,
+    SellerSettingState state,
+    double maxWidth,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -204,13 +134,22 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
         // Right Detail Area
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: SellerUiTokens.responsivePadding(maxWidth),
+              vertical: 24,
+            ),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 850),
+                constraints: const BoxConstraints(
+                  maxWidth: SellerUiTokens.maxWidthForm,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (state.isDeactivated) ...[
+                      _buildDeactivatedBanner(),
+                      const SizedBox(height: 24),
+                    ],
                     _StoreOperationsQuickNav(),
                     const SizedBox(height: 24),
                     _buildSelectedSection(context, state),
@@ -224,7 +163,11 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
     );
   }
 
-  Widget _buildMobileLayout(BuildContext context, SellerSettingState state) {
+  Widget _buildMobileLayout(
+    BuildContext context,
+    SellerSettingState state,
+    double maxWidth,
+  ) {
     return Column(
       children: [
         // Horizontal Scrollable Category Bar
@@ -248,10 +191,17 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
         const Divider(height: 1, color: Color(0xFFE5E7EB)),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.symmetric(
+              horizontal: SellerUiTokens.responsivePadding(maxWidth),
+              vertical: 16,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (state.isDeactivated) ...[
+                  _buildDeactivatedBanner(),
+                  const SizedBox(height: 24),
+                ],
                 _StoreOperationsQuickNav(),
                 const SizedBox(height: 24),
                 _buildSelectedSection(context, state),
@@ -260,6 +210,32 @@ class _SellerSettingPageState extends State<SellerSettingPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDeactivatedBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEE2E2),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.pause_circle_filled_rounded, color: Color(0xFFDC2626), size: 18),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Deactivated',
+              style: TextStyle(
+                color: Color(0xFFDC2626),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -497,13 +473,14 @@ class _StoreOperationsQuickNav extends StatelessWidget {
                   width: itemWidth,
                   child: InkWell(
                     onTap: item['onTap'] as VoidCallback,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                        color: SellerUiTokens.surface,
+                        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+                        border: Border.all(color: SellerUiTokens.borderMuted),
+                        boxShadow: SellerUiTokens.cardShadow,
                       ),
                       child: Row(
                         children: [
@@ -1337,8 +1314,11 @@ class _LogoutView extends StatelessWidget {
             label: const Text('Confirm Logout', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFDC2626),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              minimumSize: const Size(0, SellerUiTokens.primaryButtonHeight),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
+              ),
             ),
           ),
         ],
@@ -1404,57 +1384,56 @@ class _DeleteDeactivateViewState extends State<_DeleteDeactivateView> {
   void _showDeleteDialog() {
     showDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: Row(
-          children: const [
-            Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626)),
-            SizedBox(width: 8),
-            Text('Permanent Deletion'),
-          ],
-        ),
+      builder: (dialogCtx) => SellerUnifiedDialog(
+        icon: Icons.warning_amber_rounded,
+        isDanger: true,
+        title: 'Permanent Deletion',
+        message:
+            'This action is irreversible. All menu items, reviews, order history, and restaurant identity will be permanently wiped.',
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'This action is irreversible. All menu items, reviews, order history, and restaurant identity will be permanently wiped.',
-              style: TextStyle(fontSize: 13, color: Color(0xFF374151)),
-            ),
-            const SizedBox(height: 16),
             TextField(
               controller: _deletePassCtrl,
               obscureText: true,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Account Password',
-                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _confirmKeywordCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Type DELETE to confirm',
-                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
               ),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogCtx);
-              context.read<SellerSettingBloc>().add(
-                    DeleteAccountRequested(
-                      password: _deletePassCtrl.text.trim(),
-                      confirmationKeyword: _confirmKeywordCtrl.text.trim(),
-                    ),
-                  );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
-            child: const Text('Permanently Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Permanently Delete',
+        onCancel: () => Navigator.pop(dialogCtx),
+        onConfirm: () {
+          Navigator.pop(dialogCtx);
+          context.read<SellerSettingBloc>().add(
+                DeleteAccountRequested(
+                  password: _deletePassCtrl.text.trim(),
+                  confirmationKeyword: _confirmKeywordCtrl.text.trim(),
+                ),
+              );
+        },
       ),
     );
   }
@@ -1515,7 +1494,13 @@ class _DeleteDeactivateViewState extends State<_DeleteDeactivateView> {
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: _deactivate,
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD97706)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD97706),
+                      minimumSize: const Size(0, SellerUiTokens.secondaryButtonHeight),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
+                      ),
+                    ),
                     child: const Text('Deactivate Temporarily', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ] else ...[
@@ -1533,7 +1518,13 @@ class _DeleteDeactivateViewState extends State<_DeleteDeactivateView> {
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: _reactivate,
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      minimumSize: const Size(0, SellerUiTokens.secondaryButtonHeight),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
+                      ),
+                    ),
                     child: const Text('Reactivate Restaurant Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
@@ -1569,7 +1560,13 @@ class _DeleteDeactivateViewState extends State<_DeleteDeactivateView> {
                   onPressed: _showDeleteDialog,
                   icon: const Icon(Icons.delete_forever_rounded, color: Colors.white),
                   label: const Text('Request Permanent Deletion', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    minimumSize: const Size(0, SellerUiTokens.secondaryButtonHeight),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1600,16 +1597,10 @@ class _SettingCardContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: SellerUiTokens.surface,
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+        border: Border.all(color: SellerUiTokens.borderMuted),
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -1714,7 +1705,7 @@ Widget _buildSwitchRow({
   required ValueChanged<bool> onChanged,
 }) {
   return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -1744,7 +1735,7 @@ Widget _buildSwitchRow({
         Switch(
           value: value,
           activeThumbColor: Colors.white,
-          activeTrackColor: const Color(0xFFE52929),
+          activeTrackColor: SellerUiTokens.brand,
           onChanged: onChanged,
         ),
       ],
@@ -1762,10 +1753,12 @@ Widget _buildSaveButton({
     child: ElevatedButton(
       onPressed: isSaving ? null : onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFE52929),
+        backgroundColor: SellerUiTokens.brand,
         disabledBackgroundColor: const Color(0xFFFCA5A5),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        minimumSize: const Size(0, SellerUiTokens.primaryButtonHeight),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
+        ),
       ),
       child: isSaving
           ? const SizedBox(

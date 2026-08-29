@@ -7,6 +7,7 @@ import 'Delivery_Help_Support_page_repository.dart';
 import 'Delivery_Help_Support_page_service.dart';
 import 'Delivery_Help_Support_page_state.dart';
 import '../../../core/theme/delivery_design_system.dart';
+import '../../../core/utils/app_date_formatter.dart';
 
 class DeliveryHelpSupportStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -1329,8 +1330,7 @@ class _SupportTicketCard extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    String two(int v) => v.toString().padLeft(2, '0');
-    return '${two(date.day)}/${two(date.month)}/${date.year}';
+    return AppDateFormatter.formatDisplayDate(date);
   }
 
   Color _statusColor(DeliverySupportTicketStatus status) {

@@ -71,7 +71,7 @@ void main() {
       expect(coreButton.isLoading, false);
       expect(coreButton.height, 52);
       expect(coreButton.borderRadius, 12);
-      expect(coreButton.backgroundColor, const Color(0xFF2E7D32));
+      expect(coreButton.backgroundColor, const Color(0xFFE52929));
     });
 
     testWidgets('invokes onPressed when tapped', (tester) async {

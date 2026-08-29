@@ -1,11 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'business_hours_page_model.dart';
 
 class BusinessHoursService {
   final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
 
-  BusinessHoursService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  BusinessHoursService({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
 
   static const List<String> daysOfWeek = [
     'Monday',
@@ -21,9 +26,17 @@ class BusinessHoursService {
     return BusinessDayModel.defaultWeeklySchedule();
   }
 
+  String _resolveSellerId(String sellerId) {
+    if (sellerId.trim().isNotEmpty) {
+      return sellerId.trim();
+    }
+    return _auth.currentUser?.uid ?? '';
+  }
+
   Future<Map<String, dynamic>> fetchSchedule(String sellerId) async {
     try {
-      if (sellerId.isEmpty) {
+      final targetSellerId = _resolveSellerId(sellerId);
+      if (targetSellerId.isEmpty) {
         return {
           'isEmergencyClosed': false,
           'schedule': defaultSchedule(),
@@ -32,7 +45,7 @@ class BusinessHoursService {
 
       final docSnapshot = await _firestore
           .collection('sellers')
-          .doc(sellerId)
+          .doc(targetSellerId)
           .collection('settings')
           .doc('business_hours')
           .get();
@@ -45,16 +58,30 @@ class BusinessHoursService {
         }
       }
 
+      // Check root seller document fallback if settings subcollection is empty
+      final sellerDoc = await _firestore.collection('sellers').doc(targetSellerId).get();
+      if (sellerDoc.exists && sellerDoc.data() != null) {
+        final rootData = sellerDoc.data()!;
+        if (rootData['businessHours'] is Map<String, dynamic>) {
+          final mapped = _mapScheduleData(rootData['businessHours'] as Map<String, dynamic>);
+          if ((mapped['schedule'] as List<BusinessDayModel>).isNotEmpty) {
+            return mapped;
+          }
+        }
+      }
+
       final defaultList = defaultSchedule();
       final initialData = {
         'isEmergencyClosed': false,
+        'isOpen': true,
         'schedule': defaultList.map((d) => d.toMap()).toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
       };
 
       try {
         await _firestore
             .collection('sellers')
-            .doc(sellerId)
+            .doc(targetSellerId)
             .collection('settings')
             .doc('business_hours')
             .set(initialData, SetOptions(merge: true));
@@ -70,7 +97,8 @@ class BusinessHoursService {
   }
 
   Stream<Map<String, dynamic>> watchSchedule(String sellerId) {
-    if (sellerId.isEmpty) {
+    final targetSellerId = _resolveSellerId(sellerId);
+    if (targetSellerId.isEmpty) {
       return Stream.value({
         'isEmergencyClosed': false,
         'schedule': defaultSchedule(),
@@ -79,7 +107,7 @@ class BusinessHoursService {
 
     return _firestore
         .collection('sellers')
-        .doc(sellerId)
+        .doc(targetSellerId)
         .collection('settings')
         .doc('business_hours')
         .snapshots()
@@ -135,17 +163,22 @@ class BusinessHoursService {
       scheduleList = completeSchedule;
     }
 
+    final isEmergencyClosed = data['isEmergencyClosed'] == true || data['isOpen'] == false;
+
     return {
-      'isEmergencyClosed': data['isEmergencyClosed'] == true,
+      'isEmergencyClosed': isEmergencyClosed,
       'schedule': scheduleList,
     };
   }
 
   Future<void> updateSchedule(String sellerId, BusinessDayModel updatedDay) async {
     try {
+      final targetSellerId = _resolveSellerId(sellerId);
+      if (targetSellerId.isEmpty) return;
+
       final docRef = _firestore
           .collection('sellers')
-          .doc(sellerId)
+          .doc(targetSellerId)
           .collection('settings')
           .doc('business_hours');
 
@@ -169,20 +202,121 @@ class BusinessHoursService {
         schedule.add(updatedDay.toMap());
       }
 
-      await docRef.set({'schedule': schedule}, SetOptions(merge: true));
+      // 1. Update settings/business_hours subcollection document
+      await docRef.set({
+        'schedule': schedule,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // 2. Coordinated sync with root seller document
+      final weeklyHolidays = <String>[];
+      String? primaryOpen;
+      String? primaryClose;
+
+      for (final item in schedule) {
+        final dayName = item['dayOfWeek']?.toString() ?? '';
+        final isOpen = item['isOpen'] == true;
+        if (!isOpen && dayName.isNotEmpty) {
+          weeklyHolidays.add(dayName);
+        } else if (isOpen && primaryOpen == null) {
+          primaryOpen = item['openTime']?.toString();
+          primaryClose = item['closeTime']?.toString();
+        }
+      }
+
+      final rootSellerRef = _firestore.collection('sellers').doc(targetSellerId);
+      await rootSellerRef.set({
+        'weeklyHoliday': weeklyHolidays,
+        'isBusinessHoursCompleted': true,
+        if (primaryOpen != null) 'openingHours': primaryOpen,
+        if (primaryClose != null) 'closingTime': primaryClose,
+        'businessHours': {
+          'schedule': schedule,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     } catch (e) {
       throw Exception('Failed to update schedule: $e');
     }
   }
 
+  Future<void> saveFullSchedule(
+    String sellerId,
+    List<BusinessDayModel> scheduleList, {
+    bool isEmergencyClosed = false,
+  }) async {
+    try {
+      final targetSellerId = _resolveSellerId(sellerId);
+      if (targetSellerId.isEmpty) return;
+
+      final serializedSchedule = scheduleList.map((d) => d.toMap()).toList();
+
+      final docRef = _firestore
+          .collection('sellers')
+          .doc(targetSellerId)
+          .collection('settings')
+          .doc('business_hours');
+
+      await docRef.set({
+        'schedule': serializedSchedule,
+        'isEmergencyClosed': isEmergencyClosed,
+        'isOpen': !isEmergencyClosed,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      final weeklyHolidays = scheduleList
+          .where((d) => !d.isOpen)
+          .map((d) => d.dayOfWeek)
+          .toList();
+
+      final firstOpenDay = scheduleList.firstWhere(
+        (d) => d.isOpen,
+        orElse: () => scheduleList.first,
+      );
+
+      final rootSellerRef = _firestore.collection('sellers').doc(targetSellerId);
+      await rootSellerRef.set({
+        'weeklyHoliday': weeklyHolidays,
+        'isBusinessHoursCompleted': true,
+        'openingHours': firstOpenDay.openTime,
+        'closingTime': firstOpenDay.closeTime,
+        'isOpen': !isEmergencyClosed,
+        'isAcceptingOrders': !isEmergencyClosed,
+        'businessHours': {
+          'schedule': serializedSchedule,
+          'isEmergencyClosed': isEmergencyClosed,
+        },
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to save full schedule: $e');
+    }
+  }
+
   Future<void> toggleEmergencyClose(String sellerId, bool isEmergencyClosed) async {
     try {
+      final targetSellerId = _resolveSellerId(sellerId);
+      if (targetSellerId.isEmpty) return;
+
+      // 1. Update settings/business_hours
       await _firestore
           .collection('sellers')
-          .doc(sellerId)
+          .doc(targetSellerId)
           .collection('settings')
           .doc('business_hours')
-          .set({'isEmergencyClosed': isEmergencyClosed}, SetOptions(merge: true));
+          .set({
+        'isEmergencyClosed': isEmergencyClosed,
+        'isOpen': !isEmergencyClosed,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // 2. Update root sellers document
+      await _firestore.collection('sellers').doc(targetSellerId).set({
+        'isOpen': !isEmergencyClosed,
+        'isAcceptingOrders': !isEmergencyClosed,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     } catch (e) {
       throw Exception('Failed to toggle emergency close: $e');
     }

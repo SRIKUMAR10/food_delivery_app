@@ -7,6 +7,7 @@ import 'Delivery_Earnings Dashboard_page_repository.dart';
 import 'Delivery_Earnings Dashboard_page_service.dart';
 import 'Delivery_Earnings Dashboard_page_state.dart';
 import '../../../core/theme/delivery_design_system.dart';
+import '../../../core/utils/app_date_formatter.dart';
 
 class DeliveryEarningsDashboardStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -1239,10 +1240,7 @@ String _statusLabel(String status) {
 }
 
 String _formatDate(DateTime date) {
-  final local = date.toLocal();
-  final hh = local.hour.toString().padLeft(2, '0');
-  final mm = local.minute.toString().padLeft(2, '0');
-  return '${local.day}/${local.month}/${local.year} · $hh:$mm';
+  return AppDateFormatter.formatDisplayDateTime(date);
 }
 
 class _GlowEarningsPainter extends CustomPainter {
@@ -1658,12 +1656,7 @@ class _DetailedEarningTile extends StatelessWidget {
   const _DetailedEarningTile({required this.item, required this.lang});
 
   String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return '${diff.inHours} hrs ago';
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/${date.year}';
+    return AppDateFormatter.formatTimeAgo(date);
   }
 
   Widget _row(String label, double value) {

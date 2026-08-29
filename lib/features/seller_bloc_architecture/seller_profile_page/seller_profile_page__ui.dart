@@ -32,6 +32,7 @@ import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
 import '../seller_auth_shared/onboarding_back_handler.dart';
 import '../seller_auth_shared/seller_wizard_container.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
+import '../seller_ui_tokens.dart';
 
 class SellerProfilePageUI extends StatelessWidget {
   final bool isOnboardingFlow;
@@ -926,14 +927,10 @@ class _ProfileSectionsGrid extends StatelessWidget {
                   Expanded(child: _buildLocationLogisticsCard(context)),
                 ],
               ),
-              const SizedBox(height: 16),
-              _buildScheduleCard(context),
             ] else ...[
               _buildBrandingCard(context),
               const SizedBox(height: 16),
               _buildLocationLogisticsCard(context),
-              const SizedBox(height: 16),
-              _buildScheduleCard(context),
             ],
           ],
         );
@@ -984,23 +981,6 @@ class _ProfileSectionsGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildScheduleCard(BuildContext context) {
-    final holidays = state.weeklyHoliday.isEmpty ? 'None' : state.weeklyHoliday.join(', ');
-    return _SectionCard(
-      title: 'Operating Hours & Schedule',
-      icon: Icons.access_time_outlined,
-      iconColor: const Color(0xFF10B981),
-      onEdit: () => _showEditScheduleDialog(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildInfoRow('Opening Time', state.openingHours?.isNotEmpty == true ? state.openingHours! : '09:00 AM'),
-          _buildInfoRow('Closing Time', state.closingTime?.isNotEmpty == true ? state.closingTime! : '11:00 PM'),
-          _buildInfoRow('Weekly Holidays', holidays),
-        ],
-      ),
-    );
-  }
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
@@ -1619,160 +1599,6 @@ class _ProfileSectionsGrid extends StatelessWidget {
     );
   }
 
-  void _showEditScheduleDialog(BuildContext context) {
-    final bloc = context.read<SellerProfilePageBloc>();
-    final openCtrl = TextEditingController(text: state.openingHours ?? '09:00 AM');
-    final closeCtrl = TextEditingController(text: state.closingTime ?? '11:00 PM');
-    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final selectedHolidays = List<String>.from(state.weeklyHoliday);
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => BlocProvider<SellerProfilePageBloc>.value(
-        value: bloc,
-        child: StatefulBuilder(
-          builder: (stateCtx, setDialogState) => Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            clipBehavior: Clip.antiAlias,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFECFDF5),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.access_time_outlined, color: Color(0xFF10B981), size: 22),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text(
-                                'Edit Operating Hours & Holidays',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Set standard store hours and select scheduled closed days',
-                                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Color(0xFF6B7280), size: 20),
-                          onPressed: () => Navigator.of(dialogCtx).pop(),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDialogTextField(
-                            controller: openCtrl,
-                            label: 'Opening Time',
-                            hint: '09:00 AM',
-                            icon: Icons.schedule_outlined,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildDialogTextField(
-                            controller: closeCtrl,
-                            label: 'Closing Time',
-                            hint: '11:00 PM',
-                            icon: Icons.lock_clock_outlined,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Text('Weekly Holidays', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF374151))),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: days.map((d) {
-                        final isHol = selectedHolidays.contains(d);
-                        return FilterChip(
-                          label: Text(d),
-                          selected: isHol,
-                          selectedColor: const Color(0xFFFEE2E2),
-                          checkmarkColor: const Color(0xFFE52929),
-                          labelStyle: TextStyle(
-                            color: isHol ? const Color(0xFFE52929) : const Color(0xFF1E293B),
-                            fontWeight: isHol ? FontWeight.bold : FontWeight.normal,
-                          ),
-                          onSelected: (val) {
-                            setDialogState(() {
-                              if (val) {
-                                selectedHolidays.add(d);
-                              } else {
-                                selectedHolidays.remove(d);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.of(dialogCtx).pop(),
-                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            bloc.add(
-                              UpdateBusinessHoursSchedule(
-                                openingHours: openCtrl.text.trim(),
-                                closingTime: closeCtrl.text.trim(),
-                                weeklyHoliday: selectedHolidays,
-                              ),
-                            );
-                            Navigator.of(dialogCtx).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Operating schedule updated successfully!'),
-                                backgroundColor: Color(0xFF10B981),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.check_circle_outline, size: 18),
-                          label: const Text('Save Schedule', style: TextStyle(fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE52929),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildDialogTextField({
     required TextEditingController controller,
@@ -2237,19 +2063,13 @@ class _MenuGrid extends StatelessWidget {
               child: HoverableCard(
                 onTap: item['onTap'] as VoidCallback,
                 hoverScale: 1.02,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFF1F5F9)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+                    border: Border.all(color: SellerUiTokens.borderSubtle),
+                    boxShadow: SellerUiTokens.cardShadow,
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(18.0),

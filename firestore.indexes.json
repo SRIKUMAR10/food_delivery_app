@@ -181,16 +181,6 @@
       ]
     },
     {
-      "collectionGroup": "favorites",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "sellerId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "payouts",
       "queryScope": "COLLECTION",
       "fields": [
@@ -220,6 +210,20 @@
     },
     {
       "collectionGroup": "transactions",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ledger",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
@@ -359,3 +363,4 @@
   ],
   "fieldOverrides": []
 }
+

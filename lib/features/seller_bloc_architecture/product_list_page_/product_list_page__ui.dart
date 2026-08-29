@@ -18,6 +18,8 @@ import 'product_preview_page.dart';
 import '../../../../core/repositories/i_product_repository.dart';
 import '../../../../core/services/i_auth_service.dart';
 import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
+import '../seller_ui_tokens.dart';
+import '../seller_unified_dialog.dart';
 
 class ProductListPage extends StatelessWidget {
   const ProductListPage({super.key});
@@ -106,8 +108,11 @@ class _ProductListViewState extends State<ProductListView>
                         ),
                       );
                     },
-                    backgroundColor: const Color(0xFFFF3B30),
+                    backgroundColor: SellerUiTokens.brand,
                     elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
+                    ),
                     icon: const Icon(Icons.add, color: Colors.white),
                     label: const Text(
                       'Add Product',
@@ -3519,19 +3524,19 @@ void showShareDialog(BuildContext context, Product product) {
   showDialog(
     context: context,
     builder: (BuildContext dialogContext) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text(
-          'Share Product',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+      return SellerUnifiedDialog(
+        icon: Icons.share_rounded,
+        iconColor: SellerUiTokens.accent,
+        iconBackgroundColor: const Color(0xFFEFF6FF),
+        title: 'Share Product',
+        message: 'Share "${product.name}" with your customers:',
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              tileColor: const Color(0xFFF8FAFC),
               leading: const CircleAvatar(
                 backgroundColor: Color(0xFF25D366),
                 child: Icon(Icons.chat_bubble, color: Colors.white, size: 20),
@@ -3560,7 +3565,9 @@ void showShareDialog(BuildContext context, Product product) {
             ),
             const SizedBox(height: 8),
             ListTile(
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              tileColor: const Color(0xFFF8FAFC),
               leading: const CircleAvatar(
                 backgroundColor: Color(0xFF3B82F6),
                 child: Icon(Icons.copy, color: Colors.white, size: 20),
@@ -3581,12 +3588,9 @@ void showShareDialog(BuildContext context, Product product) {
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
+        showCancel: false,
+        confirmLabel: 'Close',
+        onConfirm: () => Navigator.of(dialogContext).pop(),
       );
     },
   );
@@ -3596,53 +3600,60 @@ void _showPreviewDialog(BuildContext context, Product product) {
   showDialog(
     context: context,
     builder: (BuildContext dialogContext) {
-      return AlertDialog(
-        title: Text('Preview: ${product.name}'),
+      return SellerUnifiedDialog(
+        icon: Icons.visibility_outlined,
+        iconColor: SellerUiTokens.accent,
+        iconBackgroundColor: const Color(0xFFEFF6FF),
+        title: product.name,
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               if (product.imageUrls.isNotEmpty)
-                CachedNetworkImage(
-                  imageUrl: product.imageUrls.first,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: product.imageUrls.first,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               const SizedBox(height: 16),
               Text(
                 'Price: ₹${product.price.toInt()}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: SellerUiTokens.textPrimary),
               ),
               const SizedBox(height: 8),
               Text(
                 'Category: ${product.category.isNotEmpty ? product.category : "N/A"}',
+                style: const TextStyle(color: SellerUiTokens.textSecondary),
               ),
               Text(
                 'Food Type: ${product.foodType.isNotEmpty ? product.foodType : "N/A"}',
+                style: const TextStyle(color: SellerUiTokens.textSecondary),
               ),
-              Text('Stock: ${product.availableStock}'),
-              Text('Status: ${product.isActive ? "Active" : "Inactive"}'),
-              const SizedBox(height: 16),
+              Text('Stock: ${product.availableStock}', style: const TextStyle(color: SellerUiTokens.textSecondary)),
+              Text('Status: ${product.isActive ? "Active" : "Inactive"}', style: const TextStyle(color: SellerUiTokens.textSecondary)),
+              const SizedBox(height: 12),
               const Text(
                 'Description:',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 4),
               Text(
                 product.description.isNotEmpty
                     ? product.description
                     : 'No description provided.',
+                style: const TextStyle(color: SellerUiTokens.textSecondary, height: 1.4),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
-          ),
-        ],
+        showCancel: false,
+        confirmLabel: 'Close',
+        onConfirm: () => Navigator.of(dialogContext).pop(),
       );
     },
   );
@@ -3657,42 +3668,30 @@ void _showDeleteDialog(
   showDialog(
     context: context,
     builder: (BuildContext dialogContext) {
-      return AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text(
-          'Are you sure you want to delete "${product.name}"? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              context.read<ProductListBloc>().add(
-                DeleteProductEvent(product.id),
-              );
-              Navigator.of(dialogContext).pop();
+      return SellerUnifiedDialog(
+        icon: Icons.delete_outline_rounded,
+        isDanger: true,
+        title: 'Confirm Delete',
+        message: 'Are you sure you want to delete "${product.name}"? This action cannot be undone.',
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Delete',
+        onCancel: () => Navigator.of(dialogContext).pop(),
+        onConfirm: () {
+          context.read<ProductListBloc>().add(
+            DeleteProductEvent(product.id),
+          );
+          Navigator.of(dialogContext).pop();
 
-              if (onDeleted != null) {
-                onDeleted();
-              }
+          if (onDeleted != null) {
+            onDeleted();
+          }
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${product.name} deleted successfully'),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF3B30),
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${product.name} deleted successfully'),
             ),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
+          );
+        },
       );
     },
   );
@@ -3708,38 +3707,12 @@ void _showQuickStockDialog(BuildContext context, Product product) {
     builder: (BuildContext dialogContext) {
       return StatefulBuilder(
         builder: (context, setDialogState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF3B82F6)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Update Stock',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        product.name,
-                        style: const TextStyle(fontSize: 13, color: Colors.grey),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          return SellerUnifiedDialog(
+            icon: Icons.inventory_2_outlined,
+            iconColor: SellerUiTokens.accent,
+            iconBackgroundColor: const Color(0xFFEFF6FF),
+            title: 'Update Stock',
+            message: product.name,
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -3752,7 +3725,7 @@ void _showQuickStockDialog(BuildContext context, Product product) {
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                     value: isUnlimited,
-                    activeColor: const Color(0xFF10B981),
+                    activeColor: SellerUiTokens.brand,
                     onChanged: (val) {
                       setDialogState(() {
                         isUnlimited = val;
@@ -3830,34 +3803,23 @@ void _showQuickStockDialog(BuildContext context, Product product) {
                 ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF3B30),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            cancelLabel: 'Cancel',
+            confirmLabel: 'Save Stock',
+            onCancel: () => Navigator.pop(dialogContext),
+            onConfirm: () {
+              final finalStock = isUnlimited ? 9999 : currentStock;
+              context.read<ProductListBloc>().add(
+                QuickUpdateStockEvent(
+                  productId: product.id,
+                  stockQuantity: finalStock,
+                  hasUnlimitedStock: isUnlimited,
                 ),
-                onPressed: () {
-                  final finalStock = isUnlimited ? 9999 : currentStock;
-                  context.read<ProductListBloc>().add(
-                    QuickUpdateStockEvent(
-                      productId: product.id,
-                      stockQuantity: finalStock,
-                      hasUnlimitedStock: isUnlimited,
-                    ),
-                  );
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Stock updated for "${product.name}"')),
-                  );
-                },
-                child: const Text('Save Stock'),
-              ),
-            ],
+              );
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Stock updated for "${product.name}"')),
+              );
+            },
           );
         },
       );
@@ -3884,38 +3846,12 @@ void _showQuickPriceDialog(BuildContext context, Product product) {
             discountPercent = (((p - dp) / p) * 100).round();
           }
 
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.currency_rupee, color: Color(0xFF10B981)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Update Price',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        product.name,
-                        style: const TextStyle(fontSize: 13, color: Colors.grey),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          return SellerUnifiedDialog(
+            icon: Icons.currency_rupee,
+            iconColor: SellerUiTokens.success,
+            iconBackgroundColor: const Color(0xFFECFDF5),
+            title: 'Update Price',
+            message: product.name,
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -3976,41 +3912,30 @@ void _showQuickPriceDialog(BuildContext context, Product product) {
                 ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF3B30),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            cancelLabel: 'Cancel',
+            confirmLabel: 'Save Price',
+            onCancel: () => Navigator.pop(dialogContext),
+            onConfirm: () {
+              final newPrice = double.tryParse(priceController.text) ?? 0.0;
+              final newDiscount = double.tryParse(discountController.text) ?? 0.0;
+              if (newPrice <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid price greater than 0')),
+                );
+                return;
+              }
+              context.read<ProductListBloc>().add(
+                QuickUpdatePriceEvent(
+                  productId: product.id,
+                  price: newPrice,
+                  discountPrice: newDiscount,
                 ),
-                onPressed: () {
-                  final newPrice = double.tryParse(priceController.text) ?? 0.0;
-                  final newDiscount = double.tryParse(discountController.text) ?? 0.0;
-                  if (newPrice <= 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter a valid price greater than 0')),
-                    );
-                    return;
-                  }
-                  context.read<ProductListBloc>().add(
-                    QuickUpdatePriceEvent(
-                      productId: product.id,
-                      price: newPrice,
-                      discountPrice: newDiscount,
-                    ),
-                  );
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Price updated for "${product.name}"')),
-                  );
-                },
-                child: const Text('Save Price'),
-              ),
-            ],
+              );
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Price updated for "${product.name}"')),
+              );
+            },
           );
         },
       );
@@ -4022,30 +3947,22 @@ void _showDuplicateConfirmDialog(BuildContext context, Product product) {
   showDialog(
     context: context,
     builder: (dialogContext) {
-      return AlertDialog(
-        title: const Text('Duplicate Product'),
-        content: Text('Do you want to create a copy of "${product.name}"?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF3B82F6),
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              context.read<ProductListBloc>().add(DuplicateProductEvent(product.id));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Duplicating "${product.name}"...')),
-              );
-            },
-            child: const Text('Duplicate'),
-          ),
-        ],
+      return SellerUnifiedDialog(
+        icon: Icons.copy_rounded,
+        iconColor: SellerUiTokens.accent,
+        iconBackgroundColor: const Color(0xFFEFF6FF),
+        title: 'Duplicate Product',
+        message: 'Do you want to create a copy of "${product.name}"?',
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Duplicate',
+        onCancel: () => Navigator.pop(dialogContext),
+        onConfirm: () {
+          Navigator.pop(dialogContext);
+          context.read<ProductListBloc>().add(DuplicateProductEvent(product.id));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Duplicating "${product.name}"...')),
+          );
+        },
       );
     },
   );
@@ -4055,30 +3972,21 @@ void _showMarkOutOfStockConfirmDialog(BuildContext context, Product product) {
   showDialog(
     context: context,
     builder: (dialogContext) {
-      return AlertDialog(
-        title: const Text('Mark Out of Stock'),
-        content: Text('Are you sure you want to mark "${product.name}" as Out of Stock?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              context.read<ProductListBloc>().add(MarkProductOutOfStockEvent(product.id));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Marked "${product.name}" as out of stock')),
-              );
-            },
-            child: const Text('Mark Out of Stock'),
-          ),
-        ],
+      return SellerUnifiedDialog(
+        icon: Icons.block_rounded,
+        isDanger: true,
+        title: 'Mark Out of Stock',
+        message: 'Are you sure you want to mark "${product.name}" as Out of Stock?',
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Mark Out of Stock',
+        onCancel: () => Navigator.pop(dialogContext),
+        onConfirm: () {
+          Navigator.pop(dialogContext);
+          context.read<ProductListBloc>().add(MarkProductOutOfStockEvent(product.id));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Marked "${product.name}" as out of stock')),
+          );
+        },
       );
     },
   );

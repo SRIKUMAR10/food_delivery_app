@@ -10,6 +10,8 @@ import '../../../repositories/seller_repository.dart';
 import '../seller_auth_shared/onboarding_back_handler.dart';
 import '../seller_auth_shared/seller_wizard_container.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
+import '../seller_ui_tokens.dart';
 
 class MenuCategoryManagementPage extends StatelessWidget {
   final String sellerId;
@@ -122,52 +124,20 @@ class MenuCategoryManagementView extends StatelessWidget {
           }
 
           return Scaffold(
-            backgroundColor: const Color(0xFFFAFAFA),
+            backgroundColor: SellerUiTokens.pageBackground,
+            appBar: const SellerAppBarPageUI(
+              title: 'Manage Categories',
+              subtitle: 'Select and reorder your menu categories',
+              showNotification: false,
+            ),
             body: SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 800),
+                      constraints: const BoxConstraints(maxWidth: SellerUiTokens.maxWidthForm),
                       child: Column(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                            child: Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  color: const Color(0xFF111827),
-                                  tooltip: 'Back',
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: const [
-                                      Text(
-                                        'Manage Categories',
-                                        style: TextStyle(
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.w800,
-                                          color: Color(0xFF111827),
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'Select and reorder your menu categories',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF6B7280),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                           Expanded(
                             child: SingleChildScrollView(
                               physics: const AlwaysScrollableScrollPhysics(),
@@ -180,7 +150,7 @@ class MenuCategoryManagementView extends StatelessWidget {
                               padding: const EdgeInsets.all(24),
                               child: SizedBox(
                                 width: double.infinity,
-                                height: 56,
+                                height: SellerUiTokens.primaryButtonHeight,
                                 child: ElevatedButton(
                                   onPressed: (!state.hasUnsavedChanges || state.isSaving)
                                       ? null
@@ -191,7 +161,7 @@ class MenuCategoryManagementView extends StatelessWidget {
                                     backgroundColor: SellerAuthColors.primary,
                                     disabledBackgroundColor: const Color(0xFFE2E8F0),
                                     foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton)),
                                     elevation: 0,
                                   ),
                                   child: state.isSaving
@@ -273,20 +243,12 @@ class _CategoryListItem extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
         border: Border.all(
-          color: category.isSelected ? const Color(0xFF3B82F6) : const Color(0xFFE2E8F0), 
+          color: category.isSelected ? const Color(0xFF3B82F6) : SellerUiTokens.borderMuted, 
           width: category.isSelected ? 2 : 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: category.isSelected 
-                ? const Color(0xFF3B82F6).withValues(alpha: 0.08)
-                : const Color(0xFF0F172A).withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

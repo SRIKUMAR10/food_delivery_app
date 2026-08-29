@@ -101,6 +101,44 @@ void main() {
         verify(() => mockRepository.toggleEmergencyClose('seller1', true)).called(1);
       },
     );
+
+    blocTest<BusinessHoursBloc, BusinessHoursState>(
+      'emits updated schedule on SaveFullBusinessHoursEvent',
+      build: () {
+        when(() => mockRepository.saveFullSchedule(any(), any(), isEmergencyClosed: any(named: 'isEmergencyClosed')))
+            .thenAnswer((_) async {});
+        return bloc;
+      },
+      seed: () => BusinessHoursLoaded(
+        schedule: defaultDays,
+        isEmergencyClosed: false,
+      ),
+      act: (bloc) => bloc.add(SaveFullBusinessHoursEvent(
+        schedule: defaultDays,
+        isEmergencyClosed: false,
+      )),
+      expect: () => [
+        isA<BusinessHoursLoaded>().having((s) => s.isUpdating, 'isUpdating', true),
+        isA<BusinessHoursLoaded>().having((s) => s.isUpdating, 'isUpdating', false),
+      ],
+      verify: (_) {
+        verify(() => mockRepository.saveFullSchedule('seller1', any(), isEmergencyClosed: false)).called(1);
+      },
+    );
+
+    blocTest<BusinessHoursBloc, BusinessHoursState>(
+      'emits BusinessHoursError when getSchedule throws exception',
+      build: () {
+        when(() => mockRepository.watchSchedule(any())).thenAnswer((_) => const Stream.empty());
+        when(() => mockRepository.getSchedule(any())).thenThrow(Exception('Network timeout'));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const LoadBusinessHoursEvent('seller1')),
+      expect: () => [
+        isA<BusinessHoursLoading>(),
+        isA<BusinessHoursError>().having((s) => s.message, 'message', contains('Network timeout')),
+      ],
+    );
   });
 }
 

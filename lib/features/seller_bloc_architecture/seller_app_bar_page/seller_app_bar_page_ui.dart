@@ -1,53 +1,70 @@
 import 'package:flutter/material.dart';
 import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
+import '../seller_ui_tokens.dart';
 
 class SellerAppBarPageUI extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  final String? subtitle;
   final VoidCallback? onNotificationTap;
   final int notificationCount;
+  final bool showNotification;
+  final List<Widget>? actions;
+  final VoidCallback? onBack;
 
   const SellerAppBarPageUI({
     Key? key,
     required this.title,
+    this.subtitle,
     this.onNotificationTap,
     this.notificationCount = 0,
+    this.showNotification = true,
+    this.actions,
+    this.onBack,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final openDrawer = SellerDrawerProvider.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+    return Container(
+      height: 72.0,
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: SellerUiTokens.borderMuted),
+        ),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
             child: Row(
               children: [
-                if (Navigator.canPop(context)) ...[
+                if (onBack != null || Navigator.canPop(context)) ...[
                   Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () => Navigator.of(context).pop(),
-                      borderRadius: BorderRadius.circular(12),
+                      onTap: onBack ?? () => Navigator.of(context).pop(),
+                      borderRadius: BorderRadius.circular(SellerUiTokens.radiusBackButton),
                       child: Container(
-                        padding: const EdgeInsets.all(8),
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                          boxShadow: [
+                          borderRadius: BorderRadius.circular(SellerUiTokens.radiusBackButton),
+                          border: Border.all(color: SellerUiTokens.borderMuted),
+                          boxShadow: const [
                             BoxShadow(
-                              color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                              color: Color(0x0A0F172A),
                               blurRadius: 8,
-                              offset: const Offset(0, 2),
+                              offset: Offset(0, 2),
                             ),
                           ],
                         ),
                         child: const Icon(
                           Icons.arrow_back_ios_new_rounded,
                           color: Color(0xFF1E293B),
-                          size: 20,
+                          size: 18,
                         ),
                       ),
                     ),
@@ -58,18 +75,19 @@ class SellerAppBarPageUI extends StatelessWidget implements PreferredSizeWidget 
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: openDrawer,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(SellerUiTokens.radiusBackButton),
                       child: Container(
-                        padding: const EdgeInsets.all(8),
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                          boxShadow: [
+                          borderRadius: BorderRadius.circular(SellerUiTokens.radiusBackButton),
+                          border: Border.all(color: SellerUiTokens.borderMuted),
+                          boxShadow: const [
                             BoxShadow(
-                              color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                              color: Color(0x0A0F172A),
                               blurRadius: 8,
-                              offset: const Offset(0, 2),
+                              offset: Offset(0, 2),
                             ),
                           ],
                         ),
@@ -84,85 +102,105 @@ class SellerAppBarPageUI extends StatelessWidget implements PreferredSizeWidget 
                   const SizedBox(width: 12),
                 ],
                 Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2D2D2D),
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: SellerUiTokens.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle!,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: SellerUiTokens.textSecondary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          GestureDetector(
-            onTap: onNotificationTap ?? () {},
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    offset: const Offset(3, 3),
-                    blurRadius: 10,
-                  ),
-                  const BoxShadow(
-                    color: Colors.white,
-                    offset: Offset(-3, -3),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [
-                  const Text(
-                    '🔔',
-                    style: TextStyle(fontSize: 24),
-                  ),
-                  if (notificationCount > 0)
-                    Positioned(
-                      right: 0,
-                      top: 2,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF3B30),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFF3B30).withValues(alpha: 0.3),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
+          if (actions != null) ...actions!,
+          if (showNotification)
+            GestureDetector(
+              onTap: onNotificationTap ?? () {},
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      offset: const Offset(3, 3),
+                      blurRadius: 10,
+                    ),
+                    const BoxShadow(
+                      color: Colors.white,
+                      offset: Offset(-3, -3),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Text(
+                      '🔔',
+                      style: TextStyle(fontSize: 24),
+                    ),
+                    if (notificationCount > 0)
+                      Positioned(
+                        right: 0,
+                        top: 2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF3B30),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFF3B30).withValues(alpha: 0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            notificationCount > 99 ? '99+' : notificationCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
                             ),
-                          ],
-                        ),
-                        child: Text(
-                          notificationCount > 99 ? '99+' : notificationCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(72.0); // Adjust as needed
+  Size get preferredSize => const Size.fromHeight(72.0);
 }

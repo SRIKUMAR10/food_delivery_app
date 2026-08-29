@@ -9,9 +9,11 @@ import 'seller_payment_page_event.dart';
 import 'seller_payment_page_state.dart';
 import '../../../core/widgets/shimmer_loader.dart';
 import '../../../repositories/seller_repository.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
 import '../seller_auth_shared/onboarding_back_handler.dart';
 import '../seller_auth_shared/seller_wizard_container.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
+import '../seller_ui_tokens.dart';
 
 typedef SellerPaymentPageUI = SellerPaymentPage;
 
@@ -64,7 +66,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 900;
     final isTablet = size.width > 600 && size.width <= 900;
-    final horizontalPadding = isDesktop ? 32.0 : (isTablet ? 24.0 : 16.0);
+    final horizontalPadding = SellerUiTokens.responsivePadding(size.width);
 
     return PopScope(
       canPop: !widget.isOnboardingFlow,
@@ -153,8 +155,25 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
           }
 
           return Scaffold(
-            backgroundColor: const Color(0xFFF8FAFC),
-            appBar: _buildAppBar(context),
+            backgroundColor: SellerUiTokens.pageBackground,
+            appBar: SellerAppBarPageUI(
+              title: 'Payments',
+              subtitle: 'Real-time revenue, settlements & earnings',
+              showNotification: false,
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: _buildLiveSyncBadge(),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, color: Color(0xFF475569)),
+                  tooltip: 'Refresh Data',
+                  onPressed: () {
+                    context.read<SellerPaymentPageBloc>().add(const RefreshPaymentData());
+                  },
+                ),
+              ],
+            ),
             body: SafeArea(
               child: RefreshIndicator(
                 color: const Color(0xFF4F46E5),
@@ -163,7 +182,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
                 },
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1100),
+                    constraints: const BoxConstraints(maxWidth: SellerUiTokens.maxWidthForm),
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
                       child: _buildStateContent(
@@ -184,92 +203,36 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      scrolledUnderElevation: 0.5,
-      leading: IconButton(
-        icon: const Icon(
-          Icons.arrow_back_ios_new,
-          color: Color(0xFF0F172A),
-          size: 20,
-        ),
-        onPressed: () {
-          if (widget.isOnboardingFlow) {
-            OnboardingBackHandler.handleBack(context, previousRoute: '/menuCategories');
-          } else {
-            Navigator.of(context).pop();
-          }
-        },
+  Widget _buildLiveSyncBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
       ),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Text(
-                'Payments', // Matching test expectation and title
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF0F172A),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFECFDF5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFA7F3D0)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'LIVE SYNC',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF047857),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Color(0xFF10B981),
+              shape: BoxShape.circle,
+            ),
+            child: SizedBox(width: 6, height: 6),
           ),
+          SizedBox(width: 5),
           Text(
-            'Real-time revenue, settlements & earnings',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF64748B),
+            'LIVE SYNC',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF047857),
+              letterSpacing: 0.5,
             ),
           ),
         ],
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh_rounded, color: Color(0xFF475569)),
-          tooltip: 'Refresh Data',
-          onPressed: () {
-            context.read<SellerPaymentPageBloc>().add(const RefreshPaymentData());
-          },
-        ),
-        const SizedBox(width: 8),
-      ],
     );
   }
 
@@ -633,9 +596,10 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
                     backgroundColor: const Color(0xFF4F46E5),
                     foregroundColor: Colors.white,
                     elevation: 0,
+                    minimumSize: const Size.fromHeight(SellerUiTokens.primaryButtonHeight),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
                     ),
                   ),
                 ),
@@ -652,9 +616,10 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
                     side: BorderSide(
                       color: Colors.white.withValues(alpha: 0.25),
                     ),
+                    minimumSize: const Size.fromHeight(SellerUiTokens.primaryButtonHeight),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
                     ),
                   ),
                 ),
@@ -869,7 +834,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
         border: Border.all(color: const Color(0xFFF1F5F9)),
         boxShadow: [
           BoxShadow(
@@ -1180,6 +1145,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: SellerUiTokens.cardShadow,
         ),
         child: Column(
           children: [
@@ -1328,6 +1294,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: SellerUiTokens.cardShadow,
         ),
         child: Column(
           children: [
@@ -1948,7 +1915,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
                       // Submit Button
                       SizedBox(
                         width: double.infinity,
-                        height: 52,
+                        height: SellerUiTokens.primaryButtonHeight,
                         child: ElevatedButton(
                           onPressed: () {
                             if (formKey.currentState!.validate()) {
@@ -1968,7 +1935,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4F46E5),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
                             ),
                             elevation: 0,
                           ),
@@ -2107,7 +2074,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
-                      height: 52,
+                      height: SellerUiTokens.primaryButtonHeight,
                       child: ElevatedButton(
                         onPressed: () {
                           if (formKey.currentState!.validate()) {
@@ -2131,7 +2098,7 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF4F46E5),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
                           ),
                           elevation: 0,
                         ),
@@ -2290,8 +2257,9 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4F46E5),
                 foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(SellerUiTokens.primaryButtonHeight),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
                 ),
               ),
             ),

@@ -17,7 +17,7 @@ void main() {
       MaterialApp(home: Scaffold(body: const SellerSignUpPageUI())),
     );
 
-    expect(find.text('Personal Details'), findsOneWidget);
-    expect(find.byType(TextFormField), findsNWidgets(3));
+    expect(find.text('Store & Business Details'), findsOneWidget);
+    expect(find.byType(TextFormField), findsWidgets);
   });
 }

@@ -14,7 +14,8 @@ import '../seller_payout_history_page/seller_payout_history_page__ui.dart';
 import '../seller_payment_page/seller_payment_page_ui.dart';
 import '../../../core/widgets/hoverable_widgets.dart';
 import '../../../core/widgets/shimmer_loader.dart';
-import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
+import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
+import '../seller_ui_tokens.dart';
 
 class SellerWalletPage extends StatelessWidget {
   const SellerWalletPage({super.key});
@@ -82,7 +83,12 @@ class _SellerWalletViewState extends State<SellerWalletView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: SellerUiTokens.pageBackground,
+      appBar: const SellerAppBarPageUI(
+        title: 'Wallet',
+        subtitle: 'Manage your balance and withdrawals',
+        showNotification: false,
+      ),
       body: SafeArea(
         child: BlocListener<SellerWalletBloc, SellerWalletState>(
           listener: (context, state) {
@@ -105,7 +111,7 @@ class _SellerWalletViewState extends State<SellerWalletView> {
             }
           },
           child: RefreshIndicator(
-            color: const Color(0xFFE52929),
+            color: SellerUiTokens.brand,
             onRefresh: () async {
               context.read<SellerWalletBloc>().add(const RefreshWalletData());
             },
@@ -113,13 +119,13 @@ class _SellerWalletViewState extends State<SellerWalletView> {
               builder: (context, constraints) {
                 return Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 800),
+                    constraints: const BoxConstraints(maxWidth: SellerUiTokens.maxWidthForm),
                     child: SingleChildScrollView(
                       controller: _scrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20.0,
-                        vertical: 16.0,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: SellerUiTokens.responsivePadding(constraints.maxWidth),
+                        vertical: SellerUiTokens.spacingMobile,
                       ),
                       child: BlocBuilder<SellerWalletBloc, SellerWalletState>(
                         buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
@@ -157,114 +163,13 @@ class _SellerWalletViewState extends State<SellerWalletView> {
       key: const ValueKey('loaded_wallet_content'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (Navigator.canPop(context)) ...[
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => Navigator.of(context).pop(),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: Color(0xFF1E293B),
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                  ] else if (SellerDrawerProvider.of(context) != null) ...[
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: SellerDrawerProvider.of(context),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.menu_rounded,
-                            color: Color(0xFF1E293B),
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                  ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Wallet',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Manage your balance and withdrawals',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            color: const Color(0xFF6B7280),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context),
-              color: const Color(0xFF111827),
-            ),
-          ],
-        ),
-        const SizedBox(height: 32),
         // Available Balance Card
         _buildBalanceCard(context, state),
         const SizedBox(height: 20),
 
         // Action Buttons Row
         _buildActionButtons(context, state),
-        const SizedBox(height: 32),
+        const SizedBox(height: 28),
 
         // Payout History Header
         InkWell(
@@ -307,10 +212,10 @@ class _SellerWalletViewState extends State<SellerWalletView> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               decoration: BoxDecoration(
-                color: const Color(
-                  0xFFF4F6FB,
-                ), // Light bluish background matching mockup
-                borderRadius: BorderRadius.circular(20),
+                color: SellerUiTokens.surfaceMuted,
+                borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+                border: Border.all(color: SellerUiTokens.borderSubtle),
+                boxShadow: SellerUiTokens.cardShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,7 +252,8 @@ class _SellerWalletViewState extends State<SellerWalletView> {
         // Withdraw Button
         Expanded(
           child: HoverableButton(
-            height: 52,
+            height: SellerUiTokens.primaryButtonHeight,
+            borderRadius: SellerUiTokens.radiusButton,
             gradient: const LinearGradient(
               colors: [Color(0xFFE52929), Color(0xFFDC2626)],
               begin: Alignment.topLeft,
@@ -385,7 +291,8 @@ class _SellerWalletViewState extends State<SellerWalletView> {
         // Transactions Button
         Expanded(
           child: HoverableButton(
-            height: 52,
+            height: SellerUiTokens.primaryButtonHeight,
+            borderRadius: SellerUiTokens.radiusButton,
             color: Colors.white,
             borderColor: const Color(0xFFE2E8F0),
             onPressed: () {
@@ -437,8 +344,9 @@ class _SellerWalletViewState extends State<SellerWalletView> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        borderRadius: BorderRadius.circular(SellerUiTokens.radiusCard),
+        border: Border.all(color: SellerUiTokens.borderSubtle),
+        boxShadow: SellerUiTokens.cardShadow,
       ),
       child: Column(
         children: [
@@ -514,9 +422,9 @@ class _SellerWalletViewState extends State<SellerWalletView> {
             onPressed: () =>
                 context.read<SellerWalletBloc>().add(const LoadWalletData()),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE52929),
+              backgroundColor: SellerUiTokens.brand,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(SellerUiTokens.radiusButton),
               ),
             ),
             child: const Text('Retry'),
