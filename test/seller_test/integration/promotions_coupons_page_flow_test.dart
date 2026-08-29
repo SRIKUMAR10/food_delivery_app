@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:food_delivery_app/features/seller_bloc_architecture/promotions_coupons_page_/promotions_coupons_page_ui.dart';
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  TestWidgetsFlutterBinding.ensureInitialized();
 
   group('PromotionsCouponsPage Integration Flow', () {
     testWidgets('Full flow: Load -> Add Coupon -> View', (WidgetTester tester) async {

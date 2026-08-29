@@ -6,10 +6,19 @@ import 'business_hours_page_state.dart';
 import 'business_hours_page_repository.dart';
 import 'business_hours_page_service.dart';
 import 'business_hours_page_model.dart';
+import '../../../repositories/seller_repository.dart';
+import '../seller_auth_shared/onboarding_back_handler.dart';
+import '../seller_auth_shared/seller_wizard_container.dart';
+import '../seller_auth_shared/seller_auth_shared_widgets.dart';
 
 class BusinessHoursPage extends StatelessWidget {
   final String sellerId;
-  const BusinessHoursPage({Key? key, required this.sellerId}) : super(key: key);
+  final bool isOnboardingFlow;
+  const BusinessHoursPage({
+    Key? key,
+    required this.sellerId,
+    this.isOnboardingFlow = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -17,194 +26,302 @@ class BusinessHoursPage extends StatelessWidget {
       create: (context) => BusinessHoursBloc(
         repository: BusinessHoursRepository(service: BusinessHoursService()),
       )..add(LoadBusinessHoursEvent(sellerId)),
-      child: const BusinessHoursView(),
+      child: BusinessHoursView(sellerId: sellerId, isOnboardingFlow: isOnboardingFlow),
     );
   }
 }
 
 class BusinessHoursView extends StatelessWidget {
-  const BusinessHoursView({Key? key}) : super(key: key);
+  final String sellerId;
+  final bool isOnboardingFlow;
+  const BusinessHoursView({
+    Key? key,
+    this.sellerId = '',
+    this.isOnboardingFlow = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
-      body: SafeArea(
-        child: BlocConsumer<BusinessHoursBloc, BusinessHoursState>(
-          listener: (context, state) {
-            if (state is BusinessHoursLoaded) {
-              if (state.errorMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.errorMessage!),
-                    backgroundColor: const Color(0xFFE52929),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              } else if (state.successMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.successMessage!),
-                    backgroundColor: const Color(0xFF22C55E),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
+    return PopScope(
+      canPop: !isOnboardingFlow,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (isOnboardingFlow) {
+          await OnboardingBackHandler.handleBack(context, previousRoute: '/sellerStoreDetails');
+        }
+      },
+      child: BlocConsumer<BusinessHoursBloc, BusinessHoursState>(
+        listener: (context, state) {
+          if (state is BusinessHoursLoaded) {
+            if (state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage!),
+                  backgroundColor: const Color(0xFFE52929),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } else if (state.successMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.successMessage!),
+                  backgroundColor: const Color(0xFF22C55E),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
             }
-          },
-          builder: (context, state) {
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                return Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 800),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                                onPressed: () => Navigator.of(context).pop(),
-                                color: const Color(0xFF111827),
-                                tooltip: 'Back',
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: const [
-                                    Text(
-                                      'Business Hours',
-                                      style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF111827),
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'Set your store opening and closing times',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Color(0xFF6B7280),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (state is BusinessHoursLoading || state is BusinessHoursInitial)
-                          const Expanded(child: Center(child: CircularProgressIndicator(color: Color(0xFF3B82F6))))
-                        else if (state is BusinessHoursError)
-                          Expanded(
-                            child: Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24.0),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.error_outline_rounded, size: 48, color: Color(0xFFE52929)),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      state.message,
-                                      style: const TextStyle(color: Color(0xFFE52929), fontSize: 16),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
+          }
+        },
+        builder: (context, state) {
+          if (isOnboardingFlow) {
+            return SellerWizardContainer(
+              stepIndex: 3,
+              totalSteps: 8,
+              stepBadge: 'Step 3 of 8 • Business Schedule',
+              title: 'Business Hours & Schedule',
+              subtitle: 'Define weekly operating hours and active order acceptance schedule',
+              onBack: () => OnboardingBackHandler.handleBack(context, previousRoute: '/sellerStoreDetails'),
+              bottomAction: state is BusinessHoursLoaded
+                  ? SellerWizardPrimaryButton(
+                      buttonKey: const ValueKey('continue_to_profile_live_btn'),
+                      label: 'Save & Continue to Profile Branding',
+                      onPressed: () async {
+                        final hasOpenDay = state.schedule.any((d) => d.isOpen);
+                        if (!hasOpenDay) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enable at least 1 operating day for your store before proceeding.'),
+                              backgroundColor: Color(0xFFEF4444),
+                              behavior: SnackBarBehavior.floating,
                             ),
-                          )
-                        else if (state is BusinessHoursLoaded)
-                          Expanded(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _EmergencyCloseToggle(
-                                    isEmergencyClosed: state.isEmergencyClosed,
-                                    isUpdating: state.isUpdating,
-                                  ),
-                                  const SizedBox(height: 28),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          );
+                          return;
+                        }
+
+                        final repo = SellerRepository();
+                        final uid = sellerId.isNotEmpty ? sellerId : repo.currentUser?.uid;
+                        if (uid != null && uid.isNotEmpty) {
+                          try {
+                            await repo.updateSellerData(uid, {'isBusinessHoursCompleted': true});
+                          } catch (_) {}
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Business hours saved! Moving to Step 4: Profile Branding.'),
+                              backgroundColor: Color(0xFF10B981),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/sellerProfile',
+                            arguments: {'isOnboardingFlow': true},
+                          );
+                        }
+                      },
+                    )
+                  : null,
+              child: _buildMainContent(context, state, isWizard: true),
+            );
+          }
+
+          return Scaffold(
+            backgroundColor: const Color(0xFFFAFAFA),
+            body: SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 800),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  color: const Color(0xFF111827),
+                                  tooltip: 'Back',
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: const [
                                       Text(
-                                        'Weekly Schedule',
+                                        'Business Hours',
                                         style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF1E293B),
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF111827),
+                                          letterSpacing: -0.5,
                                         ),
                                       ),
+                                      SizedBox(height: 4),
                                       Text(
-                                        'Tap time to edit',
+                                        'Set your store opening and closing times',
                                         style: TextStyle(
-                                          fontSize: 13,
-                                          color: Color(0xFF64748B),
-                                          fontWeight: FontWeight.w500,
+                                          fontSize: 14,
+                                          color: Color(0xFF6B7280),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 14),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-                                          blurRadius: 20,
-                                          offset: const Offset(0, 8),
-                                        ),
-                                      ],
-                                    ),
-                                    child: state.schedule.isEmpty
-                                        ? const Padding(
-                                            padding: EdgeInsets.all(32.0),
-                                            child: Center(
-                                              child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
-                                            ),
-                                          )
-                                        : ListView.separated(
-                                            shrinkWrap: true,
-                                            physics: const NeverScrollableScrollPhysics(),
-                                            itemCount: state.schedule.length,
-                                            separatorBuilder: (context, index) =>
-                                                const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                                            itemBuilder: (context, index) {
-                                              return _DayScheduleRow(
-                                                day: state.schedule[index],
-                                                isUpdating: state.isUpdating,
-                                              );
-                                            },
-                                          ),
-                                  ),
-                                  const SizedBox(height: 40),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          )
-                        else
-                          const SizedBox.shrink(),
-                      ],
+                          ),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                              physics: const BouncingScrollPhysics(),
+                              child: _buildMainContent(context, state, isWizard: false),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            );
-          },
-        ),
+                  );
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
+  }
+
+  Widget _buildMainContent(BuildContext context, BusinessHoursState state, {required bool isWizard}) {
+    if (state is BusinessHoursLoading || state is BusinessHoursInitial) {
+      return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: SellerAuthColors.primary)));
+    } else if (state is BusinessHoursError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 48, color: Color(0xFFE52929)),
+              const SizedBox(height: 12),
+              Text(state.message, textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      );
+    } else if (state is BusinessHoursLoaded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _EmergencyCloseToggle(
+            isEmergencyClosed: state.isEmergencyClosed,
+            isUpdating: state.isUpdating,
+          ),
+          const SizedBox(height: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text(
+                'Weekly Schedule',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              Text(
+                'Tap time to edit',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: state.schedule.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Center(
+                      child: CircularProgressIndicator(color: SellerAuthColors.primary),
+                    ),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: state.schedule.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                    itemBuilder: (context, index) {
+                      return _DayScheduleRow(
+                        day: state.schedule[index],
+                        isUpdating: state.isUpdating,
+                      );
+                    },
+                  ),
+          ),
+          if (!isWizard && isOnboardingFlow) ...[
+            const SizedBox(height: 24),
+            SellerWizardPrimaryButton(
+              buttonKey: const ValueKey('continue_to_profile_live_btn'),
+              label: 'Save & Continue to Profile Branding',
+              onPressed: () async {
+                final hasOpenDay = state.schedule.any((d) => d.isOpen);
+                if (!hasOpenDay) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enable at least 1 operating day for your store before proceeding.'),
+                      backgroundColor: Color(0xFFEF4444),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+
+                final repo = SellerRepository();
+                final uid = sellerId.isNotEmpty ? sellerId : repo.currentUser?.uid;
+                if (uid != null && uid.isNotEmpty) {
+                  try {
+                    await repo.updateSellerData(uid, {'isBusinessHoursCompleted': true});
+                  } catch (_) {}
+                }
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Business hours saved! Moving to Step 4: Profile Branding.'),
+                      backgroundColor: Color(0xFF10B981),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  Navigator.pushReplacementNamed(
+                    context,
+                    '/sellerProfile',
+                    arguments: {'isOnboardingFlow': true},
+                  );
+                }
+              },
+            ),
+          ],
+        ],
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 

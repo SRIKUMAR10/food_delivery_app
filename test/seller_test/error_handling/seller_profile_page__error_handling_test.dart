@@ -77,9 +77,9 @@ void main() {
         createdAt: DateTime(2025, 1, 1),
         isVerified: true,
       ),
-      act: (bloc) => bloc.add(const UpdateCuisines(['Biryani'])),
+      act: (bloc) => bloc.add(const UpdateLocationDetails(address: '123 New Road')),
       expect: () => [
-        isA<ProfileLoaded>().having((s) => s.cuisines, 'cuisines', ['Biryani']), // optimistic update
+        isA<ProfileLoaded>().having((s) => s.address, 'address', '123 New Road'), // optimistic update
       ],
     );
   });

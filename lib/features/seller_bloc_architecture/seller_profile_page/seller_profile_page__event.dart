@@ -157,14 +157,6 @@ class UpdateLogisticsSettings extends SellerProfilePageEvent {
       ];
 }
 
-class UpdateCuisines extends SellerProfilePageEvent {
-  final List<String> cuisines;
-
-  const UpdateCuisines(this.cuisines);
-
-  @override
-  List<Object?> get props => [cuisines];
-}
 
 class UpdateBusinessHoursSchedule extends SellerProfilePageEvent {
   final String openingHours;

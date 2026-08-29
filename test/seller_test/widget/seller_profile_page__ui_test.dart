@@ -93,7 +93,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check Header & Identity
-      expect(find.text('Restaurant Profile'), findsOneWidget);
+      expect(find.text('Store Profile'), findsOneWidget);
       expect(find.text('Royal Biryani Hub'), findsWidgets);
       expect(find.text('Owner: Chef Ramesh'), findsOneWidget);
       expect(find.text('ramesh@royalbiryani.com'), findsOneWidget);
@@ -106,12 +106,7 @@ void main() {
       // Check Section Cards
       expect(find.text('Branding & Description'), findsOneWidget);
       expect(find.text('Location & Delivery Logistics'), findsOneWidget);
-      expect(find.text('Cuisine Categories'), findsOneWidget);
       expect(find.text('Operating Hours & Schedule'), findsOneWidget);
-
-      // Check Cuisines Tags
-      expect(find.text('Biryani'), findsWidgets);
-      expect(find.text('South Indian'), findsWidgets);
 
       // Check Menu Grid
       expect(find.text('Store Management & Operations'), findsOneWidget);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:food_delivery_app/core/widgets/primary_button.dart';
+export 'seller_wizard_container.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared design tokens (Material 3 green theme — used by both auth flows)

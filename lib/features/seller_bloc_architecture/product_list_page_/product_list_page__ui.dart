@@ -2066,14 +2066,14 @@ class _FilterSheetContentState extends State<_FilterSheetContent>
     _categories = categorySet.toList()..sort();
     if (_categories.isEmpty) {
       _categories = [
+        'Fried Chicken',
         'Burgers',
         'Pizza',
-        'Chicken',
-        'Wraps',
-        'Fries & Sides',
+        'Sides',
         'Beverages',
         'Desserts',
-        'Combo Meals',
+        'Special Combos',
+        'Kids Meals',
       ]; // Fallback for UI demo
     }
 

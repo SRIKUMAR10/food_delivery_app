@@ -29,42 +29,66 @@ import '../../../core/services/google_places_service.dart';
 import 'seller_google_address_search_dialog.dart';
 import 'seller_verification_form_page.dart';
 import '../seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
+import '../seller_auth_shared/onboarding_back_handler.dart';
+import '../seller_auth_shared/seller_wizard_container.dart';
+import '../seller_auth_shared/seller_auth_shared_widgets.dart';
 
 class SellerProfilePageUI extends StatelessWidget {
-  const SellerProfilePageUI({Key? key}) : super(key: key);
+  final bool isOnboardingFlow;
+  const SellerProfilePageUI({Key? key, this.isOnboardingFlow = false}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => SellerProfilePageBloc(
-        authService: context.read<IAuthService>(),
-        profileRepository: context.read<ISellerProfileRepository>(),
-      )..add(LoadProfile()),
-      child: const Scaffold(
-        backgroundColor: Color(0xFFF9FAFB),
-        body: SafeArea(child: ResponsiveProfileLayout()),
+    return PopScope(
+      canPop: !isOnboardingFlow,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (isOnboardingFlow) {
+          await OnboardingBackHandler.handleBack(context, previousRoute: '/businessHours');
+        }
+      },
+      child: BlocProvider(
+        create: (context) => SellerProfilePageBloc(
+          authService: context.read<IAuthService>(),
+          profileRepository: context.read<ISellerProfileRepository>(),
+        )..add(LoadProfile()),
+        child: isOnboardingFlow
+            ? SellerWizardContainer(
+                stepIndex: 4,
+                totalSteps: 8,
+                stepBadge: 'Step 4 of 8 • Profile Branding & Live Switch',
+                title: 'Profile Branding & Live Switch',
+                subtitle: 'Upload store banner, logo, bio tagline, and store live switch',
+                onBack: () => OnboardingBackHandler.handleBack(context, previousRoute: '/businessHours'),
+                child: const ProfileContent(isOnboardingFlow: true),
+              )
+            : Scaffold(
+                backgroundColor: const Color(0xFFF9FAFB),
+                body: SafeArea(child: ResponsiveProfileLayout(isOnboardingFlow: isOnboardingFlow)),
+              ),
       ),
     );
   }
 }
 
 class ResponsiveProfileLayout extends StatelessWidget {
-  const ResponsiveProfileLayout({Key? key}) : super(key: key);
+  final bool isOnboardingFlow;
+  const ResponsiveProfileLayout({Key? key, this.isOnboardingFlow = false}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 1100) {
-          return const Center(
-            child: SizedBox(width: 1100, child: ProfileContent()),
+          return Center(
+            child: SizedBox(width: 1100, child: ProfileContent(isOnboardingFlow: isOnboardingFlow)),
           );
         } else if (constraints.maxWidth > 768) {
-          return const Center(
-            child: SizedBox(width: 768, child: ProfileContent()),
+          return Center(
+            child: SizedBox(width: 768, child: ProfileContent(isOnboardingFlow: isOnboardingFlow)),
           );
         }
-        return const ProfileContent();
+        return ProfileContent(isOnboardingFlow: isOnboardingFlow);
       },
     );
   }
@@ -112,7 +136,8 @@ class ProfileSkeletonLoader extends StatelessWidget {
 }
 
 class ProfileContent extends StatelessWidget {
-  const ProfileContent({Key? key}) : super(key: key);
+  final bool isOnboardingFlow;
+  const ProfileContent({Key? key, this.isOnboardingFlow = false}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -163,11 +188,17 @@ class ProfileContent extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            if (Navigator.canPop(context)) ...[
+                            if (isOnboardingFlow || Navigator.canPop(context)) ...[
                               Material(
                                 color: Colors.transparent,
                                 child: InkWell(
-                                  onTap: () => Navigator.of(context).pop(),
+                                  onTap: () {
+                                    if (isOnboardingFlow) {
+                                      OnboardingBackHandler.handleBack(context, previousRoute: '/businessHours');
+                                    } else {
+                                      Navigator.of(context).pop();
+                                    }
+                                  },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     padding: const EdgeInsets.all(8),
@@ -225,18 +256,33 @@ class ProfileContent extends StatelessWidget {
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Text(
-                                    'Restaurant Profile',
+                                children: [
+                                  if (isOnboardingFlow) ...[
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEFF6FF),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                                      ),
+                                      child: const Text(
+                                        'Step 4 of 8 (Profile Branding & Live Switch)',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF1E40AF)),
+                                      ),
+                                    ),
+                                  ],
+                                  const Text(
+                                    'Store Profile',
                                     style: TextStyle(
-                                      fontSize: 32,
+                                      fontSize: 28,
                                       fontWeight: FontWeight.w800,
                                       color: Color(0xFF111827),
                                       letterSpacing: -0.5,
                                     ),
                                   ),
-                                  SizedBox(height: 4),
-                                  Text(
+                                  const SizedBox(height: 4),
+                                  const Text(
                                     'Manage branding, delivery logistics, operations & business settings',
                                     style: TextStyle(
                                       fontSize: 14,
@@ -279,6 +325,50 @@ class ProfileContent extends StatelessWidget {
 
                   // Settings List Menu Grid
                   _MenuGrid(state: state),
+                  if (isOnboardingFlow) ...[
+                    const SizedBox(height: 24),
+                    SellerWizardPrimaryButton(
+                      buttonKey: const ValueKey('continue_to_menu_categories_btn'),
+                      label: 'Save & Continue to Menu Categories',
+                      onPressed: () async {
+                        if (state.storeName.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please provide your Store Name before proceeding.'),
+                              backgroundColor: Color(0xFFEF4444),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+
+                        final repo = SellerRepository();
+                        final uid = repo.currentUser?.uid;
+                        if (uid != null && uid.isNotEmpty) {
+                          try {
+                            await repo.updateSellerData(uid, {'isProfileSetupCompleted': true});
+                          } catch (_) {}
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Profile branding saved! Moving to Step 5: Menu Categories.'),
+                              backgroundColor: Color(0xFF10B981),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/menuCategories',
+                            arguments: {
+                              'isOnboardingFlow': true,
+                              'sellerId': uid ?? '',
+                            },
+                          );
+                        }
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 80),
                 ],
               ),
@@ -837,20 +927,11 @@ class _ProfileSectionsGrid extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _buildCuisineCard(context)),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildScheduleCard(context)),
-                ],
-              ),
+              _buildScheduleCard(context),
             ] else ...[
               _buildBrandingCard(context),
               const SizedBox(height: 16),
               _buildLocationLogisticsCard(context),
-              const SizedBox(height: 16),
-              _buildCuisineCard(context),
               const SizedBox(height: 16),
               _buildScheduleCard(context),
             ],
@@ -900,29 +981,6 @@ class _ProfileSectionsGrid extends StatelessWidget {
             _buildInfoRow('GPS Coordinates', '${state.latitude!.toStringAsFixed(4)}, ${state.longitude!.toStringAsFixed(4)}'),
         ],
       ),
-    );
-  }
-
-  Widget _buildCuisineCard(BuildContext context) {
-    return _SectionCard(
-      title: 'Cuisine Categories',
-      icon: Icons.restaurant_menu_outlined,
-      iconColor: const Color(0xFFF59E0B),
-      onEdit: () => _showEditCuisinesDialog(context),
-      child: state.cuisines.isEmpty
-          ? const Text('No cuisines selected. Click Edit to add tags.', style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)))
-          : Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: state.cuisines.map((c) {
-                return Chip(
-                  label: Text(c, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
-                  backgroundColor: const Color(0xFFF1F5F9),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                );
-              }).toList(),
-            ),
     );
   }
 
@@ -1547,140 +1605,6 @@ class _ProfileSectionsGrid extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             elevation: 2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showEditCuisinesDialog(BuildContext context) {
-    final bloc = context.read<SellerProfilePageBloc>();
-    final available = [
-      'South Indian',
-      'North Indian',
-      'Biryani',
-      'Chinese',
-      'Fast Food',
-      'Desserts',
-      'Beverages',
-      'Italian',
-      'Bakery',
-      'Street Food',
-    ];
-    final selected = List<String>.from(state.cuisines);
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => BlocProvider<SellerProfilePageBloc>.value(
-        value: bloc,
-        child: StatefulBuilder(
-          builder: (stateCtx, setDialogState) => Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            clipBehavior: Clip.antiAlias,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEF3C7),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.restaurant_menu_outlined, color: Color(0xFFF59E0B), size: 22),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text(
-                                'Manage Cuisine Categories',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Select cuisines to help customers discover your menu',
-                                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Color(0xFF6B7280), size: 20),
-                          onPressed: () => Navigator.of(dialogCtx).pop(),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 24),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: available.map((c) {
-                        final isSel = selected.contains(c);
-                        return FilterChip(
-                          label: Text(c),
-                          selected: isSel,
-                          selectedColor: const Color(0xFFFEE2E2),
-                          checkmarkColor: const Color(0xFFE52929),
-                          labelStyle: TextStyle(
-                            color: isSel ? const Color(0xFFE52929) : const Color(0xFF1E293B),
-                            fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
-                          ),
-                          onSelected: (val) {
-                            setDialogState(() {
-                              if (val) {
-                                selected.add(c);
-                              } else {
-                                selected.remove(c);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.of(dialogCtx).pop(),
-                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            bloc.add(UpdateCuisines(selected));
-                            Navigator.of(dialogCtx).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Cuisine categories updated successfully!'),
-                                backgroundColor: Color(0xFF10B981),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.check_circle_outline, size: 18),
-                          label: const Text('Save Cuisines', style: TextStyle(fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE52929),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ],

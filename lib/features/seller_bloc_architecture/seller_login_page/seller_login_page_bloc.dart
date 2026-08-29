@@ -126,14 +126,17 @@ class SellerLoginPageBloc
         await authRepository.signIn(state.emailOrPhone, state.password);
         final uid = authRepository.currentUser?.uid;
         bool isKycCompleted = false;
+        SellerOnboardingStage stage = SellerOnboardingStage.completed;
         if (uid != null) {
           await authRepository.updateSellerData(uid, {'isOnline': true});
           isKycCompleted = await authRepository.checkKycCompleted(uid);
+          stage = await authRepository.checkOnboardingStage(uid);
         }
         emit(state.copyWith(
           status: SellerLoginStatus.success,
           step: SellerLoginStep.loginSuccess,
           isKycCompleted: isKycCompleted,
+          onboardingStage: stage,
         ));
       } else if (state.isPhoneLogin) {
         // Phone login without password → send OTP flow
@@ -152,14 +155,17 @@ class SellerLoginPageBloc
         await authRepository.signIn(state.emailOrPhone, state.password);
         final uid = authRepository.currentUser?.uid;
         bool isKycCompleted = false;
+        SellerOnboardingStage stage = SellerOnboardingStage.completed;
         if (uid != null) {
           await authRepository.updateSellerData(uid, {'isOnline': true});
           isKycCompleted = await authRepository.checkKycCompleted(uid);
+          stage = await authRepository.checkOnboardingStage(uid);
         }
         emit(state.copyWith(
           status: SellerLoginStatus.success,
           step: SellerLoginStep.loginSuccess,
           isKycCompleted: isKycCompleted,
+          onboardingStage: stage,
         ));
       }
     } catch (e) {
@@ -254,14 +260,17 @@ class SellerLoginPageBloc
       await authRepository.signIn(state.emailOrPhone, state.password);
       final uid = authRepository.currentUser?.uid;
       bool isKycCompleted = false;
+      SellerOnboardingStage stage = SellerOnboardingStage.completed;
       if (uid != null) {
         await authRepository.updateSellerData(uid, {'isOnline': true});
         isKycCompleted = await authRepository.checkKycCompleted(uid);
+        stage = await authRepository.checkOnboardingStage(uid);
       }
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
         isKycCompleted: isKycCompleted,
+        onboardingStage: stage,
       ));
     } catch (e) {
       emit(state.copyWith(
@@ -298,14 +307,17 @@ class SellerLoginPageBloc
         _cancelOtpTimer();
         final uid = authRepository.currentUser?.uid;
         bool isKycCompleted = false;
+        SellerOnboardingStage stage = SellerOnboardingStage.completed;
         if (uid != null) {
           await authRepository.updateSellerData(uid, {'isOnline': true});
           isKycCompleted = await authRepository.checkKycCompleted(uid);
+          stage = await authRepository.checkOnboardingStage(uid);
         }
         emit(state.copyWith(
           status: SellerLoginStatus.success,
           step: SellerLoginStep.loginSuccess,
           isKycCompleted: isKycCompleted,
+          onboardingStage: stage,
         ));
       } else {
         emit(state.copyWith(
@@ -445,14 +457,17 @@ class SellerLoginPageBloc
       final credential = await authRepository.signInWithGoogle();
       final uid = credential.user?.uid ?? authRepository.currentUser?.uid;
       bool isKycCompleted = false;
+      SellerOnboardingStage stage = SellerOnboardingStage.completed;
       if (uid != null) {
         await authRepository.updateSellerData(uid, {'isOnline': true});
         isKycCompleted = await authRepository.checkKycCompleted(uid);
+        stage = await authRepository.checkOnboardingStage(uid);
       }
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
         isKycCompleted: isKycCompleted,
+        onboardingStage: stage,
       ));
     } catch (e) {
       final str = e.toString();
@@ -489,14 +504,17 @@ class SellerLoginPageBloc
       final credential = await authRepository.signInWithApple();
       final uid = credential.user?.uid ?? authRepository.currentUser?.uid;
       bool isKycCompleted = false;
+      SellerOnboardingStage stage = SellerOnboardingStage.completed;
       if (uid != null) {
         await authRepository.updateSellerData(uid, {'isOnline': true});
         isKycCompleted = await authRepository.checkKycCompleted(uid);
+        stage = await authRepository.checkOnboardingStage(uid);
       }
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
         isKycCompleted: isKycCompleted,
+        onboardingStage: stage,
       ));
     } catch (e) {
       final str = e.toString();
@@ -564,10 +582,12 @@ class SellerLoginPageBloc
     if (user != null &&
         state.step != SellerLoginStep.loginSuccess) {
       final isKycCompleted = await authRepository.checkKycCompleted(user.uid);
+      final stage = await authRepository.checkOnboardingStage(user.uid);
       emit(state.copyWith(
         status: SellerLoginStatus.success,
         step: SellerLoginStep.loginSuccess,
         isKycCompleted: isKycCompleted,
+        onboardingStage: stage,
       ));
     }
   }

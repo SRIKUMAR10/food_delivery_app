@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../features/buyer_bloc_architecture/CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import '../../features/buyer_bloc_architecture/onboarding_page/onboarding_page_UI.dart';
 import '../../features/buyer_bloc_architecture/buyer_login_page/buyer_login_page_ui.dart';
@@ -8,8 +9,14 @@ import '../../features/seller_bloc_architecture/seller_onboard_page/seller_onboa
 import '../../features/seller_bloc_architecture/seller_login_page/seller_login_page_ui.dart';
 import '../../features/seller_bloc_architecture/seller_sign_up_page/seller_sign_up_page_ui.dart';
 import '../../features/seller_bloc_architecture/seller_profile_page/seller_verification_form_page.dart';
+import '../../features/seller_bloc_architecture/seller_store_details_page/seller_store_details_page__ui.dart';
+import '../../features/seller_bloc_architecture/business_hours_page_/business_hours_page_ui.dart';
+import '../../features/seller_bloc_architecture/seller_profile_page/seller_profile_page__ui.dart';
+import '../../features/seller_bloc_architecture/menu_category_management_page_/menu_category_management_page_ui.dart';
+import '../../features/seller_bloc_architecture/seller_payment_page/seller_payment_page_ui.dart';
+import '../../features/seller_bloc_architecture/seller_setting_page/seller_logistics_alerts_page.dart';
+import '../../features/seller_bloc_architecture/seller_dashboard_page/seller_store_launch_page.dart';
 import '../../features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart';
-import '../../features/Delivery Partner Bloc Architecture/Delivery_onboarding_page/Delivery_onboarding_page_ui.dart';
 import '../../features/Delivery Partner Bloc Architecture/Delivery_Login Page/Delivery_Login Page_ui.dart';
 import '../../features/Delivery Partner Bloc Architecture/Delivery_Sign_Up_page/Delivery_Sign_Up_page_ui.dart';
 import '../../features/Delivery Partner Bloc Architecture/Delivery_Forgot_Password_page/Delivery_Forgot_Password_page_ui.dart';
@@ -37,12 +44,19 @@ class AppRouter {
   static const String trackOrder = '/trackOrder';
 
   // Seller Routes
-  static const String sellerLogin = '/sellerlogin';
+  static const String sellerLogin = '/sellerLogin';
   static const String login = '/login';
   static const String sellerSignUp = '/sellerSignUp';
   static const String sellerOnboarding = '/sellerOnboarding';
   static const String sellerDashboard = '/sellerDashboard';
   static const String sellerVerificationForm = '/sellerVerificationForm';
+  static const String sellerStoreDetails = '/sellerStoreDetails';
+  static const businessHours = '/businessHours';
+  static const String sellerProfile = '/sellerProfile';
+  static const String menuCategories = '/menuCategories';
+  static const String sellerPayment = '/sellerPayment';
+  static const String sellerLogisticsAlerts = '/sellerLogisticsAlerts';
+  static const String sellerStoreLaunch = '/sellerStoreLaunch';
 
   // Delivery Partner Routes
   static const String deliveryLogin = '/deliveryLogin';
@@ -98,6 +112,8 @@ class AppRouter {
 
       // Seller Navigation
       case sellerLogin:
+      case '/sellerlogin':
+      case '/login':
       case login:
         return MaterialPageRoute(
           settings: settings,
@@ -122,6 +138,64 @@ class AppRouter {
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => const SellerVerificationFormPage(),
+        );
+      case sellerStoreDetails:
+        final isOnboardingFlow = args['isOnboardingFlow'] == true || args['onboarding'] == 'true';
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => SellerStoreDetailsPage(isOnboardingFlow: isOnboardingFlow),
+        );
+      case businessHours:
+        final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+        final sellerId = (args['sellerId'] as String?)?.isNotEmpty == true
+            ? (args['sellerId'] as String)
+            : currentUid;
+        final isOnboardingFlow = args['isOnboardingFlow'] == true || args['onboarding'] == 'true';
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BusinessHoursPage(sellerId: sellerId, isOnboardingFlow: isOnboardingFlow),
+        );
+      case sellerProfile:
+        final isOnboardingFlow = args['isOnboardingFlow'] == true || args['onboarding'] == 'true';
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => SellerProfilePageUI(isOnboardingFlow: isOnboardingFlow),
+        );
+      case menuCategories:
+        final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+        final sellerId = (args['sellerId'] as String?)?.isNotEmpty == true
+            ? (args['sellerId'] as String)
+            : currentUid;
+        final isOnboardingFlow = args['isOnboardingFlow'] == true || args['onboarding'] == 'true';
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => MenuCategoryManagementPage(sellerId: sellerId, isOnboardingFlow: isOnboardingFlow),
+        );
+      case sellerPayment:
+        final isOnboardingFlow = args['isOnboardingFlow'] == true || args['onboarding'] == 'true';
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => SellerPaymentPageUI(isOnboardingFlow: isOnboardingFlow),
+        );
+      case sellerLogisticsAlerts:
+        final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+        final sellerId = (args['sellerId'] as String?)?.isNotEmpty == true
+            ? (args['sellerId'] as String)
+            : currentUid;
+        final isOnboardingFlow = args['isOnboardingFlow'] == true || args['onboarding'] == 'true';
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => SellerLogisticsAlertsPage(sellerId: sellerId, isOnboardingFlow: isOnboardingFlow),
+        );
+      case sellerStoreLaunch:
+        final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+        final sellerId = (args['sellerId'] as String?)?.isNotEmpty == true
+            ? (args['sellerId'] as String)
+            : currentUid;
+        final isOnboardingFlow = args['isOnboardingFlow'] == true || args['onboarding'] == 'true';
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => SellerStoreLaunchPage(sellerId: sellerId, isOnboardingFlow: isOnboardingFlow),
         );
 
       // Delivery Partner Navigation
@@ -219,7 +293,7 @@ class AppRouter {
   static Route<dynamic> unknownRoute(RouteSettings settings) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => Scaffold(
+      builder: (context) => Scaffold(
         appBar: AppBar(title: const Text('Page Not Found')),
         body: Center(
           child: Column(
@@ -233,7 +307,9 @@ class AppRouter {
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.of(context).pushReplacementNamed(sellerLogin);
+                },
                 icon: const Icon(Icons.home_rounded),
                 label: const Text('Return Home'),
               ),

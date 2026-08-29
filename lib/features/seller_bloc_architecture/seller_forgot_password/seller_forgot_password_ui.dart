@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:food_delivery_app/repositories/seller_repository.dart';
-import '../../../core/widgets/hoverable_widgets.dart';
+import '../seller_auth_shared/seller_auth_shared_widgets.dart';
+import '../seller_login_page/seller_login_page_bloc.dart';
+import '../seller_login_page/seller_login_page_event.dart';
 import 'seller_forgot_password_bloc.dart';
 import 'seller_forgot_password_event.dart';
 import 'seller_forgot_password_state.dart';
@@ -48,7 +51,7 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
       curve: Curves.easeIn,
     );
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
+      begin: const Offset(0, 0.1),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
@@ -66,10 +69,20 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
     super.dispose();
   }
 
+  void _handleBack(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      try {
+        context.read<SellerLoginPageBloc>().add(const SellerLoginBackPressed());
+      } catch (_) {}
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: SellerAuthColors.background,
       body: SafeArea(
         child: BlocListener<SellerForgotPasswordBloc, SellerForgotPasswordState>(
           listenWhen: (previous, current) =>
@@ -81,19 +94,33 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
 
             if (state.status == SellerForgotPasswordStatus.success) {
               messenger.showSnackBar(
-                const SnackBar(
-                  content: Text('Password reset successfully! Please log in.'),
-                  backgroundColor: Color(0xFF10B981),
+                SnackBar(
+                  content: Text(
+                    'Password reset successfully! Please log in.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
                   behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
                 ),
               );
-              Navigator.pop(context);
+              _handleBack(context);
             } else if (state.status == SellerForgotPasswordStatus.otpSent) {
               messenger.showSnackBar(
-                const SnackBar(
-                  content: Text('OTP sent successfully to your mobile number.'),
-                  backgroundColor: Color(0xFF10B981),
+                SnackBar(
+                  content: Text(
+                    'OTP sent successfully to your mobile number.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
                   behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
                 ),
               );
             } else if ((state.status == SellerForgotPasswordStatus.failure ||
@@ -102,16 +129,23 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                 state.errorMessage!.isNotEmpty) {
               messenger.showSnackBar(
                 SnackBar(
-                  content: Text(state.errorMessage!),
-                  backgroundColor: const Color(0xFFEF4444),
+                  content: Text(
+                    state.errorMessage!,
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.error,
                   behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
                 ),
               );
             }
           },
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 800),
                 child: Column(
@@ -125,31 +159,32 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                             children: [
                               Text(
                                 'Reset Password',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 36,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF111827),
+                                style: GoogleFonts.inter(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: SellerAuthColors.textDark,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               Text(
                                 'Verify mobile number & create new password',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 15,
-                                  color: const Color(0xFF6B7280),
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  color: SellerAuthColors.textMid,
                                 ),
                               ),
                             ],
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => Navigator.pop(context),
-                          color: const Color(0xFF111827),
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                          onPressed: () => _handleBack(context),
+                          color: SellerAuthColors.textDark,
+                          tooltip: 'Back',
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 28),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 520),
                       child: FadeTransition(
@@ -160,12 +195,16 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                             padding: const EdgeInsets.all(32),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: SellerAuthColors.divider,
+                                width: 1,
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 24,
-                                  offset: const Offset(0, 12),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
                                 ),
                               ],
                             ),
@@ -177,13 +216,13 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                   child: Container(
                                     padding: const EdgeInsets.all(16),
                                     decoration: const BoxDecoration(
-                                      color: Color(0xFFFEE2E2),
+                                      color: SellerAuthColors.primarySurface,
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
                                       Icons.lock_reset_rounded,
-                                      size: 44,
-                                      color: Color(0xFFE52929),
+                                      size: 40,
+                                      color: SellerAuthColors.primary,
                                     ),
                                   ),
                                 ),
@@ -191,19 +230,19 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                 Text(
                                   'Reset Your Password',
                                   textAlign: TextAlign.center,
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.inter(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF0F172A),
+                                    color: SellerAuthColors.textDark,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   'Enter your registered mobile number to get an OTP and set your new password.',
                                   textAlign: TextAlign.center,
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.inter(
                                     fontSize: 14,
-                                    color: const Color(0xFF64748B),
+                                    color: SellerAuthColors.textMid,
                                     height: 1.4,
                                   ),
                                 ),
@@ -212,10 +251,10 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                 // Mobile Number Label & Input
                                 Text(
                                   'Mobile Number',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.inter(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF334155),
+                                    color: SellerAuthColors.textDark,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -242,62 +281,88 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                               SellerForgotPasswordPhoneChanged(value),
                                             ),
                                             keyboardType: TextInputType.phone,
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 16,
-                                              color: const Color(0xFF0F172A),
+                                            inputFormatters: [
+                                              FilteringTextInputFormatter.digitsOnly,
+                                              LengthLimitingTextInputFormatter(10),
+                                            ],
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              color: SellerAuthColors.textDark,
                                             ),
                                             decoration: InputDecoration(
                                               hintText: 'Enter 10-digit mobile number',
-                                              hintStyle: GoogleFonts.plusJakartaSans(
-                                                color: const Color(0xFF94A3B8),
+                                              hintStyle: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                color: SellerAuthColors.textLight,
                                               ),
                                               prefixIcon: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  const SizedBox(width: 12),
+                                                  const SizedBox(width: 14),
                                                   const Icon(
                                                     Icons.phone_outlined,
-                                                    color: Color(0xFF94A3B8),
-                                                    size: 20,
+                                                    color: SellerAuthColors.textLight,
+                                                    size: 18,
                                                   ),
                                                   const SizedBox(width: 6),
                                                   Text(
                                                     '+91',
-                                                    style: GoogleFonts.plusJakartaSans(
-                                                      fontWeight: FontWeight.bold,
+                                                    style: GoogleFonts.inter(
+                                                      fontWeight: FontWeight.w600,
                                                       fontSize: 14,
-                                                      color: const Color(0xFF0F172A),
+                                                      color: SellerAuthColors.textDark,
                                                     ),
                                                   ),
                                                   Container(
-                                                    height: 20,
+                                                    height: 18,
                                                     width: 1,
                                                     margin: const EdgeInsets.symmetric(
-                                                        horizontal: 8),
-                                                    color: const Color(0xFFCBD5E1),
+                                                        horizontal: 10),
+                                                    color: SellerAuthColors.divider,
                                                   ),
                                                 ],
                                               ),
                                               errorText: state.phoneError,
                                               filled: true,
-                                              fillColor: const Color(0xFFF8FAFC),
+                                              fillColor: Colors.white,
+                                              contentPadding: const EdgeInsets.symmetric(
+                                                horizontal: 16,
+                                                vertical: 14,
+                                              ),
                                               border: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(16),
-                                                borderSide: BorderSide.none,
+                                                borderRadius: BorderRadius.circular(12),
+                                                borderSide: const BorderSide(
+                                                  color: SellerAuthColors.inputBorder,
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                                borderSide: const BorderSide(
+                                                  color: SellerAuthColors.inputBorder,
+                                                  width: 1,
+                                                ),
                                               ),
                                               focusedBorder: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(16),
+                                                borderRadius: BorderRadius.circular(12),
                                                 borderSide: const BorderSide(
-                                                  color: Color(0xFFE52929),
-                                                  width: 2,
+                                                  color: SellerAuthColors.primary,
+                                                  width: 1.5,
+                                                ),
+                                              ),
+                                              errorBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                                borderSide: const BorderSide(
+                                                  color: SellerAuthColors.error,
+                                                  width: 1.5,
                                                 ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
+                                        const SizedBox(width: 10),
                                         SizedBox(
-                                          height: 54,
+                                          height: 48,
                                           child: ElevatedButton(
                                             onPressed: (isSendingOtp || isSubmitting)
                                                 ? null
@@ -308,10 +373,10 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                                     );
                                                   },
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFFE52929),
+                                              backgroundColor: SellerAuthColors.primary,
                                               foregroundColor: Colors.white,
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(16),
+                                                borderRadius: BorderRadius.circular(12),
                                               ),
                                               elevation: 0,
                                               padding: const EdgeInsets.symmetric(
@@ -319,8 +384,8 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                             ),
                                             child: isSendingOtp
                                                 ? const SizedBox(
-                                                    width: 20,
-                                                    height: 20,
+                                                    width: 18,
+                                                    height: 18,
                                                     child: CircularProgressIndicator(
                                                       strokeWidth: 2,
                                                       color: Colors.white,
@@ -330,8 +395,8 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                                     state.verificationId != null
                                                         ? 'Resend'
                                                         : 'Get OTP',
-                                                    style: GoogleFonts.plusJakartaSans(
-                                                      fontWeight: FontWeight.bold,
+                                                    style: GoogleFonts.inter(
+                                                      fontWeight: FontWeight.w600,
                                                       fontSize: 13,
                                                     ),
                                                   ),
@@ -346,10 +411,10 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                 // OTP Code Label & Input
                                 Text(
                                   'OTP Code',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.inter(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF334155),
+                                    color: SellerAuthColors.textDark,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -365,35 +430,61 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                           .add(SellerForgotPasswordOtpChanged(value)),
                                       keyboardType: TextInputType.number,
                                       maxLength: 6,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 16,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      style: GoogleFonts.inter(
+                                        fontSize: 15,
                                         letterSpacing: 2.0,
                                         fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF0F172A),
+                                        color: SellerAuthColors.textDark,
                                       ),
                                       decoration: InputDecoration(
                                         counterText: '',
                                         hintText: 'Enter 6-digit OTP',
-                                        hintStyle: GoogleFonts.plusJakartaSans(
+                                        hintStyle: GoogleFonts.inter(
                                           letterSpacing: 0,
-                                          color: const Color(0xFF94A3B8),
+                                          fontSize: 14,
+                                          color: SellerAuthColors.textLight,
                                         ),
                                         prefixIcon: const Icon(
                                           Icons.pin_outlined,
-                                          color: Color(0xFF94A3B8),
+                                          color: SellerAuthColors.textLight,
+                                          size: 20,
                                         ),
                                         errorText: state.otpError,
                                         filled: true,
-                                        fillColor: const Color(0xFFF8FAFC),
+                                        fillColor: Colors.white,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 14,
+                                        ),
                                         border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(16),
-                                          borderSide: BorderSide.none,
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: SellerAuthColors.inputBorder,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: SellerAuthColors.inputBorder,
+                                            width: 1,
+                                          ),
                                         ),
                                         focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(16),
+                                          borderRadius: BorderRadius.circular(12),
                                           borderSide: const BorderSide(
-                                            color: Color(0xFFE52929),
-                                            width: 2,
+                                            color: SellerAuthColors.primary,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        errorBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: SellerAuthColors.error,
+                                            width: 1.5,
                                           ),
                                         ),
                                       ),
@@ -405,10 +496,10 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                 // Create Password Label & Input
                                 Text(
                                   'Create Password',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.inter(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF334155),
+                                    color: SellerAuthColors.textDark,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -426,25 +517,28 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                         SellerForgotPasswordPasswordChanged(value),
                                       ),
                                       obscureText: !state.isPasswordVisible,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 16,
-                                        color: const Color(0xFF0F172A),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        color: SellerAuthColors.textDark,
                                       ),
                                       decoration: InputDecoration(
                                         hintText: 'Enter new password (min 6 characters)',
-                                        hintStyle: GoogleFonts.plusJakartaSans(
-                                          color: const Color(0xFF94A3B8),
+                                        hintStyle: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          color: SellerAuthColors.textLight,
                                         ),
                                         prefixIcon: const Icon(
-                                          Icons.lock_outline,
-                                          color: Color(0xFF94A3B8),
+                                          Icons.lock_outline_rounded,
+                                          color: SellerAuthColors.textLight,
+                                          size: 20,
                                         ),
                                         suffixIcon: IconButton(
                                           icon: Icon(
                                             state.isPasswordVisible
-                                                ? Icons.visibility
-                                                : Icons.visibility_off,
-                                            color: const Color(0xFF94A3B8),
+                                                ? Icons.visibility_outlined
+                                                : Icons.visibility_off_outlined,
+                                            color: SellerAuthColors.textLight,
+                                            size: 20,
                                           ),
                                           onPressed: () => bloc.add(
                                             const SellerForgotPasswordTogglePasswordVisibility(),
@@ -452,16 +546,37 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                         ),
                                         errorText: state.passwordError,
                                         filled: true,
-                                        fillColor: const Color(0xFFF8FAFC),
+                                        fillColor: Colors.white,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 14,
+                                        ),
                                         border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(16),
-                                          borderSide: BorderSide.none,
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: SellerAuthColors.inputBorder,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: SellerAuthColors.inputBorder,
+                                            width: 1,
+                                          ),
                                         ),
                                         focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(16),
+                                          borderRadius: BorderRadius.circular(12),
                                           borderSide: const BorderSide(
-                                            color: Color(0xFFE52929),
-                                            width: 2,
+                                            color: SellerAuthColors.primary,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        errorBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: SellerAuthColors.error,
+                                            width: 1.5,
                                           ),
                                         ),
                                       ),
@@ -473,10 +588,10 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                 // Confirm Password Label & Input
                                 Text(
                                   'Confirm Password',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.inter(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF334155),
+                                    color: SellerAuthColors.textDark,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -495,25 +610,28 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                         SellerForgotPasswordConfirmPasswordChanged(value),
                                       ),
                                       obscureText: !state.isConfirmPasswordVisible,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 16,
-                                        color: const Color(0xFF0F172A),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        color: SellerAuthColors.textDark,
                                       ),
                                       decoration: InputDecoration(
                                         hintText: 'Confirm your new password',
-                                        hintStyle: GoogleFonts.plusJakartaSans(
-                                          color: const Color(0xFF94A3B8),
+                                        hintStyle: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          color: SellerAuthColors.textLight,
                                         ),
                                         prefixIcon: const Icon(
-                                          Icons.lock_outline,
-                                          color: Color(0xFF94A3B8),
+                                          Icons.lock_outline_rounded,
+                                          color: SellerAuthColors.textLight,
+                                          size: 20,
                                         ),
                                         suffixIcon: IconButton(
                                           icon: Icon(
                                             state.isConfirmPasswordVisible
-                                                ? Icons.visibility
-                                                : Icons.visibility_off,
-                                            color: const Color(0xFF94A3B8),
+                                                ? Icons.visibility_outlined
+                                                : Icons.visibility_off_outlined,
+                                            color: SellerAuthColors.textLight,
+                                            size: 20,
                                           ),
                                           onPressed: () => bloc.add(
                                             const SellerForgotPasswordToggleConfirmPasswordVisibility(),
@@ -521,16 +639,37 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                         ),
                                         errorText: state.confirmPasswordError,
                                         filled: true,
-                                        fillColor: const Color(0xFFF8FAFC),
+                                        fillColor: Colors.white,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 14,
+                                        ),
                                         border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(16),
-                                          borderSide: BorderSide.none,
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: SellerAuthColors.inputBorder,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: SellerAuthColors.inputBorder,
+                                            width: 1,
+                                          ),
                                         ),
                                         focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(16),
+                                          borderRadius: BorderRadius.circular(12),
                                           borderSide: const BorderSide(
-                                            color: Color(0xFFE52929),
-                                            width: 2,
+                                            color: SellerAuthColors.primary,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        errorBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: SellerAuthColors.error,
+                                            width: 1.5,
                                           ),
                                         ),
                                       ),
@@ -547,11 +686,9 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                   builder: (context, state) {
                                     final isLoading = state.status ==
                                         SellerForgotPasswordStatus.submitting;
-                                    return HoverableButton(
-                                      height: 56,
-                                      color: const Color(0xFFE52929),
-                                      shadowColor: const Color(0xFFE52929)
-                                          .withValues(alpha: 0.3),
+                                    return SellerPrimaryButton(
+                                      label: 'Reset Password',
+                                      isLoading: isLoading,
                                       onPressed: isLoading
                                           ? null
                                           : () {
@@ -560,23 +697,6 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
                                                   .read<SellerForgotPasswordBloc>()
                                                   .add(const SellerForgotPasswordSubmitted());
                                             },
-                                      child: isLoading
-                                          ? const SizedBox(
-                                              width: 24,
-                                              height: 24,
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : Text(
-                                              'Reset Password',
-                                              style: GoogleFonts.plusJakartaSans(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
                                     );
                                   },
                                 ),
@@ -596,5 +716,6 @@ class _SellerForgotPasswordViewState extends State<_SellerForgotPasswordView>
     );
   }
 }
+
 
 

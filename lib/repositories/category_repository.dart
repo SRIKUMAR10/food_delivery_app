@@ -10,12 +10,14 @@ class CategoryRepository {
   /// Default fallback categories when Firestore global_categories is unpopulated.
   static final List<FoodCategory> defaultCategories = [
     const FoodCategory(id: 'cat_all', name: 'All', emoji: '🔥', isSelected: true, size: 35),
+    const FoodCategory(id: 'cat_chicken', name: 'Fried Chicken', emoji: '🍗', isSelected: false, size: 35),
     const FoodCategory(id: 'cat_burgers', name: 'Burgers', emoji: '🍔', isSelected: false, size: 35),
     const FoodCategory(id: 'cat_pizza', name: 'Pizza', emoji: '🍕', isSelected: false, size: 35),
-    const FoodCategory(id: 'cat_drinks', name: 'Drinks', emoji: '🥤', isSelected: false, size: 35),
+    const FoodCategory(id: 'cat_sides', name: 'Sides', emoji: '🍟', isSelected: false, size: 35),
+    const FoodCategory(id: 'cat_drinks', name: 'Beverages', emoji: '🥤', isSelected: false, size: 35),
     const FoodCategory(id: 'cat_desserts', name: 'Desserts', emoji: '🍰', isSelected: false, size: 35),
-    const FoodCategory(id: 'cat_starters', name: 'Starters', emoji: '🥟', isSelected: false, size: 35),
-    const FoodCategory(id: 'cat_main', name: 'Main Course', emoji: '🍛', isSelected: false, size: 35),
+    const FoodCategory(id: 'cat_combos', name: 'Special Combos', emoji: '🍱', isSelected: false, size: 35),
+    const FoodCategory(id: 'cat_kids', name: 'Kids Meals', emoji: '🧸', isSelected: false, size: 35),
   ];
 
   /// Fetches global categories from Firestore.
@@ -51,32 +53,17 @@ class CategoryRepository {
 
   /// Maps a category name to an emoji (since emojis might not be in Firestore)
   String _getEmojiForCategory(String name) {
-    switch (name.toLowerCase()) {
-      case 'all':
-        return '🔥';
-      case 'pizza':
-        return '🍕';
-      case 'burger':
-      case 'burgers':
-        return '🍔';
-      case 'pasta':
-        return '🍝';
-      case 'drinks':
-      case 'beverages':
-        return '🥤';
-      case 'dessert':
-      case 'desserts':
-        return '🍰';
-      case 'starters':
-        return '🥟';
-      case 'main course':
-        return '🍛';
-      case 'south indian':
-        return '🥘';
-      case 'chinese':
-        return '🍜';
-      default:
-        return '🍽️';
-    }
+    final lower = name.toLowerCase().trim();
+    if (lower == 'all') return '🔥';
+    if (lower.contains('chicken')) return '🍗';
+    if (lower.contains('burger')) return '🍔';
+    if (lower.contains('pizza')) return '🍕';
+    if (lower.contains('side') || lower.contains('frie')) return '🍟';
+    if (lower.contains('beverage') || lower.contains('drink')) return '🥤';
+    if (lower.contains('dessert') || lower.contains('cake')) return '🍰';
+    if (lower.contains('combo')) return '🍱';
+    if (lower.contains('kid')) return '🧸';
+    if (lower.contains('wrap')) return '🌯';
+    return '🍽️';
   }
 }

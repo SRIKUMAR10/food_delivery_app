@@ -6,10 +6,15 @@ import 'seller_store_details_page__event.dart';
 import 'seller_store_details_page__state.dart';
 import '../../../core/widgets/hoverable_widgets.dart';
 import '../../../core/widgets/shimmer_loader.dart';
+import '../../../repositories/seller_repository.dart';
+import '../seller_auth_shared/onboarding_back_handler.dart';
+import '../seller_auth_shared/seller_wizard_container.dart';
+import '../seller_auth_shared/seller_auth_shared_widgets.dart';
 
 class SellerStoreDetailsPage extends StatelessWidget {
   final SellerStoreDetailsBloc? bloc;
-  const SellerStoreDetailsPage({super.key, this.bloc});
+  final bool isOnboardingFlow;
+  const SellerStoreDetailsPage({super.key, this.bloc, this.isOnboardingFlow = false});
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
@@ -22,11 +27,17 @@ class SellerStoreDetailsPage extends StatelessWidget {
           color: Color(0xFF0F172A),
           size: 20,
         ),
-        onPressed: () => Navigator.of(context).pop(),
+        onPressed: () {
+          if (isOnboardingFlow) {
+            OnboardingBackHandler.handleBack(context, previousRoute: '/sellerVerificationForm');
+          } else {
+            Navigator.of(context).pop();
+          }
+        },
       ),
-      title: const Text(
-        'Store Details',
-        style: TextStyle(
+      title: Text(
+        isOnboardingFlow ? 'Step 2: Store Details' : 'Store Details',
+        style: const TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.bold,
           color: Color(0xFF0F172A),
@@ -38,52 +49,70 @@ class SellerStoreDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (bloc != null) {
-      return BlocProvider<SellerStoreDetailsBloc>.value(
-        value: bloc!,
-        child: Scaffold(
-          backgroundColor: const Color(0xFFF8FAFC),
-          appBar: _buildAppBar(context),
-          body: const SafeArea(child: ResponsiveStoreDetailsLayout()),
-        ),
-      );
-    }
-    return BlocProvider(
-      create: (context) =>
-          SellerStoreDetailsBloc()..add(LoadStoreDetailsEvent()),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
-        appBar: _buildAppBar(context),
-        body: const SafeArea(child: ResponsiveStoreDetailsLayout()),
-      ),
+    final Widget content = isOnboardingFlow
+        ? SellerWizardContainer(
+            stepIndex: 2,
+            totalSteps: 8,
+            stepBadge: 'Step 2 of 8 • Store Address & Geocoding',
+            title: 'Store Details & GPS Location',
+            subtitle: 'Set your restaurant identity, pinpoint GPS map location, and delivery radius',
+            onBack: () => OnboardingBackHandler.handleBack(context, previousRoute: '/sellerVerificationForm'),
+            child: const StoreDetailsContent(isOnboardingFlow: true),
+          )
+        : Scaffold(
+            backgroundColor: const Color(0xFFF8FAFC),
+            appBar: _buildAppBar(context),
+            body: SafeArea(child: ResponsiveStoreDetailsLayout(isOnboardingFlow: isOnboardingFlow)),
+          );
+
+    return PopScope(
+      canPop: !isOnboardingFlow,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (isOnboardingFlow) {
+          await OnboardingBackHandler.handleBack(context, previousRoute: '/sellerVerificationForm');
+        }
+      },
+      child: bloc != null
+          ? BlocProvider<SellerStoreDetailsBloc>.value(
+              value: bloc!,
+              child: content,
+            )
+          : BlocProvider(
+              create: (context) =>
+                  SellerStoreDetailsBloc()..add(LoadStoreDetailsEvent()),
+              child: content,
+            ),
     );
   }
 }
 
 class ResponsiveStoreDetailsLayout extends StatelessWidget {
-  const ResponsiveStoreDetailsLayout({Key? key}) : super(key: key);
+  final bool isOnboardingFlow;
+  const ResponsiveStoreDetailsLayout({Key? key, this.isOnboardingFlow = false}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 800) {
-          return const Center(
-            child: SizedBox(width: 800, child: StoreDetailsContent()),
+          return Center(
+            child: SizedBox(width: 800, child: StoreDetailsContent(isOnboardingFlow: isOnboardingFlow)),
           );
         } else if (constraints.maxWidth > 600) {
-          return const Center(
-            child: SizedBox(width: 600, child: StoreDetailsContent()),
+          return Center(
+            child: SizedBox(width: 600, child: StoreDetailsContent(isOnboardingFlow: isOnboardingFlow)),
           );
         }
-        return const StoreDetailsContent();
+        return StoreDetailsContent(isOnboardingFlow: isOnboardingFlow);
       },
     );
   }
 }
 
 class StoreDetailsContent extends StatelessWidget {
-  const StoreDetailsContent({Key? key}) : super(key: key);
+  final bool isOnboardingFlow;
+  const StoreDetailsContent({Key? key, this.isOnboardingFlow = false}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +160,29 @@ class StoreDetailsContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (isOnboardingFlow) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.flag_outlined, color: Color(0xFF3B82F6), size: 18),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Step 2 of 8 (Store Address & GPS Geocoding)',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E40AF)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const Text(
                     'Manage your store settings and information',
                     style: TextStyle(
@@ -442,6 +494,60 @@ class StoreDetailsContent extends StatelessWidget {
 
                   // Order Processing Rules Section
                   _OrderProcessingSection(state: state),
+                  if (isOnboardingFlow) ...[
+                    const SizedBox(height: 32),
+                    SellerWizardPrimaryButton(
+                      buttonKey: const ValueKey('continue_to_business_hours_btn'),
+                      label: 'Save & Continue to Business Hours',
+                      onPressed: () async {
+                        if (state.restaurantName.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enter Restaurant/Store Name before proceeding.'),
+                              backgroundColor: Color(0xFFEF4444),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+                        if (state.address.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please set Store Address before proceeding.'),
+                              backgroundColor: Color(0xFFEF4444),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+
+                        final repo = SellerRepository();
+                        final uid = repo.currentUser?.uid;
+                        if (uid != null && uid.isNotEmpty) {
+                          try {
+                            await repo.updateSellerData(uid, {'isStoreDetailsCompleted': true});
+                          } catch (_) {}
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Store details saved! Moving to Step 3: Business Hours.'),
+                              backgroundColor: Color(0xFF10B981),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/businessHours',
+                            arguments: {
+                              'isOnboardingFlow': true,
+                              'sellerId': uid ?? '',
+                            },
+                          );
+                        }
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 64),
                 ],
               ),

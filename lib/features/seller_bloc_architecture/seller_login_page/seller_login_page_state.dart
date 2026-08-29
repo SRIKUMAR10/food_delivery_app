@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../../repositories/seller_repository.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────────
 /// Seller Login Page Flow Steps (multi-step wizard)
@@ -62,6 +63,9 @@ class SellerLoginPageState extends Equatable {
   // ── KYC Status flag ────────────────────────────────────────────────────────
   final bool isKycCompleted;
 
+  // ── Onboarding Stage flag ──────────────────────────────────────────────────
+  final SellerOnboardingStage onboardingStage;
+
   // ── Screen 4 – Email/Phone OTP digits (6-digit) ────────────────────────────
   final List<String> otpDigits;
   final int otpCountdown; // seconds remaining (00:25 countdown)
@@ -83,6 +87,7 @@ class SellerLoginPageState extends Equatable {
     this.isPasswordObscured = true,
     this.isPhoneLogin = false,
     this.isKycCompleted = false,
+    this.onboardingStage = SellerOnboardingStage.completed,
     this.otpDigits = const ['', '', '', '', '', ''],
     this.otpCountdown = 25,
     this.isOtpResendAvailable = false,
@@ -118,6 +123,7 @@ class SellerLoginPageState extends Equatable {
     bool? isPasswordObscured,
     bool? isPhoneLogin,
     bool? isKycCompleted,
+    SellerOnboardingStage? onboardingStage,
     List<String>? otpDigits,
     int? otpCountdown,
     bool? isOtpResendAvailable,
@@ -136,6 +142,7 @@ class SellerLoginPageState extends Equatable {
       isPasswordObscured: isPasswordObscured ?? this.isPasswordObscured,
       isPhoneLogin: isPhoneLogin ?? this.isPhoneLogin,
       isKycCompleted: isKycCompleted ?? this.isKycCompleted,
+      onboardingStage: onboardingStage ?? this.onboardingStage,
       otpDigits: otpDigits ?? this.otpDigits,
       otpCountdown: otpCountdown ?? this.otpCountdown,
       isOtpResendAvailable: isOtpResendAvailable ?? this.isOtpResendAvailable,
@@ -157,6 +164,7 @@ class SellerLoginPageState extends Equatable {
         isPasswordObscured,
         isPhoneLogin,
         isKycCompleted,
+        onboardingStage,
         otpDigits,
         otpCountdown,
         isOtpResendAvailable,
@@ -167,5 +175,5 @@ class SellerLoginPageState extends Equatable {
 
   @override
   String toString() =>
-      'SellerLoginPageState(step: $step, status: $status, email: $emailOrPhone, kycCompleted: $isKycCompleted)';
+      'SellerLoginPageState(step: $step, status: $status, email: $emailOrPhone, kycCompleted: $isKycCompleted, stage: $onboardingStage)';
 }

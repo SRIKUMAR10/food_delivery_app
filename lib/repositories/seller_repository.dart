@@ -10,6 +10,18 @@ import 'package:food_delivery_app/core/services/firebase_auth_config.dart';
 import 'dart:async';
 import 'dart:io';
 
+enum SellerOnboardingStage {
+  kyc,
+  storeDetails,
+  businessHours,
+  profileLive,
+  menuCatalogue,
+  bankDetails,
+  logisticsAlerts,
+  checklistLaunch,
+  completed,
+}
+
 class SellerRepository {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
@@ -135,6 +147,67 @@ class SellerRepository {
     } catch (e) {
       debugPrint('Error checking KYC status in SellerRepository: $e');
       return false;
+    }
+  }
+
+  /// Determines the next pending onboarding stage for the seller
+  Future<SellerOnboardingStage> checkOnboardingStage(String sellerId) async {
+    try {
+      final doc = await _firestore.collection('sellers').doc(sellerId).get();
+      if (!doc.exists || doc.data() == null) {
+        return SellerOnboardingStage.kyc;
+      }
+      final data = doc.data()!;
+      
+      final bool isOnboardingCompleted = data['isOnboardingCompleted'] == true ||
+          data['storeSetupPhase'] == 'completed';
+      if (isOnboardingCompleted) {
+        return SellerOnboardingStage.completed;
+      }
+
+      final bool isKyc = await checkKycCompleted(sellerId);
+      if (!isKyc) {
+        return SellerOnboardingStage.kyc;
+      }
+
+      final bool isStoreDetails = data['isStoreDetailsCompleted'] == true ||
+          (data['deliveryArea'] != null && data['deliveryTime'] != null && data['shopName'] != null);
+      if (!isStoreDetails) {
+        return SellerOnboardingStage.storeDetails;
+      }
+
+      final bool isBusinessHours = data['isBusinessHoursCompleted'] == true ||
+          (data['openingHours'] != null && data['closingTime'] != null);
+      if (!isBusinessHours) {
+        return SellerOnboardingStage.businessHours;
+      }
+
+      final bool isProfileSetup = data['isProfileSetupCompleted'] == true ||
+          (data['cuisines'] != null && (data['cuisines'] as List).isNotEmpty);
+      if (!isProfileSetup) {
+        return SellerOnboardingStage.profileLive;
+      }
+
+      final bool isMenuSetup = data['isMenuSetupCompleted'] == true;
+      if (!isMenuSetup) {
+        return SellerOnboardingStage.menuCatalogue;
+      }
+
+      final bool isBankSetup = data['isBankDetailsCompleted'] == true ||
+          (data['bankAccountNumber'] != null && data['ifscCode'] != null);
+      if (!isBankSetup) {
+        return SellerOnboardingStage.bankDetails;
+      }
+
+      final bool isLogistics = data['isLogisticsCompleted'] == true;
+      if (!isLogistics) {
+        return SellerOnboardingStage.logisticsAlerts;
+      }
+
+      return SellerOnboardingStage.checklistLaunch;
+    } catch (e) {
+      debugPrint('Error evaluating onboarding stage in SellerRepository: $e');
+      return SellerOnboardingStage.kyc;
     }
   }
 

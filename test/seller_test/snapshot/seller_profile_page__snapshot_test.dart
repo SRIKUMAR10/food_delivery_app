@@ -65,13 +65,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify all modular sections and quick actions are rendered
-      expect(find.text('Restaurant Profile'), findsOneWidget);
+      expect(find.text('Store Profile'), findsOneWidget);
       expect(find.text('Royal Diner'), findsWidgets);
       expect(find.text('Accepting Orders (Rush Mode)'), findsOneWidget);
       expect(find.text('Store Status'), findsOneWidget);
       expect(find.text('Branding & Description'), findsOneWidget);
       expect(find.text('Location & Delivery Logistics'), findsOneWidget);
-      expect(find.text('Cuisine Categories'), findsOneWidget);
       expect(find.text('Operating Hours & Schedule'), findsOneWidget);
       expect(find.text('Store Management & Operations'), findsOneWidget);
       expect(find.text('Wallet'), findsOneWidget);

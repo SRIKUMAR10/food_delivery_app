@@ -202,13 +202,13 @@ class PromotionsCouponsService {
 
       // Default categories fallback
       if (categories.isEmpty) {
-        categories.addAll(['Starters', 'Main Course', 'Beverages', 'Desserts', 'Fast Food', 'Snacks']);
+        categories.addAll(['Fried Chicken', 'Burgers', 'Pizza', 'Sides', 'Beverages', 'Desserts', 'Special Combos', 'Kids Meals']);
       }
 
       return categories.toList()..sort();
     } catch (e) {
       debugPrint('Error fetching categories: $e');
-      return ['Starters', 'Main Course', 'Beverages', 'Desserts', 'Fast Food', 'Snacks'];
+      return ['Fried Chicken', 'Burgers', 'Pizza', 'Sides', 'Beverages', 'Desserts', 'Special Combos', 'Kids Meals'];
     }
   }
 

@@ -103,6 +103,13 @@ class SellerModel {
   final String? bankChequeUrl;
   final String? shopLicenseUrl;
   final String? kycRejectionReason;
+  final bool isStoreDetailsCompleted;
+  final bool isBusinessHoursCompleted;
+  final bool isProfileSetupCompleted;
+  final bool isMenuSetupCompleted;
+  final bool isBankDetailsCompleted;
+  final bool isLogisticsCompleted;
+  final bool isOnboardingCompleted;
 
   bool get isKycApproved =>
       isVerified ||
@@ -174,6 +181,13 @@ class SellerModel {
     this.bankChequeUrl,
     this.shopLicenseUrl,
     this.kycRejectionReason,
+    this.isStoreDetailsCompleted = false,
+    this.isBusinessHoursCompleted = false,
+    this.isProfileSetupCompleted = false,
+    this.isMenuSetupCompleted = false,
+    this.isBankDetailsCompleted = false,
+    this.isLogisticsCompleted = false,
+    this.isOnboardingCompleted = false,
   });
 
   factory SellerModel.fromFirestore(DocumentSnapshot snapshot) {
@@ -299,6 +313,13 @@ class SellerModel {
       bankChequeUrl: data['bankChequeUrl'] as String?,
       shopLicenseUrl: data['shopLicenseUrl'] as String?,
       kycRejectionReason: data['kycRejectionReason'] as String?,
+      isStoreDetailsCompleted: data['isStoreDetailsCompleted'] as bool? ?? false,
+      isBusinessHoursCompleted: data['isBusinessHoursCompleted'] as bool? ?? false,
+      isProfileSetupCompleted: data['isProfileSetupCompleted'] as bool? ?? false,
+      isMenuSetupCompleted: data['isMenuSetupCompleted'] as bool? ?? false,
+      isBankDetailsCompleted: data['isBankDetailsCompleted'] as bool? ?? false,
+      isLogisticsCompleted: data['isLogisticsCompleted'] as bool? ?? false,
+      isOnboardingCompleted: data['isOnboardingCompleted'] as bool? ?? false,
     );
   }
 
@@ -356,6 +377,13 @@ class SellerModel {
       'bankChequeUrl': bankChequeUrl,
       'shopLicenseUrl': shopLicenseUrl,
       'kycRejectionReason': kycRejectionReason,
+      'isStoreDetailsCompleted': isStoreDetailsCompleted,
+      'isBusinessHoursCompleted': isBusinessHoursCompleted,
+      'isProfileSetupCompleted': isProfileSetupCompleted,
+      'isMenuSetupCompleted': isMenuSetupCompleted,
+      'isBankDetailsCompleted': isBankDetailsCompleted,
+      'isLogisticsCompleted': isLogisticsCompleted,
+      'isOnboardingCompleted': isOnboardingCompleted,
     };
   }
 
@@ -413,6 +441,13 @@ class SellerModel {
     String? bankChequeUrl,
     String? shopLicenseUrl,
     String? kycRejectionReason,
+    bool? isStoreDetailsCompleted,
+    bool? isBusinessHoursCompleted,
+    bool? isProfileSetupCompleted,
+    bool? isMenuSetupCompleted,
+    bool? isBankDetailsCompleted,
+    bool? isLogisticsCompleted,
+    bool? isOnboardingCompleted,
   }) {
     return SellerModel(
       id: id ?? this.id,
@@ -470,6 +505,20 @@ class SellerModel {
       bankChequeUrl: bankChequeUrl ?? this.bankChequeUrl,
       shopLicenseUrl: shopLicenseUrl ?? this.shopLicenseUrl,
       kycRejectionReason: kycRejectionReason ?? this.kycRejectionReason,
+      isStoreDetailsCompleted:
+          isStoreDetailsCompleted ?? this.isStoreDetailsCompleted,
+      isBusinessHoursCompleted:
+          isBusinessHoursCompleted ?? this.isBusinessHoursCompleted,
+      isProfileSetupCompleted:
+          isProfileSetupCompleted ?? this.isProfileSetupCompleted,
+      isMenuSetupCompleted:
+          isMenuSetupCompleted ?? this.isMenuSetupCompleted,
+      isBankDetailsCompleted:
+          isBankDetailsCompleted ?? this.isBankDetailsCompleted,
+      isLogisticsCompleted:
+          isLogisticsCompleted ?? this.isLogisticsCompleted,
+      isOnboardingCompleted:
+          isOnboardingCompleted ?? this.isOnboardingCompleted,
     );
   }
 }

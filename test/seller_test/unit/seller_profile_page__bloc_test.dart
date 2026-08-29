@@ -296,31 +296,6 @@ void main() {
     );
 
     blocTest<SellerProfilePageBloc, SellerProfilePageState>(
-      'UpdateCuisines updates state and calls updateProfile',
-      build: () {
-        when(() => mockProfileRepository.updateProfile(
-              'seller_123',
-              {'cuisines': ['Biryani', 'Desserts']},
-            )).thenAnswer((_) async {});
-        return bloc;
-      },
-      seed: () => ProfileLoaded(
-        storeName: 'Test Kitchen',
-        email: 'test@kitchen.com',
-        phone: '1234567890',
-        profileImageUrl: '',
-        notificationsEnabled: true,
-        role: 'seller',
-        createdAt: DateTime(2025, 1, 1),
-        isVerified: true,
-      ),
-      act: (bloc) => bloc.add(const UpdateCuisines(['Biryani', 'Desserts'])),
-      expect: () => [
-        isA<ProfileLoaded>().having((s) => s.cuisines, 'cuisines', ['Biryani', 'Desserts']),
-      ],
-    );
-
-    blocTest<SellerProfilePageBloc, SellerProfilePageState>(
       'UpdateCoverImage shows upload progress and updates coverImageUrl',
       build: () {
         when(() => mockProfileRepository.uploadCoverImage(

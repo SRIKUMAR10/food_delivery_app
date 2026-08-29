@@ -33,6 +33,7 @@ void main() {
     mockRepo = MockSellerRepository();
     when(() => mockRepo.checkNetworkConnectivity()).thenAnswer((_) async => true);
     when(() => mockRepo.checkKycCompleted(any())).thenAnswer((_) async => false);
+    when(() => mockRepo.checkOnboardingStage(any())).thenAnswer((_) async => SellerOnboardingStage.completed);
     when(() => mockRepo.updateSellerData(any(), any())).thenAnswer((_) async {});
     when(() => mockRepo.currentUser).thenReturn(null);
     bloc = SellerLoginPageBloc(authRepository: mockRepo);

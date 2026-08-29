@@ -29,7 +29,6 @@ class SellerProfilePageBloc
     on<UpdateRestaurantIdentity>(_onUpdateRestaurantIdentity);
     on<UpdateLocationDetails>(_onUpdateLocationDetails);
     on<UpdateLogisticsSettings>(_onUpdateLogisticsSettings);
-    on<UpdateCuisines>(_onUpdateCuisines);
     on<UpdateBusinessHoursSchedule>(_onUpdateBusinessHoursSchedule);
     on<ToggleAcceptingOrders>(_onToggleAcceptingOrders);
     on<ToggleStoreOpenStatus>(_onToggleStoreOpenStatus);
@@ -335,27 +334,6 @@ class SellerProfilePageBloc
           });
         } catch (e) {
           debugPrint('Error updating logistics settings: $e');
-        }
-      }
-    }
-  }
-
-  Future<void> _onUpdateCuisines(
-    UpdateCuisines event,
-    Emitter<SellerProfilePageState> emit,
-  ) async {
-    if (state is ProfileLoaded) {
-      final currentState = state as ProfileLoaded;
-      emit(currentState.copyWith(cuisines: event.cuisines));
-
-      final String uid = authService.currentUserId ?? '';
-      if (uid.isNotEmpty) {
-        try {
-          await profileRepository.updateProfile(uid, {
-            'cuisines': event.cuisines,
-          });
-        } catch (e) {
-          debugPrint('Error updating cuisines: $e');
         }
       }
     }
@@ -717,6 +695,7 @@ class SellerProfilePageBloc
 
         if (kycUpdates.isNotEmpty) {
           await profileRepository.updateKycDocuments(uid, kycUpdates);
+          await profileRepository.updateProfile(uid, kycUpdates);
         }
 
         emit(updatedState.copyWith(isKycUploading: false));

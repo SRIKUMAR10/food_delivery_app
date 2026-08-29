@@ -8,9 +8,16 @@ import 'seller_payment_page_bloc.dart';
 import 'seller_payment_page_event.dart';
 import 'seller_payment_page_state.dart';
 import '../../../core/widgets/shimmer_loader.dart';
+import '../../../repositories/seller_repository.dart';
+import '../seller_auth_shared/onboarding_back_handler.dart';
+import '../seller_auth_shared/seller_wizard_container.dart';
+import '../seller_auth_shared/seller_auth_shared_widgets.dart';
+
+typedef SellerPaymentPageUI = SellerPaymentPage;
 
 class SellerPaymentPage extends StatelessWidget {
-  const SellerPaymentPage({super.key});
+  final bool isOnboardingFlow;
+  const SellerPaymentPage({super.key, this.isOnboardingFlow = false});
 
   @override
   Widget build(BuildContext context) {
@@ -18,13 +25,14 @@ class SellerPaymentPage extends StatelessWidget {
       create: (context) => SellerPaymentPageBloc(
         repository: SellerPaymentRepository(),
       )..add(const LoadPaymentData()),
-      child: const _SellerPaymentView(),
+      child: _SellerPaymentView(isOnboardingFlow: isOnboardingFlow),
     );
   }
 }
 
 class _SellerPaymentView extends StatefulWidget {
-  const _SellerPaymentView();
+  final bool isOnboardingFlow;
+  const _SellerPaymentView({this.isOnboardingFlow = false});
 
   @override
   State<_SellerPaymentView> createState() => _SellerPaymentViewState();
@@ -58,93 +66,120 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
     final isTablet = size.width > 600 && size.width <= 900;
     final horizontalPadding = isDesktop ? 32.0 : (isTablet ? 24.0 : 16.0);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: BlocConsumer<SellerPaymentPageBloc, SellerPaymentPageState>(
-          listener: (context, state) {
-            if (state is SellerPaymentPageLoaded) {
-              if (state.payoutSuccessMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        const Icon(Icons.check_circle, color: Colors.white),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(state.payoutSuccessMessage!)),
-                      ],
-                    ),
-                    backgroundColor: const Color(0xFF10B981),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+    return PopScope(
+      canPop: !widget.isOnboardingFlow,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (widget.isOnboardingFlow) {
+          await OnboardingBackHandler.handleBack(context, previousRoute: '/menuCategories');
+        }
+      },
+      child: BlocConsumer<SellerPaymentPageBloc, SellerPaymentPageState>(
+        listener: (context, state) {
+          if (state is SellerPaymentPageLoaded) {
+            if (state.payoutSuccessMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.white),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(state.payoutSuccessMessage!)),
+                    ],
                   ),
-                );
-              }
-              if (state.bankUpdateSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        SizedBox(width: 12),
-                        Text('Bank & UPI details updated successfully!'),
-                      ],
-                    ),
-                    backgroundColor: const Color(0xFF10B981),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                  backgroundColor: const Color(0xFF10B981),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                );
-              }
-              if (state.errorMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        const Icon(Icons.error_outline, color: Colors.white),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(state.errorMessage!)),
-                      ],
-                    ),
-                    backgroundColor: const Color(0xFFEF4444),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                );
-              }
+                ),
+              );
             }
-          },
-          builder: (context, state) {
-            return RefreshIndicator(
-              color: const Color(0xFF4F46E5),
-              onRefresh: () async {
-                context.read<SellerPaymentPageBloc>().add(const RefreshPaymentData());
-              },
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: _buildStateContent(
-                      context,
-                      state,
-                      horizontalPadding,
-                      isDesktop,
-                      isTablet,
+            if (state.bankUpdateSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: 12),
+                      Text('Bank & UPI details updated successfully!'),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFF10B981),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              );
+            }
+            if (state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.white),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(state.errorMessage!)),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFFEF4444),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              );
+            }
+          }
+        },
+        builder: (context, state) {
+          if (widget.isOnboardingFlow) {
+            return SellerWizardContainer(
+              stepIndex: 6,
+              totalSteps: 8,
+              stepBadge: 'Step 6 of 8 • Bank Account & Payouts',
+              title: 'Bank Account & Payouts',
+              subtitle: 'Verify bank account and IFSC details for automated payouts and settlement',
+              onBack: () => OnboardingBackHandler.handleBack(context, previousRoute: '/menuCategories'),
+              child: _buildStateContent(
+                context,
+                state,
+                horizontalPadding,
+                isDesktop,
+                isTablet,
+              ),
+            );
+          }
+
+          return Scaffold(
+            backgroundColor: const Color(0xFFF8FAFC),
+            appBar: _buildAppBar(context),
+            body: SafeArea(
+              child: RefreshIndicator(
+                color: const Color(0xFF4F46E5),
+                onRefresh: () async {
+                  context.read<SellerPaymentPageBloc>().add(const RefreshPaymentData());
+                },
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1100),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _buildStateContent(
+                        context,
+                        state,
+                        horizontalPadding,
+                        isDesktop,
+                        isTablet,
+                      ),
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -160,7 +195,13 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
           color: Color(0xFF0F172A),
           size: 20,
         ),
-        onPressed: () => Navigator.of(context).pop(),
+        onPressed: () {
+          if (widget.isOnboardingFlow) {
+            OnboardingBackHandler.handleBack(context, previousRoute: '/menuCategories');
+          } else {
+            Navigator.of(context).pop();
+          }
+        },
       ),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,6 +327,29 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.isOnboardingFlow) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.flag_outlined, color: Color(0xFF3B82F6), size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Step 6 of 8 (Bank Account & Payouts)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E40AF)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // 1. Timeframe Filter Selector Chips
           _buildTimeframeFilter(context, state.selectedTimeframe),
           const SizedBox(height: 20),
@@ -338,6 +402,41 @@ class _SellerPaymentViewState extends State<_SellerPaymentView> {
           ),
           const SizedBox(height: 14),
           _buildTransactionsList(context, data.transactions),
+          if (widget.isOnboardingFlow) ...[
+            const SizedBox(height: 32),
+            SellerWizardPrimaryButton(
+              buttonKey: const ValueKey('complete_store_setup_launch_btn'),
+              label: 'Save & Continue to Delivery & Audio Alerts',
+              onPressed: () async {
+                final repo = SellerRepository();
+                final uid = repo.currentUser?.uid;
+                if (uid != null && uid.isNotEmpty) {
+                  try {
+                    await repo.updateSellerData(uid, {
+                      'isBankDetailsCompleted': true,
+                    });
+                  } catch (_) {}
+                }
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Bank details saved! Moving to Step 7: Delivery & Audio Alerts.'),
+                      backgroundColor: Color(0xFF10B981),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  Navigator.pushReplacementNamed(
+                    context,
+                    '/sellerLogisticsAlerts',
+                    arguments: {
+                      'isOnboardingFlow': true,
+                      'sellerId': uid ?? '',
+                    },
+                  );
+                }
+              },
+            ),
+          ],
           const SizedBox(height: 40),
         ],
       ),

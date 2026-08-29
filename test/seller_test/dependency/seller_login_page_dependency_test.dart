@@ -185,9 +185,9 @@ void main() {
     test('SellerLoginPageState.props has correct number of elements', () {
       const state = SellerLoginPageState();
       // props: step, status, errorMessage, emailOrPhone, password,
-      // isPasswordObscured, isPhoneLogin, isKycCompleted, otpDigits, otpCountdown,
+      // isPasswordObscured, isPhoneLogin, isKycCompleted, onboardingStage, otpDigits, otpCountdown,
       // isOtpResendAvailable, forgotPasswordEmail, emailPhoneError, passwordError
-      expect(state.props.length, 14);
+      expect(state.props.length, 15);
     });
 
     test('hashCode is consistent for same state', () {

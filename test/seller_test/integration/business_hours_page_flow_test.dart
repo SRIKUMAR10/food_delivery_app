@@ -44,7 +44,7 @@ void main() {
         MaterialApp(
           home: BlocProvider<BusinessHoursBloc>.value(
             value: mockBloc,
-            child: const BusinessHoursView(),
+            child: const BusinessHoursView(sellerId: 'test_seller'),
           ),
         ),
       );

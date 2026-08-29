@@ -38,38 +38,196 @@ class _SellerLoginPageView extends StatelessWidget {
       listener: (context, state) {
         if (state.step == SellerLoginStep.loginSuccess &&
             state.status == SellerLoginStatus.success) {
-          if (state.isKycCompleted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Login successful! Welcome Seller.',
-                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+          switch (state.onboardingStage) {
+            case SellerOnboardingStage.kyc:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Login successful! Please complete your KYC verification.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
                 ),
-                backgroundColor: SellerAuthColors.primary,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              );
+              Navigator.pushReplacementNamed(context, '/sellerVerificationForm');
+              break;
+
+            case SellerOnboardingStage.storeDetails:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Login successful! Please complete Step 2: Store Details.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
                 ),
-                margin: const EdgeInsets.all(16),
-              ),
-            );
-            Navigator.pushReplacementNamed(context, '/sellerDashboard');
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Login successful! Please complete your KYC verification.',
-                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+              );
+              Navigator.pushReplacementNamed(
+                context,
+                '/sellerStoreDetails',
+                arguments: {'isOnboardingFlow': true},
+              );
+              break;
+
+            case SellerOnboardingStage.businessHours:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Login successful! Please set your Business Operating Hours.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
                 ),
-                backgroundColor: SellerAuthColors.primary,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              );
+              Navigator.pushReplacementNamed(
+                context,
+                '/businessHours',
+                arguments: {'isOnboardingFlow': true},
+              );
+              break;
+
+            case SellerOnboardingStage.profileLive:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Login successful! Please configure Profile Branding & Live Switch.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
                 ),
-                margin: const EdgeInsets.all(16),
-              ),
-            );
-            Navigator.pushReplacementNamed(context, '/sellerVerificationForm');
+              );
+              Navigator.pushReplacementNamed(
+                context,
+                '/sellerProfile',
+                arguments: {'isOnboardingFlow': true},
+              );
+              break;
+
+            case SellerOnboardingStage.menuCatalogue:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Login successful! Please configure your Menu Categories.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
+                ),
+              );
+              Navigator.pushReplacementNamed(
+                context,
+                '/menuCategories',
+                arguments: {'isOnboardingFlow': true},
+              );
+              break;
+
+            case SellerOnboardingStage.bankDetails:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Login successful! Please link your Bank Account for Payouts.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
+                ),
+              );
+              Navigator.pushReplacementNamed(
+                context,
+                '/sellerPayment',
+                arguments: {'isOnboardingFlow': true},
+              );
+              break;
+
+            case SellerOnboardingStage.logisticsAlerts:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Login successful! Please configure Delivery Logistics & Audio Alerts.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
+                ),
+              );
+              Navigator.pushReplacementNamed(
+                context,
+                '/sellerLogisticsAlerts',
+                arguments: {'isOnboardingFlow': true},
+              );
+              break;
+
+            case SellerOnboardingStage.checklistLaunch:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Login successful! Review checklist and Launch your store.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
+                ),
+              );
+              Navigator.pushReplacementNamed(
+                context,
+                '/sellerStoreLaunch',
+                arguments: {'isOnboardingFlow': true},
+              );
+              break;
+
+            case SellerOnboardingStage.completed:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Login successful! Welcome to Seller Dashboard.',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  ),
+                  backgroundColor: SellerAuthColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
+                ),
+              );
+              Navigator.pushReplacementNamed(context, '/sellerDashboard');
+              break;
           }
         }
         if (state.status == SellerLoginStatus.failure &&

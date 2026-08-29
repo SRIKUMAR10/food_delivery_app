@@ -80,15 +80,26 @@ class _AddProductViewState extends State<AddProductView> {
   bool _isInitialized = false;
 
   final List<Map<String, dynamic>> _categories = [
+    {'id': 'Fried Chicken', 'icon': '🍗', 'label': 'Fried Chicken'},
     {'id': 'Burgers', 'icon': '🍔', 'label': 'Burgers'},
     {'id': 'Pizza', 'icon': '🍕', 'label': 'Pizza'},
-    {'id': 'Chicken', 'icon': '🍗', 'label': 'Chicken'},
-    {'id': 'Wraps', 'icon': '🌯', 'label': 'Wraps'},
-    {'id': 'Fries & Sides', 'icon': '🍟', 'label': 'Fries & Sides'},
+    {'id': 'Sides', 'icon': '🍟', 'label': 'Sides'},
     {'id': 'Beverages', 'icon': '🥤', 'label': 'Beverages'},
     {'id': 'Desserts', 'icon': '🍰', 'label': 'Desserts'},
-    {'id': 'Combo Meals', 'icon': '🍱', 'label': 'Combo Meals'},
+    {'id': 'Special Combos', 'icon': '🍱', 'label': 'Special Combos'},
+    {'id': 'Kids Meals', 'icon': '🧸', 'label': 'Kids Meals'},
   ];
+
+  final Map<String, List<String>> _categorySubcategoryPresets = {
+    'Fried Chicken': ['Buckets', 'Tenders & Strips', 'Popcorn Chicken', 'Wings', 'Crispy Drumsticks'],
+    'Burgers': ['Crispy Chicken Burger', 'Classic Cheeseburger', 'Double Patty Tower', 'Veggie Burger', 'Smash Burger'],
+    'Pizza': ['Margherita', 'Pepperoni', 'Veggie Supreme', 'BBQ Chicken', 'Cheese Burst', 'Thin Crust'],
+    'Sides': ['French Fries', 'Chicken Nuggets', 'Garlic Bread', 'Onion Rings', 'Cheese Dips'],
+    'Beverages': ['Cool Drinks', 'Soft Drinks', 'Thick Shakes', 'Mojitos & Crushes', 'Iced Teas'],
+    'Desserts': ['Brownie Cake', 'Smoked Cake', 'Cheesecake', 'Lava Cake', 'Pastries', 'Ice Cream'],
+    'Special Combos': ['Solo Box', 'Duo Feast', 'Family Mega Combo', 'Party Bucket', 'Lunch Deal'],
+    'Kids Meals': ['Junior Burger Pack', 'Popcorn Chicken Kids Box', 'Mini Pizza Meal', 'Kids Box + Toy'],
+  };
 
   final List<Map<String, dynamic>> _foodTypes = [
     {'id': 'Veg', 'color': Colors.green},
@@ -1754,6 +1765,42 @@ class _AddProductViewState extends State<AddProductView> {
             );
           }).toList(),
         ),
+        if (state.category != null && _categorySubcategoryPresets.containsKey(state.category)) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Suggested Subcategories for ${state.category}:',
+            style: const TextStyle(
+              fontSize: 13,
+              color: _textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _categorySubcategoryPresets[state.category]!.map((subcat) {
+              final isSubSelected = _subcategoryController.text.trim().toLowerCase() == subcat.toLowerCase();
+              return ActionChip(
+                label: Text(subcat),
+                labelStyle: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSubSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSubSelected ? _primaryColor : _textPrimary,
+                ),
+                backgroundColor: isSubSelected ? _primaryColor.withValues(alpha: 0.12) : _surfaceColor,
+                side: BorderSide(
+                  color: isSubSelected ? _primaryColor : _borderColor,
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                onPressed: () {
+                  _subcategoryController.text = subcat;
+                  _updateField('subcategory', subcat);
+                },
+              );
+            }).toList(),
+          ),
+        ],
       ],
     );
   }
