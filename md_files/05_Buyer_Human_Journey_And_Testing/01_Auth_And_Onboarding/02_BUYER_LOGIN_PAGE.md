@@ -64,7 +64,7 @@ sequenceDiagram
 
 ## 🔥 3. Real-Time Cloud Firestore & Backend Connectivity
 
-- **Collection:** `buyer_user/{buyerId}` & `users/{buyerId}`
+- **Collection:** `buyer_user/{buyerId}`
 - **Security Rule:**
   ```javascript
   match /buyer_user/{userId} {

@@ -23,9 +23,12 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/Chat_Page/buy
 import '../Order%20Page/order_UI.dart';
 import '../WalletScreen/WalletScreen_UI.dart';
 import '../Cart%20Page/cart_page_UI.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../home_Page/home_Page_UI.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
+import '../buyer_onboarding_verification_page/buyer_onboarding_verification_ui.dart';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
 class CurvedNavigationBarView extends StatefulWidget {
@@ -63,6 +66,47 @@ class _CurvedNavigationBarViewState extends State<CurvedNavigationBarView> {
     _rebuildTabNavigators();
     CurvedNavigationBarView.supportNavigation.addListener(_onSupportNavigation);
     CurvedNavigationBarView.returnFromSupport.addListener(_onReturnFromSupport);
+    _checkBuyerKycGate();
+  }
+
+  Future<void> _checkBuyerKycGate() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          final doc = await FirebaseFirestore.instance
+              .collection('buyer_user')
+              .doc(user.uid)
+              .get();
+          if (doc.exists && doc.data() != null) {
+            final data = doc.data()!;
+            final isKyc = (data['isBuyerKycVerified'] == true) &&
+                (data['onboardingCompleted'] == true);
+            if (!isKyc && mounted) {
+              final name = (data['fullName'] ?? data['name'] ?? data['displayName'] ?? '').toString().trim();
+              final email = (data['email'] ?? data['emailAddress'] ?? '').toString().trim();
+              final phone = (data['phone'] ?? data['mobile'] ?? data['phoneNumber'] ?? '').toString().trim();
+              final imageUrl = (data['imageUrl'] ?? data['photoUrl'] ?? data['profilePic']) as String?;
+              final isPhoneVerified = data['isPhoneVerified'] == true || phone.isNotEmpty;
+
+              Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => BuyerOnboardingVerificationPage(
+                    initialFullName: name,
+                    initialEmail: email,
+                    initialPhone: phone,
+                    initialAvatarUrl: imageUrl,
+                    initialIsPhoneVerified: isPhoneVerified,
+                  ),
+                ),
+                (route) => false,
+              );
+            }
+          }
+        } catch (_) {}
+      }
+    });
   }
 
   void _rebuildTabNavigators() {

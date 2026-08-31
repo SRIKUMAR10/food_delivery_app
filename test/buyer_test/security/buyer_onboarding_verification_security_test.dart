@@ -12,13 +12,11 @@ void main() {
         formattedAddress: '404 Encrypted Way',
       );
 
-      final preferencesMap = state.preferencesMap;
-
-      // Assert password or secret tokens do not exist in preferences map
-      expect(preferencesMap.containsKey('password'), isFalse);
-      expect(preferencesMap.containsKey('confirmPassword'), isFalse);
-      expect(preferencesMap.containsKey('secretKey'), isFalse);
-      expect(preferencesMap.containsKey('pin'), isFalse);
+      // Assert password or secret tokens do not exist in state props
+      expect(state.props.contains('password'), isFalse);
+      expect(state.props.contains('confirmPassword'), isFalse);
+      expect(state.props.contains('secretKey'), isFalse);
+      expect(state.props.contains('pin'), isFalse);
     });
 
     test('Sanitizes UPI IDs and addresses properly', () {

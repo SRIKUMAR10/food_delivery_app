@@ -34,6 +34,7 @@ class DeliveryPartnerModel {
   final String? deviceToken;
   final String? appVersion;
   final bool isEmailVerified;
+  final bool onboardingCompleted;
   final int profileCompletion;
   final String? address;
   final String? idProofUrl;
@@ -65,6 +66,7 @@ class DeliveryPartnerModel {
     this.isVerified = false,
     this.isPhoneVerified = true,
     this.isEmailVerified = false,
+    this.onboardingCompleted = false,
     this.profileCompletion = 0,
     this.isOnline = false,
     this.isAvailable = false,
@@ -154,6 +156,10 @@ class DeliveryPartnerModel {
       isVerified: data?['isVerified'] ?? false,
       isPhoneVerified: data?['isPhoneVerified'] ?? true,
       isEmailVerified: data?['isEmailVerified'] ?? false,
+      onboardingCompleted: data?['onboardingCompleted'] ??
+          (data?['kycStatus'] == 'under_review' ||
+              data?['kycStatus'] == 'verified' ||
+              (data?['profileCompletion'] as num?)?.toInt() == 100),
       profileCompletion: (data?['profileCompletion'] as num?)?.toInt() ?? 0,
       isOnline: isOnlineVal,
       isAvailable: isAvailableVal,
@@ -203,6 +209,7 @@ class DeliveryPartnerModel {
       'isVerified': isVerified,
       'isPhoneVerified': isPhoneVerified,
       'isEmailVerified': isEmailVerified,
+      'onboardingCompleted': onboardingCompleted,
       'profileCompletion': profileCompletion,
       'isOnline': isOnline,
       'isAvailable': isAvailable,
@@ -250,6 +257,7 @@ class DeliveryPartnerModel {
     bool? isVerified,
     bool? isPhoneVerified,
     bool? isEmailVerified,
+    bool? onboardingCompleted,
     int? profileCompletion,
     bool? isOnline,
     bool? isAvailable,
@@ -295,6 +303,7 @@ class DeliveryPartnerModel {
       isVerified: isVerified ?? this.isVerified,
       isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
+      onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       profileCompletion: profileCompletion ?? this.profileCompletion,
       isOnline: isOnline ?? this.isOnline,
       isAvailable: isAvailable ?? this.isAvailable,

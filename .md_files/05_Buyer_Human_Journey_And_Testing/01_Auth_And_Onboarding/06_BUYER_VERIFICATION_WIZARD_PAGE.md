@@ -1,17 +1,17 @@
 # 🛡️ 06. Buyer Verification & Profile Setup Wizard — Human Journey & Real-Time Testing Blueprint
 
 **Document ID:** `BUYER-DOC-06-VERIFICATION-WIZARD`  
-**Classification:** Phase 1: Authentication & Onboarding (8-Step KYC, Personalization & Rewards Wizard)  
+**Classification:** Phase 1: Authentication & Onboarding (6-Step KYC, Personalization & Rewards Wizard)  
 **Target Screen:** [BuyerOnboardingVerificationPage](file:///d:/Flutter_Project/food_delivery_app/lib/features/buyer_bloc_architecture/buyer_onboarding_verification_page/buyer_onboarding_verification_ui.dart)  
 **Target BLoC:** [BuyerOnboardingVerificationBloc](file:///d:/Flutter_Project/food_delivery_app/lib/features/buyer_bloc_architecture/buyer_onboarding_verification_page/buyer_onboarding_verification_bloc.dart)  
-**Zero-Mock Compliance:** ✅ 100% Real Firestore Profile, Address Subcollection, Preferences & In-App Wallet ₹100 Welcome Gift  
+**Zero-Mock Compliance:** ✅ 100% Real Firestore Profile, Address Subcollection & In-App Wallet ₹100 Welcome Gift  
 
 ---
 
 ## 🚶‍♂️ 1. Human Journey Context & User Flow
 
 ### 🎯 Step Overview
-Immediately upon account registration and phone verification, every consumer is guided through a progressive **1 to 8 Step Buyer Verification & Setup Wizard**. This ensures 100% complete customer KYC, accurate GPS delivery address geocoding, food habit customization, allergy alerts for kitchens, default payment setup, app permissions for live 60 FPS rider tracking, and immediate receipt of a ₹100 welcome bonus.
+Immediately upon account registration and phone verification, every consumer is guided through a progressive **1 to 6 Step Buyer Verification & Setup Wizard**. This ensures 100% complete customer KYC, accurate GPS delivery address geocoding, default payment setup, app permissions for live 60 FPS rider tracking, and immediate receipt of a ₹100 welcome bonus.
 
 ```mermaid
 sequenceDiagram
@@ -32,25 +32,17 @@ sequenceDiagram
 
     Buyer->>UI: Step 3: Selects GPS Pin & Flat/Landmark Address
     UI->>Bloc: add(BuyerAddressUpdated(...))
-    Bloc-->>UI: step: dietaryPreferences
-
-    Buyer->>UI: Step 4: Chooses Food Type (Veg/Non-Veg) & Spice Level
-    UI->>Bloc: add(BuyerDietaryPreferenceToggled(...))
-    Bloc-->>UI: step: allergiesAndRestrictions
-
-    Buyer->>UI: Step 5: Selects Food Allergies (Nuts, Dairy, Gluten)
-    UI->>Bloc: add(BuyerAllergyToggled(...))
     Bloc-->>UI: step: paymentSetup
 
-    Buyer->>UI: Step 6: Selects UPI / Cards & Activates Buyer Wallet
+    Buyer->>UI: Step 4: Selects UPI / Cards & Activates Buyer Wallet
     UI->>Bloc: add(BuyerPaymentPreferenceSelected(...))
     Bloc-->>UI: step: permissionsSetup
 
-    Buyer->>UI: Step 7: Grants GPS Location & Push Notification Permissions
+    Buyer->>UI: Step 5: Grants GPS Location & Push Notification Permissions
     UI->>Bloc: add(BuyerPermissionsUpdated(...))
     Bloc-->>UI: step: completionSuccess
 
-    Buyer->>UI: Step 8: Taps "Start Ordering Delicious Food 🍔"
+    Buyer->>UI: Step 6: Taps "Start Ordering Delicious Food 🍔"
     UI->>Bloc: add(BuyerCompleteVerificationSubmitted())
     Bloc->>Repo: saveBuyerVerificationProfile(uid, state)
     Repo->>FS: Atomically saves profile, addresses & activates wallet with ₹100
@@ -66,17 +58,15 @@ sequenceDiagram
 
 ---
 
-## 🏛️ 2. Detailed 8-Step Breakdown & BLoC Mapping
+## 🏛️ 2. Detailed 6-Step Breakdown & BLoC Mapping
 
-### 🧩 8 Progressive Journey Steps
+### 🧩 6 Progressive Journey Steps
 1. **Step 1: Personal Details & Avatar (`personalDetails`)**: Full Name, Display Name, Profile Picture upload to Firebase Storage (`user/image/{uid}.jpg`), Bio.
 2. **Step 2: Contact & Phone Verification (`contactVerification`)**: Verified Mobile Number, Email Address, 6-digit OTP code verification.
 3. **Step 3: Primary Delivery Address & GPS Map Pin (`addressSelection`)**: Real-time Google Places address search, Latitude & Longitude geocoding, House/Flat Number, Landmark, Tag (`Home`, `Work`, `Other`).
-4. **Step 4: Dietary Preferences & Eating Habits (`dietaryPreferences`)**: Vegetarian, Non-Vegetarian, Vegan, Eggetarian, Halal, Jain Friendly, Spice Level (`Mild`, `Medium`, `Spicy`, `Extra Spicy`).
-5. **Step 5: Food Allergies & Special Instructions (`allergiesAndRestrictions`)**: Peanuts/Nuts, Dairy/Lactose, Gluten/Wheat, Soy, Shellfish, Eggs, Mushrooms, Custom notes.
-6. **Step 6: Payment Methods & Digital Wallet Setup (`paymentSetup`)**: Default payment preference (UPI, Cards, Net Banking, COD), 1-tap activation of Buyer Wallet.
-7. **Step 7: Permissions & Live Alerts (`permissionsSetup`)**: Device GPS Fine Location (for Live 60 FPS Rider Telemetry), FCM Push Notifications (Order Tracking & Arrival Alerts), Camera/Gallery access.
-8. **Step 8: Welcome Rewards & Profile Setup Completion (`completionSuccess`)**: First-Order ₹100 Welcome Coupon (`WELCOME100`), Zero-Mock Firestore synchronization to `buyer_user/{uid}` & `users/{uid}`, navigation to Home / CurvedNavigationBarView.
+4. **Step 4: Payment Methods & Digital Wallet Setup (`paymentSetup`)**: Default payment preference (UPI, Cards, Net Banking, COD), 1-tap activation of Buyer Wallet.
+5. **Step 5: Permissions & Live Alerts (`permissionsSetup`)**: Device GPS Fine Location (for Live 60 FPS Rider Telemetry), FCM Push Notifications (Order Tracking & Arrival Alerts), Camera/Gallery access.
+6. **Step 6: Welcome Rewards & Profile Setup Completion (`completionSuccess`)**: First-Order ₹100 Welcome Coupon (`WELCOME100`), Zero-Mock Firestore synchronization to `buyer_user/{uid}` & `users/{uid}`, navigation to Home / CurvedNavigationBarView.
 
 ### ⚡ BLoC Event Matrix
 | Event Class | Trigger Action | Payload Parameters |
@@ -91,17 +81,13 @@ sequenceDiagram
 | `BuyerVerifyOtpPressed` | Step 2 user verifies OTP | None |
 | `BuyerAddressUpdated` | Step 3 address submitted | `formattedAddress, houseFlatNo, landmark, addressTag, latitude, longitude` |
 | `BuyerCurrentLocationRequested` | Step 3 GPS button tapped | None |
-| `BuyerDietaryPreferenceToggled` | Step 4 diet chip tapped | `String dietaryType` |
-| `BuyerSpicePreferenceChanged` | Step 4 spice chip tapped | `String spicePreference` |
-| `BuyerAllergyToggled` | Step 5 allergy chip tapped | `String allergy` |
-| `BuyerCustomAllergyNotesChanged` | Step 5 custom notes input | `String notes` |
-| `BuyerPaymentPreferenceSelected` | Step 6 payment mode selected | `paymentMethod, defaultUpiId, activateBuyerWallet` |
-| `BuyerPermissionsUpdated` | Step 7 permission switches | `locationGranted, notificationsGranted, cameraGranted` |
-| `BuyerCompleteVerificationSubmitted` | Step 8 final button tapped | None |
+| `BuyerPaymentPreferenceSelected` | Step 4 payment mode selected | `paymentMethod, defaultUpiId, activateBuyerWallet` |
+| `BuyerPermissionsUpdated` | Step 5 permission switches | `locationGranted, notificationsGranted, cameraGranted` |
+| `BuyerCompleteVerificationSubmitted` | Step 6 final button tapped | None |
 
 ### 📊 BLoC State Matrix
 - **State Class:** [BuyerOnboardingVerificationState](file:///d:/Flutter_Project/food_delivery_app/lib/features/buyer_bloc_architecture/buyer_onboarding_verification_page/buyer_onboarding_verification_state.dart)
-- **Enums:** `BuyerVerificationStep` (8 steps), `BuyerVerificationStatus` (`initial`, `loading`, `inProgress`, `otpSent`, `otpVerified`, `success`, `failure`).
+- **Enums:** `BuyerVerificationStep` (6 steps), `BuyerVerificationStatus` (`initial`, `loading`, `inProgress`, `otpSent`, `otpVerified`, `success`, `failure`).
 
 ---
 

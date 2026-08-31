@@ -94,16 +94,12 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                             duration: Duration(seconds: 3),
                           ),
                         );
-                        if (Navigator.of(context).canPop()) {
-                          Navigator.of(context).pop();
-                        } else {
-                          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (_) => const CurvedNavigationBarView(),
-                            ),
-                            (route) => false,
-                          );
-                        }
+                        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (_) => const CurvedNavigationBarView(),
+                          ),
+                          (route) => false,
+                        );
                       }
                     } else if (state.status == BuyerLoginStatus.failure &&
                         state.errorMessage != null &&

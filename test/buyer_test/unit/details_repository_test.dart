@@ -48,7 +48,7 @@ void main() {
 
     test('submitRating writes via batch to buyer_user/ratings and products/reviews', () async {
       final mockBatch = MockWriteBatch();
-      final mockUsersCollection = MockCollectionReference();
+      final mockBuyerUserCollection = MockCollectionReference();
       final mockUserDoc = MockDocumentReference();
       final mockRatingsCollection = MockCollectionReference();
       final mockUserRatingRef = MockDocumentReference();
@@ -58,8 +58,8 @@ void main() {
       final mockReviewRef = MockDocumentReference();
 
       when(() => mockFirestore.batch()).thenReturn(mockBatch);
-      when(() => mockFirestore.collection('buyer_user')).thenReturn(mockUsersCollection);
-      when(() => mockUsersCollection.doc('user_123')).thenReturn(mockUserDoc);
+      when(() => mockFirestore.collection('buyer_user')).thenReturn(mockBuyerUserCollection);
+      when(() => mockBuyerUserCollection.doc('user_123')).thenReturn(mockUserDoc);
       when(() => mockUserDoc.collection('ratings')).thenReturn(mockRatingsCollection);
       when(() => mockRatingsCollection.doc('food_123')).thenReturn(mockUserRatingRef);
       when(() => mockFirestore.collection('products')).thenReturn(mockProductsCollection);

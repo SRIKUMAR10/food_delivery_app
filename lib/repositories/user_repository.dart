@@ -258,16 +258,6 @@ class UserRepository {
             .where('email', isEqualTo: email)
             .limit(1)
             .get(),
-        FirebaseFirestore.instance
-            .collection('users')
-            .where('phone', whereIn: variants)
-            .limit(1)
-            .get(),
-        FirebaseFirestore.instance
-            .collection('users')
-            .where('email', isEqualTo: email)
-            .limit(1)
-            .get(),
       ]).timeout(const Duration(seconds: 2));
 
       return results.any((snap) => snap.docs.isNotEmpty);
@@ -313,21 +303,6 @@ class UserRepository {
             .limit(1)
             .get(),
         _userCollection.buyerUserCollection
-            .where('phoneNumber', whereIn: variants)
-            .limit(1)
-            .get(),
-        FirebaseFirestore.instance
-            .collection('users')
-            .where('phone', whereIn: variants)
-            .limit(1)
-            .get(),
-        FirebaseFirestore.instance
-            .collection('users')
-            .where('mobileNumber', whereIn: variants)
-            .limit(1)
-            .get(),
-        FirebaseFirestore.instance
-            .collection('users')
             .where('phoneNumber', whereIn: variants)
             .limit(1)
             .get(),
@@ -445,11 +420,6 @@ class UserRepository {
             .get(),
         _userCollection.buyerUserCollection
             .where('phoneNumber', whereIn: variants)
-            .limit(1)
-            .get(),
-        FirebaseFirestore.instance
-            .collection('users')
-            .where('phone', whereIn: variants)
             .limit(1)
             .get(),
       ]).timeout(const Duration(seconds: 2));

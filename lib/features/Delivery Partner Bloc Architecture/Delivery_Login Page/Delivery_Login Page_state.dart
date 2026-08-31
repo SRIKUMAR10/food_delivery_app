@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:food_delivery_app/core/models/delivery_partner_model.dart';
 
 enum DeliveryLoginStatus { initial, loading, success, error }
 
@@ -10,6 +11,8 @@ class DeliveryLoginPageState extends Equatable {
   final bool isRememberMeChecked;
   final String? errorMessage;
   final bool isLoggedIn;
+  final bool isOnboardingCompleted;
+  final DeliveryPartnerModel? partner;
 
   final String? phoneError;
   final String? passwordError;
@@ -26,6 +29,8 @@ class DeliveryLoginPageState extends Equatable {
     this.isRememberMeChecked = false,
     this.errorMessage,
     this.isLoggedIn = false,
+    this.isOnboardingCompleted = false,
+    this.partner,
     this.phoneError,
     this.passwordError,
     this.forgotPasswordEmail = '',
@@ -48,6 +53,8 @@ class DeliveryLoginPageState extends Equatable {
     String? errorMessage,
     bool clearError = false,
     bool? isLoggedIn,
+    bool? isOnboardingCompleted,
+    DeliveryPartnerModel? partner,
     String? phoneError,
     bool clearPhoneError = false,
     String? passwordError,
@@ -64,6 +71,9 @@ class DeliveryLoginPageState extends Equatable {
       isRememberMeChecked: isRememberMeChecked ?? this.isRememberMeChecked,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       isLoggedIn: isLoggedIn ?? this.isLoggedIn,
+      isOnboardingCompleted:
+          isOnboardingCompleted ?? this.isOnboardingCompleted,
+      partner: partner ?? this.partner,
       phoneError:
           clearPhoneError ? null : (phoneError ?? this.phoneError),
       passwordError:
@@ -86,6 +96,8 @@ class DeliveryLoginPageState extends Equatable {
         isRememberMeChecked,
         errorMessage,
         isLoggedIn,
+        isOnboardingCompleted,
+        partner,
         phoneError,
         passwordError,
         forgotPasswordEmail,

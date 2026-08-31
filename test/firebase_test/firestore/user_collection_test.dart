@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:food_delivery_app/app_data_collection/buyer%20collection/user_collection.dart';
 
 class MockUserCollection extends Mock implements UserCollection {}

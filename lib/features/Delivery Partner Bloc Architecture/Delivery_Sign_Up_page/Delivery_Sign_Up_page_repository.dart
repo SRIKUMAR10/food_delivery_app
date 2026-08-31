@@ -106,8 +106,17 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
 
     try {
       final credential =
-          await _partnerRepo.createUserWithEmailPassword('dp_${dpDocRef.id}@foodgo.app', password);
+          await _partnerRepo.createUserWithEmailPassword(authEmail, password);
       uid = credential.user?.uid ?? uid;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        try {
+          final signInCred = await _partnerRepo.signInWithEmailPassword(authEmail, password);
+          uid = signInCred.user?.uid ?? uid;
+        } catch (_) {
+          throw Exception('This email is registered under another account. Please login.');
+        }
+      }
     } catch (_) {
       // If synthetic user creation fails, the custom token minting via customLogin will provision the Auth user on login
     }

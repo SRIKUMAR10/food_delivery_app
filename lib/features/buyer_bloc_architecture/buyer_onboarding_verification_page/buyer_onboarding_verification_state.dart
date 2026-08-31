@@ -1,15 +1,14 @@
+import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 
-/// 8 Chronological Steps in the Buyer Onboarding & Verification Lifecycle.
+/// 6 Chronological Steps in the Buyer Onboarding & Verification Lifecycle.
 enum BuyerVerificationStep {
   personalDetails, // Step 1: Name, Avatar, Bio
   contactVerification, // Step 2: Email, Phone, OTP confirmation
   addressSelection, // Step 3: Google Places geocoding & GPS map pin
-  dietaryPreferences, // Step 4: Veg, Non-Veg, Vegan, Halal, Jain, Spice Level
-  allergiesAndRestrictions, // Step 5: Nut, Dairy, Gluten allergies
-  paymentSetup, // Step 6: Default UPI/Card/COD, Wallet Activation
-  permissionsSetup, // Step 7: GPS Location, FCM Push Notifications
-  completionSuccess, // Step 8: Welcome coupon and final activation
+  paymentSetup, // Step 4: Default UPI/Card/COD, Wallet Activation
+  permissionsSetup, // Step 5: GPS Location, FCM Push Notifications
+  completionSuccess, // Step 6: Welcome coupon and final activation
 }
 
 enum BuyerVerificationStatus {
@@ -32,6 +31,8 @@ class BuyerOnboardingVerificationState extends Equatable {
   final String fullName;
   final String displayName;
   final String? avatarUrl;
+  final Uint8List? localAvatarBytes;
+  final bool isUploadingAvatar;
   final String bio;
 
   // Step 2: Contact & Phone Verification
@@ -51,25 +52,17 @@ class BuyerOnboardingVerificationState extends Equatable {
   final double? longitude;
   final bool isLocatingGps;
 
-  // Step 4: Dietary Preferences
-  final List<String> selectedDietaryTypes; // Veg, Non-Veg, Vegan, Halal, Jain
-  final String spicePreference; // Mild, Medium, Spicy, Extra Spicy
-
-  // Step 5: Food Allergies
-  final List<String> selectedAllergies; // Peanut, Dairy, Gluten, Soy, Shellfish
-  final String customAllergyNotes;
-
-  // Step 6: Payment Preference & Wallet Setup
+  // Step 4: Payment Preference & Wallet Setup
   final String preferredPaymentMethod; // UPI, Card, NetBanking, COD, Wallet
   final String? defaultUpiId;
   final bool activateBuyerWallet;
 
-  // Step 7: Permissions
+  // Step 5: Permissions
   final bool locationPermissionGranted;
   final bool pushNotificationsGranted;
   final bool cameraPermissionGranted;
 
-  // Step 8: Welcome & First Order Discount
+  // Step 6: Welcome & First Order Discount
   final String welcomeCouponCode;
   final double welcomeDiscountAmount;
 
@@ -81,6 +74,8 @@ class BuyerOnboardingVerificationState extends Equatable {
     this.fullName = '',
     this.displayName = '',
     this.avatarUrl,
+    this.localAvatarBytes,
+    this.isUploadingAvatar = false,
     this.bio = '',
     this.email = '',
     this.phone = '',
@@ -95,27 +90,15 @@ class BuyerOnboardingVerificationState extends Equatable {
     this.latitude,
     this.longitude,
     this.isLocatingGps = false,
-    this.selectedDietaryTypes = const [],
-    this.spicePreference = 'Medium',
-    this.selectedAllergies = const [],
-    this.customAllergyNotes = '',
     this.preferredPaymentMethod = 'UPI',
     this.defaultUpiId,
     this.activateBuyerWallet = true,
-    this.locationPermissionGranted = false,
-    this.pushNotificationsGranted = false,
-    this.cameraPermissionGranted = false,
+    this.locationPermissionGranted = true,
+    this.pushNotificationsGranted = true,
+    this.cameraPermissionGranted = true,
     this.welcomeCouponCode = 'WELCOME100',
     this.welcomeDiscountAmount = 100.0,
   });
-
-  /// Helper map for structured preferences storage
-  Map<String, dynamic> get preferencesMap => {
-        'dietaryTypes': selectedDietaryTypes,
-        'spiceLevel': spicePreference,
-        'allergies': selectedAllergies,
-        'customNotes': customAllergyNotes.trim(),
-      };
 
   BuyerOnboardingVerificationState copyWith({
     BuyerVerificationStep? currentStep,
@@ -125,6 +108,9 @@ class BuyerOnboardingVerificationState extends Equatable {
     String? fullName,
     String? displayName,
     String? avatarUrl,
+    Uint8List? localAvatarBytes,
+    bool? isUploadingAvatar,
+    bool clearAvatar = false,
     String? bio,
     String? email,
     String? phone,
@@ -139,10 +125,6 @@ class BuyerOnboardingVerificationState extends Equatable {
     double? latitude,
     double? longitude,
     bool? isLocatingGps,
-    List<String>? selectedDietaryTypes,
-    String? spicePreference,
-    List<String>? selectedAllergies,
-    String? customAllergyNotes,
     String? preferredPaymentMethod,
     String? defaultUpiId,
     bool? activateBuyerWallet,
@@ -159,7 +141,9 @@ class BuyerOnboardingVerificationState extends Equatable {
       successMessage: successMessage,
       fullName: fullName ?? this.fullName,
       displayName: displayName ?? this.displayName,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
+      avatarUrl: clearAvatar ? null : (avatarUrl ?? this.avatarUrl),
+      localAvatarBytes: clearAvatar ? null : (localAvatarBytes ?? this.localAvatarBytes),
+      isUploadingAvatar: isUploadingAvatar ?? this.isUploadingAvatar,
       bio: bio ?? this.bio,
       email: email ?? this.email,
       phone: phone ?? this.phone,
@@ -174,10 +158,6 @@ class BuyerOnboardingVerificationState extends Equatable {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       isLocatingGps: isLocatingGps ?? this.isLocatingGps,
-      selectedDietaryTypes: selectedDietaryTypes ?? this.selectedDietaryTypes,
-      spicePreference: spicePreference ?? this.spicePreference,
-      selectedAllergies: selectedAllergies ?? this.selectedAllergies,
-      customAllergyNotes: customAllergyNotes ?? this.customAllergyNotes,
       preferredPaymentMethod: preferredPaymentMethod ?? this.preferredPaymentMethod,
       defaultUpiId: defaultUpiId ?? this.defaultUpiId,
       activateBuyerWallet: activateBuyerWallet ?? this.activateBuyerWallet,
@@ -198,6 +178,8 @@ class BuyerOnboardingVerificationState extends Equatable {
         fullName,
         displayName,
         avatarUrl,
+        localAvatarBytes,
+        isUploadingAvatar,
         bio,
         email,
         phone,
@@ -212,10 +194,6 @@ class BuyerOnboardingVerificationState extends Equatable {
         latitude,
         longitude,
         isLocatingGps,
-        selectedDietaryTypes,
-        spicePreference,
-        selectedAllergies,
-        customAllergyNotes,
         preferredPaymentMethod,
         defaultUpiId,
         activateBuyerWallet,

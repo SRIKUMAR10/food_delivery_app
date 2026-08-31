@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import 'Delivery_Profile_page_service.dart';
 import 'Delivery_Profile_page_state.dart';
 import 'package:food_delivery_app/core/services/google_places_service.dart';
@@ -504,8 +505,18 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
 
   @override
   Future<String?> pickProfileImage() async {
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-    return null;
+    try {
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+      return file?.path;
+    } catch (_) {
+      return null;
+    }
   }
 
   @override

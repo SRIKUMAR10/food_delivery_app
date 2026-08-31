@@ -1,4 +1,6 @@
+import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
+import 'package:image_picker/image_picker.dart';
 import 'buyer_onboarding_verification_state.dart';
 
 abstract class BuyerOnboardingVerificationEvent extends Equatable {
@@ -25,6 +27,7 @@ class BuyerVerificationPreviousStepPressed extends BuyerOnboardingVerificationEv
   const BuyerVerificationPreviousStepPressed();
 }
 
+/// Real-time User Data Synchronization
 class BuyerVerificationPrefillRequested extends BuyerOnboardingVerificationEvent {
   final String? fullName;
   final String? displayName;
@@ -57,7 +60,26 @@ class BuyerVerificationAutoFetchRequested extends BuyerOnboardingVerificationEve
   const BuyerVerificationAutoFetchRequested();
 }
 
-/// Step 1: Personal Details
+/// Step 1: Personal Details & Avatar
+class BuyerAvatarPickRequested extends BuyerOnboardingVerificationEvent {
+  final ImageSource? source;
+  final Uint8List? directBytes;
+  final String? fileName;
+
+  const BuyerAvatarPickRequested({
+    this.source,
+    this.directBytes,
+    this.fileName,
+  });
+
+  @override
+  List<Object?> get props => [source, directBytes, fileName];
+}
+
+class BuyerAvatarRemoved extends BuyerOnboardingVerificationEvent {
+  const BuyerAvatarRemoved();
+}
+
 class BuyerPersonalDetailsUpdated extends BuyerOnboardingVerificationEvent {
   final String fullName;
   final String displayName;
@@ -142,41 +164,59 @@ class BuyerCurrentLocationRequested extends BuyerOnboardingVerificationEvent {
   const BuyerCurrentLocationRequested();
 }
 
-/// Step 4: Dietary Preferences
-class BuyerDietaryPreferenceToggled extends BuyerOnboardingVerificationEvent {
-  final String dietaryType;
-  const BuyerDietaryPreferenceToggled(this.dietaryType);
+class BuyerAddressTagChanged extends BuyerOnboardingVerificationEvent {
+  final String addressTag;
+  const BuyerAddressTagChanged(this.addressTag);
 
   @override
-  List<Object?> get props => [dietaryType];
+  List<Object?> get props => [addressTag];
 }
 
-class BuyerSpicePreferenceChanged extends BuyerOnboardingVerificationEvent {
-  final String spicePreference;
-  const BuyerSpicePreferenceChanged(this.spicePreference);
+class BuyerAddressLocationSelected extends BuyerOnboardingVerificationEvent {
+  final String formattedAddress;
+  final double latitude;
+  final double longitude;
+  final String? houseFlatNo;
+  final String? landmark;
+  final String? addressTag;
+
+  const BuyerAddressLocationSelected({
+    required this.formattedAddress,
+    required this.latitude,
+    required this.longitude,
+    this.houseFlatNo,
+    this.landmark,
+    this.addressTag,
+  });
 
   @override
-  List<Object?> get props => [spicePreference];
+  List<Object?> get props => [
+        formattedAddress,
+        latitude,
+        longitude,
+        houseFlatNo,
+        landmark,
+        addressTag,
+      ];
 }
 
-/// Step 5: Food Allergies
-class BuyerAllergyToggled extends BuyerOnboardingVerificationEvent {
-  final String allergy;
-  const BuyerAllergyToggled(this.allergy);
+/// Step 4: Payment Setup
+class BuyerPaymentMethodChanged extends BuyerOnboardingVerificationEvent {
+  final String paymentMethod;
+  const BuyerPaymentMethodChanged(this.paymentMethod);
 
   @override
-  List<Object?> get props => [allergy];
+  List<Object?> get props => [paymentMethod];
 }
 
-class BuyerCustomAllergyNotesChanged extends BuyerOnboardingVerificationEvent {
-  final String notes;
-  const BuyerCustomAllergyNotesChanged(this.notes);
+class BuyerWalletToggled extends BuyerOnboardingVerificationEvent {
+  final bool activate;
+  const BuyerWalletToggled(this.activate);
 
   @override
-  List<Object?> get props => [notes];
+  List<Object?> get props => [activate];
 }
 
-/// Step 6: Payment Setup
 class BuyerPaymentPreferenceSelected extends BuyerOnboardingVerificationEvent {
   final String paymentMethod;
   final String? defaultUpiId;
@@ -192,7 +232,20 @@ class BuyerPaymentPreferenceSelected extends BuyerOnboardingVerificationEvent {
   List<Object?> get props => [paymentMethod, defaultUpiId, activateBuyerWallet];
 }
 
-/// Step 7: Permissions
+/// Step 5: Permissions
+class BuyerSinglePermissionToggled extends BuyerOnboardingVerificationEvent {
+  final String permissionType;
+  final bool isGranted;
+
+  const BuyerSinglePermissionToggled({
+    required this.permissionType,
+    required this.isGranted,
+  });
+
+  @override
+  List<Object?> get props => [permissionType, isGranted];
+}
+
 class BuyerPermissionsUpdated extends BuyerOnboardingVerificationEvent {
   final bool locationGranted;
   final bool notificationsGranted;
@@ -212,7 +265,7 @@ class BuyerPermissionsUpdated extends BuyerOnboardingVerificationEvent {
       ];
 }
 
-/// Step 8: Final Submission & Account Activation
+/// Step 6: Final Submission & Account Activation
 class BuyerCompleteVerificationSubmitted extends BuyerOnboardingVerificationEvent {
   const BuyerCompleteVerificationSubmitted();
 }

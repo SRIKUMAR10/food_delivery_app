@@ -27,6 +27,7 @@ import '../../features/Delivery Partner Bloc Architecture/Delivery_Navigation Sc
 import '../../features/Delivery Partner Bloc Architecture/Delivery_Order_Details_page/Delivery_Order_Details_page_ui.dart';
 import '../../features/Delivery Partner Bloc Architecture/Delivery_Delivery Completed_page/Delivery_Delivery Completed_page_ui.dart';
 import '../../features/Delivery Partner Bloc Architecture/Delivery_OTP_Verification_page/Delivery_OTP_Verification_page_ui.dart';
+import '../../features/Delivery Partner Bloc Architecture/Delivery_onboarding_verification_page/delivery_onboarding_verification_ui.dart';
 import '../../features/Delivery Partner Bloc Architecture/Delivery_Chat_page/Delivery_Chat_page_ui.dart';
 
 /// Centralized Application Router with Type-Safe Deep Linking & Navigation
@@ -69,6 +70,7 @@ class AppRouter {
   static const String deliveryOrderDetails = '/deliveryOrderDetails';
   static const String deliveryCompleted = '/deliveryCompleted';
   static const String deliveryOtpVerification = '/deliveryOtpVerification';
+  static const String deliveryOnboardingVerification = '/deliveryOnboardingVerification';
   static const String deliveryChat = '/deliveryChat';
 
   /// Generates type-safe MaterialPageRoutes for all screens with dynamic argument extraction.
@@ -265,6 +267,18 @@ class AppRouter {
             phone: (args['phone'] as String?) ?? '',
             email: (args['email'] as String?) ?? '',
             password: (args['password'] as String?) ?? '',
+          ),
+        );
+      case deliveryOnboardingVerification:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => DeliveryOnboardingVerificationPage(
+            initialFullName: args['fullName'] as String?,
+            initialDisplayName: args['displayName'] as String?,
+            initialEmail: args['email'] as String?,
+            initialPhone: args['phone'] as String?,
+            initialAvatarUrl: args['avatarUrl'] as String?,
+            initialIsPhoneVerified: args['isPhoneVerified'] == true,
           ),
         );
       case deliveryChat:

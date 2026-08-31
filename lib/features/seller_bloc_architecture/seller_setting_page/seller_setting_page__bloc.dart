@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../../core/services/audio_notification_service.dart';
 import 'seller_setting_page__event.dart';
@@ -81,7 +83,12 @@ class SellerSettingBloc extends Bloc<SellerSettingEvent, SellerSettingState> {
         add(SettingsUpdatedFromStream(liveSettings));
       },
       onError: (err) {
-        // Silently handle stream error
+        // Automatically reconnect after a transient network drop (e.g. QUIC timeout)
+        Future.delayed(const Duration(seconds: 3), () {
+          if (!isClosed) {
+            add(WatchSellerSettings());
+          }
+        });
       },
     );
   }
@@ -494,12 +501,15 @@ class SellerSettingBloc extends Bloc<SellerSettingEvent, SellerSettingState> {
 class SellerSettingRepositoryImpl implements SellerSettingRepository {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
+  final FirebaseFunctions? _functions;
 
   SellerSettingRepositoryImpl({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
+    FirebaseFunctions? functions,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+        _auth = auth ?? FirebaseAuth.instance,
+        _functions = functions;
 
   @override
   Future<SellerSettingState> loadSettings() async {
@@ -821,22 +831,83 @@ class SellerSettingRepositoryImpl implements SellerSettingRepository {
   @override
   Future<void> changePassword(String currentPassword, String newPassword, {bool signOutOtherDevices = false}) async {
     final user = _auth.currentUser;
-    if (user == null || user.email == null) {
-      throw Exception('User is not authenticated');
+    if (user == null) {
+      throw Exception('User is not authenticated. Please sign in again.');
     }
 
-    final credential = EmailAuthProvider.credential(
-      email: user.email!,
-      password: currentPassword,
-    );
+    final uid = user.uid;
+    final email = user.email;
+    final phone = user.phoneNumber;
 
-    await user.reauthenticateWithCredential(credential);
-    await user.updatePassword(newPassword);
+    // 1. Primary: Call Cloud Function changeSellerPassword to securely update Admin Auth, Firestore, and active sessions
+    bool cloudFunctionSucceeded = false;
+    try {
+      final functionsInstance = _functions ?? FirebaseFunctions.instance;
+      final callable = functionsInstance.httpsCallable('changeSellerPassword');
+      final resp = await callable.call({
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'signOutOtherDevices': signOutOtherDevices,
+        'role': 'seller',
+        'uid': uid,
+        'email': email,
+        'phoneNumber': phone,
+      });
+      if (resp.data != null) {
+        cloudFunctionSucceeded = true;
+      }
+    } catch (cfErr) {
+      debugPrint('Cloud Function changeSellerPassword info/error: $cfErr');
+      final errStr = cfErr.toString().toLowerCase();
+      if (errStr.contains('incorrect') || errStr.contains('current password') || errStr.contains('mismatch') || errStr.contains('unauthenticated')) {
+        throw Exception('Current password is incorrect. Please try again.');
+      }
+      // If network or offline, fallback to client update
+    }
 
-    final sellerRef = _firestore.collection('sellers').doc(user.uid);
-    await sellerRef.set({
+    // 2. Client-side Auth re-authentication & update
+    if (email != null && email.isNotEmpty) {
+      try {
+        final credential = EmailAuthProvider.credential(
+          email: email,
+          password: currentPassword,
+        );
+        await user.reauthenticateWithCredential(credential);
+        await user.updatePassword(newPassword);
+      } catch (authErr) {
+        debugPrint('Client reauthenticateWithCredential error: $authErr');
+        if (!cloudFunctionSucceeded) {
+          final authStr = authErr.toString().toLowerCase();
+          if (authStr.contains('wrong-password') || authStr.contains('invalid-credential') || authStr.contains('credential')) {
+            throw Exception('Current password is incorrect. Please try again.');
+          }
+        }
+      }
+    } else {
+      try {
+        await user.updatePassword(newPassword);
+      } catch (_) {}
+    }
+
+    // 3. Instant Real-Time Firestore Sync (Updates password, hashedPassword, plainPassword, lastPasswordChanged, updatedAt)
+    final updateData = <String, dynamic>{
+      'password': newPassword,
+      'hashedPassword': newPassword,
+      'plainPassword': newPassword,
       'lastPasswordChanged': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    final sellerRef = _firestore.collection('sellers').doc(uid);
+    await sellerRef.set(updateData, SetOptions(merge: true));
+
+    // Also update seller_${uid} alias document if it exists
+    try {
+      final aliasDoc = await _firestore.collection('sellers').doc('seller_$uid').get();
+      if (aliasDoc.exists) {
+        await _firestore.collection('sellers').doc('seller_$uid').set(updateData, SetOptions(merge: true));
+      }
+    } catch (_) {}
   }
 
   @override

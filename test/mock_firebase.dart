@@ -76,11 +76,11 @@ void setupFirebaseAuthMocks() {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler(
     'dev.flutter.pigeon.cloud_firestore_platform_interface.FirebaseFirestoreHostApi.documentReferenceSnapshot',
-    (message) async => null,
+    (message) async => const StandardMessageCodec().encodeMessage(<Object?>['mock_channel']),
   );
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler(
     'dev.flutter.pigeon.cloud_firestore_platform_interface.FirebaseFirestoreHostApi.querySnapshot',
-    (message) async => null,
+    (message) async => const StandardMessageCodec().encodeMessage(<Object?>['mock_channel']),
   );
 }

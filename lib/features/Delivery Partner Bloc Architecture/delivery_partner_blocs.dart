@@ -28,7 +28,12 @@
 // 21. SettingsBloc              - Sound, Map Preference, Theme & Localization
 // ─────────────────────────────────────────────────────────────────────────────
 
-// 1. DeliveryAuthBloc
+// 1. DeliveryAuthBloc & Onboarding Verification
+export 'Delivery_onboarding_verification_page/delivery_onboarding_verification_bloc.dart';
+export 'Delivery_onboarding_verification_page/delivery_onboarding_verification_event.dart';
+export 'Delivery_onboarding_verification_page/delivery_onboarding_verification_state.dart';
+export 'Delivery_onboarding_verification_page/delivery_onboarding_verification_repository.dart';
+export 'Delivery_onboarding_verification_page/delivery_onboarding_verification_ui.dart';
 export 'Delivery_Login Page/delivery_auth_bloc.dart';
 export 'Delivery_Login Page/Delivery_Login Page_bloc.dart';
 export 'Delivery_Login Page/Delivery_Login Page_event.dart';
@@ -123,3 +128,7 @@ export 'Delivery_Help_Support_page/Delivery_Help_Support_page_state.dart';
 export 'Delivery_Settings_page/Delivery_Settings_page_bloc.dart';
 export 'Delivery_Settings_page/Delivery_Settings_page_event.dart';
 export 'Delivery_Settings_page/Delivery_Settings_page_state.dart';
+
+// Cross-Platform Media & Image Optimization Helpers
+export 'delivery_image_picker_helper.dart';
+export 'delivery_document_preview_dialog.dart';

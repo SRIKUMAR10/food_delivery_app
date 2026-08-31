@@ -95,7 +95,7 @@ test/
 │   ├── products/                (Food items, categories, add-on fixtures)
 │   ├── orders/                  (Standard order payloads & state transitions)
 │   ├── payments/                (Payment intent fixtures, receipts)
-│   └── users/                   (Multi-role mock user documents)
+│   └── buyer_user/              (Canonical buyer_user mock documents)
 │
 ├── mocks/                       (Centralized Mock Objects & Stubs)
 │   ├── firebase/                (Mock FirebaseAuth, MockFirestore, MockStorage)
@@ -105,7 +105,7 @@ test/
 │   └── external_dependencies/   (MockGeolocator, MockConnectivity)
 │
 ├── test_data/                   (Realistic Sample Datasets)
-│   ├── users/                   (Sample user seeds)
+│   ├── buyer_user/              (Sample buyer_user seeds)
 │   ├── products/                (Sample dishes, prices, categories)
 │   ├── restaurants/             (Sample restaurant chains & operating hours)
 │   ├── orders/                  (Sample historical & active orders)

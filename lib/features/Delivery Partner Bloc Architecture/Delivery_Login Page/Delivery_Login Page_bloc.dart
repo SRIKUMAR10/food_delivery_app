@@ -148,7 +148,7 @@ class DeliveryLoginPageBloc
           ? formattedPhone
           : '+91$formattedPhone';
 
-      await repository.loginWithPhone(fullPhone, state.password);
+      final partner = await repository.loginWithPhone(fullPhone, state.password);
 
       if (state.isRememberMeChecked) {
         await repository.saveSavedPhone(state.phone);
@@ -159,6 +159,8 @@ class DeliveryLoginPageBloc
       emit(state.copyWith(
         status: DeliveryLoginStatus.success,
         isLoggedIn: true,
+        isOnboardingCompleted: partner.onboardingCompleted,
+        partner: partner,
         password: '',
         errorMessage: null,
       ));
@@ -188,10 +190,12 @@ class DeliveryLoginPageBloc
       clearError: true,
     ));
     try {
-      await repository.loginWithGoogle();
+      final partner = await repository.loginWithGoogle();
       emit(state.copyWith(
         status: DeliveryLoginStatus.success,
         isLoggedIn: true,
+        isOnboardingCompleted: partner.onboardingCompleted,
+        partner: partner,
         errorMessage: null,
       ));
     } catch (e) {
@@ -226,10 +230,12 @@ class DeliveryLoginPageBloc
       clearError: true,
     ));
     try {
-      await repository.loginWithApple();
+      final partner = await repository.loginWithApple();
       emit(state.copyWith(
         status: DeliveryLoginStatus.success,
         isLoggedIn: true,
+        isOnboardingCompleted: partner.onboardingCompleted,
+        partner: partner,
         errorMessage: null,
       ));
     } catch (e) {

@@ -568,7 +568,7 @@ class _RealtimeCustomerNameText extends StatelessWidget {
       } catch (_) {}
     }
 
-    // 2. Try Firestore users collection by buyerId
+    // 2. Try Firestore buyer_user collection by buyerId
     if (buyerId != null && buyerId.isNotEmpty) {
       try {
         final userDoc = await FirebaseFirestore.instance
@@ -592,14 +592,14 @@ class _RealtimeCustomerNameText extends StatelessWidget {
       } catch (_) {}
     }
 
-    // 3. Fallback: Query users collection for any registered buyer name
+    // 3. Fallback: Query buyer_user collection for any registered buyer name
     try {
-      final usersSnap = await FirebaseFirestore.instance
+      final buyerSnap = await FirebaseFirestore.instance
           .collection('buyer_user')
           .limit(1)
           .get();
-      if (usersSnap.docs.isNotEmpty) {
-        final data = usersSnap.docs.first.data();
+      if (buyerSnap.docs.isNotEmpty) {
+        final data = buyerSnap.docs.first.data();
         final name = data['name'] ??
             data['displayName'] ??
             data['username'] ??

@@ -31,6 +31,8 @@ void main() {
 
     setUp(() {
       mockRepo = MockBuyerLoginRepository();
+      when(() => mockRepo.checkKycAndOnboardingStatus(any()))
+          .thenAnswer((_) async => const BuyerAuthProfileStatus());
     });
 
     test('initial state is BuyerLoginState()', () {
@@ -117,8 +119,10 @@ void main() {
         emitsInOrder([
           const BuyerLoginState(status: BuyerLoginStatus.loading),
           const BuyerLoginState(
+            phone: '+919876543210',
             status: BuyerLoginStatus.success,
             userId: 'user_buyer_123',
+            isPhoneVerified: true,
           ),
         ]),
       );

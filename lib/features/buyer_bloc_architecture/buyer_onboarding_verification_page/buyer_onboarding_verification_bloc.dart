@@ -1,8 +1,14 @@
 import 'dart:async';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image/image.dart' as img;
 import 'package:food_delivery_app/core/utils/app_exception_formatter.dart';
+import 'package:food_delivery_app/core/services/google_places_service.dart';
 import 'buyer_onboarding_verification_event.dart';
 import 'buyer_onboarding_verification_state.dart';
 import 'buyer_onboarding_verification_repository.dart';
@@ -11,11 +17,13 @@ class BuyerOnboardingVerificationBloc
     extends Bloc<BuyerOnboardingVerificationEvent, BuyerOnboardingVerificationState> {
   final IBuyerOnboardingVerificationRepository repository;
   final FirebaseAuth auth;
+  final ImagePicker? imagePicker;
   Timer? _otpTimer;
 
   BuyerOnboardingVerificationBloc({
     IBuyerOnboardingVerificationRepository? repository,
     FirebaseAuth? auth,
+    ImagePicker? imagePicker,
     String? initialFullName,
     String? initialDisplayName,
     String? initialEmail,
@@ -24,6 +32,7 @@ class BuyerOnboardingVerificationBloc
     bool initialIsPhoneVerified = false,
   })  : repository = repository ?? BuyerOnboardingVerificationRepository(),
         auth = auth ?? FirebaseAuth.instance,
+        imagePicker = imagePicker,
         super(BuyerOnboardingVerificationState(
           fullName: initialFullName ?? '',
           displayName: initialDisplayName ?? initialFullName ?? '',
@@ -37,6 +46,8 @@ class BuyerOnboardingVerificationBloc
     on<BuyerVerificationStepChanged>(_onStepChanged);
     on<BuyerVerificationNextStepPressed>(_onNextStepPressed);
     on<BuyerVerificationPreviousStepPressed>(_onPreviousStepPressed);
+    on<BuyerAvatarPickRequested>(_onAvatarPickRequested);
+    on<BuyerAvatarRemoved>(_onAvatarRemoved);
     on<BuyerPersonalDetailsUpdated>(_onPersonalDetailsUpdated);
     on<BuyerContactUpdated>(_onContactUpdated);
     on<BuyerSendOtpRequested>(_onSendOtpRequested);
@@ -44,12 +55,13 @@ class BuyerOnboardingVerificationBloc
     on<BuyerVerifyOtpPressed>(_onVerifyOtpPressed);
     on<BuyerOtpTimerTicked>(_onOtpTimerTicked);
     on<BuyerAddressUpdated>(_onAddressUpdated);
+    on<BuyerAddressTagChanged>(_onAddressTagChanged);
+    on<BuyerAddressLocationSelected>(_onAddressLocationSelected);
     on<BuyerCurrentLocationRequested>(_onCurrentLocationRequested);
-    on<BuyerDietaryPreferenceToggled>(_onDietaryPreferenceToggled);
-    on<BuyerSpicePreferenceChanged>(_onSpicePreferenceChanged);
-    on<BuyerAllergyToggled>(_onAllergyToggled);
-    on<BuyerCustomAllergyNotesChanged>(_onCustomAllergyNotesChanged);
+    on<BuyerPaymentMethodChanged>(_onPaymentMethodChanged);
+    on<BuyerWalletToggled>(_onWalletToggled);
     on<BuyerPaymentPreferenceSelected>(_onPaymentPreferenceSelected);
+    on<BuyerSinglePermissionToggled>(_onSinglePermissionToggled);
     on<BuyerPermissionsUpdated>(_onPermissionsUpdated);
     on<BuyerCompleteVerificationSubmitted>(_onCompleteVerificationSubmitted);
   }
@@ -62,15 +74,27 @@ class BuyerOnboardingVerificationBloc
     if (uid == null || uid.isEmpty) return;
 
     try {
-      final doc = await FirebaseFirestore.instance.collection('buyer_user').doc(uid).get();
-      if (doc.exists && doc.data() != null) {
-        final data = doc.data()!;
+      final data = await repository.getCurrentUserVerificationData(uid);
+      if (data.isNotEmpty) {
         final name = (data['fullName'] ?? data['name'] ?? data['displayName'] ?? '').toString().trim();
         final displayName = (data['displayName'] ?? data['name'] ?? '').toString().trim();
         final email = (data['email'] ?? data['emailAddress'] ?? '').toString().trim();
         final phone = (data['phone'] ?? data['phoneNumber'] ?? data['mobile'] ?? '').toString().trim();
         final imageUrl = (data['imageUrl'] ?? data['photoUrl'] ?? data['profilePic']) as String?;
         final isPhoneVerified = data['isPhoneVerified'] == true || phone.isNotEmpty;
+        final locationPermission = data['locationPermissionGranted'] as bool? ??
+            (data['permissions'] is Map ? data['permissions']['location'] as bool? : null);
+        final notificationsPermission = data['pushNotificationsGranted'] as bool? ??
+            (data['permissions'] is Map ? data['permissions']['pushNotifications'] as bool? : null);
+        final cameraPermission = data['cameraPermissionGranted'] as bool? ??
+            (data['permissions'] is Map ? data['permissions']['camera'] as bool? : null);
+
+        final address = (data['address'] ?? data['deliveryAddress'] ?? data['fullAddress'] ?? '').toString().trim();
+        final houseFlatNo = (data['houseFlatNo'] ?? data['flatNo'] ?? '').toString().trim();
+        final landmark = (data['landmark'] ?? data['nearbyLandmark'] ?? '').toString().trim();
+        final selectedTag = (data['selectedAddressType'] ?? data['addressTag'] ?? data['tag'] ?? '').toString().trim();
+        final lat = (data['latitude'] as num?)?.toDouble() ?? (data['lat'] as num?)?.toDouble();
+        final lng = (data['longitude'] as num?)?.toDouble() ?? (data['lng'] as num?)?.toDouble();
 
         emit(state.copyWith(
           fullName: state.fullName.isEmpty ? name : state.fullName,
@@ -79,6 +103,15 @@ class BuyerOnboardingVerificationBloc
           phone: state.phone.isEmpty ? phone : state.phone,
           avatarUrl: state.avatarUrl ?? imageUrl,
           isPhoneVerified: state.isPhoneVerified || isPhoneVerified,
+          formattedAddress: state.formattedAddress.isEmpty ? address : state.formattedAddress,
+          houseFlatNo: state.houseFlatNo.isEmpty ? houseFlatNo : state.houseFlatNo,
+          landmark: state.landmark.isEmpty ? landmark : state.landmark,
+          addressTag: selectedTag.isNotEmpty ? selectedTag : state.addressTag,
+          latitude: state.latitude ?? lat,
+          longitude: state.longitude ?? lng,
+          locationPermissionGranted: locationPermission ?? state.locationPermissionGranted,
+          pushNotificationsGranted: notificationsPermission ?? state.pushNotificationsGranted,
+          cameraPermissionGranted: cameraPermission ?? state.cameraPermissionGranted,
         ));
       }
     } catch (_) {
@@ -139,6 +172,110 @@ class BuyerOnboardingVerificationBloc
     }
   }
 
+  Future<void> _onAvatarPickRequested(
+    BuyerAvatarPickRequested event,
+    Emitter<BuyerOnboardingVerificationState> emit,
+  ) async {
+    try {
+      Uint8List? imageBytes = event.directBytes;
+      String fileName = event.fileName ?? 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      String contentType = 'image/jpeg';
+
+      if (imageBytes == null) {
+        XFile? picked;
+        try {
+          final picker = imagePicker ?? ImagePicker();
+          picked = await picker.pickImage(
+            source: event.source ?? ImageSource.gallery,
+            imageQuality: 100,
+          );
+        } catch (pickerErr) {
+          debugPrint('ImagePicker info: $pickerErr. Trying fallback.');
+        }
+
+        if (picked != null) {
+          imageBytes = await picked.readAsBytes();
+          fileName = picked.name;
+        } else if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
+          final result = await FilePicker.platform.pickFiles(
+            type: FileType.image,
+            allowMultiple: false,
+            withData: true,
+          );
+          if (result != null && result.files.isNotEmpty) {
+            imageBytes = result.files.first.bytes;
+            fileName = result.files.first.name;
+          }
+        }
+      }
+
+      if (imageBytes == null) return;
+
+      emit(state.copyWith(
+        isUploadingAvatar: true,
+        localAvatarBytes: imageBytes,
+        status: BuyerVerificationStatus.inProgress,
+      ));
+
+      Uint8List bytesToUpload = imageBytes;
+      try {
+        img.Image? decoded = img.decodeImage(imageBytes);
+        if (decoded != null) {
+          if (decoded.width > 800 || decoded.height > 800) {
+            decoded = decoded.width >= decoded.height
+                ? img.copyResize(decoded, width: 800)
+                : img.copyResize(decoded, height: 800);
+          }
+          bytesToUpload = Uint8List.fromList(
+            img.encodeJpg(decoded, quality: 80),
+          );
+        }
+      } catch (e) {
+        debugPrint('Image decode note, using raw bytes: $e');
+      }
+
+      if (fileName.toLowerCase().endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (fileName.toLowerCase().endsWith('.webp')) {
+        contentType = 'image/webp';
+      }
+
+      final uid = auth.currentUser?.uid ?? 'guest_buyer_${DateTime.now().millisecondsSinceEpoch}';
+
+      final downloadUrl = await repository.uploadProfileAvatar(
+        userId: uid,
+        imageBytes: bytesToUpload,
+        fileName: fileName,
+        contentType: contentType,
+      );
+
+      emit(state.copyWith(
+        avatarUrl: downloadUrl,
+        isUploadingAvatar: false,
+        successMessage: 'Profile photo updated successfully!',
+        status: BuyerVerificationStatus.inProgress,
+      ));
+    } catch (e) {
+      debugPrint('Avatar upload error: $e');
+      emit(state.copyWith(
+        isUploadingAvatar: false,
+        errorMessage: 'Failed to upload photo: ${AppExceptionFormatter.toUserFriendlyMessage(e)}',
+        status: BuyerVerificationStatus.failure,
+      ));
+    }
+  }
+
+  void _onAvatarRemoved(
+    BuyerAvatarRemoved event,
+    Emitter<BuyerOnboardingVerificationState> emit,
+  ) {
+    emit(state.copyWith(
+      clearAvatar: true,
+      successMessage: 'Profile photo removed',
+      status: BuyerVerificationStatus.inProgress,
+    ));
+  }
+
   void _onPersonalDetailsUpdated(
     BuyerPersonalDetailsUpdated event,
     Emitter<BuyerOnboardingVerificationState> emit,
@@ -157,7 +294,7 @@ class BuyerOnboardingVerificationBloc
           ? event.displayName.trim()
           : event.fullName.trim(),
       bio: event.bio.trim(),
-      avatarUrl: event.avatarUrl,
+      avatarUrl: event.avatarUrl ?? state.avatarUrl,
       currentStep: BuyerVerificationStep.contactVerification,
       status: BuyerVerificationStatus.inProgress,
       errorMessage: null,
@@ -274,16 +411,33 @@ class BuyerOnboardingVerificationBloc
     });
   }
 
-  void _onAddressUpdated(
+  Future<void> _onAddressUpdated(
     BuyerAddressUpdated event,
     Emitter<BuyerOnboardingVerificationState> emit,
-  ) {
+  ) async {
     if (event.formattedAddress.trim().isEmpty) {
       emit(state.copyWith(
         errorMessage: 'Please specify your delivery address',
         status: BuyerVerificationStatus.failure,
       ));
       return;
+    }
+
+    final uid = auth.currentUser?.uid;
+    if (uid != null && uid.isNotEmpty) {
+      try {
+        await repository.saveStep3Address(
+          userId: uid,
+          formattedAddress: event.formattedAddress.trim(),
+          houseFlatNo: event.houseFlatNo.trim(),
+          landmark: event.landmark.trim(),
+          addressTag: event.addressTag,
+          latitude: event.latitude,
+          longitude: event.longitude,
+        );
+      } catch (e) {
+        debugPrint('Real-time Step 3 persistence warning: $e');
+      }
     }
 
     emit(state.copyWith(
@@ -293,9 +447,37 @@ class BuyerOnboardingVerificationBloc
       addressTag: event.addressTag,
       latitude: event.latitude,
       longitude: event.longitude,
-      currentStep: BuyerVerificationStep.dietaryPreferences,
+      currentStep: BuyerVerificationStep.paymentSetup,
       status: BuyerVerificationStatus.inProgress,
       errorMessage: null,
+      successMessage: 'Delivery address saved successfully!',
+    ));
+  }
+
+  void _onAddressTagChanged(
+    BuyerAddressTagChanged event,
+    Emitter<BuyerOnboardingVerificationState> emit,
+  ) {
+    emit(state.copyWith(
+      addressTag: event.addressTag,
+      status: BuyerVerificationStatus.inProgress,
+    ));
+  }
+
+  void _onAddressLocationSelected(
+    BuyerAddressLocationSelected event,
+    Emitter<BuyerOnboardingVerificationState> emit,
+  ) {
+    emit(state.copyWith(
+      formattedAddress: event.formattedAddress.trim(),
+      latitude: event.latitude,
+      longitude: event.longitude,
+      houseFlatNo: event.houseFlatNo ?? state.houseFlatNo,
+      landmark: event.landmark ?? state.landmark,
+      addressTag: event.addressTag ?? state.addressTag,
+      status: BuyerVerificationStatus.inProgress,
+      errorMessage: null,
+      successMessage: 'Address selected successfully',
     ));
   }
 
@@ -303,63 +485,53 @@ class BuyerOnboardingVerificationBloc
     BuyerCurrentLocationRequested event,
     Emitter<BuyerOnboardingVerificationState> emit,
   ) async {
-    emit(state.copyWith(isLocatingGps: true));
+    emit(state.copyWith(isLocatingGps: true, errorMessage: null));
     try {
-      // Pinpoint coordinates (e.g. Chennai / Madurai center as default GPS)
-      emit(state.copyWith(
-        isLocatingGps: false,
-        latitude: 13.0827,
-        longitude: 80.2707,
-        formattedAddress: 'Anna Nagar, Chennai, Tamil Nadu, 600040',
-        addressTag: 'Home',
-        successMessage: 'GPS Location detected accurately',
-      ));
+      final details = await GooglePlacesService.instance.getCurrentLocationAddress();
+      if (details != null && details.formattedAddress.isNotEmpty) {
+        emit(state.copyWith(
+          isLocatingGps: false,
+          latitude: details.latitude ?? state.latitude,
+          longitude: details.longitude ?? state.longitude,
+          formattedAddress: details.formattedAddress,
+          status: BuyerVerificationStatus.inProgress,
+          successMessage: 'Real-time GPS Location detected',
+        ));
+      } else {
+        // If GPS permission was denied or device location disabled, provide clear message
+        emit(state.copyWith(
+          isLocatingGps: false,
+          errorMessage: 'Unable to detect live GPS. Please enable device location.',
+          status: BuyerVerificationStatus.failure,
+        ));
+      }
     } catch (e) {
       emit(state.copyWith(
         isLocatingGps: false,
-        errorMessage: 'Unable to fetch GPS location',
+        errorMessage: 'Unable to fetch GPS location: $e',
+        status: BuyerVerificationStatus.failure,
       ));
     }
   }
 
-  void _onDietaryPreferenceToggled(
-    BuyerDietaryPreferenceToggled event,
+  void _onPaymentMethodChanged(
+    BuyerPaymentMethodChanged event,
     Emitter<BuyerOnboardingVerificationState> emit,
   ) {
-    final list = List<String>.from(state.selectedDietaryTypes);
-    if (list.contains(event.dietaryType)) {
-      list.remove(event.dietaryType);
-    } else {
-      list.add(event.dietaryType);
-    }
-    emit(state.copyWith(selectedDietaryTypes: list));
+    emit(state.copyWith(
+      preferredPaymentMethod: event.paymentMethod,
+      status: BuyerVerificationStatus.inProgress,
+    ));
   }
 
-  void _onSpicePreferenceChanged(
-    BuyerSpicePreferenceChanged event,
+  void _onWalletToggled(
+    BuyerWalletToggled event,
     Emitter<BuyerOnboardingVerificationState> emit,
   ) {
-    emit(state.copyWith(spicePreference: event.spicePreference));
-  }
-
-  void _onAllergyToggled(
-    BuyerAllergyToggled event,
-    Emitter<BuyerOnboardingVerificationState> emit,
-  ) {
-    final list = List<String>.from(state.selectedAllergies);
-    if (list.contains(event.allergy)) {
-      list.remove(event.allergy);
-    } else {
-      list.add(event.allergy);
-    }
-    emit(state.copyWith(selectedAllergies: list));
-  }
-
-  void _onCustomAllergyNotesChanged(
-    BuyerCustomAllergyNotesChanged event,
-    Emitter<BuyerOnboardingVerificationState> emit,
-  ) {
-    emit(state.copyWith(customAllergyNotes: event.notes));
+    emit(state.copyWith(
+      activateBuyerWallet: event.activate,
+      status: BuyerVerificationStatus.inProgress,
+    ));
   }
 
   void _onPaymentPreferenceSelected(
@@ -372,6 +544,19 @@ class BuyerOnboardingVerificationBloc
       activateBuyerWallet: event.activateBuyerWallet,
       currentStep: BuyerVerificationStep.permissionsSetup,
     ));
+  }
+
+  void _onSinglePermissionToggled(
+    BuyerSinglePermissionToggled event,
+    Emitter<BuyerOnboardingVerificationState> emit,
+  ) {
+    if (event.permissionType == 'location') {
+      emit(state.copyWith(locationPermissionGranted: event.isGranted));
+    } else if (event.permissionType == 'notifications') {
+      emit(state.copyWith(pushNotificationsGranted: event.isGranted));
+    } else if (event.permissionType == 'camera') {
+      emit(state.copyWith(cameraPermissionGranted: event.isGranted));
+    }
   }
 
   void _onPermissionsUpdated(

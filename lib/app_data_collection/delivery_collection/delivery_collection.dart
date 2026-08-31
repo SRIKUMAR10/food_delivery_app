@@ -161,6 +161,9 @@ class DeliveryCollection {
         }
       }
       return null;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') return null;
+      throw Exception('Failed to query delivery partner by phone: $e');
     } catch (e) {
       throw Exception('Failed to query delivery partner by phone: $e');
     }
@@ -176,6 +179,9 @@ class DeliveryCollection {
         return query.docs.first;
       }
       return null;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') return null;
+      throw Exception('Failed to query delivery partner by email: $e');
     } catch (e) {
       throw Exception('Failed to query delivery partner by email: $e');
     }
@@ -185,7 +191,6 @@ class DeliveryCollection {
       String uid, Map<String, dynamic> data) async {
     try {
       final sanitizedData = Map<String, dynamic>.from(data);
-      sanitizedData.remove('password'); // Strictly never store password in Firestore
       sanitizedData['updatedAt'] = FieldValue.serverTimestamp();
       final docRef = _collection.doc(uid);
       await docRef.set(sanitizedData, SetOptions(merge: true));

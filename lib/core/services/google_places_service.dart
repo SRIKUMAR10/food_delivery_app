@@ -353,9 +353,83 @@ class GooglePlacesService {
     );
   }
 
-  /// Reverse geocodes latitude and longitude into a structured address.
+  /// Reverse geocodes latitude and longitude into a structured human-readable address.
   Future<GooglePlaceDetails?> reverseGeocode(double latitude, double longitude) async {
-    // 1. Google Geocoding API (Native platforms only - browser CORS blocks direct REST calls)
+    // 1. BigDataCloud Reverse Geocoding API (Fast, Free, No API Key, CORS-enabled, Global)
+    try {
+      final uri = Uri.https('api.bigdatacloud.net', '/data/reverse-geocode-client', {
+        'latitude': latitude.toString(),
+        'longitude': longitude.toString(),
+        'localityLanguage': 'en',
+      });
+
+      final response = await _httpClient.get(uri).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final locality = (data['locality'] ?? '').toString().trim();
+        final city = (data['city'] ?? data['principalSubdivisionCity'] ?? '').toString().trim();
+        final state = (data['principalSubdivision'] ?? '').toString().trim();
+        final postcode = (data['postcode'] ?? '').toString().trim();
+        final country = (data['countryName'] ?? '').toString().trim();
+
+        final parts = <String>[];
+        if (locality.isNotEmpty) parts.add(locality);
+        if (city.isNotEmpty && city != locality) parts.add(city);
+        if (state.isNotEmpty) parts.add(state);
+        if (postcode.isNotEmpty) parts.add(postcode);
+        if (country.isNotEmpty) parts.add(country);
+
+        if (parts.isNotEmpty) {
+          final formatted = parts.join(', ');
+          final main = locality.isNotEmpty ? locality : (city.isNotEmpty ? city : formatted);
+          final secondary = parts.where((p) => p != main).join(', ');
+          return GooglePlaceDetails(
+            placeId: 'bdc_${latitude}_$longitude',
+            formattedAddress: formatted,
+            mainText: main,
+            secondaryText: secondary,
+            latitude: latitude,
+            longitude: longitude,
+            postalCode: postcode.isNotEmpty ? postcode : null,
+            city: city.isNotEmpty ? city : locality,
+            state: state.isNotEmpty ? state : null,
+            country: country.isNotEmpty ? country : null,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('BigDataCloud Reverse Geocode error: $e');
+    }
+
+    // 2. Nominatim Reverse API (OpenStreetMap)
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/reverse', {
+        'lat': latitude.toString(),
+        'lon': longitude.toString(),
+        'format': 'jsonv2',
+        'addressdetails': '1',
+      });
+
+      final response = await _httpClient.get(
+        uri,
+        headers: {
+          'User-Agent': 'FoodGoFoodDelivery/1.0 (contact@foodgo.app)',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final displayName = (data['display_name'] ?? '').toString().trim();
+        if (displayName.isNotEmpty) {
+          return GooglePlaceDetails.fromJson(data);
+        }
+      }
+    } catch (e) {
+      debugPrint('Nominatim Reverse Geocode error: $e');
+    }
+
+    // 3. Google Geocoding API (Native platforms only with valid key)
     if (!kIsWeb && _apiKey.isNotEmpty && !_apiKey.startsWith('your_') && !_apiKey.startsWith('AIzaSyDummy')) {
       try {
         final uri = Uri.https('maps.googleapis.com', '/maps/api/geocode/json', {
@@ -378,34 +452,55 @@ class GooglePlacesService {
       }
     }
 
-    // 2. Nominatim Reverse API (CORS enabled)
+    // 4. Photon Reverse Geocoding
     try {
-      final uri = Uri.https('nominatim.openstreetmap.org', '/reverse', {
+      final uri = Uri.https('photon.komoot.io', '/reverse', {
         'lat': latitude.toString(),
         'lon': longitude.toString(),
-        'format': 'json',
-        'addressdetails': '1',
       });
-
-      final response = await _httpClient.get(
-        uri,
-        headers: kIsWeb ? null : {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
-      ).timeout(const Duration(seconds: 4));
-
+      final response = await _httpClient.get(uri).timeout(const Duration(seconds: 4));
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
-        return GooglePlaceDetails.fromJson(data);
+        final features = data['features'] as List<dynamic>?;
+        if (features != null && features.isNotEmpty) {
+          final props = features.first['properties'] as Map<String, dynamic>?;
+          if (props != null) {
+            final name = (props['name'] ?? props['street'] ?? '').toString().trim();
+            final city = (props['city'] ?? props['town'] ?? props['district'] ?? '').toString().trim();
+            final state = (props['state'] ?? '').toString().trim();
+            final postcode = (props['postcode'] ?? '').toString().trim();
+            final country = (props['country'] ?? '').toString().trim();
+            final parts = [name, city, state, postcode, country].where((s) => s.isNotEmpty).toList();
+            if (parts.isNotEmpty) {
+              final formatted = parts.join(', ');
+              return GooglePlaceDetails(
+                placeId: 'photon_${latitude}_$longitude',
+                formattedAddress: formatted,
+                mainText: name.isNotEmpty ? name : (city.isNotEmpty ? city : formatted),
+                secondaryText: parts.skip(1).join(', '),
+                latitude: latitude,
+                longitude: longitude,
+                postalCode: postcode.isNotEmpty ? postcode : null,
+                city: city.isNotEmpty ? city : null,
+                state: state.isNotEmpty ? state : null,
+                country: country.isNotEmpty ? country : null,
+              );
+            }
+          }
+        }
       }
     } catch (e) {
-      debugPrint('Nominatim Reverse Geocode error: $e');
+      debugPrint('Photon Reverse Geocode error: $e');
     }
 
-    // 3. Fallback
+    // 5. Clean Human-Readable Fallback
+    final latStr = latitude.toStringAsFixed(4);
+    final lngStr = longitude.toStringAsFixed(4);
     return GooglePlaceDetails(
       placeId: 'gps_${latitude}_$longitude',
-      formattedAddress: 'Current Location ($latitude, $longitude)',
-      mainText: 'Current GPS Location',
-      secondaryText: '$latitude, $longitude',
+      formattedAddress: 'Pinned Delivery Location ($latStr, $lngStr)',
+      mainText: 'Pinned Delivery Location',
+      secondaryText: 'Coordinates: $latStr, $lngStr',
       latitude: latitude,
       longitude: longitude,
     );

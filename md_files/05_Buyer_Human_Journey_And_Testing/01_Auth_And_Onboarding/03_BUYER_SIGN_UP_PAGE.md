@@ -63,7 +63,7 @@ sequenceDiagram
 
 ## 🔥 3. Real-Time Cloud Firestore & Backend Connectivity
 
-- **Collections:** `buyer_user/{uid}` and `users/{uid}`
+- **Collections:** `buyer_user/{uid}`
 - **Zero-Mock Firestore Contract:**
   ```json
   {

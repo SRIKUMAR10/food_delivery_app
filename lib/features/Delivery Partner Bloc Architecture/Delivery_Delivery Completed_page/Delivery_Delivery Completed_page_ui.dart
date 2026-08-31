@@ -6,6 +6,7 @@ import 'Delivery_Delivery Completed_page_repository.dart';
 import 'Delivery_Delivery Completed_page_service.dart';
 import 'Delivery_Delivery Completed_page_state.dart';
 import '../../../core/theme/delivery_app_colors.dart';
+import '../delivery_image_picker_helper.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/widgets/app_google_map_view.dart';
 
@@ -1740,8 +1741,16 @@ class _CustomerActionsCard extends StatelessWidget {
                           : DeliveryCompletedStrings.of('uploadProof', locale),
                   hint: DeliveryCompletedStrings.of('uploadProofHint', locale),
                   enabled: !state.isUploading,
-                  onTap: () => bloc
-                      .add(const UploadProofMediaEvent('proof_delivery.jpg')),
+                  onTap: () {
+                    DeliveryImagePickerHelper.showPicker(
+                      context: context,
+                      title: 'Delivery Proof Photo',
+                      enableCamera: true,
+                      onImagePicked: (bytes, fileName) {
+                        bloc.add(UploadProofMediaEvent(fileName));
+                      },
+                    );
+                  },
                 ),
               ),
             ],

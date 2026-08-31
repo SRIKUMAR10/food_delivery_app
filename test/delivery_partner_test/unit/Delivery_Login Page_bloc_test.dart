@@ -107,6 +107,7 @@ void main() {
           (_) async => DeliveryPartnerModel(
             id: 'partner-1',
             phoneNumber: '9876543210',
+            onboardingCompleted: false,
             createdAt: DateTime(2024),
             updatedAt: DateTime(2024),
           ),
@@ -129,13 +130,11 @@ void main() {
           isRememberMeChecked: true,
           status: DeliveryLoginStatus.loading,
         ),
-        const DeliveryLoginPageState(
-          phone: '9876543210',
-          password: '',
-          isRememberMeChecked: true,
-          status: DeliveryLoginStatus.success,
-          isLoggedIn: true,
-        ),
+        isA<DeliveryLoginPageState>()
+            .having((s) => s.status, 'status', DeliveryLoginStatus.success)
+            .having((s) => s.isLoggedIn, 'isLoggedIn', true)
+            .having((s) => s.isOnboardingCompleted, 'isOnboardingCompleted', false)
+            .having((s) => s.partner?.id, 'partner.id', 'partner-1'),
       ],
     );
 
@@ -146,6 +145,7 @@ void main() {
           (_) async => DeliveryPartnerModel(
             id: 'google-partner-1',
             phoneNumber: '9876543210',
+            onboardingCompleted: true,
             createdAt: DateTime(2024),
             updatedAt: DateTime(2024),
           ),
@@ -155,11 +155,11 @@ void main() {
       act: (b) => b.add(const DeliveryLoginGoogleSubmittedEvent()),
       expect: () => [
         const DeliveryLoginPageState(status: DeliveryLoginStatus.loading),
-        const DeliveryLoginPageState(
-          status: DeliveryLoginStatus.success,
-          isLoggedIn: true,
-          errorMessage: null,
-        ),
+        isA<DeliveryLoginPageState>()
+            .having((s) => s.status, 'status', DeliveryLoginStatus.success)
+            .having((s) => s.isLoggedIn, 'isLoggedIn', true)
+            .having((s) => s.isOnboardingCompleted, 'isOnboardingCompleted', true)
+            .having((s) => s.partner?.id, 'partner.id', 'google-partner-1'),
       ],
     );
 

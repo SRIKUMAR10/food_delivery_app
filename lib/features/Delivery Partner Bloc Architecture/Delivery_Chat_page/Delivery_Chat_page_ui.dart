@@ -15,6 +15,7 @@ import 'Delivery_Chat_page_event.dart';
 import 'Delivery_Chat_page_state.dart';
 import 'Delivery_Chat_page_repository.dart';
 import 'Delivery_Chat_page_service.dart';
+import '../delivery_image_picker_helper.dart';
 
 class _DeliveryChatTheme {
   _DeliveryChatTheme._();
@@ -1365,13 +1366,12 @@ class _ChatPanelState extends State<_ChatPanel> {
           crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             if (message.messageType == 'image' && message.mediaUrl != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: message.mediaUrl!,
-                  width: 200,
-                  fit: BoxFit.cover,
-                ),
+              DeliveryFastImage(
+                imageUrl: message.mediaUrl!,
+                width: 220,
+                height: 180,
+                fit: BoxFit.cover,
+                borderRadius: 12,
               )
             else if (message.messageType == 'audio')
               Row(
@@ -1565,18 +1565,34 @@ class _ChatPanelState extends State<_ChatPanel> {
             ),
           ),
           const SizedBox(width: 8),
-          // Attachment (Gallery) Button
+          // Attachment (Gallery / Files / Camera) Button
           IconButton(
             icon: const Icon(Icons.attach_file_rounded, color: _DeliveryChatTheme.textMuted, size: 22),
             onPressed: () {
-              context.read<DeliveryChatBloc>().add(const PickDeliveryAttachmentEvent(fromCamera: false));
+              DeliveryImagePickerHelper.showPicker(
+                context: context,
+                title: 'Photo Attachment',
+                enableCamera: true,
+                onImagePicked: (bytes, fileName) {
+                  context.read<DeliveryChatBloc>().add(
+                        PickDeliveryAttachmentEvent(fromCamera: false),
+                      );
+                },
+              );
             },
           ),
           // Camera Button
           IconButton(
             icon: const Icon(Icons.camera_alt_outlined, color: _DeliveryChatTheme.textMuted, size: 22),
             onPressed: () {
-              context.read<DeliveryChatBloc>().add(const PickDeliveryAttachmentEvent(fromCamera: true));
+              DeliveryImagePickerHelper.pickFromCamera(
+                context: context,
+                onImagePicked: (bytes, fileName) {
+                  context.read<DeliveryChatBloc>().add(
+                        const PickDeliveryAttachmentEvent(fromCamera: true),
+                      );
+                },
+              );
             },
           ),
           // Mic / Voice Button

@@ -16,7 +16,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Step 1 of 8'), findsOneWidget);
+      expect(find.text('Step 1 of 6'), findsOneWidget);
       expect(find.text('👤 Personal Identity & Avatar'), findsOneWidget);
     });
   });

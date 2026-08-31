@@ -291,9 +291,9 @@ class TrackOrderService {
     final buyerId = read('customerId', ['buyerId', 'userId', 'uid']);
     if ((lat == null || lng == null) && buyerId.isNotEmpty) {
       try {
-        final userDoc = await firestore.collection('users').doc(buyerId).get();
+        final userDoc = await firestore.collection('buyer_user').doc(buyerId).get();
         if (userDoc.exists) {
-          final uData = userDoc.data() as Map<String, dynamic>? ?? {};
+          final uData = userDoc.data() ?? {};
           lat ??= _coordinate(uData, ['latitude', 'lat', 'customerLat']);
           lng ??= _coordinate(uData, ['longitude', 'lng', 'customerLng']);
           if (lat == null || lng == null) {

@@ -65,8 +65,10 @@ class BuyerLoginService {
     try {
       final docData = await _userRepository.getUserData(userId);
       if (docData != null) {
-        final isKyc = (docData['isBuyerKycVerified'] == true) ||
-            (docData['onboardingCompleted'] == true);
+        final isKycVerified = docData['isBuyerKycVerified'] == true;
+        final onboardingDone = docData['onboardingCompleted'] == true;
+        final isKyc = isKycVerified && onboardingDone;
+
         final name = (docData['fullName'] ?? docData['name'] ?? docData['displayName'] ?? '').toString().trim();
         final email = (docData['email'] ?? docData['emailAddress'] ?? '').toString().trim();
         final phone = (docData['phone'] ?? docData['mobile'] ?? docData['phoneNumber'] ?? '').toString().trim();

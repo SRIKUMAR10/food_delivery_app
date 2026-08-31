@@ -228,14 +228,35 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
               }
               if (state.status == DeliveryLoginStatus.success &&
                   state.isLoggedIn) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Login successful! Welcome Partner.'),
-                    backgroundColor: DeliveryAppColors.primary,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-                Navigator.of(context).pushReplacementNamed('/deliveryNavigationBar');
+                if (state.isOnboardingCompleted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Login successful! Welcome Partner.'),
+                      backgroundColor: DeliveryAppColors.primary,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  Navigator.of(context).pushReplacementNamed('/deliveryNavigationBar');
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Login successful! Please complete your 8-step partner verification.'),
+                      backgroundColor: DeliveryAppColors.primary,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  Navigator.of(context).pushReplacementNamed(
+                    '/deliveryOnboardingVerification',
+                    arguments: {
+                      'fullName': state.partner?.displayName ?? '',
+                      'displayName': state.partner?.displayName ?? '',
+                      'email': state.partner?.email ?? '',
+                      'phone': state.partner?.phoneNumber ?? state.phone,
+                      'avatarUrl': state.partner?.photoUrl,
+                      'isPhoneVerified': state.partner?.isPhoneVerified ?? true,
+                    },
+                  );
+                }
               }
               if (state.isForgotPasswordSuccess) {
                 ScaffoldMessenger.of(context).showSnackBar(

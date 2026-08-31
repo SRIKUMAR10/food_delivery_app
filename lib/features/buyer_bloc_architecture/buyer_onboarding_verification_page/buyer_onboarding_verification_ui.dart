@@ -1,8 +1,15 @@
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 import 'package:food_delivery_app/core/widgets/responsive_layout.dart';
+import 'package:food_delivery_app/core/services/google_maps_loader.dart';
+import 'package:food_delivery_app/core/widgets/cached_map_tile.dart';
 import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
+import '../user_profile_image/pages/google_address_search_dialog.dart';
 import 'buyer_onboarding_verification_bloc.dart';
 import 'buyer_onboarding_verification_event.dart';
 import 'buyer_onboarding_verification_state.dart';
@@ -61,7 +68,6 @@ class _BuyerOnboardingVerificationViewState
   final _addressController = TextEditingController();
   final _flatNoController = TextEditingController();
   final _landmarkController = TextEditingController();
-  final _allergyNotesController = TextEditingController();
   final _upiIdController = TextEditingController();
 
   @override
@@ -76,8 +82,10 @@ class _BuyerOnboardingVerificationViewState
     _addressController.text = bloc.state.formattedAddress;
     _flatNoController.text = bloc.state.houseFlatNo;
     _landmarkController.text = bloc.state.landmark;
-    _allergyNotesController.text = bloc.state.customAllergyNotes;
     _upiIdController.text = bloc.state.defaultUpiId ?? '';
+
+    // Real-time Firestore auto-fetch for authenticated buyer
+    bloc.add(const BuyerVerificationAutoFetchRequested());
   }
 
   @override
@@ -91,7 +99,6 @@ class _BuyerOnboardingVerificationViewState
     _addressController.dispose();
     _flatNoController.dispose();
     _landmarkController.dispose();
-    _allergyNotesController.dispose();
     _upiIdController.dispose();
     super.dispose();
   }
@@ -101,6 +108,38 @@ class _BuyerOnboardingVerificationViewState
     return BlocConsumer<BuyerOnboardingVerificationBloc,
         BuyerOnboardingVerificationState>(
       listener: (context, state) {
+        if (state.fullName.isNotEmpty && _fullNameController.text.isEmpty) {
+          _fullNameController.text = state.fullName;
+        }
+        if (state.displayName.isNotEmpty && _displayNameController.text.isEmpty) {
+          _displayNameController.text = state.displayName;
+        }
+        if (state.bio.isNotEmpty && _bioController.text.isEmpty) {
+          _bioController.text = state.bio;
+        }
+        if (state.email.isNotEmpty && _emailController.text.isEmpty) {
+          _emailController.text = state.email;
+        }
+        if (state.phone.isNotEmpty && _phoneController.text.isEmpty) {
+          _phoneController.text = state.phone;
+        }
+        if (state.formattedAddress.isNotEmpty &&
+            _addressController.text != state.formattedAddress) {
+          _addressController.text = state.formattedAddress;
+        }
+        if (state.houseFlatNo.isNotEmpty &&
+            _flatNoController.text != state.houseFlatNo) {
+          _flatNoController.text = state.houseFlatNo;
+        }
+        if (state.landmark.isNotEmpty &&
+            _landmarkController.text != state.landmark) {
+          _landmarkController.text = state.landmark;
+        }
+        if (state.defaultUpiId != null &&
+            state.defaultUpiId!.isNotEmpty &&
+            _upiIdController.text.isEmpty) {
+          _upiIdController.text = state.defaultUpiId!;
+        }
         if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -139,51 +178,71 @@ class _BuyerOnboardingVerificationViewState
         final totalSteps = BuyerVerificationStep.values.length;
         final progress = (currentStepIndex + 1) / totalSteps;
 
-        return Scaffold(
-          backgroundColor: BuyerAppColors.pageBackground,
-          appBar: AppBar(
-            backgroundColor: Colors.white,
-            elevation: 0.5,
-            centerTitle: true,
-            leading: currentStepIndex > 0
-                ? IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new,
-                        color: Colors.black87, size: 20),
-                    onPressed: () {
-                      context
-                          .read<BuyerOnboardingVerificationBloc>()
-                          .add(const BuyerVerificationPreviousStepPressed());
-                    },
-                  )
-                : null,
-            title: Text(
-              'Step ${currentStepIndex + 1} of $totalSteps',
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            if (currentStepIndex > 0) {
+              context
+                  .read<BuyerOnboardingVerificationBloc>()
+                  .add(const BuyerVerificationPreviousStepPressed());
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please complete all 6 steps to activate your buyer account.'),
+                  backgroundColor: BuyerAppColors.primaryDeep,
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+          },
+          child: Scaffold(
+            backgroundColor: BuyerAppColors.pageBackground,
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0.5,
+              centerTitle: true,
+              leading: currentStepIndex > 0
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new,
+                          color: Colors.black87, size: 20),
+                      onPressed: () {
+                        context
+                            .read<BuyerOnboardingVerificationBloc>()
+                            .add(const BuyerVerificationPreviousStepPressed());
+                      },
+                    )
+                  : null,
+              title: Text(
+                'Step ${currentStepIndex + 1} of $totalSteps',
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(4),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                      BuyerAppColors.primary),
+                  minHeight: 4,
+                ),
               ),
             ),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(4),
-              child: LinearProgressIndicator(
-                value: progress,
-                backgroundColor: Colors.grey.shade200,
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                    BuyerAppColors.primary),
-                minHeight: 4,
-              ),
+            body: SafeArea(
+              child: ResponsiveHelper.isWide(context)
+                  ? Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 550),
+                        child: _buildStepContent(context, state),
+                      ),
+                    )
+                  : _buildStepContent(context, state),
             ),
-          ),
-          body: SafeArea(
-            child: ResponsiveHelper.isWide(context)
-                ? Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 550),
-                      child: _buildStepContent(context, state),
-                    ),
-                  )
-                : _buildStepContent(context, state),
           ),
         );
       },
@@ -222,17 +281,104 @@ class _BuyerOnboardingVerificationViewState
         return _buildStep2ContactVerification(context, state);
       case BuyerVerificationStep.addressSelection:
         return _buildStep3AddressSelection(context, state);
-      case BuyerVerificationStep.dietaryPreferences:
-        return _buildStep4DietaryPreferences(context, state);
-      case BuyerVerificationStep.allergiesAndRestrictions:
-        return _buildStep5AllergiesAndRestrictions(context, state);
       case BuyerVerificationStep.paymentSetup:
-        return _buildStep6PaymentSetup(context, state);
+        return _buildStep4PaymentSetup(context, state);
       case BuyerVerificationStep.permissionsSetup:
-        return _buildStep7PermissionsSetup(context, state);
+        return _buildStep5PermissionsSetup(context, state);
       case BuyerVerificationStep.completionSuccess:
-        return _buildStep8CompletionSuccess(context, state);
+        return _buildStep6CompletionSuccess(context, state);
     }
+  }
+
+  void _showPhotoOptionsModal(
+      BuildContext context, BuyerOnboardingVerificationState state) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const Text(
+                  'Profile Photo',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (!kIsWeb &&
+                    (defaultTargetPlatform == TargetPlatform.android ||
+                        defaultTargetPlatform == TargetPlatform.iOS))
+                  ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: BuyerAppColors.fieldFill,
+                      child: Icon(Icons.camera_alt, color: BuyerAppColors.primary),
+                    ),
+                    title: const Text('Take Photo',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(bottomSheetContext);
+                      context.read<BuyerOnboardingVerificationBloc>().add(
+                            const BuyerAvatarPickRequested(
+                                source: ImageSource.camera),
+                          );
+                    },
+                  ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: BuyerAppColors.fieldFill,
+                    child: Icon(Icons.photo_library, color: BuyerAppColors.primary),
+                  ),
+                  title: const Text('Choose from Gallery / Files',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    context.read<BuyerOnboardingVerificationBloc>().add(
+                          const BuyerAvatarPickRequested(
+                              source: ImageSource.gallery),
+                        );
+                  },
+                ),
+                if (state.avatarUrl != null || state.localAvatarBytes != null)
+                  ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.red.shade50,
+                      child:
+                          const Icon(Icons.delete_outline, color: Colors.red),
+                    ),
+                    title: const Text('Remove Photo',
+                        style: TextStyle(
+                            color: Colors.red, fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(bottomSheetContext);
+                      context.read<BuyerOnboardingVerificationBloc>().add(
+                            const BuyerAvatarRemoved(),
+                          );
+                    },
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -250,28 +396,87 @@ class _BuyerOnboardingVerificationViewState
         ),
         const SizedBox(height: 24),
         Center(
-          child: Stack(
-            children: [
-              CircleAvatar(
-                radius: 46,
-                backgroundColor: BuyerAppColors.fieldFill,
-                backgroundImage: state.avatarUrl != null
-                    ? NetworkImage(state.avatarUrl!)
-                    : null,
-                child: state.avatarUrl == null
-                    ? const Icon(Icons.person, size: 48, color: Colors.grey)
-                    : null,
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: BuyerAppColors.primary,
-                  child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+          child: GestureDetector(
+            onTap: () => _showPhotoOptionsModal(context, state),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: BuyerAppColors.fieldFill,
+                    border: Border.all(
+                      color: BuyerAppColors.primary.withValues(alpha: 0.3),
+                      width: 2.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: state.isUploadingAvatar
+                        ? const Center(
+                            child: SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: BuyerAppColors.primary,
+                              ),
+                            ),
+                          )
+                        : state.localAvatarBytes != null
+                            ? Image.memory(
+                                state.localAvatarBytes!,
+                                width: 96,
+                                height: 96,
+                                fit: BoxFit.cover,
+                              )
+                            : state.avatarUrl != null &&
+                                    state.avatarUrl!.isNotEmpty
+                                ? Image.network(
+                                    state.avatarUrl!,
+                                    width: 96,
+                                    height: 96,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Icon(Icons.person,
+                                                size: 48, color: Colors.grey),
+                                  )
+                                : const Icon(Icons.person,
+                                    size: 48, color: Colors.grey),
+                  ),
                 ),
-              ),
-            ],
+                Positioned(
+                  bottom: -2,
+                  right: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: BuyerAppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2.5),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.camera_alt,
+                        size: 16, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 24),
@@ -300,11 +505,22 @@ class _BuyerOnboardingVerificationViewState
         _buildPrimaryButton(
           label: 'Continue to Contact Verification ➔',
           onPressed: () {
+            final name = _fullNameController.text.trim();
+            if (name.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please enter your full name.'),
+                  backgroundColor: Colors.redAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              return;
+            }
             context.read<BuyerOnboardingVerificationBloc>().add(
                   BuyerPersonalDetailsUpdated(
-                    fullName: _fullNameController.text,
-                    displayName: _displayNameController.text,
-                    bio: _bioController.text,
+                    fullName: name,
+                    displayName: _displayNameController.text.trim(),
+                    bio: _bioController.text.trim(),
                   ),
                 );
           },
@@ -386,11 +602,22 @@ class _BuyerOnboardingVerificationViewState
           _buildPrimaryButton(
             label: 'Continue to Delivery Address ➔',
             onPressed: () {
+              final email = _emailController.text.trim();
+              if (email.isEmpty || !email.contains('@')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a valid email address.'),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
               context.read<BuyerOnboardingVerificationBloc>().add(
                     BuyerContactUpdated(
-                      email: _emailController.text,
+                      email: email,
                       phone: _phoneController.text.isNotEmpty
-                          ? _phoneController.text
+                          ? _phoneController.text.trim()
                           : state.phone,
                     ),
                   );
@@ -495,6 +722,193 @@ class _BuyerOnboardingVerificationViewState
   // ───────────────────────────────────────────────────────────────────────────
   // STEP 3: Delivery Address & Map Geolocation
   // ───────────────────────────────────────────────────────────────────────────
+  void _openAddressSearchDialog(
+      BuildContext context, BuyerOnboardingVerificationState state) {
+    GoogleAddressSearchDialog.show(
+      context: context,
+      addressType: state.addressTag.isNotEmpty ? state.addressTag : 'Home',
+      currentAddress: _addressController.text.isNotEmpty
+          ? _addressController.text
+          : state.formattedAddress,
+      onAddressSelected: (selectedAddress) {
+        setState(() {
+          _addressController.text = selectedAddress;
+        });
+        context.read<BuyerOnboardingVerificationBloc>().add(
+              BuyerAddressLocationSelected(
+                formattedAddress: selectedAddress,
+                latitude: state.latitude ?? 13.0827,
+                longitude: state.longitude ?? 80.2707,
+                houseFlatNo: _flatNoController.text,
+                landmark: _landmarkController.text,
+                addressTag: state.addressTag,
+              ),
+            );
+      },
+    );
+  }
+
+  Widget _buildMapPreview(
+      BuildContext context, BuyerOnboardingVerificationState state) {
+    final hasCoords = state.latitude != null && state.longitude != null;
+    final lat = state.latitude ?? 13.0827;
+    final lng = state.longitude ?? 80.2707;
+    final LatLng centerLatLng = LatLng(lat, lng);
+
+    final bool isNativeDesktop = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.macOS);
+    final bool shouldUseFallback =
+        isNativeDesktop || (kIsWeb && !isGoogleMapsJsReady());
+
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: shouldUseFallback
+                ? CachedMapTile(
+                    tileUrl:
+                        'https://tile.openstreetmap.org/15/${((lng + 180.0) / 360.0 * 32768).floor()}/${((1.0 - math.log(math.tan(lat * math.pi / 180.0) + 1.0 / math.cos(lat * math.pi / 180.0)) / math.pi) / 2.0 * 32768).floor()}.png',
+                    fallbackTileUrl:
+                        'https://a.tile.openstreetmap.fr/hot/15/${((lng + 180.0) / 360.0 * 32768).floor()}/${((1.0 - math.log(math.tan(lat * math.pi / 180.0) + 1.0 / math.cos(lat * math.pi / 180.0)) / math.pi) / 2.0 * 32768).floor()}.png',
+                  )
+                : GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: centerLatLng,
+                      zoom: 15.0,
+                    ),
+                    myLocationEnabled: false,
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                    mapToolbarEnabled: false,
+                    compassEnabled: false,
+                    rotateGesturesEnabled: false,
+                    scrollGesturesEnabled: false,
+                    tiltGesturesEnabled: false,
+                    zoomGesturesEnabled: false,
+                    markers: {
+                      Marker(
+                        markerId: const MarkerId('buyer_delivery_pin'),
+                        position: centerLatLng,
+                        infoWindow: InfoWindow(
+                          title: state.addressTag.isNotEmpty
+                              ? state.addressTag
+                              : 'Delivery Location',
+                          snippet: state.formattedAddress.isNotEmpty
+                              ? state.formattedAddress
+                              : 'Selected Address',
+                        ),
+                      ),
+                    },
+                  ),
+          ),
+          // Center Marker overlay if fallback tile is used
+          if (shouldUseFallback)
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      state.addressTag.isNotEmpty
+                          ? state.addressTag
+                          : 'Delivery Location',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.location_on,
+                    size: 38,
+                    color: BuyerAppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+          // Top live coordinates badge
+          if (hasCoords)
+            Positioned(
+              top: 10,
+              left: 10,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black12, blurRadius: 4),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.gps_fixed, size: 14, color: Colors.green),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          // Bottom overlay button to search / adjust pin on map
+          Positioned(
+            bottom: 10,
+            right: 10,
+            child: ElevatedButton.icon(
+              onPressed: () => _openAddressSearchDialog(context, state),
+              icon: const Icon(Icons.map, size: 16, color: Colors.white),
+              label: const Text(
+                'Adjust Pin on Map',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BuyerAppColors.primary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStep3AddressSelection(
       BuildContext context, BuyerOnboardingVerificationState state) {
     return Column(
@@ -507,15 +921,26 @@ class _BuyerOnboardingVerificationViewState
         ),
         const SizedBox(height: 20),
         ElevatedButton.icon(
-          onPressed: () {
-            context
-                .read<BuyerOnboardingVerificationBloc>()
-                .add(const BuyerCurrentLocationRequested());
-          },
-          icon: const Icon(Icons.my_location, color: Colors.white),
+          onPressed: state.isLocatingGps
+              ? null
+              : () {
+                  context
+                      .read<BuyerOnboardingVerificationBloc>()
+                      .add(const BuyerCurrentLocationRequested());
+                },
+          icon: state.isLocatingGps
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.my_location, color: Colors.white),
           label: Text(
             state.isLocatingGps
-                ? 'Detecting GPS Coordinates...'
+                ? 'Detecting Real-Time GPS...'
                 : 'Use My Current GPS Location',
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
@@ -526,12 +951,31 @@ class _BuyerOnboardingVerificationViewState
           ),
         ),
         const SizedBox(height: 16),
+        _buildMapPreview(context, state),
+        const SizedBox(height: 16),
         _buildTextField(
-          controller: _addressController..text = state.formattedAddress,
+          controller: _addressController,
           label: 'Complete Address / Landmark *',
           hint: 'Street, Sector, City, Pincode',
           icon: Icons.location_on_outlined,
           maxLines: 2,
+          suffixIcon: IconButton(
+            tooltip: 'Pick on Google Maps / Search Places',
+            icon: const Icon(Icons.location_searching, color: BuyerAppColors.primary),
+            onPressed: () => _openAddressSearchDialog(context, state),
+          ),
+          onChanged: (val) {
+            context.read<BuyerOnboardingVerificationBloc>().add(
+                  BuyerAddressLocationSelected(
+                    formattedAddress: val,
+                    latitude: state.latitude ?? 13.0827,
+                    longitude: state.longitude ?? 80.2707,
+                    houseFlatNo: _flatNoController.text,
+                    landmark: _landmarkController.text,
+                    addressTag: state.addressTag,
+                  ),
+                );
+          },
         ),
         const SizedBox(height: 12),
         Row(
@@ -575,14 +1019,7 @@ class _BuyerOnboardingVerificationViewState
                 onSelected: (selected) {
                   if (selected) {
                     context.read<BuyerOnboardingVerificationBloc>().add(
-                          BuyerAddressUpdated(
-                            formattedAddress: _addressController.text,
-                            houseFlatNo: _flatNoController.text,
-                            landmark: _landmarkController.text,
-                            addressTag: tag,
-                            latitude: state.latitude,
-                            longitude: state.longitude,
-                          ),
+                          BuyerAddressTagChanged(tag),
                         );
                   }
                 },
@@ -594,12 +1031,23 @@ class _BuyerOnboardingVerificationViewState
         _buildPrimaryButton(
           label: 'Save Address & Continue ➔',
           onPressed: () {
+            final address = _addressController.text.trim();
+            if (address.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please enter or pin your delivery address.'),
+                  backgroundColor: Colors.redAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              return;
+            }
             context.read<BuyerOnboardingVerificationBloc>().add(
                   BuyerAddressUpdated(
-                    formattedAddress: _addressController.text,
-                    houseFlatNo: _flatNoController.text,
-                    landmark: _landmarkController.text,
-                    addressTag: state.addressTag,
+                    formattedAddress: address,
+                    houseFlatNo: _flatNoController.text.trim(),
+                    landmark: _landmarkController.text.trim(),
+                    addressTag: state.addressTag.isNotEmpty ? state.addressTag : 'Home',
                     latitude: state.latitude,
                     longitude: state.longitude,
                   ),
@@ -611,158 +1059,9 @@ class _BuyerOnboardingVerificationViewState
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // STEP 4: Dietary Preferences & Eating Habits
+  // STEP 4: Payment Methods & Digital Wallet Setup
   // ───────────────────────────────────────────────────────────────────────────
-  Widget _buildStep4DietaryPreferences(
-      BuildContext context, BuyerOnboardingVerificationState state) {
-    final diets = [
-      {'name': 'Vegetarian', 'icon': '🥬'},
-      {'name': 'Non-Vegetarian', 'icon': '🍗'},
-      {'name': 'Vegan', 'icon': '🌱'},
-      {'name': 'Eggetarian', 'icon': '🥚'},
-      {'name': 'Halal', 'icon': '🥩'},
-      {'name': 'Jain Friendly', 'icon': '🥦'},
-    ];
-
-    final spiceLevels = ['Mild 🟢', 'Medium 🟡', 'Spicy 🔴', 'Extra Spicy 🔥'];
-
-    return Column(
-      key: const ValueKey('step_4_diet'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHeader(
-          title: '🥗 Dietary Preferences & Taste',
-          subtitle: 'We will personalize restaurant recommendations to match your eating style.',
-        ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: diets.map((diet) {
-            final name = diet['name']!;
-            final icon = diet['icon']!;
-            final isSelected = state.selectedDietaryTypes.contains(name);
-            return FilterChip(
-              avatar: Text(icon),
-              label: Text(name),
-              selected: isSelected,
-              selectedColor: BuyerAppColors.primary.withValues(alpha: 0.15),
-              checkmarkColor: BuyerAppColors.primary,
-              onSelected: (_) {
-                context
-                    .read<BuyerOnboardingVerificationBloc>()
-                    .add(BuyerDietaryPreferenceToggled(name));
-              },
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 24),
-        const Text('Preferred Spice Level:',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          children: spiceLevels.map((lvl) {
-            final isSelected = state.spicePreference == lvl.split(' ')[0];
-            return ChoiceChip(
-              label: Text(lvl),
-              selected: isSelected,
-              selectedColor: BuyerAppColors.primary.withValues(alpha: 0.2),
-              onSelected: (selected) {
-                if (selected) {
-                  context.read<BuyerOnboardingVerificationBloc>().add(
-                        BuyerSpicePreferenceChanged(lvl.split(' ')[0]),
-                      );
-                }
-              },
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 32),
-        _buildPrimaryButton(
-          label: 'Continue to Food Allergies ➔',
-          onPressed: () {
-            context
-                .read<BuyerOnboardingVerificationBloc>()
-                .add(const BuyerVerificationNextStepPressed());
-          },
-        ),
-      ],
-    );
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // STEP 5: Food Allergies & Special Instructions
-  // ───────────────────────────────────────────────────────────────────────────
-  Widget _buildStep5AllergiesAndRestrictions(
-      BuildContext context, BuyerOnboardingVerificationState state) {
-    final commonAllergies = [
-      'Peanuts / Nuts 🥜',
-      'Dairy / Lactose 🥛',
-      'Gluten / Wheat 🌾',
-      'Soy 🫘',
-      'Shellfish / Seafood 🦐',
-      'Eggs 🥚',
-      'Mushrooms 🍄',
-    ];
-
-    return Column(
-      key: const ValueKey('step_5_allergies'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHeader(
-          title: '⚠️ Food Allergies & Safety Notes',
-          subtitle: 'Our kitchen partners will be automatically alerted about your food safety.',
-        ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: commonAllergies.map((allergy) {
-            final isSelected = state.selectedAllergies.contains(allergy);
-            return FilterChip(
-              label: Text(allergy),
-              selected: isSelected,
-              selectedColor: Colors.amber.shade200,
-              checkmarkColor: Colors.brown.shade800,
-              onSelected: (_) {
-                context
-                    .read<BuyerOnboardingVerificationBloc>()
-                    .add(BuyerAllergyToggled(allergy));
-              },
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 20),
-        _buildTextField(
-          controller: _allergyNotesController,
-          label: 'Additional Special Instructions',
-          hint: 'e.g. Please avoid MSG, extra crisp fries',
-          icon: Icons.notes_outlined,
-          maxLines: 2,
-          onChanged: (val) {
-            context
-                .read<BuyerOnboardingVerificationBloc>()
-                .add(BuyerCustomAllergyNotesChanged(val));
-          },
-        ),
-        const SizedBox(height: 32),
-        _buildPrimaryButton(
-          label: 'Continue to Payment Setup ➔',
-          onPressed: () {
-            context
-                .read<BuyerOnboardingVerificationBloc>()
-                .add(const BuyerVerificationNextStepPressed());
-          },
-        ),
-      ],
-    );
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // STEP 6: Payment Methods & Digital Wallet Setup
-  // ───────────────────────────────────────────────────────────────────────────
-  Widget _buildStep6PaymentSetup(
+  Widget _buildStep4PaymentSetup(
       BuildContext context, BuyerOnboardingVerificationState state) {
     final paymentModes = [
       {'name': 'UPI (GPay / PhonePe / Paytm)', 'icon': Icons.qr_code_2},
@@ -772,7 +1071,7 @@ class _BuyerOnboardingVerificationViewState
     ];
 
     return Column(
-      key: const ValueKey('step_6_payments'),
+      key: const ValueKey('step_4_payments'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHeader(
@@ -810,12 +1109,9 @@ class _BuyerOnboardingVerificationViewState
                   value: state.activateBuyerWallet,
                   activeColor: BuyerAppColors.primary,
                   onChanged: (val) {
-                    context.read<BuyerOnboardingVerificationBloc>().add(
-                          BuyerPaymentPreferenceSelected(
-                            paymentMethod: state.preferredPaymentMethod,
-                            activateBuyerWallet: val,
-                          ),
-                        );
+                    context
+                        .read<BuyerOnboardingVerificationBloc>()
+                        .add(BuyerWalletToggled(val));
                   },
                 ),
               ],
@@ -846,23 +1142,38 @@ class _BuyerOnboardingVerificationViewState
                   ? const Icon(Icons.check_circle, color: BuyerAppColors.primary)
                   : null,
               onTap: () {
-                context.read<BuyerOnboardingVerificationBloc>().add(
-                      BuyerPaymentPreferenceSelected(
-                        paymentMethod: name,
-                        activateBuyerWallet: state.activateBuyerWallet,
-                      ),
-                    );
+                context
+                    .read<BuyerOnboardingVerificationBloc>()
+                    .add(BuyerPaymentMethodChanged(name));
               },
             ),
           );
         }),
+        if (state.preferredPaymentMethod.startsWith('UPI')) ...[
+          const SizedBox(height: 14),
+          _buildTextField(
+            controller: _upiIdController,
+            label: 'Default UPI ID (Optional)',
+            hint: 'e.g. yourname@okhdfcbank',
+            icon: Icons.alternate_email,
+            onChanged: (val) {
+              // Real-time local state update
+            },
+          ),
+        ],
         const SizedBox(height: 32),
         _buildPrimaryButton(
           label: 'Continue to Permissions ➔',
           onPressed: () {
-            context
-                .read<BuyerOnboardingVerificationBloc>()
-                .add(const BuyerVerificationNextStepPressed());
+            context.read<BuyerOnboardingVerificationBloc>().add(
+                  BuyerPaymentPreferenceSelected(
+                    paymentMethod: state.preferredPaymentMethod,
+                    defaultUpiId: _upiIdController.text.trim().isNotEmpty
+                        ? _upiIdController.text.trim()
+                        : state.defaultUpiId,
+                    activateBuyerWallet: state.activateBuyerWallet,
+                  ),
+                );
           },
         ),
       ],
@@ -870,12 +1181,12 @@ class _BuyerOnboardingVerificationViewState
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // STEP 7: App Permissions (GPS, FCM Notifications)
+  // STEP 5: App Permissions (GPS, FCM Notifications)
   // ───────────────────────────────────────────────────────────────────────────
-  Widget _buildStep7PermissionsSetup(
+  Widget _buildStep5PermissionsSetup(
       BuildContext context, BuyerOnboardingVerificationState state) {
     return Column(
-      key: const ValueKey('step_7_permissions'),
+      key: const ValueKey('step_5_permissions'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHeader(
@@ -890,10 +1201,9 @@ class _BuyerOnboardingVerificationViewState
           isGranted: state.locationPermissionGranted,
           onToggle: (val) {
             context.read<BuyerOnboardingVerificationBloc>().add(
-                  BuyerPermissionsUpdated(
-                    locationGranted: val,
-                    notificationsGranted: state.pushNotificationsGranted,
-                    cameraGranted: state.cameraPermissionGranted,
+                  BuyerSinglePermissionToggled(
+                    permissionType: 'location',
+                    isGranted: val,
                   ),
                 );
           },
@@ -906,10 +1216,9 @@ class _BuyerOnboardingVerificationViewState
           isGranted: state.pushNotificationsGranted,
           onToggle: (val) {
             context.read<BuyerOnboardingVerificationBloc>().add(
-                  BuyerPermissionsUpdated(
-                    locationGranted: state.locationPermissionGranted,
-                    notificationsGranted: val,
-                    cameraGranted: state.cameraPermissionGranted,
+                  BuyerSinglePermissionToggled(
+                    permissionType: 'notifications',
+                    isGranted: val,
                   ),
                 );
           },
@@ -922,10 +1231,9 @@ class _BuyerOnboardingVerificationViewState
           isGranted: state.cameraPermissionGranted,
           onToggle: (val) {
             context.read<BuyerOnboardingVerificationBloc>().add(
-                  BuyerPermissionsUpdated(
-                    locationGranted: state.locationPermissionGranted,
-                    notificationsGranted: state.pushNotificationsGranted,
-                    cameraGranted: val,
+                  BuyerSinglePermissionToggled(
+                    permissionType: 'camera',
+                    isGranted: val,
                   ),
                 );
           },
@@ -936,9 +1244,9 @@ class _BuyerOnboardingVerificationViewState
           onPressed: () {
             context.read<BuyerOnboardingVerificationBloc>().add(
                   BuyerPermissionsUpdated(
-                    locationGranted: true,
-                    notificationsGranted: true,
-                    cameraGranted: true,
+                    locationGranted: state.locationPermissionGranted,
+                    notificationsGranted: state.pushNotificationsGranted,
+                    cameraGranted: state.cameraPermissionGranted,
                   ),
                 );
           },
@@ -948,12 +1256,12 @@ class _BuyerOnboardingVerificationViewState
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // STEP 8: Welcome Rewards & Verification Completion
+  // STEP 6: Welcome Rewards & Verification Completion
   // ───────────────────────────────────────────────────────────────────────────
-  Widget _buildStep8CompletionSuccess(
+  Widget _buildStep6CompletionSuccess(
       BuildContext context, BuyerOnboardingVerificationState state) {
     return Column(
-      key: const ValueKey('step_8_success'),
+      key: const ValueKey('step_6_success'),
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         const SizedBox(height: 20),
@@ -1059,6 +1367,7 @@ class _BuyerOnboardingVerificationViewState
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
     ValueChanged<String>? onChanged,
+    Widget? suffixIcon,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1076,6 +1385,7 @@ class _BuyerOnboardingVerificationViewState
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             prefixIcon: Icon(icon, color: BuyerAppColors.primary, size: 20),
+            suffixIcon: suffixIcon,
             filled: true,
             fillColor: Colors.white,
             contentPadding:

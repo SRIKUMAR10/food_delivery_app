@@ -66,9 +66,9 @@ void main() {
 
     test('Custom login role-scoping routes to the correct collection based on targetRole', () {
       final collectionsMap = {
-        'buyer': ['buyer_user', 'buyer_users', 'users'],
-        'seller': ['sellers', 'seller', 'seller_users'],
-        'delivery_partner': ['delivery_partners', 'delivery_partner', 'riders', 'partners'],
+        'buyer': ['buyer_user'],
+        'seller': ['sellers'],
+        'delivery_partner': ['delivery_partners'],
       };
 
       String resolveCollection(String targetRole) {

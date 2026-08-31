@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'Delivery_Profile_page_bloc.dart';
 import 'Delivery_Profile_page_event.dart';
 import 'Delivery_Profile_page_repository.dart';
@@ -10,8 +9,12 @@ import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/widgets/logout_button.dart';
 import '../../../core/services/google_places_service.dart';
 import 'delivery_google_address_search_dialog.dart';
+import '../delivery_image_picker_helper.dart';
+import '../delivery_document_preview_dialog.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_bloc.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_event.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DeliveryProfileStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -588,83 +591,120 @@ class _ProfileImageSection extends StatelessWidget {
           Semantics(
             label: '${state.fullName} profile photo',
             image: true,
-            child: Container(
-              key: const Key('dp_profile_avatar'),
-              width: 92,
-              height: 92,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: DeliveryAppColors.primaryDark.withValues(alpha: 0.35),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(50),
+              onTap: () {
+                DeliveryImagePickerHelper.showPicker(
+                  context: context,
+                  title: 'Profile Photo',
+                  enableCamera: true,
+                  onImagePicked: (bytes, fileName) async {
+                    try {
+                      final uid = FirebaseAuth.instance.currentUser?.uid ?? 'partner';
+                      final ref = FirebaseStorage.instance
+                          .ref('delivery_partners/$uid/avatar_$fileName');
+                      final uploadTask = await ref.putData(bytes);
+                      final downloadUrl = await uploadTask.ref.getDownloadURL();
+                      if (context.mounted) {
+                        context.read<DeliveryProfileBloc>().add(
+                              DeliveryProfileUpdateFieldEvent(
+                                field: 'avatarPath',
+                                value: downloadUrl,
+                              ),
+                            );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Profile photo updated successfully!'),
+                            backgroundColor: DeliveryAppColors.success,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } catch (_) {
+                      if (context.mounted) {
+                        context.read<DeliveryProfileBloc>().add(
+                              const DeliveryProfilePickImageEvent(),
+                            );
+                      }
+                    }
+                  },
+                );
+              },
+              child: Container(
+                key: const Key('dp_profile_avatar'),
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [DeliveryAppColors.primary, DeliveryAppColors.primaryDark],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  Center(
-                    child: state.avatarPath == null
-                        ? Text(
-                            _initials,
-                            style: const TextStyle(
-                              color: Color(0xFF061208),
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          )
-                        : ClipOval(
-                            child: CachedNetworkImage(
-                              imageUrl: state.avatarPath!,
-                              fit: BoxFit.cover,
+                  boxShadow: [
+                    BoxShadow(
+                      color: DeliveryAppColors.primaryDark.withValues(alpha: 0.35),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Center(
+                      child: state.avatarPath == null
+                          ? Text(
+                              _initials,
+                              style: const TextStyle(
+                                color: Color(0xFF061208),
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            )
+                          : DeliveryFastImage(
+                              imageUrl: state.avatarPath,
                               width: 92,
                               height: 92,
-                              memCacheWidth: 184,
-                              memCacheHeight: 184,
-                              placeholder: (_, __) => const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: DeliveryAppColors.primary,
+                              fit: BoxFit.cover,
+                              isCircle: true,
+                              placeholder: Text(
+                                _initials,
+                                style: const TextStyle(
+                                  color: Color(0xFF061208),
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              errorWidget: (_, __, ___) => const Icon(
+                              errorWidget: const Icon(
                                 Icons.person,
                                 color: Color(0xFF061208),
                                 size: 40,
                               ),
                             ),
+                    ),
+                    Positioned(
+                      right: 2,
+                      bottom: 2,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A2530),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: DeliveryAppColors.primary,
+                            width: 2,
                           ),
-                  ),
-                  Positioned(
-                    right: 2,
-                    bottom: 2,
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1A2530),
-                        shape: BoxShape.circle,
-                        border: Border.all(
+                        ),
+                        child: const Icon(
+                          Icons.photo_camera,
                           color: DeliveryAppColors.primary,
-                          width: 2,
+                          size: 14,
                         ),
                       ),
-                      child: const Icon(
-                        Icons.photo_camera,
-                        color: DeliveryAppColors.primary,
-                        size: 14,
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -1486,88 +1526,137 @@ class _DocumentTile extends StatelessWidget {
       localeCode,
     );
     final bool isUploading = document.isUploading;
-    return Container(
-      key: Key('dp_profile_doc_${document.id}'),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0B1219),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: _statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+    final bool hasDoc = document.isUploaded || document.isVerified;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: hasDoc
+          ? () => DeliveryDocumentPreviewDialog.show(
+                context: context,
+                title: label,
+                documentUrl: document.documentUrl,
+                docType: document.id,
+                status: document.isVerified ? 'verified' : 'uploaded',
+                onReupload: () => _pickAndUpload(context, label),
+              )
+          : () => _pickAndUpload(context, label),
+      child: Container(
+        key: Key('dp_profile_doc_${document.id}'),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0B1219),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: _statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(document.icon, color: _statusColor, size: 22),
                 ),
-                child: Icon(document.icon, color: _statusColor, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _statusLabel,
+                        style: TextStyle(
+                          color: _statusColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (isUploading)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      '${(document.progress * 100).round()}%',
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _statusLabel,
-                      style: TextStyle(
-                        color: _statusColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        color: DeliveryAppColors.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              if (document.isVerified)
-                const Icon(Icons.verified, color: DeliveryAppColors.primary, size: 20)
-              else if (!isUploading)
-                OutlinedButton(
-                  key: Key('dp_profile_upload_${document.id}'),
-                  onPressed: () => context
-                      .read<DeliveryProfileBloc>()
-                      .add(DeliveryProfileUploadDocumentEvent(document.id)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: DeliveryAppColors.primary,
-                    side: const BorderSide(color: DeliveryAppColors.primaryDark),
-                    minimumSize: const Size(76, 44),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                  )
+                else if (hasDoc) ...[
+                  IconButton(
+                    tooltip: 'View Document',
+                    icon: const Icon(Icons.visibility_outlined,
+                        color: DeliveryAppColors.primary, size: 22),
+                    onPressed: () => DeliveryDocumentPreviewDialog.show(
+                      context: context,
+                      title: label,
+                      documentUrl: document.documentUrl,
+                      docType: document.id,
+                      status: document.isVerified ? 'verified' : 'uploaded',
+                      onReupload: () => _pickAndUpload(context, label),
                     ),
                   ),
-                  child: Text(
-                    DeliveryProfileStrings.of('upload', localeCode),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Text(
-                    '${(document.progress * 100).round()}%',
-                    style: const TextStyle(
-                      color: DeliveryAppColors.primary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                  const SizedBox(width: 4),
+                  if (document.isVerified)
+                    const Icon(Icons.verified,
+                        color: DeliveryAppColors.primary, size: 20)
+                  else
+                    OutlinedButton(
+                      key: Key('dp_profile_upload_${document.id}'),
+                      onPressed: () => _pickAndUpload(context, label),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: DeliveryAppColors.primary,
+                        side:
+                            const BorderSide(color: DeliveryAppColors.primaryDark),
+                        minimumSize: const Size(64, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        'Change',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 12),
+                      ),
+                    ),
+                ] else
+                  OutlinedButton(
+                    key: Key('dp_profile_upload_${document.id}'),
+                    onPressed: () => _pickAndUpload(context, label),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: DeliveryAppColors.primary,
+                      side:
+                          const BorderSide(color: DeliveryAppColors.primaryDark),
+                      minimumSize: const Size(76, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      DeliveryProfileStrings.of('upload', localeCode),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
-                ),
-            ],
-          ),
+              ],
+            ),
           if (isUploading) ...[
             const SizedBox(height: 12),
             ClipRRect(
@@ -1583,6 +1672,49 @@ class _DocumentTile extends StatelessWidget {
           ],
         ],
       ),
+    ),
+  );
+}
+
+  void _pickAndUpload(BuildContext context, String docTitle) {
+    context.read<DeliveryProfileBloc>().add(
+          DeliveryProfileUploadDocumentEvent(document.id),
+        );
+    DeliveryImagePickerHelper.showPicker(
+      context: context,
+      title: docTitle,
+      enableCamera: true,
+      allowPdf: true,
+      onImagePicked: (bytes, fileName) async {
+        try {
+          final uid = FirebaseAuth.instance.currentUser?.uid ?? 'partner';
+          final ref = FirebaseStorage.instance
+              .ref('delivery_partners/$uid/kyc/${document.id}_$fileName');
+          final uploadTask = await ref.putData(bytes);
+          final downloadUrl = await uploadTask.ref.getDownloadURL();
+          if (context.mounted) {
+            context.read<DeliveryProfileBloc>().add(
+                  DeliveryProfileUploadDocumentEvent(
+                    document.id,
+                    filePath: downloadUrl,
+                  ),
+                );
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$docTitle uploaded successfully!'),
+                backgroundColor: DeliveryAppColors.success,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        } catch (_) {
+          if (context.mounted) {
+            context.read<DeliveryProfileBloc>().add(
+                  DeliveryProfileUploadDocumentEvent(document.id),
+                );
+          }
+        }
+      },
     );
   }
 }

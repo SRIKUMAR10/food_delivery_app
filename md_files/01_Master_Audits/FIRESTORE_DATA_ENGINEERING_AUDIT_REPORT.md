@@ -467,7 +467,7 @@ flowchart TD
 | 16 | **Buyer Sign Up Page** | `SignUpWithEmailPassword` | `UserRepository` | `buyer_user/{uid}` | ✅ Real-Time Initial Doc Creation |
 | 17 | **Home Page** | `LoadHomeFeed`, `FilterCuisines` | `FirebaseProductRepository`, `SellerRepository` | `products`, `sellers` (active/open) | ✅ Real-Time Query Stream (Dynamic chips/feed) |
 | 18 | **Onboarding Page** | `CompleteOnboarding` | `SharedPreferences` | Local storage flag | ✅ Real-Time State Flag |
-| 19 | **User Profile & Avatar** | `UpdateProfileImage`, `SaveProfile` | `FirebaseBuyerProfileRepository` | `buyer_user/{uid}` + Storage (`users/{uid}/profile.jpg`) | ✅ Real-Time Storage + Firestore Sync |
+| 19 | **User Profile & Avatar** | `UpdateProfileImage`, `SaveProfile` | `FirebaseBuyerProfileRepository` | `buyer_user/{uid}` + Storage (`buyer_user/{uid}/profile.jpg`) | ✅ Real-Time Storage + Firestore Sync |
 
 ---
 
@@ -658,7 +658,7 @@ All financial, status mutation, and dispatch operations are protected server-sid
 | `rejectSellerPayout` | `onCall` HTTPS Callable (Admin) | `payout_requests/{id}` | Sets request to `Rejected` and **automatically refunds locked wallet balance** to merchant | Zero money loss on rejected transactions |
 | `onOrderStatusChanged` | `onWrite` Firestore Trigger | `orders/{orderId}` | - On `ReadyForPickup`: Broadcasts to `order_assignments`. <br>- On `Delivered`: Executes split disbursement (Merchant Cut + Rider Earnings). | Zero client dependency for financial payouts |
 | `acceptOrderAssignment` | `onCall` HTTPS Callable | `order_assignments/{id}` | Atomically locks order to the first accepting rider and updates `orders/{id}` with `riderId` | Eliminates assignment collisions |
-| `streamAnalyticsCDCEvent` | `onWrite` Firestore Trigger | `orders`, `payments`, `payouts`, `users` | Captures every mutation into `analytics_events` for streaming ingestion into BigQuery Lakehouse | Full audit trail and data lake sync |
+| `streamAnalyticsCDCEvent` | `onWrite` Firestore Trigger | `orders`, `payments`, `payouts`, `buyer_user` | Captures every mutation into `analytics_events` for streaming ingestion into BigQuery Lakehouse | Full audit trail and data lake sync |
 
 ---
 

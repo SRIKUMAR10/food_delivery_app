@@ -182,6 +182,7 @@ class DeliveryForgotPasswordRepository
       countryCode: '+91',
       displayName: existingPartner?.displayName ?? user.displayName ?? 'Delivery Partner',
       email: primaryEmail,
+      password: newPassword.trim(),
       role: 'delivery_partner',
       status: 'approved',
       isActive: true,

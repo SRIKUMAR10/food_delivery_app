@@ -5,6 +5,7 @@ import 'package:food_delivery_app/core/widgets/responsive_layout.dart';
 
 import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
+import '../buyer_onboarding_verification_page/buyer_onboarding_verification_ui.dart';
 import 'onboarding_page_Bloc.dart';
 import 'onboarding_page_Event.dart';
 import 'onboarding_page_State.dart';
@@ -40,6 +41,19 @@ class OnboardingPageView extends StatelessWidget {
           Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (context) => const BuyerLoginPageUI(),
+            ),
+            (route) => false,
+          );
+        } else if (state is OnboardingNavigateToKyc) {
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => BuyerOnboardingVerificationPage(
+                initialFullName: state.fullName,
+                initialEmail: state.email,
+                initialPhone: state.phone,
+                initialAvatarUrl: state.avatarUrl,
+                initialIsPhoneVerified: state.isPhoneVerified,
+              ),
             ),
             (route) => false,
           );

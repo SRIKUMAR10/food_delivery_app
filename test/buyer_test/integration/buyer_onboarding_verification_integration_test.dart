@@ -51,7 +51,7 @@ void main() {
     await tester.pump();
 
     // Step 1 check
-    expect(find.text('Step 1 of 8'), findsOneWidget);
+    expect(find.text('Step 1 of 6'), findsOneWidget);
     expect(find.text('👤 Personal Identity & Avatar'), findsOneWidget);
 
     // Proceed to Step 2
@@ -61,7 +61,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     // Step 2 check
-    expect(find.text('Step 2 of 8'), findsOneWidget);
+    expect(find.text('Step 2 of 6'), findsOneWidget);
     expect(find.text('Phone Number Verified ✅'), findsOneWidget);
   });
 }

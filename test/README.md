@@ -16,7 +16,7 @@
 - **`shared_test/`**: Shared widgets, models, services, repositories, and validators.
 - **`fixtures/`**: Mock JSON and model seed fixtures.
 - **`mocks/`**: Centralized mock classes (Firebase, Repositories, Services, APIs).
-- **`test_data/`**: Realistic sample datasets (users, products, orders, coupons).
+- **`test_data/`**: Realistic sample datasets (buyer_user, products, orders, coupons).
 - **`helpers/`**: Test automation harnesses, widget wrappers, font loaders, and assertion helpers.
 - **`test_config/`**: Test constants, environment configs, mock routes, and binding setup.
 

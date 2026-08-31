@@ -8,7 +8,10 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isAuthenticated() && (
+        request.auth.uid == userId ||
+        ('seller_' + request.auth.uid) == userId
+      );
     }
 
     function isOrderParticipant(orderData) {
@@ -22,15 +25,7 @@ service cloud.firestore {
       );
     }
 
-    // ── Users & Buyer Profile Collection ───────────────────────────────────
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
-      match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId);
-      }
-    }
-
+    // ── Buyer Profile Collection ───────────────────────────────────
     match /buyer_user/{userId} {
       allow read: if isAuthenticated();
       allow write: if isOwner(userId);

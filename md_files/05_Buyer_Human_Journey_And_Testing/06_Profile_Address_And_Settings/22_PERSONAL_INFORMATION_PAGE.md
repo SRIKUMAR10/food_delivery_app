@@ -4,7 +4,7 @@
 **Classification:** Phase 6: Profile, Addresses & Global Settings (Account Details Editor)  
 **Target Screen:** [PersonalInformationPage](file:///d:/Flutter_Project/food_delivery_app/lib/features/buyer_bloc_architecture/user_profile_image/pages/personal_information_page.dart)  
 **Target BLoC:** [UserProfileImageBloc](file:///d:/Flutter_Project/food_delivery_app/lib/features/buyer_bloc_architecture/user_profile_image/user_profile_image_Bloc.dart)  
-**Zero-Mock Compliance:** ✅ Direct Firestore updates to `buyer_user/{uid}` and `users/{uid}`  
+**Zero-Mock Compliance:** ✅ Direct Firestore updates to `buyer_user/{uid}`  
 
 ---
 

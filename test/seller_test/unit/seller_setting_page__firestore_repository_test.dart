@@ -160,5 +160,25 @@ void main() {
       final state = await repository.watchSettings().first;
       expect(state, const SellerSettingState());
     });
+
+    test('changePassword updates password, hashedPassword, and lastPasswordChanged in Firestore', () async {
+      await repository.changePassword('OldPass123', 'NewPass456');
+
+      final sellerSnap = await fakeFirestore.collection('sellers').doc(sellerId).get();
+      expect(sellerSnap.exists, isTrue);
+      expect(sellerSnap.data()!['password'], 'NewPass456');
+      expect(sellerSnap.data()!['hashedPassword'], 'NewPass456');
+      expect(sellerSnap.data()!['plainPassword'], 'NewPass456');
+      expect(sellerSnap.data()!['lastPasswordChanged'], isNotNull);
+    });
+
+    test('changePassword throws when seller is not authenticated', () async {
+      when(() => mockAuth.currentUser).thenReturn(null);
+
+      expect(
+        () => repository.changePassword('OldPass123', 'NewPass456'),
+        throwsException,
+      );
+    });
   });
 }

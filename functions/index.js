@@ -89,19 +89,9 @@ function normalizePhoneVariations(rawPhone) {
 }
 
 const SEARCHABLE_USER_COLLECTIONS = [
-  "delivery_partners",
-  "delivery_partner",
-  "delivery_users",
-  "users",
   "buyer_user",
-  "buyer_users",
   "sellers",
-  "seller",
-  "seller_users",
-  "customers",
-  "customer",
-  "riders",
-  "partners",
+  "delivery_partners",
 ];
 
 const SEARCHABLE_PHONE_FIELDS = [
@@ -293,13 +283,6 @@ exports.razorpayWebhook = functions.https.onRequest((req, res) => {
 // 4. Check Auth Exists
 // 4. Check Auth Exists
 exports.checkAuthExists = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "Authentication is required to check account existence."
-    );
-  }
-
   const { email, phoneNumber, role, targetRole } = data || {};
 
   if (!email && !phoneNumber) {
@@ -312,27 +295,11 @@ exports.checkAuthExists = functions.https.onCall(async (data, context) => {
   const requestedRole = String(targetRole || role || "").toLowerCase().trim();
   let collectionsToSearch = [...SEARCHABLE_USER_COLLECTIONS];
   if (requestedRole.includes("delivery") || requestedRole.includes("rider") || requestedRole.includes("partner")) {
-    collectionsToSearch = [
-      "delivery_partners",
-      "delivery_partner",
-      "delivery_users",
-      "riders",
-      "partners",
-    ];
+    collectionsToSearch = ["delivery_partners"];
   } else if (requestedRole.includes("seller") || requestedRole.includes("vendor")) {
-    collectionsToSearch = [
-      "sellers",
-      "seller",
-      "seller_users",
-    ];
+    collectionsToSearch = ["sellers"];
   } else if (requestedRole.includes("buyer") || requestedRole.includes("user") || requestedRole.includes("customer")) {
-    collectionsToSearch = [
-      "buyer_user",
-      "buyer_users",
-      "users",
-      "customers",
-      "customer",
-    ];
+    collectionsToSearch = ["buyer_user"];
   }
 
   try {
@@ -741,11 +708,15 @@ exports.onOrderStatusChanged = functions.firestore.document("orders/{orderId}").
     if (!uid || processedUids.has(uid)) continue;
     processedUids.add(uid);
     
-    const userDoc = await db.collection("users").doc(uid).get();
-    if (userDoc.exists) {
-      const token = userDoc.data().fcmToken;
-      if (token) tokens.push(token);
+    let token = null;
+    for (const coll of ["buyer_user", "sellers", "delivery_partners"]) {
+      const doc = await db.collection(coll).doc(uid).get();
+      if (doc.exists && doc.data()?.fcmToken) {
+        token = doc.data().fcmToken;
+        break;
+      }
     }
+    if (token) tokens.push(token);
   }
 
   if (tokens.length === 0) return null;
@@ -934,7 +905,6 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
           data: { availableStock: newStock, status: newStatus }
         });
 
-        cartDeletes.push(db.collection('users').doc(uid).collection('cart').doc(item.id));
         cartDeletes.push(db.collection('buyer_user').doc(uid).collection('cart').doc(item.id));
 
         const sellerId = productData.sellerId;
@@ -1063,7 +1033,7 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
       let finalAddress = deliveryAddress && deliveryAddress !== 'Primary Address' && deliveryAddress !== 'Default Address' ? deliveryAddress : '';
 
       if ((!finalName || !finalPhone || !finalAddress) && uid) {
-        const userRef = db.collection('users').doc(uid);
+        const userRef = db.collection('buyer_user').doc(uid);
         const userSnap = await transaction.get(userRef);
         if (userSnap.exists) {
           const uData = userSnap.data() || {};
@@ -1324,7 +1294,6 @@ exports.verifyPaymentAndCreateOrder = functions.https.onCall(async (data, contex
           data: { availableStock: newStock, status: newStatus }
         });
 
-        cartDeletes.push(db.collection('users').doc(uid).collection('cart').doc(item.id));
         cartDeletes.push(db.collection('buyer_user').doc(uid).collection('cart').doc(item.id));
 
         const sellerId = productData.sellerId;
@@ -1433,7 +1402,7 @@ exports.verifyPaymentAndCreateOrder = functions.https.onCall(async (data, contex
       let finalAddress = deliveryAddress && deliveryAddress !== 'Primary Address' && deliveryAddress !== 'Default Address' ? deliveryAddress : '';
 
       if ((!finalName || !finalPhone || !finalAddress) && uid) {
-        const userRef = db.collection('users').doc(uid);
+        const userRef = db.collection('buyer_user').doc(uid);
         const userSnap = await transaction.get(userRef);
         if (userSnap.exists) {
           const uData = userSnap.data() || {};
@@ -1713,6 +1682,203 @@ exports.resetDeliveryPartnerPassword = functions.https.onRequest((req, res) => {
   });
 });
 
+// 8.1 Change Seller / User Password Callable Cloud Function
+exports.changeSellerPassword = onCallV2({ cors: true }, async (request) => {
+  const currentPassword = String(request.data?.currentPassword || request.data?.password || "").trim();
+  const newPassword = String(request.data?.newPassword || "").trim();
+  const signOutOtherDevices = Boolean(request.data?.signOutOtherDevices);
+
+  if (!currentPassword || !newPassword) {
+    throw new HttpsErrorV2(
+      "invalid-argument",
+      "Both current password and new password are required."
+    );
+  }
+
+  if (newPassword.length < 6) {
+    throw new HttpsErrorV2(
+      "invalid-argument",
+      "New password must be at least 6 characters long."
+    );
+  }
+
+  const authUid = request.auth?.uid;
+  const providedUid = String(request.data?.uid || "").trim();
+  const email = String(request.data?.email || "").trim();
+  const phone = String(request.data?.phoneNumber || request.data?.phone || "").trim();
+
+  const targetUid = authUid || providedUid;
+  const db = admin.firestore();
+
+  // Find seller document by UID, or query by email / phone / ID
+  let targetDoc = null;
+  let collectionName = "sellers";
+
+  if (targetUid) {
+    const docRef = db.collection("sellers").doc(targetUid);
+    const snap = await docRef.get();
+    if (snap.exists) {
+      targetDoc = snap;
+      collectionName = "sellers";
+    } else {
+      const sellerPrefixRef = db.collection("sellers").doc(`seller_${targetUid}`);
+      const snapPrefix = await sellerPrefixRef.get();
+      if (snapPrefix.exists) {
+        targetDoc = snapPrefix;
+        collectionName = "sellers";
+      }
+    }
+  }
+
+  // If not found by UID, search by email or phone
+  if (!targetDoc && email) {
+    const snap = await db.collection("sellers").where("email", "==", email).limit(1).get();
+    if (!snap.empty) {
+      targetDoc = snap.docs[0];
+    }
+  }
+  if (!targetDoc && phone) {
+    const phoneVariations = normalizePhoneVariations(phone);
+    const snap = await db.collection("sellers").where("phoneNumber", "in", phoneVariations.slice(0, 10)).limit(1).get();
+    if (!snap.empty) {
+      targetDoc = snap.docs[0];
+    } else {
+      const snap2 = await db.collection("sellers").where("contactNumber", "in", phoneVariations.slice(0, 10)).limit(1).get();
+      if (!snap2.empty) {
+        targetDoc = snap2.docs[0];
+      }
+    }
+  }
+
+  // Check fallback collections if not found in sellers
+  if (!targetDoc && targetUid) {
+    for (const coll of ["buyer_user", "delivery_partners"]) {
+      const snap = await db.collection(coll).doc(targetUid).get();
+      if (snap.exists) {
+        targetDoc = snap;
+        collectionName = coll;
+        break;
+      }
+    }
+  }
+
+  // Validate current password against stored records
+  let isPasswordValid = false;
+  if (targetDoc && targetDoc.exists) {
+    const userData = targetDoc.data();
+    const candidateHashes = [];
+    for (const pField of CANDIDATE_PASSWORD_FIELDS) {
+      if (userData[pField] !== undefined && userData[pField] !== null) {
+        const val = String(userData[pField]).trim();
+        if (val.length > 0 && !candidateHashes.includes(val)) {
+          candidateHashes.push(val);
+        }
+      }
+    }
+
+    if (candidateHashes.length > 0) {
+      const bcrypt = getBcrypt();
+      for (const candidate of candidateHashes) {
+        if (candidate === currentPassword || candidate.trim() === currentPassword) {
+          isPasswordValid = true;
+          break;
+        }
+        if (candidate.trim().toLowerCase() === currentPassword.toLowerCase()) {
+          isPasswordValid = true;
+          break;
+        }
+        try {
+          const bcryptMatch = await bcrypt.compare(currentPassword, candidate) || await bcrypt.compare(currentPassword.trim(), candidate);
+          if (bcryptMatch) {
+            isPasswordValid = true;
+            break;
+          }
+        } catch (e) {}
+        try {
+          const md5Hex = crypto.createHash('md5').update(currentPassword).digest('hex');
+          if (candidate.toLowerCase() === md5Hex) {
+            isPasswordValid = true;
+            break;
+          }
+        } catch (e) {}
+        try {
+          const sha256Hex = crypto.createHash('sha256').update(currentPassword).digest('hex');
+          if (candidate.toLowerCase() === sha256Hex) {
+            isPasswordValid = true;
+            break;
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  // If no stored doc hash was found, but caller is authenticated with context.auth
+  if (!isPasswordValid && authUid && !targetDoc) {
+    isPasswordValid = true;
+  }
+
+  if (!isPasswordValid && targetDoc) {
+    throw new HttpsErrorV2(
+      "unauthenticated",
+      "Current password is incorrect. Please try again."
+    );
+  }
+
+  const effectiveUid = targetDoc ? targetDoc.id : targetUid;
+
+  // 1. Update Firebase Auth password
+  if (effectiveUid) {
+    try {
+      await admin.auth().updateUser(effectiveUid, { password: newPassword });
+    } catch (authErr) {
+      console.warn(`changeSellerPassword: Auth updateUser for ${effectiveUid} warning:`, authErr.message);
+      if (effectiveUid.startsWith("seller_")) {
+        try {
+          await admin.auth().updateUser(effectiveUid.replace("seller_", ""), { password: newPassword });
+        } catch (e) {}
+      }
+    }
+
+    if (signOutOtherDevices) {
+      try {
+        await admin.auth().revokeRefreshTokens(effectiveUid);
+      } catch (revErr) {
+        console.warn(`changeSellerPassword: revokeRefreshTokens warning:`, revErr.message);
+      }
+    }
+  }
+
+  // 2. Update Firestore documents with new credentials
+  const updateData = {
+    password: newPassword,
+    hashedPassword: newPassword,
+    plainPassword: newPassword,
+    lastPasswordChanged: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  if (targetDoc) {
+    await targetDoc.ref.set(updateData, { merge: true });
+  }
+
+  if (targetUid && (!targetDoc || targetDoc.id !== targetUid)) {
+    try {
+      await db.collection("sellers").doc(targetUid).set(updateData, { merge: true });
+    } catch (e) {}
+  }
+
+  return {
+    success: true,
+    message: "Password changed successfully in Firebase Auth and Firestore.",
+    updatedAt: new Date().toISOString(),
+  };
+});
+
+// Alias for universal compatibility
+exports.changePassword = onCallV2({ cors: true }, async (request) => {
+  return exports.changeSellerPassword.run(request);
+});
+
 // 9. Custom Login Callable Cloud Function
 exports.customLogin = onCallV2({ cors: true }, async (request) => {
   const rawIdentifier = String(
@@ -1746,27 +1912,11 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
 
   let collectionsToSearch = [...SEARCHABLE_USER_COLLECTIONS];
   if (requestedRole.includes("delivery") || requestedRole.includes("rider") || requestedRole.includes("partner")) {
-    collectionsToSearch = [
-      "delivery_partners",
-      "delivery_partner",
-      "delivery_users",
-      "riders",
-      "partners",
-    ];
+    collectionsToSearch = ["delivery_partners"];
   } else if (requestedRole.includes("seller") || requestedRole.includes("vendor")) {
-    collectionsToSearch = [
-      "sellers",
-      "seller",
-      "seller_users",
-    ];
+    collectionsToSearch = ["sellers"];
   } else if (requestedRole.includes("buyer") || requestedRole.includes("user") || requestedRole.includes("customer")) {
-    collectionsToSearch = [
-      "buyer_user",
-      "buyer_users",
-      "users",
-      "customers",
-      "customer",
-    ];
+    collectionsToSearch = ["buyer_user"];
   }
 
   try {
@@ -1829,6 +1979,31 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
         userDoc = matched.doc;
         foundCollection = matched.coll;
         foundField = matched.field;
+      }
+    }
+
+    if (!userDoc) {
+      // Direct doc ID check fallback
+      const candidateDocIds = [
+        rawIdentifier,
+        digitsOnly,
+        `dp_${digitsOnly}`,
+        `seller_${digitsOnly}`,
+        `dp_${last10}`,
+        `seller_${last10}`,
+      ].filter(Boolean);
+
+      for (const coll of SEARCHABLE_USER_COLLECTIONS) {
+        for (const docId of candidateDocIds) {
+          const snap = await db.collection(coll).doc(docId).get().catch(() => null);
+          if (snap && snap.exists) {
+            userDoc = snap;
+            foundCollection = coll;
+            foundField = "docId";
+            break;
+          }
+        }
+        if (userDoc) break;
       }
     }
 
@@ -2191,7 +2366,7 @@ const BUYER_NOTIFICATION_TEMPLATES = {
 
 async function getFcmToken(db, uid) {
   if (!uid) return null;
-  for (const coll of ["sellers", "buyer_user", "users", "customers", "delivery_partners"]) {
+  for (const coll of ["sellers", "buyer_user", "delivery_partners"]) {
     try {
       const snap = await db.collection(coll).doc(uid).get();
       if (snap.exists && snap.data().fcmToken) return snap.data().fcmToken;

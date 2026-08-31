@@ -19,6 +19,7 @@ Welcome to the centralized documentation hub for the **Multi-Platform Food Deliv
  ├── 📂 02_Architecture_And_Testing/                   ──► Architecture Registries & QA Guides
  │    ├── 📄 BUYER_BLOC_ARCHITECTURE_REGISTRY.md              (20 Buyer BLoC Modules, Events, States & Repos)
  │    ├── 📄 SELLER_BLOC_ARCHITECTURE_REGISTRY.md             (31 Seller BLoC Modules, Events, States & Repos)
+ │    ├── 📄 DELIVERY_PARTNER_BLOC_ARCHITECTURE_REGISTRY.md   (23 Delivery Partner BLoC Modules, Events, States & Repos)
  │    └── 📄 TEST_ARCHITECTURE.md                             (14 Mandatory Test Categories Master Blueprint)
  │
  ├── 📂 03_System_And_Rules/                           ──► Core System Rules & Getting Started
@@ -36,14 +37,24 @@ Welcome to the centralized documentation hub for the **Multi-Platform Food Deliv
  │    ├── 📂 06_Customer_Engagement_And_Support/ (Modules 21–23) (Customer CRM, Live Chat Support, Notifications Hub)
  │    └── 📂 07_Finance_Payouts_Analytics_And_Settings/ (Modules 24–31) (Wallet, Payments, Request Payout, History, Analytics, Ratings, Coupons, Settings)
  │
- └── 📂 05_Buyer_Human_Journey_And_Testing/            ──► Complete Buyer Human Journey & QA Blueprints
-      ├── 📄 README.md                                        (★ Master 25-Module Buyer Journey Map & Lifecycle)
-      ├── 📂 01_Auth_And_Onboarding/ (Modules 01–06)          (Onboarding, Login, Sign Up, OTP, Forgot Password, 8-Step KYC Wizard)
-      ├── 📂 02_Navigation_And_Discovery/ (Modules 07–10)     (Curved Navbar, Home Discovery, Food Details, Favorites/Wishlist)
-      ├── 📂 03_Cart_Checkout_And_Payments/ (Modules 11–13)   (Cart Summary, Payment Gateways, Buyer Wallet)
-      ├── 📂 04_Order_Lifecycle_And_Tracking/ (Modules 14–16) (Orders Pipeline, Live 60 FPS Rider GPS Tracking, Ratings & Reviews)
-      ├── 📂 05_Communication_And_Support/ (Modules 17–20)    (Real-Time Chat, Voice/Video Call, Notifications, Helpdesk)
-      └── 📂 06_Profile_Address_And_Settings/ (Modules 21–25) (Buyer Profile, Personal Info, Geolocation Addresses, Settings, Transactions)
+ ├── 📂 05_Buyer_Human_Journey_And_Testing/            ──► Complete Buyer Human Journey & QA Blueprints
+ │    ├── 📄 README.md                                        (★ Master 25-Module Buyer Journey Map & Lifecycle)
+ │    ├── 📂 01_Auth_And_Onboarding/ (Modules 01–06)          (Onboarding, Login, Sign Up, OTP, Forgot Password, 8-Step KYC Wizard)
+ │    ├── 📂 02_Navigation_And_Discovery/ (Modules 07–10)     (Curved Navbar, Home Discovery, Food Details, Favorites/Wishlist)
+ │    ├── 📂 03_Cart_Checkout_And_Payments/ (Modules 11–13)   (Cart Summary, Payment Gateways, Buyer Wallet)
+ │    ├── 📂 04_Order_Lifecycle_And_Tracking/ (Modules 14–16) (Orders Pipeline, Live 60 FPS Rider GPS Tracking, Ratings & Reviews)
+ │    ├── 📂 05_Communication_And_Support/ (Modules 17–20)    (Real-Time Chat, Voice/Video Call, Notifications, Helpdesk)
+ │    └── 📂 06_Profile_Address_And_Settings/ (Modules 21–25) (Buyer Profile, Personal Info, Geolocation Addresses, Settings, Transactions)
+ │
+ └── 📂 06_Delivery_Partner_Human_Journey_And_Testing/ ──► Complete Delivery Partner Human Journey & QA Blueprints
+      ├── 📄 README.md                                        (★ Master 23-Module Delivery Partner Journey Map & Lifecycle)
+      ├── 📂 01_Auth_And_Onboarding/ (Modules 01–06)          (Onboard, Login, Sign Up, OTP, Forgot Password, 8-Step Verification Wizard)
+      ├── 📂 02_Navigation_And_Duty_Dashboard/ (Modules 07–08)(Navbar Shell, Live Rider Duty Dashboard)
+      ├── 📂 03_Order_Dispatch_And_Pickup/ (Modules 09–12)    (Incoming Order Alert, Orders Pipeline, Order Details, Store Pickup)
+      ├── 📂 04_Navigation_And_Customer_Delivery/ (Modules 13–14) (Turn-by-Turn GPS HUD, Doorstep Delivery Completed & OTP Proof)
+      ├── 📂 05_Financials_Wallet_And_Incentives/ (Modules 15–18) (Earnings Analytics, Rider Wallet & Cash, Incentives, Order History)
+      ├── 📂 06_Communication_Safety_And_Support/ (Modules 19–21) (Rider Chat, Dispatch Notifications, Emergency SOS & Helpdesk)
+      └── 📂 07_Profile_Vehicle_And_Settings/ (Modules 22–23) (Partner Profile & Vehicle, App Settings & Navigation Preferences)
 ```
 
 ---
@@ -65,6 +76,7 @@ Welcome to the centralized documentation hub for the **Multi-Platform Food Deliv
 | :--- | :--- | :--- |
 | [**BUYER_BLOC_ARCHITECTURE_REGISTRY.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/02_Architecture_And_Testing/BUYER_BLOC_ARCHITECTURE_REGISTRY.md) | Buyer Domain | Complete registry of 20 Buyer BLoC modules, states, events, services, and repositories. |
 | [**SELLER_BLOC_ARCHITECTURE_REGISTRY.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/02_Architecture_And_Testing/SELLER_BLOC_ARCHITECTURE_REGISTRY.md) | Seller Domain | Complete registry of 31 Seller BLoC modules, states, events, services, and repositories. |
+| [**DELIVERY_PARTNER_BLOC_ARCHITECTURE_REGISTRY.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/02_Architecture_And_Testing/DELIVERY_PARTNER_BLOC_ARCHITECTURE_REGISTRY.md) | Delivery Partner Domain | Complete registry of 23 Delivery Partner BLoC modules, states, events, services, and repositories. |
 | [**TEST_ARCHITECTURE.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/02_Architecture_And_Testing/TEST_ARCHITECTURE.md) | QA & Testing Blueprint | 14 Mandatory Test Categories (Unit, Widget, BLoC, Integration, Golden, Performance, Accessibility, Security, Localization, Snapshot, Dependency, State Restoration, Error Handling, Permission). |
 
 ---
@@ -148,3 +160,34 @@ Welcome to the centralized documentation hub for the **Multi-Platform Food Deliv
 | **23. Address Book** | [23_ADDRESS_MANAGEMENT_AND_GEOLOCATION_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/06_Profile_Address_And_Settings/23_ADDRESS_MANAGEMENT_AND_GEOLOCATION_PAGE.md) | Saved delivery addresses, Google Places autocomplete, map geolocation |
 | **24. App Settings** | [24_APP_SETTINGS_AND_LOCALIZATION_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/06_Profile_Address_And_Settings/24_APP_SETTINGS_AND_LOCALIZATION_PAGE.md) | Theme (Light/Dark), Multi-language localization (EN / TA), Biometrics |
 | **25. Transactions** | [25_TRANSACTION_HISTORY_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/06_Profile_Address_And_Settings/25_TRANSACTION_HISTORY_PAGE.md) | Itemized ledger of wallet credits, order payments, refund settlements |
+
+---
+
+## 🛵 6. Delivery Partner Human Journey & Real-Time Testing Documentation (`06_Delivery_Partner_Human_Journey_And_Testing/`)
+
+| Phase / Module | File Link | Focus Area & Description |
+| :--- | :--- | :--- |
+| **★ Master Roadmap** | [**README.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/README.md) | Full 23-Module Delivery Partner Journey Lifecycle Diagram & Master Index |
+| **01. Onboarding** | [01_DELIVERY_ONBOARDING_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/01_Auth_And_Onboarding/01_DELIVERY_ONBOARDING_PAGE.md) | Video intro, carousel benefits, session token verification |
+| **02. Rider Login** | [02_DELIVERY_LOGIN_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/01_Auth_And_Onboarding/02_DELIVERY_LOGIN_PAGE.md) | Email, Phone/OTP, Google/Apple Auth, KYC redirect gates |
+| **03. Sign Up** | [03_DELIVERY_SIGN_UP_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/01_Auth_And_Onboarding/03_DELIVERY_SIGN_UP_PAGE.md) | Driver registration, vehicle type selector, phone uniqueness check |
+| **04. OTP Verification**| [04_DELIVERY_OTP_VERIFICATION_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/01_Auth_And_Onboarding/04_DELIVERY_OTP_VERIFICATION_PAGE.md) | 6-digit SMS verification, phone credential linking, Firestore profile |
+| **05. Forgot Password**| [05_DELIVERY_FORGOT_PASSWORD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/01_Auth_And_Onboarding/05_DELIVERY_FORGOT_PASSWORD_PAGE.md) | Password recovery via email reset link and SMS OTP verification |
+| **06. 8-Step Verification Wizard**| [06_DELIVERY_ONBOARDING_VERIFICATION_WIZARD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/01_Auth_And_Onboarding/06_DELIVERY_ONBOARDING_VERIFICATION_WIZARD_PAGE.md) | 8-Step KYC, Driving License, RC, Bank Details, Zones, Permissions & Kit |
+| **07. Navigation Shell**| [07_DELIVERY_NAVIGATION_BAR_VIEW.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/02_Navigation_And_Duty_Dashboard/07_DELIVERY_NAVIGATION_BAR_VIEW.md) | Persistent bottom shell, 4 operational tabs, unread badge counters |
+| **08. Duty Dashboard** | [08_DELIVERY_DASHBOARD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/02_Navigation_And_Duty_Dashboard/08_DELIVERY_DASHBOARD_PAGE.md) | Live duty switch (Online/Offline), daily earnings, shift statistics |
+| **09. Incoming Order** | [09_DELIVERY_INCOMING_ORDER_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/03_Order_Dispatch_And_Pickup/09_DELIVERY_INCOMING_ORDER_PAGE.md) | High-priority trip alert, 30s countdown progress arc, accept lock |
+| **10. Orders Pipeline**| [10_DELIVERY_ORDERS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/03_Order_Dispatch_And_Pickup/10_DELIVERY_ORDERS_PAGE.md) | 7-stage active order state machine (Assigned ➔ In Transit ➔ Delivered) |
+| **11. Order Details** | [11_DELIVERY_ORDER_DETAILS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/03_Order_Dispatch_And_Pickup/11_DELIVERY_ORDER_DETAILS_PAGE.md) | Itemized dish checklist, cooking notes, customer dropoff instructions |
+| **12. Pickup Confirmation**| [12_DELIVERY_PICKUP_CONFIRMATION_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/03_Order_Dispatch_And_Pickup/12_DELIVERY_PICKUP_CONFIRMATION_PAGE.md) | Store geofence, item verification checklist, merchant 4-digit PIN |
+| **13. Turn-By-Turn GPS**| [13_DELIVERY_NAVIGATION_SCREEN_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/04_Navigation_And_Customer_Delivery/13_DELIVERY_NAVIGATION_SCREEN_PAGE.md) | Live 60 FPS GPS navigation HUD, polyline routing, external map launch |
+| **14. Delivery Completed**| [14_DELIVERY_COMPLETED_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/04_Navigation_And_Customer_Delivery/14_DELIVERY_COMPLETED_PAGE.md) | Customer doorstep 4-digit OTP verification, photo proof, COD collection |
+| **15. Earnings Analytics**| [15_DELIVERY_EARNINGS_DASHBOARD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/05_Financials_Wallet_And_Incentives/15_DELIVERY_EARNINGS_DASHBOARD_PAGE.md) | Day/Week/Month revenue charts, peak hours, surge pay, statements |
+| **16. Rider Wallet** | [16_DELIVERY_WALLET_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/05_Financials_Wallet_And_Incentives/16_DELIVERY_WALLET_PAGE.md) | Wallet balance, cash-in-hand limit tracker, instant bank withdrawal |
+| **17. Incentives & Streaks**| [17_DELIVERY_INCENTIVES_DASHBOARD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/05_Financials_Wallet_And_Incentives/17_DELIVERY_INCENTIVES_DASHBOARD_PAGE.md) | Milestone target challenges, peak-hour streaks, monthly tier badges |
+| **18. Order History** | [18_DELIVERY_ORDER_HISTORY_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/05_Financials_Wallet_And_Incentives/18_DELIVERY_ORDER_HISTORY_PAGE.md) | Archived trips log, date-range filters, route playback summaries |
+| **19. Real-Time Chat** | [19_DELIVERY_CHAT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/06_Communication_Safety_And_Support/19_DELIVERY_CHAT_PAGE.md) | Multi-party Firestore chat stream with Buyer, Merchant, and Support |
+| **20. Notifications** | [20_DELIVERY_NOTIFICATIONS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/06_Communication_Safety_And_Support/20_DELIVERY_NOTIFICATIONS_PAGE.md) | FCM push notification center, prioritized dispatch alerts, inbox |
+| **21. Emergency SOS** | [21_DELIVERY_HELP_SUPPORT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/06_Communication_Safety_And_Support/21_DELIVERY_HELP_SUPPORT_PAGE.md) | Instant SOS emergency broadcast, safety dispute tickets, FAQs |
+| **22. Partner Profile**| [22_DELIVERY_PROFILE_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/07_Profile_Vehicle_And_Settings/22_DELIVERY_PROFILE_PAGE.md) | Driver avatar, performance ratings, vehicle details, document expiry |
+| **23. Settings** | [23_DELIVERY_SETTINGS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/06_Delivery_Partner_Human_Journey_And_Testing/07_Profile_Vehicle_And_Settings/23_DELIVERY_SETTINGS_PAGE.md) | External navigation preference, audio volume, localization (EN / TA) |

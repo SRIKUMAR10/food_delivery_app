@@ -18,5 +18,22 @@ class OnboardingAuthWaiting extends OnboardingPageState {}
 /// State emitted when the user is logged in.
 class OnboardingAuthenticated extends OnboardingPageState {}
 
+/// State emitted when the user is logged in but KYC is incomplete.
+class OnboardingNavigateToKyc extends OnboardingPageState {
+  final String? fullName;
+  final String? email;
+  final String? phone;
+  final String? avatarUrl;
+  final bool isPhoneVerified;
+
+  OnboardingNavigateToKyc({
+    this.fullName,
+    this.email,
+    this.phone,
+    this.avatarUrl,
+    this.isPhoneVerified = false,
+  });
+}
+
 /// State emitted when the user is not logged in.
 class OnboardingUnauthenticated extends OnboardingPageState {}

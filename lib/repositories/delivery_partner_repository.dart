@@ -201,6 +201,7 @@ class DeliveryPartnerRepository {
       countryCode: '+91',
       displayName: name,
       email: email,
+      password: password.trim(),
       role: 'delivery_partner',
       status: 'pending',
       isActive: true,
@@ -230,6 +231,9 @@ class DeliveryPartnerRepository {
       await phoneUser.linkWithCredential(emailCredential);
     } catch (e) {
       debugPrint('Credential link note during OTP complete: $e');
+      try {
+        await phoneUser.updatePassword(password);
+      } catch (_) {}
     }
 
     await signOut();
@@ -400,8 +404,12 @@ class DeliveryPartnerRepository {
               return DeliveryPartnerModel.fromFirestore(query.docs.first);
             }
           } on FirebaseException catch (e) {
+            if (e.code == 'permission-denied') {
+              // Unauthenticated client cannot read delivery_partners collection directly
+              return null;
+            }
             debugPrint(
-                'getDeliveryPartnerByPhone query denied: '
+                'getDeliveryPartnerByPhone query error: '
                 'collection=$collection field=$field '
                 'code=${e.code} message=${e.message}');
           } catch (e, stack) {

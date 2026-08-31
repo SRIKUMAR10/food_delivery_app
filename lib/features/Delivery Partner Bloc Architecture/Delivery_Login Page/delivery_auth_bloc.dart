@@ -357,6 +357,7 @@ class DeliveryAuthBloc extends Bloc<DeliveryAuthEvent, DeliveryAuthState> {
           phoneNumber: event.phone,
           displayName: event.name,
           email: event.email,
+          password: event.password.trim(),
           vehicleType: event.vehicleType,
           vehicleNumber: event.vehicleNumber,
           isOnline: true,
