@@ -608,8 +608,11 @@ class _AnalyticsContentState extends State<_AnalyticsContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -632,18 +635,22 @@ class _AnalyticsContentState extends State<_AnalyticsContent> {
                 ],
               ),
               // Filter Tabs
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.all(3),
-                child: Row(
-                  children: [
-                    _buildSubTab('Top Best Sellers', 0),
-                    _buildSubTab('Low Performing', 1),
-                    _buildSubTab('Full Catalog Matrix', 2),
-                  ],
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.all(3),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildSubTab('Top Best Sellers', 0),
+                      _buildSubTab('Low Performing', 1),
+                      _buildSubTab('Full Catalog Matrix', 2),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1879,8 +1886,11 @@ class _HourlyPeakChartCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1911,6 +1921,7 @@ class _HourlyPeakChartCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.flash_on,
                           size: 14, color: Color(0xFFD97706)),

@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../Order Page/order_view_model.dart';
 import '../user_profile_image/user_profile_image_Bloc.dart';
 import '../Chat_Page/buyer_chat_ui.dart';
+import '../Rating_page/Rating_page_ui.dart';
 import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import '../../../core/repositories/i_order_repository.dart';
 import '../../../core/services/i_auth_service.dart';
@@ -193,7 +194,66 @@ class _TrackOrderView extends StatelessWidget {
   }
 
   Widget _buildCancelButton(BuildContext context, TrackOrderLoaded state) {
-    if (state.isCancelled || state.isDelivered) return const SizedBox.shrink();
+    if (state.isCancelled) return const SizedBox.shrink();
+
+    if (state.isDelivered) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Align(
+            alignment: Alignment.center,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RatingPageUI(
+                          orderId: state.orderId,
+                          foodId: (state.sellerInfo?.name.isNotEmpty == true) ? state.sellerInfo!.name : 'Food',
+                          foodName: (state.sellerInfo?.name.isNotEmpty == true) ? state.sellerInfo!.name : 'Your Order',
+                          partnerId: state.deliveryPartner.name.isNotEmpty ? state.deliveryPartner.name : null,
+                          partnerName: state.deliveryPartner.name.isNotEmpty ? state.deliveryPartner.name : null,
+                          partnerAvatarUrl: state.deliveryPartner.imageUrl.isNotEmpty ? state.deliveryPartner.imageUrl : null,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.star_rounded, color: Colors.white, size: 20),
+                  label: Text(
+                    _tr(context, 'Rate Order & Delivery Partner'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),

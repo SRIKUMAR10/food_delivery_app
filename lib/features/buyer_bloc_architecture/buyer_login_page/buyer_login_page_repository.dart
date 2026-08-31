@@ -1,4 +1,5 @@
 import 'buyer_login_page_service.dart';
+import 'buyer_login_page_state.dart';
 
 class BuyerLoginRepository {
   final BuyerLoginService _service;
@@ -26,5 +27,9 @@ class BuyerLoginRepository {
 
   Future<String?> loginWithApple() async {
     return await _service.signInWithApple();
+  }
+
+  Future<BuyerAuthProfileStatus> checkKycAndOnboardingStatus(String userId) async {
+    return await _service.checkKycAndOnboardingStatus(userId);
   }
 }

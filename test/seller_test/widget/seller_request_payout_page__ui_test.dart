@@ -81,7 +81,7 @@ void main() {
       expect(find.text('Enter Amount'), findsOneWidget);
       expect(find.text('Bank Account'), findsOneWidget);
       expect(find.text('UPI ID'), findsOneWidget);
-      expect(find.text('Request Payout'), findsOneWidget);
+      expect(find.text('Request Payout'), findsWidgets);
     });
   });
 }

@@ -105,6 +105,7 @@ class UpdateRestaurantIdentity extends SellerProfilePageEvent {
   final String description;
   final String email;
   final String phone;
+  final List<String>? cuisines;
 
   const UpdateRestaurantIdentity({
     required this.storeName,
@@ -112,10 +113,11 @@ class UpdateRestaurantIdentity extends SellerProfilePageEvent {
     required this.description,
     required this.email,
     required this.phone,
+    this.cuisines,
   });
 
   @override
-  List<Object?> get props => [storeName, ownerName, description, email, phone];
+  List<Object?> get props => [storeName, ownerName, description, email, phone, cuisines];
 }
 
 class UpdateLocationDetails extends SellerProfilePageEvent {

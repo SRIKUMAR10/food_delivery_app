@@ -191,6 +191,19 @@ export 'seller_setting_page/seller_setting_page__state.dart';
 export 'seller_setting_page/seller_setting_page__ui.dart';
 
 // ============================================================================
+// 10. UI Tokens, Unified Dialogs & Backend Data Models
+// ============================================================================
+export 'seller_ui_tokens.dart';
+export 'seller_unified_dialog.dart';
+
+export '../../core/models/seller_pos_printer_model.dart';
+export '../../core/models/seller_delivery_surge_model.dart';
+export '../../core/models/seller_staff_model.dart';
+export '../../core/models/seller_ledger_model.dart';
+export '../../core/models/seller_performance_model.dart';
+export '../../app_data_collection/seller_collections/seller_collection.dart';
+
+// ============================================================================
 // Canonical Type Aliases for Standard Feature BLoC / Cubit Conventions
 // ============================================================================
 import 'add_product_page_/add_product_page__bloc.dart';
@@ -228,16 +241,3 @@ typedef DashboardBloc = SellerDashboardPageBloc;
 typedef OrderBloc = OrdersListBloc;
 typedef ProductFormBloc = AddProductPageBloc;
 typedef ProductCarouselCubit = CarouselCubit;
-
-export 'seller_ui_tokens.dart';
-export 'seller_unified_dialog.dart';
-
-// ============================================================================
-// 10. Backend Data Models & Database Collections
-// ============================================================================
-export '../../core/models/seller_pos_printer_model.dart';
-export '../../core/models/seller_delivery_surge_model.dart';
-export '../../core/models/seller_staff_model.dart';
-export '../../core/models/seller_ledger_model.dart';
-export '../../core/models/seller_performance_model.dart';
-export '../../app_data_collection/seller_collections/seller_collection.dart';

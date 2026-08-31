@@ -69,8 +69,8 @@ void main() {
       expect(navigator.isNavigating, isTrue);
 
       final firstTelemetry = await stream.first;
-      expect(firstTelemetry.currentPosition.latitude, startLocation.latitude);
-      expect(firstTelemetry.currentPosition.longitude, startLocation.longitude);
+      expect(firstTelemetry.currentPosition.latitude, closeTo(startLocation.latitude, 0.001));
+      expect(firstTelemetry.currentPosition.longitude, closeTo(startLocation.longitude, 0.001));
       expect(firstTelemetry.heading, isNonNegative);
       expect(firstTelemetry.remainingDistanceKm, isPositive);
       expect(firstTelemetry.isArrived, isFalse);

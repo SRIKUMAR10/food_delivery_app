@@ -17,6 +17,7 @@ Welcome to the centralized documentation hub for the **Multi-Platform Food Deliv
  │    └── 📄 MD_FILES_AUDITING_REPORT.md                      (Inventory Classification & Audit Analysis)
  │
  ├── 📂 02_Architecture_And_Testing/                   ──► Architecture Registries & QA Guides
+ │    ├── 📄 BUYER_BLOC_ARCHITECTURE_REGISTRY.md              (20 Buyer BLoC Modules, Events, States & Repos)
  │    ├── 📄 SELLER_BLOC_ARCHITECTURE_REGISTRY.md             (31 Seller BLoC Modules, Events, States & Repos)
  │    └── 📄 TEST_ARCHITECTURE.md                             (14 Mandatory Test Categories Master Blueprint)
  │
@@ -25,15 +26,24 @@ Welcome to the centralized documentation hub for the **Multi-Platform Food Deliv
  │    ├── 📄 README.md                                        (Project Readme & Multi-Platform Build Guide)
  │    └── 📄 TEST_README.md                                   (Test Execution Commands & Suite Guide)
  │
- └── 📂 04_Seller_Human_Journey_And_Testing/           ──► Complete Seller Human Journey & QA Blueprints
-      ├── 📄 README.md                                        (★ Master 31-Module Seller Journey Map & Lifecycle)
-      ├── 📂 01_Auth_And_Onboarding/ (Modules 01–05)          (Login, Sign Up, Forgot Password, Onboard, KYC)
-      ├── 📂 02_Store_Setup_And_Profile/ (Modules 06–08)      (Store Details, Business Hours, Seller Profile)
-      ├── 📂 03_Navigation_And_Dashboard/ (Modules 09–11)     (Navbar Shell, Dashboard Metrics, App Bar)
-      ├── 📂 04_Catalog_Menu_And_Inventory/ (Modules 12–15)   (Categories, Product List, Add Product, Low Stock)
-      ├── 📂 05_Kitchen_Orders_And_Dispatch/ (Modules 16–20)  (New Order Alert, Orders Kanban, Disputes, Assign Rider, Live GPS)
-      ├── 📂 06_Customer_Engagement_And_Support/ (Modules 21–23) (Customer CRM, Live Chat Support, Notifications Hub)
-      └── 📂 07_Finance_Payouts_Analytics_And_Settings/ (Modules 24–31) (Wallet, Payments, Request Payout, History, Analytics, Ratings, Coupons, Settings)
+ ├── 📂 04_Seller_Human_Journey_And_Testing/           ──► Complete Seller Human Journey & QA Blueprints
+ │    ├── 📄 README.md                                        (★ Master 31-Module Seller Journey Map & Lifecycle)
+ │    ├── 📂 01_Auth_And_Onboarding/ (Modules 01–05)          (Login, Sign Up, Forgot Password, Onboard, KYC)
+ │    ├── 📂 02_Store_Setup_And_Profile/ (Modules 06–08)      (Store Details, Business Hours, Seller Profile)
+ │    ├── 📂 03_Navigation_And_Dashboard/ (Modules 09–11)     (Navbar Shell, Dashboard Metrics, App Bar)
+ │    ├── 📂 04_Catalog_Menu_And_Inventory/ (Modules 12–15)   (Categories, Product List, Add Product, Low Stock)
+ │    ├── 📂 05_Kitchen_Orders_And_Dispatch/ (Modules 16–20)  (New Order Alert, Orders Kanban, Disputes, Assign Rider, Live GPS)
+ │    ├── 📂 06_Customer_Engagement_And_Support/ (Modules 21–23) (Customer CRM, Live Chat Support, Notifications Hub)
+ │    └── 📂 07_Finance_Payouts_Analytics_And_Settings/ (Modules 24–31) (Wallet, Payments, Request Payout, History, Analytics, Ratings, Coupons, Settings)
+ │
+ └── 📂 05_Buyer_Human_Journey_And_Testing/            ──► Complete Buyer Human Journey & QA Blueprints
+      ├── 📄 README.md                                        (★ Master 25-Module Buyer Journey Map & Lifecycle)
+      ├── 📂 01_Auth_And_Onboarding/ (Modules 01–06)          (Onboarding, Login, Sign Up, OTP, Forgot Password, 8-Step KYC Wizard)
+      ├── 📂 02_Navigation_And_Discovery/ (Modules 07–10)     (Curved Navbar, Home Discovery, Food Details, Favorites/Wishlist)
+      ├── 📂 03_Cart_Checkout_And_Payments/ (Modules 11–13)   (Cart Summary, Payment Gateways, Buyer Wallet)
+      ├── 📂 04_Order_Lifecycle_And_Tracking/ (Modules 14–16) (Orders Pipeline, Live 60 FPS Rider GPS Tracking, Ratings & Reviews)
+      ├── 📂 05_Communication_And_Support/ (Modules 17–20)    (Real-Time Chat, Voice/Video Call, Notifications, Helpdesk)
+      └── 📂 06_Profile_Address_And_Settings/ (Modules 21–25) (Buyer Profile, Personal Info, Geolocation Addresses, Settings, Transactions)
 ```
 
 ---
@@ -42,10 +52,10 @@ Welcome to the centralized documentation hub for the **Multi-Platform Food Deliv
 
 | Document | Classification | Purpose & Summary |
 | :--- | :--- | :--- |
-| [**FIRESTORE_DATA_ENGINEERING_AUDIT_REPORT.md**](file:///d:/Flutter_Project/food_delivery_app/.md_files/01_Master_Audits/FIRESTORE_DATA_ENGINEERING_AUDIT_REPORT.md) | **★ Master Core Blueprint** | Comprehensive unified audit of all 72 UI widgets, 26 repositories, Serverless Cloud Functions, BigQuery Star-Schema Lakehouse, and Strict Zero-Mock compliance. |
-| [**DELIVERY_PARTNER_DESIGN_SYSTEM_FINAL_AUDIT_REPORT.md**](file:///d:/Flutter_Project/food_delivery_app/.md_files/01_Master_Audits/DELIVERY_PARTNER_DESIGN_SYSTEM_FINAL_AUDIT_REPORT.md) | UI/UX Design System | Visual typography, color tokens, responsive breakpoints, auto-hide app bar, and design standards. |
-| [**MOBILE_UX_AUDIT_REPORT.md**](file:///d:/Flutter_Project/food_delivery_app/.md_files/01_Master_Audits/MOBILE_UX_AUDIT_REPORT.md) | Mobile UX & Responsiveness | Gesture ergonomics, touch target validation, keyboard handling, and bottom sheet behaviors. |
-| [**MD_FILES_AUDITING_REPORT.md**](file:///d:/Flutter_Project/food_delivery_app/.md_files/01_Master_Audits/MD_FILES_AUDITING_REPORT.md) | Markdown Hub Audit | Complete classification and auditing report of all `.md` files in the repository. |
+| [**FIRESTORE_DATA_ENGINEERING_AUDIT_REPORT.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/01_Master_Audits/FIRESTORE_DATA_ENGINEERING_AUDIT_REPORT.md) | **★ Master Core Blueprint** | Comprehensive unified audit of all 72 UI widgets, 26 repositories, Serverless Cloud Functions, BigQuery Star-Schema Lakehouse, and Strict Zero-Mock compliance. |
+| [**DELIVERY_PARTNER_DESIGN_SYSTEM_FINAL_AUDIT_REPORT.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/01_Master_Audits/DELIVERY_PARTNER_DESIGN_SYSTEM_FINAL_AUDIT_REPORT.md) | UI/UX Design System | Visual typography, color tokens, responsive breakpoints, auto-hide app bar, and design standards. |
+| [**MOBILE_UX_AUDIT_REPORT.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/01_Master_Audits/MOBILE_UX_AUDIT_REPORT.md) | Mobile UX & Responsiveness | Gesture ergonomics, touch target validation, keyboard handling, and bottom sheet behaviors. |
+| [**MD_FILES_AUDITING_REPORT.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/01_Master_Audits/MD_FILES_AUDITING_REPORT.md) | Markdown Hub Audit | Complete classification and auditing report of all `.md` files in the repository. |
 
 ---
 
@@ -53,8 +63,9 @@ Welcome to the centralized documentation hub for the **Multi-Platform Food Deliv
 
 | Document | Domain | Purpose & Summary |
 | :--- | :--- | :--- |
-| [**SELLER_BLOC_ARCHITECTURE_REGISTRY.md**](file:///d:/Flutter_Project/food_delivery_app/.md_files/02_Architecture_And_Testing/SELLER_BLOC_ARCHITECTURE_REGISTRY.md) | Seller Domain | Complete registry of 31 Seller BLoC modules, states, events, services, and repositories. |
-| [**TEST_ARCHITECTURE.md**](file:///d:/Flutter_Project/food_delivery_app/.md_files/02_Architecture_And_Testing/TEST_ARCHITECTURE.md) | QA & Testing Blueprint | 14 Mandatory Test Categories (Unit, Widget, BLoC, Integration, Golden, Performance, Accessibility, Security, Localization, Snapshot, Dependency, State Restoration, Error Handling, Permission). |
+| [**BUYER_BLOC_ARCHITECTURE_REGISTRY.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/02_Architecture_And_Testing/BUYER_BLOC_ARCHITECTURE_REGISTRY.md) | Buyer Domain | Complete registry of 20 Buyer BLoC modules, states, events, services, and repositories. |
+| [**SELLER_BLOC_ARCHITECTURE_REGISTRY.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/02_Architecture_And_Testing/SELLER_BLOC_ARCHITECTURE_REGISTRY.md) | Seller Domain | Complete registry of 31 Seller BLoC modules, states, events, services, and repositories. |
+| [**TEST_ARCHITECTURE.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/02_Architecture_And_Testing/TEST_ARCHITECTURE.md) | QA & Testing Blueprint | 14 Mandatory Test Categories (Unit, Widget, BLoC, Integration, Golden, Performance, Accessibility, Security, Localization, Snapshot, Dependency, State Restoration, Error Handling, Permission). |
 
 ---
 
@@ -62,9 +73,9 @@ Welcome to the centralized documentation hub for the **Multi-Platform Food Deliv
 
 | Document | Type | Purpose & Summary |
 | :--- | :--- | :--- |
-| [**AGENTS.md**](file:///d:/Flutter_Project/food_delivery_app/.md_files/03_System_And_Rules/AGENTS.md) | Mandatory Workflow | 10-Step Continuous Development Lifecycle, Architecture Protection, and Strict Zero-Mock mandate. |
-| [**README.md**](file:///d:/Flutter_Project/food_delivery_app/.md_files/03_System_And_Rules/README.md) | Project Readme | Setup instructions, prerequisites, multi-platform build instructions, and Firebase integration. |
-| [**TEST_README.md**](file:///d:/Flutter_Project/food_delivery_app/.md_files/03_System_And_Rules/TEST_README.md) | Test Guidelines | Instructions for executing and running automated test suites. |
+| [**AGENTS.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/03_System_And_Rules/AGENTS.md) | Mandatory Workflow | 10-Step Continuous Development Lifecycle, Architecture Protection, and Strict Zero-Mock mandate. |
+| [**README.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/03_System_And_Rules/README.md) | Project Readme | Setup instructions, prerequisites, multi-platform build instructions, and Firebase integration. |
+| [**TEST_README.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/03_System_And_Rules/TEST_README.md) | Test Guidelines | Instructions for executing and running automated test suites. |
 
 ---
 
@@ -72,35 +83,68 @@ Welcome to the centralized documentation hub for the **Multi-Platform Food Deliv
 
 | Phase / Module | File Link | Focus Area & Description |
 | :--- | :--- | :--- |
-| **★ Master Roadmap** | [**README.md**](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/README.md) | Full 31-Module Seller Journey Lifecycle Diagram & Master Index |
-| **01. Login** | [01_SELLER_LOGIN_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/01_Auth_And_Onboarding/01_SELLER_LOGIN_PAGE.md) | Multi-method authentication, Phone/OTP, Firebase Auth, error handling |
-| **02. Sign Up** | [02_SELLER_SIGN_UP_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/01_Auth_And_Onboarding/02_SELLER_SIGN_UP_PAGE.md) | Progressive wizard, Firestore `sellers/{uid}` provisioning |
-| **03. Forgot Password** | [03_SELLER_FORGOT_PASSWORD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/01_Auth_And_Onboarding/03_SELLER_FORGOT_PASSWORD_PAGE.md) | Password recovery link dispatch and validation |
-| **04. Onboard** | [04_SELLER_ONBOARD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/01_Auth_And_Onboarding/04_SELLER_ONBOARD_PAGE.md) | First-time merchant guide and onboarding completed flag |
-| **05. KYC Verification** | [05_SELLER_VERIFICATION_KYC_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/01_Auth_And_Onboarding/05_SELLER_VERIFICATION_KYC_PAGE.md) | FSSAI, GSTIN, PAN, Bank IFSC, Google Places GPS location |
-| **06. Store Details** | [06_SELLER_STORE_DETAILS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/02_Store_Setup_And_Profile/06_SELLER_STORE_DETAILS_PAGE.md) | Store branding, cuisine tags, delivery radius, preparation time |
-| **07. Business Hours** | [07_BUSINESS_HOURS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/02_Store_Setup_And_Profile/07_BUSINESS_HOURS_PAGE.md) | 7-day operating schedule, open/close hours, holiday mode |
-| **08. Seller Profile** | [08_SELLER_PROFILE_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/02_Store_Setup_And_Profile/08_SELLER_PROFILE_PAGE.md) | Store profile stream, live accepting orders emergency switch |
-| **09. Navbar View** | [09_SELLER_NAVIGATION_BAR_VIEW.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/03_Navigation_And_Dashboard/09_SELLER_NAVIGATION_BAR_VIEW.md) | Persistent bottom shell, real-time unread/order badge counts |
-| **10. Dashboard** | [10_SELLER_DASHBOARD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/03_Navigation_And_Dashboard/10_SELLER_DASHBOARD_PAGE.md) | Live revenue, active orders, low stock items, quick actions |
-| **11. App Bar** | [11_SELLER_APP_BAR_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/03_Navigation_And_Dashboard/11_SELLER_APP_BAR_PAGE.md) | Responsive header, store online toggle, notifications bell |
-| **12. Categories** | [12_MENU_CATEGORY_MANAGEMENT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/04_Catalog_Menu_And_Inventory/12_MENU_CATEGORY_MANAGEMENT_PAGE.md) | Menu category ordering, visibility toggle, dish groupings |
-| **13. Product List** | [13_PRODUCT_LIST_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/04_Catalog_Menu_And_Inventory/13_PRODUCT_LIST_PAGE.md) | Real-time product catalog stream, 1-tap stock availability switch |
-| **14. Add Product** | [14_ADD_PRODUCT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/04_Catalog_Menu_And_Inventory/14_ADD_PRODUCT_PAGE.md) | Dish form, GST auto-calculation, size variants, Cloud Storage upload |
-| **15. Low Stock** | [15_INVENTORY_LOW_STOCK_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/04_Catalog_Menu_And_Inventory/15_INVENTORY_LOW_STOCK_PAGE.md) | Threshold monitoring, atomic stock increments, restock alerts |
-| **16. New Order Alert**| [16_NEW_ORDER_NOTIFICATION_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/05_Kitchen_Orders_And_Dispatch/16_NEW_ORDER_NOTIFICATION_PAGE.md) | Audible looping alert, countdown timer, accept/reject stream |
-| **17. Orders Kanban** | [17_ORDERS_LIST_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/05_Kitchen_Orders_And_Dispatch/17_ORDERS_LIST_PAGE.md) | Kitchen order pipeline: Incoming ➔ Prep ➔ Ready ➔ Out ➔ Delivered |
-| **18. Disputes** | [18_DISPUTES_REFUNDS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/05_Kitchen_Orders_And_Dispatch/18_DISPUTES_REFUNDS_PAGE.md) | Customer refund dispute claims, evidence photos, partial refunds |
-| **19. Assign Delivery**| [19_ASSIGN_DELIVERY_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/05_Kitchen_Orders_And_Dispatch/19_ASSIGN_DELIVERY_PAGE.md) | Rider discovery radar, auto-matching Cloud Function lock |
-| **20. Out For Delivery**| [20_OUT_FOR_DELIVERY_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/05_Kitchen_Orders_And_Dispatch/20_OUT_FOR_DELIVERY_PAGE.md) | Live rider GPS telemetry, 60 FPS marker interpolation, ETA |
-| **21. Customer CRM** | [21_SELLER_CUSTOMER_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/06_Customer_Engagement_And_Support/21_SELLER_CUSTOMER_PAGE.md) | Repeat buyer metrics, customer lifetime value, direct vouchers |
-| **22. Chat Support** | [22_CHAT_SUPPORT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/06_Customer_Engagement_And_Support/22_CHAT_SUPPORT_PAGE.md) | Real-time chat with customers and platform helpdesk |
-| **23. Notifications**| [23_SELLER_NOTIFICATIONS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/06_Customer_Engagement_And_Support/23_SELLER_NOTIFICATIONS_PAGE.md) | FCM push notification center, categorized inbox, unread counts |
-| **24. Seller Wallet** | [24_SELLER_WALLET_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/24_SELLER_WALLET_PAGE.md) | Real-time wallet balance, pending escrow funds, ledger credits |
-| **25. Payments** | [25_SELLER_PAYMENT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/25_SELLER_PAYMENT_PAGE.md) | Historical payment transactions, statement export (PDF) |
-| **26. Request Payout**| [26_SELLER_REQUEST_PAYOUT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/26_SELLER_REQUEST_PAYOUT_PAGE.md) | Bank withdrawal form, atomic Cloud Function double-spend lock |
-| **27. Payout History**| [27_SELLER_PAYOUT_HISTORY_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/27_SELLER_PAYOUT_HISTORY_PAGE.md) | Bank settlement logs with UTR reference numbers and status |
-| **28. Analytics** | [28_SELLER_ANALYTICS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/28_SELLER_ANALYTICS_PAGE.md) | Revenue charts, peak hours, top-selling dishes, average order value |
-| **29. Overall Ratings**| [29_OVERALL_RATING_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/29_OVERALL_RATING_PAGE.md) | Star rating distribution, customer reviews, official merchant replies |
-| **30. Coupons** | [30_PROMOTIONS_COUPONS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/30_PROMOTIONS_COUPONS_PAGE.md) | Discount coupon creator, percentage/flat discounts, promo campaigns |
-| **31. Settings** | [31_SELLER_SETTING_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/.md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/31_SELLER_SETTING_PAGE.md) | Sound & kitchen alerts, localization (EN / TA), security & logout |
+| **★ Master Roadmap** | [**README.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/README.md) | Full 31-Module Seller Journey Lifecycle Diagram & Master Index |
+| **01. Login** | [01_SELLER_LOGIN_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/01_Auth_And_Onboarding/01_SELLER_LOGIN_PAGE.md) | Multi-method authentication, Phone/OTP, Firebase Auth, error handling |
+| **02. Sign Up** | [02_SELLER_SIGN_UP_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/01_Auth_And_Onboarding/02_SELLER_SIGN_UP_PAGE.md) | Progressive wizard, Firestore `sellers/{uid}` provisioning |
+| **03. Forgot Password** | [03_SELLER_FORGOT_PASSWORD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/01_Auth_And_Onboarding/03_SELLER_FORGOT_PASSWORD_PAGE.md) | Password recovery link dispatch and validation |
+| **04. Onboard** | [04_SELLER_ONBOARD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/01_Auth_And_Onboarding/04_SELLER_ONBOARD_PAGE.md) | First-time merchant guide and onboarding completed flag |
+| **05. KYC Verification** | [05_SELLER_VERIFICATION_KYC_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/01_Auth_And_Onboarding/05_SELLER_VERIFICATION_KYC_PAGE.md) | FSSAI, GSTIN, PAN, Bank IFSC, Google Places GPS location |
+| **06. Store Details** | [06_SELLER_STORE_DETAILS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/02_Store_Setup_And_Profile/06_SELLER_STORE_DETAILS_PAGE.md) | Store branding, cuisine tags, delivery radius, preparation time |
+| **07. Business Hours** | [07_BUSINESS_HOURS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/02_Store_Setup_And_Profile/07_BUSINESS_HOURS_PAGE.md) | 7-day operating schedule, open/close hours, holiday mode |
+| **08. Seller Profile** | [08_SELLER_PROFILE_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/02_Store_Setup_And_Profile/08_SELLER_PROFILE_PAGE.md) | Store profile stream, live accepting orders emergency switch |
+| **09. Navbar View** | [09_SELLER_NAVIGATION_BAR_VIEW.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/03_Navigation_And_Dashboard/09_SELLER_NAVIGATION_BAR_VIEW.md) | Persistent bottom shell, real-time unread/order badge counts |
+| **10. Dashboard** | [10_SELLER_DASHBOARD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/03_Navigation_And_Dashboard/10_SELLER_DASHBOARD_PAGE.md) | Live revenue, active orders, low stock items, quick actions |
+| **11. App Bar** | [11_SELLER_APP_BAR_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/03_Navigation_And_Dashboard/11_SELLER_APP_BAR_PAGE.md) | Responsive header, store online toggle, notifications bell |
+| **12. Categories** | [12_MENU_CATEGORY_MANAGEMENT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/04_Catalog_Menu_And_Inventory/12_MENU_CATEGORY_MANAGEMENT_PAGE.md) | Menu category ordering, visibility toggle, dish groupings |
+| **13. Product List** | [13_PRODUCT_LIST_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/04_Catalog_Menu_And_Inventory/13_PRODUCT_LIST_PAGE.md) | Real-time product catalog stream, 1-tap stock availability switch |
+| **14. Add Product** | [14_ADD_PRODUCT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/04_Catalog_Menu_And_Inventory/14_ADD_PRODUCT_PAGE.md) | Dish form, GST auto-calculation, size variants, Cloud Storage upload |
+| **15. Low Stock** | [15_INVENTORY_LOW_STOCK_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/04_Catalog_Menu_And_Inventory/15_INVENTORY_LOW_STOCK_PAGE.md) | Threshold monitoring, atomic stock increments, restock alerts |
+| **16. New Order Alert**| [16_NEW_ORDER_NOTIFICATION_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/05_Kitchen_Orders_And_Dispatch/16_NEW_ORDER_NOTIFICATION_PAGE.md) | Audible looping alert, countdown timer, accept/reject stream |
+| **17. Orders Kanban** | [17_ORDERS_LIST_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/05_Kitchen_Orders_And_Dispatch/17_ORDERS_LIST_PAGE.md) | Kitchen order pipeline: Incoming ➔ Prep ➔ Ready ➔ Out ➔ Delivered |
+| **18. Disputes** | [18_DISPUTES_REFUNDS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/05_Kitchen_Orders_And_Dispatch/18_DISPUTES_REFUNDS_PAGE.md) | Customer refund dispute claims, evidence photos, partial refunds |
+| **19. Assign Delivery**| [19_ASSIGN_DELIVERY_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/05_Kitchen_Orders_And_Dispatch/19_ASSIGN_DELIVERY_PAGE.md) | Rider discovery radar, auto-matching Cloud Function lock |
+| **20. Out For Delivery**| [20_OUT_FOR_DELIVERY_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/05_Kitchen_Orders_And_Dispatch/20_OUT_FOR_DELIVERY_PAGE.md) | Live rider GPS telemetry, 60 FPS marker interpolation, ETA |
+| **21. Customer CRM** | [21_SELLER_CUSTOMER_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/06_Customer_Engagement_And_Support/21_SELLER_CUSTOMER_PAGE.md) | Repeat buyer metrics, customer lifetime value, direct vouchers |
+| **22. Chat Support** | [22_CHAT_SUPPORT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/06_Customer_Engagement_And_Support/22_CHAT_SUPPORT_PAGE.md) | Real-time chat with customers and platform helpdesk |
+| **23. Notifications**| [23_SELLER_NOTIFICATIONS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/06_Customer_Engagement_And_Support/23_SELLER_NOTIFICATIONS_PAGE.md) | FCM push notification center, categorized inbox, unread counts |
+| **24. Seller Wallet** | [24_SELLER_WALLET_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/24_SELLER_WALLET_PAGE.md) | Real-time wallet balance, pending escrow funds, ledger credits |
+| **25. Payments** | [25_SELLER_PAYMENT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/25_SELLER_PAYMENT_PAGE.md) | Historical payment transactions, statement export (PDF) |
+| **26. Request Payout**| [26_SELLER_REQUEST_PAYOUT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/26_SELLER_REQUEST_PAYOUT_PAGE.md) | Bank withdrawal form, atomic Cloud Function double-spend lock |
+| **27. Payout History**| [27_SELLER_PAYOUT_HISTORY_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/27_SELLER_PAYOUT_HISTORY_PAGE.md) | Bank settlement logs with UTR reference numbers and status |
+| **28. Analytics** | [28_SELLER_ANALYTICS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/28_SELLER_ANALYTICS_PAGE.md) | Revenue charts, peak hours, top-selling dishes, average order value |
+| **29. Overall Ratings**| [29_OVERALL_RATING_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/29_OVERALL_RATING_PAGE.md) | Star rating distribution, customer reviews, official merchant replies |
+| **30. Coupons** | [30_PROMOTIONS_COUPONS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/30_PROMOTIONS_COUPONS_PAGE.md) | Discount coupon creator, percentage/flat discounts, promo campaigns |
+| **31. Settings** | [31_SELLER_SETTING_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/07_Finance_Payouts_Analytics_And_Settings/31_SELLER_SETTING_PAGE.md) | Sound & kitchen alerts, localization (EN / TA), security & logout |
+
+---
+
+## 🛒 5. Buyer Human Journey & Real-Time Testing Documentation (`05_Buyer_Human_Journey_And_Testing/`)
+
+| Phase / Module | File Link | Focus Area & Description |
+| :--- | :--- | :--- |
+| **★ Master Roadmap** | [**README.md**](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/README.md) | Full 25-Module Buyer Journey Lifecycle Diagram & Master Index |
+| **01. Onboarding** | [01_BUYER_ONBOARDING_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/01_Auth_And_Onboarding/01_BUYER_ONBOARDING_PAGE.md) | Splash welcome, authentication token verification, landing routing |
+| **02. Buyer Login** | [02_BUYER_LOGIN_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/01_Auth_And_Onboarding/02_BUYER_LOGIN_PAGE.md) | Email/Password, Phone/OTP, Google/Apple Auth, session management |
+| **03. Sign Up** | [03_BUYER_SIGN_UP_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/01_Auth_And_Onboarding/03_BUYER_SIGN_UP_PAGE.md) | New customer registration, phone uniqueness check, OTP dispatch |
+| **04. OTP Verification**| [04_BUYER_OTP_VERIFICATION_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/01_Auth_And_Onboarding/04_BUYER_OTP_VERIFICATION_PAGE.md) | 6-digit SMS verification, phone credential linking, Firestore profile |
+| **05. Forgot Password**| [05_BUYER_FORGOT_PASSWORD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/01_Auth_And_Onboarding/05_BUYER_FORGOT_PASSWORD_PAGE.md) | Password recovery via email reset link and SMS OTP verification |
+| **06. 8-Step Verification Wizard**| [06_BUYER_VERIFICATION_WIZARD_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/01_Auth_And_Onboarding/06_BUYER_VERIFICATION_WIZARD_PAGE.md) | 8-Step KYC, Google Places geocoding, dietary preferences, wallet activation |
+| **07. Curved Navigation**| [07_CURVED_NAVIGATION_BAR_VIEW.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/02_Navigation_And_Discovery/07_CURVED_NAVIGATION_BAR_VIEW.md) | Persistent bottom shell, animated curved tab bar, unread badge counts |
+| **08. Home Discovery** | [08_BUYER_HOME_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/02_Navigation_And_Discovery/08_BUYER_HOME_PAGE.md) | Restaurant availability stream, category chips, dish search, promos |
+| **09. Food Details** | [09_FOOD_DETAILS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/02_Navigation_And_Discovery/09_FOOD_DETAILS_PAGE.md) | Dish details, size options, add-on toppings, dynamic pricing, add-to-cart |
+| **10. Favorites** | [10_FAVORITES_WISHLIST_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/02_Navigation_And_Discovery/10_FAVORITES_WISHLIST_PAGE.md) | Bookmarked dishes & restaurants stream, 1-tap reordering |
+| **11. Cart & Summary** | [11_CART_AND_CHECKOUT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/03_Cart_Checkout_And_Payments/11_CART_AND_CHECKOUT_PAGE.md) | Cart calculations, item modifiers, GST & fee breakdown, promo coupons |
+| **12. Payment Methods**| [12_PAYMENT_METHODS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/03_Cart_Checkout_And_Payments/12_PAYMENT_METHODS_PAGE.md) | UPI, Saved Cards, Net Banking, COD, Cloud Function order placement |
+| **13. Buyer Wallet** | [13_BUYER_WALLET_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/03_Cart_Checkout_And_Payments/13_BUYER_WALLET_PAGE.md) | Live wallet balance, instant UPI top-up, cashback rewards ledger |
+| **14. Order History** | [14_ORDER_LIST_AND_HISTORY_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/04_Order_Lifecycle_And_Tracking/14_ORDER_LIST_AND_HISTORY_PAGE.md) | Real-time kitchen order pipeline (Placed ➔ Prep ➔ Ready ➔ Out ➔ Delivered) |
+| **15. Live GPS Tracking**| [15_TRACK_ORDER_LIVE_GPS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/04_Order_Lifecycle_And_Tracking/15_TRACK_ORDER_LIVE_GPS_PAGE.md) | Live rider GPS telemetry, 60 FPS marker interpolation, polyline routing, ETA |
+| **16. Ratings & Reviews**| [16_RATINGS_AND_REVIEWS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/04_Order_Lifecycle_And_Tracking/16_RATINGS_AND_REVIEWS_PAGE.md) | Multi-criteria food & delivery ratings, compliment tags, photo reviews |
+| **17. Real-Time Chat** | [17_BUYER_CHAT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/05_Communication_And_Support/17_BUYER_CHAT_PAGE.md) | Real-time Firestore chat stream with rider/restaurant, voice notes, camera |
+| **18. Voice/Video Call**| [18_VOICE_AND_VIDEO_CALL_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/05_Communication_And_Support/18_VOICE_AND_VIDEO_CALL_PAGE.md) | WebRTC / Agora live calling interface with delivery partner & support |
+| **19. Notifications** | [19_BUYER_NOTIFICATIONS_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/05_Communication_And_Support/19_BUYER_NOTIFICATIONS_PAGE.md) | FCM push notification center, categorized inbox, unread badges |
+| **20. Help & Support** | [20_HELP_AND_SUPPORT_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/05_Communication_And_Support/20_HELP_AND_SUPPORT_PAGE.md) | Helpdesk dispute tickets, FAQ search accordion, live agent escalation |
+| **21. Buyer Profile** | [21_BUYER_PROFILE_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/06_Profile_Address_And_Settings/21_BUYER_PROFILE_PAGE.md) | User avatar upload, membership badge, account settings navigation hub |
+| **22. Personal Info** | [22_PERSONAL_INFORMATION_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/06_Profile_Address_And_Settings/22_PERSONAL_INFORMATION_PAGE.md) | Profile editing (Name, Email, Phone), Firestore synchronization |
+| **23. Address Book** | [23_ADDRESS_MANAGEMENT_AND_GEOLOCATION_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/06_Profile_Address_And_Settings/23_ADDRESS_MANAGEMENT_AND_GEOLOCATION_PAGE.md) | Saved delivery addresses, Google Places autocomplete, map geolocation |
+| **24. App Settings** | [24_APP_SETTINGS_AND_LOCALIZATION_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/06_Profile_Address_And_Settings/24_APP_SETTINGS_AND_LOCALIZATION_PAGE.md) | Theme (Light/Dark), Multi-language localization (EN / TA), Biometrics |
+| **25. Transactions** | [25_TRANSACTION_HISTORY_PAGE.md](file:///d:/Flutter_Project/food_delivery_app/md_files/05_Buyer_Human_Journey_And_Testing/06_Profile_Address_And_Settings/25_TRANSACTION_HISTORY_PAGE.md) | Itemized ledger of wallet credits, order payments, refund settlements |

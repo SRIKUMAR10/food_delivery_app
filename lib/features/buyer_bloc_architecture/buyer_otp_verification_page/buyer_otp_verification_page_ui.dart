@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:food_delivery_app/core/widgets/auth_form_widgets.dart';
 import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
+import '../buyer_onboarding_verification_page/buyer_onboarding_verification_ui.dart';
 import 'buyer_otp_verification_page_bloc.dart';
 import 'buyer_otp_verification_page_event.dart';
 import 'buyer_otp_verification_page_state.dart';
@@ -79,7 +80,12 @@ class _BuyerOtpVerificationPageUIState extends State<BuyerOtpVerificationPageUI>
                       );
                       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                         MaterialPageRoute(
-                          builder: (_) => const CurvedNavigationBarView(),
+                          builder: (_) => BuyerOnboardingVerificationPage(
+                            initialFullName: widget.fullName,
+                            initialEmail: widget.email,
+                            initialPhone: widget.mobileNumber,
+                            initialIsPhoneVerified: true,
+                          ),
                         ),
                         (route) => false,
                       );

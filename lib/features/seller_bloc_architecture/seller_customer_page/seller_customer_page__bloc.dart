@@ -7,6 +7,7 @@ import 'seller_customer_page__state.dart';
 class SellerCustomerBloc extends Bloc<SellerCustomerEvent, SellerCustomerState> {
   final SellerCustomerRepository repository;
   StreamSubscription? _dataSubscription;
+  String? _sellerId;
 
   SellerCustomerBloc({required this.repository}) : super(const SellerCustomerInitial()) {
     on<LoadCustomerData>(_onLoadCustomerData);
@@ -28,6 +29,9 @@ class SellerCustomerBloc extends Bloc<SellerCustomerEvent, SellerCustomerState> 
     LoadCustomerData event,
     Emitter<SellerCustomerState> emit,
   ) async {
+    if (event.sellerId != null && event.sellerId!.isNotEmpty) {
+      _sellerId = event.sellerId;
+    }
     emit(const SellerCustomerLoading());
 
     // Cancel any existing subscription
@@ -35,8 +39,8 @@ class SellerCustomerBloc extends Bloc<SellerCustomerEvent, SellerCustomerState> 
 
     try {
       // First try to fetch immediate snapshot
-      final stats = await repository.getCustomerStats();
-      final customers = await repository.getCustomers(offset: 0, limit: 10);
+      final stats = await repository.getCustomerStats(sellerId: _sellerId);
+      final customers = await repository.getCustomers(offset: 0, limit: 10, sellerId: _sellerId);
 
       final filtered = _applyFilterAndSort(
         customers,
@@ -52,7 +56,7 @@ class SellerCustomerBloc extends Bloc<SellerCustomerEvent, SellerCustomerState> 
       ));
 
       // Then subscribe to real-time updates
-      _dataSubscription = repository.watchCustomerData().listen(
+      _dataSubscription = repository.watchCustomerData(sellerId: _sellerId).listen(
         (data) {
           add(CustomerDataStreamUpdated(
             stats: data.stats,
@@ -104,9 +108,12 @@ class SellerCustomerBloc extends Bloc<SellerCustomerEvent, SellerCustomerState> 
     RefreshCustomerData event,
     Emitter<SellerCustomerState> emit,
   ) async {
+    if (event.sellerId != null && event.sellerId!.isNotEmpty) {
+      _sellerId = event.sellerId;
+    }
     try {
-      final stats = await repository.getCustomerStats();
-      final customers = await repository.getCustomers(offset: 0, limit: 10);
+      final stats = await repository.getCustomerStats(sellerId: _sellerId);
+      final customers = await repository.getCustomers(offset: 0, limit: 10, sellerId: _sellerId);
 
       final currentState = state;
       final query = currentState is SellerCustomerLoaded ? currentState.searchQuery : '';

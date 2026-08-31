@@ -22,8 +22,9 @@ const _star = Color(0xFFFFB800);
 class OverallRatingPage extends StatelessWidget {
   final SellerReviewService? service;
   final OverallRatingBloc? bloc;
+  final String? sellerId;
 
-  const OverallRatingPage({Key? key, this.service, this.bloc}) : super(key: key);
+  const OverallRatingPage({Key? key, this.service, this.bloc, this.sellerId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +37,7 @@ class OverallRatingPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => OverallRatingBloc(
         service: service ?? SellerReviewService(),
-      ),
+      )..add(LoadOverallRatingEvent(sellerId)),
       child: const _OverallRatingContentView(),
     );
   }
@@ -75,8 +76,7 @@ class _OverallRatingContentView extends StatelessWidget {
         },
         child: BlocBuilder<OverallRatingBloc, OverallRatingState>(
           builder: (context, state) {
-            if (state is OverallRatingInitial) {
-              context.read<OverallRatingBloc>().add(LoadOverallRatingEvent());
+            if (state is OverallRatingInitial || state is OverallRatingLoading) {
               return Center(
                 child: ConstrainedBox(
                   constraints:

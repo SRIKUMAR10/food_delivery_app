@@ -15,7 +15,7 @@ void main() {
     const driverLoc = LatLng(13.0850, 80.2750);
     const customerLoc = LatLng(13.0900, 80.2800);
 
-    test('generateJourneyPolylines creates stage 1 active and stage 2 upcoming polylines before pickup', () {
+    test('generateJourneyPolylines returns empty set before pickup to prevent synthetic polylines', () {
       final polylines = service.generateJourneyPolylines(
         storeLocation: storeLoc,
         driverLocation: driverLoc,
@@ -23,13 +23,10 @@ void main() {
         isPickedUp: false,
       );
 
-      expect(polylines.length, 2);
-      final polylineIds = polylines.map((p) => p.polylineId.value).toSet();
-      expect(polylineIds.contains('driver_to_store_active'), isTrue);
-      expect(polylineIds.contains('store_to_customer_upcoming'), isTrue);
+      expect(polylines, isEmpty);
     });
 
-    test('generateJourneyPolylines creates completed and active delivery polylines after pickup', () {
+    test('generateJourneyPolylines returns empty set after pickup to prevent synthetic polylines', () {
       final polylines = service.generateJourneyPolylines(
         storeLocation: storeLoc,
         driverLocation: driverLoc,
@@ -37,10 +34,7 @@ void main() {
         isPickedUp: true,
       );
 
-      expect(polylines.length, 2);
-      final polylineIds = polylines.map((p) => p.polylineId.value).toSet();
-      expect(polylineIds.contains('store_to_driver_completed'), isTrue);
-      expect(polylineIds.contains('driver_to_customer_active'), isTrue);
+      expect(polylines, isEmpty);
     });
 
     test('calculateBearing calculates valid angle between coordinates', () {

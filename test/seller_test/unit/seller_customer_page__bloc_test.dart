@@ -39,7 +39,7 @@ void main() {
 
     setUp(() {
       repository = MockSellerCustomerRepository();
-      when(() => repository.watchCustomerData())
+      when(() => repository.watchCustomerData(sellerId: any(named: 'sellerId')))
           .thenAnswer((_) => const Stream.empty());
       bloc = SellerCustomerBloc(repository: repository);
     });
@@ -56,10 +56,10 @@ void main() {
       'emits [Loading, Loaded] when LoadCustomerData succeeds',
       build: () {
         when(
-          () => repository.getCustomerStats(),
+          () => repository.getCustomerStats(sellerId: any(named: 'sellerId')),
         ).thenAnswer((_) async => mockStats);
         when(
-          () => repository.getCustomers(offset: 0, limit: 10),
+          () => repository.getCustomers(offset: 0, limit: 10, sellerId: any(named: 'sellerId')),
         ).thenAnswer((_) async => mockCustomers);
         return bloc;
       },
@@ -79,7 +79,7 @@ void main() {
       'emits [Loading, Error] when LoadCustomerData fails',
       build: () {
         when(
-          () => repository.getCustomerStats(),
+          () => repository.getCustomerStats(sellerId: any(named: 'sellerId')),
         ).thenThrow(Exception('Network Error'));
         return bloc;
       },
@@ -99,7 +99,7 @@ void main() {
         hasReachedMax: false,
       ),
       build: () {
-        when(() => repository.getCustomers(offset: 2, limit: 10)).thenAnswer(
+        when(() => repository.getCustomers(offset: 2, limit: 10, sellerId: any(named: 'sellerId'))).thenAnswer(
           (_) async => [
             const CustomerItem(
               id: '3',

@@ -93,9 +93,18 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
         phone: event.phone,
         password: event.password,
       );
+
+      final profileStatus = await repository.checkKycAndOnboardingStatus(userId);
+
       emit(state.copyWith(
         status: BuyerLoginStatus.success,
         userId: userId,
+        isKycCompleted: profileStatus.isKycCompleted,
+        fullName: profileStatus.fullName.isNotEmpty ? profileStatus.fullName : null,
+        email: profileStatus.email.isNotEmpty ? profileStatus.email : (event.phone.contains('@') ? event.phone : null),
+        phone: profileStatus.phone.isNotEmpty ? profileStatus.phone : (!event.phone.contains('@') ? event.phone : null),
+        avatarUrl: profileStatus.imageUrl,
+        isPhoneVerified: profileStatus.isPhoneVerified || !event.phone.contains('@'),
       ));
     } catch (e) {
       emit(state.copyWith(
@@ -122,9 +131,16 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
 
       final userId = await repository.loginWithGoogle();
       if (userId != null) {
+        final profileStatus = await repository.checkKycAndOnboardingStatus(userId);
         emit(state.copyWith(
           status: BuyerLoginStatus.success,
           userId: userId,
+          isKycCompleted: profileStatus.isKycCompleted,
+          fullName: profileStatus.fullName.isNotEmpty ? profileStatus.fullName : null,
+          email: profileStatus.email.isNotEmpty ? profileStatus.email : null,
+          phone: profileStatus.phone.isNotEmpty ? profileStatus.phone : null,
+          avatarUrl: profileStatus.imageUrl,
+          isPhoneVerified: profileStatus.isPhoneVerified,
         ));
       } else {
         emit(state.copyWith(status: BuyerLoginStatus.initial));
@@ -154,9 +170,16 @@ class BuyerLoginBloc extends Bloc<BuyerLoginEvent, BuyerLoginState> {
 
       final userId = await repository.loginWithApple();
       if (userId != null) {
+        final profileStatus = await repository.checkKycAndOnboardingStatus(userId);
         emit(state.copyWith(
           status: BuyerLoginStatus.success,
           userId: userId,
+          isKycCompleted: profileStatus.isKycCompleted,
+          fullName: profileStatus.fullName.isNotEmpty ? profileStatus.fullName : null,
+          email: profileStatus.email.isNotEmpty ? profileStatus.email : null,
+          phone: profileStatus.phone.isNotEmpty ? profileStatus.phone : null,
+          avatarUrl: profileStatus.imageUrl,
+          isPhoneVerified: profileStatus.isPhoneVerified,
         ));
       } else {
         emit(state.copyWith(status: BuyerLoginStatus.initial));

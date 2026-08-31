@@ -7,9 +7,23 @@ abstract class OverallRatingEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadOverallRatingEvent extends OverallRatingEvent {}
+class LoadOverallRatingEvent extends OverallRatingEvent {
+  final String? sellerId;
 
-class RefreshOverallRatingEvent extends OverallRatingEvent {}
+  const LoadOverallRatingEvent([this.sellerId]);
+
+  @override
+  List<Object?> get props => [sellerId];
+}
+
+class RefreshOverallRatingEvent extends OverallRatingEvent {
+  final String? sellerId;
+
+  const RefreshOverallRatingEvent([this.sellerId]);
+
+  @override
+  List<Object?> get props => [sellerId];
+}
 
 class OverallRatingSnapshotUpdated extends OverallRatingEvent {
   final Map<String, dynamic> data;

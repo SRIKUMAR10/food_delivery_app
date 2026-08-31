@@ -9,6 +9,7 @@ import 'package:food_delivery_app/core/widgets/settings_tiles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../Order Page/order_UI.dart';
+import '../buyer_onboarding_verification_page/buyer_onboarding_verification_ui.dart';
 import 'transactions_page.dart';
 import 'user_profile_image_Bloc.dart';
 import 'user_profile_models.dart';
@@ -103,7 +104,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
           const SizedBox(height: 32),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _buildSettingsMenus(),
+            child: _buildSettingsMenus(profile),
           ),
           const SizedBox(height: 32),
           Padding(
@@ -154,7 +155,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
             flex: 6,
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              child: _buildSettingsMenus(),
+              child: _buildSettingsMenus(profile),
             ),
           ),
         ],
@@ -341,7 +342,7 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
     );
   }
 
-  Widget _buildSettingsMenus() {
+  Widget _buildSettingsMenus([UserProfile? profile]) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -389,6 +390,26 @@ class _UserProfileDrawerState extends State<UserProfileDrawer> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const PaymentMethodsPage()),
+              );
+            },
+          ),
+          _buildMenuDivider(),
+          _buildMenuItem(
+            icon: Icons.verified_user_outlined,
+            title: 'KYC & Verification Status',
+            onTap: () {
+              final loadedProfile = profile;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BuyerOnboardingVerificationPage(
+                    initialFullName: loadedProfile?.name,
+                    initialEmail: loadedProfile?.email,
+                    initialPhone: loadedProfile?.phone,
+                    initialAvatarUrl: loadedProfile?.imageUrl,
+                    initialIsPhoneVerified: loadedProfile?.phone.isNotEmpty == true,
+                  ),
+                ),
               );
             },
           ),

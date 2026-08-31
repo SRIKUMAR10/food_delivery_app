@@ -782,6 +782,7 @@ class _OperationalQuickBar extends StatelessWidget {
         children: [
           _buildAcceptingOrdersToggle(context),
           _buildStoreOpenToggle(context),
+          _buildTodayBusinessHoursBadge(context),
           _buildLogisticsSummary(context),
         ],
       ),
@@ -880,6 +881,83 @@ class _OperationalQuickBar extends StatelessWidget {
     );
   }
 
+  Widget _buildTodayBusinessHoursBadge(BuildContext context) {
+    String scheduleText = 'Not set';
+    if (state.openingHours != null && state.openingHours!.isNotEmpty) {
+      final close = state.closingTime != null && state.closingTime!.isNotEmpty
+          ? ' - ${state.closingTime}'
+          : '';
+      scheduleText = '${state.openingHours}$close';
+    } else {
+      scheduleText = '9:00 AM - 10:00 PM';
+    }
+
+    final holidayText = state.weeklyHoliday != null && state.weeklyHoliday!.isNotEmpty
+        ? 'Off: ${state.weeklyHoliday!.join(', ')}'
+        : null;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          final sellerId = SellerRepository().currentUser?.uid ?? '';
+          if (sellerId.isNotEmpty) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BusinessHoursPage(sellerId: sellerId),
+              ),
+            );
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFFD97706)),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text(
+                        "Today's Hours",
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.open_in_new, size: 12, color: Color(0xFF94A3B8)),
+                    ],
+                  ),
+                  Text(
+                    holidayText != null ? '$scheduleText ($holidayText)' : scheduleText,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLogisticsSummary(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -937,7 +1015,6 @@ class _ProfileSectionsGrid extends StatelessWidget {
       },
     );
   }
-
   Widget _buildBrandingCard(BuildContext context) {
     return _SectionCard(
       title: 'Branding & Description',
@@ -952,6 +1029,40 @@ class _ProfileSectionsGrid extends StatelessWidget {
           _buildInfoRow(
             'Description',
             state.restaurantDescription?.isNotEmpty == true ? state.restaurantDescription! : 'Add restaurant bio & specialties...',
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Expanded(
+                  flex: 2,
+                  child: Text('Cuisines & Tags', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280), fontWeight: FontWeight.w500)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 3,
+                  child: state.cuisines.isNotEmpty
+                      ? Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: state.cuisines.map((c) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF2F2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFFECACA)),
+                            ),
+                            child: Text(
+                              c,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFE52929)),
+                            ),
+                          )).toList(),
+                        )
+                      : const Text('No cuisines selected', style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF), fontStyle: FontStyle.italic)),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -981,7 +1092,6 @@ class _ProfileSectionsGrid extends StatelessWidget {
     );
   }
 
-
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -1009,142 +1119,198 @@ class _ProfileSectionsGrid extends StatelessWidget {
     final descCtrl = TextEditingController(text: state.restaurantDescription ?? '');
     final emailCtrl = TextEditingController(text: state.email);
     final phoneCtrl = TextEditingController(text: state.phone);
+    final selectedCuisines = List<String>.from(state.cuisines);
+    final popularCuisines = [
+      'South Indian',
+      'North Indian',
+      'Biryani',
+      'Chinese',
+      'Fast Food',
+      'Beverages',
+      'Desserts',
+      'Bakery',
+      'Italian',
+      'Street Food',
+    ];
 
     showDialog(
       context: context,
       builder: (dialogCtx) => BlocProvider<SellerProfilePageBloc>.value(
         value: bloc,
-        child: Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          clipBehavior: Clip.antiAlias,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 540),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEE2E2),
-                          borderRadius: BorderRadius.circular(12),
+        child: StatefulBuilder(
+          builder: (context, setDialogState) => Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 540),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.storefront_outlined, color: Color(0xFFE52929), size: 22),
                         ),
-                        child: const Icon(Icons.storefront_outlined, color: Color(0xFFE52929), size: 22),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'Edit Branding & Identity',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Edit Branding & Identity',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Update store name, owner info and public contact details',
+                                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Color(0xFF6B7280), size: 20),
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 28),
+                    _buildDialogTextField(
+                      controller: nameCtrl,
+                      label: 'Restaurant Name',
+                      hint: 'e.g. Ahbi Food Restaurant',
+                      icon: Icons.business_outlined,
+                    ),
+                    const SizedBox(height: 14),
+                    _buildDialogTextField(
+                      controller: ownerCtrl,
+                      label: 'Owner / Licensee Name',
+                      hint: 'e.g. Ahbi Kumar',
+                      icon: Icons.person_outline,
+                    ),
+                    const SizedBox(height: 14),
+                    _buildDialogTextField(
+                      controller: descCtrl,
+                      label: 'Description / Bio',
+                      hint: 'Describe your specialties, flavors, and history...',
+                      icon: Icons.notes_outlined,
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Cuisines & Specialties',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: popularCuisines.map((cuisine) {
+                        final isSelected = selectedCuisines.contains(cuisine);
+                        return FilterChip(
+                          selected: isSelected,
+                          label: Text(cuisine),
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? const Color(0xFFE52929) : const Color(0xFF4B5563),
+                          ),
+                          backgroundColor: const Color(0xFFF3F4F6),
+                          selectedColor: const Color(0xFFFEE2E2),
+                          checkmarkColor: const Color(0xFFE52929),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: isSelected ? const Color(0xFFE52929) : const Color(0xFFE5E7EB),
                             ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Update store name, owner info and public contact details',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                            ),
-                          ],
+                          ),
+                          onSelected: (val) {
+                            setDialogState(() {
+                              if (val) {
+                                selectedCuisines.add(cuisine);
+                              } else {
+                                selectedCuisines.remove(cuisine);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDialogTextField(
+                            controller: emailCtrl,
+                            label: 'Contact Email',
+                            hint: 'restaurant@gmail.com',
+                            icon: Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFF6B7280), size: 20),
-                        onPressed: () => Navigator.of(dialogCtx).pop(),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 28),
-                  _buildDialogTextField(
-                    controller: nameCtrl,
-                    label: 'Restaurant Name',
-                    hint: 'e.g. Ahbi Food Restaurant',
-                    icon: Icons.business_outlined,
-                  ),
-                  const SizedBox(height: 14),
-                  _buildDialogTextField(
-                    controller: ownerCtrl,
-                    label: 'Owner / Licensee Name',
-                    hint: 'e.g. Ahbi Kumar',
-                    icon: Icons.person_outline,
-                  ),
-                  const SizedBox(height: 14),
-                  _buildDialogTextField(
-                    controller: descCtrl,
-                    label: 'Description / Bio',
-                    hint: 'Describe your specialties, flavors, and history...',
-                    icon: Icons.notes_outlined,
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDialogTextField(
-                          controller: emailCtrl,
-                          label: 'Contact Email',
-                          hint: 'restaurant@gmail.com',
-                          icon: Icons.email_outlined,
-                          keyboardType: TextInputType.emailAddress,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildDialogTextField(
+                            controller: phoneCtrl,
+                            label: 'Contact Phone',
+                            hint: '+91 9876543210',
+                            icon: Icons.phone_outlined,
+                            keyboardType: TextInputType.phone,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDialogTextField(
-                          controller: phoneCtrl,
-                          label: 'Contact Phone',
-                          hint: '+91 9876543210',
-                          icon: Icons.phone_outlined,
-                          keyboardType: TextInputType.phone,
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogCtx).pop(),
-                        child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          bloc.add(
-                            UpdateRestaurantIdentity(
-                              storeName: nameCtrl.text.trim(),
-                              ownerName: ownerCtrl.text.trim(),
-                              description: descCtrl.text.trim(),
-                              email: emailCtrl.text.trim(),
-                              phone: phoneCtrl.text.trim(),
-                            ),
-                          );
-                          Navigator.of(dialogCtx).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Branding & identity updated successfully!'),
-                              backgroundColor: Color(0xFF10B981),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.check_circle_outline, size: 18),
-                        label: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE52929),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            bloc.add(
+                              UpdateRestaurantIdentity(
+                                storeName: nameCtrl.text.trim(),
+                                ownerName: ownerCtrl.text.trim(),
+                                description: descCtrl.text.trim(),
+                                email: emailCtrl.text.trim(),
+                                phone: phoneCtrl.text.trim(),
+                                cuisines: selectedCuisines,
+                              ),
+                            );
+                            Navigator.of(dialogCtx).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Branding & identity updated successfully!'),
+                                backgroundColor: Color(0xFF10B981),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.check_circle_outline, size: 18),
+                          label: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE52929),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1933,9 +2099,9 @@ class _MenuGrid extends StatelessWidget {
             'iconBgColor': const Color(0xFFEFF6FF),
             'title': 'Customer Insights',
             'subtitle': 'View regular customers and order activity',
-            'onTap': () => Navigator.push(
+            'onTap': () => _openSellerScopedPage(
               context,
-              MaterialPageRoute(builder: (_) => const SellerCustomerPage()),
+              (id) => SellerCustomerPage(sellerId: id),
             ),
           },
           {
@@ -1994,62 +2160,15 @@ class _MenuGrid extends StatelessWidget {
             ),
           },
           {
-            'icon': Icons.lock_outline,
-            'iconColor': const Color(0xFFF59E0B),
-            'iconBgColor': const Color(0xFFFFFBEB),
-            'title': 'Change Password',
-            'subtitle': 'Update your account password',
-            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerForgotPasswordPageUI())),
-          },
-          {
-            'icon': Icons.notifications_none_outlined,
-            'iconColor': const Color(0xFF8B5CF6),
-            'iconBgColor': const Color(0xFFF5F3FF),
-            'title': 'Notification Settings',
-            'subtitle': 'Manage your notification preferences',
-            'onTap': () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => BlocProvider(
-                    create: (context) => SellerSettingBloc(
-                      repository: SellerSettingRepositoryImpl(),
-                    )..add(LoadSellerSettings()),
-                    child: const SellerSettingPage(),
-                  ),
-                ),
-              );
-            },
-          },
-          {
             'icon': Icons.star_border_outlined,
             'iconColor': const Color(0xFFEAB308),
             'iconBgColor': const Color(0xFFFEF9C3),
             'title': 'Ratings & Reviews',
             'subtitle': 'View customer feedback and ratings',
-            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const food_delivery_app_rating.OverallRatingPage())),
-          },
-          {
-            'icon': Icons.logout,
-            'iconColor': const Color(0xFFEF4444),
-            'iconBgColor': const Color(0xFFFEF2F2),
-            'title': 'Logout',
-            'subtitle': 'Sign out from your account',
-            'onTap': () async {
-              final repo = SellerRepository();
-              final uid = repo.currentUser?.uid;
-              if (uid != null) {
-                await repo.updateSellerData(uid, {'isOnline': false});
-              }
-              await repo.signOut();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SellerLoginPageUI()),
-                  (route) => false,
-                );
-              }
-            },
+            'onTap': () => _openSellerScopedPage(
+              context,
+              (id) => food_delivery_app_rating.OverallRatingPage(sellerId: id),
+            ),
           },
         ];
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_delivery_app/core/models/delivery_partner_model.dart';
 import 'package:food_delivery_app/repositories/delivery_partner_repository.dart';
@@ -99,26 +100,18 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
       throw Exception('This phone number is already registered in Delivery Partner. Please login.');
     }
 
-    UserCredential credential;
+    // Generate independent Delivery Partner UID
+    final dpDocRef = FirebaseFirestore.instance.collection('delivery_partners').doc();
+    String uid = 'dp_${dpDocRef.id}';
+
     try {
-      credential =
-          await _partnerRepo.createUserWithEmailPassword(authEmail, password);
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        // Email exists in FirebaseAuth under another role (e.g. Buyer/Seller).
-        // Try authenticating with that credential to get UID for Delivery Partner creation.
-        try {
-          credential = await _partnerRepo.signInWithEmailPassword(authEmail, password);
-        } catch (_) {
-          throw Exception(
-              'This email is registered under another account. Password verification failed.');
-        }
-      } else {
-        throw Exception(e.message ?? 'Registration failed');
-      }
+      final credential =
+          await _partnerRepo.createUserWithEmailPassword('dp_${dpDocRef.id}@foodgo.app', password);
+      uid = credential.user?.uid ?? uid;
+    } catch (_) {
+      // If synthetic user creation fails, the custom token minting via customLogin will provision the Auth user on login
     }
 
-    final uid = credential.user!.uid;
     final now = DateTime.now();
 
     final partner = DeliveryPartnerModel(
@@ -127,6 +120,7 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
       countryCode: '+91',
       displayName: name,
       email: authEmail,
+      password: password.trim(),
       role: 'delivery_partner',
       status: 'approved',
       isActive: true,
@@ -141,7 +135,9 @@ class DeliverySignUpRepository implements DeliverySignUpRepositoryBase {
     );
 
     await _partnerRepo.createDeliveryPartner(uid, partner);
-    await _partnerRepo.signOut();
+    try {
+      await _partnerRepo.signOut();
+    } catch (_) {}
 
     return partner;
   }

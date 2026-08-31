@@ -252,12 +252,14 @@ class SellerProfilePageBloc
   ) async {
     if (state is ProfileLoaded) {
       final currentState = state as ProfileLoaded;
+      final updatedCuisines = event.cuisines ?? currentState.cuisines;
       emit(currentState.copyWith(
         storeName: event.storeName,
         ownerName: event.ownerName,
         restaurantDescription: event.description,
         email: event.email,
         phone: event.phone,
+        cuisines: updatedCuisines,
       ));
 
       final String uid = authService.currentUserId ?? '';
@@ -272,6 +274,7 @@ class SellerProfilePageBloc
             'businessDetails': event.description,
             'email': event.email,
             'phoneNumber': event.phone,
+            'cuisines': updatedCuisines,
           });
         } catch (e) {
           debugPrint('Error updating restaurant identity: $e');

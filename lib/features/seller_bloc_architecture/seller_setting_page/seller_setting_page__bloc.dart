@@ -629,9 +629,17 @@ class SellerSettingRepositoryImpl implements SellerSettingRepository {
       invoicePrefix: data['invoicePrefix'] as String? ?? 'INV-',
 
       // 9. Account Settings
-      registeredEmail: data['email'] as String? ?? _auth.currentUser?.email ?? '',
-      registeredPhone: data['phoneNumber'] as String? ?? _auth.currentUser?.phoneNumber ?? '',
-      isPhoneVerified: _auth.currentUser?.phoneNumber != null,
+      registeredEmail: (data['email'] as String?)?.isNotEmpty == true
+          ? data['email'] as String
+          : ((data['contactEmail'] as String?)?.isNotEmpty == true
+              ? data['contactEmail'] as String
+              : (_auth.currentUser?.email ?? '')),
+      registeredPhone: (data['phoneNumber'] as String?)?.isNotEmpty == true
+          ? data['phoneNumber'] as String
+          : ((data['phone'] as String?)?.isNotEmpty == true
+              ? data['phone'] as String
+              : (_auth.currentUser?.phoneNumber ?? '')),
+      isPhoneVerified: _auth.currentUser?.phoneNumber != null && _auth.currentUser!.phoneNumber!.isNotEmpty,
       appTheme: notifData['appTheme'] as String? ?? data['appTheme'] as String? ?? 'Light',
       language: notifData['language'] as String? ?? data['language'] as String? ?? 'English',
 

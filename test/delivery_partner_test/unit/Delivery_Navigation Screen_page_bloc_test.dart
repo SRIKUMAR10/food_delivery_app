@@ -90,9 +90,9 @@ void main() {
       expect(bloc.state.status, DeliveryNavigationStatus.initial);
       expect(bloc.state.isNavigating, isFalse);
       expect(bloc.state.order.orderId, '#ORD-789456');
-      expect(bloc.state.etaMinutes, 18);
-      expect(bloc.state.distanceKm, 6.2);
-      expect(bloc.state.nextTurnInstruction, 'Turn Left onto 2nd Avenue');
+      expect(bloc.state.etaMinutes, 6);
+      expect(bloc.state.distanceKm, 2.1);
+      expect(bloc.state.nextTurnInstruction, 'Turn Left onto Bhavani Main Road');
       expect(bloc.state.turnDistanceMeters, 250.0);
       expect(bloc.state.trafficLevel, DeliveryNavigationTrafficLevel.moderate);
       expect(bloc.state.mapZoomLevel, 15.0);

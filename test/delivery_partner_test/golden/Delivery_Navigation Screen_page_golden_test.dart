@@ -103,7 +103,7 @@ void main() {
       expect(find.byKey(const Key('dp_navscreen_map')), findsOneWidget);
       expect(find.byKey(const Key('dp_navscreen_sos_button')), findsOneWidget);
       expect(find.text('Emergency SOS'), findsOneWidget);
-      expect(find.text('Nungambakkam High Rd, Chennai'), findsOneWidget);
+      expect(find.textContaining('Kuruppanaickenpalayam'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
 

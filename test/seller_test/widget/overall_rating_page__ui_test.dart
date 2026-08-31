@@ -40,7 +40,7 @@ void main() {
 
     testWidgets('shows loading skeleton while data is being loaded',
         (tester) async {
-      when(() => mockService.watchRatingsAndReviews())
+      when(() => mockService.watchRatingsAndReviews(sellerId: any(named: 'sellerId')))
           .thenAnswer((_) => Stream.value(buildPayload()));
 
       await tester.pumpWidget(createWidgetUnderTest());
@@ -55,11 +55,12 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      when(() => mockService.watchRatingsAndReviews())
+      when(() => mockService.watchRatingsAndReviews(sellerId: any(named: 'sellerId')))
           .thenAnswer((_) => Stream.value(buildPayload()));
 
       await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Overall Rating'), findsOneWidget);
       expect(find.text('4.8'), findsOneWidget);
@@ -71,11 +72,12 @@ void main() {
     });
 
     testWidgets('shows error message when state is Error', (tester) async {
-      when(() => mockService.watchRatingsAndReviews())
+      when(() => mockService.watchRatingsAndReviews(sellerId: any(named: 'sellerId')))
           .thenAnswer((_) => Stream.error(Exception('Network Failure')));
 
       await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.textContaining('Network Failure'), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);

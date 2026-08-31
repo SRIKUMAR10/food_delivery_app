@@ -1,4 +1,5 @@
 import 'package:firebase_core_platform_interface/firebase_core_platform_interface.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
@@ -62,4 +63,24 @@ class MockFirebaseCore extends FirebasePlatform
 void setupFirebaseAuthMocks() {
   TestWidgetsFlutterBinding.ensureInitialized();
   FirebasePlatform.instance = MockFirebaseCore();
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('plugins.flutter.io/firebase_firestore'),
+    (call) async => null,
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('plugins.flutter.io/firebase_auth'),
+    (call) async => null,
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMessageHandler(
+    'dev.flutter.pigeon.cloud_firestore_platform_interface.FirebaseFirestoreHostApi.documentReferenceSnapshot',
+    (message) async => null,
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMessageHandler(
+    'dev.flutter.pigeon.cloud_firestore_platform_interface.FirebaseFirestoreHostApi.querySnapshot',
+    (message) async => null,
+  );
 }

@@ -94,10 +94,10 @@ void main() {
     expect(find.text('20'), findsOneWidget);
     expect(find.text('3'), findsOneWidget);
     expect(find.text('128'), findsOneWidget);
-    expect(find.text('16.4%'), findsOneWidget);
+    expect(find.text('+16.4%'), findsOneWidget);
 
     // Peak Time
-    expect(find.text('12 PM - 1 PM'), findsWidgets);
+    expect(find.textContaining('12 PM - 1 PM'), findsWidgets);
 
     // Best Seller
     expect(find.text('Cheese Pizza'), findsOneWidget);

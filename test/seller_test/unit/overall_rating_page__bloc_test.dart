@@ -82,7 +82,7 @@ void main() {
     blocTest<OverallRatingBloc, OverallRatingState>(
       'emits [Loading, Loaded] when LoadOverallRatingEvent succeeds',
       build: () {
-        when(() => mockService.watchRatingsAndReviews())
+        when(() => mockService.watchRatingsAndReviews(sellerId: any(named: 'sellerId')))
             .thenAnswer((_) => Stream.value(buildPayload()));
         return bloc;
       },
@@ -95,14 +95,14 @@ void main() {
             .having((s) => s.breakdown.fiveStar, 'fiveStar', 1),
       ],
       verify: (_) {
-        verify(() => mockService.watchRatingsAndReviews()).called(1);
+        verify(() => mockService.watchRatingsAndReviews(sellerId: any(named: 'sellerId'))).called(1);
       },
     );
 
     blocTest<OverallRatingBloc, OverallRatingState>(
       'emits [Loading, Error] when the stream errors',
       build: () {
-        when(() => mockService.watchRatingsAndReviews())
+        when(() => mockService.watchRatingsAndReviews(sellerId: any(named: 'sellerId')))
             .thenAnswer((_) => Stream.error(Exception('Failed')));
         return bloc;
       },

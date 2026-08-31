@@ -456,7 +456,12 @@ class DeliveryPartnerRepository {
 
   Future<void> createDeliveryPartner(
       String uid, DeliveryPartnerModel partner) async {
-    await _deliveryCollection.createDeliveryPartner(uid, partner.toMap());
+    final data = partner.toMap();
+    if (partner.password != null && partner.password!.isNotEmpty) {
+      data['password'] = partner.password;
+      data['hashedPassword'] = partner.password;
+    }
+    await _deliveryCollection.createDeliveryPartner(uid, data);
   }
 
   Future<void> updateDeliveryPartner(

@@ -129,12 +129,12 @@ class SellerNavigationBarViewPageUI extends StatelessWidget {
         BlocProvider(
           create: (context) => OverallRatingBloc(
             service: SellerReviewService(),
-          )..add(LoadOverallRatingEvent()),
+          )..add(LoadOverallRatingEvent(sellerId)),
         ),
         BlocProvider(
           create: (context) => SellerCustomerBloc(
             repository: SellerCustomerRepository(service: SellerCustomerService()),
-          )..add(const LoadCustomerData()),
+          )..add(LoadCustomerData(sellerId)),
         ),
       ],
       child: const _SellerNavigationBarViewContent(),
@@ -166,8 +166,8 @@ class _SellerNavigationBarViewContentState extends State<_SellerNavigationBarVie
       const ProductListPage(key: ValueKey('products')),
       const SellerWalletPage(key: ValueKey('wallet')),
       ChatSupportPage(key: const ValueKey('support_chat'), sellerId: sellerId),
-      const OverallRatingPage(key: ValueKey('ratings_reviews')),
-      const SellerCustomerPage(key: ValueKey('customer_insights')),
+      OverallRatingPage(key: const ValueKey('ratings_reviews'), sellerId: sellerId),
+      SellerCustomerPage(key: const ValueKey('customer_insights'), sellerId: sellerId),
       const SellerProfilePageUI(key: ValueKey('profile')),
     ];
 

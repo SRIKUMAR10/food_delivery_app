@@ -92,13 +92,12 @@ void main() {
       expect(results.first.secondaryText, contains('Chennai'));
     });
 
-    test('searchPlaces gracefully handles network failure with contextual suggestions', () async {
+    test('searchPlaces gracefully handles network failure returning empty list', () async {
       when(() => mockClient.get(any(), headers: any(named: 'headers')))
           .thenThrow(Exception('No Internet Connection'));
 
       final results = await service.searchPlaces('Anna Nagar');
-      expect(results, isNotEmpty);
-      expect(results.first.mainText, contains('Anna Nagar'));
+      expect(results, isEmpty);
     });
 
     test('reverseGeocode parses coordinates into formatted address details', () async {

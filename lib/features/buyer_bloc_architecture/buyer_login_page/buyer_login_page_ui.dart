@@ -7,6 +7,7 @@ import 'package:food_delivery_app/core/widgets/responsive_layout.dart';
 import '../CurvedNavigationBarView/CurvedNavigationBarView.dart';
 import '../buyer_sign_up_page/buyer_sign_up_page_ui.dart';
 import '../buyer_forgot_password_page/buyer_forgot_password_page_ui.dart';
+import '../buyer_onboarding_verification_page/buyer_onboarding_verification_ui.dart';
 import 'buyer_login_page_bloc.dart';
 import 'buyer_login_page_event.dart';
 import 'buyer_login_page_state.dart';
@@ -63,23 +64,46 @@ class _BuyerLoginPageUIState extends State<BuyerLoginPageUI> {
                     messenger.clearSnackBars();
 
                     if (state.status == BuyerLoginStatus.success) {
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Login successful! Welcome back.'),
-                          backgroundColor: BuyerAppColors.primaryDeep,
-                          behavior: SnackBarBehavior.floating,
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
-                      if (Navigator.of(context).canPop()) {
-                        Navigator.of(context).pop();
-                      } else {
+                      if (!state.isKycCompleted) {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Login successful! Please complete your Buyer Verification & KYC.'),
+                            backgroundColor: BuyerAppColors.primaryDeep,
+                            behavior: SnackBarBehavior.floating,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
                         Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                           MaterialPageRoute(
-                            builder: (_) => const CurvedNavigationBarView(),
+                            builder: (_) => BuyerOnboardingVerificationPage(
+                              initialFullName: state.fullName,
+                              initialEmail: state.email,
+                              initialPhone: state.phone,
+                              initialAvatarUrl: state.avatarUrl,
+                              initialIsPhoneVerified: state.isPhoneVerified,
+                            ),
                           ),
                           (route) => false,
                         );
+                      } else {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Login successful! Welcome back.'),
+                            backgroundColor: BuyerAppColors.primaryDeep,
+                            behavior: SnackBarBehavior.floating,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                        if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        } else {
+                          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (_) => const CurvedNavigationBarView(),
+                            ),
+                            (route) => false,
+                          );
+                        }
                       }
                     } else if (state.status == BuyerLoginStatus.failure &&
                         state.errorMessage != null &&

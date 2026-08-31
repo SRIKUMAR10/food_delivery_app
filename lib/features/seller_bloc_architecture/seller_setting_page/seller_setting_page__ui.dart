@@ -808,6 +808,32 @@ class _AccountSettingsViewState extends State<_AccountSettingsView> {
     _lang = widget.state.language;
   }
 
+  @override
+  void didUpdateWidget(covariant _AccountSettingsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.registeredEmail != widget.state.registeredEmail ||
+        _emailCtrl.text.isEmpty && widget.state.registeredEmail.isNotEmpty) {
+      _emailCtrl.text = widget.state.registeredEmail;
+    }
+    if (oldWidget.state.registeredPhone != widget.state.registeredPhone ||
+        _phoneCtrl.text.isEmpty && widget.state.registeredPhone.isNotEmpty) {
+      _phoneCtrl.text = widget.state.registeredPhone;
+    }
+    if (oldWidget.state.appTheme != widget.state.appTheme) {
+      _theme = widget.state.appTheme;
+    }
+    if (oldWidget.state.language != widget.state.language) {
+      _lang = widget.state.language;
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
   void _save() {
     context.read<SellerSettingBloc>().add(
           UpdateAccountSettings(
@@ -850,7 +876,10 @@ class _AccountSettingsViewState extends State<_AccountSettingsView> {
                   DropdownMenuItem(value: 'System Default', child: Text('System Default')),
                 ],
                 onChanged: (val) {
-                  if (val != null) setState(() => _theme = val);
+                  if (val != null) {
+                    setState(() => _theme = val);
+                    _save();
+                  }
                 },
               ),
             ),
@@ -876,7 +905,10 @@ class _AccountSettingsViewState extends State<_AccountSettingsView> {
                   DropdownMenuItem(value: 'French', child: Text('Français (French)')),
                 ],
                 onChanged: (val) {
-                  if (val != null) setState(() => _lang = val);
+                  if (val != null) {
+                    setState(() => _lang = val);
+                    _save();
+                  }
                 },
               ),
             ),

@@ -863,8 +863,16 @@ class UserRepository {
     }
 
     // STEP 2: Firestore Database Sync SECOND (Create buyer_user/{uid} and 8 subcollections)
+    String buyerUid = user.uid;
+    try {
+      final sellerDoc = await FirebaseFirestore.instance.collection('sellers').doc(user.uid).get();
+      if (sellerDoc.exists) {
+        buyerUid = 'buyer_${user.uid}';
+      }
+    } catch (_) {}
+
     await syncUserProfile(
-      uid: user.uid,
+      uid: buyerUid,
       name: name.trim().isNotEmpty ? name.trim() : (user.displayName ?? ''),
       email: targetEmail.trim(),
       phone: fullPhone.trim(),
@@ -1064,11 +1072,14 @@ class UserRepository {
       'email': email ?? '',
       'phone': phone ?? '',
       'imageUrl': imageUrl ?? '',
+      if (password != null && password.isNotEmpty) 'password': password,
+      if (password != null && password.isNotEmpty) 'hashedPassword': password,
       'address': '',
       'homeAddress': '',
       'workAddress': '',
       'otherAddress': '',
       'selectedAddressType': 'Home',
+      'role': 'buyer',
       'wallet': 0.0,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -1117,6 +1128,10 @@ class UserRepository {
         }
         if (imageUrl != null && imageUrl.trim().isNotEmpty) {
           updates['imageUrl'] = imageUrl.trim();
+        }
+        if (password != null && password.isNotEmpty) {
+          updates['password'] = password;
+          updates['hashedPassword'] = password;
         }
         updates['uid'] = uid;
         updates['role'] = 'buyer';

@@ -16,14 +16,30 @@ import '../seller_app_bar_page/seller_app_bar_page_ui.dart';
 import '../seller_ui_tokens.dart';
 
 class SellerCustomerPage extends StatelessWidget {
-  const SellerCustomerPage({super.key});
+  final String? sellerId;
+  final SellerCustomerRepository? repository;
+  final SellerCustomerBloc? bloc;
+
+  const SellerCustomerPage({
+    super.key,
+    this.sellerId,
+    this.repository,
+    this.bloc,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (bloc != null) {
+      return BlocProvider<SellerCustomerBloc>.value(
+        value: bloc!,
+        child: const SellerCustomerView(),
+      );
+    }
     return BlocProvider(
       create: (context) => SellerCustomerBloc(
-        repository: SellerCustomerRepository(service: SellerCustomerService()),
-      )..add(const LoadCustomerData()),
+        repository: repository ??
+            SellerCustomerRepository(service: SellerCustomerService()),
+      )..add(LoadCustomerData(sellerId)),
       child: const SellerCustomerView(),
     );
   }

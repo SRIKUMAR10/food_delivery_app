@@ -196,7 +196,7 @@ class DeliveryPartnerModel {
       'vehicleRcUrl': vehicleRcUrl,
       'insuranceUrl': insuranceUrl,
       'panNumber': panNumber,
-      // Note: password is never serialized to Firestore for security
+      // Note: password is never serialized in toMap() for security model invariants
       'role': role,
       'status': status,
       'isActive': isActive,

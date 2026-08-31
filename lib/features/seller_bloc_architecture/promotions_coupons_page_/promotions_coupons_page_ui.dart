@@ -494,12 +494,12 @@ class _PromotionsCouponsViewState extends State<PromotionsCouponsView> {
                                   vertical: 12,
                                 ),
                                 sliver: SliverGrid(
-                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: isDesktop ? 2 : 2,
-                                    childAspectRatio: 1.55,
-                                    crossAxisSpacing: 16,
-                                    mainAxisSpacing: 16,
-                                  ),
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: isDesktop ? 2 : 2,
+                                      mainAxisExtent: 280,
+                                      crossAxisSpacing: 16,
+                                      mainAxisSpacing: 16,
+                                    ),
                                   delegate: SliverChildBuilderDelegate(
                                     (context, index) {
                                       final coupon = coupons[index];
@@ -755,175 +755,176 @@ class _CouponCard extends StatelessWidget {
             ),
 
             // Card Body
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Code Pill & Discount Banner
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Coupon Code Badge
-                        InkWell(
-                          onTap: () {
-                            Clipboard.setData(ClipboardData(text: coupon.code));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Copied code "${coupon.code}" to clipboard!'),
-                                duration: const Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEFF6FF),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFF93C5FD), width: 1.5),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Code Pill & Discount Banner
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Coupon Code Badge
+                      InkWell(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: coupon.code));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Copied code "${coupon.code}" to clipboard!'),
+                              duration: const Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  coupon.code,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF1D4ED8),
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Icon(Icons.copy_rounded, size: 14, color: Color(0xFF3B82F6)),
-                              ],
-                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFF93C5FD), width: 1.5),
                           ),
-                        ),
-
-                        // Discount Tag
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              discountStr,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF0F172A),
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            if (coupon.isPercentage && coupon.maximumDiscountAmount > 0)
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               Text(
-                                'Max ${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(coupon.maximumDiscountAmount)}',
+                                coupon.code,
                                 style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF64748B),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF1D4ED8),
+                                  letterSpacing: 1.0,
                                 ),
                               ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    // Description
-                    if (coupon.description.isNotEmpty)
-                      Text(
-                        coupon.description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF475569),
-                          fontWeight: FontWeight.w500,
+                              const SizedBox(width: 6),
+                              const Icon(Icons.copy_rounded, size: 14, color: Color(0xFF3B82F6)),
+                            ],
+                          ),
                         ),
                       ),
 
-                    // Usage Limits & Min Order Info
-                    Row(
-                      children: [
-                        if (coupon.minimumOrderValue > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            margin: const EdgeInsets.only(right: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'Min: ${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(coupon.minimumOrderValue)}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF334155),
-                              ),
+                      // Discount Tag
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            discountStr,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF0F172A),
+                              letterSpacing: -0.5,
                             ),
                           ),
-                        if (coupon.perCustomerLimit > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            margin: const EdgeInsets.only(right: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFEF3C7),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '${coupon.perCustomerLimit}/user',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF92400E),
-                              ),
-                            ),
-                          ),
-                        if (coupon.usageLimit > 0)
-                          Expanded(
-                            child: Text(
-                              '${coupon.usedCount}/${coupon.usageLimit} redeemed',
-                              textAlign: TextAlign.end,
+                          if (coupon.isPercentage && coupon.maximumDiscountAmount > 0)
+                            Text(
+                              'Max ${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(coupon.maximumDiscountAmount)}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF64748B),
                               ),
                             ),
-                          )
-                        else
-                          Text(
-                            '${coupon.usedCount} redeemed',
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  // Description
+                  if (coupon.description.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      coupon.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF475569),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 8),
+                  // Usage Limits & Min Order Info
+                  Row(
+                    children: [
+                      if (coupon.minimumOrderValue > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          margin: const EdgeInsets.only(right: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Min: ${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(coupon.minimumOrderValue)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                        ),
+                      if (coupon.perCustomerLimit > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          margin: const EdgeInsets.only(right: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${coupon.perCustomerLimit}/user',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF92400E),
+                            ),
+                          ),
+                        ),
+                      if (coupon.usageLimit > 0)
+                        Expanded(
+                          child: Text(
+                            '${coupon.usedCount}/${coupon.usageLimit} redeemed',
+                            textAlign: TextAlign.end,
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFF64748B),
                             ),
                           ),
-                      ],
-                    ),
-
-                    // Usage progress bar if limit is set
-                    if (coupon.usageLimit > 0) ...[
-                      const SizedBox(height: 2),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: (coupon.usedCount / coupon.usageLimit).clamp(0.0, 1.0),
-                          backgroundColor: const Color(0xFFE2E8F0),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            coupon.isUsageLimitReached ? const Color(0xFFEF4444) : const Color(0xFF3B82F6),
+                        )
+                      else
+                        Text(
+                          '${coupon.usedCount} redeemed',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
                           ),
-                          minHeight: 5,
                         ),
-                      ),
                     ],
+                  ),
+
+                  // Usage progress bar if limit is set
+                  if (coupon.usageLimit > 0) ...[
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (coupon.usedCount / coupon.usageLimit).clamp(0.0, 1.0),
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          coupon.isUsageLimitReached ? const Color(0xFFEF4444) : const Color(0xFF3B82F6),
+                        ),
+                        minHeight: 5,
+                      ),
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
 
@@ -936,31 +937,37 @@ class _CouponCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Expiry date chip
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today_rounded,
-                        size: 14,
-                        color: isExpired
-                            ? const Color(0xFFEF4444)
-                            : (isUpcoming ? const Color(0xFFF59E0B) : const Color(0xFF64748B)),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isExpired
-                            ? 'Expired'
-                            : (isUpcoming
-                                ? 'Starts: ${dateFormat.format(coupon.startDate)}'
-                                : 'Expires: ${dateFormat.format(coupon.expiryDate)}'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_rounded,
+                          size: 14,
                           color: isExpired
                               ? const Color(0xFFEF4444)
-                              : (isUpcoming ? const Color(0xFFF59E0B) : const Color(0xFF475569)),
+                              : (isUpcoming ? const Color(0xFFF59E0B) : const Color(0xFF64748B)),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            isExpired
+                                ? 'Expired'
+                                : (isUpcoming
+                                    ? 'Starts: ${dateFormat.format(coupon.startDate)}'
+                                    : 'Expires: ${dateFormat.format(coupon.expiryDate)}'),
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isExpired
+                                  ? const Color(0xFFEF4444)
+                                  : (isUpcoming ? const Color(0xFFF59E0B) : const Color(0xFF475569)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
                   // Actions

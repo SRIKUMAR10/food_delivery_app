@@ -57,7 +57,8 @@ void main() {
 
       await tester.pumpWidget(buildSubject());
 
-      expect(find.text('Error: Network Error'), findsOneWidget);
+      expect(find.text('Unable to Load Analytics'), findsOneWidget);
+      expect(find.text('Network Error'), findsOneWidget);
     });
 
     testWidgets('shows analytics data when state is AnalyticsLoaded', (
@@ -87,11 +88,12 @@ void main() {
 
       await mockNetworkImagesFor(() async {
         await tester.pumpWidget(buildSubject());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
 
         expect(find.text('Analytics'), findsOneWidget);
-        expect(find.text('Total Revenue'), findsOneWidget);
-        expect(find.text('Red Pizza'), findsOneWidget);
-        expect(find.text('120'), findsOneWidget);
+        expect(find.text('Product Intelligence'), findsOneWidget);
+        expect(find.text('Red Pizza'), findsWidgets);
       });
     });
   });

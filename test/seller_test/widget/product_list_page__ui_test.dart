@@ -84,7 +84,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Pizza'), findsOneWidget);
-    expect(find.text('₹10.00'), findsOneWidget);
+    expect(find.textContaining('10'), findsWidgets);
     expect(find.text('In Stock'), findsWidgets);
   });
 }

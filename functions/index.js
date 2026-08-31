@@ -291,6 +291,7 @@ exports.razorpayWebhook = functions.https.onRequest((req, res) => {
 });
 
 // 4. Check Auth Exists
+// 4. Check Auth Exists
 exports.checkAuthExists = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -299,13 +300,39 @@ exports.checkAuthExists = functions.https.onCall(async (data, context) => {
     );
   }
 
-  const { email, phoneNumber } = data || {};
+  const { email, phoneNumber, role, targetRole } = data || {};
 
   if (!email && !phoneNumber) {
     throw new HttpsError(
       "invalid-argument",
       "Either email or phoneNumber must be provided."
     );
+  }
+
+  const requestedRole = String(targetRole || role || "").toLowerCase().trim();
+  let collectionsToSearch = [...SEARCHABLE_USER_COLLECTIONS];
+  if (requestedRole.includes("delivery") || requestedRole.includes("rider") || requestedRole.includes("partner")) {
+    collectionsToSearch = [
+      "delivery_partners",
+      "delivery_partner",
+      "delivery_users",
+      "riders",
+      "partners",
+    ];
+  } else if (requestedRole.includes("seller") || requestedRole.includes("vendor")) {
+    collectionsToSearch = [
+      "sellers",
+      "seller",
+      "seller_users",
+    ];
+  } else if (requestedRole.includes("buyer") || requestedRole.includes("user") || requestedRole.includes("customer")) {
+    collectionsToSearch = [
+      "buyer_user",
+      "buyer_users",
+      "users",
+      "customers",
+      "customer",
+    ];
   }
 
   try {
@@ -315,7 +342,7 @@ exports.checkAuthExists = functions.https.onCall(async (data, context) => {
 
     if (email) {
       const trimmedEmail = String(email).trim();
-      for (const coll of SEARCHABLE_USER_COLLECTIONS) {
+      for (const coll of collectionsToSearch) {
         const snap = await db.collection(coll).where("email", "==", trimmedEmail).limit(1).get();
         if (!snap.empty) {
           foundDoc = snap.docs[0];
@@ -325,7 +352,7 @@ exports.checkAuthExists = functions.https.onCall(async (data, context) => {
       }
     } else if (phoneNumber) {
       const pVariations = normalizePhoneVariations(phoneNumber);
-      for (const coll of SEARCHABLE_USER_COLLECTIONS) {
+      for (const coll of collectionsToSearch) {
         for (const field of SEARCHABLE_PHONE_FIELDS) {
           for (const pVal of pVariations) {
             if (!pVal) continue;
@@ -1896,108 +1923,37 @@ exports.customLogin = onCallV2({ cors: true }, async (request) => {
       effectiveRole = userData.role || (isSellerColl ? "seller" : (isDeliveryColl ? "delivery_partner" : "user"));
     }
 
-    // ── Single Canonical UID Discovery & Deduplication ──
-    let canonicalUid = userDoc.id;
-    let authUser = null;
+    // ── Role-Specific Independent UID & Custom Token Minting ──
+    const roleUid = userDoc.id;
 
-    const emailToLookup = userData.email || (isEmail ? rawIdentifier : null);
-    const phoneToLookup = userData.phoneNumber || userData.phone || userData.mobile || userData.contactNumber || (!isEmail ? formattedPhone : null);
-
-    // 1. Primary: Lookup by Phone Number in Firebase Auth (for OTP-verified accounts)
-    if (phoneToLookup) {
-      const digitsOnlyPhone = String(phoneToLookup).replace(/\D/g, "");
-      const fullPhone = digitsOnlyPhone.length === 10 ? `+91${digitsOnlyPhone}` : (String(phoneToLookup).startsWith("+") ? String(phoneToLookup) : `+${digitsOnlyPhone}`);
+    // Ensure Auth User exists in Firebase Auth for this role-specific UID
+    try {
+      await admin.auth().getUser(roleUid);
+    } catch (e) {
       try {
-        const authByPhone = await admin.auth().getUserByPhoneNumber(fullPhone);
-        if (authByPhone && authByPhone.uid) {
-          canonicalUid = authByPhone.uid;
-          authUser = authByPhone;
-        }
-      } catch (e) {}
-    }
-
-    // 2. Secondary: Lookup by Email in Firebase Auth (e.g. for Google OAuth accounts)
-    if (emailToLookup && String(emailToLookup).includes("@")) {
-      try {
-        const authByEmail = await admin.auth().getUserByEmail(String(emailToLookup).trim());
-        if (authByEmail && authByEmail.uid) {
-          if (!authUser) {
-            canonicalUid = authByEmail.uid;
-            authUser = authByEmail;
-          } else if (authByEmail.uid !== canonicalUid) {
-            // Deduplicate: Clean up orphaned email Auth user if phone Auth user is canonical
-            try {
-              await admin.auth().deleteUser(authByEmail.uid);
-              console.log(`customLogin: Deleted orphaned email Auth user ${authByEmail.uid} for ${emailToLookup}`);
-            } catch (delErr) {
-              console.warn(`customLogin: Could not delete duplicate email Auth user:`, delErr.message);
-            }
-          }
-        }
-      } catch (e) {}
-    }
-
-    // If Firestore doc ID differs from canonical Auth UID, auto-merge documents in Firestore
-    if (canonicalUid && userDoc.id !== canonicalUid) {
-      console.log(`customLogin: Merging legacy Firestore UID ${userDoc.id} into canonical UID ${canonicalUid}`);
-      await migrateUserSubcollections(db, userDoc.id, canonicalUid, foundCollection);
-      
-      // Clean up orphaned secondary Auth user if exists
-      try {
-        await admin.auth().deleteUser(userDoc.id);
-        console.log(`Deleted orphaned Auth user ${userDoc.id}`);
-      } catch (e) {}
-    }
-
-    // Ensure Canonical Auth User exists in Firebase Auth
-    if (!authUser) {
-      try {
-        authUser = await admin.auth().getUser(canonicalUid);
-      } catch (e) {
-        try {
-          authUser = await admin.auth().createUser({
-            uid: canonicalUid,
-            email: emailToLookup ? String(emailToLookup).trim() : undefined,
-            phoneNumber: phoneToLookup && String(phoneToLookup).startsWith("+") ? String(phoneToLookup).trim() : undefined,
-            displayName: userData.fullName || userData.name || userData.displayName || undefined,
-          });
-        } catch (createErr) {
-          console.warn(`customLogin: Note creating Auth user for ${canonicalUid}:`, createErr.message);
-        }
-      }
-    }
-
-    // Ensure Auth user has both email and phone updated if available
-    if (authUser) {
-      const authUpdates = {};
-      if (emailToLookup && !authUser.email && String(emailToLookup).includes("@")) {
-        authUpdates.email = String(emailToLookup).trim();
-      }
-      if (phoneToLookup && !authUser.phoneNumber && String(phoneToLookup).startsWith("+")) {
-        authUpdates.phoneNumber = String(phoneToLookup).trim();
-      }
-      if (Object.keys(authUpdates).length > 0) {
-        try {
-          await admin.auth().updateUser(canonicalUid, authUpdates);
-        } catch (upErr) {
-          console.warn(`customLogin: Note updating Auth user claims for ${canonicalUid}:`, upErr.message);
-        }
+        await admin.auth().createUser({
+          uid: roleUid,
+          displayName: userData.fullName || userData.name || userData.displayName || userData.sellerName || undefined,
+        });
+      } catch (createErr) {
+        console.warn(`customLogin: Note ensuring Auth user for ${roleUid}:`, createErr.message);
       }
     }
 
     const customClaims = {
       role: effectiveRole,
+      uid: roleUid,
       phoneNumber: formattedPhone,
     };
 
-    const customToken = await admin.auth().createCustomToken(canonicalUid, customClaims);
+    const customToken = await admin.auth().createCustomToken(roleUid, customClaims);
 
     return {
       success: true,
       customToken: customToken,
-      uid: canonicalUid,
+      uid: roleUid,
       user: {
-        uid: canonicalUid,
+        uid: roleUid,
         name: userData.fullName || userData.name || userData.displayName || userData.sellerName || "",
         phoneNumber: userData.phoneNumber || userData.phone || userData.contactNumber || formattedPhone,
         email: userData.email || (isEmail ? rawIdentifier : ""),

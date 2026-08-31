@@ -9,11 +9,21 @@ abstract class SellerCustomerEvent extends Equatable {
 }
 
 class LoadCustomerData extends SellerCustomerEvent {
-  const LoadCustomerData();
+  final String? sellerId;
+
+  const LoadCustomerData([this.sellerId]);
+
+  @override
+  List<Object?> get props => [sellerId];
 }
 
 class RefreshCustomerData extends SellerCustomerEvent {
-  const RefreshCustomerData();
+  final String? sellerId;
+
+  const RefreshCustomerData([this.sellerId]);
+
+  @override
+  List<Object?> get props => [sellerId];
 }
 
 class LoadMoreCustomers extends SellerCustomerEvent {

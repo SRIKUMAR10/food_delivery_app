@@ -10,6 +10,7 @@ import '../../../core/repositories/i_cart_repository.dart';
 import '../Cart Page/cart_models.dart';
 import 'package:intl/intl.dart';
 import '../Track_Order_page/Track_Order_page_ui.dart';
+import '../Rating_page/Rating_page_ui.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
 
@@ -782,6 +783,38 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                   ),
                 ],
                 if (order.isDelivered) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RatingPageUI(
+                              orderId: order.id,
+                              foodId: order.items.isNotEmpty ? order.items.first.id : (order.sellerId.isNotEmpty ? order.sellerId : 'Food'),
+                              foodName: order.items.isNotEmpty ? order.items.first.name : (order.sellerName ?? 'Food Order'),
+                              partnerId: order.riderId,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.star_rate_rounded, size: 16, color: Color(0xFFF59E0B)),
+                      label: const Text(
+                        'Rate Order',
+                        style: TextStyle(
+                          color: Color(0xFFF59E0B),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFF59E0B)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: TextButton.icon(
                       onPressed: () {

@@ -91,7 +91,7 @@ void main() {
         expect(find.byKey(const Key('dp_navscreen_map')), findsOneWidget);
         expect(find.byKey(const Key('dp_navscreen_turn_card')), findsOneWidget);
         expect(find.text('250 m'), findsOneWidget);
-        expect(find.text('Turn Left onto 2nd Avenue'), findsOneWidget);
+        expect(find.text('Turn Left onto Bhavani Main Road'), findsOneWidget);
 
         expect(
           find.byKey(const Key('dp_navscreen_order_panel')),
@@ -99,10 +99,10 @@ void main() {
         );
         expect(find.textContaining('#ORD-789456'), findsOneWidget);
         expect(find.text('On the Way'), findsOneWidget);
-        expect(find.text('Reliance Digital Store'), findsWidgets);
-        expect(find.text('Arun Kumar'), findsWidgets);
-        expect(find.text('18 min'), findsOneWidget);
-        expect(find.text('6.2 km'), findsOneWidget);
+        expect(find.text('Zolo Family Restaurant'), findsWidgets);
+        expect(find.textContaining('189A, Kamaraj Nagar'), findsWidgets);
+        expect(find.text('6 min'), findsOneWidget);
+        expect(find.text('2.1 km'), findsOneWidget);
         expect(find.text('Live Traffic'), findsOneWidget);
 
         expect(
@@ -121,7 +121,7 @@ void main() {
           find.byKey(const Key('dp_navscreen_location_badge')),
           findsOneWidget,
         );
-        expect(find.text('Nungambakkam High Rd, Chennai'), findsOneWidget);
+        expect(find.textContaining('Kuruppanaickenpalayam'), findsWidgets);
 
         expect(
           find.byKey(const Key('dp_navscreen_pickup_marker')),
@@ -381,7 +381,7 @@ void main() {
       expect(find.text('Emergency SOS'), findsOneWidget);
       expect(find.text('Start Navigation'), findsOneWidget);
       expect(find.text('Exit Navigation'), findsOneWidget);
-      expect(find.text('Nungambakkam High Rd, Chennai'), findsOneWidget);
+      expect(find.textContaining('Kuruppanaickenpalayam'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
 

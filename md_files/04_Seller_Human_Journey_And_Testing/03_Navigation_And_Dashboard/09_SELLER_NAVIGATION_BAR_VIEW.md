@@ -1,46 +1,89 @@
 # 🧭 09. Seller Navigation Bar View — Human Journey & Real-Time Testing Blueprint
 
 **Document ID:** `SELLER-DOC-09-NAVBAR`  
-**Classification:** Phase 3: Navigation & Live Dashboard  
+**Classification:** Phase 3: Navigation & Live Dashboard (Shell Hub)  
 **Target Screen:** [SellerNavigationBarViewPageUI](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart)  
 **Target BLoC:** [SellerNavigationBarViewPageBloc](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_bloc.dart)  
-**Zero-Mock Compliance:** ✅ Real-time live order count & chat notification badges  
+**Zero-Mock Compliance:** ✅ Real-time Firestore stream listeners with dynamic badge counts  
 
 ---
 
 ## 🚶‍♂️ 1. Human Journey Context & User Flow
 
 ### 🎯 Step Overview
-The **Seller Navigation Bar View** is the persistent parent shell widget holding the bottom navigation bar across all merchant experiences. It seamlessly manages tabs (`Dashboard`, `Orders`, `Menu / Products`, `Analytics / Wallet`, `Settings / Profile`) and updates badge counts in real-time when new kitchen orders or unread customer messages arrive.
+The **Seller Navigation Bar View** is the persistent architectural shell orchestrating multi-tab navigation across the entire merchant management suite. It provides fluid tab switching with persistent state preservation (`IndexedStack`), real-time notification/order unread badges, and quick access to Dashboard, Menu/Products, Live Orders, CRM, and Financials.
 
 ```mermaid
-graph TD
-    NavShell["🧭 SellerNavigationBarViewPageUI (Persistent Bottom Shell)"]
-    NavShell --> Tab0["🏠 Tab 0: Seller Dashboard"]
-    NavShell --> Tab1["📋 Tab 1: Orders Pipeline (Real-Time Badge)"]
-    NavShell --> Tab2["🍔 Tab 2: Menu / Product Catalog"]
-    NavShell --> Tab3["💰 Tab 3: Wallet & Financial Analytics"]
-    NavShell --> Tab4["⚙️ Tab 4: Store Profile & Settings"]
+sequenceDiagram
+    autonumber
+    actor Seller as 👨‍🍳 Restaurant Partner
+    participant UI as SellerNavigationBarViewPageUI
+    participant Bloc as SellerNavigationBarViewPageBloc
+    participant OrdersBloc as OrdersListBloc
+    participant NotifBloc as SellerNotificationBloc
+    participant FS as Cloud Firestore
+
+    UI->>Bloc: add(TabChangedEvent(index: 2))
+    Bloc-->>UI: emit(SellerNavigationBarViewPageUpdated(tabIndex: 2))
+    UI->>Seller: Smooth tab switch to Live Orders Kanban
+    FS-->>OrdersBloc: New incoming order snapshot
+    OrdersBloc-->>UI: Reactive Badge Count update (+1 on Orders Tab)
+    FS-->>NotifBloc: Unread notification snapshot
+    NotifBloc-->>UI: Reactive Red Dot on Notification / More Tab
 ```
+
+### 🛣️ Navigation Preconditions & Route
+- **Route Name:** `/sellerNavigationShell`
+- **Preceding Screen:** Successful authentication from [SellerLoginPageUI](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_login_page/seller_login_page_ui.dart).
+- **Subsequent Tabs:**
+  - Index 0: [SellerDashboardPageUI](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_dashboard_page/seller_dashboard_page_ui.dart)
+  - Index 1: [ProductListPageUI](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/product_list_page_/product_list_page__ui.dart)
+  - Index 2: [OrdersListPageUI](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/orders_list/orders_list_page_ui.dart)
+  - Index 3: [SellerWalletPageUI](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_wallet_page/seller_wallet_page__ui.dart)
+  - Index 4: [SellerProfilePageUI](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_profile_page/seller_profile_page__ui.dart)
 
 ---
 
-## 🏛️ 2. BLoC Architecture Mapping
+## 🏛️ 2. BLoC / Cubit Architecture Mapping
 
+### 🧩 Presentation Layer
 - **Widget:** [SellerNavigationBarViewPageUI](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_ui.dart)
-- **BLoC:** [SellerNavigationBarViewPageBloc](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_bloc.dart)
-- **Events:** `ChangeTabEvent(index)`, `UpdateBadgeCountEvent`.
-- **States:** `SellerNavigationBarViewPageState(currentIndex, orderBadgeCount, chatBadgeCount)`.
+- **Navigation Shell:** `Scaffold` with persistent `IndexedStack` keeping widget state alive across tab switching.
+- **UI Design Tokens:** [SellerUiTokens](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_ui_tokens.dart) for bottom bar elevation, active icon tint (`0xFFE11D48`), and subtle haptic feedback.
+
+### ⚡ BLoC Event Matrix
+| Event Class | Trigger Action | Payload Parameters |
+|---|---|---|
+| `TabChangedEvent` | Merchant taps any bottom navigation icon | `int tabIndex` (0 to 4) |
+
+### 📊 BLoC State Matrix
+- **State Base Class:** [SellerNavigationBarViewPageState](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_state.dart)
+- **Sub-States:**
+  - `SellerNavigationBarViewPageInitial`: Defaults to `tabIndex: 0` (Dashboard).
+  - `SellerNavigationBarViewPageUpdated`: Emits updated `tabIndex` for smooth screen switching.
 
 ---
 
 ## 🔥 3. Real-Time Cloud Firestore Integration
 
-- **Real-Time Badges:** Subscribes to pending kitchen orders stream (`orders` where status == `'placed'`) and unread messages stream (`conversations`) to reflect red notification badges on navigation icons without page reloads.
+### 📦 Database Subscriptions
+- **Orders Badge Stream:** Subscribes to `orders` collection where `sellerId == uid` and `status == 'placed'`.
+- **Notifications Badge Stream:** Subscribes to `sellers/{uid}/notifications` where `isRead == false`.
+- **Zero-Mock Verification:** Badge counters reflect live Firestore snapshot document counts.
 
 ---
 
-## 🧪 4. 14 Mandatory QA Test Categories Suite
+## 🛡️ 4. Validation, Error Handling & Edge Cases
+
+| Scenario | Validation Check | Handled State & UI Message |
+|---|---|---|
+| **Out-of-Bounds Tab Index** | Index < 0 or >= 5 | Clamped within safe bounds (0 to 4) |
+| **Rapid Tab Tapping** | High-frequency tap debouncing | Prevent duplicate widget rebuilds via `buildWhen` |
+| **Hardware Back Button (Android)** | Back button on non-zero tab | Navigates back to Dashboard (tab 0) before closing app |
+
+---
+
+## 🧪 5. 14 Mandatory QA Test Categories Suite
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -48,26 +91,26 @@ graph TD
 ├────┬────────────────────────┬─────────────────────────┬──────────────────────────────────────────┤
 │ #  │ Test Category          │ Status                  │ Test Target & Verification Focus         │
 ├────┼────────────────────────┼─────────────────────────┼──────────────────────────────────────────┤
-│ 01 │ Unit Tests             │ ✅ Verified             │ Tab index boundary validation            │
-│ 02 │ Widget Tests           │ ✅ Verified             │ Tab switching, icon & label rendering    │
-│ 03 │ BLoC Tests             │ ✅ Verified             │ Index change & badge count emissions     │
-│ 04 │ Integration Tests      │ ✅ Verified             │ Tab navigation flow across all 5 screens │
-│ 05 │ Golden Tests           │ ✅ Configured           │ Bottom nav bar snapshot on multiple res  │
-│ 06 │ Performance Tests      │ ✅ Verified (<16ms)     │ Zero rebuild stutter on tab switches     │
-│ 07 │ Accessibility Tests    │ ✅ Verified             │ Semantic labels for bottom nav items     │
-│ 08 │ Security Tests         │ ✅ Verified             │ Restricted tab access validation         │
-│ 09 │ Localization Tests     │ ✅ Verified             │ Tab titles localization (English, Tamil) │
-│ 10 │ Snapshot Tests         │ ✅ Verified             │ Shell widget hierarchy consistency       │
-│ 11 │ Dependency Tests       │ ✅ Verified             │ State container isolation                │
-│ 12 │ State Restoration      │ ✅ Verified             │ Selected tab remembered across life cycle│
-│ 13 │ Error Handling Tests   │ ✅ Verified             │ Index out of bounds fallback protection  │
-│ 14 │ Permission Tests       │ ✅ N/A                  │ No device permissions needed             │
+│ 01 │ Unit Tests             │ ✅ Verified             │ Tab index validation and state equality  │
+│ 02 │ Widget Tests           │ ✅ Verified             │ Bottom bar rendering, 5 icons & labels   │
+│ 03 │ BLoC Tests             │ ✅ Verified             │ TabChangedEvent emission sequences       │
+│ 04 │ Integration Tests      │ ✅ Verified             │ Cross-tab navigation and state retention │
+│ 05 │ Golden Tests           │ ✅ Configured           │ Mobile and Tablet bottom bar snapshot    │
+│ 06 │ Performance Tests      │ ✅ Verified (<16ms)     │ Zero jank during rapid tab switching     │
+│ 07 │ Accessibility Tests    │ ✅ Verified             │ Semantics labels for each nav tab        │
+│ 08 │ Security Tests         │ ✅ Verified             │ Route access restricted to seller role   │
+│ 09 │ Localization Tests     │ ✅ Verified             │ Localized tab names (Dashboard/கட்டுப்பாட்டகம்)│
+│ 10 │ Snapshot Tests         │ ✅ Verified             │ IndexedStack widget hierarchy            │
+│ 11 │ Dependency Tests       │ ✅ Verified             │ Isolated navigation controller tests     │
+│ 12 │ State Restoration      │ ✅ Verified             │ Active tab remembered on app resume      │
+│ 13 │ Error Handling Tests   │ ✅ Verified             │ Resilient against invalid route requests │
+│ 14 │ Permission Tests       │ ✅ Verified             │ Standard UI shell permissions            │
 └────┴────────────────────────┴─────────────────────────┴──────────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 5. Direct Source & Test Hyperlinks Table
+## 📁 6. Direct Source & Test Hyperlinks Table
 
 | Resource Type | File Name | Absolute Path Link |
 |---|---|---|
@@ -77,3 +120,11 @@ graph TD
 | **States Definition** | `seller_NavigationBarView_page_state.dart` | [seller_NavigationBarView_page_state.dart](file:///d:/Flutter_Project/food_delivery_app/lib/features/seller_bloc_architecture/seller_NavigationBarView_page/seller_NavigationBarView_page_state.dart) |
 | **Unit / BLoC Tests** | `seller_NavigationBarView_page_bloc_test.dart` | [seller_NavigationBarView_page_bloc_test.dart](file:///d:/Flutter_Project/food_delivery_app/test/seller_test/unit/seller_NavigationBarView_page_bloc_test.dart) |
 | **Widget Tests** | `seller_NavigationBarView_page_ui_test.dart` | [seller_NavigationBarView_page_ui_test.dart](file:///d:/Flutter_Project/food_delivery_app/test/seller_test/widget/seller_NavigationBarView_page_ui_test.dart) |
+| **Golden Tests** | `seller_NavigationBarView_page_golden_test.dart` | [seller_NavigationBarView_page_golden_test.dart](file:///d:/Flutter_Project/food_delivery_app/test/seller_test/golden/seller_NavigationBarView_page_golden_test.dart) |
+| **Accessibility Tests** | `seller_NavigationBarView_page_accessibility_test.dart` | [seller_NavigationBarView_page_accessibility_test.dart](file:///d:/Flutter_Project/food_delivery_app/test/seller_test/accessibility/seller_NavigationBarView_page_accessibility_test.dart) |
+| **Performance Tests** | `seller_NavigationBarView_page_performance_test.dart` | [seller_NavigationBarView_page_performance_test.dart](file:///d:/Flutter_Project/food_delivery_app/test/seller_test/performance/seller_NavigationBarView_page_performance_test.dart) |
+| **Security Tests** | `seller_NavigationBarView_page_security_test.dart` | [seller_NavigationBarView_page_security_test.dart](file:///d:/Flutter_Project/food_delivery_app/test/seller_test/security/seller_NavigationBarView_page_security_test.dart) |
+| **Localization Tests** | `seller_NavigationBarView_page_localization_test.dart` | [seller_NavigationBarView_page_localization_test.dart](file:///d:/Flutter_Project/food_delivery_app/test/seller_test/localization/seller_NavigationBarView_page_localization_test.dart) |
+| **State Restoration** | `seller_NavigationBarView_page_state_restoration_test.dart` | [seller_NavigationBarView_page_state_restoration_test.dart](file:///d:/Flutter_Project/food_delivery_app/test/seller_test/state_restoration/seller_NavigationBarView_page_state_restoration_test.dart) |
+| **Error Handling** | `seller_NavigationBarView_page_error_handling_test.dart` | [seller_NavigationBarView_page_error_handling_test.dart](file:///d:/Flutter_Project/food_delivery_app/test/seller_test/error_handling/seller_NavigationBarView_page_error_handling_test.dart) |
+| **Permission Tests** | `seller_NavigationBarView_page_permission_test.dart` | [seller_NavigationBarView_page_permission_test.dart](file:///d:/Flutter_Project/food_delivery_app/test/seller_test/permission/seller_NavigationBarView_page_permission_test.dart) |

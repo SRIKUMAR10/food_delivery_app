@@ -102,9 +102,15 @@ void main() {
       expect(find.text('Accepting Orders (Rush Mode)'), findsOneWidget);
       expect(find.text('Store Status'), findsOneWidget);
       expect(find.text('Open for Customers'), findsOneWidget);
+      expect(find.text("Today's Hours"), findsOneWidget);
+      expect(find.text('10:00 AM - 11:00 PM (Off: Tuesday)'), findsOneWidget);
 
       // Check Section Cards
       expect(find.text('Branding & Description'), findsOneWidget);
+      expect(find.text('Cuisines & Tags'), findsOneWidget);
+      expect(find.text('Biryani'), findsWidgets);
+      expect(find.text('South Indian'), findsWidgets);
+      expect(find.text('Fast Food'), findsWidgets);
       expect(find.text('Location & Delivery Logistics'), findsOneWidget);
       expect(find.text('Operating Hours & Schedule'), findsNothing);
 
@@ -113,7 +119,8 @@ void main() {
       expect(find.text('Wallet'), findsOneWidget);
       expect(find.text('Bank Details'), findsOneWidget);
       expect(find.text('Promotions & Coupons'), findsOneWidget);
-      expect(find.text('Logout'), findsOneWidget);
+      expect(find.text('Business Hours'), findsOneWidget);
+      expect(find.text('Ratings & Reviews'), findsOneWidget);
     });
 
     testWidgets('shows Error state with retry button when ProfileError', (tester) async {

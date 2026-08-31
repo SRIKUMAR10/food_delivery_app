@@ -46,7 +46,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final fullScreenBtn = find.byTooltip('Exit Full Screen');
+      final fullScreenBtn = find.byWidgetPredicate(
+        (w) => w is Tooltip && (w.message?.contains('Exit Full Screen') ?? false),
+      );
       expect(fullScreenBtn, findsOneWidget);
 
       await tester.tap(fullScreenBtn);
@@ -78,7 +80,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final fullScreenBtn = find.byTooltip('Full Screen');
+      final fullScreenBtn = find.byWidgetPredicate(
+        (w) => w is Tooltip && (w.message?.contains('Full Screen View') ?? false),
+      );
       expect(fullScreenBtn, findsOneWidget);
 
       await tester.tap(fullScreenBtn);

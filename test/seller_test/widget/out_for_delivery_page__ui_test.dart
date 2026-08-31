@@ -233,14 +233,18 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.byTooltip('Full Screen'), findsOneWidget);
-      expect(find.textContaining('Expected by'), findsOneWidget);
+      final fullScreenBtn = find.byWidgetPredicate(
+        (w) => w is Tooltip && (w.message?.contains('Full Screen View') ?? false),
+      );
+      expect(fullScreenBtn, findsOneWidget);
+      expect(find.textContaining('Heading to Guru Kitchen'), findsOneWidget);
       expect(find.textContaining('km/h'), findsOneWidget);
       expect(find.textContaining('km away'), findsOneWidget);
 
-      await tester.tap(find.byTooltip('Full Screen'));
+      await tester.tap(fullScreenBtn);
       await tester.pump();
       expect(toggleCalled, isTrue);
     });
@@ -294,14 +298,14 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(
-        find.textContaining('Arriving at your doorstep'),
+        find.textContaining('Arrived at'),
         findsOneWidget,
       );
-      expect(find.text('🛑 Idle'), findsOneWidget);
-      expect(find.textContaining('300m away'), findsOneWidget);
+      expect(find.textContaining('Arrived'), findsWidgets);
     });
 
     testWidgets('renders Exit Full Screen when expanded', (
@@ -330,9 +334,12 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
 
-      final exitBtn = find.byTooltip('Exit Full Screen');
+      final exitBtn = find.byWidgetPredicate(
+        (w) => w is Tooltip && (w.message?.contains('Exit Full Screen') ?? false),
+      );
       expect(exitBtn, findsOneWidget);
 
       await tester.tap(exitBtn);

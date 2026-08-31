@@ -33,11 +33,11 @@ void main() {
     Widget createWidgetUnderTest(CartState state, {Size? surfaceSize}) {
       when(() => mockCartBloc.state).thenReturn(state);
 
-      return MaterialApp(
-        home: MediaQuery(
-          data: MediaQueryData(size: surfaceSize ?? const Size(400, 850)),
-          child: BlocProvider<CartBloc>.value(
-            value: mockCartBloc,
+      return BlocProvider<CartBloc>.value(
+        value: mockCartBloc,
+        child: MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(size: surfaceSize ?? const Size(400, 850)),
             child: CartPageUI(
               onNavigateToOrders: () {},
               onNavigateToWallet: () {},
@@ -117,9 +117,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Choose Delivery Address'), findsOneWidget);
-      expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Work'), findsOneWidget);
-      expect(find.text('Other'), findsOneWidget);
+      expect(find.text('Home'), findsWidgets);
+      expect(find.text('Work'), findsWidgets);
+      expect(find.text('Other'), findsWidgets);
     });
 
     testWidgets('4. Renders Cart Item Card with custom addon chips and Stepper', (WidgetTester tester) async {

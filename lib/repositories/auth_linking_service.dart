@@ -8,17 +8,20 @@ class AuthLinkingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   /// Calls the `checkAuthExists` Cloud Function to verify if an email or phone
-  /// is already registered in the sellers collection. Returns a map with
+  /// is already registered in the specified role's collection. Returns a map with
   /// `exists` (bool) and `provider` (String?).
   Future<Map<String, dynamic>> checkAuthExists({
     String? email,
     String? phoneNumber,
+    String? role,
   }) async {
     final callable =
         FirebaseFunctions.instance.httpsCallable('checkAuthExists');
     final result = await callable.call({
       if (email != null) 'email': email,
       if (phoneNumber != null) 'phoneNumber': phoneNumber,
+      if (role != null) 'targetRole': role,
+      if (role != null) 'role': role,
     });
     final data = result.data as Map<String, dynamic>;
     return {
@@ -27,30 +30,51 @@ class AuthLinkingService {
     };
   }
 
-  /// Checks if a user or seller with the given phone number exists in Firestore.
-  /// Returns true if it exists, otherwise false.
-  Future<bool> checkPhoneExists(String phoneNumber) async {
+  /// Checks if a user with the given phone number exists in Firestore for the given role.
+  /// If role is null, checks only the role-specific collections without cross-blocking.
+  Future<bool> checkPhoneExists(String phoneNumber, {String? role}) async {
     try {
-      // Check in buyer_user collection
-      final userQuery = await _firestore
-          .collection('buyer_user')
-          .where('phone', isEqualTo: phoneNumber)
-          .limit(1)
-          .get();
+      final cleanPhone = phoneNumber.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
+      final digits = cleanPhone.replaceAll(RegExp(r'\D'), '');
+      final variants = [phoneNumber, cleanPhone, '+91$digits', '+91 $digits', digits];
 
-      if (userQuery.docs.isNotEmpty) {
-        return true;
+      if (role == null || role == 'buyer' || role == 'user') {
+        final userQuery = await _firestore
+            .collection('buyer_user')
+            .where('phone', whereIn: variants)
+            .limit(1)
+            .get();
+
+        if (userQuery.docs.isNotEmpty) {
+          return true;
+        }
+        if (role == 'buyer' || role == 'user') return false;
       }
 
-      // Check in sellers collection
-      final sellerQuery = await _firestore
-          .collection('sellers')
-          .where('phoneNumber', isEqualTo: phoneNumber)
-          .limit(1)
-          .get();
+      if (role == 'seller') {
+        final sellerQuery = await _firestore
+            .collection('sellers')
+            .where('contactNumber', whereIn: variants)
+            .limit(1)
+            .get();
 
-      if (sellerQuery.docs.isNotEmpty) {
-        return true;
+        if (sellerQuery.docs.isNotEmpty) {
+          return true;
+        }
+        return false;
+      }
+
+      if (role == 'delivery_partner' || role == 'delivery') {
+        final dpQuery = await _firestore
+            .collection('delivery_partners')
+            .where('phoneNumber', whereIn: variants)
+            .limit(1)
+            .get();
+
+        if (dpQuery.docs.isNotEmpty) {
+          return true;
+        }
+        return false;
       }
 
       return false;

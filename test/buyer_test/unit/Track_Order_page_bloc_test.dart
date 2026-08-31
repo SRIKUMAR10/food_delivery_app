@@ -66,7 +66,7 @@ void main() {
                 .having(
                   (s) => s.estimatedDelivery,
                   'estimatedDelivery',
-                  '20-30 mins',
+                  contains('Expected by'),
                 )
                 .having(
                   (s) => s.deliveryPartner.name,
@@ -126,7 +126,7 @@ void main() {
                 .having(
                   (s) => s.estimatedDelivery,
                   'default delivery',
-                  '30-40 mins',
+                  contains('Expected by'),
                 )
                 .having(
                   (s) => s.deliveryPartner.name,

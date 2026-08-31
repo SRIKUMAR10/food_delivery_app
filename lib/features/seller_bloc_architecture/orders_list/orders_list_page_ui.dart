@@ -2020,8 +2020,19 @@ class _DeliveryPartnerCard extends StatelessWidget {
       );
     }
 
+    Stream<DocumentSnapshot<Map<String, dynamic>>>? riderStream;
+    try {
+      riderStream = FirebaseFirestore.instance
+          .collection('delivery_partners')
+          .doc(riderId)
+          .snapshots()
+          .handleError((_) {});
+    } catch (_) {
+      riderStream = null;
+    }
+
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('delivery_partners').doc(riderId).snapshots(),
+      stream: riderStream,
       builder: (context, snapshot) {
         DeliveryPartnerModel? partner;
         if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
@@ -2738,8 +2749,19 @@ class RealtimeOrderCustomerDetails extends StatelessWidget {
     }
 
     if (customerId != null && customerId!.isNotEmpty) {
+      Stream<DocumentSnapshot<Map<String, dynamic>>>? userStream;
+      try {
+        userStream = FirebaseFirestore.instance
+            .collection('buyer_user')
+            .doc(customerId)
+            .snapshots()
+            .handleError((_) {});
+      } catch (_) {
+        userStream = null;
+      }
+
       return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance.collection('buyer_user').doc(customerId).snapshots(),
+        stream: userStream,
         builder: (context, userSnap) {
           Map<String, dynamic>? uData;
           if (userSnap.hasData && userSnap.data != null && userSnap.data!.exists) {

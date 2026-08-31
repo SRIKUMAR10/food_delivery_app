@@ -11,6 +11,8 @@ class OverallRatingBloc extends Bloc<OverallRatingEvent, OverallRatingState> {
   int? _selectedStarFilter;
   String _activeTabFilter = 'all';
 
+  String? _sellerId;
+
   OverallRatingBloc({required this.service}) : super(OverallRatingInitial()) {
     on<LoadOverallRatingEvent>(_onLoadOverallRating);
     on<RefreshOverallRatingEvent>(_onRefreshOverallRating);
@@ -25,9 +27,12 @@ class OverallRatingBloc extends Bloc<OverallRatingEvent, OverallRatingState> {
 
   Future<void> _onLoadOverallRating(
       LoadOverallRatingEvent event, Emitter<OverallRatingState> emit) async {
+    if (event.sellerId != null && event.sellerId!.isNotEmpty) {
+      _sellerId = event.sellerId;
+    }
     await _subscription?.cancel();
     emit(OverallRatingLoading());
-    _subscription = service.watchRatingsAndReviews().listen(
+    _subscription = service.watchRatingsAndReviews(sellerId: _sellerId).listen(
           _handleSnapshot,
           onError: _handleError,
         );
@@ -35,7 +40,7 @@ class OverallRatingBloc extends Bloc<OverallRatingEvent, OverallRatingState> {
 
   void _onRefreshOverallRating(
       RefreshOverallRatingEvent event, Emitter<OverallRatingState> emit) {
-    add(LoadOverallRatingEvent());
+    add(LoadOverallRatingEvent(event.sellerId ?? _sellerId));
   }
 
   void _handleSnapshot(Map<String, dynamic> data) {

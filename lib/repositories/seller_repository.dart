@@ -514,6 +514,8 @@ class SellerRepository {
       'phoneNumber': phone ?? '',
       'imageUrl': imageUrl ?? '',
       'profileImage': imageUrl ?? '',
+      if (password != null && password.isNotEmpty) 'password': password,
+      if (password != null && password.isNotEmpty) 'hashedPassword': password,
       'role': 'seller',
       'isOnline': true,
       'isApproved': false,
@@ -577,6 +579,10 @@ class SellerRepository {
         if (imageUrl != null && imageUrl.trim().isNotEmpty) {
           updates['imageUrl'] = imageUrl.trim();
           updates['profileImage'] = imageUrl.trim();
+        }
+        if (password != null && password.isNotEmpty) {
+          updates['password'] = password;
+          updates['hashedPassword'] = password;
         }
         updates['uid'] = uid;
         updates['id'] = uid;
@@ -763,8 +769,16 @@ class SellerRepository {
 
     try {
       final userCred = await _auth.signInWithCredential(credential);
-      final uid = userCred.user?.uid ?? _auth.currentUser?.uid;
-      if (uid != null) {
+      final rawUid = userCred.user?.uid ?? _auth.currentUser?.uid;
+      if (rawUid != null) {
+        String uid = rawUid;
+        try {
+          final buyerDoc = await _firestore.collection('buyer_user').doc(rawUid).get();
+          if (buyerDoc.exists) {
+            uid = 'seller_$rawUid';
+          }
+        } catch (_) {}
+
         final effectiveAddress = (address != null && address.trim().isNotEmpty)
             ? address.trim()
             : businessDetails;
