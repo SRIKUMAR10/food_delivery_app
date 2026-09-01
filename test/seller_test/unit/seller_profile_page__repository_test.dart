@@ -131,5 +131,15 @@ void main() {
 
       verify(() => mockRepository.updateKycDocuments('seller_123', kycData)).called(1);
     });
+
+    test('saveDraftState persists draft data with merge', () async {
+      final draftData = {'storeName': 'arun foods', 'email': 'arun@foods.com'};
+      when(() => mockRepository.saveDraftState('seller_123', draftData))
+          .thenAnswer((_) async {});
+
+      await mockRepository.saveDraftState('seller_123', draftData);
+
+      verify(() => mockRepository.saveDraftState('seller_123', draftData)).called(1);
+    });
   });
 }

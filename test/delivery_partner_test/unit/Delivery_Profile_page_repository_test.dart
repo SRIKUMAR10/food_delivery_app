@@ -236,6 +236,49 @@ void main() {
       verify(() => mockService.logout()).called(1);
     });
 
+    test('maps all 8-step KYC uploaded document URLs correctly', () async {
+      when(() => mockService.fetchProfileData()).thenAnswer((_) async => {
+            'id': 'partner_kyc_8',
+            'displayName': 'Rider Karthik',
+            'phoneNumber': '9876543210',
+            'email': 'karthik@example.com',
+            'address': 'Anna Nagar, Madurai',
+            'photoUrl': 'https://storage.googleapis.com/avatar.jpg',
+            'vehicleType': 'Motorcycle',
+            'vehicleNumber': 'TN 59 AB 1234',
+            'dlFrontUrl': 'https://storage.googleapis.com/dl_front.jpg',
+            'rcBookUrl': 'https://storage.googleapis.com/rc_book.jpg',
+            'aadhaarFrontUrl': 'https://storage.googleapis.com/aadhaar_front.jpg',
+            'panCardUrl': 'https://storage.googleapis.com/pan_card.jpg',
+            'status': 'approved',
+            'kycStatus': 'approved',
+          });
+
+      final profile = await repository.fetchProfile();
+
+      expect(profile.fullName, 'Rider Karthik');
+      expect(profile.avatarPath, 'https://storage.googleapis.com/avatar.jpg');
+      expect(profile.vehicleType, 'Motorcycle');
+      expect(profile.vehicleNumber, 'TN 59 AB 1234');
+      expect(profile.isKycApproved, isTrue);
+
+      final dlDoc = profile.documents.firstWhere((d) => d.id == 'drivingLicense');
+      expect(dlDoc.isVerified, isTrue);
+      expect(dlDoc.documentUrl, 'https://storage.googleapis.com/dl_front.jpg');
+
+      final rcDoc = profile.documents.firstWhere((d) => d.id == 'vehicleRc');
+      expect(rcDoc.isVerified, isTrue);
+      expect(rcDoc.documentUrl, 'https://storage.googleapis.com/rc_book.jpg');
+
+      final insDoc = profile.documents.firstWhere((d) => d.id == 'insurance');
+      expect(insDoc.isVerified, isTrue);
+      expect(insDoc.documentUrl, 'https://storage.googleapis.com/aadhaar_front.jpg');
+
+      final panDoc = profile.documents.firstWhere((d) => d.id == 'panCard');
+      expect(panDoc.isVerified, isTrue);
+      expect(panDoc.documentUrl, 'https://storage.googleapis.com/pan_card.jpg');
+    });
+
     test('computeDeliveryProfileCompletion returns 0 for empty profile', () {
       final profile = repository.buildDefaultProfile();
       final completion = computeDeliveryProfileCompletion(

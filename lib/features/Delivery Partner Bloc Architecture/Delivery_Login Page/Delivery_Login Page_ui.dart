@@ -86,6 +86,23 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
     }
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      final initialPhone = args['phone'] as String?;
+      if (initialPhone != null &&
+          initialPhone.isNotEmpty &&
+          _phoneController.text.isEmpty) {
+        _phoneController.text = initialPhone;
+        context
+            .read<DeliveryLoginPageBloc>()
+            .add(DeliveryLoginPhoneChangedEvent(initialPhone));
+      }
+    }
+  }
+
   void _showNoInternetDialog(BuildContext context, String message) {
     if (_isNetworkDialogOpen) return;
     _isNetworkDialogOpen = true;
@@ -579,7 +596,10 @@ class _DeliveryLoginPageViewState extends State<DeliveryLoginPageView>
             child: ElevatedButton(
               onPressed: state.status == DeliveryLoginStatus.loading
                   ? null
-                  : () => bloc.add(const DeliveryLoginSubmittedEvent()),
+                  : () => bloc.add(DeliveryLoginSubmittedEvent(
+                        phone: _phoneController.text,
+                        password: _passwordController.text,
+                      )),
               style: ElevatedButton.styleFrom(
                 backgroundColor: DeliveryAppColors.primary,
                 foregroundColor: Colors.black,

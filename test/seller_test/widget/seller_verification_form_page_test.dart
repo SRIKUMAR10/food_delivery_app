@@ -424,5 +424,31 @@ void main() {
 
       expect(find.byType(CircularProgressIndicator), findsWidgets);
     });
+
+    testWidgets('populates initial/restored store name arun foods and allows manual editing', (tester) async {
+      when(() => mockBloc.state).thenReturn(ProfileLoaded(
+        storeName: 'arun foods',
+        email: 'arun@foods.com',
+        phone: '9876543210',
+        address: '45 Anna Nagar, Chennai',
+        profileImageUrl: '',
+        notificationsEnabled: true,
+        role: 'seller',
+        createdAt: DateTime(2025, 1, 1),
+        isVerified: false,
+        kycStatus: 'pending',
+      ));
+
+      await pumpFormPage(tester);
+
+      expect(find.text('arun foods'), findsOneWidget);
+      expect(find.text('arun@foods.com'), findsOneWidget);
+
+      final storeNameField = find.byType(TextFormField).first;
+      await tester.enterText(storeNameField, 'arun gourmet foods');
+      await tester.pumpAndSettle();
+
+      expect(find.text('arun gourmet foods'), findsOneWidget);
+    });
   });
 }

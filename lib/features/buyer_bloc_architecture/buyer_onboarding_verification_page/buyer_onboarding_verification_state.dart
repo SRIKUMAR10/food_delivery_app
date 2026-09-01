@@ -26,6 +26,7 @@ class BuyerOnboardingVerificationState extends Equatable {
   final BuyerVerificationStatus status;
   final String? errorMessage;
   final String? successMessage;
+  final bool isDataFetched;
 
   // Step 1: Personal Details & Avatar
   final String fullName;
@@ -71,6 +72,7 @@ class BuyerOnboardingVerificationState extends Equatable {
     this.status = BuyerVerificationStatus.initial,
     this.errorMessage,
     this.successMessage,
+    this.isDataFetched = false,
     this.fullName = '',
     this.displayName = '',
     this.avatarUrl,
@@ -105,6 +107,7 @@ class BuyerOnboardingVerificationState extends Equatable {
     BuyerVerificationStatus? status,
     String? errorMessage,
     String? successMessage,
+    bool? isDataFetched,
     String? fullName,
     String? displayName,
     String? avatarUrl,
@@ -139,6 +142,7 @@ class BuyerOnboardingVerificationState extends Equatable {
       status: status ?? this.status,
       errorMessage: errorMessage,
       successMessage: successMessage,
+      isDataFetched: isDataFetched ?? this.isDataFetched,
       fullName: fullName ?? this.fullName,
       displayName: displayName ?? this.displayName,
       avatarUrl: clearAvatar ? null : (avatarUrl ?? this.avatarUrl),
@@ -175,6 +179,7 @@ class BuyerOnboardingVerificationState extends Equatable {
         status,
         errorMessage,
         successMessage,
+        isDataFetched,
         fullName,
         displayName,
         avatarUrl,

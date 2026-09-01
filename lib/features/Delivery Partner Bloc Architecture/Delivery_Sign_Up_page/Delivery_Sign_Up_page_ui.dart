@@ -129,12 +129,14 @@ class _DeliverySignUpPageViewState extends State<DeliverySignUpPageView>
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text(
-                        'Account created successfully! Welcome Partner.'),
+                        'Account created successfully! Please log in with your credentials.'),
                     backgroundColor: DeliveryAppColors.primary,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
-                if (Navigator.canPop(context)) Navigator.pop(context);
+                Navigator.of(context).pushReplacementNamed(
+                  '/deliveryLogin',
+                );
               }
             },
             builder: (context, state) {

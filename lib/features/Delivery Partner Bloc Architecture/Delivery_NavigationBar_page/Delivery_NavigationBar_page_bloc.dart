@@ -66,14 +66,20 @@ class DeliveryNavigationBarPageBloc
           if (uid != null && uid.isNotEmpty) {
             final partner = await _partnerRepo.getDeliveryPartner(uid);
             if (partner != null) {
-              _cachedIsProfileComplete = partner.displayName.trim().isNotEmpty &&
+              final isOnboardingDone = partner.onboardingCompleted == true;
+              final isProfileDone = partner.displayName.trim().isNotEmpty &&
                   partner.phoneNumber.trim().isNotEmpty &&
-                  partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
-                  partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
-                  partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
+                  partner.vehicleType != null &&
+                  partner.vehicleType!.trim().isNotEmpty &&
+                  partner.vehicleNumber != null &&
+                  partner.vehicleNumber!.trim().isNotEmpty &&
+                  partner.drivingLicense != null &&
+                  partner.drivingLicense!.trim().isNotEmpty;
+
+              _cachedIsProfileComplete = isOnboardingDone || isProfileDone;
 
               if (_cachedIsProfileComplete == false) {
-                indexToUse = 11;
+                indexToUse = 7; // Index 7: Documents (8 Step Document Cards)
               }
             } else {
               _cachedIsProfileComplete = true;
@@ -85,7 +91,6 @@ class DeliveryNavigationBarPageBloc
           _cachedIsProfileComplete = true;
         }
       }
-
 
       emit(state.copyWith(
         status: DeliveryNavigationBarStatus.loaded,
@@ -114,10 +119,13 @@ class DeliveryNavigationBarPageBloc
       return;
     }
 
-    if (_cachedIsProfileComplete == false && event.index != 11) {
+    if (_cachedIsProfileComplete == false &&
+        event.index != 7 &&
+        event.index != 11) {
       emit(state.copyWith(
-        selectedIndex: 11,
-        errorMessage: 'Please fill in and save your profile details first.',
+        selectedIndex: 7,
+        errorMessage:
+            'Please complete your 8-step partner onboarding verification first.',
       ));
       return;
     }
@@ -157,17 +165,23 @@ class DeliveryNavigationBarPageBloc
           if (uid != null) {
             final partner = await _partnerRepo.getDeliveryPartner(uid);
             if (partner != null) {
-              final isProfileComplete = partner.displayName.trim().isNotEmpty &&
+              final isOnboardingDone = partner.onboardingCompleted == true;
+              final isProfileDone = partner.displayName.trim().isNotEmpty &&
                   partner.phoneNumber.trim().isNotEmpty &&
-                  partner.vehicleType != null && partner.vehicleType!.trim().isNotEmpty &&
-                  partner.vehicleNumber != null && partner.vehicleNumber!.trim().isNotEmpty &&
-                  partner.drivingLicense != null && partner.drivingLicense!.trim().isNotEmpty;
+                  partner.vehicleType != null &&
+                  partner.vehicleType!.trim().isNotEmpty &&
+                  partner.vehicleNumber != null &&
+                  partner.vehicleNumber!.trim().isNotEmpty &&
+                  partner.drivingLicense != null &&
+                  partner.drivingLicense!.trim().isNotEmpty;
 
-              if (!isProfileComplete) {
-                indexToUse = 11;
+              _cachedIsProfileComplete = isOnboardingDone || isProfileDone;
+
+              if (_cachedIsProfileComplete == false && indexToUse != 11) {
+                indexToUse = 7;
               }
             } else {
-              indexToUse = 11;
+              _cachedIsProfileComplete = true;
             }
           }
         } catch (_) {}

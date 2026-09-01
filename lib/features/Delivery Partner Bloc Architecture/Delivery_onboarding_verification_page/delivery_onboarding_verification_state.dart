@@ -29,6 +29,7 @@ class DeliveryOnboardingVerificationState extends Equatable {
   final DeliveryVerificationStatus status;
   final String? errorMessage;
   final String? successMessage;
+  final bool isDataFetched;
 
   // ───────────────────────────────────────────────────────────────────────────
   // Step 1: Personal Details & Live Photo/Avatar
@@ -132,6 +133,7 @@ class DeliveryOnboardingVerificationState extends Equatable {
     this.status = DeliveryVerificationStatus.initial,
     this.errorMessage,
     this.successMessage,
+    this.isDataFetched = false,
     // Step 1
     this.fullName = '',
     this.displayName = '',
@@ -380,11 +382,31 @@ class DeliveryOnboardingVerificationState extends Equatable {
   bool get isStep7Valid => validateStep7() == null;
   bool get isStep8Valid => validateStep8() == null;
 
+  bool isStepValid(DeliveryVerificationStep step) {
+    return validateStep(step) == null;
+  }
+
+  int get completedStepsCount {
+    int count = 0;
+    if (isStep1Valid) count++;
+    if (isStep2Valid) count++;
+    if (isStep3Valid) count++;
+    if (isStep4Valid) count++;
+    if (isStep5Valid) count++;
+    if (isStep6Valid) count++;
+    if (isStep7Valid) count++;
+    if (isStep8Valid) count++;
+    return count;
+  }
+
+  double get overallProgressPercentage => completedStepsCount / 8.0;
+
   DeliveryOnboardingVerificationState copyWith({
     DeliveryVerificationStep? currentStep,
     DeliveryVerificationStatus? status,
     String? errorMessage,
     String? successMessage,
+    bool? isDataFetched,
     String? fullName,
     String? displayName,
     String? dob,
@@ -456,6 +478,7 @@ class DeliveryOnboardingVerificationState extends Equatable {
       status: status ?? this.status,
       errorMessage: errorMessage,
       successMessage: successMessage,
+      isDataFetched: isDataFetched ?? this.isDataFetched,
       fullName: fullName ?? this.fullName,
       displayName: displayName ?? this.displayName,
       dob: dob ?? this.dob,
@@ -537,6 +560,7 @@ class DeliveryOnboardingVerificationState extends Equatable {
         status,
         errorMessage,
         successMessage,
+        isDataFetched,
         fullName,
         displayName,
         dob,

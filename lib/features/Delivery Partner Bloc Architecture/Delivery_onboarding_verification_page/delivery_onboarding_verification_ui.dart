@@ -1,20 +1,27 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:food_delivery_app/core/services/bank_ifsc_service.dart';
+import 'package:food_delivery_app/core/services/delivery_city_zone_service.dart';
+import 'package:food_delivery_app/core/services/google_places_service.dart';
 import 'package:food_delivery_app/core/theme/delivery_app_colors.dart';
 import 'package:food_delivery_app/core/widgets/responsive_layout.dart';
 import '../delivery_image_picker_helper.dart';
 import '../delivery_document_preview_dialog.dart';
 import '../Delivery_NavigationBar_page/Delivery_NavigationBar_page_ui.dart';
 import '../Delivery_Profile_page/delivery_google_address_search_dialog.dart';
+import 'delivery_bank_ifsc_search_dialog.dart';
+import 'delivery_city_zone_search_dialog.dart';
 import 'delivery_onboarding_verification_bloc.dart';
 import 'delivery_onboarding_verification_event.dart';
 import 'delivery_onboarding_verification_state.dart';
 
 class DeliveryOnboardingVerificationPage extends StatelessWidget {
+  final DeliveryVerificationStep? initialStep;
   final String? initialFullName;
   final String? initialDisplayName;
   final String? initialEmail;
@@ -24,6 +31,7 @@ class DeliveryOnboardingVerificationPage extends StatelessWidget {
 
   const DeliveryOnboardingVerificationPage({
     super.key,
+    this.initialStep,
     this.initialFullName,
     this.initialDisplayName,
     this.initialEmail,
@@ -36,6 +44,7 @@ class DeliveryOnboardingVerificationPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => DeliveryOnboardingVerificationBloc(
+        initialStep: initialStep,
         initialFullName: initialFullName,
         initialDisplayName: initialDisplayName,
         initialEmail: initialEmail,
@@ -92,6 +101,7 @@ class _DeliveryOnboardingVerificationViewState
 
   // Step 6 Controllers
   final _cityController = TextEditingController();
+  final _cityFocusNode = FocusNode();
   final _zoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _flatNoController = TextEditingController();
@@ -102,35 +112,16 @@ class _DeliveryOnboardingVerificationViewState
   /// Tracks which steps have been attempted by user so inline field errors show up instantly
   final Set<DeliveryVerificationStep> _attemptedSteps = {};
 
+  // Bank IFSC Search & Verification state
+  BankBranchInfo? _verifiedBankInfo;
+  bool _isValidatingIfsc = false;
+  Timer? _ifscDebounceTimer;
+
   @override
   void initState() {
     super.initState();
     final bloc = context.read<DeliveryOnboardingVerificationBloc>();
-    _fullNameController.text = bloc.state.fullName;
-    _displayNameController.text = bloc.state.displayName;
-    _dobController.text = bloc.state.dob;
-    _emergencyNameController.text = bloc.state.emergencyContactName;
-    _emergencyPhoneController.text = bloc.state.emergencyContactPhone;
-    _bioController.text = bloc.state.bio;
-    _phoneController.text = bloc.state.phone;
-    _emailController.text = bloc.state.email;
-    _vehicleNumberController.text = bloc.state.vehicleNumber;
-    _vehicleModelController.text = bloc.state.vehicleModel;
-    _dlNumberController.text = bloc.state.drivingLicenseNumber;
-    _dlExpiryController.text = bloc.state.dlExpiryDate;
-    _aadhaarController.text = bloc.state.aadhaarNumber;
-    _panController.text = bloc.state.panNumber;
-    _bankAccountController.text = bloc.state.bankAccountNumber;
-    _confirmAccountController.text = bloc.state.confirmAccountNumber;
-    _ifscController.text = bloc.state.ifscCode;
-    _bankNameController.text = bloc.state.bankName;
-    _accountHolderController.text = bloc.state.accountHolderName;
-    _upiIdController.text = bloc.state.upiId;
-    _cityController.text = bloc.state.city;
-    _zoneController.text = bloc.state.operatingZone;
-    _addressController.text = bloc.state.formattedAddress;
-    _flatNoController.text = bloc.state.houseFlatNo;
-    _landmarkController.text = bloc.state.landmark;
+    _syncControllersFromState(bloc.state, force: true);
 
     _dobController.addListener(() {
       if (mounted) {
@@ -146,8 +137,58 @@ class _DeliveryOnboardingVerificationViewState
     });
   }
 
+  void _syncControllersFromState(
+    DeliveryOnboardingVerificationState state, {
+    bool force = false,
+  }) {
+    void syncText(TextEditingController controller, String value) {
+      if (value.isNotEmpty && (force || controller.text.trim().isEmpty)) {
+        if (controller.text != value) {
+          controller.value = TextEditingValue(
+            text: value,
+            selection: TextSelection.collapsed(offset: value.length),
+          );
+        }
+      }
+    }
+
+    syncText(_fullNameController, state.fullName);
+    syncText(_displayNameController, state.displayName);
+    syncText(_dobController, state.dob);
+    syncText(_emergencyNameController, state.emergencyContactName);
+    syncText(_emergencyPhoneController, state.emergencyContactPhone);
+    syncText(_bioController, state.bio);
+    syncText(_phoneController, state.phone);
+    syncText(_emailController, state.email);
+    syncText(_vehicleNumberController, state.vehicleNumber);
+    syncText(_vehicleModelController, state.vehicleModel);
+    syncText(_dlNumberController, state.drivingLicenseNumber);
+    syncText(_dlExpiryController, state.dlExpiryDate);
+    syncText(_aadhaarController, state.aadhaarNumber);
+    syncText(_panController, state.panNumber);
+    syncText(_bankAccountController, state.bankAccountNumber);
+    syncText(_confirmAccountController, state.confirmAccountNumber);
+    syncText(_ifscController, state.ifscCode);
+    syncText(_bankNameController, state.bankName);
+    syncText(_accountHolderController, state.accountHolderName);
+    syncText(_upiIdController, state.upiId);
+    syncText(_cityController, state.city);
+    syncText(_zoneController, state.operatingZone);
+    syncText(_addressController, state.formattedAddress);
+    syncText(_flatNoController, state.houseFlatNo);
+    syncText(_landmarkController, state.landmark);
+
+    if (state.ifscCode.isNotEmpty && _verifiedBankInfo == null) {
+      final cached = BankIfscService.instance.searchBanks(state.ifscCode);
+      if (cached.isNotEmpty && cached.first.ifsc.toUpperCase() == state.ifscCode.toUpperCase()) {
+        _verifiedBankInfo = cached.first;
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _ifscDebounceTimer?.cancel();
     _fullNameController.dispose();
     _displayNameController.dispose();
     _dobController.dispose();
@@ -170,6 +211,7 @@ class _DeliveryOnboardingVerificationViewState
     _accountHolderController.dispose();
     _upiIdController.dispose();
     _cityController.dispose();
+    _cityFocusNode.dispose();
     _zoneController.dispose();
     _addressController.dispose();
     _flatNoController.dispose();
@@ -221,6 +263,8 @@ class _DeliveryOnboardingVerificationViewState
     return BlocConsumer<DeliveryOnboardingVerificationBloc,
         DeliveryOnboardingVerificationState>(
       listener: (context, state) {
+        _syncControllersFromState(state);
+
         if (state.status == DeliveryVerificationStatus.failure &&
             state.errorMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -519,72 +563,76 @@ class _DeliveryOnboardingVerificationViewState
         Center(
           child: Column(
             children: [
-              Stack(
-                children: [
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: DeliveryAppColors.surface,
-                      border: Border.all(
-                        color: photoError != null
-                            ? DeliveryAppColors.error
-                            : (hasPhoto
-                                ? DeliveryAppColors.success
-                                : DeliveryAppColors.primary),
-                        width: photoError != null ? 3.0 : 2.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (photoError != null
-                                  ? DeliveryAppColors.error
-                                  : (hasPhoto
-                                      ? DeliveryAppColors.success
-                                      : DeliveryAppColors.primary))
-                              .withOpacity(0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: DeliveryFastImage(
-                      imageBytes: state.localAvatarBytes,
-                      imageUrl: state.avatarUrl,
+              InkWell(
+                onTap: () => _showImageSourceDialog((bytes, fileName) {
+                  context.read<DeliveryOnboardingVerificationBloc>().add(
+                        DeliveryAvatarPicked(
+                            bytes: bytes, fileName: fileName),
+                      );
+                }, title: 'Driver Live Selfie'),
+                borderRadius: BorderRadius.circular(55),
+                child: Stack(
+                  children: [
+                    Container(
                       width: 110,
                       height: 110,
-                      fit: BoxFit.cover,
-                      isCircle: true,
-                      placeholder: const Icon(Icons.person,
-                          size: 55, color: DeliveryAppColors.textSecondary),
-                      errorWidget: const Icon(Icons.person,
-                          size: 55, color: DeliveryAppColors.textSecondary),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: DeliveryAppColors.surface,
+                        border: Border.all(
+                          color: photoError != null
+                              ? DeliveryAppColors.error
+                              : (hasPhoto
+                                  ? DeliveryAppColors.success
+                                  : DeliveryAppColors.primary),
+                          width: photoError != null ? 3.0 : 2.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (photoError != null
+                                    ? DeliveryAppColors.error
+                                    : (hasPhoto
+                                        ? DeliveryAppColors.success
+                                        : DeliveryAppColors.primary))
+                                .withOpacity(0.25),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: DeliveryFastImage(
+                        imageBytes: state.localAvatarBytes,
+                        imageUrl: state.avatarUrl,
+                        width: 110,
+                        height: 110,
+                        fit: BoxFit.cover,
+                        isCircle: true,
+                        placeholder: const Icon(Icons.person,
+                            size: 55, color: DeliveryAppColors.textSecondary),
+                        errorWidget: const Icon(Icons.person,
+                            size: 55, color: DeliveryAppColors.textSecondary),
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: InkWell(
-                      onTap: () => _showImageSourceDialog((bytes, fileName) {
-                        context.read<DeliveryOnboardingVerificationBloc>().add(
-                              DeliveryAvatarPicked(
-                                  bytes: bytes, fileName: fileName),
-                            );
-                      }),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: photoError != null
                               ? DeliveryAppColors.error
-                              : DeliveryAppColors.primary,
+                              : (hasPhoto ? DeliveryAppColors.success : DeliveryAppColors.primary),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.camera_alt,
-                            size: 18, color: Colors.white),
+                        child: Icon(
+                          hasPhoto ? Icons.refresh : Icons.camera_alt,
+                          size: 18,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(height: 8),
               Row(
@@ -599,6 +647,23 @@ class _DeliveryOnboardingVerificationViewState
                     const SizedBox(width: 4),
                     const Icon(Icons.check_circle,
                         size: 14, color: DeliveryAppColors.success),
+                    const SizedBox(width: 6),
+                    InkWell(
+                      onTap: () => _showImageSourceDialog((bytes, fileName) {
+                        context.read<DeliveryOnboardingVerificationBloc>().add(
+                              DeliveryAvatarPicked(
+                                  bytes: bytes, fileName: fileName),
+                            );
+                      }, title: 'Driver Live Selfie'),
+                      child: const Text(
+                        '(Tap to Change)',
+                        style: TextStyle(
+                          color: DeliveryAppColors.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -1219,7 +1284,7 @@ class _DeliveryOnboardingVerificationViewState
                             fileName: fileName,
                           ),
                         );
-                  }),
+                  }, title: 'Driving License Front Side'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1237,7 +1302,7 @@ class _DeliveryOnboardingVerificationViewState
                             fileName: fileName,
                           ),
                         );
-                  }),
+                  }, title: 'Driving License Back Side'),
                 ),
               ),
             ],
@@ -1251,7 +1316,7 @@ class _DeliveryOnboardingVerificationViewState
               context.read<DeliveryOnboardingVerificationBloc>().add(
                     DeliveryRcDocumentPicked(bytes: bytes, fileName: fileName),
                   );
-            }),
+            }, title: 'Vehicle RC Book Copy'),
           ),
         ],
       ],
@@ -1489,7 +1554,7 @@ class _DeliveryOnboardingVerificationViewState
                           fileName: fileName,
                         ),
                       );
-                }),
+                }, title: 'Aadhaar Front Side'),
               ),
             ),
             const SizedBox(width: 12),
@@ -1508,7 +1573,7 @@ class _DeliveryOnboardingVerificationViewState
                           fileName: fileName,
                         ),
                       );
-                }),
+                }, title: 'Aadhaar Back Side'),
               ),
             ),
           ],
@@ -1541,7 +1606,7 @@ class _DeliveryOnboardingVerificationViewState
                     fileName: fileName,
                   ),
                 );
-          }),
+          }, title: 'PAN Card Document Photo'),
         ),
       ],
     );
@@ -1632,11 +1697,73 @@ class _DeliveryOnboardingVerificationViewState
           textCapitalization: TextCapitalization.characters,
           maxLength: 11,
           errorText: ifscError,
-          onChanged: (val) {
-            setState(() {});
-            _syncStep5(context, state);
-          },
+          suffix: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isValidatingIfsc)
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(DeliveryAppColors.primary),
+                    ),
+                  ),
+                ),
+              Tooltip(
+                message: 'Search Bank / Branch IFSC',
+                child: IconButton(
+                  key: const Key('search_ifsc_button'),
+                  icon: const Icon(
+                    Icons.travel_explore_rounded,
+                    color: DeliveryAppColors.primary,
+                    size: 22,
+                  ),
+                  onPressed: () => _openIfscSearchDialog(state),
+                ),
+              ),
+            ],
+          ),
+          onChanged: (val) => _onIfscFieldChanged(val, state),
         ),
+        if (_verifiedBankInfo != null)
+          _buildVerifiedBankCard(_verifiedBankInfo!, state)
+        else ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: InkWell(
+              key: const Key('find_ifsc_shortcut_link'),
+              onTap: () => _openIfscSearchDialog(state),
+              borderRadius: BorderRadius.circular(6),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.search_rounded,
+                      size: 14,
+                      color: DeliveryAppColors.primary,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Don\'t know your IFSC code? Tap here to search bank & branch',
+                      style: TextStyle(
+                        color: DeliveryAppColors.primary,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         _buildTextField(
           controller: _upiIdController,
@@ -1674,6 +1801,208 @@ class _DeliveryOnboardingVerificationViewState
     );
   }
 
+  Future<void> _openIfscSearchDialog(
+      DeliveryOnboardingVerificationState state) async {
+    final selected = await DeliveryBankIfscSearchDialog.show(
+      context: context,
+      initialQuery: _ifscController.text.trim().isNotEmpty
+          ? _ifscController.text.trim()
+          : null,
+    );
+
+    if (selected != null && mounted) {
+      setState(() {
+        _ifscController.text = selected.ifsc;
+        _bankNameController.text = selected.bankName;
+        _verifiedBankInfo = selected;
+        _isValidatingIfsc = false;
+      });
+      _syncStep5(context, state);
+    }
+  }
+
+  void _onIfscFieldChanged(
+      String val, DeliveryOnboardingVerificationState state) {
+    final cleaned = val.trim().toUpperCase();
+    _ifscDebounceTimer?.cancel();
+
+    if (cleaned.length == 11 && BankIfscService.isValidIfscFormat(cleaned)) {
+      setState(() {
+        _isValidatingIfsc = true;
+      });
+      _ifscDebounceTimer = Timer(const Duration(milliseconds: 300), () async {
+        final info = await BankIfscService.instance.lookupIfsc(cleaned);
+        if (mounted && _ifscController.text.trim().toUpperCase() == cleaned) {
+          setState(() {
+            _isValidatingIfsc = false;
+            _verifiedBankInfo = info;
+            if (info != null && info.bankName.isNotEmpty) {
+              _bankNameController.text = info.bankName;
+            }
+          });
+          _syncStep5(context, state);
+        }
+      });
+    } else {
+      if (_verifiedBankInfo != null && _verifiedBankInfo!.ifsc != cleaned) {
+        setState(() {
+          _verifiedBankInfo = null;
+          _isValidatingIfsc = false;
+        });
+      }
+    }
+
+    setState(() {});
+    _syncStep5(context, state);
+  }
+
+  Widget _buildVerifiedBankCard(
+      BankBranchInfo info, DeliveryOnboardingVerificationState state) {
+    return Container(
+      key: const Key('verified_bank_card'),
+      margin: const EdgeInsets.only(top: 8, bottom: 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: DeliveryAppColors.primary.withOpacity(0.4),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: DeliveryAppColors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.account_balance_rounded,
+                  color: DeliveryAppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      info.bankName,
+                      style: const TextStyle(
+                        color: DeliveryAppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${info.branch} Branch • ${info.city}, ${info.state}',
+                      style: const TextStyle(
+                        color: DeliveryAppColors.textSecondary,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: DeliveryAppColors.successBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: DeliveryAppColors.successBorder),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle_rounded,
+                        color: DeliveryAppColors.success, size: 13),
+                    SizedBox(width: 4),
+                    Text(
+                      'Verified',
+                      style: TextStyle(
+                        color: DeliveryAppColors.success,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (info.address.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              info.address,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: DeliveryAppColors.textSecondary.withOpacity(0.65),
+                fontSize: 11,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Wrap(
+                spacing: 6,
+                children: [
+                  if (info.upi) _buildSettlementChip('UPI'),
+                  if (info.imps) _buildSettlementChip('IMPS'),
+                  if (info.neft) _buildSettlementChip('NEFT'),
+                ],
+              ),
+              InkWell(
+                onTap: () => _openIfscSearchDialog(state),
+                borderRadius: BorderRadius.circular(6),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text(
+                    'Change Bank / Branch',
+                    style: TextStyle(
+                      color: DeliveryAppColors.primary,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettlementChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: DeliveryAppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: DeliveryAppColors.primaryLight,
+          fontSize: 9.5,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   void _syncStep5(
       BuildContext context, DeliveryOnboardingVerificationState state) {
     context.read<DeliveryOnboardingVerificationBloc>().add(
@@ -1692,6 +2021,40 @@ class _DeliveryOnboardingVerificationViewState
   // ───────────────────────────────────────────────────────────────────────────
   // STEP 6: Operating Zone & Work Preferences (GPS Address Search)
   // ───────────────────────────────────────────────────────────────────────────
+  void _openCityZoneSearch(
+      BuildContext context, DeliveryOnboardingVerificationState state,
+      {String? initialZone}) {
+    DeliveryCityZoneSearchDialog.show(
+      context: context,
+      initialCity:
+          _cityController.text.isNotEmpty ? _cityController.text : 'Chennai',
+      initialZone: initialZone ??
+          (_zoneController.text.isNotEmpty ? _zoneController.text : null),
+      onSelectionSelected: (selection) {
+        setState(() {
+          _cityController.text = selection.city;
+          _zoneController.text = selection.operatingZone;
+        });
+        context.read<DeliveryOnboardingVerificationBloc>().add(
+              DeliveryZonePreferencesChanged(
+                city: selection.city,
+                operatingZone: selection.operatingZone,
+                preferredShift: state.preferredShift,
+                workType: state.workType,
+                deliveryRadiusKm: state.deliveryRadiusKm,
+                formattedAddress: _addressController.text.isNotEmpty
+                    ? _addressController.text
+                    : (selection.hubDescription ?? state.formattedAddress),
+                houseFlatNo: _flatNoController.text,
+                landmark: _landmarkController.text,
+                latitude: selection.latitude ?? state.latitude,
+                longitude: selection.longitude ?? state.longitude,
+              ),
+            );
+      },
+    );
+  }
+
   Widget _buildStep6Zone(
       BuildContext context, DeliveryOnboardingVerificationState state) {
     final hasAttempted = _attemptedSteps.contains(DeliveryVerificationStep.zoneAndPreferences);
@@ -1708,6 +2071,13 @@ class _DeliveryOnboardingVerificationViewState
         ? 'House / Door / Flat number is mandatory'
         : null;
 
+    final availableCities = DeliveryCityZoneService.instance.getCityNames();
+    final currentCity = _cityController.text.trim().isNotEmpty
+        ? _cityController.text.trim()
+        : 'Chennai';
+    final availableZones =
+        DeliveryCityZoneService.instance.getZoneNamesForCity(currentCity);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1716,29 +2086,423 @@ class _DeliveryOnboardingVerificationViewState
           'Pinpoint your home address via GPS / Google Places and select your preferred delivery hub & shift.',
         ),
         const SizedBox(height: 20),
-        _buildTextField(
-          controller: _cityController,
-          label: 'Delivery City *',
-          hint: 'e.g. Chennai, Bangalore, Coimbatore',
-          icon: Icons.location_city,
-          errorText: cityError,
-          onChanged: (val) {
-            setState(() {});
-            _syncStep6(context, state);
-          },
+
+        // 1. Delivery City Selector (Interactive Searchable Autocomplete Dropdown)
+        Container(
+          decoration: BoxDecoration(
+            color: DeliveryAppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: cityError != null
+                  ? DeliveryAppColors.error
+                  : DeliveryAppColors.border,
+              width: cityError != null ? 1.5 : 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: RawAutocomplete<String>(
+            textEditingController: _cityController,
+            focusNode: _cityFocusNode,
+            optionsBuilder: (TextEditingValue textEditingValue) async {
+              final query = textEditingValue.text.trim();
+              final allCatalogCities =
+                  DeliveryCityZoneService.instance.getCityNames();
+              if (query.isEmpty) {
+                return allCatalogCities;
+              }
+
+              // 1. Instant local catalog matches
+              final localMatches = allCatalogCities
+                  .where((city) =>
+                      city.toLowerCase().contains(query.toLowerCase()))
+                  .toList();
+
+              // 2. Fetch live worldwide Google Places / Maps city predictions
+              try {
+                final livePredictions =
+                    await GooglePlacesService.instance.searchCities(query);
+                final Set<String> combined = {...localMatches};
+                for (final p in livePredictions) {
+                  if (p.mainText.trim().isNotEmpty) {
+                    combined.add(p.mainText.trim());
+                  }
+                }
+                return combined.toList();
+              } catch (_) {
+                return localMatches;
+              }
+            },
+            onSelected: (String selection) async {
+              setState(() {
+                _cityController.text = selection;
+                final newZones = DeliveryCityZoneService.instance
+                    .getZoneNamesForCity(selection);
+                if (!newZones.contains(_zoneController.text) &&
+                    newZones.isNotEmpty) {
+                  _zoneController.text = newZones.first;
+                }
+              });
+              _syncStep6(context, state);
+
+              // Sync GPS coordinates if catalog or live Google Place
+              final catalogCity =
+                  DeliveryCityZoneService.instance.findCityByName(selection);
+              if (catalogCity != null) {
+                context.read<DeliveryOnboardingVerificationBloc>().add(
+                      DeliveryZonePreferencesChanged(
+                        city: selection,
+                        operatingZone: _zoneController.text,
+                        preferredShift: state.preferredShift,
+                        workType: state.workType,
+                        deliveryRadiusKm: state.deliveryRadiusKm,
+                        formattedAddress: _addressController.text,
+                        houseFlatNo: _flatNoController.text,
+                        landmark: _landmarkController.text,
+                        latitude: catalogCity.latitude,
+                        longitude: catalogCity.longitude,
+                      ),
+                    );
+              } else {
+                try {
+                  final details = await GooglePlacesService.instance
+                      .getPlaceDetails(selection);
+                  if (details != null &&
+                      details.latitude != null &&
+                      details.longitude != null) {
+                    context.read<DeliveryOnboardingVerificationBloc>().add(
+                          DeliveryZonePreferencesChanged(
+                            city: selection,
+                            operatingZone: _zoneController.text,
+                            preferredShift: state.preferredShift,
+                            workType: state.workType,
+                            deliveryRadiusKm: state.deliveryRadiusKm,
+                            formattedAddress: _addressController.text,
+                            houseFlatNo: _flatNoController.text,
+                            landmark: _landmarkController.text,
+                            latitude: details.latitude,
+                            longitude: details.longitude,
+                          ),
+                        );
+                  }
+                } catch (_) {}
+              }
+            },
+            fieldViewBuilder:
+                (context, controller, focusNode, onFieldSubmitted) {
+              return TextField(
+                controller: controller,
+                focusNode: focusNode,
+                style: const TextStyle(
+                  color: DeliveryAppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  labelText: 'Delivery City *',
+                  labelStyle: TextStyle(
+                    color: cityError != null
+                        ? DeliveryAppColors.error
+                        : DeliveryAppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                  hintText: 'Type to search city (e.g. Chennai, Bengaluru...)',
+                  hintStyle: TextStyle(
+                    color: DeliveryAppColors.textSecondary.withOpacity(0.5),
+                    fontSize: 13,
+                  ),
+                  icon: Icon(
+                    Icons.location_city,
+                    color: cityError != null
+                        ? DeliveryAppColors.error
+                        : DeliveryAppColors.primary,
+                    size: 20,
+                  ),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (controller.text.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.clear,
+                              size: 16,
+                              color: DeliveryAppColors.textSecondary),
+                          onPressed: () {
+                            controller.clear();
+                            setState(() {});
+                            _syncStep6(context, state);
+                          },
+                          splashRadius: 16,
+                        ),
+                      const Icon(Icons.arrow_drop_down,
+                          color: DeliveryAppColors.primary),
+                      const SizedBox(width: 4),
+                    ],
+                  ),
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    final newZones = DeliveryCityZoneService.instance
+                        .getZoneNamesForCity(val);
+                    if (!newZones.contains(_zoneController.text) &&
+                        newZones.isNotEmpty) {
+                      _zoneController.text = newZones.first;
+                    }
+                  });
+                  _syncStep6(context, state);
+                },
+                onSubmitted: (val) {
+                  onFieldSubmitted();
+                  _syncStep6(context, state);
+                },
+              );
+            },
+            optionsViewBuilder: (context, onSelected, options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  color: Colors.transparent,
+                  elevation: 8,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width > 700
+                        ? 560
+                        : MediaQuery.of(context).size.width - 48,
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    margin: const EdgeInsets.only(top: 6),
+                    decoration: BoxDecoration(
+                      color: DeliveryAppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: DeliveryAppColors.border),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.45),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: ListView.separated(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        shrinkWrap: true,
+                        itemCount: options.length,
+                        separatorBuilder: (_, __) => const Divider(
+                          color: DeliveryAppColors.border,
+                          height: 1,
+                          indent: 16,
+                          endIndent: 16,
+                        ),
+                        itemBuilder: (context, index) {
+                          final city = options.elementAt(index);
+                          final isSelected = _cityController.text
+                                  .trim()
+                                  .toLowerCase() ==
+                              city.toLowerCase();
+                          final cityInfo = DeliveryCityZoneService.instance
+                              .findCityByName(city);
+                          return InkWell(
+                            onTap: () => onSelected(city),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              color: isSelected
+                                  ? DeliveryAppColors.primary.withOpacity(0.12)
+                                  : Colors.transparent,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_city,
+                                    size: 18,
+                                    color: isSelected
+                                        ? DeliveryAppColors.primary
+                                        : DeliveryAppColors.textSecondary,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          city,
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? DeliveryAppColors.primary
+                                                : DeliveryAppColors.textPrimary,
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.w600,
+                                            fontSize: 13.5,
+                                          ),
+                                        ),
+                                        Text(
+                                          cityInfo != null
+                                              ? '${cityInfo.state} • ${cityInfo.hubs.length} Delivery Hubs'
+                                              : 'Worldwide Delivery Location • Dynamic Hubs',
+                                          style: const TextStyle(
+                                            color: DeliveryAppColors
+                                                .textSecondary,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    const Icon(Icons.check_circle,
+                                        color: DeliveryAppColors.primary,
+                                        size: 16),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
+        if (cityError != null) ...[
+          const SizedBox(height: 5),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline,
+                    size: 13, color: DeliveryAppColors.error),
+                const SizedBox(width: 4),
+                Text(
+                  cityError,
+                  style: const TextStyle(
+                    color: DeliveryAppColors.error,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
-        _buildTextField(
-          controller: _zoneController,
-          label: 'Operating Zone / Hub *',
-          hint: 'e.g. Central Zone / Anna Nagar / T. Nagar',
-          icon: Icons.map,
-          errorText: zoneError,
-          onChanged: (val) {
-            setState(() {});
-            _syncStep6(context, state);
-          },
+
+        // 2. Operating Zone / Hub Selector (City-Specific Dropdown + Map Hub Launcher)
+        Container(
+          decoration: BoxDecoration(
+            color: DeliveryAppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: zoneError != null
+                  ? DeliveryAppColors.error
+                  : DeliveryAppColors.border,
+              width: zoneError != null ? 1.5 : 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Operating Zone / Hub ($currentCity) *',
+                    style: const TextStyle(
+                      color: DeliveryAppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _openCityZoneSearch(context, state,
+                        initialZone: _zoneController.text),
+                    borderRadius: BorderRadius.circular(8),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.pin_drop_outlined,
+                              size: 14, color: DeliveryAppColors.primary),
+                          SizedBox(width: 4),
+                          Text(
+                            'Hub Map',
+                            style: TextStyle(
+                              color: DeliveryAppColors.primary,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.map,
+                      color: DeliveryAppColors.primary, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: availableZones.contains(_zoneController.text)
+                            ? _zoneController.text
+                            : (availableZones.isNotEmpty
+                                ? availableZones.first
+                                : null),
+                        isExpanded: true,
+                        dropdownColor: DeliveryAppColors.surface,
+                        style: const TextStyle(
+                          color: DeliveryAppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        icon: const Icon(Icons.arrow_drop_down,
+                            color: DeliveryAppColors.primary),
+                        items: availableZones
+                            .map((z) =>
+                                DropdownMenuItem(value: z, child: Text(z)))
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _zoneController.text = val;
+                            });
+                            _syncStep6(context, state);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
+        if (zoneError != null) ...[
+          const SizedBox(height: 5),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline,
+                    size: 13, color: DeliveryAppColors.error),
+                const SizedBox(width: 4),
+                Text(
+                  zoneError,
+                  style: const TextStyle(
+                    color: DeliveryAppColors.error,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         _buildDropdown(
           label: 'Preferred Shift *',
@@ -2304,33 +3068,24 @@ class _DeliveryOnboardingVerificationViewState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
-          onTap: hasImage
-              ? () => DeliveryDocumentPreviewDialog.show(
-                    context: context,
-                    title: title,
-                    documentUrl: url,
-                    documentBytes: bytes,
-                    onReupload: onTap,
-                  )
-              : onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: DeliveryAppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: hasError
-                    ? DeliveryAppColors.error
-                    : (hasImage
-                        ? DeliveryAppColors.success
-                        : DeliveryAppColors.border),
-                width: hasError || hasImage ? 1.8 : 1,
-              ),
+        Container(
+          height: 125,
+          decoration: BoxDecoration(
+            color: DeliveryAppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: hasError
+                  ? DeliveryAppColors.error
+                  : (hasImage
+                      ? DeliveryAppColors.success
+                      : DeliveryAppColors.border),
+              width: hasError || hasImage ? 1.8 : 1,
             ),
-            child: hasImage
-                ? Stack(
+          ),
+          child: hasImage
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: Stack(
                     fit: StackFit.expand,
                     children: [
                       DeliveryFastImage(
@@ -2343,34 +3098,98 @@ class _DeliveryOnboardingVerificationViewState
                       ),
                       Container(
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(15),
                           gradient: LinearGradient(
                             colors: [
+                              Colors.black.withOpacity(0.35),
                               Colors.transparent,
-                              Colors.black.withOpacity(0.75),
+                              Colors.black.withOpacity(0.85),
                             ],
+                            stops: const [0.0, 0.45, 1.0],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                           ),
                         ),
                       ),
+                      // Top Row: Uploaded Status Tag + Zoom Preview Button
                       Positioned(
                         top: 8,
+                        left: 8,
                         right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.zoom_in,
-                              color: Colors.white, size: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.65),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: DeliveryAppColors.success.withOpacity(0.6),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.check_circle,
+                                      color: DeliveryAppColors.success, size: 12),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Uploaded',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () => DeliveryDocumentPreviewDialog.show(
+                                context: context,
+                                title: title,
+                                documentUrl: url,
+                                documentBytes: bytes,
+                                onReupload: onTap,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3.5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.65),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.25),
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.zoom_in,
+                                        color: Colors.white, size: 14),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      'View',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      // Bottom Row: Document Name + Dedicated Change Button
                       Positioned(
                         bottom: 8,
-                        left: 10,
-                        right: 10,
+                        left: 8,
+                        right: 8,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -2378,21 +3197,60 @@ class _DeliveryOnboardingVerificationViewState
                               child: Text(
                                 title,
                                 style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold),
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.check_circle,
-                                color: DeliveryAppColors.success, size: 16),
+                            const SizedBox(width: 6),
+                            InkWell(
+                              onTap: onTap,
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: DeliveryAppColors.primary,
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: DeliveryAppColors.primary
+                                          .withOpacity(0.4),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1.5),
+                                    ),
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.refresh,
+                                        color: Colors.white, size: 12),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      'Change',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ],
-                  )
-                : Center(
+                  ),
+                )
+              : InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -2419,7 +3277,7 @@ class _DeliveryOnboardingVerificationViewState
                       ],
                     ),
                   ),
-          ),
+                ),
         ),
         if (hasError) ...[
           const SizedBox(height: 5),

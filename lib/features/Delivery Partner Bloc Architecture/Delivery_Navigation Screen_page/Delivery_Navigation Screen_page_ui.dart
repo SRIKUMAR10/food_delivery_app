@@ -812,31 +812,29 @@ class _PartnerBadge extends StatelessWidget {
     final name = state.partnerName.isNotEmpty
         ? state.partnerName
         : 'Delivery Partner';
+    final vehicleNo = state.partnerVehicleNumber.isNotEmpty
+        ? state.partnerVehicleNumber
+        : DeliveryNavigationStrings.of(
+            'deliveryPartnerRole',
+            state.localeCode,
+          );
     return Semantics(
-      label: '$name - Delivery Partner',
+      label: '$name - $vehicleNo',
       child: Container(
         key: const Key('dp_navscreen_partner_badge'),
-        padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: const Color(0xFF0D141C),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: const Color(0xFF1A2530),
-              backgroundImage: state.partnerPhotoUrl.isNotEmpty
-                  ? NetworkImage(state.partnerPhotoUrl)
-                  : null,
-              child: state.partnerPhotoUrl.isEmpty
-                  ? const Icon(
-                      Icons.person,
-                      color: Color(0xFF94A3B8),
-                      size: 16,
-                    )
-                  : null,
+            const Icon(
+              Icons.electric_moped,
+              size: 16,
+              color: DeliveryAppColors.primary,
             ),
             const SizedBox(width: 8),
             Column(
@@ -852,12 +850,7 @@ class _PartnerBadge extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  state.partnerVehicleNumber.isNotEmpty
-                      ? state.partnerVehicleNumber
-                      : DeliveryNavigationStrings.of(
-                          'deliveryPartnerRole',
-                          state.localeCode,
-                        ),
+                  vehicleNo,
                   style: const TextStyle(
                     color: Color(0xFF64748B),
                     fontSize: 9,

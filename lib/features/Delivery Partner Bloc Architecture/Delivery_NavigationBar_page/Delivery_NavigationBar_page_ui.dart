@@ -16,6 +16,7 @@ import '../Delivery_Orders_page/Delivery_Orders_page_service.dart';
 import '../Delivery_Navigation Screen_page/Delivery_Navigation Screen_page_ui.dart';
 import '../Delivery_Earnings Dashboard_page/Delivery_Earnings Dashboard_page_ui.dart';
 import '../Delivery_Wallet_page/Delivery_Wallet_page_ui.dart';
+import '../Delivery_Wallet_page/delivery_bank_details_page.dart';
 import '../Delivery_Order History_page/Delivery_Order History_page_ui.dart';
 import '../Delivery_Incentives Dashboard_page/Delivery_Incentives Dashboard_page_ui.dart';
 import '../Delivery_Settings_page/Delivery_Settings_page_ui.dart';
@@ -24,6 +25,7 @@ import '../Delivery_Pickup Confirmation_page/Delivery_Pickup Confirmation_page_u
 import '../Delivery_Delivery Completed_page/Delivery_Delivery Completed_page_ui.dart';
 import '../Delivery_Help_Support_page/Delivery_Help_Support_page_ui.dart';
 import '../Delivery_Notifications_page/delivery_notification_ui.dart';
+import '../Delivery_onboarding_verification_page/delivery_documents_page.dart';
 import '../../../core/repositories/delivery_active_order_session_repository.dart';
 import '../../../core/theme/delivery_design_system.dart';
 import '../auto_hide_app_bar_wrapper.dart';
@@ -31,6 +33,7 @@ import '../../../core/theme/delivery_app_colors.dart';
 import '../../../core/theme/delivery_app_theme.dart';
 import '../../../core/theme/delivery_app_typography.dart';
 import '../../../core/widgets/logout_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DeliveryNavigationBarStrings {
   static const Map<String, Map<String, String>> _strings = {
@@ -379,6 +382,13 @@ class _DeliverySidebar extends StatelessWidget {
             partnerName: state.partnerName,
             isOffline: state.isOffline,
             localeCode: state.localeCode,
+            onProfileTap: () {
+              final profileIndex =
+                  state.navItems.indexWhere((item) => item.id == 'profile');
+              if (profileIndex != -1) {
+                onItemTap(profileIndex);
+              }
+            },
           ),
           Expanded(
             child: ListView(
@@ -418,11 +428,13 @@ class _SidebarHeader extends StatelessWidget {
   final String partnerName;
   final bool isOffline;
   final String localeCode;
+  final VoidCallback? onProfileTap;
 
   const _SidebarHeader({
     required this.partnerName,
     required this.isOffline,
     required this.localeCode,
+    this.onProfileTap,
   });
 
   @override
@@ -487,69 +499,97 @@ class _SidebarHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0D141C),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              key: const Key('dp_sidebar_profile_card'),
+              onTap: onProfileTap,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-            ),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Color(0xFF1A2530),
-                  child: Icon(Icons.person, color: Color(0xFF94A3B8), size: 20),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D141C),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        partnerName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
+                child: Row(
+                  children: [
+                    Builder(
+                      builder: (context) {
+                        final photoUrl =
+                            FirebaseAuth.instance.currentUser?.photoURL;
+                        if (photoUrl != null && photoUrl.isNotEmpty) {
+                          return CircleAvatar(
+                            radius: 18,
+                            backgroundColor: const Color(0xFF1A2530),
+                            backgroundImage: NetworkImage(photoUrl),
+                          );
+                        }
+                        return const CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Color(0xFF1A2530),
+                          child: Icon(Icons.person,
+                              color: Color(0xFF94A3B8), size: 20),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: isOffline
-                                  ? const Color(0xFFEF4444)
-                                  : DeliveryAppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
                           Text(
-                            isOffline
-                                ? DeliveryNavigationBarStrings.of(
-                                    'offline',
-                                    localeCode,
-                                  )
-                                : DeliveryNavigationBarStrings.of(
-                                    'online',
-                                    localeCode,
-                                  ),
+                            partnerName,
                             style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 11,
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: isOffline
+                                      ? const Color(0xFFEF4444)
+                                      : DeliveryAppColors.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isOffline
+                                    ? DeliveryNavigationBarStrings.of(
+                                        'offline',
+                                        localeCode,
+                                      )
+                                    : DeliveryNavigationBarStrings.of(
+                                        'online',
+                                        localeCode,
+                                      ),
+                                style: const TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    if (onProfileTap != null)
+                      const Icon(
+                        Icons.chevron_right,
+                        color: Color(0xFF64748B),
+                        size: 18,
+                      ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -910,12 +950,16 @@ class _ContentArea extends StatelessWidget {
                         return const DeliveryNavigationScreenPage();
                       case 'wallet':
                         return const DeliveryWalletPage();
+                      case 'bankDetails':
+                        return const DeliveryBankDetailsPage();
                       case 'history':
                         return const DeliveryOrderHistoryPage();
                       case 'settings':
                         return const DeliverySettingsPage();
                       case 'help':
                         return const DeliveryHelpSupportPage();
+                      case 'documents':
+                        return DeliveryDocumentsPage(localeCode: state.localeCode);
                       case 'profile':
                         return const DeliveryProfilePage();
                       default:
@@ -1208,14 +1252,27 @@ class _ContentTopBar extends StatelessWidget {
                     width: 1.5,
                   ),
                 ),
-                child: const CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Color(0xFF1A2530),
-                  child: Icon(
-                    Icons.person,
-                    color: DeliveryAppColors.primary,
-                    size: 20,
-                  ),
+                child: Builder(
+                  builder: (context) {
+                    final photoUrl =
+                        FirebaseAuth.instance.currentUser?.photoURL;
+                    if (photoUrl != null && photoUrl.isNotEmpty) {
+                      return CircleAvatar(
+                        radius: 16,
+                        backgroundColor: const Color(0xFF1A2530),
+                        backgroundImage: NetworkImage(photoUrl),
+                      );
+                    }
+                    return const CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Color(0xFF1A2530),
+                      child: Icon(
+                        Icons.person,
+                        color: DeliveryAppColors.primary,
+                        size: 20,
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -1279,6 +1336,16 @@ class _MobileDrawer extends StatelessWidget {
               partnerName: state.partnerName,
               isOffline: state.isOffline,
               localeCode: state.localeCode,
+              onProfileTap: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+                final profileIndex =
+                    state.navItems.indexWhere((item) => item.id == 'profile');
+                if (profileIndex != -1) {
+                  onItemTap(profileIndex);
+                }
+              },
             ),
             Expanded(
               child: ListView(

@@ -9,6 +9,8 @@ import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architect
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_NavigationBar_page/Delivery_NavigationBar_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Orders_page/Delivery_Orders_page_ui.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Profile_page/Delivery_Profile_page_ui.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Wallet_page/delivery_bank_details_page.dart';
 
 import '../../font_loader_helper.dart';
 import '../helpers/delivery_test_utils.dart';
@@ -97,10 +99,11 @@ void main() {
       ).thenAnswer((_) async => 11);
 
       await pumpNavBar(tester);
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.text('DELIVERY PARTNER'), findsOneWidget);
       expect(find.text('Ravi Kumar'), findsWidgets);
-      expect(find.text('My Profile'), findsOneWidget);
+      expect(find.byType(DeliveryProfilePage), findsOneWidget);
     });
 
     testWidgets('navigates between tabs with BLoC state integration', (
@@ -132,8 +135,9 @@ void main() {
       verify(() => mockRepository.saveSelectedIndex(1)).called(1);
 
       await switchTab(tester, 'Bank Details');
+      await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('Bank Details Overview'), findsOneWidget);
+      expect(find.byType(DeliveryBankDetailsPage), findsOneWidget);
       verify(() => mockRepository.saveSelectedIndex(8)).called(1);
     });
 

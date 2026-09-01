@@ -308,7 +308,27 @@ class DeliveryDocumentPreviewDialog extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    if (onReupload != null) ...[
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: DeliveryAppColors.primary,
+                          side: const BorderSide(color: DeliveryAppColors.primary),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          onReupload!();
+                        },
+                        icon: const Icon(Icons.photo_camera_outlined, size: 16),
+                        label: const Text('Change Photo',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: DeliveryAppColors.primary,

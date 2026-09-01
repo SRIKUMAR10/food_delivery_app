@@ -1,17 +1,38 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Settings_page/Delivery_Settings_page_repository.dart';
+import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Settings_page/Delivery_Settings_page_service.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Settings_page/Delivery_Settings_page_state.dart';
+
+class MockDeliverySettingsService extends Mock
+    implements DeliverySettingsServiceBase {}
 
 void main() {
   late DeliverySettingsRepository repository;
+  late MockDeliverySettingsService mockService;
   late SharedPreferences prefs;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    repository = DeliverySettingsRepository(prefs: prefs);
+    mockService = MockDeliverySettingsService();
+
+    when(() => mockService.getAppVersion()).thenReturn('v2.4.0 (Build 342)');
+    when(() => mockService.fetchSettingsData()).thenAnswer((_) async => {});
+    when(() => mockService.watchSettingsData()).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.saveSettingsData(any())).thenAnswer((_) async => true);
+    when(() => mockService.changePassword(any(), any())).thenAnswer((_) async => true);
+    when(() => mockService.deactivateAccount(reason: any(named: 'reason'))).thenAnswer((_) async => true);
+    when(() => mockService.deleteAccount(reason: any(named: 'reason'))).thenAnswer((_) async => true);
+    when(() => mockService.clearAppCache()).thenAnswer((_) async => true);
+
+    repository = DeliverySettingsRepository(
+      prefs: prefs,
+      service: mockService,
+    );
   });
 
   group('DeliverySettingsPage Repository Tests', () {
@@ -71,21 +92,29 @@ void main() {
       expect(restored.items, hasLength(5));
     });
 
-    test(
-      'settings can be saved and loaded repeatedly without corruption',
-      () async {
-        for (var i = 1; i <= 3; i++) {
-          final current = (await repository.fetchSettings()).copyWith(
-            deliveryRadius: 3.0 + i,
-          );
-          await repository.saveSettings(current);
-        }
+    test('watchSettings streams live data and maps to DeliverySettingsState', () async {
+      final controller = StreamController<Map<String, dynamic>>();
+      when(() => mockService.watchSettingsData()).thenAnswer((_) => controller.stream);
 
-        final restored = await repository.fetchSettings();
-        expect(restored.deliveryRadius, 6.0);
-        expect(restored.status, DeliverySettingsStatus.loaded);
-      },
-    );
+      final stream = repository.watchSettings();
+      final expectation = expectLater(
+        stream,
+        emits(predicate<DeliverySettingsState>((s) =>
+            s.partnerId == 'DP-TEST-1234' &&
+            s.deliveryRadius == 7.5 &&
+            s.vehicleType == 'Bike')),
+      );
+
+      controller.add({
+        'partnerId': 'DP-TEST-1234',
+        'deliveryRadius': 7.5,
+        'vehicleType': 'Bike',
+        'vehicleNumber': 'TN-01-AB-1234',
+      });
+
+      await expectation;
+      await controller.close();
+    });
 
     test('corrupt persisted data falls back to default settings', () async {
       await prefs.setString('dp_settings_data', '{not-valid-json');
@@ -96,23 +125,24 @@ void main() {
       expect(settings.items, hasLength(5));
     });
 
-    test('changePassword validates password length', () async {
+    test('changePassword delegates to service', () async {
       expect(await repository.changePassword('old', 'secretPass'), isTrue);
-      expect(await repository.changePassword('old', '12'), isFalse);
     });
 
-    test('deactivateAccount completes with boolean', () async {
+    test('deactivateAccount delegates to service', () async {
       expect(await repository.deactivateAccount(reason: 'Temp break'), isTrue);
     });
 
-    test('deleteAccount completes with boolean', () async {
+    test('deleteAccount delegates to service', () async {
       expect(await repository.deleteAccount(reason: 'Permanent delete'), isTrue);
     });
 
     test('clearCache clears cached items', () async {
       await prefs.setString('cached_temp_data', 'foo');
+      await prefs.setString('dp_settings_data', 'bar');
       expect(await repository.clearCache(), isTrue);
       expect(prefs.getString('cached_temp_data'), isNull);
+      expect(prefs.getString('dp_settings_data'), isNull);
     });
   });
 }

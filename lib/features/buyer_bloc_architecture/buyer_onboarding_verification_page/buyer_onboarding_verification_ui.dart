@@ -74,18 +74,51 @@ class _BuyerOnboardingVerificationViewState
   void initState() {
     super.initState();
     final bloc = context.read<BuyerOnboardingVerificationBloc>();
-    _fullNameController.text = bloc.state.fullName;
-    _displayNameController.text = bloc.state.displayName;
-    _bioController.text = bloc.state.bio;
-    _phoneController.text = bloc.state.phone;
-    _emailController.text = bloc.state.email;
-    _addressController.text = bloc.state.formattedAddress;
-    _flatNoController.text = bloc.state.houseFlatNo;
-    _landmarkController.text = bloc.state.landmark;
-    _upiIdController.text = bloc.state.defaultUpiId ?? '';
+    _syncControllersFromState(bloc.state, force: true);
 
     // Real-time Firestore auto-fetch for authenticated buyer
     bloc.add(const BuyerVerificationAutoFetchRequested());
+  }
+
+  void _syncControllersFromState(BuyerOnboardingVerificationState state,
+      {bool force = false}) {
+    if (state.fullName.isNotEmpty &&
+        (_fullNameController.text.isEmpty || force)) {
+      _fullNameController.text = state.fullName;
+    }
+    if (state.displayName.isNotEmpty &&
+        (_displayNameController.text.isEmpty || force)) {
+      _displayNameController.text = state.displayName;
+    }
+    if (state.bio.isNotEmpty && (_bioController.text.isEmpty || force)) {
+      _bioController.text = state.bio;
+    }
+    if (state.email.isNotEmpty && (_emailController.text.isEmpty || force)) {
+      _emailController.text = state.email;
+    }
+    if (state.phone.isNotEmpty && (_phoneController.text.isEmpty || force)) {
+      _phoneController.text = state.phone;
+    }
+    if (state.formattedAddress.isNotEmpty &&
+        (_addressController.text.isEmpty ||
+            (_addressController.text != state.formattedAddress && force))) {
+      _addressController.text = state.formattedAddress;
+    }
+    if (state.houseFlatNo.isNotEmpty &&
+        (_flatNoController.text.isEmpty ||
+            (_flatNoController.text != state.houseFlatNo && force))) {
+      _flatNoController.text = state.houseFlatNo;
+    }
+    if (state.landmark.isNotEmpty &&
+        (_landmarkController.text.isEmpty ||
+            (_landmarkController.text != state.landmark && force))) {
+      _landmarkController.text = state.landmark;
+    }
+    if (state.defaultUpiId != null &&
+        state.defaultUpiId!.isNotEmpty &&
+        (_upiIdController.text.isEmpty || force)) {
+      _upiIdController.text = state.defaultUpiId!;
+    }
   }
 
   @override
@@ -108,38 +141,7 @@ class _BuyerOnboardingVerificationViewState
     return BlocConsumer<BuyerOnboardingVerificationBloc,
         BuyerOnboardingVerificationState>(
       listener: (context, state) {
-        if (state.fullName.isNotEmpty && _fullNameController.text.isEmpty) {
-          _fullNameController.text = state.fullName;
-        }
-        if (state.displayName.isNotEmpty && _displayNameController.text.isEmpty) {
-          _displayNameController.text = state.displayName;
-        }
-        if (state.bio.isNotEmpty && _bioController.text.isEmpty) {
-          _bioController.text = state.bio;
-        }
-        if (state.email.isNotEmpty && _emailController.text.isEmpty) {
-          _emailController.text = state.email;
-        }
-        if (state.phone.isNotEmpty && _phoneController.text.isEmpty) {
-          _phoneController.text = state.phone;
-        }
-        if (state.formattedAddress.isNotEmpty &&
-            _addressController.text != state.formattedAddress) {
-          _addressController.text = state.formattedAddress;
-        }
-        if (state.houseFlatNo.isNotEmpty &&
-            _flatNoController.text != state.houseFlatNo) {
-          _flatNoController.text = state.houseFlatNo;
-        }
-        if (state.landmark.isNotEmpty &&
-            _landmarkController.text != state.landmark) {
-          _landmarkController.text = state.landmark;
-        }
-        if (state.defaultUpiId != null &&
-            state.defaultUpiId!.isNotEmpty &&
-            _upiIdController.text.isEmpty) {
-          _upiIdController.text = state.defaultUpiId!;
-        }
+        _syncControllersFromState(state);
         if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

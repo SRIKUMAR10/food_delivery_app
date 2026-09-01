@@ -48,9 +48,9 @@ class DeliveryLoginPageBloc
 
       emit(state.copyWith(
         status: DeliveryLoginStatus.initial,
-        phone: savedPhone ?? '',
-        password: '',
-        isRememberMeChecked: savedPhone != null && savedPhone.isNotEmpty,
+        phone: state.phone.isNotEmpty ? state.phone : (savedPhone ?? ''),
+        password: state.password.isNotEmpty ? state.password : '',
+        isRememberMeChecked: (savedPhone != null && savedPhone.isNotEmpty) || state.isRememberMeChecked,
         errorMessage: null,
       ));
     } catch (e) {
@@ -101,22 +101,32 @@ class DeliveryLoginPageBloc
     DeliveryLoginSubmittedEvent event,
     Emitter<DeliveryLoginPageState> emit,
   ) async {
-    final phoneError =
-        state.phone.trim().isEmpty
-            ? 'Phone number is required'
-            : (state.phone.replaceAll(RegExp(r'\D'), '').length < 10
-                ? 'Enter a valid 10-digit phone number'
-                : null);
+    final effectivePhone = (event.phone?.trim().isNotEmpty == true
+            ? event.phone!
+            : state.phone)
+        .trim();
+    final effectivePassword = (event.password?.isNotEmpty == true
+            ? event.password!
+            : state.password);
 
-    final passwordError = state.password.isEmpty
+    final phoneDigits = effectivePhone.replaceAll(RegExp(r'\D'), '');
+    final phoneError = effectivePhone.isEmpty
+        ? 'Phone number is required'
+        : (phoneDigits.length < 10
+            ? 'Enter a valid 10-digit phone number'
+            : null);
+
+    final passwordError = effectivePassword.isEmpty
         ? 'Password is required'
-        : (state.password.length < 6
+        : (effectivePassword.length < 6
             ? 'Password must be at least 6 characters'
             : null);
 
     if (phoneError != null || passwordError != null) {
       emit(state.copyWith(
         status: DeliveryLoginStatus.error,
+        phone: effectivePhone,
+        password: effectivePassword,
         phoneError: phoneError,
         passwordError: passwordError,
         errorMessage:
@@ -127,6 +137,8 @@ class DeliveryLoginPageBloc
 
     emit(state.copyWith(
       status: DeliveryLoginStatus.loading,
+      phone: effectivePhone,
+      password: effectivePassword,
       clearError: true,
       clearPhoneError: true,
       clearPasswordError: true,
@@ -143,15 +155,15 @@ class DeliveryLoginPageBloc
       }
 
       final formattedPhone =
-          state.phone.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
+          effectivePhone.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
       final fullPhone = formattedPhone.startsWith('+')
           ? formattedPhone
           : '+91$formattedPhone';
 
-      final partner = await repository.loginWithPhone(fullPhone, state.password);
+      final partner = await repository.loginWithPhone(fullPhone, effectivePassword);
 
       if (state.isRememberMeChecked) {
-        await repository.saveSavedPhone(state.phone);
+        await repository.saveSavedPhone(effectivePhone);
       } else {
         await repository.saveSavedPhone('');
       }

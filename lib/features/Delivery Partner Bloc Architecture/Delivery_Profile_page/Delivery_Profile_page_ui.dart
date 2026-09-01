@@ -602,8 +602,11 @@ class _ProfileImageSection extends StatelessWidget {
                     try {
                       final uid = FirebaseAuth.instance.currentUser?.uid ?? 'partner';
                       final ref = FirebaseStorage.instance
-                          .ref('delivery_partners/$uid/avatar_$fileName');
-                      final uploadTask = await ref.putData(bytes);
+                          .ref('delivery_partner_kyc_documents/$uid/avatars/avatar_$fileName');
+                      final uploadTask = await ref.putData(
+                        bytes,
+                        SettableMetadata(contentType: 'image/jpeg'),
+                      );
                       final downloadUrl = await uploadTask.ref.getDownloadURL();
                       if (context.mounted) {
                         context.read<DeliveryProfileBloc>().add(
@@ -1232,11 +1235,17 @@ class _VehicleInfoCard extends StatelessWidget {
     required String value,
     required String field,
     String? hint,
+    IconData? icon,
+    VoidCallback? onTap,
+    TextInputType? keyboardType,
   }) {
     final String localeCode = state.localeCode;
     return TextFormField(
-      key: Key(key),
+      key: ValueKey('${key}_$value'),
       initialValue: value,
+      readOnly: onTap != null,
+      onTap: onTap,
+      keyboardType: keyboardType,
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: DeliveryProfileStrings.of(label, localeCode),
@@ -1245,6 +1254,12 @@ class _VehicleInfoCard extends StatelessWidget {
         labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
         filled: true,
         fillColor: const Color(0xFF0B1219),
+        suffixIcon: icon != null
+            ? IconButton(
+                icon: Icon(icon, color: DeliveryAppColors.primary, size: 20),
+                onPressed: onTap,
+              )
+            : null,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
@@ -1256,6 +1271,62 @@ class _VehicleInfoCard extends StatelessWidget {
       ),
       onChanged: (value) => _dispatch(context, field, value),
     );
+  }
+
+  Future<void> _selectLicenseExpiryDate(
+      BuildContext context, DeliveryProfileState state) async {
+    final now = DateTime.now();
+    DateTime initialDate = DateTime(now.year + 5, now.month, now.day);
+
+    if (state.licenseValidTill.trim().isNotEmpty) {
+      final parts = state.licenseValidTill.trim().split(RegExp(r'[-/.]'));
+      if (parts.length == 3) {
+        if (parts[0].length == 4) {
+          final y = int.tryParse(parts[0]);
+          final m = int.tryParse(parts[1]);
+          final d = int.tryParse(parts[2]);
+          if (y != null && m != null && d != null) {
+            initialDate = DateTime(y, m, d);
+          }
+        } else if (parts[2].length == 4) {
+          final d = int.tryParse(parts[0]);
+          final m = int.tryParse(parts[1]);
+          final y = int.tryParse(parts[2]);
+          if (d != null && m != null && y != null) {
+            initialDate = DateTime(y, m, d);
+          }
+        }
+      }
+    }
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 30),
+      builder: (ctx, child) {
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: DeliveryAppColors.primary,
+              onPrimary: Color(0xFF041E11),
+              surface: Color(0xFF0D141C),
+              onSurface: Colors.white,
+            ),
+            dialogBackgroundColor: const Color(0xFF0D141C),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && context.mounted) {
+      final dd = picked.day.toString().padLeft(2, '0');
+      final mm = picked.month.toString().padLeft(2, '0');
+      final yyyy = picked.year.toString();
+      final formatted = '$dd/$mm/$yyyy';
+      _dispatch(context, 'licenseValidTill', formatted);
+    }
   }
 
   Widget _dropdown(
@@ -1375,7 +1446,9 @@ class _VehicleInfoCard extends StatelessWidget {
                 label: 'licenseValidTill',
                 value: state.licenseValidTill,
                 field: 'licenseValidTill',
-                hint: 'DD-MM-YYYY',
+                hint: 'DD/MM/YYYY',
+                icon: Icons.event,
+                onTap: () => _selectLicenseExpiryDate(context, state),
               );
 
               if (twoColumns) {
@@ -1689,8 +1762,11 @@ class _DocumentTile extends StatelessWidget {
         try {
           final uid = FirebaseAuth.instance.currentUser?.uid ?? 'partner';
           final ref = FirebaseStorage.instance
-              .ref('delivery_partners/$uid/kyc/${document.id}_$fileName');
-          final uploadTask = await ref.putData(bytes);
+              .ref('delivery_partner_kyc_documents/$uid/kyc/${document.id}_$fileName');
+          final uploadTask = await ref.putData(
+            bytes,
+            SettableMetadata(contentType: 'image/jpeg'),
+          );
           final downloadUrl = await uploadTask.ref.getDownloadURL();
           if (context.mounted) {
             context.read<DeliveryProfileBloc>().add(

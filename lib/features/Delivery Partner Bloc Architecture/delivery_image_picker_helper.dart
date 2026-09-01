@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
@@ -363,45 +364,92 @@ class DeliveryFastImage extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget content;
 
+    final int? safeCacheWidth = (width != null && width!.isFinite && width! > 0 && width! < 4000)
+        ? (width! * 2).toInt()
+        : null;
+    final int? safeCacheHeight = (height != null && height!.isFinite && height! > 0 && height! < 4000)
+        ? (height! * 2).toInt()
+        : null;
+
     if (imageBytes != null && imageBytes!.isNotEmpty) {
       content = Image.memory(
         imageBytes!,
+        key: ValueKey<int>(imageBytes.hashCode),
         width: width,
         height: height,
         fit: fit,
         gaplessPlayback: true,
         filterQuality: FilterQuality.medium,
-        cacheWidth: width != null ? (width! * 2).toInt() : 600,
-        cacheHeight: height != null ? (height! * 2).toInt() : 600,
+        cacheWidth: safeCacheWidth,
+        cacheHeight: safeCacheHeight,
         errorBuilder: (_, __, ___) =>
             errorWidget ?? _buildDefaultError(),
       );
     } else if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
       final cleanUrl = imageUrl!.trim();
-      if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+      if (cleanUrl.startsWith('data:image')) {
+        try {
+          final base64String = cleanUrl.split(',').last;
+          final decodedBytes = base64Decode(base64String);
+          content = Image.memory(
+            decodedBytes,
+            width: width,
+            height: height,
+            fit: fit,
+            gaplessPlayback: true,
+            errorBuilder: (_, __, ___) =>
+                errorWidget ?? _buildDefaultError(),
+          );
+        } catch (_) {
+          content = errorWidget ?? _buildDefaultError();
+        }
+      } else if (cleanUrl.startsWith('http://') ||
+          cleanUrl.startsWith('https://') ||
+          cleanUrl.startsWith('blob:')) {
         content = CachedNetworkImage(
+          key: ValueKey<String>(cleanUrl),
           imageUrl: cleanUrl,
           width: width,
           height: height,
           fit: fit,
-          memCacheWidth: width != null ? (width! * 2).toInt() : 600,
-          memCacheHeight: height != null ? (height! * 2).toInt() : 600,
+          memCacheWidth: safeCacheWidth,
+          memCacheHeight: safeCacheHeight,
           fadeInDuration: const Duration(milliseconds: 200),
           placeholder: (ctx, url) =>
               placeholder ?? _buildDefaultShimmer(),
-          errorWidget: (ctx, url, error) =>
-              errorWidget ?? _buildDefaultError(),
+          errorWidget: (ctx, url, error) {
+            return Image.network(
+              cleanUrl,
+              width: width,
+              height: height,
+              fit: fit,
+              errorBuilder: (_, __, ___) =>
+                  errorWidget ?? _buildDefaultError(),
+            );
+          },
         );
       } else {
-        content = Image.file(
-          File(cleanUrl),
-          width: width,
-          height: height,
-          fit: fit,
-          gaplessPlayback: true,
-          errorBuilder: (_, __, ___) =>
-              errorWidget ?? _buildDefaultError(),
-        );
+        if (!kIsWeb) {
+          content = Image.file(
+            File(cleanUrl),
+            key: ValueKey<String>(cleanUrl),
+            width: width,
+            height: height,
+            fit: fit,
+            gaplessPlayback: true,
+            errorBuilder: (_, __, ___) =>
+                errorWidget ?? _buildDefaultError(),
+          );
+        } else {
+          content = Image.network(
+            cleanUrl,
+            width: width,
+            height: height,
+            fit: fit,
+            errorBuilder: (_, __, ___) =>
+                errorWidget ?? _buildDefaultError(),
+          );
+        }
       }
     } else {
       content = placeholder ?? _buildDefaultPlaceholder();

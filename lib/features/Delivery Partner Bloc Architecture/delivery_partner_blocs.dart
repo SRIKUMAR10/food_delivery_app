@@ -34,6 +34,7 @@ export 'Delivery_onboarding_verification_page/delivery_onboarding_verification_e
 export 'Delivery_onboarding_verification_page/delivery_onboarding_verification_state.dart';
 export 'Delivery_onboarding_verification_page/delivery_onboarding_verification_repository.dart';
 export 'Delivery_onboarding_verification_page/delivery_onboarding_verification_ui.dart';
+export 'Delivery_onboarding_verification_page/delivery_documents_page.dart';
 export 'Delivery_Login Page/delivery_auth_bloc.dart';
 export 'Delivery_Login Page/Delivery_Login Page_bloc.dart';
 export 'Delivery_Login Page/Delivery_Login Page_event.dart';
@@ -95,6 +96,8 @@ export 'Delivery_Earnings Dashboard_page/Delivery_Earnings Dashboard_page_state.
 export 'Delivery_Wallet_page/Delivery_Wallet_page_bloc.dart';
 export 'Delivery_Wallet_page/Delivery_Wallet_page_event.dart';
 export 'Delivery_Wallet_page/Delivery_Wallet_page_state.dart';
+export 'Delivery_Wallet_page/Delivery_Wallet_page_ui.dart';
+export 'Delivery_Wallet_page/delivery_bank_details_page.dart';
 
 // 15. IncentiveBloc
 export 'Delivery_Incentives Dashboard_page/Delivery_Incentives Dashboard_page_bloc.dart';

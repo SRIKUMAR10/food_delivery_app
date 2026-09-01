@@ -281,7 +281,9 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
     final licenseValidTill =
         (data['licenseValidTill'] as String?)?.isNotEmpty == true
             ? data['licenseValidTill'] as String
-            : defaultProfile.licenseValidTill;
+            : ((data['dlExpiryDate'] as String?)?.isNotEmpty == true
+                ? data['dlExpiryDate'] as String
+                : defaultProfile.licenseValidTill);
     final vehicleRcUrl = data['vehicleRcUrl'] ?? '';
     final insuranceUrl = data['insuranceUrl'] ?? '';
     final panNumber = data['panNumber'] ?? '';
@@ -301,38 +303,44 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
         ? data['gender'] as String
         : defaultProfile.gender;
 
+    final dlUrl = (data['dlFrontUrl'] ?? data['drivingLicense'] ?? data['drivingLicenseNumber'] ?? '').toString();
+    final rcUrl = (data['rcBookUrl'] ?? data['vehicleRcUrl'] ?? '').toString();
+    final insUrl = (data['insuranceUrl'] ?? '').toString();
+    final aadhaarUrl = (data['idProofUrl'] ?? data['aadhaarFrontUrl'] ?? data['aadhaarUrl'] ?? data['aadhaarNumber'] ?? '').toString();
+    final panUrl = (data['panCardUrl'] ?? data['panNumber'] ?? '').toString();
+
     final updatedDocs = defaultDocuments.map((doc) {
-      if (doc.id == 'drivingLicense' && drivingLicense.isNotEmpty) {
+      if (doc.id == 'drivingLicense' && (drivingLicense.isNotEmpty || dlUrl.isNotEmpty)) {
         return doc.copyWith(
-          status: kycStatus == 'approved'
+          status: (kycStatus == 'approved' || kycStatus == 'verified')
               ? DeliveryProfileDocumentStatus.verified
               : DeliveryProfileDocumentStatus.uploaded,
           progress: 1.0,
-          documentUrl: drivingLicense,
+          documentUrl: dlUrl.isNotEmpty ? dlUrl : drivingLicense,
         );
-      } else if (doc.id == 'vehicleRc' && vehicleRcUrl.isNotEmpty) {
+      } else if (doc.id == 'vehicleRc' && (vehicleRcUrl.isNotEmpty || rcUrl.isNotEmpty)) {
         return doc.copyWith(
-          status: kycStatus == 'approved'
+          status: (kycStatus == 'approved' || kycStatus == 'verified')
               ? DeliveryProfileDocumentStatus.verified
               : DeliveryProfileDocumentStatus.uploaded,
           progress: 1.0,
-          documentUrl: vehicleRcUrl,
+          documentUrl: rcUrl.isNotEmpty ? rcUrl : vehicleRcUrl,
         );
-      } else if (doc.id == 'insurance' && insuranceUrl.isNotEmpty) {
+      } else if (doc.id == 'insurance' && (insuranceUrl.isNotEmpty || insUrl.isNotEmpty || aadhaarUrl.isNotEmpty)) {
         return doc.copyWith(
-          status: kycStatus == 'approved'
+          status: (kycStatus == 'approved' || kycStatus == 'verified')
               ? DeliveryProfileDocumentStatus.verified
               : DeliveryProfileDocumentStatus.uploaded,
           progress: 1.0,
-          documentUrl: insuranceUrl,
+          documentUrl: insUrl.isNotEmpty ? insUrl : (aadhaarUrl.isNotEmpty ? aadhaarUrl : insuranceUrl),
         );
-      } else if (doc.id == 'panCard' && panNumber.isNotEmpty) {
+      } else if (doc.id == 'panCard' && (panNumber.isNotEmpty || panUrl.isNotEmpty)) {
         return doc.copyWith(
-          status: kycStatus == 'approved'
+          status: (kycStatus == 'approved' || kycStatus == 'verified')
               ? DeliveryProfileDocumentStatus.verified
               : DeliveryProfileDocumentStatus.uploaded,
           progress: 1.0,
-          documentUrl: panNumber,
+          documentUrl: panUrl.isNotEmpty ? panUrl : panNumber,
         );
       }
       return doc;

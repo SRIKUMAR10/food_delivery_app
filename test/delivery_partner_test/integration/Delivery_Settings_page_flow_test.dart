@@ -24,12 +24,17 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    repository = DeliverySettingsRepository(prefs: prefs);
     mockService = MockDeliverySettingsService();
 
     when(
       () => mockService.checkNetworkConnectivity(),
     ).thenAnswer((_) async => true);
+    when(() => mockService.getAppVersion()).thenReturn('v2.4.0 (Build 342)');
+    when(() => mockService.fetchSettingsData()).thenAnswer((_) async => {});
+    when(() => mockService.watchSettingsData()).thenAnswer((_) => const Stream.empty());
+    when(() => mockService.saveSettingsData(any())).thenAnswer((_) async => true);
+
+    repository = DeliverySettingsRepository(prefs: prefs, service: mockService);
   });
 
   void setDesktopSize(WidgetTester tester) {

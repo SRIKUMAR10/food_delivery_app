@@ -25,6 +25,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(const BuyerOnboardingVerificationState());
     registerFallbackValue(Uint8List(0));
+    registerFallbackValue(const Duration(seconds: 1));
   });
 
   setUp(() {
@@ -34,6 +35,9 @@ void main() {
 
     when(() => mockUser.uid).thenReturn('test_buyer_123');
     when(() => mockAuth.currentUser).thenReturn(mockUser);
+    when(() => mockRepository.saveDraftState(any(), any())).thenAnswer((_) async {});
+    when(() => mockRepository.waitForCurrentUser(timeout: any(named: 'timeout')))
+        .thenAnswer((_) async => mockUser);
     when(() => mockRepository.saveStep3Address(
           userId: any(named: 'userId'),
           formattedAddress: any(named: 'formattedAddress'),
@@ -463,6 +467,32 @@ void main() {
             .having((s) => s.avatarUrl, 'avatarUrl', isNull)
             .having((s) => s.localAvatarBytes, 'localAvatarBytes', isNull)
             .having((s) => s.successMessage, 'successMessage', contains('Profile photo removed')),
+      ],
+    );
+
+    blocTest<BuyerOnboardingVerificationBloc, BuyerOnboardingVerificationState>(
+      'fetches buyer profile from Firestore/Auth and pre-fills name arun and contact details',
+      build: () {
+        when(() => mockRepository.getCurrentUserVerificationData('test_buyer_123'))
+            .thenAnswer((_) async => {
+                  'fullName': 'arun',
+                  'email': 'arun@example.com',
+                  'phone': '+919876543210',
+                  'formattedAddress': '123 Test Street',
+                });
+        return BuyerOnboardingVerificationBloc(
+          repository: mockRepository,
+          auth: mockAuth,
+        );
+      },
+      act: (bloc) => bloc.add(const BuyerVerificationAutoFetchRequested()),
+      expect: () => [
+        isA<BuyerOnboardingVerificationState>()
+            .having((s) => s.isDataFetched, 'isDataFetched', isTrue)
+            .having((s) => s.fullName, 'fullName', 'arun')
+            .having((s) => s.email, 'email', 'arun@example.com')
+            .having((s) => s.phone, 'phone', '+919876543210')
+            .having((s) => s.formattedAddress, 'formattedAddress', '123 Test Street'),
       ],
     );
 

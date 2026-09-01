@@ -39,8 +39,37 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
             .doc(uid)
             .get();
 
-        if (doc.exists) {
-          return _mapProfileData(uid, doc.data() ?? {});
+        final merged = <String, dynamic>{};
+        if (doc.exists && doc.data() != null) {
+          merged.addAll(doc.data()!);
+        }
+
+        try {
+          final kycDoc = await _firestore
+              .collection('delivery_partners')
+              .doc(uid)
+              .collection('kyc_documents')
+              .doc('government_id')
+              .get();
+          if (kycDoc.exists && kycDoc.data() != null) {
+            merged.addAll(kycDoc.data()!);
+          }
+        } catch (_) {}
+
+        try {
+          final vehicleDoc = await _firestore
+              .collection('delivery_partners')
+              .doc(uid)
+              .collection('vehicle_info')
+              .doc('primary_vehicle')
+              .get();
+          if (vehicleDoc.exists && vehicleDoc.data() != null) {
+            merged.addAll(vehicleDoc.data()!);
+          }
+        } catch (_) {}
+
+        if (merged.isNotEmpty) {
+          return _mapProfileData(uid, merged);
         }
       }
     } catch (_) {}
@@ -49,25 +78,50 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
   }
 
   @override
-  Stream<Map<String, dynamic>> watchProfileData() {
+  Stream<Map<String, dynamic>> watchProfileData() async* {
     try {
-      final uid = _auth.currentUser?.uid;
-      if (uid == null) {
-        return Stream<Map<String, dynamic>>.value(<String, dynamic>{});
-      }
-      return _firestore
-          .collection('delivery_partners')
-          .doc(uid)
-          .snapshots()
-          .map<Map<String, dynamic>>((doc) {
-        if (!doc.exists) {
-          return <String, dynamic>{};
+      final currentUid = _auth.currentUser?.uid;
+      if (currentUid != null) {
+        yield* _watchDocStream(currentUid);
+      } else {
+        await for (final user in _auth.authStateChanges()) {
+          if (user != null) {
+            yield* _watchDocStream(user.uid);
+            break;
+          }
         }
-        return _mapProfileData(uid, doc.data() ?? {});
-      }).handleError((_) => <String, dynamic>{});
+      }
     } catch (_) {
-      return Stream<Map<String, dynamic>>.value(<String, dynamic>{});
+      yield <String, dynamic>{};
     }
+  }
+
+  Stream<Map<String, dynamic>> _watchDocStream(String uid) {
+    return _firestore
+        .collection('delivery_partners')
+        .doc(uid)
+        .snapshots()
+        .asyncMap<Map<String, dynamic>>((doc) async {
+      if (!doc.exists) {
+        return <String, dynamic>{};
+      }
+      final masterData = doc.data() ?? <String, dynamic>{};
+      final merged = Map<String, dynamic>.from(masterData);
+
+      try {
+        final vehicleDoc = await _firestore
+            .collection('delivery_partners')
+            .doc(uid)
+            .collection('vehicle_info')
+            .doc('primary_vehicle')
+            .get();
+        if (vehicleDoc.exists && vehicleDoc.data() != null) {
+          merged.addAll(vehicleDoc.data()!);
+        }
+      } catch (_) {}
+
+      return _mapProfileData(uid, merged);
+    }).handleError((_) => <String, dynamic>{});
   }
 
   Map<String, dynamic> _mapProfileData(String uid, Map<String, dynamic> data) {
@@ -81,28 +135,78 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
 
     String formattedJoining = AppDateFormatter.formatDisplayDate(createdAtDate);
 
+    final resolvedDisplayName =
+        (data['displayName'] ?? data['fullName'] ?? data['name'] ?? '').toString();
+    final resolvedPhone =
+        (data['phoneNumber'] ?? data['phone'] ?? '').toString();
+    final resolvedPhoto =
+        (data['photoUrl'] ?? data['avatarUrl'] ?? '').toString();
+    final resolvedAddress =
+        (data['address'] ?? data['formattedAddress'] ?? '').toString();
+    final resolvedLicense = (data['drivingLicense'] ??
+            data['drivingLicenseNumber'] ??
+            data['dlFrontUrl'] ??
+            '')
+        .toString();
+    final resolvedIdProof = (data['idProofUrl'] ??
+            data['aadhaarFrontUrl'] ??
+            data['aadhaarUrl'] ??
+            '')
+        .toString();
+    final resolvedRc =
+        (data['vehicleRcUrl'] ?? data['rcBookUrl'] ?? '').toString();
+    final resolvedPan =
+        (data['panNumber'] ?? data['panCardUrl'] ?? '').toString();
+    final resolvedInsurance = (data['insuranceUrl'] ?? '').toString();
+
     return {
       'id': uid,
-      'displayName': data['displayName'] ?? '',
-      'phoneNumber': data['phoneNumber'] ?? '',
-      'email': data['email'] ?? '',
-      'photoUrl': data['photoUrl'] ?? '',
-      'address': data['address'] ?? '',
+      'displayName': resolvedDisplayName,
+      'fullName': resolvedDisplayName,
+      'phoneNumber': resolvedPhone,
+      'phone': resolvedPhone,
+      'email': (data['email'] ?? '').toString(),
+      'photoUrl': resolvedPhoto,
+      'avatarUrl': resolvedPhoto,
+      'address': resolvedAddress,
+      'formattedAddress': resolvedAddress,
       'latitude': (data['latitude'] as num?)?.toDouble(),
       'longitude': (data['longitude'] as num?)?.toDouble(),
       'googleMapsUrl': data['googleMapsUrl'] as String?,
-      'dob': data['dob'] ?? '',
-      'gender': data['gender'] ?? '',
-      'vehicleType': data['vehicleType'] ?? '',
-      'vehicleNumber': data['vehicleNumber'] ?? '',
-      'drivingLicense': data['drivingLicense'] ?? '',
-      'aadhaarNumber': data['aadhaarNumber'] ?? '',
-      'idProofUrl': data['idProofUrl'] ?? data['aadhaarUrl'] ?? '',
-      'vehicleRcUrl': data['vehicleRcUrl'] ?? '',
-      'insuranceUrl': data['insuranceUrl'] ?? '',
-      'panNumber': data['panNumber'] ?? '',
+      'dob': (data['dob'] ?? '').toString(),
+      'gender': (data['gender'] ?? '').toString(),
+      'bloodGroup': (data['bloodGroup'] ?? '').toString(),
+      'emergencyContact': data['emergencyContact'],
+      'vehicleType': (data['vehicleType'] ?? '').toString(),
+      'vehicleNumber': (data['vehicleNumber'] ?? '').toString(),
+      'vehicleModel': (data['vehicleModel'] ?? '').toString(),
+      'drivingLicense': resolvedLicense,
+      'drivingLicenseNumber':
+          (data['drivingLicenseNumber'] ?? resolvedLicense).toString(),
+      'licenseValidTill':
+          (data['licenseValidTill'] ?? data['dlExpiryDate'] ?? '').toString(),
+      'dlExpiryDate':
+          (data['dlExpiryDate'] ?? data['licenseValidTill'] ?? '').toString(),
+      'dlFrontUrl': (data['dlFrontUrl'] ?? resolvedLicense).toString(),
+      'dlBackUrl': (data['dlBackUrl'] ?? '').toString(),
+      'aadhaarNumber': (data['aadhaarNumber'] ?? '').toString(),
+      'aadhaarFrontUrl':
+          (data['aadhaarFrontUrl'] ?? resolvedIdProof).toString(),
+      'aadhaarBackUrl': (data['aadhaarBackUrl'] ?? '').toString(),
+      'idProofUrl': resolvedIdProof,
+      'vehicleRcUrl': resolvedRc,
+      'rcBookUrl': (data['rcBookUrl'] ?? resolvedRc).toString(),
+      'insuranceUrl': resolvedInsurance,
+      'panNumber': resolvedPan,
+      'panCardUrl': (data['panCardUrl'] ?? resolvedPan).toString(),
+      'bankAccountNumber': (data['bankAccountNumber'] ?? '').toString(),
+      'ifscCode': (data['ifscCode'] ?? '').toString(),
+      'bankName': (data['bankName'] ?? '').toString(),
+      'upiId': (data['upiId'] ?? '').toString(),
+      'city': (data['city'] ?? '').toString(),
+      'zone': (data['zone'] ?? data['operatingZone'] ?? '').toString(),
       'status': data['status'] ?? 'pending',
-      'kycStatus': data['kycStatus'] ?? 'pending',
+      'kycStatus': data['kycStatus'] ?? data['status'] ?? 'pending',
       'isActive': data['isActive'] ?? true,
       'isVerified': data['isVerified'] ?? false,
       'totalEarnings': (data['totalEarnings'] as num?)?.toDouble() ?? 0.0,
@@ -123,10 +227,44 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
         final sanitized = Map<String, dynamic>.from(data);
         sanitized.remove('password');
         sanitized['updatedAt'] = FieldValue.serverTimestamp();
+
+        // Synchronize license expiry fields
+        if (sanitized.containsKey('licenseValidTill') &&
+            !sanitized.containsKey('dlExpiryDate')) {
+          sanitized['dlExpiryDate'] = sanitized['licenseValidTill'];
+        } else if (sanitized.containsKey('dlExpiryDate') &&
+            !sanitized.containsKey('licenseValidTill')) {
+          sanitized['licenseValidTill'] = sanitized['dlExpiryDate'];
+        }
+
         await _firestore.collection('delivery_partners').doc(uid).set(
           sanitized,
           SetOptions(merge: true),
         );
+
+        // Also mirror vehicle details to subcollection if vehicle fields are updated
+        if (sanitized.containsKey('vehicleType') ||
+            sanitized.containsKey('vehicleNumber') ||
+            sanitized.containsKey('licenseValidTill') ||
+            sanitized.containsKey('dlExpiryDate')) {
+          await _firestore
+              .collection('delivery_partners')
+              .doc(uid)
+              .collection('vehicle_info')
+              .doc('primary_vehicle')
+              .set({
+            if (sanitized['vehicleType'] != null)
+              'vehicleType': sanitized['vehicleType'],
+            if (sanitized['vehicleNumber'] != null)
+              'vehicleNumber': sanitized['vehicleNumber'],
+            if (sanitized['licenseValidTill'] != null)
+              'licenseValidTill': sanitized['licenseValidTill'],
+            if (sanitized['dlExpiryDate'] != null)
+              'dlExpiryDate': sanitized['dlExpiryDate'],
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+
         return true;
       }
     } catch (_) {}
@@ -138,18 +276,53 @@ class DeliveryProfileService implements DeliveryProfileServiceBase {
     try {
       final uid = _auth.currentUser?.uid;
       if (uid != null) {
-        final docField = switch (type) {
-          'drivingLicense' => 'drivingLicense',
-          'vehicleRc' => 'vehicleRcUrl',
-          'insurance' => 'insuranceUrl',
-          'panCard' => 'panNumber',
-          'aadhaar' => 'aadhaarNumber',
-          _ => '${type}Url',
+        final Map<String, dynamic> docFields = switch (type) {
+          'drivingLicense' => {
+              'drivingLicense': filePath,
+              'dlFrontUrl': filePath,
+            },
+          'vehicleRc' => {
+              'vehicleRcUrl': filePath,
+              'rcBookUrl': filePath,
+            },
+          'insurance' => {
+              'insuranceUrl': filePath,
+            },
+          'panCard' => {
+              'panCardUrl': filePath,
+            },
+          'aadhaar' => {
+              'aadhaarFrontUrl': filePath,
+              'aadhaarUrl': filePath,
+              'idProofUrl': filePath,
+            },
+          _ => {
+              '${type}Url': filePath,
+            },
         };
+
         await _firestore.collection('delivery_partners').doc(uid).set({
-          docField: filePath,
+          ...docFields,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
+
+        // Also update subcollections for data completeness
+        if (type == 'drivingLicense' || type == 'vehicleRc') {
+          await _firestore
+              .collection('delivery_partners')
+              .doc(uid)
+              .collection('vehicle_info')
+              .doc('primary_vehicle')
+              .set(docFields, SetOptions(merge: true));
+        } else if (type == 'panCard' || type == 'aadhaar') {
+          await _firestore
+              .collection('delivery_partners')
+              .doc(uid)
+              .collection('kyc_documents')
+              .doc('government_id')
+              .set(docFields, SetOptions(merge: true));
+        }
+
         return true;
       }
     } catch (_) {}

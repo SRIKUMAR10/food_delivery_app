@@ -113,7 +113,7 @@ void main() {
       );
       expect(indicatorInsideDocuments, findsOneWidget);
 
-      expect(find.text('Documents Overview'), findsOneWidget);
+      expect(find.text('Documents & Verification'), findsOneWidget);
     });
 
     testWidgets('dispatches tab changed event when a menu item is tapped', (

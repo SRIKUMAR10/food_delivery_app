@@ -97,25 +97,43 @@ class _SellerVerificationFormContentViewState
     super.initState();
     try {
       final bloc = context.read<SellerProfilePageBloc>();
-      _populateFromState(bloc.state);
+      _populateFromState(bloc.state, force: true);
     } catch (_) {}
   }
 
-  void _populateFromState(SellerProfilePageState state) {
+  void _populateFromState(SellerProfilePageState state, {bool force = false}) {
     if (state is ProfileLoaded) {
-      if (_storeNameController.text.isEmpty) _storeNameController.text = state.storeName;
-      if (_addressController.text.isEmpty) _addressController.text = state.address ?? '';
-      if (_gstController.text.isEmpty) _gstController.text = state.gstNumber ?? '';
-      if (_fssaiController.text.isEmpty) _fssaiController.text = state.fssaiLicense ?? '';
-      if (_panController.text.isEmpty) _panController.text = state.panNumber ?? '';
-      if (_bankAccountController.text.isEmpty) _bankAccountController.text = state.bankAccountNumber ?? '';
-      if (_ifscController.text.isEmpty) _ifscController.text = state.ifscCode ?? '';
-      if (_emailController.text.isEmpty) _emailController.text = state.email;
-      if (_phoneController.text.isEmpty) _phoneController.text = state.phone;
+      if (_storeNameController.text.isEmpty || (force && state.storeName.isNotEmpty)) {
+        _storeNameController.text = state.storeName;
+      }
+      if (_addressController.text.isEmpty || (force && state.address != null && state.address!.isNotEmpty)) {
+        _addressController.text = state.address ?? '';
+      }
+      if (_gstController.text.isEmpty || (force && state.gstNumber != null && state.gstNumber!.isNotEmpty)) {
+        _gstController.text = state.gstNumber ?? '';
+      }
+      if (_fssaiController.text.isEmpty || (force && state.fssaiLicense != null && state.fssaiLicense!.isNotEmpty)) {
+        _fssaiController.text = state.fssaiLicense ?? '';
+      }
+      if (_panController.text.isEmpty || (force && state.panNumber != null && state.panNumber!.isNotEmpty)) {
+        _panController.text = state.panNumber ?? '';
+      }
+      if (_bankAccountController.text.isEmpty || (force && state.bankAccountNumber != null && state.bankAccountNumber!.isNotEmpty)) {
+        _bankAccountController.text = state.bankAccountNumber ?? '';
+      }
+      if (_ifscController.text.isEmpty || (force && state.ifscCode != null && state.ifscCode!.isNotEmpty)) {
+        _ifscController.text = state.ifscCode ?? '';
+      }
+      if (_emailController.text.isEmpty || (force && state.email.isNotEmpty)) {
+        _emailController.text = state.email;
+      }
+      if (_phoneController.text.isEmpty || (force && state.phone.isNotEmpty)) {
+        _phoneController.text = state.phone;
+      }
       if (_pickedLatitude == null && state.latitude != null) _pickedLatitude = state.latitude;
       if (_pickedLongitude == null && state.longitude != null) _pickedLongitude = state.longitude;
       if (_pickedGoogleMapsUrl == null && state.googleMapsUrl != null) _pickedGoogleMapsUrl = state.googleMapsUrl;
-      if (_selectedTax == null &&
+      if ((_selectedTax == null || force) &&
           state.taxConfiguration != null &&
           state.taxConfiguration!.isNotEmpty) {
         _selectedTax = state.taxConfiguration;

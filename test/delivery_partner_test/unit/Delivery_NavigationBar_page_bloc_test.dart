@@ -295,5 +295,100 @@ void main() {
         ),
       ],
     );
+
+    blocTest<DeliveryNavigationBarPageBloc, DeliveryNavigationBarState>(
+      'locks initial tab to index 7 (Documents) when partner onboarding is incomplete',
+      build: () {
+        stubSuccessfulInit(
+          partner: DeliveryPartnerModel(
+            id: 'uid123',
+            displayName: 'Incomplete Rider',
+            phoneNumber: '9876543210',
+            vehicleType: null,
+            vehicleNumber: null,
+            drivingLicense: null,
+            onboardingCompleted: false,
+            createdAt: DateTime(2024),
+            updatedAt: DateTime(2024),
+          ),
+        );
+        return DeliveryNavigationBarPageBloc(
+          repository: mockRepository,
+          service: mockService,
+          partnerRepo: mockPartnerRepo,
+        );
+      },
+      act: (b) => b.add(const DeliveryNavigationBarInitEvent()),
+      expect: () => [
+        const DeliveryNavigationBarState(
+          status: DeliveryNavigationBarStatus.loading,
+          selectedIndex: 4,
+        ),
+        const DeliveryNavigationBarState(
+          status: DeliveryNavigationBarStatus.loaded,
+          selectedIndex: 7,
+          navItems: navItems,
+          localeCode: 'en',
+          partnerName: 'Ravi Kumar',
+          hasPermission: true,
+          isOffline: false,
+        ),
+      ],
+    );
+
+    blocTest<DeliveryNavigationBarPageBloc, DeliveryNavigationBarState>(
+      'guards tab switching to other tabs when onboarding is incomplete',
+      build: () {
+        stubSuccessfulInit(
+          partner: DeliveryPartnerModel(
+            id: 'uid123',
+            displayName: 'Incomplete Rider',
+            phoneNumber: '9876543210',
+            vehicleType: null,
+            vehicleNumber: null,
+            drivingLicense: null,
+            onboardingCompleted: false,
+            createdAt: DateTime(2024),
+            updatedAt: DateTime(2024),
+          ),
+        );
+        return DeliveryNavigationBarPageBloc(
+          repository: mockRepository,
+          service: mockService,
+          partnerRepo: mockPartnerRepo,
+        );
+      },
+      act: (b) async {
+        b.add(const DeliveryNavigationBarInitEvent());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        b.add(const DeliveryNavigationBarTabChangedEvent(0));
+      },
+      expect: () => [
+        const DeliveryNavigationBarState(
+          status: DeliveryNavigationBarStatus.loading,
+          selectedIndex: 4,
+        ),
+        const DeliveryNavigationBarState(
+          status: DeliveryNavigationBarStatus.loaded,
+          selectedIndex: 7,
+          navItems: navItems,
+          localeCode: 'en',
+          partnerName: 'Ravi Kumar',
+          hasPermission: true,
+          isOffline: false,
+        ),
+        const DeliveryNavigationBarState(
+          status: DeliveryNavigationBarStatus.loaded,
+          selectedIndex: 7,
+          navItems: navItems,
+          localeCode: 'en',
+          partnerName: 'Ravi Kumar',
+          hasPermission: true,
+          isOffline: false,
+          errorMessage:
+              'Please complete your 8-step partner onboarding verification first.',
+        ),
+      ],
+    );
   });
 }

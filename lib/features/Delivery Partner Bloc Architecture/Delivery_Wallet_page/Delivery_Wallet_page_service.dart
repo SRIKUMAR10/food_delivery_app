@@ -98,6 +98,76 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
           sum + ((doc.data()['amount'] as num?)?.toDouble() ?? 0.0).abs(),
     );
 
+    // Retrieve Bank Account & Payment Methods from Master doc or Subcollection
+    final bankAccNum = (data['bankAccountNumber'] ?? '').toString();
+    final ifsc = (data['ifscCode'] ?? '').toString();
+    final bankName = (data['bankName'] ?? '').toString();
+    final accHolder = (data['accountHolderName'] ?? data['displayName'] ?? '').toString();
+
+    Map<String, dynamic> subBankData = {};
+    try {
+      final subBankDoc = await _firestore
+          .collection('delivery_partners')
+          .doc(partnerDoc.id)
+          .collection('bank_details')
+          .doc('payout_account')
+          .get();
+      if (subBankDoc.exists && subBankDoc.data() != null) {
+        subBankData = subBankDoc.data()!;
+      }
+    } catch (_) {}
+
+    final finalBankAcc = (bankAccNum.isNotEmpty
+            ? bankAccNum
+            : (subBankData['bankAccountNumber'] ?? ''))
+        .toString();
+    final finalIfsc =
+        (ifsc.isNotEmpty ? ifsc : (subBankData['ifscCode'] ?? '')).toString();
+    final finalBankName = (bankName.isNotEmpty
+            ? bankName
+            : (subBankData['bankName'] ?? 'Bank Account'))
+        .toString();
+    final finalHolder = (accHolder.isNotEmpty
+            ? accHolder
+            : (subBankData['accountHolderName'] ??
+                (data['name'] ?? 'Delivery Partner')))
+        .toString();
+    final finalUpi = (data['upiId'] ?? subBankData['upiId'] ?? '').toString();
+
+    Map<String, dynamic>? bankAccountMap;
+    if (finalBankAcc.isNotEmpty) {
+      final masked = finalBankAcc.length > 4
+          ? '•••• •••• ${finalBankAcc.substring(finalBankAcc.length - 4)}'
+          : finalBankAcc;
+      bankAccountMap = {
+        'bankName': finalBankName,
+        'accountHolder': finalHolder,
+        'maskedAccountNumber': masked,
+        'ifscCode': finalIfsc,
+        'isVerified': true,
+      };
+    }
+
+    final paymentMethods = <Map<String, dynamic>>[];
+    if (bankAccountMap != null) {
+      paymentMethods.add({
+        'id': 'primary_bank',
+        'type': 'Bank',
+        'label': finalBankName,
+        'maskedIdentifier': bankAccountMap['maskedAccountNumber'],
+        'isDefault': true,
+      });
+    }
+    if (finalUpi.isNotEmpty) {
+      paymentMethods.add({
+        'id': 'primary_upi',
+        'type': 'UPI',
+        'label': 'UPI ID',
+        'maskedIdentifier': finalUpi,
+        'isDefault': paymentMethods.isEmpty,
+      });
+    }
+
     return {
       'walletBalance': walletBalance,
       'availableBalance': availableBalance,
@@ -114,6 +184,8 @@ class DeliveryWalletPageService implements DeliveryWalletPageServiceBase {
       'incentiveEarnings': incentiveEarnings,
       'todayEarnings': (data['todayEarnings'] as num?)?.toDouble() ?? 0.0,
       'totalWithdrawn': (data['totalWithdrawn'] as num?)?.toDouble() ?? 0.0,
+      'bankAccount': bankAccountMap,
+      'paymentMethods': paymentMethods,
       'lastUpdated': DateTime.now().toIso8601String(),
     };
   }

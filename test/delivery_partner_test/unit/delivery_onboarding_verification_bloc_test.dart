@@ -11,12 +11,25 @@ class MockDeliveryOnboardingVerificationRepository extends Mock
     implements DeliveryOnboardingVerificationRepository {}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(const Duration(seconds: 1));
+    registerFallbackValue(Uint8List(0));
+  });
+
   late MockDeliveryOnboardingVerificationRepository mockRepository;
   late DeliveryOnboardingVerificationBloc bloc;
 
   setUp(() {
     mockRepository = MockDeliveryOnboardingVerificationRepository();
     when(() => mockRepository.currentUserId).thenReturn('test_partner_123');
+    when(() => mockRepository.saveDraftState(any(), any())).thenAnswer((_) async {});
+    when(() => mockRepository.saveDocumentUrl(any(), any(), any())).thenAnswer((_) async {});
+    when(() => mockRepository.uploadDocumentBytes(any(), any(), any(), any()))
+        .thenAnswer((_) async => 'https://storage.googleapis.com/test_doc.jpg');
+    when(() => mockRepository.waitForCurrentUser(timeout: any(named: 'timeout')))
+        .thenAnswer((_) async => null);
+    when(() => mockRepository.watchPartnerProfile(any()))
+        .thenAnswer((_) => Stream.value(<String, dynamic>{}));
     bloc = DeliveryOnboardingVerificationBloc(repository: mockRepository);
   });
 
@@ -142,6 +155,144 @@ void main() {
             .having((s) => s.longitude, 'longitude', 80.2100)
             .having((s) => s.isStep6Valid, 'isStep6Valid', true),
       ],
+    );
+
+    blocTest<DeliveryOnboardingVerificationBloc,
+        DeliveryOnboardingVerificationState>(
+      'fetches profile from Firestore/Auth and pre-fills full name and partner details',
+      build: () {
+        when(() => mockRepository.fetchPartnerProfile('test_partner_123'))
+            .thenAnswer((_) async => {
+                  'name': 'arun',
+                  'displayName': 'arun',
+                  'phone': '9876543210',
+                  'email': 'arun@example.com',
+                  'city': 'Chennai',
+                });
+        return bloc;
+      },
+      act: (b) => b.add(const DeliveryVerificationAutoFetchRequested()),
+      expect: () => [
+        isA<DeliveryOnboardingVerificationState>()
+            .having((s) => s.isDataFetched, 'isDataFetched', true)
+            .having((s) => s.fullName, 'fullName', 'arun')
+            .having((s) => s.displayName, 'displayName', 'arun')
+            .having((s) => s.phone, 'phone', '9876543210')
+            .having((s) => s.email, 'email', 'arun@example.com'),
+      ],
+    );
+
+    blocTest<DeliveryOnboardingVerificationBloc,
+        DeliveryOnboardingVerificationState>(
+      'emits updated profile on DeliveryVerificationProfileStreamUpdated',
+      build: () => bloc,
+      act: (b) => b.add(const DeliveryVerificationProfileStreamUpdated({
+        'name': 'Kavitha Devi',
+        'displayName': 'Kavitha',
+        'phone': '9876543210',
+        'city': 'Coimbatore',
+        'zone': 'RS Puram',
+      })),
+      expect: () => [
+        isA<DeliveryOnboardingVerificationState>()
+            .having((s) => s.fullName, 'fullName', 'Kavitha Devi')
+            .having((s) => s.displayName, 'displayName', 'Kavitha')
+            .having((s) => s.city, 'city', 'Coimbatore')
+            .having((s) => s.operatingZone, 'operatingZone', 'RS Puram'),
+      ],
+    );
+
+    blocTest<DeliveryOnboardingVerificationBloc,
+        DeliveryOnboardingVerificationState>(
+      'uploads avatar to storage and persists URL on DeliveryAvatarPicked',
+      build: () => bloc,
+      act: (b) => b.add(DeliveryAvatarPicked(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        fileName: 'my_selfie.jpg',
+      )),
+      expect: () => [
+        isA<DeliveryOnboardingVerificationState>()
+            .having((s) => s.localAvatarBytes, 'localAvatarBytes', isNotNull)
+            .having((s) => s.avatarFileName, 'avatarFileName', 'my_selfie.jpg')
+            .having((s) => s.isUploadingAvatar, 'isUploadingAvatar', true),
+        isA<DeliveryOnboardingVerificationState>()
+            .having((s) => s.avatarUrl, 'avatarUrl', 'https://storage.googleapis.com/test_doc.jpg')
+            .having((s) => s.isUploadingAvatar, 'isUploadingAvatar', false),
+      ],
+      verify: (_) {
+        verify(() => mockRepository.uploadDocumentBytes(
+              'test_partner_123',
+              'avatars',
+              'my_selfie.jpg',
+              any(),
+            )).called(1);
+        verify(() => mockRepository.saveDocumentUrl(
+              'test_partner_123',
+              'avatarUrl',
+              'https://storage.googleapis.com/test_doc.jpg',
+            )).called(1);
+      },
+    );
+
+    blocTest<DeliveryOnboardingVerificationBloc,
+        DeliveryOnboardingVerificationState>(
+      'uploads driving license to storage and persists URL on DeliveryDlDocumentPicked',
+      build: () => bloc,
+      act: (b) => b.add(DeliveryDlDocumentPicked(
+        isFront: true,
+        bytes: Uint8List.fromList([4, 5, 6]),
+        fileName: 'dl_front.jpg',
+      )),
+      expect: () => [
+        isA<DeliveryOnboardingVerificationState>()
+            .having((s) => s.dlFrontBytes, 'dlFrontBytes', isNotNull),
+        isA<DeliveryOnboardingVerificationState>()
+            .having((s) => s.dlFrontUrl, 'dlFrontUrl', 'https://storage.googleapis.com/test_doc.jpg'),
+      ],
+      verify: (_) {
+        verify(() => mockRepository.uploadDocumentBytes(
+              'test_partner_123',
+              'driving_license',
+              'dl_front.jpg',
+              any(),
+            )).called(1);
+        verify(() => mockRepository.saveDocumentUrl(
+              'test_partner_123',
+              'dlFrontUrl',
+              'https://storage.googleapis.com/test_doc.jpg',
+            )).called(1);
+      },
+    );
+
+    blocTest<DeliveryOnboardingVerificationBloc,
+        DeliveryOnboardingVerificationState>(
+      'uploads Aadhaar and PAN to storage and persists URL on DeliveryKycDocumentPicked',
+      build: () => bloc,
+      act: (b) => b.add(DeliveryKycDocumentPicked(
+        docType: 'aadhaar',
+        isFront: true,
+        bytes: Uint8List.fromList([7, 8, 9]),
+        fileName: 'aadhaar_front.jpg',
+      )),
+      expect: () => [
+        isA<DeliveryOnboardingVerificationState>()
+            .having((s) => s.aadhaarFrontBytes, 'aadhaarFrontBytes', isNotNull),
+        isA<DeliveryOnboardingVerificationState>()
+            .having((s) => s.aadhaarFrontUrl, 'aadhaarFrontUrl', 'https://storage.googleapis.com/test_doc.jpg'),
+      ],
+      verify: (_) {
+        verify(() => mockRepository.uploadDocumentBytes(
+              'test_partner_123',
+              'government_id',
+              'aadhaar_front.jpg',
+              any(),
+            )).called(1);
+        verify(() => mockRepository.saveDocumentUrl(
+              'test_partner_123',
+              'aadhaarFrontUrl',
+              'https://storage.googleapis.com/test_doc.jpg',
+            )).called(1);
+      },
     );
 
     blocTest<DeliveryOnboardingVerificationBloc,

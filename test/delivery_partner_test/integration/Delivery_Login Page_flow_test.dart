@@ -58,6 +58,7 @@ void main() {
         (_) async => DeliveryPartnerModel(
           id: 'partner-1',
           phoneNumber: '9876543210',
+          onboardingCompleted: true,
           createdAt: DateTime(2024),
           updatedAt: DateTime(2024),
         ),

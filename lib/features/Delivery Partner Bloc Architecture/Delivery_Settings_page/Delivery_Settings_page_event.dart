@@ -11,6 +11,15 @@ class DeliverySettingsInitEvent extends DeliverySettingsEvent {
   const DeliverySettingsInitEvent();
 }
 
+class DeliverySettingsStreamUpdatedEvent extends DeliverySettingsEvent {
+  final Map<String, dynamic> data;
+
+  const DeliverySettingsStreamUpdatedEvent(this.data);
+
+  @override
+  List<Object?> get props => [data];
+}
+
 class DeliverySettingsToggleNotificationEvent extends DeliverySettingsEvent {
   const DeliverySettingsToggleNotificationEvent();
 }

@@ -84,6 +84,8 @@ void main() {
     mockRepository = MockDeliverySettingsRepository();
     mockService = MockDeliverySettingsService();
     registerFallbackValue(const DeliverySettingsState());
+    when(() => mockRepository.watchSettings())
+        .thenAnswer((_) => const Stream.empty());
   });
 
   group('DeliverySettingsBloc Unit Tests', () {
@@ -247,7 +249,12 @@ void main() {
       ),
       seed: () => defaultLoaded,
       act: (b) => b.add(const DeliverySettingsUpdateRadiusEvent(8.5)),
-      expect: () => [defaultLoaded.copyWith(deliveryRadius: 8.5)],
+      expect: () => [
+        defaultLoaded.copyWith(
+          deliveryRadius: 8.5,
+          estimatedDailyEarnings: 8.5 * 240.0,
+        ),
+      ],
     );
 
     blocTest<DeliverySettingsBloc, DeliverySettingsState>(
@@ -258,7 +265,36 @@ void main() {
       ),
       seed: () => defaultLoaded,
       act: (b) => b.add(const DeliverySettingsUpdateRadiusEvent(99)),
-      expect: () => [defaultLoaded.copyWith(deliveryRadius: 20.0)],
+      expect: () => [
+        defaultLoaded.copyWith(
+          deliveryRadius: 20.0,
+          estimatedDailyEarnings: 20.0 * 240.0,
+        ),
+      ],
+    );
+
+    blocTest<DeliverySettingsBloc, DeliverySettingsState>(
+      'updates state from real-time stream event',
+      build: () => DeliverySettingsBloc(
+        repository: mockRepository,
+        service: mockService,
+      ),
+      seed: () => defaultLoaded,
+      act: (b) => b.add(const DeliverySettingsStreamUpdatedEvent({
+        'partnerId': 'DP-LIVE-9999',
+        'partnerName': 'Rider Pro',
+        'deliveryRadius': 12.0,
+        'todayEarnings': 1500.0,
+      })),
+      expect: () => [
+        defaultLoaded.copyWith(
+          partnerId: 'DP-LIVE-9999',
+          partnerName: 'Rider Pro',
+          deliveryRadius: 12.0,
+          todayEarnings: 1500.0,
+          estimatedDailyEarnings: 1500.0 * (12.0 / 5.0).clamp(0.8, 2.5),
+        ),
+      ],
     );
 
     blocTest<DeliverySettingsBloc, DeliverySettingsState>(

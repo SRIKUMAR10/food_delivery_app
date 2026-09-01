@@ -270,4 +270,30 @@ void main() {
     expect(find.text('Flat 502'), findsOneWidget);
     expect(find.text('Near Metro Gate 2'), findsOneWidget);
   });
+
+  testWidgets('populates initial/restored name arun and allows manual editing',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1024, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: BuyerOnboardingVerificationPage(
+          initialFullName: 'arun',
+          initialEmail: 'arun@example.com',
+          initialPhone: '+919876543210',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('arun'), findsWidgets);
+
+    final nameField = find.byType(TextField).first;
+    await tester.enterText(nameField, 'arun kumar');
+    await tester.pumpAndSettle();
+
+    expect(find.text('arun kumar'), findsOneWidget);
+  });
 }

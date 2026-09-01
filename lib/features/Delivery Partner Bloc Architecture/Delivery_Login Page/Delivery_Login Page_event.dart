@@ -36,7 +36,12 @@ class DeliveryLoginToggleRememberMeEvent extends DeliveryLoginPageEvent {
 }
 
 class DeliveryLoginSubmittedEvent extends DeliveryLoginPageEvent {
-  const DeliveryLoginSubmittedEvent();
+  final String? phone;
+  final String? password;
+  const DeliveryLoginSubmittedEvent({this.phone, this.password});
+
+  @override
+  List<Object?> get props => [phone, password];
 }
 
 class DeliveryLoginGoogleSubmittedEvent extends DeliveryLoginPageEvent {

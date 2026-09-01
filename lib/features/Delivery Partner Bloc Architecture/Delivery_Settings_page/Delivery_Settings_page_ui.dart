@@ -822,7 +822,11 @@ class _EarningsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String localeCode = state.localeCode;
-    final double estimate = state.deliveryRadius * 240.0;
+    final double estimate = state.estimatedDailyEarnings > 0
+        ? state.estimatedDailyEarnings
+        : (state.todayEarnings > 0
+            ? state.todayEarnings
+            : state.deliveryRadius * 240.0);
     return Container(
       key: const Key('dp_settings_earnings_card'),
       padding: const EdgeInsets.all(20),
@@ -1221,6 +1225,20 @@ class _AccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String localeCode = state.localeCode;
+    final String partnerIdDisplay = state.partnerId.isNotEmpty
+        ? (state.partnerId.length > 10
+            ? 'DP-${state.partnerId.substring(0, 8).toUpperCase()}'
+            : state.partnerId)
+        : 'DP-PRO-8842';
+
+    final String vehicleDisplay = (state.vehicleType.isNotEmpty || state.vehicleNumber.isNotEmpty)
+        ? '${state.vehicleType.isNotEmpty ? state.vehicleType : "Two Wheeler"}${state.vehicleNumber.isNotEmpty ? " (${state.vehicleNumber})" : ""}'
+        : 'Honda Activa 6G (TN-09-CB-4521)';
+
+    final String bankDisplay = (state.bankName.isNotEmpty || state.bankAccountNumber.isNotEmpty)
+        ? '${state.bankName.isNotEmpty ? state.bankName : "HDFC Bank"} (•••• ${state.bankAccountNumber.length >= 4 ? state.bankAccountNumber.substring(state.bankAccountNumber.length - 4) : "4920"}) - ${state.bankAccountStatus.isNotEmpty ? state.bankAccountStatus : "Active"}'
+        : 'HDFC Bank (•••• 4920) - Active';
+
     return Container(
       key: const Key('dp_settings_account_card'),
       padding: const EdgeInsets.all(20),
@@ -1253,19 +1271,19 @@ class _AccountCard extends StatelessWidget {
           _AccountInfoRow(
             icon: Icons.badge_outlined,
             title: 'Partner ID',
-            value: 'DP-PRO-8842',
+            value: partnerIdDisplay,
           ),
           Divider(color: Colors.white.withValues(alpha: 0.06)),
           _AccountInfoRow(
             icon: Icons.two_wheeler_outlined,
             title: 'Vehicle Info',
-            value: 'Honda Activa 6G (TN-09-CB-4521)',
+            value: vehicleDisplay,
           ),
           Divider(color: Colors.white.withValues(alpha: 0.06)),
           _AccountInfoRow(
             icon: Icons.account_balance_outlined,
             title: 'Bank Settlement',
-            value: 'HDFC Bank (•••• 4920) - Active',
+            value: bankDisplay,
           ),
         ],
       ),
@@ -1369,9 +1387,9 @@ class _AppSystemCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: Colors.white12),
                 ),
-                child: const Text(
-                  'v2.4.0 (Build 342)',
-                  style: TextStyle(
+                child: Text(
+                  state.appVersion.isNotEmpty ? state.appVersion : 'v2.4.0 (Build 342)',
+                  style: const TextStyle(
                     color: DeliveryAppColors.primary,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,

@@ -96,6 +96,22 @@ class DeliverySettingsState extends Equatable {
   final bool isAccountDeactivated;
   final String? actionMessage;
 
+  // Real-time Firestore metadata & analytics fields
+  final String partnerId;
+  final String partnerName;
+  final String phone;
+  final String email;
+  final String vehicleType;
+  final String vehicleNumber;
+  final String bankName;
+  final String bankAccountNumber;
+  final String bankAccountStatus;
+  final double todayEarnings;
+  final double totalEarnings;
+  final int completedOrdersCount;
+  final double estimatedDailyEarnings;
+  final String appVersion;
+
   const DeliverySettingsState({
     this.status = DeliverySettingsStatus.initial,
     this.saveStatus = DeliverySettingsSaveStatus.idle,
@@ -118,6 +134,20 @@ class DeliverySettingsState extends Equatable {
     this.dataSharingConsent = true,
     this.isAccountDeactivated = false,
     this.actionMessage,
+    this.partnerId = '',
+    this.partnerName = '',
+    this.phone = '',
+    this.email = '',
+    this.vehicleType = '',
+    this.vehicleNumber = '',
+    this.bankName = '',
+    this.bankAccountNumber = '',
+    this.bankAccountStatus = '',
+    this.todayEarnings = 0.0,
+    this.totalEarnings = 0.0,
+    this.completedOrdersCount = 0,
+    this.estimatedDailyEarnings = 0.0,
+    this.appVersion = 'v2.4.0 (Build 342)',
   });
 
   DeliverySettingsState copyWith({
@@ -144,6 +174,20 @@ class DeliverySettingsState extends Equatable {
     bool? isAccountDeactivated,
     String? actionMessage,
     bool clearActionMessage = false,
+    String? partnerId,
+    String? partnerName,
+    String? phone,
+    String? email,
+    String? vehicleType,
+    String? vehicleNumber,
+    String? bankName,
+    String? bankAccountNumber,
+    String? bankAccountStatus,
+    double? todayEarnings,
+    double? totalEarnings,
+    int? completedOrdersCount,
+    double? estimatedDailyEarnings,
+    String? appVersion,
   }) {
     return DeliverySettingsState(
       status: status ?? this.status,
@@ -173,6 +217,21 @@ class DeliverySettingsState extends Equatable {
           isAccountDeactivated ?? this.isAccountDeactivated,
       actionMessage:
           clearActionMessage ? null : (actionMessage ?? this.actionMessage),
+      partnerId: partnerId ?? this.partnerId,
+      partnerName: partnerName ?? this.partnerName,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      vehicleType: vehicleType ?? this.vehicleType,
+      vehicleNumber: vehicleNumber ?? this.vehicleNumber,
+      bankName: bankName ?? this.bankName,
+      bankAccountNumber: bankAccountNumber ?? this.bankAccountNumber,
+      bankAccountStatus: bankAccountStatus ?? this.bankAccountStatus,
+      todayEarnings: todayEarnings ?? this.todayEarnings,
+      totalEarnings: totalEarnings ?? this.totalEarnings,
+      completedOrdersCount: completedOrdersCount ?? this.completedOrdersCount,
+      estimatedDailyEarnings:
+          estimatedDailyEarnings ?? this.estimatedDailyEarnings,
+      appVersion: appVersion ?? this.appVersion,
     );
   }
 
@@ -186,6 +245,7 @@ class DeliverySettingsState extends Equatable {
         'sunModeEnabled': sunModeEnabled,
         'oledModeEnabled': oledModeEnabled,
         'deliveryRadius': deliveryRadius,
+        'deliveryRadiusKm': deliveryRadius,
         'languageCode': languageCode,
         'localeCode': localeCode,
         'items': items.map((item) => item.toJson()).toList(),
@@ -197,6 +257,20 @@ class DeliverySettingsState extends Equatable {
         'twoFactorAuthEnabled': twoFactorAuthEnabled,
         'dataSharingConsent': dataSharingConsent,
         'isAccountDeactivated': isAccountDeactivated,
+        'partnerId': partnerId,
+        'partnerName': partnerName,
+        'phone': phone,
+        'email': email,
+        'vehicleType': vehicleType,
+        'vehicleNumber': vehicleNumber,
+        'bankName': bankName,
+        'bankAccountNumber': bankAccountNumber,
+        'bankAccountStatus': bankAccountStatus,
+        'todayEarnings': todayEarnings,
+        'totalEarnings': totalEarnings,
+        'completedOrdersCount': completedOrdersCount,
+        'estimatedDailyEarnings': estimatedDailyEarnings,
+        'appVersion': appVersion,
       };
 
   factory DeliverySettingsState.fromJson(Map<String, dynamic> json) {
@@ -217,7 +291,7 @@ class DeliverySettingsState extends Equatable {
       darkModeEnabled: json['darkModeEnabled'] as bool? ?? false,
       sunModeEnabled: json['sunModeEnabled'] as bool? ?? false,
       oledModeEnabled: json['oledModeEnabled'] as bool? ?? false,
-      deliveryRadius: (json['deliveryRadius'] as num?)?.toDouble() ?? 5.0,
+      deliveryRadius: ((json['deliveryRadius'] ?? json['deliveryRadiusKm']) as num?)?.toDouble() ?? 5.0,
       languageCode: json['languageCode'] as String? ?? 'en',
       localeCode: json['localeCode'] as String? ?? 'en',
       items: (json['items'] as List<dynamic>? ?? [])
@@ -232,6 +306,20 @@ class DeliverySettingsState extends Equatable {
       twoFactorAuthEnabled: json['twoFactorAuthEnabled'] as bool? ?? false,
       dataSharingConsent: json['dataSharingConsent'] as bool? ?? true,
       isAccountDeactivated: json['isAccountDeactivated'] as bool? ?? false,
+      partnerId: json['partnerId'] as String? ?? json['id'] as String? ?? '',
+      partnerName: json['partnerName'] as String? ?? json['displayName'] as String? ?? json['fullName'] as String? ?? '',
+      phone: json['phone'] as String? ?? json['phoneNumber'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      vehicleType: json['vehicleType'] as String? ?? '',
+      vehicleNumber: json['vehicleNumber'] as String? ?? '',
+      bankName: json['bankName'] as String? ?? '',
+      bankAccountNumber: json['bankAccountNumber'] as String? ?? '',
+      bankAccountStatus: json['bankAccountStatus'] as String? ?? '',
+      todayEarnings: (json['todayEarnings'] as num?)?.toDouble() ?? 0.0,
+      totalEarnings: (json['totalEarnings'] as num?)?.toDouble() ?? 0.0,
+      completedOrdersCount: ((json['completedOrdersCount'] ?? json['totalDeliveries']) as num?)?.toInt() ?? 0,
+      estimatedDailyEarnings: (json['estimatedDailyEarnings'] as num?)?.toDouble() ?? 0.0,
+      appVersion: json['appVersion'] as String? ?? 'v2.4.0 (Build 342)',
     );
   }
 
@@ -258,6 +346,20 @@ class DeliverySettingsState extends Equatable {
         dataSharingConsent,
         isAccountDeactivated,
         actionMessage,
+        partnerId,
+        partnerName,
+        phone,
+        email,
+        vehicleType,
+        vehicleNumber,
+        bankName,
+        bankAccountNumber,
+        bankAccountStatus,
+        todayEarnings,
+        totalEarnings,
+        completedOrdersCount,
+        estimatedDailyEarnings,
+        appVersion,
       ];
 }
 

@@ -14,6 +14,16 @@ class DeliveryVerificationAutoFetchRequested
   const DeliveryVerificationAutoFetchRequested();
 }
 
+class DeliveryVerificationProfileStreamUpdated
+    extends DeliveryOnboardingVerificationEvent {
+  final Map<String, dynamic> data;
+
+  const DeliveryVerificationProfileStreamUpdated(this.data);
+
+  @override
+  List<Object?> get props => [data];
+}
+
 class DeliveryVerificationStepChanged
     extends DeliveryOnboardingVerificationEvent {
   final DeliveryVerificationStep step;

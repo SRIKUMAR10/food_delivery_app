@@ -70,8 +70,15 @@ class BuyerOnboardingVerificationBloc
     BuyerVerificationAutoFetchRequested event,
     Emitter<BuyerOnboardingVerificationState> emit,
   ) async {
-    final uid = auth.currentUser?.uid;
-    if (uid == null || uid.isEmpty) return;
+    var uid = auth.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      final user = await repository.waitForCurrentUser();
+      uid = user?.uid;
+    }
+    if (uid == null || uid.isEmpty) {
+      emit(state.copyWith(isDataFetched: true));
+      return;
+    }
 
     try {
       final data = await repository.getCurrentUserVerificationData(uid);
@@ -80,7 +87,8 @@ class BuyerOnboardingVerificationBloc
         final displayName = (data['displayName'] ?? data['name'] ?? '').toString().trim();
         final email = (data['email'] ?? data['emailAddress'] ?? '').toString().trim();
         final phone = (data['phone'] ?? data['phoneNumber'] ?? data['mobile'] ?? '').toString().trim();
-        final imageUrl = (data['imageUrl'] ?? data['photoUrl'] ?? data['profilePic']) as String?;
+        final imageUrl = (data['imageUrl'] ?? data['photoUrl'] ?? data['profilePic'] ?? data['avatarUrl']) as String?;
+        final bio = (data['bio'] ?? '').toString().trim();
         final isPhoneVerified = data['isPhoneVerified'] == true || phone.isNotEmpty;
         final locationPermission = data['locationPermissionGranted'] as bool? ??
             (data['permissions'] is Map ? data['permissions']['location'] as bool? : null);
@@ -89,16 +97,22 @@ class BuyerOnboardingVerificationBloc
         final cameraPermission = data['cameraPermissionGranted'] as bool? ??
             (data['permissions'] is Map ? data['permissions']['camera'] as bool? : null);
 
-        final address = (data['address'] ?? data['deliveryAddress'] ?? data['fullAddress'] ?? '').toString().trim();
+        final address = (data['address'] ?? data['deliveryAddress'] ?? data['fullAddress'] ?? data['formattedAddress'] ?? '').toString().trim();
         final houseFlatNo = (data['houseFlatNo'] ?? data['flatNo'] ?? '').toString().trim();
         final landmark = (data['landmark'] ?? data['nearbyLandmark'] ?? '').toString().trim();
         final selectedTag = (data['selectedAddressType'] ?? data['addressTag'] ?? data['tag'] ?? '').toString().trim();
         final lat = (data['latitude'] as num?)?.toDouble() ?? (data['lat'] as num?)?.toDouble();
         final lng = (data['longitude'] as num?)?.toDouble() ?? (data['lng'] as num?)?.toDouble();
 
+        final preferredPayment = (data['preferredPaymentMethod'] ?? data['paymentMethod'] ?? '').toString().trim();
+        final defaultUpi = (data['defaultUpiId'] ?? data['upiId']) as String?;
+        final activateWallet = data['activateBuyerWallet'] as bool?;
+
         emit(state.copyWith(
+          isDataFetched: true,
           fullName: state.fullName.isEmpty ? name : state.fullName,
           displayName: state.displayName.isEmpty ? (displayName.isNotEmpty ? displayName : name) : state.displayName,
+          bio: state.bio.isEmpty ? bio : state.bio,
           email: state.email.isEmpty ? email : state.email,
           phone: state.phone.isEmpty ? phone : state.phone,
           avatarUrl: state.avatarUrl ?? imageUrl,
@@ -109,13 +123,46 @@ class BuyerOnboardingVerificationBloc
           addressTag: selectedTag.isNotEmpty ? selectedTag : state.addressTag,
           latitude: state.latitude ?? lat,
           longitude: state.longitude ?? lng,
+          preferredPaymentMethod: preferredPayment.isNotEmpty ? preferredPayment : state.preferredPaymentMethod,
+          defaultUpiId: state.defaultUpiId ?? defaultUpi,
+          activateBuyerWallet: activateWallet ?? state.activateBuyerWallet,
           locationPermissionGranted: locationPermission ?? state.locationPermissionGranted,
           pushNotificationsGranted: notificationsPermission ?? state.pushNotificationsGranted,
           cameraPermissionGranted: cameraPermission ?? state.cameraPermissionGranted,
         ));
+      } else {
+        emit(state.copyWith(isDataFetched: true));
       }
     } catch (_) {
-      // Non-blocking fallback
+      emit(state.copyWith(isDataFetched: true));
+    }
+  }
+
+  void _saveDraft(BuyerOnboardingVerificationState s) {
+    final uid = auth.currentUser?.uid;
+    if (uid != null && uid.isNotEmpty) {
+      repository.saveDraftState(uid, {
+        'fullName': s.fullName,
+        'displayName': s.displayName,
+        'bio': s.bio,
+        'email': s.email,
+        'phone': s.phone,
+        'avatarUrl': s.avatarUrl,
+        'isPhoneVerified': s.isPhoneVerified,
+        'formattedAddress': s.formattedAddress,
+        'houseFlatNo': s.houseFlatNo,
+        'landmark': s.landmark,
+        'addressTag': s.addressTag,
+        'latitude': s.latitude,
+        'longitude': s.longitude,
+        'preferredPaymentMethod': s.preferredPaymentMethod,
+        'defaultUpiId': s.defaultUpiId,
+        'activateBuyerWallet': s.activateBuyerWallet,
+        'locationPermissionGranted': s.locationPermissionGranted,
+        'pushNotificationsGranted': s.pushNotificationsGranted,
+        'cameraPermissionGranted': s.cameraPermissionGranted,
+        'currentStep': s.currentStep.name,
+      });
     }
   }
 
@@ -131,6 +178,7 @@ class BuyerOnboardingVerificationBloc
       avatarUrl: event.avatarUrl ?? state.avatarUrl,
       isPhoneVerified: event.isPhoneVerified ?? state.isPhoneVerified,
     ));
+    _saveDraft(state);
   }
 
   void _onStepChanged(
@@ -142,6 +190,7 @@ class BuyerOnboardingVerificationBloc
       errorMessage: null,
       successMessage: null,
     ));
+    _saveDraft(state);
   }
 
   void _onNextStepPressed(
@@ -299,6 +348,7 @@ class BuyerOnboardingVerificationBloc
       status: BuyerVerificationStatus.inProgress,
       errorMessage: null,
     ));
+    _saveDraft(state);
   }
 
   void _onContactUpdated(
@@ -309,6 +359,7 @@ class BuyerOnboardingVerificationBloc
       email: event.email.trim(),
       phone: event.phone.trim(),
     ));
+    _saveDraft(state);
   }
 
   Future<void> _onSendOtpRequested(
@@ -333,6 +384,7 @@ class BuyerOnboardingVerificationBloc
         isOtpResendAvailable: false,
         successMessage: 'OTP code sent to ${state.phone}',
       ));
+      _saveDraft(state);
     } catch (e) {
       emit(state.copyWith(
         status: BuyerVerificationStatus.failure,
@@ -375,6 +427,7 @@ class BuyerOnboardingVerificationBloc
           currentStep: BuyerVerificationStep.addressSelection,
           successMessage: 'Phone verified successfully!',
         ));
+        _saveDraft(state);
       } else {
         emit(state.copyWith(
           status: BuyerVerificationStatus.failure,
@@ -452,6 +505,7 @@ class BuyerOnboardingVerificationBloc
       errorMessage: null,
       successMessage: 'Delivery address saved successfully!',
     ));
+    _saveDraft(state);
   }
 
   void _onAddressTagChanged(
@@ -462,6 +516,7 @@ class BuyerOnboardingVerificationBloc
       addressTag: event.addressTag,
       status: BuyerVerificationStatus.inProgress,
     ));
+    _saveDraft(state);
   }
 
   void _onAddressLocationSelected(
@@ -479,6 +534,7 @@ class BuyerOnboardingVerificationBloc
       errorMessage: null,
       successMessage: 'Address selected successfully',
     ));
+    _saveDraft(state);
   }
 
   Future<void> _onCurrentLocationRequested(
@@ -497,6 +553,7 @@ class BuyerOnboardingVerificationBloc
           status: BuyerVerificationStatus.inProgress,
           successMessage: 'Real-time GPS Location detected',
         ));
+        _saveDraft(state);
       } else {
         // If GPS permission was denied or device location disabled, provide clear message
         emit(state.copyWith(
@@ -522,6 +579,7 @@ class BuyerOnboardingVerificationBloc
       preferredPaymentMethod: event.paymentMethod,
       status: BuyerVerificationStatus.inProgress,
     ));
+    _saveDraft(state);
   }
 
   void _onWalletToggled(
@@ -532,6 +590,7 @@ class BuyerOnboardingVerificationBloc
       activateBuyerWallet: event.activate,
       status: BuyerVerificationStatus.inProgress,
     ));
+    _saveDraft(state);
   }
 
   void _onPaymentPreferenceSelected(
@@ -544,6 +603,7 @@ class BuyerOnboardingVerificationBloc
       activateBuyerWallet: event.activateBuyerWallet,
       currentStep: BuyerVerificationStep.permissionsSetup,
     ));
+    _saveDraft(state);
   }
 
   void _onSinglePermissionToggled(
@@ -557,6 +617,7 @@ class BuyerOnboardingVerificationBloc
     } else if (event.permissionType == 'camera') {
       emit(state.copyWith(cameraPermissionGranted: event.isGranted));
     }
+    _saveDraft(state);
   }
 
   void _onPermissionsUpdated(
@@ -569,6 +630,7 @@ class BuyerOnboardingVerificationBloc
       cameraPermissionGranted: event.cameraGranted,
       currentStep: BuyerVerificationStep.completionSuccess,
     ));
+    _saveDraft(state);
   }
 
   Future<void> _onCompleteVerificationSubmitted(

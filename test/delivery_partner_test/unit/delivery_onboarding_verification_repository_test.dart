@@ -45,6 +45,10 @@ void main() {
 
     when(() => mockAuth.currentUser).thenReturn(mockUser);
     when(() => mockUser.uid).thenReturn('partner_uid_123');
+    when(() => mockUser.displayName).thenReturn('Rahul Kumar');
+    when(() => mockUser.photoURL).thenReturn(null);
+    when(() => mockUser.updateDisplayName(any())).thenAnswer((_) async {});
+    when(() => mockUser.updatePhotoURL(any())).thenAnswer((_) async {});
 
     repository = DeliveryOnboardingVerificationRepository(
       firestore: mockFirestore,
@@ -143,6 +147,52 @@ void main() {
 
       await repository.submitFullKycApplication('partner_uid_123', payload);
       verify(() => mockBatch.commit()).called(1);
+    });
+
+    test('saveDraftState persists draft data to Firestore with merge', () async {
+      final mockCol = MockCollectionReference();
+      final mockDoc = MockDocumentReference();
+
+      when(() => mockFirestore.collection('delivery_partners'))
+          .thenReturn(mockCol);
+      when(() => mockCol.doc('partner_uid_123')).thenReturn(mockDoc);
+      when(() => mockDoc.set(any(), any())).thenAnswer((_) async {});
+
+      await repository.saveDraftState('partner_uid_123', {
+        'name': 'arun',
+        'currentStepIndex': 1,
+      });
+
+      verify(() => mockDoc.set(any(), any())).called(1);
+    });
+
+    test('waitForCurrentUser returns currentUser if already available', () async {
+      final user = await repository.waitForCurrentUser();
+      expect(user, isNotNull);
+      expect(user?.uid, 'partner_uid_123');
+    });
+
+    test('watchPartnerProfile emits map when snapshot changes', () async {
+      final mockCol = MockCollectionReference();
+      final mockDoc = MockDocumentReference();
+      final mockSnap = MockDocumentSnapshot();
+
+      when(() => mockFirestore.collection('delivery_partners'))
+          .thenReturn(mockCol);
+      when(() => mockCol.doc('partner_uid_123')).thenReturn(mockDoc);
+      when(() => mockDoc.snapshots())
+          .thenAnswer((_) => Stream.value(mockSnap));
+      when(() => mockSnap.exists).thenReturn(true);
+      when(() => mockSnap.data()).thenReturn({
+        'name': 'Rahul Kumar',
+        'city': 'Chennai',
+      });
+
+      final stream = repository.watchPartnerProfile('partner_uid_123');
+      final result = await stream.first;
+
+      expect(result['name'], 'Rahul Kumar');
+      expect(result['city'], 'Chennai');
     });
   });
 }

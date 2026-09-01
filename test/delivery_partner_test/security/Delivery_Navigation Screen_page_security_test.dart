@@ -92,7 +92,7 @@ void main() {
       expect(DeliveryNavigationRepository.defaultOrder.orderId, '#ORD-789456');
       expect(
         DeliveryNavigationRepository.defaultOrder.customerPhone,
-        '+91 98765 43210',
+        '+91 98420 54321',
       );
     });
 

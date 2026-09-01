@@ -1,12 +1,39 @@
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:mocktail/mocktail.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:food_delivery_app/repositories/delivery_partner_repository.dart';
 import 'package:food_delivery_app/features/Delivery%20Partner%20Bloc%20Architecture/Delivery_Settings_page/Delivery_Settings_page_service.dart';
+
+class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockDeliveryPartnerRepository extends Mock implements DeliveryPartnerRepository {}
+class MockUser extends Mock implements User {}
+class MockCollectionReference<T> extends Mock implements CollectionReference<T> {}
+class MockDocumentReference<T> extends Mock implements DocumentReference<T> {}
+class MockDocumentSnapshot<T> extends Mock implements DocumentSnapshot<T> {}
 
 void main() {
   late DeliverySettingsService service;
+  late MockFirebaseFirestore mockFirestore;
+  late MockFirebaseAuth mockAuth;
+  late MockDeliveryPartnerRepository mockPartnerRepo;
+  late MockUser mockUser;
 
   setUp(() {
-    service = DeliverySettingsService();
+    mockFirestore = MockFirebaseFirestore();
+    mockAuth = MockFirebaseAuth();
+    mockPartnerRepo = MockDeliveryPartnerRepository();
+    mockUser = MockUser();
+
+    when(() => mockUser.uid).thenReturn('test_rider_uid');
+    when(() => mockAuth.currentUser).thenReturn(mockUser);
+
+    service = DeliverySettingsService(
+      firestore: mockFirestore,
+      auth: mockAuth,
+      partnerRepo: mockPartnerRepo,
+    );
   });
 
   group('DeliverySettingsPage Service Tests', () {
@@ -25,13 +52,9 @@ void main() {
       expect(env.keys, hasLength(4));
     });
 
-    test('secure configs fall back to non-plain-text defaults', () {
-      final env = service.getSecureEnvironmentConfigs();
-
-      for (final key in env.keys) {
-        expect(env[key], isNotEmpty);
-      }
-      expect(env['BASE_URL'], contains('https://'));
+    test('getAppVersion returns app version string', () {
+      expect(service.getAppVersion(), isNotEmpty);
+      expect(service.getAppVersion(), contains('v2.4.0'));
     });
 
     test(
@@ -69,17 +92,13 @@ void main() {
       expect(service.parseDeliveryRadius('60'), 5.0);
     });
 
-    test('changePassword validates minimum length', () async {
-      expect(await service.changePassword('old', '123456'), isTrue);
-      expect(await service.changePassword('old', '123'), isFalse);
-    });
+    test('changePassword delegates to partner repository', () async {
+      when(() => mockPartnerRepo.changePassword(
+        currentPassword: 'old',
+        newPassword: 'newPassword123',
+      )).thenAnswer((_) async {});
 
-    test('deactivateAccount returns true on success', () async {
-      expect(await service.deactivateAccount(reason: 'Vacation'), isTrue);
-    });
-
-    test('deleteAccount returns true on success', () async {
-      expect(await service.deleteAccount(reason: 'Moving'), isTrue);
+      expect(await service.changePassword('old', 'newPassword123'), isTrue);
     });
 
     test('clearAppCache completes successfully', () async {

@@ -35,6 +35,10 @@ abstract class IBuyerOnboardingVerificationRepository {
   });
 
   Future<Map<String, dynamic>> getCurrentUserVerificationData(String userId);
+
+  Future<User?> waitForCurrentUser({Duration timeout = const Duration(milliseconds: 300)});
+
+  Future<void> saveDraftState(String userId, Map<String, dynamic> draftData);
 }
 
 class BuyerOnboardingVerificationRepository
@@ -267,30 +271,113 @@ class BuyerOnboardingVerificationRepository
   }
 
   @override
+  Future<User?> waitForCurrentUser({Duration timeout = const Duration(milliseconds: 300)}) async {
+    if (auth.currentUser != null) return auth.currentUser;
+    if (!kIsWeb) return auth.currentUser;
+    try {
+      return await auth
+          .authStateChanges()
+          .firstWhere((user) => user != null)
+          .timeout(timeout, onTimeout: () => auth.currentUser);
+    } catch (_) {
+      return auth.currentUser;
+    }
+  }
+
+  @override
+  Future<void> saveDraftState(String userId, Map<String, dynamic> draftData) async {
+    try {
+      await firestore.collection('buyer_user').doc(userId).set({
+        ...draftData,
+        'draftUpdatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  @override
   Future<Map<String, dynamic>> getCurrentUserVerificationData(String userId) async {
     try {
+      final Map<String, dynamic> result = {};
+
+      // 1. Primary buyer profile document in `buyer_user`
       final doc = await firestore.collection('buyer_user').doc(userId).get();
-      Map<String, dynamic> result = {};
       if (doc.exists && doc.data() != null) {
-        result = Map<String, dynamic>.from(doc.data()!);
+        result.addAll(doc.data()!);
       }
-      // If address details are partially stored in subcollection, merge them
-      final addrDoc = await firestore.collection('buyer_user').doc(userId).collection('addresses').doc('addr_primary').get();
-      if (addrDoc.exists && addrDoc.data() != null) {
-        final addrData = addrDoc.data()!;
-        if ((result['address'] == null || result['address'].toString().isEmpty) && addrData['fullAddress'] != null) {
-          result['address'] = addrData['fullAddress'];
+
+      // 2. Primary address in subcollection
+      try {
+        final addrDoc = await firestore.collection('buyer_user').doc(userId).collection('addresses').doc('addr_primary').get();
+        if (addrDoc.exists && addrDoc.data() != null) {
+          final addrData = addrDoc.data()!;
+          if ((result['address'] == null || result['address'].toString().isEmpty) && addrData['fullAddress'] != null) {
+            result['address'] = addrData['fullAddress'];
+          }
+          if ((result['houseFlatNo'] == null || result['houseFlatNo'].toString().isEmpty) && addrData['houseFlatNo'] != null) {
+            result['houseFlatNo'] = addrData['houseFlatNo'];
+          }
+          if ((result['landmark'] == null || result['landmark'].toString().isEmpty) && addrData['landmark'] != null) {
+            result['landmark'] = addrData['landmark'];
+          }
+          if ((result['selectedAddressType'] == null || result['selectedAddressType'].toString().isEmpty) && addrData['tag'] != null) {
+            result['selectedAddressType'] = addrData['tag'];
+          }
         }
-        if ((result['houseFlatNo'] == null || result['houseFlatNo'].toString().isEmpty) && addrData['houseFlatNo'] != null) {
-          result['houseFlatNo'] = addrData['houseFlatNo'];
+      } catch (_) {}
+
+      // 3. Fallback to `users` collection if name/email/phone missing
+      if (result['name'] == null && result['fullName'] == null) {
+        try {
+          final userDoc = await firestore.collection('users').doc(userId).get();
+          if (userDoc.exists && userDoc.data() != null) {
+            final userData = userDoc.data()!;
+            if (userData.containsKey('name')) result['name'] = userData['name'];
+            if (userData.containsKey('displayName')) result['displayName'] = userData['displayName'];
+            if (userData.containsKey('email')) result['email'] = userData['email'];
+            if (userData.containsKey('phone')) result['phone'] = userData['phone'];
+            if (userData.containsKey('phoneNumber')) result['phoneNumber'] = userData['phoneNumber'];
+            if (userData.containsKey('avatarUrl')) result['avatarUrl'] = userData['avatarUrl'];
+            if (userData.containsKey('photoUrl')) result['photoUrl'] = userData['photoUrl'];
+          }
+        } catch (_) {}
+      }
+
+      // 4. Fallback to FirebaseAuth currentUser
+      final user = auth.currentUser;
+      if (user != null) {
+        final authDisplayName = user.displayName?.trim() ?? '';
+        final authEmail = user.email?.trim() ?? '';
+        final authPhone = user.phoneNumber?.trim() ?? '';
+        final authPhoto = user.photoURL?.trim() ?? '';
+
+        if ((result['name'] == null || result['name'].toString().trim().isEmpty) && authDisplayName.isNotEmpty) {
+          result['name'] = authDisplayName;
         }
-        if ((result['landmark'] == null || result['landmark'].toString().isEmpty) && addrData['landmark'] != null) {
-          result['landmark'] = addrData['landmark'];
+        if ((result['displayName'] == null || result['displayName'].toString().trim().isEmpty) && authDisplayName.isNotEmpty) {
+          result['displayName'] = authDisplayName;
         }
-        if ((result['selectedAddressType'] == null || result['selectedAddressType'].toString().isEmpty) && addrData['tag'] != null) {
-          result['selectedAddressType'] = addrData['tag'];
+        if ((result['email'] == null || result['email'].toString().trim().isEmpty) && authEmail.isNotEmpty) {
+          result['email'] = authEmail;
+        }
+        if ((result['phone'] == null || result['phone'].toString().trim().isEmpty) &&
+            (result['phoneNumber'] == null || result['phoneNumber'].toString().trim().isEmpty) &&
+            authPhone.isNotEmpty) {
+          result['phone'] = authPhone;
+        }
+        if ((result['avatarUrl'] == null || result['avatarUrl'].toString().trim().isEmpty) && authPhoto.isNotEmpty) {
+          result['avatarUrl'] = authPhoto;
         }
       }
+
+      // 5. Name normalization
+      final resolvedName = (result['fullName'] ?? result['name'] ?? result['displayName'] ?? '').toString();
+      if (resolvedName.isNotEmpty) {
+        result['fullName'] = resolvedName;
+        if (result['displayName'] == null || result['displayName'].toString().trim().isEmpty) {
+          result['displayName'] = resolvedName;
+        }
+      }
+
       return result;
     } catch (e) {
       debugPrint('Error getting buyer verification data: $e');

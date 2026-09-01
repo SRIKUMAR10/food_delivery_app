@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'Delivery_Settings_page_event.dart';
 import 'Delivery_Settings_page_state.dart';
@@ -8,6 +9,7 @@ class DeliverySettingsBloc
     extends Bloc<DeliverySettingsEvent, DeliverySettingsState> {
   final DeliverySettingsRepositoryBase repository;
   final DeliverySettingsServiceBase service;
+  StreamSubscription<DeliverySettingsState>? _settingsSubscription;
 
   DeliverySettingsBloc({
     DeliverySettingsRepositoryBase? repository,
@@ -16,6 +18,7 @@ class DeliverySettingsBloc
         service = service ?? DeliverySettingsService(),
         super(const DeliverySettingsState()) {
     on<DeliverySettingsInitEvent>(_onInit);
+    on<DeliverySettingsStreamUpdatedEvent>(_onStreamUpdated);
     on<DeliverySettingsToggleNotificationEvent>(_onToggleNotification);
     on<DeliverySettingsToggleAutoAcceptEvent>(_onToggleAutoAccept);
     on<DeliverySettingsToggleDarkModeEvent>(_onToggleDarkMode);
@@ -67,15 +70,75 @@ class DeliverySettingsBloc
 
       emit(_syncItems(settings.copyWith(
         status: DeliverySettingsStatus.loaded,
-        localeCode: state.localeCode,
+        localeCode: state.localeCode.isNotEmpty ? state.localeCode : settings.localeCode,
         clearError: true,
       )));
+
+      // Listen to real-time changes
+      await _settingsSubscription?.cancel();
+      _settingsSubscription = repository.watchSettings().listen(
+        (updated) {
+          add(DeliverySettingsStreamUpdatedEvent(updated.toJson()));
+        },
+        onError: (_) {},
+      );
     } catch (e) {
       emit(state.copyWith(
         status: DeliverySettingsStatus.error,
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       ));
     }
+  }
+
+  void _onStreamUpdated(
+    DeliverySettingsStreamUpdatedEvent event,
+    Emitter<DeliverySettingsState> emit,
+  ) {
+    if (state.saveStatus == DeliverySettingsSaveStatus.saving) {
+      return; // Do not overwrite state while a save operation is in progress
+    }
+    final incoming = DeliverySettingsState.fromJson(event.data);
+    final double updatedEstimate = incoming.estimatedDailyEarnings > 0
+        ? incoming.estimatedDailyEarnings
+        : (incoming.todayEarnings > 0
+            ? incoming.todayEarnings * (incoming.deliveryRadius / 5.0).clamp(0.8, 2.5)
+            : (incoming.totalEarnings > 0 && incoming.completedOrdersCount > 0)
+                ? (incoming.totalEarnings / incoming.completedOrdersCount) * 12.0 * (incoming.deliveryRadius / 5.0).clamp(0.8, 2.5)
+                : incoming.deliveryRadius * 240.0);
+
+    emit(_syncItems(state.copyWith(
+      status: DeliverySettingsStatus.loaded,
+      notificationsEnabled: incoming.notificationsEnabled,
+      autoAcceptEnabled: incoming.autoAcceptEnabled,
+      darkModeEnabled: incoming.darkModeEnabled,
+      sunModeEnabled: incoming.sunModeEnabled,
+      oledModeEnabled: incoming.oledModeEnabled,
+      deliveryRadius: incoming.deliveryRadius,
+      languageCode: incoming.languageCode,
+      localeCode: incoming.localeCode,
+      soundAlertsEnabled: incoming.soundAlertsEnabled,
+      vibrationAlertsEnabled: incoming.vibrationAlertsEnabled,
+      highAccuracyGps: incoming.highAccuracyGps,
+      backgroundLocationEnabled: incoming.backgroundLocationEnabled,
+      biometricLockEnabled: incoming.biometricLockEnabled,
+      twoFactorAuthEnabled: incoming.twoFactorAuthEnabled,
+      dataSharingConsent: incoming.dataSharingConsent,
+      isAccountDeactivated: incoming.isAccountDeactivated,
+      partnerId: incoming.partnerId,
+      partnerName: incoming.partnerName,
+      phone: incoming.phone,
+      email: incoming.email,
+      vehicleType: incoming.vehicleType,
+      vehicleNumber: incoming.vehicleNumber,
+      bankName: incoming.bankName,
+      bankAccountNumber: incoming.bankAccountNumber,
+      bankAccountStatus: incoming.bankAccountStatus,
+      todayEarnings: incoming.todayEarnings,
+      totalEarnings: incoming.totalEarnings,
+      completedOrdersCount: incoming.completedOrdersCount,
+      estimatedDailyEarnings: updatedEstimate,
+      appVersion: incoming.appVersion,
+    )));
   }
 
   void _onToggleNotification(
@@ -147,8 +210,16 @@ class DeliverySettingsBloc
     Emitter<DeliverySettingsState> emit,
   ) {
     final radius = event.radius.clamp(1.0, 20.0).toDouble();
+    // Dynamic recalculation of estimated daily earnings when radius changes
+    final double updatedEstimate = state.todayEarnings > 0
+        ? state.todayEarnings * (radius / 5.0).clamp(0.8, 2.5)
+        : (state.totalEarnings > 0 && state.completedOrdersCount > 0)
+            ? (state.totalEarnings / state.completedOrdersCount) * 12.0 * (radius / 5.0).clamp(0.8, 2.5)
+            : radius * 240.0;
+
     emit(_syncItems(state.copyWith(
       deliveryRadius: radius,
+      estimatedDailyEarnings: updatedEstimate,
       status: DeliverySettingsStatus.loaded,
       saveStatus: DeliverySettingsSaveStatus.idle,
       clearError: true,
@@ -351,9 +422,16 @@ class DeliverySettingsBloc
     );
     return current.copyWith(items: items);
   }
+
+  @override
+  Future<void> close() {
+    _settingsSubscription?.cancel();
+    return super.close();
+  }
 }
 
 /// Standardized Feature-Architecture Alias for SettingsBloc
 typedef SettingsBloc = DeliverySettingsBloc;
+
 
 

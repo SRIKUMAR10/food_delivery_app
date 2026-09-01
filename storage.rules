@@ -15,6 +15,24 @@ service firebase.storage {
       return request.resource.size < 5 * 1024 * 1024;
     }
 
+    // ── Delivery Partner KYC Documents & Avatars ────────────────────────────
+    // Allows delivery partners to upload KYC documents, vehicle photos, and selfies.
+    match /delivery_partner_kyc_documents/{partnerId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if (request.resource.contentType.matches('image/.*') ||
+                       request.resource.contentType == 'application/pdf') &&
+                      request.resource.size < 20 * 1024 * 1024;
+      allow delete: if isAuthenticated() && (request.auth.uid == partnerId || request.auth.token.role == 'admin');
+    }
+
+    match /delivery_partners/{partnerId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if (request.resource.contentType.matches('image/.*') ||
+                       request.resource.contentType == 'application/pdf') &&
+                      request.resource.size < 20 * 1024 * 1024;
+      allow delete: if isAuthenticated() && (request.auth.uid == partnerId || request.auth.token.role == 'admin');
+    }
+
     // ── Seller KYC Documents ──────────────────────────────────────────────
     // Isolated per seller UID: only the owning authenticated seller can upload KYC documents (images / PDFs up to 15MB).
     match /seller_kyc_documents/{sellerId}/{documentId} {

@@ -114,7 +114,7 @@ void main() {
       }
 
       expect(tester.takeException(), isNull);
-      expect(find.text('Documents Overview'), findsOneWidget);
+      expect(find.text('Documents & Verification'), findsOneWidget);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('dp_nav_documents')),

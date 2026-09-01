@@ -198,5 +198,60 @@ void main() {
         ),
       ],
     );
+
+    blocTest<DeliveryLoginPageBloc, DeliveryLoginPageState>(
+      'DeliveryLoginInitEvent preserves pre-existing state.phone when getSavedPhone is null',
+      build: () {
+        when(() => mockService.checkNetworkConnectivity()).thenAnswer((_) async => true);
+        when(() => mockRepository.getSavedPhone()).thenAnswer((_) async => null);
+        return bloc;
+      },
+      seed: () => const DeliveryLoginPageState(phone: '9842730278'),
+      act: (b) => b.add(const DeliveryLoginInitEvent()),
+      expect: () => [
+        const DeliveryLoginPageState(phone: '9842730278', status: DeliveryLoginStatus.loading),
+        const DeliveryLoginPageState(
+          phone: '9842730278',
+          status: DeliveryLoginStatus.initial,
+          password: '',
+          isRememberMeChecked: false,
+          errorMessage: null,
+        ),
+      ],
+    );
+
+    blocTest<DeliveryLoginPageBloc, DeliveryLoginPageState>(
+      'DeliveryLoginSubmittedEvent with explicit phone and password succeeds when state was empty',
+      build: () {
+        when(() => mockService.checkNetworkConnectivity()).thenAnswer((_) async => true);
+        when(() => mockRepository.loginWithPhone('+919842730278', 'velu123')).thenAnswer(
+          (_) async => DeliveryPartnerModel(
+            id: 'partner-velu',
+            phoneNumber: '+919842730278',
+            onboardingCompleted: true,
+            createdAt: DateTime(2024),
+            updatedAt: DateTime(2024),
+          ),
+        );
+        when(() => mockRepository.saveSavedPhone('')).thenAnswer((_) async {});
+        return bloc;
+      },
+      act: (b) => b.add(const DeliveryLoginSubmittedEvent(
+        phone: '9842730278',
+        password: 'velu123',
+      )),
+      expect: () => [
+        const DeliveryLoginPageState(
+          phone: '9842730278',
+          password: 'velu123',
+          status: DeliveryLoginStatus.loading,
+        ),
+        isA<DeliveryLoginPageState>()
+            .having((s) => s.status, 'status', DeliveryLoginStatus.success)
+            .having((s) => s.isLoggedIn, 'isLoggedIn', true)
+            .having((s) => s.isOnboardingCompleted, 'isOnboardingCompleted', true)
+            .having((s) => s.partner?.id, 'partner.id', 'partner-velu'),
+      ],
+    );
   });
 }

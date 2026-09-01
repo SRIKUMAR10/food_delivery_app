@@ -27,4 +27,5 @@ abstract interface class ISellerProfileRepository {
     required String fileName,
     required List<int> fileBytes,
   });
+  Future<void> saveDraftState(String sellerId, Map<String, dynamic> draftData);
 }

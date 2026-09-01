@@ -149,22 +149,15 @@ class _DeliveryOtpVerificationPageViewState
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text(
-                      'Account Created Successfully! Please complete your 8-step verification.',
+                      'Account created successfully! Please log in with your credentials.',
                     ),
                     backgroundColor: DeliveryAppColors.primary,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
                 Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/deliveryOnboardingVerification',
+                  '/deliveryLogin',
                   (route) => false,
-                  arguments: {
-                    'fullName': state.name,
-                    'displayName': state.name,
-                    'phone': state.phone,
-                    'email': state.email,
-                    'isPhoneVerified': true,
-                  },
                 );
               }
             },

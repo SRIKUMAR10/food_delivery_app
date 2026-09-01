@@ -285,6 +285,84 @@ class GooglePlacesService {
     return const <GooglePlacePrediction>[];
   }
 
+  /// Searches world-wide cities matching a query using Google Places / OpenStreetMap.
+  Future<List<GooglePlacePrediction>> searchCities(String query) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) return const [];
+
+    // 1. Google Places Autocomplete API with types=(cities) on non-web platforms if key present
+    if (!kIsWeb && _apiKey.isNotEmpty && !_apiKey.startsWith('your_') && !_apiKey.startsWith('AIzaSyDummy')) {
+      try {
+        final uriBuilder = Uri.https('maps.googleapis.com', '/maps/api/place/autocomplete/json', {
+          'input': cleanQuery,
+          'key': _apiKey,
+          'types': '(cities)',
+        });
+
+        final response = await _httpClient.get(uriBuilder).timeout(const Duration(seconds: 4));
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body) as Map<String, dynamic>;
+          final status = data['status']?.toString();
+          if (status == 'OK' || status == 'ZERO_RESULTS') {
+            final predictions = data['predictions'] as List<dynamic>? ?? [];
+            if (predictions.isNotEmpty) {
+              return predictions
+                  .map((p) => GooglePlacePrediction.fromJson(p as Map<String, dynamic>))
+                  .toList();
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Google Places City search error: $e');
+      }
+    }
+
+    // 2. OpenStreetMap Nominatim City Search Fallback (CORS enabled for Web and Global)
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+        'city': cleanQuery,
+        'format': 'json',
+        'addressdetails': '1',
+        'limit': '10',
+      });
+
+      final response = await _httpClient.get(
+        uri,
+        headers: kIsWeb ? null : {'User-Agent': 'FoodDeliveryApp/1.0 (contact@example.com)'},
+      ).timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> list = json.decode(response.body);
+        if (list.isNotEmpty) {
+          return list.map((item) {
+            final map = item as Map<String, dynamic>;
+            final addr = (map['address'] as Map<String, dynamic>?) ?? {};
+            final cityName = addr['city']?.toString() ??
+                addr['town']?.toString() ??
+                addr['municipality']?.toString() ??
+                addr['village']?.toString() ??
+                (map['name']?.toString() ?? '');
+            final stateName = addr['state']?.toString() ?? addr['county']?.toString() ?? '';
+            final countryName = addr['country']?.toString() ?? '';
+            final secondary = [stateName, countryName].where((s) => s.isNotEmpty).join(', ');
+
+            return GooglePlacePrediction(
+              placeId: map['place_id']?.toString() ?? map['osm_id']?.toString() ?? '',
+              mainText: cityName.isNotEmpty ? cityName : (map['display_name']?.toString().split(',').first ?? cleanQuery),
+              secondaryText: secondary.isNotEmpty ? secondary : (map['display_name']?.toString() ?? ''),
+              description: map['display_name']?.toString() ?? cityName,
+              types: const ['city'],
+            );
+          }).where((p) => p.mainText.isNotEmpty).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('Nominatim City Search error: $e');
+    }
+
+    return const [];
+  }
+
   /// Fetches place details including precise coordinates and address components.
   Future<GooglePlaceDetails?> getPlaceDetails(
     String placeId, {
