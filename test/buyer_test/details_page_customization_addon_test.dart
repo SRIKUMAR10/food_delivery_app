@@ -255,5 +255,77 @@ void main() {
       // Verify that checkboxes are rendered
       expect(find.byIcon(Icons.check), findsNWidgets(2));
     });
+
+    testWidgets('Single Item Standard: Renders complete Price & Tax Breakdown card with 100% precision', (tester) async {
+      tester.view.physicalSize = const Size(1200, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final singleProduct = FoodItem(
+        id: 'single_chicken_001',
+        name: 'Crispy Fried Chicken',
+        price: 1180.0,
+        basePrice: 1000.0,
+        discountPercentage: 11.0,
+        gstPercentage: 18.0,
+        discountPrice: 1050.0,
+        taxType: 'intraState',
+        description: 'Crispy Fried Chicken',
+        category: 'Chicken',
+        sellerId: 's1',
+      );
+
+      await tester.pumpWidget(
+        MultiRepositoryProvider(
+          providers: [
+            RepositoryProvider<IAuthService>.value(value: mockAuthService),
+            RepositoryProvider<ISellerRepository>.value(value: mockSellerRepository),
+          ],
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider<FavoritesBloc>.value(value: mockFavoritesBloc),
+              BlocProvider<CartBloc>.value(value: mockCartBloc),
+              BlocProvider<DetailsBloc>.value(value: mockDetailsBloc),
+            ],
+            child: MaterialApp(
+              home: DetailsPageUI(
+                id: singleProduct.id,
+                name: singleProduct.name,
+                price: singleProduct.price,
+                description: 'Crispy Fried Chicken',
+                sellerId: singleProduct.sellerId,
+                foodItem: singleProduct,
+                detailsBloc: mockDetailsBloc,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify Price & Tax Breakdown card header and badge
+      expect(find.text('Price & Tax Breakdown'), findsOneWidget);
+      expect(find.text('Inclusive of all taxes'), findsOneWidget);
+
+      // Verify Base Item Price: ₹1000.00
+      expect(find.text('₹1000.00'), findsOneWidget);
+
+      // Verify Discount row: -₹110.00 (11% OFF)
+      expect(find.text('Discount (11% OFF)'), findsOneWidget);
+      expect(find.text('-₹110.00'), findsOneWidget);
+
+      // Verify CGST and SGST at 9.0%: ₹80.10 each
+      expect(find.text('CGST (9.0%)'), findsOneWidget);
+      expect(find.text('SGST (9.0%)'), findsOneWidget);
+      expect(find.text('₹80.10'), findsNWidgets(2));
+
+      // Verify Round Off: -₹0.20
+      expect(find.text('Round Off'), findsOneWidget);
+      expect(find.text('-₹0.20'), findsOneWidget);
+
+      // Verify Total Item Price label
+      expect(find.text('Total Item Price'), findsOneWidget);
+    });
   });
 }

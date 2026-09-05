@@ -239,11 +239,25 @@ class FirebaseProductRepository implements IProductRepository {
   @override
   Future<void> updateProductPrice(String productId, double newPrice, double newDiscountPrice, String sellerId) async {
     try {
-      await _firestore.collection('products').doc(productId).update({
+      final docSnap = await _firestore.collection('products').doc(productId).get();
+      final data = docSnap.data();
+      double discountPercentage = 0.0;
+      if (data != null && newDiscountPrice > 0 && newPrice > newDiscountPrice) {
+        final rawPct = ((newPrice - newDiscountPrice) / newPrice) * 100.0;
+        discountPercentage = ((rawPct * 100).roundToDouble()) / 100.0;
+        if ((discountPercentage - discountPercentage.round()).abs() < 0.05) {
+          discountPercentage = discountPercentage.roundToDouble();
+        }
+      }
+      final updateData = <String, dynamic>{
         'price': newPrice,
         'discountPrice': newDiscountPrice,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
+      if (discountPercentage > 0) {
+        updateData['discountPercentage'] = discountPercentage;
+      }
+      await _firestore.collection('products').doc(productId).update(updateData);
     } catch (e) {
       throw Exception('Failed to update product price: $e');
     }

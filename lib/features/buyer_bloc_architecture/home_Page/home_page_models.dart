@@ -158,6 +158,9 @@ class FoodItem {
   /// Discounted price (if any).
   final double discountPrice;
 
+  /// Explicit discount percentage.
+  final double discountPercentage;
+
   /// Short product description shown on the Details Page.
   final String description;
 
@@ -202,6 +205,7 @@ class FoodItem {
     this.basePrice = 0.0,
     this.gstPercentage = 5.0,
     this.discountPrice = 0.0,
+    this.discountPercentage = 0.0,
     required this.description,
     required this.category,
     this.image,

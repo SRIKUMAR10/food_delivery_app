@@ -123,11 +123,25 @@ class ProductRepositoryImpl implements ProductRepository {
 
   @override
   Future<void> updateProductPrice(String id, double price, double discountPrice) async {
-    await _firestore.collection('products').doc(id).update({
+    final docSnap = await _firestore.collection('products').doc(id).get();
+    final data = docSnap.data();
+    double discountPercentage = 0.0;
+    if (data != null && discountPrice > 0 && price > discountPrice) {
+      final rawPct = ((price - discountPrice) / price) * 100.0;
+      discountPercentage = ((rawPct * 100).roundToDouble()) / 100.0;
+      if ((discountPercentage - discountPercentage.round()).abs() < 0.05) {
+        discountPercentage = discountPercentage.roundToDouble();
+      }
+    }
+    final updateData = <String, dynamic>{
       'price': price,
       'discountPrice': discountPrice,
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    };
+    if (discountPercentage > 0) {
+      updateData['discountPercentage'] = discountPercentage;
+    }
+    await _firestore.collection('products').doc(id).update(updateData);
   }
 
   @override

@@ -227,24 +227,46 @@ class PricingEngine {
         ? selectedVariant.basePrice
         : (product.basePrice > 0 ? product.basePrice : product.price);
 
-    final double discountPct = selectedVariant != null
+    final double rawDiscountPct = selectedVariant != null
         ? selectedVariant.discountPercentage
-        : (product.price > 0 && product.discountPrice > 0 && product.discountPrice < product.price
-            ? ((product.price - product.discountPrice) / product.price) * 100.0
-            : 0.0);
+        : (product.discountPercentage > 0
+            ? product.discountPercentage
+            : (product.price > 0 && product.discountPrice > 0 && product.discountPrice < product.price
+                ? ((product.price - product.discountPrice) / product.price) * 100.0
+                : (product.basePrice > 0 && product.discountPrice > 0 && product.discountPrice < product.basePrice
+                    ? ((product.basePrice - product.discountPrice) / product.basePrice) * 100.0
+                    : 0.0)));
+    final double discountPct = (rawDiscountPct - rawDiscountPct.round()).abs() < 0.05
+        ? rawDiscountPct.roundToDouble()
+        : rawDiscountPct;
 
-    final double discountAmt = rawBase * (discountPct / 100.0);
+    final double discountAmt =
+        ((rawBase * (discountPct / 100.0)) * 100).roundToDouble() / 100.0;
     final double taxableBase = (rawBase - discountAmt).clamp(0.0, double.infinity);
 
     final double baseGstRate = selectedVariant != null && selectedVariant.gstPercentage > 0
         ? selectedVariant.gstPercentage
         : (product.gstPercentage > 0 ? product.gstPercentage : 5.0);
 
-    final double baseGstAmount = (taxableBase * (baseGstRate / 100.0) * 100).roundToDouble() / 100.0;
-    final double baseHalfGst = (baseGstAmount / 2.0 * 100).roundToDouble() / 100.0;
-    final double baseCgst = isInterState ? 0.0 : baseHalfGst;
-    final double baseSgst = isInterState ? 0.0 : (baseGstAmount - baseHalfGst);
-    final double baseIgst = isInterState ? baseGstAmount : 0.0;
+    final bool baseIsInter = isInterState ||
+        (selectedVariant != null && selectedVariant.taxType == 'interState') ||
+        (product.taxType == 'interState');
+
+    final double baseCgstRate = baseIsInter ? 0.0 : baseGstRate / 2.0;
+    final double baseSgstRate = baseIsInter ? 0.0 : baseGstRate / 2.0;
+    final double baseIgstRate = baseIsInter ? baseGstRate : 0.0;
+
+    final double baseGstAmount =
+        ((taxableBase * (baseGstRate / 100.0)) * 100).roundToDouble() / 100.0;
+    final double baseCgst = baseIsInter
+        ? 0.0
+        : ((taxableBase * (baseCgstRate / 100.0)) * 100).roundToDouble() / 100.0;
+    final double baseSgst = baseIsInter
+        ? 0.0
+        : ((taxableBase * (baseSgstRate / 100.0)) * 100).roundToDouble() / 100.0;
+    final double baseIgst = baseIsInter
+        ? baseGstAmount
+        : 0.0;
     final double baseFinal = taxableBase + baseGstAmount;
 
     final baseTaxLine = TaxLineItem(
@@ -273,18 +295,31 @@ class PricingEngine {
     for (final addon in selectedAddons) {
       final double addonBase = addon.basePrice > 0 ? addon.basePrice : addon.price;
       final double addonDiscountPct = addon.discountPercentage;
-      final double addonDiscountAmt = addonBase * (addonDiscountPct / 100.0);
+      final double addonDiscountAmt =
+          ((addonBase * (addonDiscountPct / 100.0)) * 100).roundToDouble() / 100.0;
       final double addonTaxable = (addonBase - addonDiscountAmt).clamp(0.0, double.infinity);
       final double addonGstRate = addon.gstPercentage >= 0
           ? addon.gstPercentage
           : (strategy == TaxStrategy.restaurantLevel ? baseGstRate : 5.0);
-      final bool addonIsInter = isInterState || addon.taxType == 'interState';
+      final bool addonIsInter = isInterState ||
+          addon.taxType == 'interState' ||
+          baseIsInter;
 
-      final double addonGstAmount = (addonTaxable * (addonGstRate / 100.0) * 100).roundToDouble() / 100.0;
-      final double addonHalfGst = (addonGstAmount / 2.0 * 100).roundToDouble() / 100.0;
-      final double addonCgst = addonIsInter ? 0.0 : addonHalfGst;
-      final double addonSgst = addonIsInter ? 0.0 : (addonGstAmount - addonHalfGst);
-      final double addonIgst = addonIsInter ? addonGstAmount : 0.0;
+      final double addonCgstRate = addonIsInter ? 0.0 : addonGstRate / 2.0;
+      final double addonSgstRate = addonIsInter ? 0.0 : addonGstRate / 2.0;
+      final double addonIgstRate = addonIsInter ? addonGstRate : 0.0;
+
+      final double addonGstAmount =
+          ((addonTaxable * (addonGstRate / 100.0)) * 100).roundToDouble() / 100.0;
+      final double addonCgst = addonIsInter
+          ? 0.0
+          : ((addonTaxable * (addonCgstRate / 100.0)) * 100).roundToDouble() / 100.0;
+      final double addonSgst = addonIsInter
+          ? 0.0
+          : ((addonTaxable * (addonSgstRate / 100.0)) * 100).roundToDouble() / 100.0;
+      final double addonIgst = addonIsInter
+          ? addonGstAmount
+          : 0.0;
       final double addonFinal = ((addonTaxable + addonGstAmount) * 100).roundToDouble() / 100.0;
 
       addonsRawSum += addonBase;
@@ -310,17 +345,17 @@ class PricingEngine {
     }
 
     // 3. Aggregate Totals
-    final double totalBasePrice = rawBase + addonsRawSum;
-    final double totalDiscount = discountAmt + addonsDiscountSum;
-    final double totalTaxableAmount = taxableBase + addonsTaxableSum;
-    final double totalGstAmount = baseGstAmount + addonsGstSum;
-    final double totalCgstAmount = baseCgst + addonsCgstSum;
-    final double totalSgstAmount = baseSgst + addonsSgstSum;
-    final double totalIgstAmount = baseIgst + addonsIgstSum;
+    final double totalBasePrice = ((rawBase + addonsRawSum) * 100).roundToDouble() / 100.0;
+    final double totalDiscount = ((discountAmt + addonsDiscountSum) * 100).roundToDouble() / 100.0;
+    final double totalTaxableAmount = ((taxableBase + addonsTaxableSum) * 100).roundToDouble() / 100.0;
+    final double totalCgstAmount = ((baseCgst + addonsCgstSum) * 100).roundToDouble() / 100.0;
+    final double totalSgstAmount = ((baseSgst + addonsSgstSum) * 100).roundToDouble() / 100.0;
+    final double totalIgstAmount = ((baseIgst + addonsIgstSum) * 100).roundToDouble() / 100.0;
+    final double totalGstAmount = ((baseGstAmount + addonsGstSum) * 100).roundToDouble() / 100.0;
 
     final double rawTotal = totalTaxableAmount + totalGstAmount;
     final double roundedTotal = rawTotal.roundToDouble();
-    final double roundOff = ((roundedTotal - rawTotal) * 100).roundToDouble() / 100.0;
+    final double roundOff = (((roundedTotal - rawTotal)) * 100).roundToDouble() / 100.0;
 
     return ItemPriceBreakdown(
       baseItem: baseTaxLine,

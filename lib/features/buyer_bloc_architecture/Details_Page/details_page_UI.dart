@@ -271,7 +271,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   Product get _asProduct {
     final food = _currentFoodItem;
     if (food != null) {
-      final effectiveGst = food.gstPercentage > 0 ? food.gstPercentage : 5.0;
+      final effectiveGst = food.gstPercentage;
       final effectiveBase = food.basePrice > 0
           ? food.basePrice
           : (food.price > 0 ? (food.price / (1.0 + (effectiveGst / 100.0))) : 0.0);
@@ -282,6 +282,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
         basePrice: effectiveBase,
         gstPercentage: effectiveGst,
         discountPrice: food.discountPrice,
+        discountPercentage: food.discountPercentage,
         status: ProductStatus.values.firstWhere(
           (s) => s.name == food.status,
           orElse: () => ProductStatus.inStock,
@@ -312,8 +313,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
       id: widget.id,
       name: widget.name,
       price: widget.price,
-      basePrice: widget.price > 0 ? (widget.price / 1.05) : 0.0,
-      gstPercentage: 5.0,
+      basePrice: widget.price > 0 ? widget.price : 0.0,
+      gstPercentage: 0.0,
       taxType: 'intraState',
       status: ProductStatus.inStock,
       sellerId: widget.sellerId,
@@ -355,7 +356,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
       for (final str in _selectedAddons) {
         final p = _parseAddonPrice(str);
         final cleanName = str.split('(').first.replaceAll(RegExp(r'[\+\:\₹0-9\.]'), '').trim();
-        final gst = _currentFoodItem?.gstPercentage ?? 5.0;
+        final gst = _currentFoodItem?.gstPercentage ?? 0.0;
         final taxType = _currentFoodItem?.taxType ?? 'intraState';
         final hsn = _currentFoodItem?.hsnCode ?? '996338';
         final base = p > 0 ? (p / (1.0 + (gst / 100.0))) : 0.0;
@@ -390,6 +391,13 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   }
 
   double get _totalAddonsPrice {
+    final breakdown = _currentBreakdown;
+    if (breakdown.addons.isNotEmpty) {
+      return breakdown.addons.fold<double>(
+        0.0,
+        (sum, a) => sum + (a.taxableAmount > 0 ? a.taxableAmount : a.basePrice),
+      );
+    }
     double total = 0.0;
     for (final addon in _resolvedSelectedAddons) {
       total += addon.taxablePrice > 0
@@ -502,11 +510,11 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
         CartItem(
           id: compoundCartId,
           productId: baseProductId,
-          name: widget.name,
+          name: _currentFoodItem?.name.isNotEmpty == true ? _currentFoodItem!.name : widget.name,
           price: _effectivePrice,
-          sellerId: widget.sellerId,
+          sellerId: _currentFoodItem?.sellerId.isNotEmpty == true ? _currentFoodItem!.sellerId : widget.sellerId,
           image: _primaryImage,
-          imageUrls: widget.imageUrls ?? [],
+          imageUrls: _currentFoodItem?.imageUrls.isNotEmpty == true ? _currentFoodItem!.imageUrls : (widget.imageUrls ?? []),
           quantity: quantity,
           selectedAddons: allAddons,
           selectedVariantName: variant?.name,
@@ -923,38 +931,18 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   }
 
   Widget _buildHeaderPrice() {
-    final food = _currentFoodItem;
+    final breakdown = _currentBreakdown;
     final variant = _effectiveSelectedVariant;
+    final food = _currentFoodItem;
 
-    final double effectivePrice;
-    final double originalPrice;
-    final bool hasDiscount;
-    final int discountPercent;
-
-    if (variant != null) {
-      effectivePrice = variant.effectivePrice > 0
-          ? variant.effectivePrice
-          : (variant.price > 0 ? variant.price : variant.basePrice);
-      originalPrice = variant.grossBasePriceWithGst > 0
-          ? variant.grossBasePriceWithGst
-          : (variant.basePrice > 0 ? variant.basePrice : effectivePrice);
-      hasDiscount = variant.discountPercentage > 0 && originalPrice > effectivePrice;
-      discountPercent = variant.discountPercentage.round();
-    } else if (food != null) {
-      effectivePrice = (food.discountPrice > 0 && food.discountPrice < food.price)
-          ? food.discountPrice
-          : (food.price > 0 ? food.price : widget.price);
-      originalPrice = (food.price > 0) ? food.price : widget.price;
-      hasDiscount = food.discountPrice > 0 && food.discountPrice < food.price;
-      discountPercent = hasDiscount
-          ? (((originalPrice - effectivePrice) / originalPrice) * 100).round()
-          : 0;
-    } else {
-      effectivePrice = widget.price;
-      originalPrice = widget.price;
-      hasDiscount = false;
-      discountPercent = 0;
-    }
+    final double effectivePrice = breakdown.baseItem.taxableAmount;
+    final double originalPrice = breakdown.baseItem.basePrice;
+    final bool hasDiscount = breakdown.baseItem.discountAmount > 0;
+    final int discountPercent = variant != null
+        ? variant.discountPercentage.round()
+        : (food != null && food.discountPercentage > 0
+            ? food.discountPercentage.round()
+            : (originalPrice > 0 ? ((breakdown.baseItem.discountAmount / originalPrice) * 100).round() : 0));
 
     return Container(
       margin: const EdgeInsets.only(top: 8, bottom: 4),
@@ -2178,7 +2166,9 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     bool isDiscount = false,
     bool isTax = false,
   }) {
-    final prefix = isDiscount ? '-' : '';
+    final prefix = isDiscount
+        ? '-'
+        : (amount < 0 ? '-' : (title == 'Round Off' && amount > 0 ? '+' : ''));
     final color = isDiscount
         ? Colors.green.shade700
         : (isTax ? Colors.grey.shade600 : const Color(0xFF374151));
@@ -2212,29 +2202,17 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   }
 
   Widget _buildPriceAndQuantityRow() {
+    final breakdown = _currentBreakdown;
     final variant = _effectiveSelectedVariant;
-    final double originalPrice;
-    final bool hasDiscount;
-    final int discountPercent;
+    final food = _currentFoodItem;
 
-    if (variant != null) {
-      final vEff = variant.effectivePrice > 0
-          ? variant.effectivePrice
-          : (variant.price > 0 ? variant.price : variant.basePrice);
-      originalPrice = variant.grossBasePriceWithGst > 0
-          ? variant.grossBasePriceWithGst
-          : (variant.basePrice > 0 ? variant.basePrice : vEff);
-      hasDiscount = variant.discountPercentage > 0 && originalPrice > vEff;
-      discountPercent = variant.discountPercentage.round();
-    } else {
-      final food = _currentFoodItem;
-      originalPrice = (food != null && food.price > 0) ? food.price : widget.price;
-      final discount = food?.discountPrice ?? 0.0;
-      hasDiscount = discount > 0 && discount < originalPrice;
-      discountPercent = hasDiscount
-          ? (((originalPrice - discount) / originalPrice) * 100).round()
-          : 0;
-    }
+    final double originalPrice = breakdown.baseItem.basePrice;
+    final bool hasDiscount = breakdown.baseItem.discountAmount > 0;
+    final int discountPercent = variant != null
+        ? variant.discountPercentage.round()
+        : (food != null && food.discountPercentage > 0
+            ? food.discountPercentage.round()
+            : (originalPrice > 0 ? ((breakdown.baseItem.discountAmount / originalPrice) * 100).round() : 0));
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

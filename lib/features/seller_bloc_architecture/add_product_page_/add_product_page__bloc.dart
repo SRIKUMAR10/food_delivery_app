@@ -357,12 +357,14 @@ class AddProductPageBloc
       double effectiveBasePrice = event.basePrice;
       double effectivePrice = event.price;
       double effectiveDiscountPrice = event.discountPrice ?? 0.0;
+      double effectiveDiscountPercentage = event.discountPercentage ?? state.singleDiscountPercentage;
       int effectiveStock = event.availableStock ?? state.singleStock;
 
       if (effectiveHasVariants && effectiveVariants.isNotEmpty) {
         effectiveBasePrice = effectiveVariants.map((v) => v.basePrice).reduce((a, b) => a < b ? a : b);
         effectivePrice = effectiveVariants.map((v) => v.finalPrice).reduce((a, b) => a < b ? a : b);
         effectiveDiscountPrice = effectiveVariants.map((v) => v.effectivePrice).reduce((a, b) => a < b ? a : b);
+        effectiveDiscountPercentage = effectiveVariants.map((v) => v.discountPercentage).reduce((a, b) => a < b ? a : b);
         effectiveStock = effectiveVariants.fold<int>(0, (sum, v) => sum + (v.trackInventory ? v.stock : 999));
       }
 
@@ -374,6 +376,7 @@ class AddProductPageBloc
         basePrice: effectiveBasePrice,
         gstPercentage: event.gstPercentage,
         discountPrice: effectiveDiscountPrice,
+        discountPercentage: effectiveDiscountPercentage,
         description: event.description,
         prepTime: int.tryParse(event.prepTime ?? '') ?? initial?.prepTime ?? 0,
         calories: int.tryParse(event.calories ?? '') ?? initial?.calories ?? 0,

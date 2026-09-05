@@ -488,6 +488,7 @@ class Product extends Equatable {
   final double basePrice; // Pre-GST
   final double gstPercentage;
   final double discountPrice;
+  final double discountPercentage;
   final String taxType; // 'intraState' (CGST + SGST) or 'interState' (IGST)
   final String currencyCode;
   final List<String> imageUrls;
@@ -531,6 +532,7 @@ class Product extends Equatable {
     this.basePrice = 0.0,
     this.gstPercentage = 0.0,
     this.discountPrice = 0.0,
+    this.discountPercentage = 0.0,
     this.taxType = 'intraState',
     this.currencyCode = 'USD',
     this.imageUrls = const [],
@@ -575,20 +577,30 @@ class Product extends Equatable {
   double get sgstPercentage => taxType == 'intraState' ? gstPercentage / 2.0 : 0.0;
   double get igstPercentage => taxType == 'interState' ? gstPercentage : 0.0;
 
+  /// Computed discount amount
+  double get discountAmount =>
+      ((basePrice * (discountPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+
   /// Computed taxable amount
-  double get taxablePrice => (basePrice - (basePrice * (discountPercentage / 100.0))).clamp(0.0, double.infinity);
+  double get taxablePrice => (basePrice - discountAmount).clamp(0.0, double.infinity);
 
   /// Computed GST tax amount
-  double get gstAmount =>
-      ((taxablePrice * (gstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
-  double get taxAmount => gstAmount;
-  double get finalPrice => effectivePrice;
   double get cgstAmount =>
       ((taxablePrice * (cgstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
   double get sgstAmount =>
       ((taxablePrice * (sgstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
   double get igstAmount =>
       ((taxablePrice * (igstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+  double get gstAmount =>
+      taxType == 'interState' ? igstAmount : (((cgstAmount + sgstAmount) * 100).roundToDouble() / 100.0);
+  double get taxAmount => gstAmount;
+
+  /// Computed final price with GST and discount applied
+  double get finalPrice => (taxablePrice + gstAmount).roundToDouble();
+
+  /// Computed round off adjustment
+  double get roundOff =>
+      (((finalPrice - (taxablePrice + gstAmount))) * 100).roundToDouble() / 100.0;
 
   /// Whether product has size variants
   bool get isVariableProduct => hasVariants || variants.isNotEmpty;
@@ -608,15 +620,10 @@ class Product extends Equatable {
   String? get primaryImage => imageUrls.isNotEmpty ? imageUrls.first : null;
 
   /// Computed final effective price after discount
-  double get effectivePrice =>
-      (discountPrice > 0 && discountPrice < price) ? discountPrice : price;
-
-  /// Computed discount percentage
-  int get discountPercentage {
-    if (discountPrice > 0 && price > 0 && discountPrice < price) {
-      return (((price - discountPrice) / price) * 100).round();
-    }
-    return 0;
+  double get effectivePrice {
+    if (finalPrice > 0) return finalPrice;
+    if (discountPrice > 0 && discountPrice < price) return discountPrice;
+    return price > 0 ? price : basePrice;
   }
 
   /// Computed minimum and maximum price for Range display (e.g. ₹95 – ₹187)
@@ -656,6 +663,7 @@ class Product extends Equatable {
     double? basePrice,
     double? gstPercentage,
     double? discountPrice,
+    double? discountPercentage,
     String? taxType,
     String? currencyCode,
     List<String>? imageUrls,
@@ -699,6 +707,7 @@ class Product extends Equatable {
       basePrice: basePrice ?? this.basePrice,
       gstPercentage: gstPercentage ?? this.gstPercentage,
       discountPrice: discountPrice ?? this.discountPrice,
+      discountPercentage: discountPercentage ?? this.discountPercentage,
       taxType: taxType ?? this.taxType,
       currencyCode: currencyCode ?? this.currencyCode,
       imageUrls: imageUrls ?? this.imageUrls,
@@ -745,6 +754,7 @@ class Product extends Equatable {
     basePrice,
     gstPercentage,
     discountPrice,
+    discountPercentage,
     taxType,
     currencyCode,
     imageUrls,
@@ -789,6 +799,7 @@ class Product extends Equatable {
       'basePrice': basePrice,
       'gstPercentage': gstPercentage,
       'discountPrice': discountPrice,
+      'discountPercentage': discountPercentage,
       'taxType': taxType,
       'cgstAmount': cgstAmount,
       'sgstAmount': sgstAmount,
@@ -890,6 +901,47 @@ class Product extends Equatable {
     if (discountPrice < 0.0) discountPrice = 0.0;
     if (discountPrice > price) discountPrice = price;
 
+    double parsedDiscount = 0.0;
+    if (map['discountPercentage'] != null) {
+      if (map['discountPercentage'] is num) {
+        parsedDiscount = (map['discountPercentage'] as num).toDouble();
+      } else if (map['discountPercentage'] is String) {
+        parsedDiscount = double.tryParse(map['discountPercentage'] as String) ?? 0.0;
+      }
+    }
+    if (parsedDiscount <= 0.0) {
+      if (basePrice > 0 && gstPercentage > 0 && (map['cgstAmount'] != null || map['gstAmount'] != null)) {
+        final double totalTax = (map['gstAmount'] as num?)?.toDouble() ??
+            (((map['cgstAmount'] as num?)?.toDouble() ?? 0.0) +
+                ((map['sgstAmount'] as num?)?.toDouble() ?? 0.0));
+        if (totalTax > 0) {
+          final derivedTaxable = totalTax / (gstPercentage / 100.0);
+          if (derivedTaxable > 0 && derivedTaxable < basePrice) {
+            final rawPct = ((basePrice - derivedTaxable) / basePrice) * 100.0;
+            parsedDiscount = ((rawPct * 100).roundToDouble()) / 100.0;
+            if ((parsedDiscount - parsedDiscount.round()).abs() < 0.05) {
+              parsedDiscount = parsedDiscount.roundToDouble();
+            }
+          }
+        }
+      }
+      if (parsedDiscount <= 0.0) {
+        if (price > 0 && discountPrice > 0 && discountPrice < price) {
+          final rawPct = ((price - discountPrice) / price) * 100.0;
+          parsedDiscount = ((rawPct * 100).roundToDouble()) / 100.0;
+          if ((parsedDiscount - parsedDiscount.round()).abs() < 0.05) {
+            parsedDiscount = parsedDiscount.roundToDouble();
+          }
+        } else if (basePrice > 0 && discountPrice > 0 && discountPrice < basePrice) {
+          final rawPct = ((basePrice - discountPrice) / basePrice) * 100.0;
+          parsedDiscount = ((rawPct * 100).roundToDouble()) / 100.0;
+          if ((parsedDiscount - parsedDiscount.round()).abs() < 0.05) {
+            parsedDiscount = parsedDiscount.roundToDouble();
+          }
+        }
+      }
+    }
+
     if (price <= 0.0 && parsedVariants.isNotEmpty) {
       price = parsedVariants.first.effectivePrice > 0
           ? parsedVariants.first.effectivePrice
@@ -899,6 +951,7 @@ class Product extends Equatable {
           : price;
       if (parsedVariants.first.discountPercentage > 0) {
         discountPrice = price;
+        parsedDiscount = parsedVariants.first.discountPercentage;
       }
     }
 
@@ -962,6 +1015,7 @@ class Product extends Equatable {
       basePrice: basePrice,
       gstPercentage: gstPercentage,
       discountPrice: discountPrice,
+      discountPercentage: parsedDiscount,
       taxType: parsedTaxType,
       currencyCode: map['currencyCode'] ?? 'USD',
       imageUrls: parsedImageUrls,

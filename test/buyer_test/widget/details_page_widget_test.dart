@@ -153,6 +153,7 @@ void main() {
         final foodItem = FoodItem(
           id: '1',
           name: 'Burger',
+          basePrice: 150.0,
           price: 150.0,
           discountPrice: 120.0,
           description: 'Tasty',

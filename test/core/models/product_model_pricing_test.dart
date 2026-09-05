@@ -165,5 +165,43 @@ void main() {
       expect(restored.finalPrice, 189.0);
       expect(restored.itemizedLines.length, 1);
     });
+
+    test('Product model raw fields, discount percentage and statutory tax getters', () {
+      final product = Product(
+        id: 'prod_fried_chicken',
+        name: 'Crispy Fried Chicken',
+        price: 1180.0,
+        basePrice: 1000.0,
+        discountPercentage: 11.0,
+        discountPrice: 1050.0,
+        gstPercentage: 18.0,
+        taxType: 'intraState',
+        status: ProductStatus.inStock,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(product.discountAmount, 110.00);
+      expect(product.taxablePrice, 890.00);
+      expect(product.cgstAmount, 80.10);
+      expect(product.sgstAmount, 80.10);
+      expect(product.gstAmount, 160.20);
+      expect(product.finalPrice, 1050.00);
+      expect(product.roundOff, -0.20);
+
+      final map = product.toMap();
+      expect(map['discountPercentage'], 11.0);
+      expect(map['basePrice'], 1000.0);
+      expect(map['gstPercentage'], 18.0);
+
+      final restored = Product.fromMap('prod_fried_chicken', map);
+      expect(restored.discountPercentage, 11.0);
+      expect(restored.discountAmount, 110.00);
+      expect(restored.taxablePrice, 890.00);
+      expect(restored.cgstAmount, 80.10);
+      expect(restored.sgstAmount, 80.10);
+      expect(restored.finalPrice, 1050.00);
+      expect(restored.roundOff, -0.20);
+    });
   });
 }

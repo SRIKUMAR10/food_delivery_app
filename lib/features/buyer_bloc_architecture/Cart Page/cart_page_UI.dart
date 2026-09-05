@@ -1469,7 +1469,7 @@ class _CartPageUIState extends State<CartPageUI> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'CGST (2.5%): ${_currFmt.format(taxes / 2)}  •  SGST (2.5%): ${_currFmt.format(taxes / 2)}',
+                      'CGST: ${_currFmt.format(taxes / 2)}  •  SGST: ${_currFmt.format(taxes / 2)}',
                       style: const TextStyle(
                         fontSize: 11,
                         color: Color(0xFF64748B),

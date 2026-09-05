@@ -32,6 +32,7 @@ class FoodItemMapper {
       basePrice: product.basePrice,
       gstPercentage: product.gstPercentage,
       discountPrice: product.discountPrice,
+      discountPercentage: product.discountPercentage,
       description: product.description,
       category: product.category,
       // Map the primary image safely

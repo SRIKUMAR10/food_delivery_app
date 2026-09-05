@@ -281,15 +281,14 @@ class _AddProductViewState extends State<AddProductView> {
               _nameController.text = p.name;
               _priceController.text = p.basePrice > 0 ? p.basePrice.toString() : p.price.toString();
 
-              double pct = 0.0;
-              final currentBasePrice = p.basePrice > 0 ? p.basePrice : p.price;
-              if (p.discountPrice > 0 && currentBasePrice > 0) {
-                // Determine discount based on pre-GST base price vs. post-GST final price.
-                // The easiest way is to use the discountPercentage if we stored it,
-                // but since we don't, we can reverse calculate the discount.
-                final basePriceWithGst = currentBasePrice * (1 + (p.gstPercentage / 100));
-                pct = 100 * (1 - (p.discountPrice / basePriceWithGst));
-                if (pct < 0) pct = 0;
+              double pct = p.discountPercentage;
+              if (pct <= 0.0) {
+                final currentBasePrice = p.basePrice > 0 ? p.basePrice : p.price;
+                if (p.discountPrice > 0 && currentBasePrice > 0) {
+                  final basePriceWithGst = currentBasePrice * (1 + (p.gstPercentage / 100));
+                  pct = 100 * (1 - (p.discountPrice / basePriceWithGst));
+                  if (pct < 0) pct = 0;
+                }
               }
               _discountController.text = pct > 0 ? pct.toStringAsFixed(0) : '';
 
@@ -4181,6 +4180,10 @@ class _AddProductViewState extends State<AddProductView> {
       minimumAlert = int.tryParse(_alertController.text);
     }
 
+    final double effectiveDiscountPct = state.hasVariants
+        ? (state.variants.isNotEmpty ? state.variants.map((v) => v.discountPercentage).reduce((a, b) => a < b ? a : b) : 0.0)
+        : (double.tryParse(_discountController.text) ?? 0.0);
+
     context.read<AddProductPageBloc>().add(
       SubmitProductEvent(
         name: _nameController.text.trim(),
@@ -4194,6 +4197,7 @@ class _AddProductViewState extends State<AddProductView> {
         basePrice: basePrice,
         gstPercentage: state.gstPercentage,
         discountPrice: roundedFinalPrice,
+        discountPercentage: effectiveDiscountPct,
         description: _descController.text.trim(),
         prepTime: _prepTimeController.text.trim(),
         calories: _caloriesController.text.trim(),

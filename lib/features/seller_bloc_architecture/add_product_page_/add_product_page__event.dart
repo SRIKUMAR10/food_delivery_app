@@ -147,6 +147,7 @@ class SubmitProductEvent extends AddProductPageEvent {
   final double basePrice;
   final double gstPercentage;
   final double? discountPrice;
+  final double? discountPercentage;
   final String description;
   final String? prepTime;
   final String? portionSize;
@@ -168,6 +169,7 @@ class SubmitProductEvent extends AddProductPageEvent {
     required this.basePrice,
     required this.gstPercentage,
     this.discountPrice,
+    this.discountPercentage,
     required this.description,
     this.prepTime,
     this.portionSize,
@@ -191,6 +193,7 @@ class SubmitProductEvent extends AddProductPageEvent {
     basePrice,
     gstPercentage,
     discountPrice,
+    discountPercentage,
     description,
     prepTime,
     portionSize,
