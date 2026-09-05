@@ -20,7 +20,12 @@ abstract class DeliveryProfileRepositoryBase {
     double? longitude,
     String? googleMapsUrl,
   });
-  Future<void> updateVehicle({required String vehicleType, required String vehicleNumber});
+  Future<void> updateVehicle({
+    required String vehicleType,
+    required String vehicleNumber,
+    String? licenseNumber,
+    String? licenseValidTill,
+  });
   Future<void> updatePhone(String phone);
   Future<void> updateEmail(String email);
   Future<void> changePassword({required String currentPassword, required String newPassword});
@@ -275,15 +280,26 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
     final vehicleNumber = (data['vehicleNumber'] as String?)?.isNotEmpty == true
         ? data['vehicleNumber'] as String
         : defaultProfile.vehicleNumber;
-    final drivingLicense = (data['drivingLicense'] as String?)?.isNotEmpty == true
-        ? data['drivingLicense'] as String
-        : defaultProfile.licenseNumber;
-    final licenseValidTill =
-        (data['licenseValidTill'] as String?)?.isNotEmpty == true
-            ? data['licenseValidTill'] as String
-            : ((data['dlExpiryDate'] as String?)?.isNotEmpty == true
-                ? data['dlExpiryDate'] as String
-                : defaultProfile.licenseValidTill);
+    final drivingLicense = (data['drivingLicense'] != null && data['drivingLicense'].toString().trim().isNotEmpty)
+        ? data['drivingLicense'].toString().trim()
+        : ((data['drivingLicenseNumber'] != null && data['drivingLicenseNumber'].toString().trim().isNotEmpty)
+            ? data['drivingLicenseNumber'].toString().trim()
+            : defaultProfile.licenseNumber);
+    final rawLicenseValid = data['licenseValidTill'] ??
+        data['dlExpiryDate'] ??
+        data['drivingLicenseExpiry'] ??
+        data['licenseExpiryDate'] ??
+        data['licenseExpiry'] ??
+        data['dlExpiry'] ??
+        data['expiryDate'] ??
+        data['validTill'] ??
+        data['drivingLicenseValidTill'] ??
+        data['drivingLicenseExpiryDate'] ??
+        data['license_valid_till'] ??
+        data['dl_expiry_date'];
+    final licenseValidTill = (rawLicenseValid != null && rawLicenseValid.toString().trim().isNotEmpty)
+        ? rawLicenseValid.toString().trim()
+        : defaultProfile.licenseValidTill;
     final vehicleRcUrl = data['vehicleRcUrl'] ?? '';
     final insuranceUrl = data['insuranceUrl'] ?? '';
     final panNumber = data['panNumber'] ?? '';
@@ -362,11 +378,12 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
       latitude: (data['latitude'] as num?)?.toDouble(),
       longitude: (data['longitude'] as num?)?.toDouble(),
       googleMapsUrl: data['googleMapsUrl'] as String?,
-      dob: data['dob'] ?? '',
-      gender: data['gender'] ?? '',
+      dob: dob,
+      gender: gender,
       vehicleType: vehicleType,
       vehicleNumber: vehicleNumber,
       licenseNumber: drivingLicense,
+      licenseValidTill: licenseValidTill,
       avatarPath: (data['photoUrl'] as String?)?.isNotEmpty == true
           ? data['photoUrl']
           : defaultProfile.avatarPath,
@@ -416,6 +433,18 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
         'licenseValidTill': profile.licenseValidTill,
       };
       await prefs.setString(_profileKey, jsonEncode(map));
+      if (profile.licenseValidTill.isNotEmpty) {
+        await prefs.setString('delivery_profile_license_valid', profile.licenseValidTill);
+      }
+      if (profile.licenseNumber.isNotEmpty) {
+        await prefs.setString('delivery_profile_license', profile.licenseNumber);
+      }
+      if (profile.vehicleType.isNotEmpty) {
+        await prefs.setString('delivery_profile_vehicle_type', profile.vehicleType);
+      }
+      if (profile.vehicleNumber.isNotEmpty) {
+        await prefs.setString('delivery_profile_vehicle_number', profile.vehicleNumber);
+      }
       if (profile.avatarPath != null) {
         await prefs.setString(_avatarKey, profile.avatarPath!);
       } else {
@@ -435,6 +464,9 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
         'vehicleType': profile.vehicleType,
         'vehicleNumber': profile.vehicleNumber,
         'drivingLicense': profile.licenseNumber,
+        'drivingLicenseNumber': profile.licenseNumber,
+        'licenseValidTill': profile.licenseValidTill,
+        'dlExpiryDate': profile.licenseValidTill,
       });
     } catch (_) {}
   }
@@ -473,10 +505,20 @@ class DeliveryProfileRepository implements DeliveryProfileRepositoryBase {
   Future<void> updateVehicle({
     required String vehicleType,
     required String vehicleNumber,
+    String? licenseNumber,
+    String? licenseValidTill,
   }) async {
     await _service.updateProfile({
       'vehicleType': vehicleType,
       'vehicleNumber': vehicleNumber,
+      if (licenseNumber != null && licenseNumber.trim().isNotEmpty) ...{
+        'drivingLicense': licenseNumber.trim(),
+        'drivingLicenseNumber': licenseNumber.trim(),
+      },
+      if (licenseValidTill != null && licenseValidTill.trim().isNotEmpty) ...{
+        'licenseValidTill': licenseValidTill.trim(),
+        'dlExpiryDate': licenseValidTill.trim(),
+      },
     });
   }
 

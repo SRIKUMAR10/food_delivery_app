@@ -975,9 +975,7 @@ class _MapAreaState extends State<_MapArea> {
             Positioned.fill(
               child: AppGoogleMapView(
                 driverLocation: driverLoc,
-                driverHeading: widget.state.driverHeading != 0.0
-                    ? widget.state.driverHeading
-                    : 45.0,
+                driverHeading: widget.state.driverHeading,
                 vehicleType: 'two_wheeler',
                 storeLocation: storeLoc,
                 storeName: storeName,
@@ -997,7 +995,9 @@ class _MapAreaState extends State<_MapArea> {
                     : null,
                 etaText: widget.state.etaToDestinationMinutes > 0
                     ? '~${widget.state.etaToDestinationMinutes} mins'
-                    : (hasActiveOrder ? '~12-15 mins' : null),
+                    : (hasActiveOrder && widget.state.distanceToDestinationKm > 0
+                        ? '~${((widget.state.distanceToDestinationKm / 25.0) * 60).clamp(3, 120).round()} mins'
+                        : null),
                 initialZoom: 14.5,
                 driverName: widget.state.partnerName.isNotEmpty
                     ? widget.state.partnerName
@@ -3306,15 +3306,15 @@ class _RiderIdleMapState extends State<_RiderIdleMap> {
   Widget _buildMap({double? borderRadius}) {
     final localeCode = widget.state.localeCode;
 
-    final driverLoc = LatLng(
-      widget.state.driverLat != 0.0 ? widget.state.driverLat : 11.4555052,
-      widget.state.driverLng != 0.0 ? widget.state.driverLng : 77.6873137,
-    );
+    final driverLoc = (widget.state.driverLat != 0.0 && widget.state.driverLng != 0.0)
+        ? LatLng(widget.state.driverLat, widget.state.driverLng)
+        : null;
 
     final Set<Marker> idleMarkers = {};
     for (final seller in widget.state.nearbySellers) {
-      final lat = (seller['latitude'] as num?)?.toDouble() ?? 11.4299713;
-      final lng = (seller['longitude'] as num?)?.toDouble() ?? 77.6759418;
+      final lat = (seller['latitude'] as num?)?.toDouble() ?? 0.0;
+      final lng = (seller['longitude'] as num?)?.toDouble() ?? 0.0;
+      if (lat == 0.0 || lng == 0.0) continue;
       final name = (seller['name'] ?? 'Restaurant Partner').toString();
       idleMarkers.add(
         Marker(
@@ -3359,9 +3359,7 @@ class _RiderIdleMapState extends State<_RiderIdleMap> {
             Positioned.fill(
               child: AppGoogleMapView(
                 driverLocation: driverLoc,
-                driverHeading: widget.state.driverHeading != 0.0
-                    ? widget.state.driverHeading
-                    : 45.0,
+                driverHeading: widget.state.driverHeading,
                 vehicleType: 'two_wheeler',
                 additionalMarkers: idleMarkers,
                 isDarkMode: true,

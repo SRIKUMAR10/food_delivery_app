@@ -33,6 +33,7 @@ import '../seller_auth_shared/onboarding_back_handler.dart';
 import '../seller_auth_shared/seller_wizard_container.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
 import '../seller_ui_tokens.dart';
+import '../../../core/services/gst_verification_service.dart';
 
 class SellerProfilePageUI extends StatelessWidget {
   final bool isOnboardingFlow;
@@ -1005,16 +1006,202 @@ class _ProfileSectionsGrid extends StatelessWidget {
                   Expanded(child: _buildLocationLogisticsCard(context)),
                 ],
               ),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _buildTaxComplianceCard(context)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildBankingCard(context)),
+                ],
+              ),
             ] else ...[
               _buildBrandingCard(context),
               const SizedBox(height: 16),
               _buildLocationLogisticsCard(context),
+              const SizedBox(height: 16),
+              _buildTaxComplianceCard(context),
+              const SizedBox(height: 16),
+              _buildBankingCard(context),
             ],
           ],
         );
       },
     );
   }
+
+  Widget _buildTaxComplianceCard(BuildContext context) {
+    final gstNum = state.gstNumber?.trim() ?? '';
+    final gstResult = gstNum.isNotEmpty ? GstVerificationService.validateGst(gstNum) : null;
+    final isGstVerified = gstResult?.isValid == true;
+
+    return _SectionCard(
+      title: 'Tax, GST & Legal Compliance',
+      icon: Icons.receipt_long_rounded,
+      iconColor: const Color(0xFF10B981),
+      onEdit: () => _showEditTaxComplianceDialog(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInfoRow(
+            'GSTIN Number',
+            gstNum.isNotEmpty ? gstNum : 'Not Registered / Set',
+            statusBadge: gstNum.isNotEmpty
+                ? Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isGstVerified ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isGstVerified ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isGstVerified ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+                          size: 13,
+                          color: isGstVerified ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            isGstVerified
+                                ? '${gstResult!.stateName} (${gstResult.stateCode}) • ${gstResult.entityType}'
+                                : (gstResult?.errorMessage ?? 'Format Warning'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isGstVerified ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : null,
+          ),
+          _buildInfoRow(
+            'Tax Configuration',
+            state.taxConfiguration?.isNotEmpty == true
+                ? state.taxConfiguration!
+                : '5% GST (Standard Restaurant Services)',
+          ),
+          _buildInfoRow(
+            'FSSAI Food License',
+            state.fssaiLicense?.isNotEmpty == true ? state.fssaiLicense! : 'Not set',
+          ),
+          _buildInfoRow(
+            'Business PAN',
+            state.panNumber?.isNotEmpty == true ? state.panNumber! : 'Not set',
+          ),
+          _buildInfoRow(
+            'KYC Status',
+            state.kycStatus.toUpperCase(),
+            valueColor: state.isKycApproved
+                ? const Color(0xFF10B981)
+                : (state.isKycRejected ? const Color(0xFFEF4444) : const Color(0xFFF59E0B)),
+          ),
+          if (state.gstCertificateUrl != null && state.gstCertificateUrl!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              child: InkWell(
+                onTap: () => _showDocumentPreview(context, 'GST Registration Certificate', state.gstCertificateUrl!),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.verified_outlined, size: 16, color: Color(0xFF16A34A)),
+                      SizedBox(width: 6),
+                      Text(
+                        'View GST Certificate Document',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF15803D),
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.open_in_new_rounded, size: 13, color: Color(0xFF16A34A)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBankingCard(BuildContext context) {
+    final bankAcc = state.bankAccountNumber?.trim() ?? '';
+    final maskedAcc = bankAcc.length > 4
+        ? '•••• ${bankAcc.substring(bankAcc.length - 4)}'
+        : (bankAcc.isNotEmpty ? bankAcc : 'Not set');
+
+    return _SectionCard(
+      title: 'Bank & Settlement Account',
+      icon: Icons.account_balance_outlined,
+      iconColor: const Color(0xFFF59E0B),
+      onEdit: () => _showEditTaxComplianceDialog(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInfoRow('Bank Account', maskedAcc),
+          _buildInfoRow('Bank Name', state.bankName?.isNotEmpty == true ? state.bankName! : 'Direct Bank Settlement'),
+          _buildInfoRow('IFSC Code', state.ifscCode?.isNotEmpty == true ? state.ifscCode! : 'Not set'),
+          _buildInfoRow('Account Holder', state.accountHolderName?.isNotEmpty == true ? state.accountHolderName! : (state.ownerName ?? 'Not set')),
+          if (state.bankBranch?.isNotEmpty == true)
+            _buildInfoRow('Branch', state.bankBranch!),
+          if (state.bankChequeUrl != null && state.bankChequeUrl!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              child: InkWell(
+                onTap: () => _showDocumentPreview(context, 'Bank Cheque / Passbook', state.bankChequeUrl!),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.account_balance_wallet_outlined, size: 16, color: Color(0xFFD97706)),
+                      SizedBox(width: 6),
+                      Text(
+                        'View Cancelled Cheque / Passbook',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFB45309),
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.open_in_new_rounded, size: 13, color: Color(0xFFD97706)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBrandingCard(BuildContext context) {
     return _SectionCard(
       title: 'Branding & Description',
@@ -1092,7 +1279,12 @@ class _ProfileSectionsGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(
+    String label,
+    String value, {
+    Widget? statusBadge,
+    Color? valueColor,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
@@ -1100,14 +1292,324 @@ class _ProfileSectionsGrid extends StatelessWidget {
         children: [
           Expanded(
             flex: 2,
-            child: Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), fontWeight: FontWeight.w500)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
             flex: 3,
-            child: Text(value, style: const TextStyle(fontSize: 13, color: Color(0xFF111827), fontWeight: FontWeight.w600)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: valueColor ?? const Color(0xFF111827),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (statusBadge != null) statusBadge,
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showDocumentPreview(BuildContext context, String title, String url) {
+    final isPdf = url.toLowerCase().contains('.pdf');
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 550),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Color(0xFF64748B)),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: isPdf
+                        ? const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.picture_as_pdf, size: 64, color: Color(0xFFE50914)),
+                                SizedBox(height: 12),
+                                Text('PDF Certificate Attached', style: TextStyle(fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          )
+                        : Image.network(
+                            url,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => const Center(
+                              child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditTaxComplianceDialog(BuildContext context) {
+    final bloc = context.read<SellerProfilePageBloc>();
+    final gstCtrl = TextEditingController(text: state.gstNumber ?? '');
+    final fssaiCtrl = TextEditingController(text: state.fssaiLicense ?? '');
+    final panCtrl = TextEditingController(text: state.panNumber ?? '');
+    String selectedTax = state.taxConfiguration?.isNotEmpty == true
+        ? state.taxConfiguration!
+        : '5% GST (Standard Restaurant Services)';
+    String? validationError;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => BlocProvider<SellerProfilePageBloc>.value(
+        value: bloc,
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final currentGst = gstCtrl.text.trim().toUpperCase();
+            final gstResult = currentGst.isNotEmpty
+                ? GstVerificationService.validateGst(currentGst, matchPan: panCtrl.text.trim())
+                : null;
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECFDF5),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF10B981), size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Edit Tax & Legal Compliance',
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Update GSTIN, FSSAI License, and Business PAN',
+                                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Color(0xFF6B7280), size: 20),
+                            onPressed: () => Navigator.of(dialogCtx).pop(),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 28),
+                      _buildDialogTextField(
+                        controller: gstCtrl,
+                        label: 'GST Number (GSTIN)',
+                        hint: 'e.g. 33AAAAA0000A1Z5',
+                        icon: Icons.account_balance_outlined,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            validationError = null;
+                          });
+                        },
+                      ),
+                      if (gstResult != null) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: gstResult.isValid ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: gstResult.isValid ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                gstResult.isValid ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                                size: 16,
+                                color: gstResult.isValid ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  gstResult.isValid
+                                      ? '📍 ${gstResult.stateName} (${gstResult.stateCode}) • ${gstResult.entityType}'
+                                      : (gstResult.errorMessage ?? 'Invalid GSTIN format'),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: gstResult.isValid ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      _buildDialogTextField(
+                        controller: fssaiCtrl,
+                        label: 'FSSAI Food License',
+                        hint: '14-digit FSSAI number',
+                        icon: Icons.restaurant_menu_outlined,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildDialogTextField(
+                        controller: panCtrl,
+                        label: 'Business PAN Number',
+                        hint: '10-character PAN (e.g. AAAAA0000A)',
+                        icon: Icons.credit_card_outlined,
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Tax Configuration',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: ['0% GST', '5% GST (Standard Restaurant Services)', '12% GST', '18% GST', '28% GST'].contains(selectedTax)
+                            ? selectedTax
+                            : '5% GST (Standard Restaurant Services)',
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                          ),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: '0% GST', child: Text('0% GST (Exempt)')),
+                          DropdownMenuItem(value: '5% GST (Standard Restaurant Services)', child: Text('5% GST (Standard Restaurant Services)')),
+                          DropdownMenuItem(value: '12% GST', child: Text('12% GST')),
+                          DropdownMenuItem(value: '18% GST', child: Text('18% GST (Standard Services)')),
+                          DropdownMenuItem(value: '28% GST', child: Text('28% GST')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedTax = val);
+                          }
+                        },
+                      ),
+                      if (validationError != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          validationError!,
+                          style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626), fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(dialogCtx).pop(),
+                            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280))),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              final gstin = gstCtrl.text.trim().toUpperCase();
+                              if (gstin.isNotEmpty) {
+                                final check = GstVerificationService.validateGst(gstin, matchPan: panCtrl.text.trim());
+                                if (!check.isValid) {
+                                  setDialogState(() {
+                                    validationError = check.errorMessage ?? 'Please enter a valid 15-character GSTIN';
+                                  });
+                                  return;
+                                }
+                              }
+                              bloc.add(
+                                SubmitVerificationForm(
+                                  storeName: state.storeName,
+                                  address: state.address ?? '',
+                                  email: state.email,
+                                  phone: state.phone,
+                                  gstNumber: gstin,
+                                  taxConfiguration: selectedTax,
+                                  fssaiLicense: fssaiCtrl.text.trim(),
+                                  bankAccountNumber: state.bankAccountNumber ?? '',
+                                  ifscCode: state.ifscCode ?? '',
+                                  latitude: state.latitude,
+                                  longitude: state.longitude,
+                                  googleMapsUrl: state.googleMapsUrl,
+                                ),
+                              );
+                              Navigator.of(dialogCtx).pop();
+                            },
+                            icon: const Icon(Icons.check_circle_outline, size: 18),
+                            label: const Text('Save Compliance', style: TextStyle(fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -1775,11 +2277,13 @@ class _ProfileSectionsGrid extends StatelessWidget {
     String? suffixText,
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
+    ValueChanged<String>? onChanged,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      onChanged: onChanged,
       style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
       decoration: InputDecoration(
         labelText: label,

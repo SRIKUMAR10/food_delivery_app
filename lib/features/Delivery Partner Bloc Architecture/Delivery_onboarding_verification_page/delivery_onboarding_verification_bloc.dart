@@ -104,7 +104,15 @@ class DeliveryOnboardingVerificationBloc extends Bloc<
       drivingLicenseNumber: data['drivingLicenseNumber'] ??
           data['drivingLicense'] ??
           state.drivingLicenseNumber,
-      dlExpiryDate: data['dlExpiryDate'] ?? data['licenseValidTill'] ?? state.dlExpiryDate,
+      dlExpiryDate: data['dlExpiryDate'] ??
+          data['licenseValidTill'] ??
+          data['drivingLicenseExpiry'] ??
+          data['licenseExpiryDate'] ??
+          data['licenseExpiry'] ??
+          data['dlExpiry'] ??
+          data['expiryDate'] ??
+          data['validTill'] ??
+          state.dlExpiryDate,
       dlFrontUrl: data['dlFrontUrl'] ?? state.dlFrontUrl,
       dlBackUrl: data['dlBackUrl'] ?? state.dlBackUrl,
       rcBookUrl: data['rcBookUrl'] ?? data['vehicleRcUrl'] ?? state.rcBookUrl,
@@ -177,7 +185,15 @@ class DeliveryOnboardingVerificationBloc extends Bloc<
         vehicleNumber: data['vehicleNumber'] ?? state.vehicleNumber,
         vehicleModel: data['vehicleModel'] ?? state.vehicleModel,
         drivingLicenseNumber: data['drivingLicenseNumber'] ?? data['drivingLicense'] ?? state.drivingLicenseNumber,
-        dlExpiryDate: data['dlExpiryDate'] ?? state.dlExpiryDate,
+        dlExpiryDate: data['dlExpiryDate'] ??
+            data['licenseValidTill'] ??
+            data['drivingLicenseExpiry'] ??
+            data['licenseExpiryDate'] ??
+            data['licenseExpiry'] ??
+            data['dlExpiry'] ??
+            data['expiryDate'] ??
+            data['validTill'] ??
+            state.dlExpiryDate,
         dlFrontUrl: data['dlFrontUrl'] ?? state.dlFrontUrl,
         dlBackUrl: data['dlBackUrl'] ?? state.dlBackUrl,
         rcBookUrl: data['rcBookUrl'] ?? state.rcBookUrl,
@@ -733,7 +749,9 @@ class DeliveryOnboardingVerificationBloc extends Bloc<
         'vehicleNumber': state.vehicleNumber,
         'vehicleModel': state.vehicleModel,
         'drivingLicenseNumber': state.drivingLicenseNumber,
+        'drivingLicense': state.drivingLicenseNumber,
         'dlExpiryDate': state.dlExpiryDate,
+        'licenseValidTill': state.dlExpiryDate,
         'dlFrontUrl': uploadedDlFrontUrl,
         'dlBackUrl': uploadedDlBackUrl,
         'rcBookUrl': uploadedRcUrl,

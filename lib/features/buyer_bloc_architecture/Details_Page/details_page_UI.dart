@@ -26,6 +26,7 @@ import 'details_page_State.dart';
 import 'package:food_delivery_app/core/widgets/shimmer_loader.dart';
 import '../buyer_login_page/buyer_login_page_ui.dart';
 import 'package:food_delivery_app/core/theme/buyer_app_colors.dart';
+import 'package:food_delivery_app/core/services/pricing_engine.dart';
 
 // ─── Details Page UI ─────────────────────────────────────────────────────────
 
@@ -139,6 +140,8 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
   late final Animation<Offset> _slideAnim;
   
   final Set<String> _selectedAddons = {};
+  ProductVariant? _selectedVariant;
+  final Map<String, Set<String>> _selectedGroupOptions = {};
   SellerModel? _seller;
   bool _isLoadingSeller = true;
   SellerAvailability? _sellerAvailability;
@@ -241,6 +244,143 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     }
   }
 
+  ProductVariant? get _effectiveSelectedVariant {
+    final food = _currentFoodItem;
+    if (food == null || food.variants.isEmpty) return null;
+    if (_selectedVariant != null) {
+      final match = food.variants.where((v) => v.id == _selectedVariant!.id || v.name == _selectedVariant!.name);
+      if (match.isNotEmpty) return match.first;
+    }
+    final inStock = food.variants.where((v) => v.isAvailable && (!v.trackInventory || v.stock > 0));
+    return inStock.isNotEmpty ? inStock.first : food.variants.first;
+  }
+
+  List<String> get _allSelectedAddons {
+    final list = <String>[];
+    for (final a in _selectedAddons) {
+      if (!list.contains(a)) list.add(a);
+    }
+    for (final entry in _selectedGroupOptions.entries) {
+      for (final opt in entry.value) {
+        if (!list.contains(opt)) list.add(opt);
+      }
+    }
+    return list;
+  }
+
+  Product get _asProduct {
+    final food = _currentFoodItem;
+    if (food != null) {
+      final effectiveGst = food.gstPercentage > 0 ? food.gstPercentage : 5.0;
+      final effectiveBase = food.basePrice > 0
+          ? food.basePrice
+          : (food.price > 0 ? (food.price / (1.0 + (effectiveGst / 100.0))) : 0.0);
+      return Product(
+        id: food.id,
+        name: food.name,
+        price: food.price,
+        basePrice: effectiveBase,
+        gstPercentage: effectiveGst,
+        discountPrice: food.discountPrice,
+        status: ProductStatus.values.firstWhere(
+          (s) => s.name == food.status,
+          orElse: () => ProductStatus.inStock,
+        ),
+        foodType: food.foodType,
+        category: food.category,
+        spicyLevel: food.spicyLevel,
+        rating: food.rating,
+        reviewCount: food.reviewCount,
+        description: food.description,
+        addons: food.addons,
+        customizationGroups: food.customizationGroups,
+        variants: food.variants,
+        ingredients: food.ingredients,
+        allergens: food.allergens,
+        taxStrategy: food.taxStrategy,
+        hsnCode: food.hsnCode,
+        taxType: food.taxType,
+        sellerId: food.sellerId,
+        availableStock: food.availableStock,
+        hasUnlimitedStock: food.hasUnlimitedStock,
+        isActive: food.isActive,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
+    return Product(
+      id: widget.id,
+      name: widget.name,
+      price: widget.price,
+      basePrice: widget.price > 0 ? (widget.price / 1.05) : 0.0,
+      gstPercentage: 5.0,
+      taxType: 'intraState',
+      status: ProductStatus.inStock,
+      sellerId: widget.sellerId,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  List<ProductAddon> get _resolvedSelectedAddons {
+    final result = <ProductAddon>[];
+    final food = _currentFoodItem;
+    if (food != null && food.customizationGroups.isNotEmpty) {
+      for (final group in food.customizationGroups) {
+        final selected = _selectedGroupOptions[group.groupName] ?? {};
+        for (final opt in group.options) {
+          final double optTaxable = opt.taxablePrice > 0
+              ? opt.taxablePrice
+              : (opt.basePrice > 0 ? opt.basePrice : opt.price);
+          final double optPrice = opt.price > 0
+              ? opt.price
+              : (opt.finalPrice > 0 ? opt.finalPrice : opt.basePrice);
+          final optTaxableIdentifier = optTaxable > 0
+              ? '${opt.name} (+₹${optTaxable.truncateToDouble() == optTaxable ? optTaxable.toInt().toString() : optTaxable.toStringAsFixed(2)})'
+              : opt.name;
+          final optLegacyIdentifier = optPrice > 0
+              ? '${opt.name} (+₹${optPrice.truncateToDouble() == optPrice ? optPrice.toInt().toString() : optPrice.toStringAsFixed(2)})'
+              : opt.name;
+          if (selected.contains(optTaxableIdentifier) ||
+              selected.contains(optLegacyIdentifier) ||
+              selected.contains(opt.name) ||
+              (opt.id.isNotEmpty && selected.contains(opt.id))) {
+            result.add(opt);
+          }
+        }
+      }
+    }
+
+    if (result.isEmpty && _selectedAddons.isNotEmpty) {
+      for (final str in _selectedAddons) {
+        final p = _parseAddonPrice(str);
+        final cleanName = str.split('(').first.replaceAll(RegExp(r'[\+\:\₹0-9\.]'), '').trim();
+        final gst = _currentFoodItem?.gstPercentage ?? 5.0;
+        final taxType = _currentFoodItem?.taxType ?? 'intraState';
+        final hsn = _currentFoodItem?.hsnCode ?? '996338';
+        final base = p > 0 ? (p / (1.0 + (gst / 100.0))) : 0.0;
+        result.add(ProductAddon(
+          id: str,
+          name: cleanName.isNotEmpty ? cleanName : str,
+          basePrice: base,
+          gstPercentage: gst,
+          taxType: taxType,
+          hsnCode: hsn,
+        ));
+      }
+    }
+    return result;
+  }
+
+
+  ItemPriceBreakdown get _currentBreakdown {
+    return PricingEngine.calculateItemBreakdown(
+      product: _asProduct,
+      selectedVariant: _effectiveSelectedVariant,
+      selectedAddons: _resolvedSelectedAddons,
+    );
+  }
+
   double _parseAddonPrice(String addon) {
     final match = RegExp(r'(?:\+|\:|\₹)\s*(\d+(?:\.\d+)?)').firstMatch(addon);
     if (match != null) {
@@ -251,32 +391,38 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
 
   double get _totalAddonsPrice {
     double total = 0.0;
-    for (final addon in _selectedAddons) {
-      total += _parseAddonPrice(addon);
+    for (final addon in _resolvedSelectedAddons) {
+      total += addon.taxablePrice > 0
+          ? addon.taxablePrice
+          : (addon.basePrice > 0 ? addon.basePrice : addon.price);
+    }
+    if (total == 0.0 && _selectedAddons.isNotEmpty) {
+      for (final addon in _selectedAddons) {
+        total += _parseAddonPrice(addon);
+      }
     }
     return total;
   }
 
-  double get _baseProductPrice {
-    final food = _currentFoodItem;
-    if (food != null &&
-        food.discountPrice > 0 &&
-        food.discountPrice < (food.price > 0 ? food.price : widget.price)) {
-      return food.discountPrice;
-    }
-    return (food != null && food.price > 0) ? food.price : widget.price;
-  }
-
   double get _effectivePrice {
-    return _baseProductPrice + _totalAddonsPrice;
+    return _currentBreakdown.finalPayablePrice;
   }
 
   bool get _isActive {
     final food = _currentFoodItem;
     if (food == null) return false;
-    final isOutOfStock = !food.isActive ||
-        food.status.toLowerCase().contains('outofstock') ||
-        (!food.hasUnlimitedStock && food.availableStock <= 0);
+    final bool isOutOfStock;
+    if (food.variants.isNotEmpty) {
+      final anyVariantInStock =
+          food.variants.any((v) => v.isAvailable && (!v.trackInventory || v.stock > 0));
+      isOutOfStock = !food.isActive ||
+          food.status.toLowerCase().contains('outofstock') ||
+          !anyVariantInStock;
+    } else {
+      isOutOfStock = !food.isActive ||
+          food.status.toLowerCase().contains('outofstock') ||
+          (!food.hasUnlimitedStock && food.availableStock <= 0);
+    }
     final sellerAvailable = _sellerAvailability?.isAvailable ?? true;
     return !isOutOfStock && sellerAvailable;
   }
@@ -297,18 +443,75 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
       );
       return;
     }
+
+    final food = _currentFoodItem;
+    if (food != null && food.customizationGroups.isNotEmpty) {
+      for (final group in food.customizationGroups) {
+        if (group.isRequired) {
+          final selected = _selectedGroupOptions[group.groupName] ?? {};
+          final minReq = group.minSelect > 0 ? group.minSelect : 1;
+          if (selected.length < minReq) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: Colors.red.shade700,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                content: Text(
+                  'Please select ${group.groupName} ($minReq required)',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            );
+            return;
+          }
+        }
+      }
+    }
+
     HapticFeedback.mediumImpact();
+    final variant = _effectiveSelectedVariant;
+    if (food != null && food.variants.isNotEmpty) {
+      if (variant == null || !variant.isAvailable || (variant.trackInventory && variant.stock <= 0)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red.shade700,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Text(
+              '${variant?.name ?? "Selected size"} is currently out of stock',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    final allAddons = _allSelectedAddons;
+    final baseProductId = widget.id.isNotEmpty ? widget.id : (widget.foodItem?.id ?? '');
+    final compoundCartId = generateCartItemId(
+      productId: baseProductId,
+      variantName: variant?.name,
+      selectedAddons: allAddons,
+    );
+
+    final breakdown = _currentBreakdown;
+    final priceSnapshot = breakdown.toPriceSnapshot();
+
     context.read<CartBloc>().add(
       CartItemAdded(
         CartItem(
-          id: widget.id,
+          id: compoundCartId,
+          productId: baseProductId,
           name: widget.name,
           price: _effectivePrice,
           sellerId: widget.sellerId,
           image: _primaryImage,
           imageUrls: widget.imageUrls ?? [],
           quantity: quantity,
-          selectedAddons: _selectedAddons.toList(),
+          selectedAddons: allAddons,
+          selectedVariantName: variant?.name,
+          selectedVariantPrice: variant?.effectivePrice,
+          priceSnapshot: priceSnapshot,
         ),
       ),
     );
@@ -492,15 +695,23 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                           ),
                           _buildTitleAndRating(),
                           const SizedBox(height: 10),
+                          _buildHeaderPrice(),
+                          const SizedBox(height: 10),
                           _buildRestaurantInfo(),
                           const SizedBox(height: 16),
                           _buildAvailabilityCard(),
                           const SizedBox(height: 18),
                           _buildDescription(),
                           const SizedBox(height: 20),
+                          _buildVariantsSection(),
+                          const SizedBox(height: 20),
+                          _buildCustomizationGroupsSection(),
+                          const SizedBox(height: 20),
                           _buildIngredientsSection(),
                           const SizedBox(height: 20),
                           _buildAddonsSection(),
+                          const SizedBox(height: 20),
+                          _buildPriceBreakdownCard(),
                           const SizedBox(height: 28),
                           _buildPriceAndQuantityRow(),
                           const SizedBox(height: 28),
@@ -606,15 +817,23 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
                       children: [
                         _buildTitleAndRating(),
                         const SizedBox(height: 12),
+                        _buildHeaderPrice(),
+                        const SizedBox(height: 12),
                         _buildRestaurantInfo(),
                         const SizedBox(height: 18),
                         _buildAvailabilityCard(),
                         const SizedBox(height: 20),
                         _buildDescription(),
                         const SizedBox(height: 20),
+                        _buildVariantsSection(),
+                        const SizedBox(height: 20),
+                        _buildCustomizationGroupsSection(),
+                        const SizedBox(height: 20),
                         _buildIngredientsSection(),
                         const SizedBox(height: 20),
                         _buildAddonsSection(),
+                        const SizedBox(height: 20),
+                        _buildPriceBreakdownCard(),
                         const SizedBox(height: 28),
                         _buildRatingsAndReviewsButton(),
                         const SizedBox(height: 24),
@@ -700,6 +919,143 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
           child: _buildRatingBadge(),
         ),
       ],
+    );
+  }
+
+  Widget _buildHeaderPrice() {
+    final food = _currentFoodItem;
+    final variant = _effectiveSelectedVariant;
+
+    final double effectivePrice;
+    final double originalPrice;
+    final bool hasDiscount;
+    final int discountPercent;
+
+    if (variant != null) {
+      effectivePrice = variant.effectivePrice > 0
+          ? variant.effectivePrice
+          : (variant.price > 0 ? variant.price : variant.basePrice);
+      originalPrice = variant.grossBasePriceWithGst > 0
+          ? variant.grossBasePriceWithGst
+          : (variant.basePrice > 0 ? variant.basePrice : effectivePrice);
+      hasDiscount = variant.discountPercentage > 0 && originalPrice > effectivePrice;
+      discountPercent = variant.discountPercentage.round();
+    } else if (food != null) {
+      effectivePrice = (food.discountPrice > 0 && food.discountPrice < food.price)
+          ? food.discountPrice
+          : (food.price > 0 ? food.price : widget.price);
+      originalPrice = (food.price > 0) ? food.price : widget.price;
+      hasDiscount = food.discountPrice > 0 && food.discountPrice < food.price;
+      discountPercent = hasDiscount
+          ? (((originalPrice - effectivePrice) / originalPrice) * 100).round()
+          : 0;
+    } else {
+      effectivePrice = widget.price;
+      originalPrice = widget.price;
+      hasDiscount = false;
+      discountPercent = 0;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: _primaryRed.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _primaryRed.withValues(alpha: 0.15),
+          width: 1.0,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: _primaryRed.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.currency_rupee_rounded,
+              color: _primaryRed,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                Text(
+                  _currFmt.format(effectivePrice),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: _primaryRed,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                if (hasDiscount) ...[
+                  Text(
+                    _currFmt.format(originalPrice),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade500,
+                      decoration: TextDecoration.lineThrough,
+                      decorationColor: Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade600,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '$discountPercent% OFF',
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ],
+                Text(
+                  '(Incl. all taxes)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (variant != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _primaryRed.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                variant.name,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: _primaryRed,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -887,10 +1243,7 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
 
   Widget _buildAvailabilityCard() {
     final food = _currentFoodItem;
-    final isProductInStock = food != null &&
-        food.isActive &&
-        !food.status.toLowerCase().contains('outofstock') &&
-        (food.hasUnlimitedStock || food.availableStock > 0);
+    final isProductInStock = food != null && food.isInStock;
     final isSellerOpen = _sellerAvailability?.isAvailable ?? true;
     final isAvailableNow = isProductInStock && isSellerOpen;
 
@@ -1095,8 +1448,429 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     );
   }
 
+  Widget _buildVariantsSection() {
+    final food = _currentFoodItem;
+    if (food == null || food.variants.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final activeVariant = _effectiveSelectedVariant;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.confirmation_number_outlined, size: 18, color: _primaryRed),
+            const SizedBox(width: 6),
+            const Expanded(
+              child: Text(
+                'Product Variants / Sizes',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1C1C1C),
+                ),
+              ),
+            ),
+            if (activeVariant != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFDE8E8),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  activeVariant.name,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryRed,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Select your preferred portion size',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 12),
+        Column(
+          children: food.variants.map((variant) {
+            final isSelected = activeVariant?.name == variant.name || activeVariant?.id == variant.id;
+            final isOutOfStock = !variant.isAvailable || (variant.trackInventory && variant.stock <= 0);
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10.0),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: isOutOfStock
+                    ? null
+                    : () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _selectedVariant = variant;
+                        });
+                      },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFFFFF7F7)
+                        : (isOutOfStock ? Colors.grey.shade100 : Colors.white),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected
+                          ? _primaryRed
+                          : (isOutOfStock ? Colors.grey.shade300 : const Color(0xFFE5E7EB)),
+                      width: isSelected ? 1.8 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? _primaryRed.withValues(alpha: 0.1)
+                              : Colors.transparent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isSelected
+                              ? Icons.radio_button_checked_rounded
+                              : Icons.radio_button_off_rounded,
+                          size: 22,
+                          color: isSelected ? _primaryRed : Colors.grey.shade400,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              variant.name,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                color: isOutOfStock ? Colors.grey : const Color(0xFF1C1C1C),
+                              ),
+                            ),
+                            if (isOutOfStock)
+                              const Text(
+                                'Out of stock',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              )
+                            else if (variant.trackInventory && variant.stock <= 5)
+                              Text(
+                                'Only ${variant.stock} left',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.orange.shade800,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final double vTaxable = variant.taxablePrice > 0
+                              ? variant.taxablePrice
+                              : (variant.basePrice > 0 ? variant.basePrice : variant.price);
+                          final double vBase = variant.basePrice > 0 ? variant.basePrice : vTaxable;
+                          final bool hasVariantDiscount = variant.discountPercentage > 0 && vBase > vTaxable;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _currFmt.format(vTaxable),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? _primaryRed : const Color(0xFF1C1C1C),
+                                ),
+                              ),
+                              if (hasVariantDiscount) ...[
+                                const SizedBox(height: 2),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _currFmt.format(vBase),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade400,
+                                        decoration: TextDecoration.lineThrough,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${variant.discountPercentage.round()}% off',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomizationGroupsSection() {
+    final food = _currentFoodItem;
+    if (food == null || food.customizationGroups.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Icon(Icons.tune_rounded, size: 18, color: _primaryRed),
+            SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Customization / Add-on Groups',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1C1C1C),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ...food.customizationGroups.map((group) {
+          final selectedOptions = _selectedGroupOptions[group.groupName] ?? {};
+          final isSingleChoice = group.maxSelect == 1;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        group.groupName,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1C1C1C),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: group.isRequired
+                            ? Colors.red.withValues(alpha: 0.1)
+                            : const Color(0xFFE3F2FD),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        group.isRequired ? 'Required' : 'Optional',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                          color: group.isRequired ? Colors.red.shade700 : const Color(0xFF1976D2),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  isSingleChoice
+                      ? 'Choose 1 option'
+                      : 'Choose up to ${group.maxSelect} options',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 12),
+                ...group.options.map((opt) {
+                  final double optTaxable = opt.taxablePrice > 0
+                      ? opt.taxablePrice
+                      : (opt.basePrice > 0 ? opt.basePrice : opt.price);
+                  final double optBase = opt.basePrice > 0 ? opt.basePrice : optTaxable;
+                  final bool hasOptDiscount = opt.discountPercentage > 0 && optBase > optTaxable;
+
+                  final priceText = optTaxable > 0
+                      ? '+ ${_currFmt.format(optTaxable)}'
+                      : 'Free';
+                  final optionIdentifier = optTaxable > 0
+                      ? '${opt.name} (+₹${optTaxable.truncateToDouble() == optTaxable ? optTaxable.toInt().toString() : optTaxable.toStringAsFixed(2)})'
+                      : opt.name;
+                  final isSelected = selectedOptions.contains(opt.id) ||
+                      selectedOptions.contains(opt.name) ||
+                      selectedOptions.contains(optionIdentifier);
+
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        final currentSet = Set<String>.from(_selectedGroupOptions[group.groupName] ?? {});
+                        if (isSingleChoice) {
+                          currentSet.clear();
+                          currentSet.add(optionIdentifier);
+                        } else {
+                          if (isSelected) {
+                            currentSet.remove(optionIdentifier);
+                            currentSet.remove(opt.name);
+                            if (opt.id.isNotEmpty) currentSet.remove(opt.id);
+                          } else {
+                            if (currentSet.length < group.maxSelect) {
+                              currentSet.add(optionIdentifier);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  duration: const Duration(seconds: 1),
+                                  behavior: SnackBarBehavior.floating,
+                                  content: Text('You can only select up to ${group.maxSelect} options in ${group.groupName}'),
+                                ),
+                              );
+                            }
+                          }
+                        }
+                        _selectedGroupOptions[group.groupName] = currentSet;
+                      });
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFFFFF7F7) : Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected ? _primaryRed : const Color(0xFFE5E7EB),
+                          width: isSelected ? 1.6 : 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          if (isSingleChoice)
+                            Icon(
+                              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                              size: 20,
+                              color: isSelected ? _primaryRed : Colors.grey.shade400,
+                            )
+                          else
+                            Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: isSelected ? _primaryRed : Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: isSelected ? _primaryRed : Colors.grey.shade400,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: isSelected
+                                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                                  : null,
+                            ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              opt.name,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                color: const Color(0xFF1C1C1C),
+                              ),
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                priceText,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? _primaryRed : Colors.grey.shade700,
+                                ),
+                              ),
+                              if (hasOptDiscount) ...[
+                                const SizedBox(height: 2),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _currFmt.format(optBase),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade400,
+                                        decoration: TextDecoration.lineThrough,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${opt.discountPercentage.round()}% off',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
   List<String> get _effectiveAddons {
     final food = _currentFoodItem;
+    if (food != null && food.customizationGroups.isNotEmpty) {
+      return const [];
+    }
     if (food != null && food.addons.isNotEmpty) {
       return food.addons;
     }
@@ -1227,13 +2001,240 @@ class _DetailsPageContentState extends State<_DetailsPageContent>
     );
   }
 
+  Widget _buildPriceBreakdownCard() {
+    final breakdown = _currentBreakdown;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.receipt_long_rounded, size: 18, color: _primaryRed),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Price & Tax Breakdown',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1C1C1C),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'Inclusive of all taxes',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green.shade800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Base Item Row
+          _buildBreakdownRow(
+            title: breakdown.baseItem.title,
+            amount: breakdown.baseItem.basePrice,
+          ),
+          // Discount Row (if any)
+          if (breakdown.baseItem.discountAmount > 0)
+            _buildBreakdownRow(
+              title: 'Discount (${breakdown.baseItem.discountAmount > 0 && breakdown.baseItem.basePrice > 0 ? ((breakdown.baseItem.discountAmount / breakdown.baseItem.basePrice) * 100).round() : 0}% OFF)',
+              amount: -breakdown.baseItem.discountAmount,
+              isDiscount: true,
+            ),
+          // Add-on Rows
+          for (final addon in breakdown.addons) ...[
+            _buildBreakdownRow(
+              title: '${addon.title} (+${addon.gstPercentage.toStringAsFixed(addon.gstPercentage.truncateToDouble() == addon.gstPercentage ? 0 : 1)}% GST)',
+              amount: addon.basePrice,
+            ),
+            if (addon.discountAmount > 0)
+              _buildBreakdownRow(
+                title: 'Discount on ${addon.title} (${addon.basePrice > 0 ? ((addon.discountAmount / addon.basePrice) * 100).round() : 0}% OFF)',
+                amount: -addon.discountAmount,
+                isDiscount: true,
+              ),
+          ],
+          const Divider(height: 16, thickness: 0.8),
+          // Taxes
+          if (breakdown.isInterState) ...[
+            if (breakdown.addons.isEmpty ||
+                breakdown.addons.every((a) => (a.gstPercentage - breakdown.baseItem.gstPercentage).abs() < 0.01)) ...[
+              _buildBreakdownRow(
+                title: 'IGST (${breakdown.baseItem.gstPercentage.toStringAsFixed(breakdown.baseItem.gstPercentage.truncateToDouble() == breakdown.baseItem.gstPercentage ? 0 : 1)}%)',
+                amount: breakdown.totalIgstAmount,
+                isTax: true,
+              ),
+            ] else ...[
+              _buildBreakdownRow(
+                title: 'IGST (${breakdown.baseItem.gstPercentage.toStringAsFixed(0)}%) - Base Item',
+                amount: breakdown.baseItem.igstAmount,
+                isTax: true,
+              ),
+              for (final addon in breakdown.addons)
+                if (addon.igstAmount > 0)
+                  _buildBreakdownRow(
+                    title: 'IGST (${addon.gstPercentage.toStringAsFixed(0)}%) - ${addon.title}',
+                    amount: addon.igstAmount,
+                    isTax: true,
+                  ),
+            ],
+          ] else ...[
+            if (breakdown.addons.isEmpty ||
+                breakdown.addons.every((a) => (a.gstPercentage - breakdown.baseItem.gstPercentage).abs() < 0.01)) ...[
+              _buildBreakdownRow(
+                title: 'CGST (${(breakdown.baseItem.gstPercentage / 2).toStringAsFixed(1)}%)',
+                amount: breakdown.totalCgstAmount,
+                isTax: true,
+              ),
+              _buildBreakdownRow(
+                title: 'SGST (${(breakdown.baseItem.gstPercentage / 2).toStringAsFixed(1)}%)',
+                amount: breakdown.totalSgstAmount,
+                isTax: true,
+              ),
+            ] else ...[
+              _buildBreakdownRow(
+                title: 'CGST (${(breakdown.baseItem.gstPercentage / 2).toStringAsFixed(1)}%) - Base Item',
+                amount: breakdown.baseItem.cgstAmount,
+                isTax: true,
+              ),
+              _buildBreakdownRow(
+                title: 'SGST (${(breakdown.baseItem.gstPercentage / 2).toStringAsFixed(1)}%) - Base Item',
+                amount: breakdown.baseItem.sgstAmount,
+                isTax: true,
+              ),
+              for (final addon in breakdown.addons) ...[
+                if (addon.cgstAmount > 0)
+                  _buildBreakdownRow(
+                    title: 'CGST (${(addon.gstPercentage / 2).toStringAsFixed(1)}%) - ${addon.title}',
+                    amount: addon.cgstAmount,
+                    isTax: true,
+                  ),
+                if (addon.sgstAmount > 0)
+                  _buildBreakdownRow(
+                    title: 'SGST (${(addon.gstPercentage / 2).toStringAsFixed(1)}%) - ${addon.title}',
+                    amount: addon.sgstAmount,
+                    isTax: true,
+                  ),
+              ],
+            ],
+          ],
+          if (breakdown.roundOff != 0)
+            _buildBreakdownRow(
+              title: 'Round Off',
+              amount: breakdown.roundOff,
+              isTax: true,
+            ),
+          const Divider(height: 16, thickness: 1.2),
+
+          // Final Total Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Total Item Price',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1C1C1C),
+                ),
+              ),
+              Text(
+                _currFmt.format(breakdown.finalPayablePrice),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: _primaryRed,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBreakdownRow({
+    required String title,
+    required double amount,
+    bool isDiscount = false,
+    bool isTax = false,
+  }) {
+    final prefix = isDiscount ? '-' : '';
+    final color = isDiscount
+        ? Colors.green.shade700
+        : (isTax ? Colors.grey.shade600 : const Color(0xFF374151));
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isTax ? FontWeight.w400 : FontWeight.w500,
+                color: isTax ? Colors.grey.shade600 : const Color(0xFF374151),
+              ),
+            ),
+          ),
+          Text(
+            '$prefix₹${amount.abs().toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: isDiscount ? FontWeight.bold : FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPriceAndQuantityRow() {
-    final originalPrice = widget.foodItem?.price ?? widget.price;
-    final discountPrice = widget.foodItem?.discountPrice ?? 0;
-    final hasDiscount = discountPrice > 0 && discountPrice < originalPrice;
-    final discountPercent = hasDiscount
-        ? ((originalPrice - discountPrice) / originalPrice * 100).round()
-        : 0;
+    final variant = _effectiveSelectedVariant;
+    final double originalPrice;
+    final bool hasDiscount;
+    final int discountPercent;
+
+    if (variant != null) {
+      final vEff = variant.effectivePrice > 0
+          ? variant.effectivePrice
+          : (variant.price > 0 ? variant.price : variant.basePrice);
+      originalPrice = variant.grossBasePriceWithGst > 0
+          ? variant.grossBasePriceWithGst
+          : (variant.basePrice > 0 ? variant.basePrice : vEff);
+      hasDiscount = variant.discountPercentage > 0 && originalPrice > vEff;
+      discountPercent = variant.discountPercentage.round();
+    } else {
+      final food = _currentFoodItem;
+      originalPrice = (food != null && food.price > 0) ? food.price : widget.price;
+      final discount = food?.discountPrice ?? 0.0;
+      hasDiscount = discount > 0 && discount < originalPrice;
+      discountPercent = hasDiscount
+          ? (((originalPrice - discount) / originalPrice) * 100).round()
+          : 0;
+    }
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

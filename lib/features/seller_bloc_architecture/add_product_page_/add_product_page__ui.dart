@@ -6,11 +6,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lottie/lottie.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'add_product_page__bloc.dart';
 import 'add_product_page__event.dart';
 import 'add_product_page__state.dart';
 import '../product_list_page_/product_preview_page.dart';
+import '../seller_ui_tokens.dart';
 import '../../../../core/models/product_model.dart';
 import '../../../../core/repositories/i_product_repository.dart';
 import '../../../../core/repositories/i_seller_repository.dart';
@@ -50,6 +52,42 @@ class AddProductPage extends StatelessWidget {
   }
 }
 
+class _CustomizationOptionRow {
+  final String id;
+  final TextEditingController nameController;
+  final TextEditingController priceController;
+  final TextEditingController discountController;
+  final TextEditingController gstController;
+  final TextEditingController hsnController;
+  String taxType;
+  bool trackInventory;
+
+  _CustomizationOptionRow({
+    String? id,
+    String name = '',
+    String price = '',
+    String discount = '0',
+    String gst = '5',
+    String hsn = '996338',
+    String taxType = 'intraState',
+    this.trackInventory = false,
+  })  : id = id ?? 'opt_${DateTime.now().microsecondsSinceEpoch}',
+        nameController = TextEditingController(text: name),
+        priceController = TextEditingController(text: price),
+        discountController = TextEditingController(text: discount == '0' ? '' : discount),
+        gstController = TextEditingController(text: gst),
+        hsnController = TextEditingController(text: hsn),
+        taxType = taxType;
+
+  void dispose() {
+    nameController.dispose();
+    priceController.dispose();
+    discountController.dispose();
+    gstController.dispose();
+    hsnController.dispose();
+  }
+}
+
 class AddProductView extends StatefulWidget {
   const AddProductView({super.key});
 
@@ -61,6 +99,7 @@ class _AddProductViewState extends State<AddProductView> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _skuController = TextEditingController();
+  final _hsnCodeController = TextEditingController(text: '996331');
   final _subcategoryController = TextEditingController();
   final _priceController = TextEditingController();
   final _discountController = TextEditingController();
@@ -69,6 +108,8 @@ class _AddProductViewState extends State<AddProductView> {
   final _caloriesController = TextEditingController();
   final _portionSizeController = TextEditingController();
   final _addonsController = TextEditingController();
+  final _newAddonNameController = TextEditingController();
+  final _newAddonPriceController = TextEditingController();
   final _ingredientsController = TextEditingController();
   final _stockController = TextEditingController(text: '0');
   final _alertController = TextEditingController(text: '10');
@@ -124,6 +165,12 @@ class _AddProductViewState extends State<AddProductView> {
     _skuController.addListener(
       () => _updateField('sku', _skuController.text),
     );
+    _hsnCodeController.addListener(() {
+      _updateField('hsnCode', _hsnCodeController.text);
+      context.read<AddProductPageBloc>().add(
+        HsnCodeChangedEvent(_hsnCodeController.text.trim()),
+      );
+    });
     _subcategoryController.addListener(
       () => _updateField('subcategory', _subcategoryController.text),
     );
@@ -154,12 +201,39 @@ class _AddProductViewState extends State<AddProductView> {
     );
   }
 
-  void _autoGenerateSku(String? category) {
+
+  void _autoGenerateSku(BuildContext context, String? category) {
     final cat = (category ?? 'PRD').toUpperCase().replaceAll(RegExp(r'[^A-Z]'), '');
     final shortCat = cat.length >= 3 ? cat.substring(0, 3) : cat.padRight(3, 'X');
     final randomSuffix = (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
-    _skuController.text = 'SKU-$shortCat-$randomSuffix';
+    final oldSku = _skuController.text.trim();
+    final newSku = 'SKU-$shortCat-$randomSuffix';
+    _skuController.text = newSku;
     _updateField('sku', _skuController.text);
+
+    final bloc = context.read<AddProductPageBloc>();
+    bloc.add(SkuChangedEvent(newSku));
+
+    // Smart Variant SKU Synchronization:
+    // If existing variants have the old SKU prefix or empty SKU, cascade the update to the new SKU prefix!
+    final currentVariants = bloc.state.variants;
+    if (currentVariants.isNotEmpty) {
+      final updatedVariants = currentVariants.map((v) {
+        if (v.sku.isEmpty || (oldSku.isNotEmpty && v.sku.startsWith('$oldSku-'))) {
+          String varSuffix = '';
+          if (oldSku.isNotEmpty && v.sku.startsWith('$oldSku-')) {
+            varSuffix = v.sku.substring('$oldSku-'.length);
+          } else {
+            final cleanVar = v.name.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+            varSuffix = cleanVar.length > 6 ? cleanVar.substring(0, 6) : (cleanVar.isNotEmpty ? cleanVar : 'VAR');
+          }
+          return v.copyWith(sku: '$newSku-$varSuffix');
+        }
+        return v;
+      }).toList();
+
+      bloc.add(VariantsUpdatedEvent(updatedVariants));
+    }
   }
 
   void _updateField(String field, dynamic value) {
@@ -175,6 +249,7 @@ class _AddProductViewState extends State<AddProductView> {
     _updateTimer?.cancel();
     _nameController.dispose();
     _skuController.dispose();
+    _hsnCodeController.dispose();
     _subcategoryController.dispose();
     _priceController.dispose();
     _discountController.dispose();
@@ -183,6 +258,8 @@ class _AddProductViewState extends State<AddProductView> {
     _caloriesController.dispose();
     _portionSizeController.dispose();
     _addonsController.dispose();
+    _newAddonNameController.dispose();
+    _newAddonPriceController.dispose();
     _ingredientsController.dispose();
     _stockController.dispose();
     _alertController.dispose();
@@ -218,6 +295,7 @@ class _AddProductViewState extends State<AddProductView> {
 
               _descController.text = p.description;
               _skuController.text = p.sku;
+              _hsnCodeController.text = p.hsnCode.isNotEmpty ? p.hsnCode : '996331';
               _subcategoryController.text = p.subcategory;
               _prepTimeController.text = p.prepTime.toString();
               _caloriesController.text = p.calories.toString();
@@ -230,10 +308,13 @@ class _AddProductViewState extends State<AddProductView> {
 
               // Trigger live preview updates
               _updateField('name', p.name);
+              _updateField('sku', p.sku);
+              _updateField('hsnCode', _hsnCodeController.text);
               _updateField('price', p.price);
               _updateField('discountPercent', pct);
               _updateField('description', p.description);
             }
+
 
             if (state.status == AddProductStatus.success) {
               showDialog(
@@ -244,94 +325,129 @@ class _AddProductViewState extends State<AddProductView> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
                     ),
-                    backgroundColor: _surfaceColor,
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Lottie.network(
-                            'https://assets9.lottiefiles.com/packages/lf20_lk80fpsm.json',
-                            width: 150,
-                            height: 150,
-                            repeat: false,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(
-                                  Icons.check_circle,
-                                  color: _successColor,
-                                  size: 100,
-                                ),
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 440),
+                        child: Container(
+                          padding: const EdgeInsets.all(28),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: SellerUiTokens.dialogShadow,
+                            border: Border.all(color: SellerUiTokens.borderSubtle),
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Product Published!',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: _textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Your product is now live in the store.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: _textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-                          Row(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    Navigator.pop(context); // Close dialog
-                                    Navigator.pop(context); // Go back
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
+                              Lottie.network(
+                                'https://assets9.lottiefiles.com/packages/lf20_lk80fpsm.json',
+                                width: 140,
+                                height: 140,
+                                repeat: false,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFDCFCE7),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.check_circle_rounded,
+                                        color: _successColor,
+                                        size: 48,
+                                      ),
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'View Products',
-                                    style: TextStyle(color: _textPrimary),
-                                  ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Product Published!',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                  color: _textPrimary,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.pop(context); // Close dialog
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const AddProductPage(),
-                                      ),
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    backgroundColor: _primaryColor,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Add Another',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Your product is now live in the store.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: _textSecondary,
                                 ),
+                              ),
+                              const SizedBox(height: 28),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 48,
+                                      child: OutlinedButton(
+                                        onPressed: () {
+                                          Navigator.pop(context); // Close dialog
+                                          Navigator.pop(context); // Go back
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(14),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'View Products',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: _textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 48,
+                                      child: ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.pop(context); // Close dialog
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const AddProductPage(),
+                                            ),
+                                          );
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: _primaryColor,
+                                          foregroundColor: Colors.white,
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(14),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Add Another',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   );
@@ -629,141 +745,21 @@ class _AddProductViewState extends State<AddProductView> {
             'Product Information',
             'Basic details about your food item',
           ),
-          _buildCard(
-            child: Column(
-              children: [
-                _buildTextField(
-                  controller: _nameController,
-                  label: 'Product Name',
-                  hint: 'e.g. Burger Deluxe',
-                  icon: Icons.inventory_2_outlined,
-                  maxLength: 60,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: _buildTextField(
-                        controller: _skuController,
-                        label: 'SKU / Product ID',
-                        hint: 'e.g. SKU-BUR-1001',
-                        icon: Icons.qr_code_outlined,
-                        suffixWidget: IconButton(
-                          tooltip: 'Auto Generate SKU',
-                          icon: const Icon(Icons.autorenew, color: _primaryColor),
-                          onPressed: () => _autoGenerateSku(state.category),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 3,
-                      child: _buildTextField(
-                        controller: _subcategoryController,
-                        label: 'Subcategory',
-                        hint: 'e.g. Gourmet Burgers',
-                        icon: Icons.category_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                _buildCategorySelector(context, state),
-                const SizedBox(height: 24),
-                _buildFoodTypeSelector(context, state),
-                const SizedBox(height: 24),
-                _buildSpicyLevelSelector(context, state),
-              ],
-            ),
-          ),
+          _buildProductInfoCard(context, state),
           const SizedBox(height: 32),
 
           _buildSectionHeader(
-            'Pricing',
-            'Set price, discounts, and calculate profit',
+            'Unified Inventory & Pricing',
+            'Single item price or multi-size portion variants with live GST calculation',
           ),
-          _buildPricingSection(context, state),
+          _buildUnifiedInventoryEngine(context, state),
           const SizedBox(height: 32),
 
           _buildSectionHeader(
-            'Inventory & Logistics',
-            'Manage stock and preparation time',
+            'Customization & Add-on Groups',
+            'Create optional or mandatory extras like toppings, sauces, and dips with pricing and tax',
           ),
-          _buildInventorySection(context, state),
-          const SizedBox(height: 32),
-
-          _buildSectionHeader('Details', 'Add descriptions and customizations'),
-          _buildCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _buildTextField(
-                  controller: _descController,
-                  label: 'Description',
-                  hint: 'Describe the ingredients, taste, and portion size...',
-                  icon: Icons.description_outlined,
-                  maxLines: 5,
-                  maxLength: 500,
-                  helperText: 'Markdown supported',
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _prepTimeController,
-                        label: 'Prep Time',
-                        hint: 'e.g. 15 mins',
-                        icon: Icons.timer_outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _caloriesController,
-                        label: 'Calories',
-                        hint: 'e.g. 350 kcal',
-                        icon: Icons.local_fire_department_outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _portionSizeController,
-                        label: 'Portion Size',
-                        hint: 'e.g. Serves 2',
-                        icon: Icons.restaurant_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                _buildTextField(
-                  controller: _addonsController,
-                  label: 'Add-ons / Customizations',
-                  hint: 'e.g. Extra Cheese (+₹30), Extra Mayo (+₹15), Fries (+₹40)',
-                  icon: Icons.add_circle_outline,
-                  helperText: 'Optional (e.g. Name (+₹Price) or Name:Price)',
-                ),
-                const SizedBox(height: 24),
-                _buildTextField(
-                  controller: _ingredientsController,
-                  label: 'Ingredients',
-                  hint: 'e.g. Bun, Chicken Patty, Cheese, Lettuce',
-                  icon: Icons.eco_outlined,
-                  helperText: 'Optional (comma-separated)',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          _buildSectionHeader(
-            'Variants & Customizations',
-            'Add size variants and add-on groups with pricing',
-          ),
-          _buildVariantsAndCustomizationSection(context, state),
+          _buildUnifiedAddonGroupsSection(context, state),
           const SizedBox(height: 32),
 
           _buildSectionHeader(
@@ -803,26 +799,704 @@ class _AddProductViewState extends State<AddProductView> {
             ),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  color: _textPrimary,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: _textPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 14, color: _textSecondary),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 14, color: _textSecondary),
+                ),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProductInfoCard(BuildContext context, AddProductPageState state) {
+    return _buildCard(
+      child: Column(
+        children: [
+          _buildTextField(
+            controller: _nameController,
+            label: 'Product Name',
+            hint: 'e.g. Burger Deluxe',
+            icon: Icons.inventory_2_outlined,
+            maxLength: 60,
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: _buildTextField(
+                  controller: _skuController,
+                  label: 'SKU / Product ID',
+                  hint: 'e.g. SKU-BUR-1001',
+                  icon: Icons.qr_code_outlined,
+                  suffixWidget: IconButton(
+                    tooltip: 'Auto Generate SKU',
+                    icon: const Icon(Icons.autorenew, color: _primaryColor),
+                    onPressed: () => _autoGenerateSku(context, state.category),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 2,
+                child: _buildTextField(
+                  controller: _hsnCodeController,
+                  label: 'HSN / SAC Code',
+                  hint: 'e.g. 996331',
+                  icon: Icons.receipt_long_outlined,
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 3,
+                child: _buildTextField(
+                  controller: _subcategoryController,
+                  label: 'Subcategory',
+                  hint: 'e.g. Gourmet Burgers',
+                  icon: Icons.category_outlined,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+          _buildCategorySelector(context, state),
+          const SizedBox(height: 24),
+          _buildFoodTypeSelector(context, state),
+          const SizedBox(height: 24),
+          _buildSpicyLevelSelector(context, state),
+          const SizedBox(height: 24),
+          _buildTextField(
+            controller: _descController,
+            label: 'Description',
+            hint: 'Describe the ingredients, taste, and portion size...',
+            icon: Icons.description_outlined,
+            maxLines: 4,
+            maxLength: 500,
+            helperText: 'Markdown supported',
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField(
+                  controller: _prepTimeController,
+                  label: 'Prep Time',
+                  hint: 'e.g. 15 mins',
+                  icon: Icons.timer_outlined,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildTextField(
+                  controller: _caloriesController,
+                  label: 'Calories',
+                  hint: 'e.g. 350 kcal',
+                  icon: Icons.local_fire_department_outlined,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildTextField(
+                  controller: _portionSizeController,
+                  label: 'Portion Size',
+                  hint: 'e.g. Serves 2',
+                  icon: Icons.restaurant_outlined,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildTextField(
+            controller: _ingredientsController,
+            label: 'Ingredients',
+            hint: 'e.g. Bun, Chicken Patty, Cheese, Lettuce',
+            icon: Icons.eco_outlined,
+            helperText: 'Optional (comma-separated)',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnifiedInventoryEngine(
+    BuildContext context,
+    AddProductPageState state,
+  ) {
+    final basePrice = double.tryParse(_priceController.text) ?? 0.0;
+    final discount = double.tryParse(_discountController.text) ?? 0.0;
+    final discountedPrice = basePrice - (basePrice * (discount / 100));
+    final isInter = state.taxType == 'interState';
+    final cgstRate = state.cgstPercentage;
+    final sgstRate = state.sgstPercentage;
+    final igstRate = state.igstPercentage;
+    final cgstVal = isInter ? 0.0 : ((discountedPrice * (cgstRate / 100)) * 100).roundToDouble() / 100.0;
+    final sgstVal = isInter ? 0.0 : ((discountedPrice * (sgstRate / 100)) * 100).roundToDouble() / 100.0;
+    final igstVal = isInter ? ((discountedPrice * (igstRate / 100)) * 100).roundToDouble() / 100.0 : 0.0;
+    final totalTax = isInter ? igstVal : (cgstVal + sgstVal);
+    final finalPrice = discountedPrice + totalTax;
+    final roundedFinalPrice = finalPrice.roundToDouble();
+    final roundOff = roundedFinalPrice - finalPrice;
+
+    return _buildCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Segmented Switch: Single Item vs Multiple Sizes / Variants
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      context.read<AddProductPageBloc>().add(
+                        const ToggleProductTypeEvent(false),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: !state.hasVariants ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: !state.hasVariants
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            !state.hasVariants
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_off,
+                            size: 18,
+                            color: !state.hasVariants ? _primaryColor : _textSecondary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Single Item (Standard)',
+                            style: TextStyle(
+                              fontWeight: !state.hasVariants ? FontWeight.bold : FontWeight.w500,
+                              color: !state.hasVariants ? _textPrimary : _textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      context.read<AddProductPageBloc>().add(
+                        const ToggleProductTypeEvent(true),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: state.hasVariants ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: state.hasVariants
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            state.hasVariants
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_off,
+                            size: 18,
+                            color: state.hasVariants ? _primaryColor : _textSecondary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Multiple Sizes / Variants',
+                            style: TextStyle(
+                              fontWeight: state.hasVariants ? FontWeight.bold : FontWeight.w500,
+                              color: state.hasVariants ? _textPrimary : _textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // IF SINGLE ITEM MODE
+          if (!state.hasVariants) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    controller: _priceController,
+                    label: 'Base Price (₹)',
+                    hint: '0.00',
+                    icon: Icons.currency_rupee_outlined,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildTextField(
+                    controller: _discountController,
+                    label: 'Discount (%)',
+                    hint: '0',
+                    icon: Icons.percent_outlined,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // GST Slab & Tax Category Row
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<double>(
+                    value: [0.0, 5.0, 12.0, 18.0, 28.0].contains(state.gstPercentage) ? state.gstPercentage : 5.0,
+                    decoration: InputDecoration(
+                      labelText: 'GST Slab',
+                      labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textSecondary),
+                      prefixIcon: const Icon(Icons.percent_rounded, color: _primaryColor, size: 20),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _borderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _borderColor),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    dropdownColor: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    items: const [
+                      DropdownMenuItem(value: 0.0, child: Text('0% (Exempt)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                      DropdownMenuItem(value: 5.0, child: Text('5% (Food & Essentials)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                      DropdownMenuItem(value: 12.0, child: Text('12% (Beverages & Snacks)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                      DropdownMenuItem(value: 18.0, child: Text('18% (Standard Services)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                      DropdownMenuItem(value: 28.0, child: Text('28% (Luxury / Aerated)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        context.read<AddProductPageBloc>().add(GstRateChangedEvent(val));
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: state.taxType == 'interState' ? 'interState' : 'intraState',
+                    decoration: InputDecoration(
+                      labelText: 'Tax Category',
+                      labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textSecondary),
+                      prefixIcon: const Icon(Icons.account_balance_outlined, color: _primaryColor, size: 20),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _borderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _borderColor),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    dropdownColor: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'intraState',
+                        child: Text('Intra-State (CGST + SGST)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'interState',
+                        child: Text('Inter-State (IGST)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        context.read<AddProductPageBloc>().add(TaxTypeChangedEvent(val));
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    controller: _stockController,
+                    label: 'Available Stock',
+                    hint: '0',
+                    icon: Icons.inventory_2_outlined,
+                    keyboardType: TextInputType.number,
+                    enabled: !state.hasUnlimitedStock,
+                    onTap: () {
+                      if (_stockController.text == '0') {
+                        _stockController.clear();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildTextField(
+                    controller: _alertController,
+                    label: 'Minimum Alert',
+                    hint: '10',
+                    icon: Icons.notification_important_outlined,
+                    keyboardType: TextInputType.number,
+                    enabled: !state.hasUnlimitedStock,
+                    onTap: () {
+                      if (_alertController.text == '10' || _alertController.text == '0') {
+                        _alertController.clear();
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Checkbox(
+                  value: state.hasUnlimitedStock,
+                  activeColor: _primaryColor,
+                  onChanged: (val) {
+                    if (val != null) {
+                      context.read<AddProductPageBloc>().add(
+                        FieldChangedEvent('hasUnlimitedStock', val),
+                      );
+                    }
+                  },
+                ),
+                const Text(
+                  'Unlimited Stock (Always Available)',
+                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Live Price Breakdown Card for Single Item
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.receipt_long_outlined, size: 18, color: _primaryColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          isInter
+                              ? 'Live Price & Statutory Tax (IGST: ${igstRate.toStringAsFixed(0)}% Inter-State • HSN: ${_hsnCodeController.text.trim().isNotEmpty ? _hsnCodeController.text.trim() : "996331"})'
+                              : 'Live Price & Statutory Tax (CGST: ${cgstRate.toStringAsFixed(1)}% + SGST: ${sgstRate.toStringAsFixed(1)}% Intra-State • HSN: ${_hsnCodeController.text.trim().isNotEmpty ? _hsnCodeController.text.trim() : "996331"})',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _textPrimary),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        _buildPriceStat('Base Price', '₹${basePrice.toStringAsFixed(2)}', _textPrimary),
+                        Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 40, color: _borderColor),
+                        _buildPriceStat('Discount', '₹${(basePrice - discountedPrice).toStringAsFixed(2)}', _warningColor),
+                        Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 40, color: _borderColor),
+                        _buildPriceStat('Taxable Price', '₹${discountedPrice.toStringAsFixed(2)}', _textPrimary),
+                        Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 40, color: _borderColor),
+                        if (!isInter) ...[
+                          _buildPriceStat('CGST (${cgstRate.toStringAsFixed(1)}%)', '₹${cgstVal.toStringAsFixed(2)}', _textSecondary),
+                          Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 40, color: _borderColor),
+                          _buildPriceStat('SGST (${sgstRate.toStringAsFixed(1)}%)', '₹${sgstVal.toStringAsFixed(2)}', _textSecondary),
+                        ] else ...[
+                          _buildPriceStat('IGST (${igstRate.toStringAsFixed(0)}%)', '₹${igstVal.toStringAsFixed(2)}', _textSecondary),
+                        ],
+                        Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 40, color: _borderColor),
+                        _buildPriceStat('Round Off', '₹${roundOff.toStringAsFixed(2)}', _textSecondary),
+                        Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 40, color: _borderColor),
+                        _buildPriceStat('Final MRP', '₹${roundedFinalPrice.toStringAsFixed(2)}', _primaryColor),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+
+            // IF MULTI-VARIANT MODE
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _primaryColor.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _primaryColor.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: _primaryColor, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Multi-Size Item Mode Active: Each size (Regular, Medium, Large) controls its own Base Price, GST, and Stock below.',
+                      style: TextStyle(color: Colors.grey.shade800, fontSize: 13, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Product Sizes / Variants Table',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Add size variants with specific pricing and inventory limits',
+                      style: TextStyle(fontSize: 12, color: _textSecondary),
+                    ),
+                  ],
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _showAddVariantDialog(context, state),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add Size / Variant'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _primaryColor,
+                    side: const BorderSide(color: _primaryColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (state.variants.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              ...state.variants.asMap().entries.map((entry) {
+                final index = entry.key;
+                final v = entry.value;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _borderColor),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: _primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.straighten, size: 18, color: _primaryColor),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              v.name,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'MRP: ₹${v.finalPrice.toStringAsFixed(2)} • Base: ₹${v.basePrice.toStringAsFixed(2)} • GST (${v.taxType == 'interState' ? 'IGST ${v.gstPercentage.toStringAsFixed(0)}%' : 'CGST+SGST ${v.gstPercentage.toStringAsFixed(0)}%'}) • HSN: ${v.hsnCode} • Stock: ${v.trackInventory ? v.stock : 'Unlimited'}${v.sku.isNotEmpty ? ' • SKU: ${v.sku}' : ''}',
+                              style: const TextStyle(fontSize: 12, color: _textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, color: _primaryColor, size: 20),
+                        tooltip: 'Edit Variant',
+                        onPressed: () {
+                          _showAddVariantDialog(
+                            context,
+                            state,
+                            existingVariant: v,
+                            existingIndex: index,
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                        tooltip: 'Delete Variant',
+                        onPressed: () {
+                          final updated = List<ProductVariant>.from(state.variants)
+                            ..removeAt(index);
+                          context.read<AddProductPageBloc>().add(
+                            VariantsUpdatedEvent(updated),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 16),
+              // Live Aggregated Summary for Multi-Variants
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _borderColor),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildPriceStat(
+                      'Price Range',
+                      '₹${state.computedPriceRange.$1.toStringAsFixed(0)} – ₹${state.computedPriceRange.$2.toStringAsFixed(0)}',
+                      _primaryColor,
+                    ),
+                    Container(width: 1, height: 36, color: _borderColor),
+                    _buildPriceStat(
+                      'Total Available Stock',
+                      '${state.effectiveTotalStock} Units',
+                      _textPrimary,
+                    ),
+                    Container(width: 1, height: 36, color: _borderColor),
+                    _buildPriceStat(
+                      'Configured Sizes',
+                      '${state.variants.length} Sizes',
+                      _textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _borderColor, style: BorderStyle.solid),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.format_list_bulleted_add, size: 36, color: _textSecondary),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'No size variants added yet.',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _textPrimary),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Click "Add Size / Variant" to configure Regular, Medium, or Large portions.',
+                      style: TextStyle(fontSize: 12, color: _textSecondary),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceStat(String label, String value, Color valueColor) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: _textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
+        ),
+      ],
     );
   }
 
@@ -846,7 +1520,7 @@ class _AddProductViewState extends State<AddProductView> {
     );
   }
 
-  Widget _buildVariantsAndCustomizationSection(
+  Widget _buildUnifiedAddonGroupsSection(
     BuildContext context,
     AddProductPageState state,
   ) {
@@ -854,7 +1528,6 @@ class _AddProductViewState extends State<AddProductView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Variants
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -863,7 +1536,7 @@ class _AddProductViewState extends State<AddProductView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Product Variants / Sizes',
+                      'Customization & Add-on Groups',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -872,120 +1545,7 @@ class _AddProductViewState extends State<AddProductView> {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Different sizes or portions (e.g., Small, Medium, Large)',
-                      style: TextStyle(fontSize: 12, color: _textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => _showAddVariantDialog(context, state),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add Variant'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _primaryColor,
-                  side: const BorderSide(color: _primaryColor),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (state.variants.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            ...state.variants.map((v) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _borderColor),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: _primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.straighten, size: 16, color: _primaryColor),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            v.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                          ),
-                          Text(
-                            'Price: ₹${v.price.toStringAsFixed(0)} • Stock: ${v.stock} ${v.sku.isNotEmpty ? '• SKU: ${v.sku}' : ''}',
-                            style: const TextStyle(fontSize: 12, color: _textSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                      onPressed: () {
-                        final updated = List<ProductVariant>.from(state.variants)
-                          ..removeWhere((item) => item.id == v.id);
-                        context.read<AddProductPageBloc>().add(
-                          VariantsUpdatedEvent(updated),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ] else ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _borderColor),
-              ),
-              child: const Center(
-                child: Text(
-                  'No variants added yet. Click "Add Variant" if this item has multiple sizes.',
-                  style: TextStyle(fontSize: 13, color: _textSecondary),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 24),
-          const Divider(color: _borderColor),
-          const SizedBox(height: 24),
-
-          // Header: Customization Groups
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Customization / Add-on Groups',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _textPrimary,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Grouped choices (e.g., Choice of Crust, Extra Cheese)',
+                      'Grouped choices like "Choice of Crust", "Extra Toppings", "Dips & Sauces"',
                       style: TextStyle(fontSize: 12, color: _textSecondary),
                     ),
                   ],
@@ -1007,7 +1567,9 @@ class _AddProductViewState extends State<AddProductView> {
           ),
           if (state.customizationGroups.isNotEmpty) ...[
             const SizedBox(height: 16),
-            ...state.customizationGroups.map((group) {
+            ...state.customizationGroups.asMap().entries.map((entry) {
+              final index = entry.key;
+              final group = entry.value;
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
@@ -1045,10 +1607,23 @@ class _AddProductViewState extends State<AddProductView> {
                         ),
                         const Spacer(),
                         IconButton(
+                          icon: const Icon(Icons.edit_outlined, color: _primaryColor, size: 20),
+                          tooltip: 'Edit Group',
+                          onPressed: () {
+                            _showAddCustomizationGroupDialog(
+                              context,
+                              state,
+                              existingGroup: group,
+                              existingIndex: index,
+                            );
+                          },
+                        ),
+                        IconButton(
                           icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          tooltip: 'Delete Group',
                           onPressed: () {
                             final updated = List<ProductCustomizationGroup>.from(state.customizationGroups)
-                              ..removeWhere((g) => g.groupName == group.groupName);
+                              ..removeAt(index);
                             context.read<AddProductPageBloc>().add(
                               CustomizationGroupsUpdatedEvent(updated),
                             );
@@ -1061,9 +1636,12 @@ class _AddProductViewState extends State<AddProductView> {
                       spacing: 8,
                       runSpacing: 8,
                       children: group.options.map((opt) {
+                        final priceLabel = opt.finalPrice > 0
+                            ? '+₹${opt.finalPrice.toStringAsFixed(0)} (Base ₹${opt.basePrice.toStringAsFixed(0)}${opt.discountPercentage > 0 ? ' • ${opt.discountPercentage.toStringAsFixed(0)}% OFF' : ''} + GST ${opt.gstPercentage.toStringAsFixed(0)}%)'
+                            : 'Free';
                         return Chip(
                           label: Text(
-                            '${opt.name} (+₹${opt.price.toStringAsFixed(0)})',
+                            '${opt.name} • $priceLabel',
                             style: const TextStyle(fontSize: 12),
                           ),
                           backgroundColor: Colors.white,
@@ -1099,101 +1677,616 @@ class _AddProductViewState extends State<AddProductView> {
     );
   }
 
-  void _showAddVariantDialog(BuildContext context, AddProductPageState state) {
-    final nameCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
-    final stockCtrl = TextEditingController(text: '50');
-    final skuCtrl = TextEditingController();
+  InputDecoration _dialogInputDeco({
+    required String label,
+    String? hint,
+    Widget? prefixIcon,
+    Widget? suffixIcon,
+    bool isDense = false,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: GoogleFonts.inter(fontSize: 13, color: _textSecondary),
+      floatingLabelStyle: GoogleFonts.inter(
+        fontSize: 13,
+        color: _primaryColor,
+        fontWeight: FontWeight.w600,
+      ),
+      hintText: hint,
+      hintStyle: GoogleFonts.inter(
+        fontSize: 13,
+        color: _textSecondary.withValues(alpha: 0.6),
+      ),
+      prefixIcon: prefixIcon,
+      suffixIcon: suffixIcon,
+      isDense: isDense,
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: isDense ? 10 : 13,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _primaryColor, width: 1.5),
+      ),
+    );
+  }
+
+  void _showAddVariantDialog(
+    BuildContext context,
+    AddProductPageState state, {
+    ProductVariant? existingVariant,
+    int? existingIndex,
+  }) {
+    final bloc = context.read<AddProductPageBloc>();
+    final nameCtrl = TextEditingController(text: existingVariant?.name ?? '');
+    final basePriceCtrl = TextEditingController(
+      text: existingVariant != null
+          ? (existingVariant.basePrice > 0
+              ? (existingVariant.basePrice.truncateToDouble() == existingVariant.basePrice
+                  ? existingVariant.basePrice.toInt().toString()
+                  : existingVariant.basePrice.toString())
+              : (existingVariant.price.truncateToDouble() == existingVariant.price
+                  ? existingVariant.price.toInt().toString()
+                  : existingVariant.price.toString()))
+          : '',
+    );
+    final discountCtrl = TextEditingController(
+      text: existingVariant != null ? existingVariant.discountPercentage.toStringAsFixed(0) : '0',
+    );
+    final gstCtrl = TextEditingController(
+      text: existingVariant != null ? existingVariant.gstPercentage.toStringAsFixed(0) : state.gstPercentage.toStringAsFixed(0),
+    );
+    final stockCtrl = TextEditingController(
+      text: existingVariant != null ? existingVariant.stock.toString() : '50',
+    );
+    final skuCtrl = TextEditingController(text: existingVariant?.sku ?? '');
+    final hsnCtrl = TextEditingController(
+      text: existingVariant?.hsnCode.isNotEmpty == true
+          ? existingVariant!.hsnCode
+          : (_hsnCodeController.text.trim().isNotEmpty
+              ? _hsnCodeController.text.trim()
+              : '996338'),
+    );
+    bool trackInventory = existingVariant?.trackInventory ?? true;
+    String variantTaxType = existingVariant?.taxType ?? state.taxType;
+
+    void generateVariantSku() {
+      final vName = nameCtrl.text.trim();
+      final cleanVar = vName.isNotEmpty
+          ? vName.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '')
+          : 'VAR';
+      final varSuffix = cleanVar.length > 6 ? cleanVar.substring(0, 6) : cleanVar;
+
+      String baseSku = _skuController.text.trim();
+      if (baseSku.isEmpty) {
+        final cat = (state.category ?? 'PRD').toUpperCase().replaceAll(RegExp(r'[^A-Z]'), '');
+        final shortCat = cat.length >= 3 ? cat.substring(0, 3) : cat.padRight(3, 'X');
+        final randomSuffix = (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
+        baseSku = 'SKU-$shortCat-$randomSuffix';
+      }
+      skuCtrl.text = '$baseSku-$varSuffix';
+    }
 
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Add Product Variant'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Variant / Size Name',
-                    hintText: 'e.g. Regular, Large, 500ml',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        return BlocProvider.value(
+          value: bloc,
+          child: StatefulBuilder(
+            builder: (innerContext, setDialogState) {
+              final double screenWidth = MediaQuery.of(dialogContext).size.width;
+              final bool isDesktop = screenWidth >= 640;
+
+              final double basePriceVal = double.tryParse(basePriceCtrl.text) ?? 0.0;
+              final double discVal = double.tryParse(discountCtrl.text) ?? 0.0;
+              final double gstVal = double.tryParse(gstCtrl.text) ?? 5.0;
+              final double discountedVal = basePriceVal * (1 - (discVal / 100).clamp(0.0, 1.0));
+              final bool isInter = variantTaxType == 'interState';
+              final double cgstRate = isInter ? 0.0 : gstVal / 2.0;
+              final double sgstRate = isInter ? 0.0 : gstVal / 2.0;
+              final double igstRate = isInter ? gstVal : 0.0;
+              final double cgstAmt = isInter ? 0.0 : ((discountedVal * (cgstRate / 100)) * 100).roundToDouble() / 100;
+              final double sgstAmt = isInter ? 0.0 : ((discountedVal * (sgstRate / 100)) * 100).roundToDouble() / 100;
+              final double igstAmt = isInter ? ((discountedVal * (igstRate / 100)) * 100).roundToDouble() / 100 : 0.0;
+              final double totalTax = isInter ? igstAmt : (cgstAmt + sgstAmt);
+              final double unroundedTotal = discountedVal + totalTax;
+              final double estimatedMrp = unroundedTotal.roundToDouble();
+              final double roundOffAmt = (((estimatedMrp - unroundedTotal)) * 100).roundToDouble() / 100.0;
+              final String varHsn = hsnCtrl.text.trim().isNotEmpty
+                  ? hsnCtrl.text.trim()
+                  : (_hsnCodeController.text.trim().isNotEmpty
+                      ? _hsnCodeController.text.trim()
+                      : '996338');
+
+              return Dialog(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: isDesktop ? 540 : 460),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: SellerUiTokens.dialogShadow,
+                        border: Border.all(color: SellerUiTokens.borderSubtle),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Header
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 16, 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF2F2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFFECACA)),
+                                  ),
+                                  child: const Icon(
+                                    Icons.tune_rounded,
+                                    color: _primaryColor,
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        existingVariant != null
+                                            ? 'Edit Product Variant'
+                                            : 'Add Product Variant',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w700,
+                                          color: _textPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Configure statutory tax, pricing, stock & SKU',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close_rounded, color: _textSecondary, size: 22),
+                                  tooltip: 'Close',
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+                          // Content Scrollable
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Variant Name
+                                  TextField(
+                                    controller: nameCtrl,
+                                    onChanged: (_) => setDialogState(() {}),
+                                    decoration: _dialogInputDeco(
+                                      label: 'Variant / Size Name',
+                                      hint: 'e.g. Regular, Large, 500ml',
+                                      prefixIcon: const Icon(Icons.title_rounded, size: 20, color: _textSecondary),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // Base Price & Discount
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: TextField(
+                                          controller: basePriceCtrl,
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          onChanged: (_) => setDialogState(() {}),
+                                          decoration: _dialogInputDeco(
+                                            label: 'Base Price (₹)',
+                                            hint: '0.00',
+                                            prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 18, color: _textSecondary),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        flex: 2,
+                                        child: TextField(
+                                          controller: discountCtrl,
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          onChanged: (_) => setDialogState(() {}),
+                                          decoration: _dialogInputDeco(
+                                            label: 'Discount %',
+                                            hint: '0',
+                                            prefixIcon: const Icon(Icons.percent_rounded, size: 16, color: _textSecondary),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // GST Rate Slabs & Tax Category
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: DropdownButtonFormField<double>(
+                                          value: [0.0, 5.0, 12.0, 18.0, 28.0].contains(double.tryParse(gstCtrl.text)) ? double.tryParse(gstCtrl.text) : 5.0,
+                                          isExpanded: true,
+                                          decoration: _dialogInputDeco(
+                                            label: 'GST Slab',
+                                            prefixIcon: const Icon(Icons.percent_rounded, size: 16, color: _textSecondary),
+                                            isDense: true,
+                                          ),
+                                          dropdownColor: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          items: const [
+                                            DropdownMenuItem(value: 0.0, child: Text('0% (Exempt)', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                            DropdownMenuItem(value: 5.0, child: Text('5% (Food)', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                            DropdownMenuItem(value: 12.0, child: Text('12% (Drinks)', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                            DropdownMenuItem(value: 18.0, child: Text('18% (Std)', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                            DropdownMenuItem(value: 28.0, child: Text('28% (Lux)', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                          ],
+                                          onChanged: (val) {
+                                            if (val != null) {
+                                              setDialogState(() {
+                                                gstCtrl.text = val.toStringAsFixed(0);
+                                              });
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: DropdownButtonFormField<String>(
+                                          value: variantTaxType == 'interState' ? 'interState' : 'intraState',
+                                          isExpanded: true,
+                                          decoration: _dialogInputDeco(
+                                            label: 'Tax Type',
+                                            prefixIcon: const Icon(Icons.account_balance_outlined, size: 16, color: _textSecondary),
+                                            isDense: true,
+                                          ),
+                                          dropdownColor: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          items: const [
+                                            DropdownMenuItem(value: 'intraState', child: Text('CGST+SGST', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                            DropdownMenuItem(value: 'interState', child: Text('IGST', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                          ],
+                                          onChanged: (val) {
+                                            if (val != null) {
+                                              setDialogState(() {
+                                                variantTaxType = val;
+                                              });
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // Stock Qty & Variant SKU
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 2,
+                                        child: TextField(
+                                          controller: stockCtrl,
+                                          keyboardType: TextInputType.number,
+                                          decoration: _dialogInputDeco(
+                                            label: 'Stock',
+                                            hint: '50',
+                                            prefixIcon: const Icon(Icons.inventory_rounded, size: 16, color: _textSecondary),
+                                            isDense: true,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        flex: 3,
+                                        child: TextField(
+                                          controller: skuCtrl,
+                                          decoration: _dialogInputDeco(
+                                            label: 'Variant SKU',
+                                            hint: 'e.g. SKU-BUR-REG',
+                                            prefixIcon: const Icon(Icons.qr_code_2_rounded, size: 16, color: _textSecondary),
+                                            isDense: true,
+                                            suffixIcon: IconButton(
+                                              tooltip: 'Auto Generate Variant SKU',
+                                              icon: const Icon(Icons.autorenew_rounded, color: _primaryColor, size: 16),
+                                              onPressed: () {
+                                                setDialogState(() {
+                                                  generateVariantSku();
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // Statutory HSN Code
+                                  TextField(
+                                    controller: hsnCtrl,
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (_) => setDialogState(() {}),
+                                    decoration: _dialogInputDeco(
+                                      label: 'HSN Code',
+                                      hint: '996338',
+                                      prefixIcon: const Icon(Icons.tag_rounded, size: 16, color: _textSecondary),
+                                      isDense: true,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+
+                                  // Live Price & Statutory Tax Preview Card (matching Image 1 ditto!)
+                                  if (basePriceVal > 0)
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 14),
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF8FAFC),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.receipt_long_rounded, size: 16, color: _primaryColor),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  isInter
+                                                      ? 'Live Price & Statutory Tax (IGST: ${igstRate.toStringAsFixed(0)}% Inter-State • HSN: $varHsn)'
+                                                      : 'Live Price & Statutory Tax (CGST: ${cgstRate.toStringAsFixed(1)}% + SGST: ${sgstRate.toStringAsFixed(1)}% Intra-State • HSN: $varHsn)',
+                                                  style: GoogleFonts.plusJakartaSans(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 12,
+                                                    color: _textPrimary,
+                                                  ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          SingleChildScrollView(
+                                            scrollDirection: Axis.horizontal,
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.start,
+                                              children: [
+                                                _buildPriceStat('Base Price', '₹${basePriceVal.toStringAsFixed(2)}', _textPrimary),
+                                                Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 36, color: const Color(0xFFE2E8F0)),
+                                                _buildPriceStat('Discount', '₹${(basePriceVal - discountedVal).toStringAsFixed(2)}', _warningColor),
+                                                Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 36, color: const Color(0xFFE2E8F0)),
+                                                _buildPriceStat('Taxable Price', '₹${discountedVal.toStringAsFixed(2)}', _textPrimary),
+                                                Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 36, color: const Color(0xFFE2E8F0)),
+                                                if (!isInter) ...[
+                                                  _buildPriceStat('CGST (${cgstRate.toStringAsFixed(1)}%)', '₹${cgstAmt.toStringAsFixed(2)}', _textSecondary),
+                                                  Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 36, color: const Color(0xFFE2E8F0)),
+                                                  _buildPriceStat('SGST (${sgstRate.toStringAsFixed(1)}%)', '₹${sgstAmt.toStringAsFixed(2)}', _textSecondary),
+                                                ] else ...[
+                                                  _buildPriceStat('IGST (${igstRate.toStringAsFixed(0)}%)', '₹${igstAmt.toStringAsFixed(2)}', _textSecondary),
+                                                ],
+                                                Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 36, color: const Color(0xFFE2E8F0)),
+                                                _buildPriceStat('Round Off', '₹${roundOffAmt.toStringAsFixed(2)}', _textSecondary),
+                                                Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 36, color: const Color(0xFFE2E8F0)),
+                                                _buildPriceStat('Final MRP', '₹${estimatedMrp.toStringAsFixed(2)}', _primaryColor),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  const SizedBox(height: 12),
+
+                                  // Track Inventory Card
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: trackInventory
+                                                ? _primaryColor.withValues(alpha: 0.1)
+                                                : const Color(0xFFE2E8F0),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Icon(
+                                            Icons.inventory_2_outlined,
+                                            size: 20,
+                                            color: trackInventory ? _primaryColor : _textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Track Inventory',
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: _textPrimary,
+                                                ),
+                                              ),
+                                              Text(
+                                                'Enforce stock limit for this variant',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11,
+                                                  color: _textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Switch(
+                                          value: trackInventory,
+                                          activeThumbColor: Colors.white,
+                                          activeTrackColor: _primaryColor,
+                                          inactiveThumbColor: Colors.white,
+                                          inactiveTrackColor: const Color(0xFFCBD5E1),
+                                          onChanged: (val) => setDialogState(() => trackInventory = val),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+                          // Action Buttons
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 46,
+                                    child: OutlinedButton(
+                                      onPressed: () => Navigator.pop(dialogContext),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Cancel',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 2,
+                                  child: SizedBox(
+                                    height: 46,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _primaryColor,
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        final name = nameCtrl.text.trim();
+                                        final basePrice = double.tryParse(basePriceCtrl.text) ?? 0.0;
+                                        final discount = double.tryParse(discountCtrl.text) ?? 0.0;
+                                        final gst = double.tryParse(gstCtrl.text) ?? 5.0;
+                                        final stock = int.tryParse(stockCtrl.text) ?? 0;
+                                        final sku = skuCtrl.text.trim();
+                                        final hsn = hsnCtrl.text.trim().isNotEmpty ? hsnCtrl.text.trim() : '996338';
+
+                                        if (name.isEmpty || basePrice <= 0) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Please enter variant name and valid base price')),
+                                          );
+                                          return;
+                                        }
+
+                                        final newVariant = ProductVariant(
+                                          id: existingVariant?.id ?? 'var_${DateTime.now().millisecondsSinceEpoch}',
+                                          name: name,
+                                          basePrice: basePrice,
+                                          discountPercentage: discount,
+                                          gstPercentage: gst,
+                                          taxType: variantTaxType,
+                                          hsnCode: hsn,
+                                          stock: stock,
+                                          sku: sku,
+                                          isAvailable: true,
+                                          trackInventory: trackInventory,
+                                        );
+
+                                        final updated = List<ProductVariant>.from(state.variants);
+                                        if (existingIndex != null && existingIndex >= 0 && existingIndex < updated.length) {
+                                          updated[existingIndex] = newVariant;
+                                        } else {
+                                          updated.add(newVariant);
+                                        }
+
+
+                                        bloc.add(VariantsUpdatedEvent(updated));
+                                        Navigator.pop(dialogContext);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Variant "$name" saved successfully!'),
+                                            backgroundColor: _successColor,
+                                          ),
+                                        );
+                                      },
+                                      child: Text(
+                                        existingVariant != null ? 'Update Variant' : 'Add Variant',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: priceCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Price (₹)',
-                    hintText: '0.00',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: stockCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Stock Quantity',
-                    hintText: '50',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: skuCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Variant SKU (Optional)',
-                    hintText: 'e.g. SKU-BUR-REG',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () {
-                final name = nameCtrl.text.trim();
-                final price = double.tryParse(priceCtrl.text) ?? 0.0;
-                final stock = int.tryParse(stockCtrl.text) ?? 0;
-                final sku = skuCtrl.text.trim();
-
-                if (name.isEmpty || price <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter variant name and valid price')),
-                  );
-                  return;
-                }
-
-                final newVariant = ProductVariant(
-                  id: 'var_${DateTime.now().millisecondsSinceEpoch}',
-                  name: name,
-                  price: price,
-                  stock: stock,
-                  sku: sku,
-                  isAvailable: true,
-                );
-
-                final updated = List<ProductVariant>.from(state.variants)..add(newVariant);
-                context.read<AddProductPageBloc>().add(VariantsUpdatedEvent(updated));
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Add Variant', style: TextStyle(color: Colors.white)),
-            ),
-          ],
         );
       },
     );
@@ -1201,157 +2294,691 @@ class _AddProductViewState extends State<AddProductView> {
 
   void _showAddCustomizationGroupDialog(
     BuildContext context,
-    AddProductPageState state,
-  ) {
-    final groupNameCtrl = TextEditingController();
-    bool isRequired = false;
-    final List<ProductAddon> options = [];
-    final optNameCtrl = TextEditingController();
-    final optPriceCtrl = TextEditingController();
+    AddProductPageState state, {
+    ProductCustomizationGroup? existingGroup,
+    int? existingIndex,
+  }) {
+    final bloc = context.read<AddProductPageBloc>();
+    final groupNameCtrl = TextEditingController(text: existingGroup?.groupName ?? '');
+    bool isRequired = existingGroup?.isRequired ?? false;
+
+    // Initialize option rows
+    final List<_CustomizationOptionRow> optionRows = [];
+    final String defaultHsn = _hsnCodeController.text.trim().isNotEmpty
+        ? _hsnCodeController.text.trim()
+        : '996338';
+
+    if (existingGroup != null && existingGroup.options.isNotEmpty) {
+      for (final opt in existingGroup.options) {
+        final p = opt.basePrice > 0
+            ? (opt.basePrice.truncateToDouble() == opt.basePrice
+                ? opt.basePrice.toInt().toString()
+                : opt.basePrice.toString())
+            : (opt.price > 0
+                ? (opt.price.truncateToDouble() == opt.price
+                    ? opt.price.toInt().toString()
+                    : opt.price.toString())
+                : '');
+        final disc = opt.discountPercentage.toStringAsFixed(0);
+        optionRows.add(_CustomizationOptionRow(
+          id: opt.id,
+          name: opt.name,
+          price: p,
+          discount: disc != '0' ? disc : '',
+          gst: opt.gstPercentage.toStringAsFixed(0),
+          hsn: opt.hsnCode.isNotEmpty ? opt.hsnCode : defaultHsn,
+          taxType: opt.taxType.isNotEmpty ? opt.taxType : state.taxType,
+          trackInventory: opt.trackInventory,
+        ));
+      }
+    } else {
+      // Start with 1 empty row ready to type
+      optionRows.add(_CustomizationOptionRow(
+        hsn: defaultHsn,
+        taxType: state.taxType,
+      ));
+    }
 
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text('Add Customization Group'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: groupNameCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Group Name',
-                        hintText: 'e.g. Choose Crust, Extra Toppings',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        return BlocProvider.value(
+          value: bloc,
+          child: StatefulBuilder(
+            builder: (innerContext, setDialogState) {
+              final double screenWidth = MediaQuery.of(dialogContext).size.width;
+              final bool isDesktop = screenWidth >= 640;
+
+              return Dialog(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: isDesktop ? 680 : 540),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: SellerUiTokens.dialogShadow,
+                        border: Border.all(color: SellerUiTokens.borderSubtle),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Required Selection'),
-                      subtitle: const Text('Customer must select an option'),
-                      value: isRequired,
-                      onChanged: (val) {
-                        setDialogState(() => isRequired = val);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Options in this Group:',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    const SizedBox(height: 8),
-                    if (options.isNotEmpty) ...[
-                      Wrap(
-                        spacing: 8,
-                        children: options.map((opt) {
-                          return Chip(
-                            label: Text('${opt.name} (+₹${opt.price.toStringAsFixed(0)})'),
-                            onDeleted: () {
-                              setDialogState(() {
-                                options.removeWhere((o) => o.name == opt.name);
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: TextField(
-                            controller: optNameCtrl,
-                            decoration: InputDecoration(
-                              labelText: 'Option Name',
-                              hintText: 'e.g. Cheese Burst',
-                              isDense: true,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 2,
-                          child: TextField(
-                            controller: optPriceCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: InputDecoration(
-                              labelText: 'Price (₹)',
-                              hintText: '40',
-                              isDense: true,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle, color: _primaryColor),
-                          onPressed: () {
-                            final name = optNameCtrl.text.trim();
-                            final price = double.tryParse(optPriceCtrl.text) ?? 0.0;
-                            if (name.isNotEmpty) {
-                              setDialogState(() {
-                                options.add(
-                                  ProductAddon(
-                                    id: 'opt_${DateTime.now().millisecondsSinceEpoch}_${options.length}',
-                                    name: name,
-                                    price: price,
-                                    isAvailable: true,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Header
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 16, 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF2F2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFFECACA)),
                                   ),
-                                );
-                                optNameCtrl.clear();
-                                optPriceCtrl.clear();
-                              });
-                            }
-                          },
-                        ),
-                      ],
+                                  child: const Icon(
+                                    Icons.layers_outlined,
+                                    color: _primaryColor,
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        existingGroup != null
+                                            ? 'Edit Customization Group'
+                                            : 'Add Customization Group',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w700,
+                                          color: _textPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Configure required choices, statutory tax & add-on pricing',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close_rounded, color: _textSecondary, size: 22),
+                                  tooltip: 'Close',
+                                  onPressed: () {
+                                    for (final r in optionRows) {
+                                      r.dispose();
+                                    }
+                                    Navigator.pop(dialogContext);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+                          // Content Scrollable
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Group Name
+                                  TextField(
+                                    controller: groupNameCtrl,
+                                    decoration: _dialogInputDeco(
+                                      label: 'Group Name',
+                                      hint: 'e.g. Choose Crust, Extra Toppings',
+                                      prefixIcon: const Icon(Icons.category_outlined, size: 20, color: _textSecondary),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // Required Selection Switch Card
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: isRequired
+                                                ? _primaryColor.withValues(alpha: 0.1)
+                                                : const Color(0xFFE2E8F0),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Icon(
+                                            Icons.fact_check_outlined,
+                                            size: 20,
+                                            color: isRequired ? _primaryColor : _textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Required Selection',
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: _textPrimary,
+                                                ),
+                                              ),
+                                              Text(
+                                                'Customer must select an option',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11,
+                                                  color: _textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Switch(
+                                          value: isRequired,
+                                          activeThumbColor: Colors.white,
+                                          activeTrackColor: _primaryColor,
+                                          inactiveThumbColor: Colors.white,
+                                          inactiveTrackColor: const Color(0xFFCBD5E1),
+                                          onChanged: (val) => setDialogState(() => isRequired = val),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // Options Header
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Wrap(
+                                          crossAxisAlignment: WrapCrossAlignment.center,
+                                          spacing: 8,
+                                          children: [
+                                            Text(
+                                              'Options in this Group:',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                                color: _textPrimary,
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFFEF2F2),
+                                                borderRadius: BorderRadius.circular(12),
+                                                border: Border.all(color: const Color(0xFFFECACA)),
+                                              ),
+                                              child: Text(
+                                                '${optionRows.length} option${optionRows.length > 1 ? 's' : ''}',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: _primaryColor,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: () {
+                                          setDialogState(() {
+                                            optionRows.add(_CustomizationOptionRow(
+                                              hsn: defaultHsn,
+                                              taxType: state.taxType,
+                                            ));
+                                          });
+                                        },
+                                        icon: const Icon(Icons.add, size: 16, color: _primaryColor),
+                                        label: Text(
+                                          'Add Option',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: _primaryColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Base price, Discount %, Statutory GST slab & HSN code per add-on. Leave price 0 for free options.',
+                                    style: GoogleFonts.inter(fontSize: 11, color: _textSecondary),
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // List of dynamic option cards with live Statutory Tax breakdown
+                                  ...List.generate(optionRows.length, (idx) {
+                                    final row = optionRows[idx];
+                                    final double basePriceVal = double.tryParse(row.priceController.text.trim()) ?? 0.0;
+                                    final double discVal = double.tryParse(row.discountController.text.trim()) ?? 0.0;
+                                    final double gstVal = double.tryParse(row.gstController.text.trim()) ?? 5.0;
+                                    final double discountedVal = basePriceVal * (1.0 - (discVal / 100.0).clamp(0.0, 1.0));
+                                    final bool isInter = row.taxType == 'interState';
+                                    final double cgstRate = isInter ? 0.0 : gstVal / 2.0;
+                                    final double sgstRate = isInter ? 0.0 : gstVal / 2.0;
+                                    final double igstRate = isInter ? gstVal : 0.0;
+                                    final double cgstVal = isInter ? 0.0 : ((discountedVal * (cgstRate / 100.0)) * 100).roundToDouble() / 100.0;
+                                    final double sgstVal = isInter ? 0.0 : ((discountedVal * (sgstRate / 100.0)) * 100).roundToDouble() / 100.0;
+                                    final double igstVal = isInter ? ((discountedVal * (igstRate / 100.0)) * 100).roundToDouble() / 100.0 : 0.0;
+                                    final double totalTax = isInter ? igstVal : (cgstVal + sgstVal);
+                                    final double unroundedFinal = discountedVal + totalTax;
+                                    final double roundedFinalPrice = unroundedFinal.roundToDouble();
+                                    final double roundOff = ((roundedFinalPrice - unroundedFinal) * 100).roundToDouble() / 100.0;
+                                    final String optHsn = row.hsnController.text.trim().isNotEmpty
+                                        ? row.hsnController.text.trim()
+                                        : defaultHsn;
+
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 12.0),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF8FAFC),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          // Top Row: Option Name + HSN Code + Action Buttons
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                flex: 4,
+                                                child: TextField(
+                                                  controller: row.nameController,
+                                                  onChanged: (_) => setDialogState(() {}),
+                                                  decoration: _dialogInputDeco(
+                                                    label: 'Option ${idx + 1} Name',
+                                                    hint: 'e.g. Extra Cheese',
+                                                    isDense: true,
+                                                    prefixIcon: const Icon(Icons.label_outline, size: 16, color: _textSecondary),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                flex: 3,
+                                                child: TextField(
+                                                  controller: row.hsnController,
+                                                  onChanged: (_) => setDialogState(() {}),
+                                                  decoration: _dialogInputDeco(
+                                                    label: 'HSN Code',
+                                                    hint: '996338',
+                                                    isDense: true,
+                                                    prefixIcon: const Icon(Icons.tag_rounded, size: 16, color: _textSecondary),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              IconButton(
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 22),
+                                                tooltip: 'Remove option',
+                                                onPressed: optionRows.length > 1
+                                                    ? () {
+                                                        setDialogState(() {
+                                                          final removed = optionRows.removeAt(idx);
+                                                          removed.dispose();
+                                                        });
+                                                      }
+                                                    : () {
+                                                        setDialogState(() {
+                                                          row.nameController.clear();
+                                                          row.priceController.clear();
+                                                          row.discountController.clear();
+                                                          row.gstController.text = '5';
+                                                          row.hsnController.text = defaultHsn;
+                                                          row.taxType = state.taxType;
+                                                        });
+                                                      },
+                                              ),
+                                              IconButton(
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                                icon: const Icon(Icons.add_circle, color: _primaryColor, size: 24),
+                                                tooltip: 'Add option below',
+                                                onPressed: () {
+                                                  setDialogState(() {
+                                                    optionRows.insert(
+                                                      idx + 1,
+                                                      _CustomizationOptionRow(
+                                                        hsn: defaultHsn,
+                                                        taxType: state.taxType,
+                                                      ),
+                                                    );
+                                                  });
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 10),
+
+                                          // Second Row: Base Price + Discount + GST Slab + Tax Type
+                                          Row(
+                                            children: [
+                                              // Base Price (₹)
+                                              Expanded(
+                                                flex: 2,
+                                                child: TextField(
+                                                  controller: row.priceController,
+                                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                  onChanged: (_) => setDialogState(() {}),
+                                                  decoration: _dialogInputDeco(
+                                                    label: 'Base (₹)',
+                                                    hint: '0',
+                                                    isDense: true,
+                                                    prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 15, color: _textSecondary),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+
+                                              // Discount %
+                                              Expanded(
+                                                flex: 2,
+                                                child: TextField(
+                                                  controller: row.discountController,
+                                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                  onChanged: (_) => setDialogState(() {}),
+                                                  decoration: _dialogInputDeco(
+                                                    label: 'Disc %',
+                                                    hint: '0',
+                                                    isDense: true,
+                                                    prefixIcon: const Icon(Icons.percent_rounded, size: 14, color: _textSecondary),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+
+                                              // GST Slab Dropdown
+                                              Expanded(
+                                                flex: 3,
+                                                child: DropdownButtonFormField<double>(
+                                                  value: [0.0, 5.0, 12.0, 18.0, 28.0].contains(double.tryParse(row.gstController.text))
+                                                      ? double.tryParse(row.gstController.text)
+                                                      : 5.0,
+                                                  isExpanded: true,
+                                                  decoration: _dialogInputDeco(
+                                                    label: 'GST Slab',
+                                                    isDense: true,
+                                                  ),
+                                                  dropdownColor: Colors.white,
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  items: const [
+                                                    DropdownMenuItem(value: 0.0, child: Text('0% (Exempt)', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                                    DropdownMenuItem(value: 5.0, child: Text('5% (Food)', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                                    DropdownMenuItem(value: 12.0, child: Text('12% (Drinks)', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                                    DropdownMenuItem(value: 18.0, child: Text('18% (Std)', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                                    DropdownMenuItem(value: 28.0, child: Text('28% (Lux)', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                                  ],
+                                                  onChanged: (val) {
+                                                    if (val != null) {
+                                                      setDialogState(() {
+                                                        row.gstController.text = val.toStringAsFixed(0);
+                                                      });
+                                                    }
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+
+                                              // Tax Type Dropdown
+                                              Expanded(
+                                                flex: 3,
+                                                child: DropdownButtonFormField<String>(
+                                                  value: row.taxType == 'interState' ? 'interState' : 'intraState',
+                                                  isExpanded: true,
+                                                  decoration: _dialogInputDeco(
+                                                    label: 'Tax Type',
+                                                    isDense: true,
+                                                  ),
+                                                  dropdownColor: Colors.white,
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  items: const [
+                                                    DropdownMenuItem(value: 'intraState', child: Text('CGST+SGST', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                                    DropdownMenuItem(value: 'interState', child: Text('IGST', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                                                  ],
+                                                  onChanged: (val) {
+                                                    if (val != null) {
+                                                      setDialogState(() {
+                                                        row.taxType = val;
+                                                      });
+                                                    }
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          // Live Price & Statutory Tax Preview Card (matching Image 2 ditto!)
+                                          if (basePriceVal > 0) ...[
+                                            const SizedBox(height: 10),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(12),
+                                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      const Icon(Icons.receipt_long_outlined, size: 15, color: _primaryColor),
+                                                      const SizedBox(width: 6),
+                                                      Expanded(
+                                                        child: Text(
+                                                          isInter
+                                                              ? 'Live Price & Statutory Tax (IGST: ${igstRate.toStringAsFixed(0)}% Inter-State • HSN: $optHsn)'
+                                                              : 'Live Price & Statutory Tax (CGST: ${cgstRate.toStringAsFixed(1)}% + SGST: ${sgstRate.toStringAsFixed(1)}% Intra-State • HSN: $optHsn)',
+                                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: _textPrimary),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                  SingleChildScrollView(
+                                                    scrollDirection: Axis.horizontal,
+                                                    child: Row(
+                                                      mainAxisAlignment: MainAxisAlignment.start,
+                                                      children: [
+                                                        _buildPriceStat('Base Price', '₹${basePriceVal.toStringAsFixed(2)}', _textPrimary),
+                                                        Container(margin: const EdgeInsets.symmetric(horizontal: 8), width: 1, height: 32, color: _borderColor),
+                                                        _buildPriceStat('Discount', '₹${(basePriceVal - discountedVal).toStringAsFixed(2)}', _warningColor),
+                                                        Container(margin: const EdgeInsets.symmetric(horizontal: 8), width: 1, height: 32, color: _borderColor),
+                                                        _buildPriceStat('Taxable Price', '₹${discountedVal.toStringAsFixed(2)}', _textPrimary),
+                                                        Container(margin: const EdgeInsets.symmetric(horizontal: 8), width: 1, height: 32, color: _borderColor),
+                                                        if (!isInter) ...[
+                                                          _buildPriceStat('CGST (${cgstRate.toStringAsFixed(1)}%)', '₹${cgstVal.toStringAsFixed(2)}', _textSecondary),
+                                                          Container(margin: const EdgeInsets.symmetric(horizontal: 8), width: 1, height: 32, color: _borderColor),
+                                                          _buildPriceStat('SGST (${sgstRate.toStringAsFixed(1)}%)', '₹${sgstVal.toStringAsFixed(2)}', _textSecondary),
+                                                        ] else ...[
+                                                          _buildPriceStat('IGST (${igstRate.toStringAsFixed(0)}%)', '₹${igstVal.toStringAsFixed(2)}', _textSecondary),
+                                                        ],
+                                                        Container(margin: const EdgeInsets.symmetric(horizontal: 8), width: 1, height: 32, color: _borderColor),
+                                                        _buildPriceStat('Round Off', '₹${roundOff.toStringAsFixed(2)}', _textSecondary),
+                                                        Container(margin: const EdgeInsets.symmetric(horizontal: 8), width: 1, height: 32, color: _borderColor),
+                                                        _buildPriceStat('Final MRP', '₹${roundedFinalPrice.toStringAsFixed(2)}', _primaryColor),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+                          // Action Buttons
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 46,
+                                    child: OutlinedButton(
+                                      onPressed: () {
+                                        for (final r in optionRows) {
+                                          r.dispose();
+                                        }
+                                        Navigator.pop(dialogContext);
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Cancel',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 2,
+                                  child: SizedBox(
+                                    height: 46,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _primaryColor,
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        final groupName = groupNameCtrl.text.trim();
+                                        if (groupName.isEmpty) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Please enter group name')),
+                                          );
+                                          return;
+                                        }
+
+                                        final List<ProductAddon> validOptions = [];
+                                        for (int i = 0; i < optionRows.length; i++) {
+                                          final row = optionRows[i];
+                                          final optName = row.nameController.text.trim();
+                                          if (optName.isNotEmpty) {
+                                            final priceVal = double.tryParse(row.priceController.text.trim()) ?? 0.0;
+                                            final discountVal = double.tryParse(row.discountController.text.trim()) ?? 0.0;
+                                            final gstVal = double.tryParse(row.gstController.text.trim()) ?? 5.0;
+                                            final hsnVal = row.hsnController.text.trim().isNotEmpty
+                                                ? row.hsnController.text.trim()
+                                                : defaultHsn;
+                                            final taxTypeVal = row.taxType;
+
+                                            validOptions.add(
+                                              ProductAddon(
+                                                id: row.id.isNotEmpty ? row.id : 'opt_${DateTime.now().microsecondsSinceEpoch}_$i',
+                                                name: optName,
+                                                basePrice: priceVal >= 0 ? priceVal : 0.0,
+                                                discountPercentage: discountVal >= 0 ? discountVal : 0.0,
+                                                gstPercentage: gstVal,
+                                                taxType: taxTypeVal,
+                                                hsnCode: hsnVal,
+                                                isAvailable: true,
+                                                trackInventory: row.trackInventory,
+                                              ),
+                                            );
+                                          }
+                                        }
+
+                                        if (validOptions.isEmpty) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Please enter at least one option name')),
+                                          );
+                                          return;
+                                        }
+
+                                        final newGroup = ProductCustomizationGroup(
+                                          groupName: groupName,
+                                          isRequired: isRequired,
+                                          minSelect: isRequired ? 1 : 0,
+                                          maxSelect: 5,
+                                          options: validOptions,
+                                        );
+
+                                        final updated = List<ProductCustomizationGroup>.from(state.customizationGroups);
+                                        if (existingIndex != null && existingIndex >= 0 && existingIndex < updated.length) {
+                                          updated[existingIndex] = newGroup;
+                                        } else {
+                                          updated.add(newGroup);
+                                        }
+
+                                        bloc.add(CustomizationGroupsUpdatedEvent(updated));
+                                        Navigator.pop(dialogContext);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Customization group "$groupName" saved successfully!'),
+                                            backgroundColor: _successColor,
+                                          ),
+                                        );
+                                      },
+                                      child: Text(
+                                        existingGroup != null ? 'Update Group' : 'Add Group',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () {
-                    final groupName = groupNameCtrl.text.trim();
-                    if (groupName.isEmpty || options.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter group name and at least one option')),
-                      );
-                      return;
-                    }
-
-                    final newGroup = ProductCustomizationGroup(
-                      groupName: groupName,
-                      isRequired: isRequired,
-                      minSelect: isRequired ? 1 : 0,
-                      maxSelect: 5,
-                      options: options,
-                    );
-
-                    final updated = List<ProductCustomizationGroup>.from(state.customizationGroups)..add(newGroup);
-                    context.read<AddProductPageBloc>().add(CustomizationGroupsUpdatedEvent(updated));
-                    Navigator.pop(dialogContext);
-                  },
-                  child: const Text('Save Group', style: TextStyle(color: Colors.white)),
                 ),
-              ],
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );
@@ -1519,48 +3146,66 @@ class _AddProductViewState extends State<AddProductView> {
                                 builder: (BuildContext dialogContext) {
                                   return Dialog(
                                     backgroundColor: Colors.transparent,
-                                    insetPadding: const EdgeInsets.all(16),
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        InteractiveViewer(
-                                          minScale: 1.0,
-                                          maxScale: 4.0,
-                                          child: isExistingImage
-                                              ? CachedNetworkImage(
-                                                  imageUrl: state
-                                                      .existingImages[imageIndex],
-                                                  fit: BoxFit.contain,
-                                                )
-                                              : (kIsWeb
-                                                    ? Image.network(
-                                                        state
-                                                            .images[imageIndex]
-                                                            .path,
-                                                      )
-                                                    : Image.file(
-                                                        File(
-                                                          state
-                                                              .images[imageIndex]
-                                                              .path,
-                                                        ),
-                                                      )),
-                                        ),
-                                        Positioned(
-                                          top: 0,
-                                          right: 0,
-                                          child: IconButton(
-                                            icon: const Icon(
-                                              Icons.close,
-                                              color: Colors.white,
-                                              size: 30,
-                                            ),
-                                            onPressed: () {
-                                              Navigator.pop(dialogContext);
-                                            },
+                                    elevation: 0,
+                                    insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 600),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.88),
+                                            borderRadius: BorderRadius.circular(20),
+                                            boxShadow: SellerUiTokens.dialogShadow,
+                                            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                                          ),
+                                          clipBehavior: Clip.antiAlias,
+                                          child: Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              Padding(
+                                                padding: const EdgeInsets.all(16),
+                                                child: InteractiveViewer(
+                                                  minScale: 1.0,
+                                                  maxScale: 4.0,
+                                                  child: isExistingImage
+                                                      ? CachedNetworkImage(
+                                                          imageUrl: state.existingImages[imageIndex],
+                                                          fit: BoxFit.contain,
+                                                        )
+                                                      : (kIsWeb
+                                                          ? Image.network(
+                                                              state.images[imageIndex].path,
+                                                              fit: BoxFit.contain,
+                                                            )
+                                                          : Image.file(
+                                                              File(state.images[imageIndex].path),
+                                                              fit: BoxFit.contain,
+                                                            )),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                top: 12,
+                                                right: 12,
+                                                child: Material(
+                                                  color: Colors.black.withValues(alpha: 0.6),
+                                                  shape: const CircleBorder(),
+                                                  child: IconButton(
+                                                    icon: const Icon(
+                                                      Icons.close_rounded,
+                                                      color: Colors.white,
+                                                      size: 22,
+                                                    ),
+                                                    tooltip: 'Close Preview',
+                                                    onPressed: () {
+                                                      Navigator.pop(dialogContext);
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   );
                                 },
@@ -1916,182 +3561,7 @@ class _AddProductViewState extends State<AddProductView> {
     );
   }
 
-  Widget _buildPricingSection(BuildContext context, AddProductPageState state) {
-    final price = double.tryParse(_priceController.text) ?? 0.0;
-    final discount = double.tryParse(_discountController.text) ?? 0.0;
-    final discountedPrice = price - (price * (discount / 100));
-    final gstAmount = discountedPrice * (state.gstPercentage / 100);
-    final finalPrice = discountedPrice + gstAmount;
-    final roundedFinalPrice = finalPrice.roundToDouble();
-    final roundOff = roundedFinalPrice - finalPrice;
 
-    return _buildCard(
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _priceController,
-                  label: 'Base Price',
-                  hint: '0.00',
-                  icon: Icons.currency_rupee_outlined,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildTextField(
-                  controller: _discountController,
-                  label: 'Discount (%)',
-                  hint: '0',
-                  icon: Icons.percent_outlined,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _borderColor),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildPriceStat(
-                  'Base Price',
-                  '₹${price.toStringAsFixed(2)}',
-                  _textPrimary,
-                ),
-                Container(width: 1, height: 40, color: _borderColor),
-                _buildPriceStat(
-                  'Discount',
-                  '₹${(price - discountedPrice).toStringAsFixed(2)}',
-                  _warningColor,
-                ),
-                if (state.gstPercentage > 0) ...[
-                  Container(width: 1, height: 40, color: _borderColor),
-                  _buildPriceStat(
-                    'GST (${state.gstPercentage.toStringAsFixed(0)}%)',
-                    '₹${gstAmount.toStringAsFixed(2)}',
-                    _textSecondary,
-                  ),
-                ],
-                Container(width: 1, height: 40, color: _borderColor),
-                _buildPriceStat(
-                  'Round Off',
-                  '₹${roundOff.toStringAsFixed(2)}',
-                  _textSecondary,
-                ),
-                Container(width: 1, height: 40, color: _borderColor),
-                _buildPriceStat(
-                  'Final Price',
-                  '₹${roundedFinalPrice.toStringAsFixed(2)}',
-                  _primaryColor,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPriceStat(String label, String value, Color valueColor) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: _textSecondary),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: valueColor,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInventorySection(
-    BuildContext context,
-    AddProductPageState state,
-  ) {
-    return _buildCard(
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _stockController,
-                  label: 'Available Stock',
-                  hint: '0',
-                  icon: Icons.inventory_2_outlined,
-                  keyboardType: TextInputType.number,
-                  enabled: !state.hasUnlimitedStock,
-                  onTap: () {
-                    if (_stockController.text == '0') {
-                      _stockController.clear();
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildTextField(
-                  controller: _alertController,
-                  label: 'Minimum Alert',
-                  hint: '10',
-                  icon: Icons.notification_important_outlined,
-                  keyboardType: TextInputType.number,
-                  enabled: !state.hasUnlimitedStock,
-                  onTap: () {
-                    if (_alertController.text == '10' || _alertController.text == '0') {
-                      _alertController.clear();
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Checkbox(
-                value: state.hasUnlimitedStock,
-                activeColor: _primaryColor,
-                onChanged: (val) {
-                  if (val != null)
-                    context.read<AddProductPageBloc>().add(
-                      FieldChangedEvent('hasUnlimitedStock', val),
-                    );
-                },
-              ),
-              Expanded(
-                child: const Text(
-                  'Unlimited Stock (Always Available)',
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildStatusToggles(BuildContext context, AddProductPageState state) {
     return _buildCard(
@@ -2254,10 +3724,12 @@ class _AddProductViewState extends State<AddProductView> {
   Widget _buildReviewChecklist(AddProductPageState state) {
     bool hasImages = state.images.isNotEmpty || state.existingImages.isNotEmpty;
     bool hasName = _nameController.text.isNotEmpty;
-    bool hasPrice =
-        double.tryParse(_priceController.text) != null &&
-        double.tryParse(_priceController.text)! > 0;
+    bool hasPrice = state.hasVariants
+        ? state.variants.isNotEmpty
+        : (double.tryParse(_priceController.text) != null &&
+            double.tryParse(_priceController.text)! > 0);
     bool hasCategory = state.category?.isNotEmpty ?? false;
+    bool hasHsn = _hsnCodeController.text.trim().isNotEmpty;
 
     return _buildCard(
       padding: const EdgeInsets.all(24),
@@ -2270,10 +3742,16 @@ class _AddProductViewState extends State<AddProductView> {
           _buildChecklistItem('Price Setup', hasPrice),
           const Divider(height: 32, color: _borderColor),
           _buildChecklistItem('Category Selected', hasCategory),
+          const Divider(height: 32, color: _borderColor),
+          _buildChecklistItem(
+            'Tax & HSN (HSN ${_hsnCodeController.text.trim().isNotEmpty ? _hsnCodeController.text.trim() : "996331"} • ${state.gstPercentage.toStringAsFixed(0)}% ${state.taxType == 'interState' ? 'IGST' : 'CGST+SGST'})',
+            hasHsn,
+          ),
         ],
       ),
     );
   }
+
 
   Widget _buildChecklistItem(String title, bool isComplete) {
     return Row(
@@ -2567,26 +4045,41 @@ class _AddProductViewState extends State<AddProductView> {
   }
 
   Widget _buildPreviewWidget(AddProductPageState state) {
+
     // Construct a temporary Product object from form controllers and BLoC state
     // This object is used to power the live preview.
-    final price = double.tryParse(_priceController.text) ?? 0.0;
-    final discount = double.tryParse(_discountController.text) ?? 0.0;
-    final discountedPrice = price - (price * (discount / 100));
-    final gstAmount = discountedPrice * (state.gstPercentage / 100);
-    final finalPrice = discountedPrice + gstAmount;
-    final roundedFinalPrice = finalPrice.roundToDouble();
-    final basePriceWithGst = price + (price * (state.gstPercentage / 100));
-    final roundedBasePriceWithGst = basePriceWithGst.roundToDouble();
+    final bool hasVar = state.hasVariants && state.variants.isNotEmpty;
+    final double previewBasePrice;
+    final double previewPrice;
+    final double previewDiscountPrice;
+
+    if (hasVar) {
+      previewBasePrice = state.variants.map((v) => v.basePrice).reduce((a, b) => a < b ? a : b);
+      previewPrice = state.variants.map((v) => v.grossBasePriceWithGst).reduce((a, b) => a < b ? a : b);
+      previewDiscountPrice = state.variants.map((v) => v.effectivePrice).reduce((a, b) => a < b ? a : b);
+    } else {
+      previewBasePrice = double.tryParse(_priceController.text) ?? 0.0;
+      final discount = double.tryParse(_discountController.text) ?? 0.0;
+      final discountedPrice = previewBasePrice - (previewBasePrice * (discount / 100));
+      final gstAmount = discountedPrice * (state.gstPercentage / 100);
+      previewDiscountPrice = (discountedPrice + gstAmount).roundToDouble();
+      previewPrice = (previewBasePrice + (previewBasePrice * (state.gstPercentage / 100))).roundToDouble();
+    }
 
     final previewProduct = Product(
       id: state.initialProduct?.id ?? 'preview-id',
-      name: _nameController.text,
+      name: _nameController.text.isEmpty ? 'Product Name' : _nameController.text,
       sku: _skuController.text,
+      hsnCode: _hsnCodeController.text.trim().isNotEmpty ? _hsnCodeController.text.trim() : '996331',
+      taxType: state.taxType,
       subcategory: _subcategoryController.text,
-      variants: state.variants,
+      variants: state.hasVariants ? state.variants : const [],
+      hasVariants: state.hasVariants && state.variants.isNotEmpty,
       customizationGroups: state.customizationGroups,
-      price: roundedBasePriceWithGst,
-      discountPrice: roundedFinalPrice,
+      price: previewPrice,
+      basePrice: previewBasePrice,
+      gstPercentage: state.gstPercentage,
+      discountPrice: previewDiscountPrice,
       description: _descController.text,
       imageUrls: [
         ...state.existingImages,
@@ -2613,6 +4106,103 @@ class _AddProductViewState extends State<AddProductView> {
       // Pass local images for preview
       localImages: state.images.map((e) => File(e.path)).toList(),
       showHeader: false, // Prevent duplicated preview header
+    );
+  }
+
+  void _handlePublishProduct(BuildContext context, AddProductPageState state) {
+    if (state.status == AddProductStatus.loading) return;
+
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter product name')),
+      );
+      return;
+    }
+
+    if (state.category == null || state.category!.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a category')),
+      );
+      return;
+    }
+
+    if (state.images.isEmpty && state.existingImages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please upload at least 1 image')),
+      );
+      return;
+    }
+
+    double basePrice;
+    double roundedFinalPrice;
+    double roundedBasePriceWithGst;
+    int? availableStock;
+    int? minimumAlert;
+    List<ProductVariant> effectiveVariants;
+
+    if (state.hasVariants) {
+      if (state.variants.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please add at least one size variant before publishing')),
+        );
+        return;
+      }
+      final invalidVariant = state.variants.any((v) => v.name.trim().isEmpty || v.basePrice <= 0);
+      if (invalidVariant) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All size variants must have a name and base price greater than ₹0')),
+        );
+        return;
+      }
+      effectiveVariants = state.variants;
+      basePrice = state.variants.map((v) => v.basePrice).reduce((a, b) => a < b ? a : b);
+      roundedBasePriceWithGst = state.variants.map((v) => v.grossBasePriceWithGst).reduce((a, b) => a < b ? a : b);
+      roundedFinalPrice = state.variants.map((v) => v.effectivePrice).reduce((a, b) => a < b ? a : b);
+      availableStock = state.effectiveTotalStock;
+      minimumAlert = int.tryParse(_alertController.text) ?? 10;
+    } else {
+      effectiveVariants = const [];
+      final parsedBase = double.tryParse(_priceController.text) ?? 0.0;
+      if (parsedBase <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid base price greater than ₹0')),
+        );
+        return;
+      }
+      basePrice = parsedBase;
+      final discountPct = double.tryParse(_discountController.text) ?? 0.0;
+      final discounted = basePrice - (basePrice * (discountPct / 100));
+      final gstAmount = discounted * (state.gstPercentage / 100);
+      final finalPrice = discounted + gstAmount;
+      roundedFinalPrice = finalPrice.roundToDouble();
+      final basePriceWithGst = basePrice + (basePrice * (state.gstPercentage / 100));
+      roundedBasePriceWithGst = basePriceWithGst.roundToDouble();
+      availableStock = int.tryParse(_stockController.text);
+      minimumAlert = int.tryParse(_alertController.text);
+    }
+
+    context.read<AddProductPageBloc>().add(
+      SubmitProductEvent(
+        name: _nameController.text.trim(),
+        sku: _skuController.text.trim(),
+        hsnCode: _hsnCodeController.text.trim().isNotEmpty ? _hsnCodeController.text.trim() : '996331',
+        taxType: state.taxType,
+        subcategory: _subcategoryController.text.trim(),
+        variants: effectiveVariants,
+        customizationGroups: state.customizationGroups,
+        price: roundedBasePriceWithGst,
+        basePrice: basePrice,
+        gstPercentage: state.gstPercentage,
+        discountPrice: roundedFinalPrice,
+        description: _descController.text.trim(),
+        prepTime: _prepTimeController.text.trim(),
+        calories: _caloriesController.text.trim(),
+        portionSize: _portionSizeController.text.trim(),
+        addons: _addonsController.text.trim(),
+        ingredients: _ingredientsController.text.trim(),
+        availableStock: availableStock,
+        minimumAlert: minimumAlert,
+      ),
     );
   }
 
@@ -2644,38 +4234,7 @@ class _AddProductViewState extends State<AddProductView> {
           ElevatedButton(
             onPressed: state.status == AddProductStatus.loading
                 ? null
-                : () {
-                    final basePrice = double.tryParse(_priceController.text) ?? 0.0;
-                    final discountPct = double.tryParse(_discountController.text) ?? 0.0;
-                    final discounted = basePrice - (basePrice * (discountPct / 100));
-                    final gstAmount = discounted * (state.gstPercentage / 100);
-                    final finalPrice = discounted + gstAmount;
-                    final roundedFinalPrice = finalPrice.roundToDouble();
-                    final basePriceWithGst = basePrice + (basePrice * (state.gstPercentage / 100));
-                    final roundedBasePriceWithGst = basePriceWithGst.roundToDouble();
-
-                    context.read<AddProductPageBloc>().add(
-                      SubmitProductEvent(
-                        name: _nameController.text,
-                        sku: _skuController.text,
-                        subcategory: _subcategoryController.text,
-                        variants: state.variants,
-                        customizationGroups: state.customizationGroups,
-                        price: roundedBasePriceWithGst,
-                        basePrice: basePrice,
-                        gstPercentage: state.gstPercentage,
-                        discountPrice: roundedFinalPrice,
-                        description: _descController.text,
-                        prepTime: _prepTimeController.text,
-                        calories: _caloriesController.text,
-                        portionSize: _portionSizeController.text,
-                        addons: _addonsController.text,
-                        ingredients: _ingredientsController.text,
-                        availableStock: int.tryParse(_stockController.text),
-                        minimumAlert: int.tryParse(_alertController.text),
-                      ),
-                    );
-                  },
+                : () => _handlePublishProduct(context, state),
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 50),
               backgroundColor: _primaryColor,
@@ -2709,7 +4268,7 @@ class _AddProductViewState extends State<AddProductView> {
   Widget _buildBottomActionBar() {
     return BlocBuilder<AddProductPageBloc, AddProductPageState>(
       buildWhen: (previous, current) => previous.runtimeType != current.runtimeType || previous != current,
-            builder: (context, state) {
+      builder: (context, state) {
         return Container(
           padding: EdgeInsets.only(
             left: 20,
@@ -2752,38 +4311,7 @@ class _AddProductViewState extends State<AddProductView> {
                 child: ElevatedButton(
                   onPressed: state.status == AddProductStatus.loading
                       ? null
-                      : () {
-                          final basePrice = double.tryParse(_priceController.text) ?? 0.0;
-                          final discountPct = double.tryParse(_discountController.text) ?? 0.0;
-                          final discounted = basePrice - (basePrice * (discountPct / 100));
-                          final gstAmount = discounted * (state.gstPercentage / 100);
-                          final finalPrice = discounted + gstAmount;
-                          final roundedFinalPrice = finalPrice.roundToDouble();
-                          final basePriceWithGst = basePrice + (basePrice * (state.gstPercentage / 100));
-                          final roundedBasePriceWithGst = basePriceWithGst.roundToDouble();
-
-                          context.read<AddProductPageBloc>().add(
-                            SubmitProductEvent(
-                              name: _nameController.text,
-                              sku: _skuController.text,
-                              subcategory: _subcategoryController.text,
-                              variants: state.variants,
-                              customizationGroups: state.customizationGroups,
-                              price: roundedBasePriceWithGst,
-                              basePrice: basePrice,
-                              gstPercentage: state.gstPercentage,
-                              discountPrice: roundedFinalPrice,
-                              description: _descController.text,
-                              prepTime: _prepTimeController.text,
-                              calories: _caloriesController.text,
-                              portionSize: _portionSizeController.text,
-                              addons: _addonsController.text,
-                              ingredients: _ingredientsController.text,
-                              availableStock: int.tryParse(_stockController.text),
-                              minimumAlert: int.tryParse(_alertController.text),
-                            ),
-                          );
-                        },
+                      : () => _handlePublishProduct(context, state),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: _primaryColor,

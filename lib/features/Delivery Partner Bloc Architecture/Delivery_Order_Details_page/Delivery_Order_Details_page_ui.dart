@@ -442,10 +442,10 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
   ) {
     final storeLoc = (order.restaurantLatitude != 0 && order.restaurantLongitude != 0)
         ? LatLng(order.restaurantLatitude, order.restaurantLongitude)
-        : const LatLng(11.4299713, 77.6759418);
+        : null;
     final customerLoc = (order.customerLatitude != 0 && order.customerLongitude != 0)
         ? LatLng(order.customerLatitude, order.customerLongitude)
-        : const LatLng(11.4555052, 77.6873137);
+        : null;
 
     return DeliveryCard(
       padding: EdgeInsets.all(DeliveryAppSpacing.md),
@@ -531,7 +531,7 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
                 children: [
                   Positioned.fill(
                     child: AppGoogleMapView(
-                      driverLocation: storeLoc,
+                      driverLocation: null,
                       driverHeading: 0.0,
                       vehicleType: 'two_wheeler',
                       storeLocation: storeLoc,
@@ -545,7 +545,7 @@ class _DeliveryOrderDetailsPageUiState extends State<DeliveryOrderDetailsPageUi>
                       showControls: true,
                       showProgressCard: true,
                       distanceKm: order.distance > 0 ? order.distance : null,
-                      etaText: '~15-20 mins',
+                      etaText: order.distance > 0 ? '~${((order.distance / 25.0) * 60).clamp(3, 120).round()} mins' : null,
                     ),
                   ),
                 ],

@@ -806,10 +806,55 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-class _PersonalInfoCard extends StatelessWidget {
+class _PersonalInfoCard extends StatefulWidget {
   final DeliveryProfileState state;
 
   const _PersonalInfoCard({required this.state});
+
+  @override
+  State<_PersonalInfoCard> createState() => _PersonalInfoCardState();
+}
+
+class _PersonalInfoCardState extends State<_PersonalInfoCard> {
+  late final TextEditingController _fullNameController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _dobController;
+
+  @override
+  void initState() {
+    super.initState();
+    _fullNameController = TextEditingController(text: widget.state.fullName);
+    _phoneController = TextEditingController(text: widget.state.phone);
+    _emailController = TextEditingController(text: widget.state.email);
+    _dobController = TextEditingController(text: widget.state.dob);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PersonalInfoCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.state.fullName != _fullNameController.text) {
+      _fullNameController.text = widget.state.fullName;
+    }
+    if (widget.state.phone != _phoneController.text) {
+      _phoneController.text = widget.state.phone;
+    }
+    if (widget.state.email != _emailController.text) {
+      _emailController.text = widget.state.email;
+    }
+    if (widget.state.dob != _dobController.text) {
+      _dobController.text = widget.state.dob;
+    }
+  }
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _dobController.dispose();
+    super.dispose();
+  }
 
   void _dispatch(BuildContext context, String field, String value) {
     context
@@ -821,15 +866,15 @@ class _PersonalInfoCard extends StatelessWidget {
     BuildContext context, {
     required String key,
     required String label,
-    required String value,
+    required TextEditingController controller,
     required String field,
     TextInputType? keyboardType,
     String? hint,
   }) {
-    final String localeCode = state.localeCode;
+    final String localeCode = widget.state.localeCode;
     return TextFormField(
       key: Key(key),
-      initialValue: value,
+      controller: controller,
       keyboardType: keyboardType,
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
@@ -860,7 +905,7 @@ class _PersonalInfoCard extends StatelessWidget {
     required String field,
     required List<String> options,
   }) {
-    final String localeCode = state.localeCode;
+    final String localeCode = widget.state.localeCode;
     final String? normalizedValue = value.isEmpty
         ? null
         : options.firstWhere(
@@ -905,7 +950,7 @@ class _PersonalInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String localeCode = state.localeCode;
+    final String localeCode = widget.state.localeCode;
     return Container(
       key: const Key('dp_profile_personal_info'),
       padding: const EdgeInsets.all(20),
@@ -943,14 +988,14 @@ class _PersonalInfoCard extends StatelessWidget {
                 context,
                 key: 'dp_profile_full_name',
                 label: 'fullName',
-                value: state.fullName,
+                controller: _fullNameController,
                 field: 'fullName',
               );
               final Widget phoneField = _textField(
                 context,
                 key: 'dp_profile_phone',
                 label: 'phone',
-                value: state.phone,
+                controller: _phoneController,
                 field: 'phone',
                 keyboardType: TextInputType.phone,
               );
@@ -958,18 +1003,18 @@ class _PersonalInfoCard extends StatelessWidget {
                 context,
                 key: 'dp_profile_email',
                 label: 'email',
-                value: state.email,
+                controller: _emailController,
                 field: 'email',
                 keyboardType: TextInputType.emailAddress,
               );
               final Widget addressField = _AddressPickerField(
-                state: state,
+                state: widget.state,
               );
               final Widget dobField = _textField(
                 context,
                 key: 'dp_profile_dob',
                 label: 'dob',
-                value: state.dob,
+                controller: _dobController,
                 field: 'dob',
                 hint: 'DD-MM-YYYY',
               );
@@ -977,7 +1022,7 @@ class _PersonalInfoCard extends StatelessWidget {
                 context,
                 key: 'dp_profile_gender',
                 label: 'gender',
-                value: state.gender,
+                value: widget.state.gender,
                 field: 'gender',
                 options: const ['male', 'female'],
               );
@@ -1217,10 +1262,52 @@ class _AddressPickerFieldState extends State<_AddressPickerField> {
   }
 }
 
-class _VehicleInfoCard extends StatelessWidget {
+class _VehicleInfoCard extends StatefulWidget {
   final DeliveryProfileState state;
 
   const _VehicleInfoCard({required this.state});
+
+  @override
+  State<_VehicleInfoCard> createState() => _VehicleInfoCardState();
+}
+
+class _VehicleInfoCardState extends State<_VehicleInfoCard> {
+  late final TextEditingController _vehicleNumberController;
+  late final TextEditingController _licenseNumberController;
+  late final TextEditingController _licenseValidTillController;
+
+  @override
+  void initState() {
+    super.initState();
+    _vehicleNumberController =
+        TextEditingController(text: widget.state.vehicleNumber);
+    _licenseNumberController =
+        TextEditingController(text: widget.state.licenseNumber);
+    _licenseValidTillController =
+        TextEditingController(text: widget.state.licenseValidTill);
+  }
+
+  @override
+  void didUpdateWidget(covariant _VehicleInfoCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.state.vehicleNumber != _vehicleNumberController.text) {
+      _vehicleNumberController.text = widget.state.vehicleNumber;
+    }
+    if (widget.state.licenseNumber != _licenseNumberController.text) {
+      _licenseNumberController.text = widget.state.licenseNumber;
+    }
+    if (widget.state.licenseValidTill != _licenseValidTillController.text) {
+      _licenseValidTillController.text = widget.state.licenseValidTill;
+    }
+  }
+
+  @override
+  void dispose() {
+    _vehicleNumberController.dispose();
+    _licenseNumberController.dispose();
+    _licenseValidTillController.dispose();
+    super.dispose();
+  }
 
   void _dispatch(BuildContext context, String field, String value) {
     context
@@ -1232,18 +1319,19 @@ class _VehicleInfoCard extends StatelessWidget {
     BuildContext context, {
     required String key,
     required String label,
-    required String value,
+    required TextEditingController controller,
     required String field,
     String? hint,
     IconData? icon,
     VoidCallback? onTap,
     TextInputType? keyboardType,
+    bool readOnly = false,
   }) {
-    final String localeCode = state.localeCode;
+    final String localeCode = widget.state.localeCode;
     return TextFormField(
-      key: ValueKey('${key}_$value'),
-      initialValue: value,
-      readOnly: onTap != null,
+      key: Key(key),
+      controller: controller,
+      readOnly: readOnly,
       onTap: onTap,
       keyboardType: keyboardType,
       style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -1278,8 +1366,9 @@ class _VehicleInfoCard extends StatelessWidget {
     final now = DateTime.now();
     DateTime initialDate = DateTime(now.year + 5, now.month, now.day);
 
-    if (state.licenseValidTill.trim().isNotEmpty) {
-      final parts = state.licenseValidTill.trim().split(RegExp(r'[-/.]'));
+    final currentText = _licenseValidTillController.text.trim();
+    if (currentText.isNotEmpty) {
+      final parts = currentText.split(RegExp(r'[-/.]'));
       if (parts.length == 3) {
         if (parts[0].length == 4) {
           final y = int.tryParse(parts[0]);
@@ -1325,6 +1414,7 @@ class _VehicleInfoCard extends StatelessWidget {
       final mm = picked.month.toString().padLeft(2, '0');
       final yyyy = picked.year.toString();
       final formatted = '$dd/$mm/$yyyy';
+      _licenseValidTillController.text = formatted;
       _dispatch(context, 'licenseValidTill', formatted);
     }
   }
@@ -1337,7 +1427,7 @@ class _VehicleInfoCard extends StatelessWidget {
     required String field,
     required List<String> options,
   }) {
-    final String localeCode = state.localeCode;
+    final String localeCode = widget.state.localeCode;
     final String? normalizedValue = value.isEmpty
         ? null
         : options.firstWhere(
@@ -1382,7 +1472,7 @@ class _VehicleInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String localeCode = state.localeCode;
+    final String localeCode = widget.state.localeCode;
     return Container(
       key: const Key('dp_profile_vehicle_info'),
       padding: const EdgeInsets.all(20),
@@ -1420,7 +1510,7 @@ class _VehicleInfoCard extends StatelessWidget {
                 context,
                 key: 'dp_profile_vehicle_type',
                 label: 'vehicleType',
-                value: state.vehicleType,
+                value: widget.state.vehicleType,
                 field: 'vehicleType',
                 options: const ['scooter', 'bike', 'car'],
               );
@@ -1428,7 +1518,7 @@ class _VehicleInfoCard extends StatelessWidget {
                 context,
                 key: 'dp_profile_vehicle_number',
                 label: 'vehicleNumber',
-                value: state.vehicleNumber,
+                controller: _vehicleNumberController,
                 field: 'vehicleNumber',
                 hint: 'e.g. TN 01 AB 1234',
               );
@@ -1436,7 +1526,7 @@ class _VehicleInfoCard extends StatelessWidget {
                 context,
                 key: 'dp_profile_license_number',
                 label: 'licenseNumber',
-                value: state.licenseNumber,
+                controller: _licenseNumberController,
                 field: 'licenseNumber',
                 hint: 'DL number',
               );
@@ -1444,11 +1534,12 @@ class _VehicleInfoCard extends StatelessWidget {
                 context,
                 key: 'dp_profile_license_valid_till',
                 label: 'licenseValidTill',
-                value: state.licenseValidTill,
+                controller: _licenseValidTillController,
                 field: 'licenseValidTill',
                 hint: 'DD/MM/YYYY',
                 icon: Icons.event,
-                onTap: () => _selectLicenseExpiryDate(context, state),
+                onTap: () => _selectLicenseExpiryDate(context, widget.state),
+                keyboardType: TextInputType.datetime,
               );
 
               if (twoColumns) {

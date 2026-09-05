@@ -945,6 +945,26 @@ class _CartPageUIState extends State<CartPageUI> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (item.selectedVariantName != null && item.selectedVariantName!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3.0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _primaryRed.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: _primaryRed.withValues(alpha: 0.2)),
+                          ),
+                          child: Text(
+                            'Size: ${item.selectedVariantName}',
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                              color: _primaryRed,
+                            ),
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 3),
                     Text(
                       _currFmt.format(item.price),
@@ -955,24 +975,25 @@ class _CartPageUIState extends State<CartPageUI> {
                     ),
                     if (item.selectedAddons.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
+                        padding: const EdgeInsets.only(top: 6.0),
                         child: Wrap(
-                          spacing: 4,
+                          spacing: 6,
                           runSpacing: 4,
                           children: item.selectedAddons
                               .map(
                                 (addon) => Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(4),
+                                    color: const Color(0xFFF3F4F6),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: const Color(0xFFE5E7EB)),
                                   ),
                                   child: Text(
-                                    '+ $addon',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey.shade700,
-                                      fontWeight: FontWeight.w500,
+                                    addon.trim().startsWith('+') ? addon.trim() : '+ ${addon.trim()}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF374151),
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
@@ -1433,6 +1454,32 @@ class _CartPageUIState extends State<CartPageUI> {
           // Taxes & Charges
           if (taxes > 0) ...[
             _buildBillRow('GST & Restaurant Charges (5%)', _currFmt.format(taxes)),
+            Padding(
+              padding: const EdgeInsets.only(left: 12, top: 2, bottom: 4),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 4,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF94A3B8),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'CGST (2.5%): ${_currFmt.format(taxes / 2)}  •  SGST (2.5%): ${_currFmt.format(taxes / 2)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 8),
           ],
 

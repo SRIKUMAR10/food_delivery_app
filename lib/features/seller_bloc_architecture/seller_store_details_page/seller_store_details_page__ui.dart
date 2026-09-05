@@ -12,6 +12,7 @@ import '../../../repositories/seller_repository.dart';
 import '../seller_auth_shared/onboarding_back_handler.dart';
 import '../seller_auth_shared/seller_wizard_container.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
+import '../../../core/services/gst_verification_service.dart';
 
 class SellerStoreDetailsPage extends StatelessWidget {
   final SellerStoreDetailsBloc? bloc;
@@ -782,54 +783,125 @@ void _showEditValueDialog(
   final TextEditingController controller = TextEditingController(
     text: initialValue,
   );
+  String? errorText;
+
   showDialog(
     context: context,
-    builder: (context) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Text(
-          'Edit $title',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: TextField(
-          controller: controller,
-          keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isGst = title.contains('GST');
+          final currentVal = controller.text.trim().toUpperCase();
+          final gstResult = isGst && currentVal.isNotEmpty
+              ? GstVerificationService.validateGst(currentVal)
+              : null;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            labelText: title,
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(
-                color: Color(0xFFE52929),
-                width: 2,
+            title: Text(
+              'Edit $title',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: controller,
+                  keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+                  textCapitalization: isGst ? TextCapitalization.characters : TextCapitalization.none,
+                  onChanged: (val) {
+                    setDialogState(() {
+                      errorText = null;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    labelText: title,
+                    errorText: errorText,
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(
+                        color: Color(0xFFE52929),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                if (gstResult != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: gstResult.isValid ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: gstResult.isValid ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          gstResult.isValid ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+                          size: 14,
+                          color: gstResult.isValid ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            gstResult.isValid
+                                ? '${gstResult.stateName} (${gstResult.stateCode}) • ${gstResult.entityType}'
+                                : (gstResult.errorMessage ?? 'Invalid GSTIN format'),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: gstResult.isValid ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
               ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE52929),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE52929),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  final textVal = controller.text.trim();
+                  if (isGst && textVal.isNotEmpty) {
+                    final check = GstVerificationService.validateGst(textVal);
+                    if (!check.isValid) {
+                      setDialogState(() {
+                        errorText = check.errorMessage ?? 'Please enter a valid 15-character GSTIN';
+                      });
+                      return;
+                    }
+                  }
+                  onSave(isGst ? textVal.toUpperCase() : textVal);
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('Save'),
               ),
-            ),
-            onPressed: () {
-              onSave(controller.text);
-              Navigator.pop(context);
-            },
-            child: const Text('Save'),
-          ),
-        ],
+            ],
+          );
+        },
       );
     },
   );

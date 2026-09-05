@@ -10,7 +10,9 @@ service cloud.firestore {
     function isOwner(userId) {
       return isAuthenticated() && (
         request.auth.uid == userId ||
-        ('seller_' + request.auth.uid) == userId
+        ('seller_' + request.auth.uid) == userId ||
+        ('dp_' + request.auth.uid) == userId ||
+        ('delivery_' + request.auth.uid) == userId
       );
     }
 
@@ -27,6 +29,15 @@ service cloud.firestore {
 
     // ── Buyer Profile Collection ───────────────────────────────────
     match /buyer_user/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ── General Users Collection ────────────────────────────────────
+    match /users/{userId} {
       allow read: if isAuthenticated();
       allow write: if isOwner(userId);
       match /{allSubcollections=**} {

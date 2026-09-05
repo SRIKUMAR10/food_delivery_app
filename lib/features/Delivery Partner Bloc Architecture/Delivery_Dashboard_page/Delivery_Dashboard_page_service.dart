@@ -470,8 +470,8 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
       activeOrderIsPickedUp = stLower == 'picked_up' || stLower == 'outfordelivery';
     }
 
-    final partnerLat = (data['latitude'] as num?)?.toDouble() ?? (data['lat'] as num?)?.toDouble() ?? (activeOrderStoreLat != 0.0 ? activeOrderStoreLat : 11.4555052);
-    final partnerLng = (data['longitude'] as num?)?.toDouble() ?? (data['lng'] as num?)?.toDouble() ?? (activeOrderStoreLng != 0.0 ? activeOrderStoreLng : 77.6873137);
+    final partnerLat = (data['latitude'] as num?)?.toDouble() ?? (data['lat'] as num?)?.toDouble() ?? 0.0;
+    final partnerLng = (data['longitude'] as num?)?.toDouble() ?? (data['lng'] as num?)?.toDouble() ?? 0.0;
 
     return {
       'isOnline': isOnline,
@@ -497,8 +497,8 @@ class DeliveryDashboardService implements DeliveryDashboardServiceBase {
       'acceptanceRate': (data['acceptanceRate'] as num?)?.toInt() ?? 95,
       'performanceScore': avgRating,
       'averageRating': avgRating,
-      'distanceTravelled': distanceTravelled > 0 ? distanceTravelled : 24.5,
-      'todayDistance': todayDistance > 0 ? todayDistance : (distanceTravelled > 0 ? distanceTravelled : 18.2),
+      'distanceTravelled': distanceTravelled,
+      'todayDistance': todayDistance > 0 ? todayDistance : distanceTravelled,
       'partnerName': (data['displayName'] ?? data['fullName'] ?? data['name'] ?? '').toString(),
       'photoUrl': (data['photoUrl'] ?? data['avatarUrl'] ?? '').toString(),
       'avatarUrl': (data['photoUrl'] ?? data['avatarUrl'] ?? '').toString(),

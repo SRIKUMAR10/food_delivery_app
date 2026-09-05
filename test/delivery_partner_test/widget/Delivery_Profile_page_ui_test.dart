@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
@@ -330,6 +331,57 @@ void main() {
       expect(find.text('Search Address'), findsOneWidget);
       expect(find.text('Pick on Map'), findsOneWidget);
       expect(find.byKey(const Key('dp_profile_address_map')), findsOneWidget);
+    });
+
+    testWidgets('renders licenseValidTill in vehicle info card with populated date', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      when(() => mockBloc.state).thenReturn(
+        loadedState.copyWith(
+          vehicleType: 'Scooter',
+          vehicleNumber: 'TN-36-8888',
+          licenseNumber: 'TN43Z20210000478',
+          licenseValidTill: '31/12/2030',
+        ),
+      );
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+
+      await tester.ensureVisible(find.byKey(const Key('dp_profile_vehicle_info')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dp_profile_vehicle_info')), findsOneWidget);
+      expect(find.text('31/12/2030'), findsOneWidget);
+      expect(find.text('TN-36-8888'), findsOneWidget);
+      expect(find.text('TN43Z20210000478'), findsOneWidget);
+    });
+
+    testWidgets('dynamically updates licenseValidTill text field when state changes from empty to populated', (
+      tester,
+    ) async {
+      setDesktopSize(tester);
+      final streamController = StreamController<DeliveryProfileState>.broadcast();
+      addTearDown(streamController.close);
+
+      whenListen(
+        mockBloc,
+        streamController.stream,
+        initialState: loadedState.copyWith(licenseValidTill: ''),
+      );
+
+      await tester.pumpWidget(buildPage());
+      await tester.pump();
+      expect(find.text('31/12/2030'), findsNothing);
+
+      when(() => mockBloc.state).thenReturn(
+        loadedState.copyWith(licenseValidTill: '31/12/2030'),
+      );
+      streamController.add(loadedState.copyWith(licenseValidTill: '31/12/2030'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('31/12/2030'), findsOneWidget);
     });
   });
 }

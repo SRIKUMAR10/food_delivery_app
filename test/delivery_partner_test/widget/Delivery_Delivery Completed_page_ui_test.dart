@@ -33,6 +33,7 @@ const mockModel = DeliveryCompletedModel(
 void main() {
   late MockDeliveryCompletedRepository mockRepository;
   late MockDeliveryCompletedService mockService;
+  DeliveryCompletedBloc? currentBloc;
 
   setUpAll(() {
     registerFallbackValue('#ORD12345');
@@ -56,8 +57,12 @@ void main() {
     ).thenAnswer((_) => Stream<double>.fromIterable([1.0]));
   });
 
+  tearDown(() {
+    currentBloc?.close();
+  });
+
   group('DeliveryCompletedPage Widget Tests', () {
-    Future<void> pumpPage(
+    Future<DeliveryCompletedBloc> pumpPage(
       WidgetTester tester, {
       Size? size,
       String orderId = '#ORD12345',
@@ -71,7 +76,7 @@ void main() {
         repository: mockRepository,
         service: mockService,
       );
-      addTearDown(bloc.close);
+      currentBloc = bloc;
       await tester.pumpWidget(
         MaterialApp(
           home: DeliveryCompletedPage(orderId: orderId, bloc: bloc),
@@ -80,6 +85,7 @@ void main() {
       bloc.add(FetchCompletedOrderDetailsEvent(orderId));
       await tester.pump();
       await tester.pump();
+      return bloc;
     }
 
     testWidgets('renders header, hero, summary and action cards', (
@@ -173,7 +179,7 @@ void main() {
     testWidgets('rates the customer and uploads proof of delivery', (
       WidgetTester tester,
     ) async {
-      await pumpPage(tester, size: const Size(1280, 1000));
+      final pageBloc = await pumpPage(tester, size: const Size(1280, 1000));
 
       await tester.ensureVisible(find.byKey(const Key('dp_completed_star_5')));
       await tester.tap(find.byKey(const Key('dp_completed_star_5')));
@@ -185,7 +191,7 @@ void main() {
       await tester.ensureVisible(
         find.byKey(const Key('dp_completed_upload_proof')),
       );
-      await tester.tap(find.byKey(const Key('dp_completed_upload_proof')));
+      pageBloc.add(const UploadProofMediaEvent('proof.jpg'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 

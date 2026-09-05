@@ -4,6 +4,7 @@
 // No business logic, no UI dependencies — only data definitions.
 
 import 'dart:math';
+import 'package:food_delivery_app/core/models/product_model.dart';
 
 // Default fallback image URL used when a product has no image stored.
 const String kDefaultFoodImageUrl =
@@ -148,6 +149,12 @@ class FoodItem {
   /// Price stored as double (converted from Firestore num type).
   final double price;
 
+  /// Raw Base price (pre-tax).
+  final double basePrice;
+
+  /// GST percentage.
+  final double gstPercentage;
+
   /// Discounted price (if any).
   final double discountPrice;
 
@@ -166,7 +173,7 @@ class FoodItem {
   /// Seller UID linking this product to its seller account.
   final String sellerId;
 
-  // New fields aligned with Seller's Product model
+  // Food Attributes
   final String foodType;
   final bool isBestSeller;
   final double rating;
@@ -176,7 +183,13 @@ class FoodItem {
   final String portionSize;
   final String calories;
   final List<String> addons;
+  final List<ProductVariant> variants;
+  final List<ProductCustomizationGroup> customizationGroups;
   final List<String> ingredients;
+  final List<String> allergens;
+  final TaxStrategy taxStrategy;
+  final String hsnCode;
+  final String taxType;
   final bool isActive;
   final String status;
   final int availableStock;
@@ -186,6 +199,8 @@ class FoodItem {
     required this.id,
     required this.name,
     required this.price,
+    this.basePrice = 0.0,
+    this.gstPercentage = 5.0,
     this.discountPrice = 0.0,
     required this.description,
     required this.category,
@@ -201,19 +216,66 @@ class FoodItem {
     this.portionSize = '',
     this.calories = '',
     this.addons = const [],
+    this.variants = const [],
+    this.customizationGroups = const [],
     this.ingredients = const [],
+    this.allergens = const [],
+    this.taxStrategy = TaxStrategy.restaurantLevel,
+    this.hsnCode = '996331',
+    this.taxType = 'intraState',
     this.isActive = true,
     this.status = 'inStock',
     this.availableStock = 999,
     this.hasUnlimitedStock = true,
   });
 
+  /// Tax breakdown getters
+  double get cgstPercentage => taxType == 'interState' ? 0.0 : gstPercentage / 2.0;
+  double get sgstPercentage => taxType == 'interState' ? 0.0 : gstPercentage / 2.0;
+  double get igstPercentage => taxType == 'interState' ? gstPercentage : 0.0;
+
+
+  /// Computed price range formatted for display (e.g., "₹95" or "₹95 – ₹187")
+  String get priceRangeFormatted {
+    if (variants.isNotEmpty) {
+      final active = variants.where((v) => v.isAvailable).toList();
+      final list = active.isNotEmpty ? active : variants;
+      double min = double.infinity;
+      double max = 0.0;
+      for (final v in list) {
+        final p = v.effectivePrice;
+        if (p < min) min = p;
+        if (p > max) max = p;
+      }
+      if (min == double.infinity) min = (discountPrice > 0 ? discountPrice : price);
+      if (max <= 0.0) max = (discountPrice > 0 ? discountPrice : price);
+
+      final minStr = min.truncateToDouble() == min ? min.toInt().toString() : min.toStringAsFixed(0);
+      if ((max - min).abs() < 0.01) {
+        return '₹$minStr';
+      }
+      final maxStr = max.truncateToDouble() == max ? max.toInt().toString() : max.toStringAsFixed(0);
+      return '₹$minStr – ₹$maxStr';
+    }
+
+    final eff = discountPrice > 0 ? discountPrice : price;
+    final effStr = eff.truncateToDouble() == eff ? eff.toInt().toString() : eff.toStringAsFixed(0);
+    return '₹$effStr';
+  }
+
   bool get isOutOfStock =>
       !isActive ||
       status.toLowerCase().contains('outofstock') ||
-      (!hasUnlimitedStock && availableStock <= 0);
+      (!hasUnlimitedStock && availableStock <= 0 && variants.isEmpty) ||
+      (variants.isNotEmpty && variants.every((v) => !v.isAvailable || (!v.trackInventory ? false : v.stock <= 0)));
 
   bool get isInStock => !isOutOfStock;
+
+  /// Whether the food item has multiple portion size variants
+  bool get hasVariants => variants.isNotEmpty;
+
+  /// Whether the food item is a variable product
+  bool get isVariableProduct => variants.isNotEmpty;
 
   @override
   bool operator ==(Object other) =>

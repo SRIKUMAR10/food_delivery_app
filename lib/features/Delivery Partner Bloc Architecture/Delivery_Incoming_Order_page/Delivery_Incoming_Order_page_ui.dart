@@ -104,13 +104,13 @@ class _IncomingOrderView extends StatelessWidget {
   Widget _buildMapPane(DeliveryIncomingOrderState state) {
     final storeLoc = (state.storeLatitude != 0 && state.storeLongitude != 0)
         ? LatLng(state.storeLatitude, state.storeLongitude)
-        : const LatLng(11.4299713, 77.6759418);
+        : null;
     final customerLoc = (state.customerLatitude != 0 && state.customerLongitude != 0)
         ? LatLng(state.customerLatitude, state.customerLongitude)
-        : const LatLng(11.4555052, 77.6873137);
+        : null;
     final driverLoc = (state.driverLatitude != 0 && state.driverLongitude != 0)
         ? LatLng(state.driverLatitude, state.driverLongitude)
-        : storeLoc;
+        : null;
 
     return Container(
       margin: const EdgeInsets.all(16),

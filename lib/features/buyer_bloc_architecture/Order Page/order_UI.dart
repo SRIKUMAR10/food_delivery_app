@@ -1088,6 +1088,24 @@ class _OrderPageContentState extends State<_OrderPageContent> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (item.selectedVariantName != null && item.selectedVariantName!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Size: ${item.selectedVariantName}',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+                ],
                 if (item.selectedAddons.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(

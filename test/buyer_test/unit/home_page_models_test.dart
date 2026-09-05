@@ -121,4 +121,43 @@ void main() {
       expect(filter('Pizza').length, 1);
       expect(filter('Pizza').first.id, 'p2');
     });
+
+    test('maps Core Product variants and customizationGroups to FoodItem correctly', () {
+      final product = Product(
+        id: 'p_variants',
+        name: 'Deluxe Pizza',
+        price: 400.0,
+        description: 'Pizza with sizes and custom crusts',
+        category: 'Pizza',
+        sellerId: 's1',
+        status: ProductStatus.inStock,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        variants: const [
+          ProductVariant(id: 'v1', name: 'Regular', basePrice: 400.0, stock: 25),
+          ProductVariant(id: 'v2', name: 'Large', basePrice: 750.0, stock: 10),
+        ],
+        customizationGroups: const [
+          ProductCustomizationGroup(
+            groupName: 'Choice of Crust',
+            isRequired: true,
+            minSelect: 1,
+            maxSelect: 1,
+            options: [
+              ProductAddon(id: 'c1', name: 'Pan Crust', basePrice: 0.0),
+              ProductAddon(id: 'c2', name: 'Cheese Burst', basePrice: 60.0),
+            ],
+          ),
+        ],
+      );
+
+      final foodItem = FoodItemMapper.toViewModel(product);
+
+      expect(foodItem.variants.length, 2);
+      expect(foodItem.variants[0].name, 'Regular');
+      expect(foodItem.variants[1].basePrice, 750.0);
+      expect(foodItem.customizationGroups.length, 1);
+      expect(foodItem.customizationGroups.first.groupName, 'Choice of Crust');
+      expect(foodItem.customizationGroups.first.options.length, 2);
+    });
 }

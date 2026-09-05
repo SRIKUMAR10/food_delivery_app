@@ -198,6 +198,33 @@ class DeliveryOnboardingVerificationRepository {
         },
         SetOptions(merge: true),
       );
+
+      if (cleanData.containsKey('vehicleType') ||
+          cleanData.containsKey('vehicleNumber') ||
+          cleanData.containsKey('drivingLicenseNumber') ||
+          cleanData.containsKey('dlExpiryDate') ||
+          cleanData.containsKey('licenseValidTill')) {
+        await _firestore
+            .collection('delivery_partners')
+            .doc(uid)
+            .collection('vehicle_info')
+            .doc('primary_vehicle')
+            .set({
+          if (cleanData['vehicleType'] != null && cleanData['vehicleType'].toString().trim().isNotEmpty)
+            'vehicleType': cleanData['vehicleType'],
+          if (cleanData['vehicleNumber'] != null && cleanData['vehicleNumber'].toString().trim().isNotEmpty)
+            'vehicleNumber': cleanData['vehicleNumber'],
+          if (cleanData['vehicleModel'] != null && cleanData['vehicleModel'].toString().trim().isNotEmpty)
+            'vehicleModel': cleanData['vehicleModel'],
+          if (cleanData['drivingLicenseNumber'] != null && cleanData['drivingLicenseNumber'].toString().trim().isNotEmpty)
+            'drivingLicenseNumber': cleanData['drivingLicenseNumber'],
+          if (cleanData['dlExpiryDate'] != null && cleanData['dlExpiryDate'].toString().trim().isNotEmpty)
+            'dlExpiryDate': cleanData['dlExpiryDate'],
+          if (cleanData['licenseValidTill'] != null && cleanData['licenseValidTill'].toString().trim().isNotEmpty)
+            'licenseValidTill': cleanData['licenseValidTill'],
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
     } catch (_) {}
   }
 

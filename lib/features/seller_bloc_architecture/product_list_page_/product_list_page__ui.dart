@@ -705,28 +705,56 @@ class _ProductListViewState extends State<ProductListView>
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (product.discountPrice > 0 &&
-                          product.discountPrice < (product.price * 1.18 - 0.01))
+                      if (product.isVariableProduct && product.variants.isNotEmpty) ...[
                         Text(
-                          '₹${product.price.toStringAsFixed(2)}',
+                          product.priceRangeFormatted,
                           style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey,
-                            decoration: TextDecoration.lineThrough,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF111827),
                           ),
                         ),
-                      if (product.discountPrice > 0 &&
-                          product.discountPrice < (product.price * 1.18 - 0.01))
                         const SizedBox(width: 8),
-                      Text(
-                        '₹${product.discountPrice > 0 ? product.discountPrice.toStringAsFixed(2) : product.price.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF111827),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE52929).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFFE52929).withValues(alpha: 0.25)),
+                          ),
+                          child: Text(
+                            '${product.variants.length} Sizes',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFE52929),
+                            ),
+                          ),
                         ),
-                      ),
+                      ] else ...[
+                        if (product.discountPrice > 0 &&
+                            product.discountPrice < (product.price * 1.18 - 0.01))
+                          Text(
+                            '₹${product.price.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        if (product.discountPrice > 0 &&
+                            product.discountPrice < (product.price * 1.18 - 0.01))
+                          const SizedBox(width: 8),
+                        Text(
+                          '₹${product.discountPrice > 0 ? product.discountPrice.toStringAsFixed(2) : product.price.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -3022,40 +3050,67 @@ class _ProductCardState extends State<_ProductCard> {
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            if (discountPercent > 0)
+            if (product.isVariableProduct && product.variants.isNotEmpty) ...[
               Text(
-                '₹${product.price.toStringAsFixed(0)}',
+                product.priceRangeFormatted,
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
-                  decoration: TextDecoration.lineThrough,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF111827),
                 ),
               ),
-            Text(
-              '₹${product.discountPrice > 0 ? product.discountPrice.toStringAsFixed(0) : product.price.toStringAsFixed(0)}',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF111827),
-              ),
-            ),
-            if (discountPercent > 0)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  color: const Color(0xFFE52929).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFFE52929).withValues(alpha: 0.2)),
                 ),
                 child: Text(
-                  '$discountPercent% OFF',
+                  '${product.variants.length} Sizes',
                   style: const TextStyle(
-                    color: Color(0xFF10B981),
-                    fontSize: 12,
+                    color: Color(0xFFE52929),
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
+            ] else ...[
+              if (discountPercent > 0)
+                Text(
+                  '₹${product.price.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+              Text(
+                '₹${product.discountPrice > 0 ? product.discountPrice.toStringAsFixed(0) : product.price.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              if (discountPercent > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '$discountPercent% OFF',
+                    style: const TextStyle(
+                      color: Color(0xFF10B981),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
             if (product.category.isNotEmpty)
               _buildChip(
                 product.category,

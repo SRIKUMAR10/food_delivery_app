@@ -1535,18 +1535,16 @@ class _LiveMapCard extends StatelessWidget {
         state.partnerLatitude != 0.0 && state.partnerLongitude != 0.0;
     final LatLng? driverLoc = hasDriverPos
         ? LatLng(state.partnerLatitude, state.partnerLongitude)
-        : (hasActiveOrder
-            ? LatLng(state.activeOrderStoreLat, state.activeOrderStoreLng)
-            : (state.nearbySellers.isNotEmpty
-                ? LatLng(
-                    (state.nearbySellers.first['latitude'] as num).toDouble(),
-                    (state.nearbySellers.first['longitude'] as num).toDouble(),
-                  )
-                : null));
+        : null;
 
     final LatLng? storeLoc = hasActiveOrder
         ? LatLng(state.activeOrderStoreLat, state.activeOrderStoreLng)
-        : null;
+        : (state.nearbySellers.isNotEmpty
+            ? LatLng(
+                (state.nearbySellers.first['latitude'] as num).toDouble(),
+                (state.nearbySellers.first['longitude'] as num).toDouble(),
+              )
+            : null);
 
     final String storeName = hasActiveOrder
         ? (state.activeOrderStoreName.isNotEmpty ? state.activeOrderStoreName : 'Pickup Restaurant')
@@ -1619,7 +1617,7 @@ class _LiveMapCard extends StatelessWidget {
                   Positioned.fill(
                     child: AppGoogleMapView(
                       driverLocation: driverLoc,
-                      driverHeading: 45.0,
+                      driverHeading: 0.0,
                       vehicleType: 'two_wheeler',
                       storeLocation: storeLoc,
                       storeName: storeName,
@@ -1633,7 +1631,9 @@ class _LiveMapCard extends StatelessWidget {
                       showControls: true,
                       showProgressCard: hasActiveOrder,
                       distanceKm: state.activeOrderDistanceKm > 0 ? state.activeOrderDistanceKm : null,
-                      etaText: hasActiveOrder ? '~12-15 mins' : null,
+                      etaText: hasActiveOrder && state.activeOrderDistanceKm > 0
+                          ? '~${((state.activeOrderDistanceKm / 25.0) * 60).clamp(3, 120).round()} mins'
+                          : null,
                       initialZoom: 14.5,
                       driverName: state.partnerName.isNotEmpty ? state.partnerName : 'Delivery Partner',
                       driverVehicleNumber: state.vehicleNumber,

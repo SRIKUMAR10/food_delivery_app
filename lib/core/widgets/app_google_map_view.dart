@@ -142,22 +142,14 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
   // Real Road Polylines
 
   // Animated Marker Position State
+  // Animated Marker Position State
   late AnimationController _animController;
   late AnimationController _rainAnimController;
   LatLng? _previousDriverPos;
   LatLng? _currentDriverPos;
-  double _animatedLat = 11.4299713;
-  double _animatedLng = 77.6759418;
+  double? _animatedLat;
+  double? _animatedLng;
   double _animatedHeading = 0.0;
-
-  // Realtime Road Navigation Telemetry State
-  StreamSubscription<VehicleTelemetry>? _roadNavSubscription;
-  double _liveSpeed = 0.0;
-  double? _liveDistanceKm;
-  String? _liveEtaText;
-  double _liveProgressRatio = 0.0;
-  bool _isArrivedAtDestination = false;
-  String? _liveStatusMessage;
 
   @override
   void initState() {
@@ -173,7 +165,7 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
         autoFollowDriver: widget.autoFollowDriver,
       ));
 
-    _currentDriverPos = widget.driverLocation ?? widget.storeLocation ?? widget.customerLocation;
+    _currentDriverPos = widget.driverLocation;
     _previousDriverPos = _currentDriverPos;
     if (_currentDriverPos != null) {
       _animatedLat = _currentDriverPos!.latitude;
@@ -184,7 +176,7 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
 
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 600),
     )..addListener(_onAnimationTick);
 
     _rainAnimController = AnimationController(
@@ -196,7 +188,6 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
     }
 
     _loadCustomIcons();
-    _startRealtimeRoadNavigation();
 
     if (kIsWeb) {
       registerGoogleMapsAuthFailureListener(() {
@@ -290,13 +281,13 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
             (_currentDriverPos!.longitude - _previousDriverPos!.longitude) * t;
       });
 
-      if (_mapBloc.state.autoFollowDriver && _mapController != null) {
+      if (_mapBloc.state.autoFollowDriver && _mapController != null && _animatedLat != null && _animatedLng != null) {
         final is3D = _mapBloc.state.is3DTiltMode;
         final targetZoom = is3D ? math.max(_tileZoom, 17.0) : _tileZoom;
         _mapController!.animateCamera(
           CameraUpdate.newCameraPosition(
             CameraPosition(
-              target: LatLng(_animatedLat, _animatedLng),
+              target: LatLng(_animatedLat!, _animatedLng!),
               zoom: targetZoom,
               tilt: is3D ? 55.0 : 0.0,
               bearing: is3D ? _animatedHeading : 0.0,
@@ -330,8 +321,8 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
         (widget.driverLocation != null && oldWidget.driverLocation == null) ||
         (widget.driverLocation != null &&
             oldWidget.driverLocation != null &&
-            ((widget.driverLocation!.latitude - oldWidget.driverLocation!.latitude).abs() > 0.0008 ||
-                (widget.driverLocation!.longitude - oldWidget.driverLocation!.longitude).abs() > 0.0008))) {
+            ((widget.driverLocation!.latitude - oldWidget.driverLocation!.latitude).abs() > 0.0001 ||
+                (widget.driverLocation!.longitude - oldWidget.driverLocation!.longitude).abs() > 0.0001))) {
       _mapBloc.add(MapDataUpdatedEvent(
         driverLocation: widget.driverLocation,
         storeLocation: widget.storeLocation,
@@ -340,7 +331,6 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
         isPickedUp: widget.isPickedUp,
         forceRouteRefetch: true,
       ));
-      _startRealtimeRoadNavigation();
       if (widget.autoFitEntireRoute) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
@@ -353,9 +343,19 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
     if (widget.driverLocation != null &&
         widget.driverLocation != oldWidget.driverLocation) {
       final targetDriverPos = widget.driverLocation!;
-      final targetHeading = widget.driverHeading;
+      double targetHeading = widget.driverHeading;
 
-      _previousDriverPos = LatLng(_animatedLat, _animatedLng);
+      if (_animatedLat != null && _animatedLng != null) {
+        _previousDriverPos = LatLng(_animatedLat!, _animatedLng!);
+        if (targetHeading == 0.0 && _previousDriverPos != null) {
+          targetHeading = RoutePolylineService.instance.calculateBearing(
+            _previousDriverPos!,
+            targetDriverPos,
+          );
+        }
+      } else {
+        _previousDriverPos = targetDriverPos;
+      }
       _currentDriverPos = targetDriverPos;
       _animatedHeading = targetHeading;
       _animController.forward(from: 0.0);
@@ -377,75 +377,8 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
     }
   }
 
-  void _startRealtimeRoadNavigation() {
-    const defaultZoloLocation = LatLng(11.4299713, 77.6759418);
-    const defaultPartnerStartLocation = LatLng(11.4555052, 77.6873137);
-
-    final LatLng destPos = widget.isPickedUp
-        ? (widget.customerLocation ?? defaultPartnerStartLocation)
-        : (widget.storeLocation ?? defaultZoloLocation);
-
-    LatLng startPos;
-    if (widget.isPickedUp) {
-      startPos = widget.storeLocation ?? defaultZoloLocation;
-    } else {
-      startPos = widget.driverLocation ?? _currentDriverPos ?? defaultPartnerStartLocation;
-    }
-
-    final double distToDest = RoutePolylineService.instance.haversineDistanceMeters(startPos, destPos);
-    if (distToDest < 100.0) {
-      if (widget.isPickedUp) {
-        startPos = defaultZoloLocation;
-      } else {
-        startPos = defaultPartnerStartLocation;
-      }
-    }
-
-    final destName = widget.isPickedUp
-        ? (widget.customerName.isNotEmpty ? widget.customerName : 'Customer')
-        : (widget.storeName.isNotEmpty ? widget.storeName : "Zolo Family Restaurant - Fried Chicken's / Burgers / Pizza's");
-
-    _roadNavSubscription?.cancel();
-    _roadNavSubscription = RealtimeVehicleRouteNavigator.instance.startNavigation(
-      start: startPos,
-      destination: destPos,
-      destinationName: destName,
-      cruisingSpeedKmh: 80.0,
-      simulationSpeedMultiplier: 2.5,
-      tickInterval: const Duration(milliseconds: 40),
-    ).listen((telemetry) {
-      if (!mounted) return;
-
-      setState(() {
-        _animatedLat = telemetry.currentPosition.latitude;
-        _animatedLng = telemetry.currentPosition.longitude;
-        _animatedHeading = telemetry.heading;
-        _liveSpeed = telemetry.speedKmh;
-        _liveDistanceKm = telemetry.remainingDistanceKm;
-        _liveEtaText = telemetry.etaMinutes > 0 ? '~${telemetry.etaMinutes} mins' : 'Arriving now';
-        _liveProgressRatio = telemetry.progressRatio;
-        _isArrivedAtDestination = telemetry.isArrived;
-        _liveStatusMessage = telemetry.statusMessage;
-        _currentDriverPos = telemetry.currentPosition;
-      });
-
-      if (!_isDraggingMap && _mapBloc.state.autoFollowDriver && _mapController != null) {
-        _mapController!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: telemetry.currentPosition,
-              zoom: _tileZoom,
-            ),
-          ),
-        );
-      }
-    });
-  }
-
   @override
   void dispose() {
-    _roadNavSubscription?.cancel();
-    _roadNavSubscription = null;
     if (kIsWeb) {
       FocusManager.instance.primaryFocus?.unfocus();
     }
@@ -540,9 +473,11 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
       );
     }
 
-    // 4. Animated Driver / Courier Marker
-    if (widget.driverLocation != null || _previousDriverPos != null || _currentDriverPos != null) {
-      final currentPos = LatLng(_animatedLat, _animatedLng);
+    // 4. Real-time Driver / Courier Marker
+    if (widget.driverLocation != null || (_animatedLat != null && _animatedLng != null)) {
+      final double lat = _animatedLat ?? widget.driverLocation!.latitude;
+      final double lng = _animatedLng ?? widget.driverLocation!.longitude;
+      final currentPos = LatLng(lat, lng);
       markers.add(
         Marker(
           markerId: const MarkerId('marker_driver'),
@@ -1102,9 +1037,9 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
   }
 
   void _handleCanvasPinTap(BuildContext context, Offset tapPos, double minX, double minY, double zoom) {
-    if (widget.driverLocation != null) {
-      final driverPx = _Mercator.lngToPixelX(_animatedLng, zoom) - minX;
-      final driverPy = _Mercator.latToPixelY(_animatedLat, zoom) - minY;
+    if (widget.driverLocation != null && _animatedLng != null && _animatedLat != null) {
+      final driverPx = _Mercator.lngToPixelX(_animatedLng!, zoom) - minX;
+      final driverPy = _Mercator.latToPixelY(_animatedLat!, zoom) - minY;
       final dist = (tapPos - Offset(driverPx, driverPy)).distance;
       if (dist < 40) {
         HapticFeedback.lightImpact();
@@ -1539,10 +1474,10 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
       return const SizedBox.shrink();
     }
     final isBike = MapMarkerService.isTwoWheeler(widget.vehicleType);
-    final effectiveDist = _liveDistanceKm ?? widget.distanceKm;
-    final speed = _liveSpeed > 0 ? _liveSpeed : (widget.driverSpeed ?? 0.0);
-    final progress = (_liveProgressRatio > 0 ? _liveProgressRatio : widget.progressRatio).clamp(0.0, 1.0);
-    final isArrived = _isArrivedAtDestination || widget.isArrivingSoon || (effectiveDist != null && effectiveDist <= 0.02);
+    final effectiveDist = widget.distanceKm;
+    final speed = widget.driverSpeed ?? 0.0;
+    final progress = widget.progressRatio.clamp(0.0, 1.0);
+    final isArrived = widget.isArrivingSoon || (effectiveDist != null && effectiveDist <= 0.02);
 
     final String distStr;
     if (effectiveDist != null) {
@@ -1561,9 +1496,9 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
       titleText = '⚡ Arrived at ${widget.storeName.isNotEmpty ? widget.storeName : "Destination"}!';
       subtitleText = 'Vehicle stopped at destination • 0.0 km';
     } else {
-      final destLabel = widget.storeName.isNotEmpty ? widget.storeName : 'Zolo Family Restaurant';
+      final destLabel = widget.storeName.isNotEmpty ? widget.storeName : 'Restaurant';
       titleText = '🛵 Heading to $destLabel';
-      final etaStr = _liveEtaText ?? widget.etaText ?? (effectiveDist != null ? '~${((effectiveDist / 35.0) * 60).clamp(1, 45).round()} mins' : 'En route');
+      final etaStr = widget.etaText ?? (effectiveDist != null ? '~${((effectiveDist / 35.0) * 60).clamp(1, 45).round()} mins' : 'En route');
       subtitleText = distStr.isNotEmpty ? '$distStr away • $etaStr' : etaStr;
     }
 
@@ -2098,9 +2033,9 @@ class _AppGoogleMapViewState extends State<AppGoogleMapView>
                                   minY: minY,
                                   zoom: zoom,
                                   roadPolylines: _mapBloc.state.roadPolylines,
-                                  driverPos: (widget.driverLocation != null || _currentDriverPos != null)
-                                      ? LatLng(_animatedLat, _animatedLng)
-                                      : null,
+                                  driverPos: (widget.driverLocation != null && _animatedLat != null && _animatedLng != null)
+                                       ? LatLng(_animatedLat!, _animatedLng!)
+                                       : widget.driverLocation,
                                   driverHeading: _animatedHeading,
                                   vehicleType: widget.vehicleType,
                                   storePos: widget.storeLocation,

@@ -904,9 +904,7 @@ class _FoodCardState extends State<FoodCard> {
                                         ),
                                       ),
                                     ),
-                                  if (!widget.item.isActive ||
-                                      widget.item.status.toLowerCase().contains('outofstock') ||
-                                      (!widget.item.hasUnlimitedStock && widget.item.availableStock <= 0))
+                                  if (widget.item.isOutOfStock)
                                     Positioned.fill(
                                       child: Container(
                                         color: Colors.black.withValues(alpha: 0.45),
@@ -1142,14 +1140,49 @@ class _FoodCardState extends State<FoodCard> {
 
                         const SizedBox(height: 4),
 
-                        // Formatted price with Indian Rupee symbol and Discount
-                        Text(
-                          _currencyFormatter.format(widget.item.discountPrice > 0 ? widget.item.discountPrice : widget.item.price),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF111827),
-                          ),
+                        // Formatted price with Indian Rupee symbol and Range/Discount
+                        Row(
+                          children: [
+                            Text(
+                              widget.item.priceRangeFormatted,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                            if (widget.item.variants.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: BuyerAppColors.primary.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: BuyerAppColors.primary.withValues(alpha: 0.2)),
+                                ),
+                                child: Text(
+                                  '${widget.item.variants.length} sizes',
+                                  style: const TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: BuyerAppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ] else if (widget.item.discountPrice > 0 &&
+                                widget.item.discountPrice < widget.item.price) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                '₹${widget.item.price.truncateToDouble() == widget.item.price ? widget.item.price.toInt() : widget.item.price.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey[500],
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -1854,7 +1887,7 @@ class _OrderAgainSection extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '₹${item.price.toStringAsFixed(0)}',
+                            item.priceRangeFormatted,
                             style: const TextStyle(
                               color: BuyerAppColors.primary,
                               fontWeight: FontWeight.bold,
@@ -2038,7 +2071,7 @@ class _PopularProductsSection extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  '₹${item.price.toStringAsFixed(0)}',
+                                  item.priceRangeFormatted,
                                   style: const TextStyle(
                                     color: BuyerAppColors.primary,
                                     fontWeight: FontWeight.bold,

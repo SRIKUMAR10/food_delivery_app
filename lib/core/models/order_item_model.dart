@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../features/buyer_bloc_architecture/Cart Page/cart_models.dart';
 
 class OrderItemModel extends Equatable {
   final String productId;
@@ -8,6 +9,9 @@ class OrderItemModel extends Equatable {
   final String? imageUrl;
   final String? specialInstructions;
   final List<String> selectedAddons;
+  final String? selectedVariantName;
+  final double? selectedVariantPrice;
+  final PriceSnapshot? priceSnapshot;
 
   const OrderItemModel({
     required this.productId,
@@ -17,6 +21,9 @@ class OrderItemModel extends Equatable {
     this.imageUrl,
     this.specialInstructions,
     this.selectedAddons = const [],
+    this.selectedVariantName,
+    this.selectedVariantPrice,
+    this.priceSnapshot,
   });
 
   factory OrderItemModel.fromMap(Map<String, dynamic> map) {
@@ -31,6 +38,11 @@ class OrderItemModel extends Equatable {
               ?.map((e) => e.toString())
               .toList() ??
           const [],
+      selectedVariantName: map['selectedVariantName'] as String?,
+      selectedVariantPrice: (map['selectedVariantPrice'] as num?)?.toDouble(),
+      priceSnapshot: map['priceSnapshot'] != null && map['priceSnapshot'] is Map
+          ? PriceSnapshot.fromMap(Map<String, dynamic>.from(map['priceSnapshot']))
+          : null,
     );
   }
 
@@ -43,6 +55,9 @@ class OrderItemModel extends Equatable {
       'imageUrl': imageUrl,
       'specialInstructions': specialInstructions,
       'selectedAddons': selectedAddons,
+      if (selectedVariantName != null) 'selectedVariantName': selectedVariantName,
+      if (selectedVariantPrice != null) 'selectedVariantPrice': selectedVariantPrice,
+      if (priceSnapshot != null) 'priceSnapshot': priceSnapshot!.toMap(),
     };
   }
 
@@ -54,6 +69,9 @@ class OrderItemModel extends Equatable {
     String? imageUrl,
     String? specialInstructions,
     List<String>? selectedAddons,
+    String? selectedVariantName,
+    double? selectedVariantPrice,
+    PriceSnapshot? priceSnapshot,
   }) {
     return OrderItemModel(
       productId: productId ?? this.productId,
@@ -63,6 +81,9 @@ class OrderItemModel extends Equatable {
       imageUrl: imageUrl ?? this.imageUrl,
       specialInstructions: specialInstructions ?? this.specialInstructions,
       selectedAddons: selectedAddons ?? this.selectedAddons,
+      selectedVariantName: selectedVariantName ?? this.selectedVariantName,
+      selectedVariantPrice: selectedVariantPrice ?? this.selectedVariantPrice,
+      priceSnapshot: priceSnapshot ?? this.priceSnapshot,
     );
   }
 
@@ -75,5 +96,8 @@ class OrderItemModel extends Equatable {
     imageUrl,
     specialInstructions,
     selectedAddons,
+    selectedVariantName,
+    selectedVariantPrice,
+    priceSnapshot,
   ];
 }

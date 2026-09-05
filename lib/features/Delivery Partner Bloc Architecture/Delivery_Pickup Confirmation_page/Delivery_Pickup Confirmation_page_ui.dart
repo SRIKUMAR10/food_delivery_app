@@ -1155,7 +1155,6 @@ class _PickupInfoCard extends StatelessWidget {
             child: SizedBox(
               height: 160,
               child: AppGoogleMapView(
-                storeLocation: const LatLng(11.4299713, 77.6759418),
                 storeName: model?.pickupLocationName ?? 'Pickup Store',
                 storeAddress: model?.pickupAddress ?? 'Store Address',
                 isDarkMode: true,

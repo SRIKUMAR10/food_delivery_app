@@ -1,10 +1,8 @@
-// Real-Time BLoC Stream Binding Standardized
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/repositories/delivery_active_order_session_repository.dart';
-import '../../../core/services/realtime_vehicle_route_navigator.dart';
 import 'Delivery_Navigation Screen_page_event.dart';
 import 'Delivery_Navigation Screen_page_state.dart';
 import 'Delivery_Navigation Screen_page_repository.dart';
@@ -17,7 +15,6 @@ class DeliveryNavigationBloc
   final DeliveryActiveOrderSessionRepository? _sessionRepo;
 
   StreamSubscription<Map<String, dynamic>>? _locationSub;
-  StreamSubscription<VehicleTelemetry>? _roadNavSub;
   StreamSubscription<Map<String, dynamic>?>? _orderSub;
   StreamSubscription<Map<String, dynamic>?>? _profileSub;
   StreamSubscription<List<Map<String, dynamic>>>? _sellersSub;
@@ -142,10 +139,10 @@ class DeliveryNavigationBloc
 
     final effectiveDriverLat = state.hasDriverPosition
         ? state.driverLat
-        : (state.restaurantLat != 0.0 ? state.restaurantLat - 0.0095 : 11.4390);
+        : state.restaurantLat;
     final effectiveDriverLng = state.hasDriverPosition
         ? state.driverLng
-        : (state.restaurantLng != 0.0 ? state.restaurantLng - 0.0095 : 77.6740);
+        : state.restaurantLng;
 
     double dist = state.distanceToDestinationKm;
     int eta = state.etaToDestinationMinutes;
@@ -414,33 +411,6 @@ class DeliveryNavigationBloc
     }
     await repository.saveAudioEnabled(true);
     _startLiveLocationStream();
-
-    final startLat = state.hasDriverPosition ? state.driverLat : 11.4555052;
-    final startLng = state.hasDriverPosition ? state.driverLng : 77.6873137;
-    final destLat = state.restaurantLat != 0.0 ? state.restaurantLat : 11.4299713;
-    final destLng = state.restaurantLng != 0.0 ? state.restaurantLng : 77.6759418;
-    final destName = state.restaurantName.isNotEmpty ? state.restaurantName : 'Zolo Family Restaurant';
-
-    _roadNavSub?.cancel();
-    _roadNavSub = RealtimeVehicleRouteNavigator.instance.startNavigation(
-      start: LatLng(startLat, startLng),
-      destination: LatLng(destLat, destLng),
-      destinationName: destName,
-      cruisingSpeedKmh: 80.0,
-      simulationSpeedMultiplier: 2.5,
-    ).listen((telemetry) {
-      if (isClosed) return;
-      add(DeliveryNavigationLocationUpdatedEvent(
-        lat: telemetry.currentPosition.latitude,
-        lng: telemetry.currentPosition.longitude,
-        heading: telemetry.heading,
-        speed: telemetry.speedKmh,
-        timestamp: DateTime.now(),
-      ));
-      if (telemetry.isArrived) {
-        add(const DeliveryNavigationArrivedAtPickupEvent());
-      }
-    });
 
     emit(state.copyWith(
       status: DeliveryNavigationStatus.navigating,
@@ -952,9 +922,6 @@ class DeliveryNavigationBloc
   }
 
   void _stopLocationStream() {
-    _roadNavSub?.cancel();
-    _roadNavSub = null;
-    RealtimeVehicleRouteNavigator.instance.stopNavigation();
     _locationSub?.cancel();
     _locationSub = null;
   }

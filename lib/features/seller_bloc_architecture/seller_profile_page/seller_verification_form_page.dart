@@ -18,6 +18,7 @@ import '../seller_auth_shared/onboarding_back_handler.dart';
 import '../seller_auth_shared/seller_wizard_container.dart';
 import '../seller_auth_shared/seller_auth_shared_widgets.dart';
 import '../seller_ui_tokens.dart';
+import '../../../core/services/gst_verification_service.dart';
 
 class SellerVerificationFormPage extends StatelessWidget {
   final SellerProfilePageBloc? bloc;
@@ -237,6 +238,32 @@ class _SellerVerificationFormContentViewState
       );
       return;
     }
+    final gstin = _gstController.text.trim().toUpperCase();
+    if (gstin.isNotEmpty) {
+      final check = GstVerificationService.validateGst(gstin, matchPan: _panController.text.trim());
+      if (!check.isValid) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    check.errorMessage ?? 'Invalid GSTIN format',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
 
     bloc.add(
       SubmitVerificationForm(
@@ -244,7 +271,7 @@ class _SellerVerificationFormContentViewState
         address: _addressController.text.trim(),
         email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
-        gstNumber: _gstController.text.trim(),
+        gstNumber: gstin,
         taxConfiguration: _selectedTax ?? '',
         fssaiLicense: _fssaiController.text.trim(),
         bankAccountNumber: _bankAccountController.text.trim(),
@@ -409,12 +436,7 @@ class _SellerVerificationFormContentViewState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              child: _buildTextField(
-                                'GST Number',
-                                _gstController,
-                                isOptional: true,
-                                fieldKey: const ValueKey('verification_gst'),
-                              ),
+                              child: _buildGstFieldWithLiveVerification(),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -429,12 +451,7 @@ class _SellerVerificationFormContentViewState
                           ],
                         )
                       else ...[
-                        _buildTextField(
-                          'GST Number',
-                          _gstController,
-                          isOptional: true,
-                          fieldKey: const ValueKey('verification_gst'),
-                        ),
+                        _buildGstFieldWithLiveVerification(),
                         const SizedBox(height: 12),
                         _buildTextField(
                           'PAN Card Number',
@@ -1590,6 +1607,92 @@ class _SellerVerificationFormContentViewState
     );
   }
 
+  Widget _buildGstFieldWithLiveVerification() {
+    final text = _gstController.text.trim().toUpperCase();
+    final result = text.isNotEmpty
+        ? GstVerificationService.validateGst(text, matchPan: _panController.text.trim())
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          key: const ValueKey('verification_gst'),
+          controller: _gstController,
+          textCapitalization: TextCapitalization.characters,
+          keyboardType: TextInputType.text,
+          decoration: InputDecoration(
+            labelText: 'GST Number (Optional)',
+            hintText: 'e.g. 33AAAAA0000A1Z5',
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            suffixIcon: text.isNotEmpty
+                ? Icon(
+                    result?.isValid == true ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+                    color: result?.isValid == true ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                  )
+                : null,
+          ),
+          onChanged: (val) {
+            setState(() {});
+          },
+          validator: (val) {
+            if (val == null || val.trim().isEmpty) return null;
+            final check = GstVerificationService.validateGst(val, matchPan: _panController.text.trim());
+            if (!check.isValid) {
+              return check.errorMessage ?? 'Please enter a valid 15-character GSTIN';
+            }
+            return null;
+          },
+        ),
+        if (result != null) ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: result.isValid ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: result.isValid ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  result.isValid ? Icons.verified_outlined : Icons.error_outline_rounded,
+                  size: 14,
+                  color: result.isValid ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    result.isValid
+                        ? '${result.stateName} (${result.stateCode}) • ${result.entityType}${result.isChecksumValid ? " • Verified" : ""}'
+                        : (result.errorMessage ?? 'Invalid GSTIN format'),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: result.isValid ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildTextField(
     String label,
     TextEditingController controller, {
@@ -1604,6 +1707,9 @@ class _SellerVerificationFormContentViewState
       controller: controller,
       maxLines: maxLines,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      textCapitalization: (label.contains('PAN') || label.contains('IFSC') || label.contains('GST'))
+          ? TextCapitalization.characters
+          : TextCapitalization.none,
       decoration: InputDecoration(
         labelText: isOptional ? '$label (Optional)' : '$label *',
         filled: true,
@@ -1619,6 +1725,18 @@ class _SellerVerificationFormContentViewState
       ),
       validator: validator ??
           (value) {
+            if (label.contains('GST')) {
+              if (value != null && value.trim().isNotEmpty) {
+                final result = GstVerificationService.validateGst(
+                  value,
+                  matchPan: _panController.text.trim(),
+                );
+                if (!result.isValid) {
+                  return result.errorMessage ?? 'Please enter a valid 15-character GSTIN';
+                }
+              }
+              return null;
+            }
             if (isOptional) return null;
             if (value == null || value.trim().isEmpty) {
               return 'Please enter $label';

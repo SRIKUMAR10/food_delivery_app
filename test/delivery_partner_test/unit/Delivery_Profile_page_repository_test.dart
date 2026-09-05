@@ -295,5 +295,74 @@ void main() {
       );
       expect(completion, 0);
     });
+
+    test('fetchProfile maps licenseValidTill from multiple candidate aliases', () async {
+      when(() => mockService.fetchProfileData()).thenAnswer((_) async => {
+        'id': 'partner_dl_1',
+        'displayName': 'Rider Test',
+        'dlExpiryDate': '25/12/2032',
+      });
+
+      final profile = await repository.fetchProfile();
+      expect(profile.licenseValidTill, '25/12/2032');
+
+      when(() => mockService.fetchProfileData()).thenAnswer((_) async => {
+        'id': 'partner_dl_2',
+        'displayName': 'Rider Test 2',
+        'drivingLicenseExpiry': '15/08/2035',
+      });
+
+      final profile2 = await repository.fetchProfile();
+      expect(profile2.licenseValidTill, '15/08/2035');
+    });
+
+    test('saveProfile persists licenseValidTill to service update map and prefs', () async {
+      Map<String, dynamic>? capturedPayload;
+      when(() => mockService.updateProfile(any())).thenAnswer((inv) async {
+        capturedPayload = inv.positionalArguments[0] as Map<String, dynamic>;
+        return true;
+      });
+
+      final testProfile = repository.buildDefaultProfile().copyWith(
+        fullName: 'Arun Kumar',
+        vehicleType: 'Scooter',
+        vehicleNumber: 'TN-36-8888',
+        licenseNumber: 'TN43Z20210000478',
+        licenseValidTill: '31/12/2030',
+      );
+
+      await repository.saveProfile(testProfile);
+
+      expect(capturedPayload, isNotNull);
+      expect(capturedPayload!['licenseValidTill'], '31/12/2030');
+      expect(capturedPayload!['dlExpiryDate'], '31/12/2030');
+      expect(capturedPayload!['drivingLicense'], 'TN43Z20210000478');
+
+      when(() => mockService.fetchProfileData()).thenAnswer((_) async => <String, dynamic>{});
+      final restored = await repository.fetchProfile();
+      expect(restored.licenseValidTill, '31/12/2030');
+      expect(restored.licenseNumber, 'TN43Z20210000478');
+    });
+
+    test('updateVehicle includes licenseValidTill and licenseNumber when supplied', () async {
+      Map<String, dynamic>? capturedVehiclePayload;
+      when(() => mockService.updateProfile(any())).thenAnswer((inv) async {
+        capturedVehiclePayload = inv.positionalArguments[0] as Map<String, dynamic>;
+        return true;
+      });
+
+      await repository.updateVehicle(
+        vehicleType: 'Electric Bike',
+        vehicleNumber: 'TN-38-9999',
+        licenseNumber: 'TN3820220001111',
+        licenseValidTill: '10/10/2032',
+      );
+
+      expect(capturedVehiclePayload, isNotNull);
+      expect(capturedVehiclePayload!['vehicleType'], 'Electric Bike');
+      expect(capturedVehiclePayload!['vehicleNumber'], 'TN-38-9999');
+      expect(capturedVehiclePayload!['drivingLicense'], 'TN3820220001111');
+      expect(capturedVehiclePayload!['licenseValidTill'], '10/10/2032');
+    });
   });
 }

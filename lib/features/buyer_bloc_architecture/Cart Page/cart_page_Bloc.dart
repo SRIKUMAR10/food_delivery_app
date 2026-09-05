@@ -12,6 +12,7 @@ import '../../../core/repositories/i_cart_repository.dart';
 import '../../../core/repositories/i_coupon_repository.dart';
 import '../../../core/repositories/i_product_repository.dart';
 import '../../../core/repositories/i_user_profile_repository.dart';
+import '../../../core/services/gst_verification_service.dart';
 import '../../../features/buyer_bloc_architecture/user_profile_image/user_profile_models.dart';
 import '../../../repositories/firebase_user_profile_repository.dart';
 import 'cart_models.dart';
@@ -200,8 +201,10 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     // Free delivery for orders >= ₹500, otherwise ₹35 base fee (₹0 if cart is empty)
     final double deliveryFee = (subtotal >= 500.0 || subtotal == 0.0) ? 0.0 : 35.0;
     final double taxableSubtotal = (subtotal - discountAmount).clamp(0.0, double.infinity).toDouble();
-    // 5% GST on taxable amount
-    final double taxAmount = subtotal > 0 ? (taxableSubtotal * 0.05) : 0.0;
+    // Statutory Restaurant GST 5% (CGST 2.5% + SGST 2.5%) computed via GstVerificationService
+    final double taxAmount = subtotal > 0
+        ? GstVerificationService.calculateTax(taxableAmount: taxableSubtotal, gstRate: 5.0).totalTax
+        : 0.0;
     // Platform fee ₹5 if items are present
     final double platformFee = subtotal > 0 ? 5.0 : 0.0;
 

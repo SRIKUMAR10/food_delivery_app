@@ -1574,9 +1574,7 @@ class _DeliverySummaryCard extends StatelessWidget {
             child: SizedBox(
               height: 150,
               child: AppGoogleMapView(
-                storeLocation: const LatLng(11.4299713, 77.6759418),
-                storeName: 'Zolo Family Restaurant',
-                customerLocation: const LatLng(11.4555052, 77.6873137),
+                storeName: 'Pickup Restaurant',
                 customerName: model?.customerName ?? 'Customer',
                 customerAddress: model?.deliveryAddress,
                 isPickedUp: true,

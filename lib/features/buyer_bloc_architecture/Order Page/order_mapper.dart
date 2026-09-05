@@ -8,6 +8,7 @@ class OrderMapper {
     final items = domainOrder.items?.map((item) {
           return CartItem(
             id: item.productId,
+            productId: item.productId,
             name: item.name,
             price: item.price,
             sellerId: domainOrder.sellerId,
@@ -15,6 +16,9 @@ class OrderMapper {
             imageUrls: item.imageUrl != null ? [item.imageUrl!] : [],
             quantity: item.quantity,
             selectedAddons: item.selectedAddons,
+            selectedVariantName: item.selectedVariantName,
+            selectedVariantPrice: item.selectedVariantPrice,
+            priceSnapshot: item.priceSnapshot,
           );
         }).toList() ??
         [];

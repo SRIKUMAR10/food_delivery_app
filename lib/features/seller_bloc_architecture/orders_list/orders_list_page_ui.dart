@@ -761,7 +761,11 @@ class _OrderListCardState extends State<_OrderListCard> {
     final items = order.items;
     if (items == null || items.isEmpty) return 'No items recorded';
     final count = items.length;
-    final firstItem = items.first.name;
+    final first = items.first;
+    final firstVariant = (first.selectedVariantName != null && first.selectedVariantName!.isNotEmpty)
+        ? ' (${first.selectedVariantName})'
+        : '';
+    final firstItem = '${first.name}$firstVariant';
     if (count == 1) return '1x $firstItem';
     return '${items[0].quantity}x $firstItem + ${count - 1} more item${count > 2 ? 's' : ''}';
   }
@@ -1695,6 +1699,25 @@ class _OrderItemsCard extends StatelessWidget {
                               color: Color(0xFF0F172A),
                             ),
                           ),
+                          if (item.selectedVariantName != null && item.selectedVariantName!.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE52929).withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: const Color(0xFFE52929).withValues(alpha: 0.2)),
+                              ),
+                              child: Text(
+                                'Size: ${item.selectedVariantName}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFE52929),
+                                ),
+                              ),
+                            ),
+                          ],
                           if (item.selectedAddons.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Wrap(

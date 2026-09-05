@@ -114,9 +114,35 @@ class FieldChangedEvent extends AddProductPageEvent {
   List<Object?> get props => [field, value];
 }
 
+class HsnCodeChangedEvent extends AddProductPageEvent {
+  final String hsnCode;
+  const HsnCodeChangedEvent(this.hsnCode);
+
+  @override
+  List<Object?> get props => [hsnCode];
+}
+
+class GstRateChangedEvent extends AddProductPageEvent {
+  final double gstPercentage;
+  const GstRateChangedEvent(this.gstPercentage);
+
+  @override
+  List<Object?> get props => [gstPercentage];
+}
+
+class TaxTypeChangedEvent extends AddProductPageEvent {
+  final String taxType;
+  const TaxTypeChangedEvent(this.taxType);
+
+  @override
+  List<Object?> get props => [taxType];
+}
+
 class SubmitProductEvent extends AddProductPageEvent {
   final String name;
   final String sku;
+  final String hsnCode;
+  final String taxType;
   final double price; // GST-inclusive
   final double basePrice;
   final double gstPercentage;
@@ -136,6 +162,8 @@ class SubmitProductEvent extends AddProductPageEvent {
   const SubmitProductEvent({
     required this.name,
     this.sku = '',
+    this.hsnCode = '996331',
+    this.taxType = 'intraState',
     required this.price,
     required this.basePrice,
     required this.gstPercentage,
@@ -157,6 +185,8 @@ class SubmitProductEvent extends AddProductPageEvent {
   List<Object?> get props => [
     name,
     sku,
+    hsnCode,
+    taxType,
     price,
     basePrice,
     gstPercentage,
@@ -175,6 +205,46 @@ class SubmitProductEvent extends AddProductPageEvent {
   ];
 }
 
+class ToggleProductTypeEvent extends AddProductPageEvent {
+  final bool hasVariants;
+  const ToggleProductTypeEvent(this.hasVariants);
+
+  @override
+  List<Object?> get props => [hasVariants];
+}
+
+class SingleInventoryChangedEvent extends AddProductPageEvent {
+  final double? basePrice;
+  final double? discountPercentage;
+  final double? gstPercentage;
+  final String? taxType;
+  final int? stock;
+  final bool? hasUnlimitedStock;
+  final int? minimumAlert;
+
+  const SingleInventoryChangedEvent({
+    this.basePrice,
+    this.discountPercentage,
+    this.gstPercentage,
+    this.taxType,
+    this.stock,
+    this.hasUnlimitedStock,
+    this.minimumAlert,
+  });
+
+  @override
+  List<Object?> get props => [
+    basePrice,
+    discountPercentage,
+    gstPercentage,
+    taxType,
+    stock,
+    hasUnlimitedStock,
+    minimumAlert,
+  ];
+}
+
 class ResetFormEvent extends AddProductPageEvent {}
 
 class FetchGstPercentageEvent extends AddProductPageEvent {}
+

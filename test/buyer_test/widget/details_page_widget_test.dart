@@ -12,6 +12,7 @@ import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Pag
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_state.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/Favorites_Page/favorites_event.dart';
 import 'package:food_delivery_app/features/buyer_bloc_architecture/home_Page/home_page_models.dart';
+import 'package:food_delivery_app/core/models/product_model.dart';
 
 // Mock BLoCs
 class MockDetailsBloc extends Mock implements DetailsBloc {}
@@ -82,7 +83,7 @@ void main() {
           ),
         );
         
-        expect(find.text('Burger'), findsOneWidget);
+        expect(find.text('Burger'), findsWidgets);
         expect(find.text('Tasty Burger'), findsOneWidget);
         // ₹150
         expect(find.text('₹150'), findsWidgets);
@@ -211,6 +212,129 @@ void main() {
         final button = find.byType(ElevatedButton);
         final elevatedButton = tester.widget<ElevatedButton>(button.first);
         expect(elevatedButton.onPressed, isNull); // Disabled
+      });
+    });
+
+    testWidgets('Product Variants / Sizes render and update price reactively', (tester) async {
+      tester.view.physicalSize = const Size(600, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await mockNetworkImagesFor(() async {
+        final foodItem = FoodItem(
+          id: '1',
+          name: 'Pizza',
+          price: 500.0,
+          description: 'Delicious Pizza',
+          category: 'Pizza',
+          sellerId: 's1',
+          variants: const [
+            ProductVariant(id: 'v1', name: 'Regular', basePrice: 500.0, stock: 20),
+            ProductVariant(id: 'v2', name: 'Medium', basePrice: 800.0, stock: 15),
+            ProductVariant(id: 'v3', name: 'Large', basePrice: 1200.0, stock: 10),
+          ],
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: DetailsPageUI(
+              detailsBloc: mockDetailsBloc,
+              id: '1',
+              name: 'Pizza',
+              price: 500.0,
+              description: 'Delicious Pizza',
+              sellerId: 's1',
+              foodItem: foodItem,
+            ),
+          ),
+        );
+
+        // Section header and variant options should be displayed
+        expect(find.text('Product Variants / Sizes'), findsOneWidget);
+        expect(find.text('Regular'), findsWidgets);
+        expect(find.text('Medium'), findsWidgets);
+        expect(find.text('Large'), findsWidgets);
+
+        // Tap 'Large' variant
+        await tester.ensureVisible(find.text('Large').last);
+        await tester.tap(find.text('Large').last, warnIfMissed: false);
+        await tester.pumpAndSettle();
+
+        // Total price should update to Large price
+        expect(find.text('₹1,260'), findsWidgets);
+      });
+    });
+
+    testWidgets('Customization / Add-on Groups render options and update price reactively', (tester) async {
+      tester.view.physicalSize = const Size(600, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await mockNetworkImagesFor(() async {
+        final foodItem = FoodItem(
+          id: '1',
+          name: 'Burger',
+          price: 150.0,
+          description: 'Tasty',
+          category: 'Fast Food',
+          sellerId: 's1',
+          customizationGroups: const [
+            ProductCustomizationGroup(
+              groupName: 'Choice of Bun',
+              isRequired: true,
+              minSelect: 1,
+              maxSelect: 1,
+              options: [
+                ProductAddon(id: 'b1', name: 'Brioche Bun', basePrice: 0.0),
+                ProductAddon(id: 'b2', name: 'Wheat Bun', basePrice: 20.0),
+              ],
+            ),
+            ProductCustomizationGroup(
+              groupName: 'Extra Add-ons',
+              isRequired: false,
+              minSelect: 0,
+              maxSelect: 2,
+              options: [
+                ProductAddon(id: 'a1', name: 'Extra Cheese Slice', basePrice: 30.0),
+                ProductAddon(id: 'a2', name: 'Extra Patty', basePrice: 80.0),
+              ],
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: DetailsPageUI(
+              detailsBloc: mockDetailsBloc,
+              id: '1',
+              name: 'Burger',
+              price: 150.0,
+              description: 'Tasty',
+              sellerId: 's1',
+              foodItem: foodItem,
+            ),
+          ),
+        );
+
+        expect(find.text('Customization / Add-on Groups'), findsOneWidget);
+        expect(find.text('Choice of Bun'), findsOneWidget);
+        expect(find.text('Brioche Bun'), findsOneWidget);
+        expect(find.text('Wheat Bun'), findsOneWidget);
+        expect(find.text('Extra Add-ons'), findsOneWidget);
+        expect(find.text('Extra Cheese Slice'), findsOneWidget);
+
+        // Tap Wheat Bun (+₹20 base + 5% GST = ₹21)
+        await tester.tap(find.text('Wheat Bun'));
+        await tester.pumpAndSettle();
+
+        // Price should be 150 + 21 = 171
+        expect(find.text('₹171'), findsWidgets);
       });
     });
   });

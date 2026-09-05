@@ -870,42 +870,104 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
       // 2. Read products
       const productDocs = [];
       for (const item of selectedCartItems) {
-        const productRef = db.collection('products').doc(item.id);
+        const prodId = item.productId || (item.id && item.id.includes('_') ? item.id.split('_')[0] : item.id);
+        const productRef = db.collection('products').doc(prodId);
         const productSnap = await transaction.get(productRef);
         if (!productSnap.exists) {
-          throw new functions.https.HttpsError('not-found', `Product ${item.id} not found.`);
+          throw new functions.https.HttpsError('not-found', `Product ${prodId} not found.`);
         }
-        productDocs.push({ snap: productSnap, item: item });
+        productDocs.push({ snap: productSnap, item: item, prodId: prodId });
       }
 
       const itemsBySeller = {};
       const productUpdates = [];
       const cartDeletes = [];
 
-      for (const { snap, item } of productDocs) {
+      for (const { snap, item, prodId } of productDocs) {
         const productData = snap.data();
         const availableStock = productData.availableStock || 0;
-        const dbPrice = parseFloat(productData.price) || 0;
+        let baseItemPrice = parseFloat(productData.price) || 0;
         const dbDiscountPrice = parseFloat(productData.discountPrice) || 0;
 
-        const effectivePrice =
-          (dbDiscountPrice > 0 && dbDiscountPrice < dbPrice)
-            ? dbDiscountPrice
-            : dbPrice;
-
-        if (availableStock < item.quantity) {
-          throw new functions.https.HttpsError('failed-precondition', `Not enough stock for ${productData.name}.`);
+        if (dbDiscountPrice > 0 && dbDiscountPrice < baseItemPrice) {
+          baseItemPrice = dbDiscountPrice;
         }
 
-        const newStock = availableStock - item.quantity;
-        const newStatus = newStock === 0 ? 'outOfStock' : (productData.status || 'available');
+        // Match variant pricing if selected
+        let selectedVariantObj = null;
+        if (item.selectedVariantName && Array.isArray(productData.variants)) {
+          selectedVariantObj = productData.variants.find(
+            v => v.name === item.selectedVariantName || v.id === item.selectedVariantId
+          );
+          if (selectedVariantObj && parseFloat(selectedVariantObj.price) > 0) {
+            baseItemPrice = parseFloat(selectedVariantObj.price);
+          }
+        }
+
+        // Calculate add-on additions
+        let addonsPrice = 0;
+        if (Array.isArray(item.selectedAddons)) {
+          for (const addonStr of item.selectedAddons) {
+            const match = /(?:\+|\:|\₹)\s*(\d+(?:\.\d+)?)/.exec(addonStr);
+            if (match && match[1]) {
+              addonsPrice += parseFloat(match[1]) || 0;
+            }
+          }
+        }
+
+        const effectivePrice = baseItemPrice + addonsPrice;
+
+        let newStock = availableStock;
+        let newStatus = productData.status || 'inStock';
+        const productUpdatePayload = {};
+
+        if (productData.hasVariants && Array.isArray(productData.variants) && productData.variants.length > 0) {
+          if (selectedVariantObj) {
+            const vStock = parseInt(selectedVariantObj.stock, 10) || 0;
+            if (selectedVariantObj.trackInventory !== false && vStock < item.quantity) {
+              throw new functions.https.HttpsError(
+                'failed-precondition',
+                `Not enough stock for ${productData.name} (${selectedVariantObj.name}). Requested ${item.quantity}, available ${vStock}.`
+              );
+            }
+            const updatedVariants = productData.variants.map(v => {
+              if (v.name === selectedVariantObj.name || v.id === selectedVariantObj.id) {
+                const curStock = parseInt(v.stock, 10) || 0;
+                const newVStock = v.trackInventory !== false ? Math.max(0, curStock - (item.quantity || 1)) : curStock;
+                return { ...v, stock: newVStock, isAvailable: v.trackInventory === false || newVStock > 0 };
+              }
+              return v;
+            });
+            productUpdatePayload.variants = updatedVariants;
+            const totalVariantStock = updatedVariants.reduce(
+              (sum, v) => sum + (v.trackInventory !== false ? (parseInt(v.stock, 10) || 0) : 999),
+              0
+            );
+            productUpdatePayload.availableStock = totalVariantStock;
+            productUpdatePayload.status = totalVariantStock === 0 ? 'outOfStock' : (productData.status || 'inStock');
+          }
+        } else {
+          if (!productData.hasUnlimitedStock) {
+            if (availableStock < item.quantity) {
+              throw new functions.https.HttpsError(
+                'failed-precondition',
+                `Not enough stock for ${productData.name}. Requested ${item.quantity}, available ${availableStock}.`
+              );
+            }
+            newStock = availableStock - item.quantity;
+            newStatus = newStock === 0 ? 'outOfStock' : (productData.status || 'inStock');
+            productUpdatePayload.availableStock = newStock;
+            productUpdatePayload.status = newStatus;
+          }
+        }
 
         productUpdates.push({
           ref: snap.ref,
-          data: { availableStock: newStock, status: newStatus }
+          data: productUpdatePayload
         });
 
-        cartDeletes.push(db.collection('buyer_user').doc(uid).collection('cart').doc(item.id));
+        const cartDocId = item.cartItemId || item.id;
+        cartDeletes.push(db.collection('buyer_user').doc(uid).collection('cart').doc(cartDocId));
 
         const sellerId = productData.sellerId;
         if (!itemsBySeller[sellerId]) {
@@ -920,15 +982,17 @@ exports.createSecureOrder = functions.https.onCall(async (data, context) => {
         itemsBySeller[sellerId].totalAmount += itemTotal;
         itemsBySeller[sellerId].originalTotal += itemTotal;
         itemsBySeller[sellerId].items.push({
-          id: item.id || '',
-          productId: item.id || '',
+          id: item.productId || prodId,
+          productId: item.productId || prodId,
           name: productData.name || 'Unknown Product',
           price: effectivePrice,
           quantity: item.quantity || 1,
           sellerId: sellerId || 'Unknown Seller',
           image: productData.imageUrls && productData.imageUrls.length > 0 ? productData.imageUrls[0] : (productData.imageUrl || null),
           imageUrl: productData.imageUrls && productData.imageUrls.length > 0 ? productData.imageUrls[0] : (productData.imageUrl || null),
-          selectedAddons: item.selectedAddons || []
+          selectedAddons: item.selectedAddons || [],
+          selectedVariantName: item.selectedVariantName || null,
+          selectedVariantPrice: item.selectedVariantPrice || null,
         });
       }
 
@@ -1256,45 +1320,104 @@ exports.verifyPaymentAndCreateOrder = functions.https.onCall(async (data, contex
       // 2. Read products & verify inventory
       const productDocs = [];
       for (const item of selectedCartItems) {
-        const productRef = db.collection('products').doc(item.id);
+        const prodId = item.productId || (item.id && item.id.includes('_') ? item.id.split('_')[0] : item.id);
+        const productRef = db.collection('products').doc(prodId);
         const productSnap = await transaction.get(productRef);
         if (!productSnap.exists) {
-          throw new functions.https.HttpsError('not-found', `Product ${item.id} not found.`);
+          throw new functions.https.HttpsError('not-found', `Product ${prodId} not found.`);
         }
-        productDocs.push({ snap: productSnap, item: item });
+        productDocs.push({ snap: productSnap, item: item, prodId: prodId });
       }
 
       const itemsBySeller = {};
       const productUpdates = [];
       const cartDeletes = [];
 
-      for (const { snap, item } of productDocs) {
+      for (const { snap, item, prodId } of productDocs) {
         const productData = snap.data();
         const availableStock = productData.availableStock || 0;
-        const dbPrice = parseFloat(productData.price) || 0;
+        let baseItemPrice = parseFloat(productData.price) || 0;
         const dbDiscountPrice = parseFloat(productData.discountPrice) || 0;
 
-        const effectivePrice =
-          (dbDiscountPrice > 0 && dbDiscountPrice < dbPrice)
-            ? dbDiscountPrice
-            : dbPrice;
-
-        if (availableStock < item.quantity) {
-          throw new functions.https.HttpsError(
-            'failed-precondition',
-            `Insufficient stock for ${productData.name}. Requested ${item.quantity}, available ${availableStock}.`
-          );
+        if (dbDiscountPrice > 0 && dbDiscountPrice < baseItemPrice) {
+          baseItemPrice = dbDiscountPrice;
         }
 
-        const newStock = availableStock - item.quantity;
-        const newStatus = newStock === 0 ? 'outOfStock' : (productData.status || 'available');
+        // Match variant pricing if selected
+        let selectedVariantObj = null;
+        if (item.selectedVariantName && Array.isArray(productData.variants)) {
+          selectedVariantObj = productData.variants.find(
+            v => v.name === item.selectedVariantName || v.id === item.selectedVariantId
+          );
+          if (selectedVariantObj && parseFloat(selectedVariantObj.price) > 0) {
+            baseItemPrice = parseFloat(selectedVariantObj.price);
+          }
+        }
+
+        // Calculate add-on additions
+        let addonsPrice = 0;
+        if (Array.isArray(item.selectedAddons)) {
+          for (const addonStr of item.selectedAddons) {
+            const match = /(?:\+|\:|\₹)\s*(\d+(?:\.\d+)?)/.exec(addonStr);
+            if (match && match[1]) {
+              addonsPrice += parseFloat(match[1]) || 0;
+            }
+          }
+        }
+
+        const effectivePrice = baseItemPrice + addonsPrice;
+
+        let newStock = availableStock;
+        let newStatus = productData.status || 'inStock';
+        const productUpdatePayload = {};
+
+        if (productData.hasVariants && Array.isArray(productData.variants) && productData.variants.length > 0) {
+          if (selectedVariantObj) {
+            const vStock = parseInt(selectedVariantObj.stock, 10) || 0;
+            if (selectedVariantObj.trackInventory !== false && vStock < item.quantity) {
+              throw new functions.https.HttpsError(
+                'failed-precondition',
+                `Insufficient stock for ${productData.name} (${selectedVariantObj.name}). Requested ${item.quantity}, available ${vStock}.`
+              );
+            }
+            const updatedVariants = productData.variants.map(v => {
+              if (v.name === selectedVariantObj.name || v.id === selectedVariantObj.id) {
+                const curStock = parseInt(v.stock, 10) || 0;
+                const newVStock = v.trackInventory !== false ? Math.max(0, curStock - (item.quantity || 1)) : curStock;
+                return { ...v, stock: newVStock, isAvailable: v.trackInventory === false || newVStock > 0 };
+              }
+              return v;
+            });
+            productUpdatePayload.variants = updatedVariants;
+            const totalVariantStock = updatedVariants.reduce(
+              (sum, v) => sum + (v.trackInventory !== false ? (parseInt(v.stock, 10) || 0) : 999),
+              0
+            );
+            productUpdatePayload.availableStock = totalVariantStock;
+            productUpdatePayload.status = totalVariantStock === 0 ? 'outOfStock' : (productData.status || 'inStock');
+          }
+        } else {
+          if (!productData.hasUnlimitedStock) {
+            if (availableStock < item.quantity) {
+              throw new functions.https.HttpsError(
+                'failed-precondition',
+                `Insufficient stock for ${productData.name}. Requested ${item.quantity}, available ${availableStock}.`
+              );
+            }
+            newStock = availableStock - item.quantity;
+            newStatus = newStock === 0 ? 'outOfStock' : (productData.status || 'inStock');
+            productUpdatePayload.availableStock = newStock;
+            productUpdatePayload.status = newStatus;
+          }
+        }
 
         productUpdates.push({
           ref: snap.ref,
-          data: { availableStock: newStock, status: newStatus }
+          data: productUpdatePayload
         });
 
-        cartDeletes.push(db.collection('buyer_user').doc(uid).collection('cart').doc(item.id));
+        const cartDocId = item.cartItemId || item.id;
+        cartDeletes.push(db.collection('buyer_user').doc(uid).collection('cart').doc(cartDocId));
 
         const sellerId = productData.sellerId;
         if (!itemsBySeller[sellerId]) {
@@ -1309,15 +1432,17 @@ exports.verifyPaymentAndCreateOrder = functions.https.onCall(async (data, contex
         itemsBySeller[sellerId].totalAmount += itemTotal;
         itemsBySeller[sellerId].originalTotal += itemTotal;
         itemsBySeller[sellerId].items.push({
-          id: item.id || '',
-          productId: item.id || '',
+          id: item.productId || prodId,
+          productId: item.productId || prodId,
           name: productData.name || 'Unknown Product',
           price: effectivePrice,
           quantity: item.quantity || 1,
           sellerId: sellerId || 'Unknown Seller',
           image: productData.imageUrls && productData.imageUrls.length > 0 ? productData.imageUrls[0] : (productData.imageUrl || null),
           imageUrl: productData.imageUrls && productData.imageUrls.length > 0 ? productData.imageUrls[0] : (productData.imageUrl || null),
-          selectedAddons: item.selectedAddons || []
+          selectedAddons: item.selectedAddons || [],
+          selectedVariantName: item.selectedVariantName || null,
+          selectedVariantPrice: item.selectedVariantPrice || null,
         });
       }
 

@@ -72,6 +72,7 @@ class ProductPreviewWidget extends StatefulWidget {
 
 class _ProductPreviewWidgetState extends State<ProductPreviewWidget> {
   late bool _isPreviewDesktop;
+  ProductVariant? _previewSelectedVariant;
 
   final NumberFormat _currFmt = NumberFormat.currency(
     locale: 'en_IN',
@@ -83,6 +84,9 @@ class _ProductPreviewWidgetState extends State<ProductPreviewWidget> {
   void initState() {
     super.initState();
     _isPreviewDesktop = widget.initialIsDesktop;
+    if (widget.product.variants.isNotEmpty) {
+      _previewSelectedVariant = widget.product.variants.first;
+    }
   }
 
   @override
@@ -92,6 +96,20 @@ class _ProductPreviewWidgetState extends State<ProductPreviewWidget> {
     if (widget.initialIsDesktop != oldWidget.initialIsDesktop) {
       setState(() {
         _isPreviewDesktop = widget.initialIsDesktop;
+      });
+    }
+    if (widget.product.variants.isNotEmpty) {
+      if (_previewSelectedVariant == null ||
+          !widget.product.variants.any((v) =>
+              (v.id.isNotEmpty && v.id == _previewSelectedVariant!.id) ||
+              v.name == _previewSelectedVariant!.name)) {
+        setState(() {
+          _previewSelectedVariant = widget.product.variants.first;
+        });
+      }
+    } else if (oldWidget.product.variants.isNotEmpty && widget.product.variants.isEmpty) {
+      setState(() {
+        _previewSelectedVariant = null;
       });
     }
   }
@@ -298,13 +316,23 @@ class _ProductPreviewWidgetState extends State<ProductPreviewWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final double price = widget.product.price;
-    final double finalPrice = widget.product.discountPrice > 0
-        ? widget.product.discountPrice
+    final bool hasVariants = widget.product.variants.isNotEmpty;
+    final activeVariant = _previewSelectedVariant ?? (hasVariants ? widget.product.variants.first : null);
+
+    final double price = hasVariants && activeVariant != null
+        ? activeVariant.grossBasePriceWithGst
         : widget.product.price;
-    final bool hasDiscount =
-        widget.product.discountPrice > 0 &&
-        widget.product.discountPrice < (widget.product.price * 1.18 - 0.01);
+
+    final double finalPrice = hasVariants && activeVariant != null
+        ? activeVariant.effectivePrice
+        : (widget.product.discountPrice > 0
+            ? widget.product.discountPrice
+            : widget.product.price);
+
+    final bool hasDiscount = hasVariants && activeVariant != null
+        ? activeVariant.discountPercentage > 0
+        : (widget.product.discountPrice > 0 &&
+            widget.product.discountPrice < (widget.product.price * 1.18 - 0.01));
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -478,6 +506,8 @@ class _ProductPreviewWidgetState extends State<ProductPreviewWidget> {
                           const Divider(height: 1, color: Color(0xFFF0F0F0)),
                           const SizedBox(height: 16),
                           _buildDescription(),
+                          if (widget.product.variants.isNotEmpty)
+                            _buildPreviewVariantsSection(),
                           const SizedBox(height: 24),
                           _buildPriceAndQuantityRow(
                             finalPrice,
@@ -652,6 +682,8 @@ class _ProductPreviewWidgetState extends State<ProductPreviewWidget> {
                             const Divider(height: 1, color: Color(0xFFF0F0F0)),
                             const SizedBox(height: 20),
                             _buildDescription(),
+                            if (widget.product.variants.isNotEmpty)
+                              _buildPreviewVariantsSection(),
                             const SizedBox(height: 24),
                             _buildPriceAndQuantityRow(
                               finalPrice,
@@ -960,6 +992,98 @@ class _ProductPreviewWidgetState extends State<ProductPreviewWidget> {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildPreviewVariantsSection() {
+    if (widget.product.variants.isEmpty) return const SizedBox.shrink();
+
+    final active = _previewSelectedVariant ?? widget.product.variants.first;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Portion / Size Variants',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: _textPrimary,
+                ),
+              ),
+              Text(
+                '${widget.product.variants.length} Sizes',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: _textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: widget.product.variants.map((v) {
+              final isSel = (v.id.isNotEmpty && v.id == active.id) || v.name == active.name;
+              final isOos = !v.isAvailable || (v.trackInventory && v.stock <= 0);
+
+              return InkWell(
+                onTap: isOos
+                    ? null
+                    : () {
+                        setState(() {
+                          _previewSelectedVariant = v;
+                        });
+                      },
+                borderRadius: BorderRadius.circular(10),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSel
+                        ? _primaryColor.withValues(alpha: 0.1)
+                        : (isOos ? Colors.grey.shade100 : Colors.white),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isSel ? _primaryColor : (isOos ? Colors.grey.shade300 : _borderColor),
+                      width: isSel ? 1.6 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        v.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                          color: isOos ? Colors.grey : (isSel ? _primaryColor : _textPrimary),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '₹${v.finalPrice.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isOos ? Colors.grey : (isSel ? _primaryColor : _textSecondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 

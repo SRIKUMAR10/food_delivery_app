@@ -14,9 +14,9 @@ void main() {
       expect(state.audioEnabled, isFalse);
       expect(state.emergencyMode, isFalse);
       expect(state.errorMessage, isNull);
-      expect(state.etaMinutes, 18);
-      expect(state.distanceKm, 6.2);
-      expect(state.nextTurnInstruction, 'Turn Left onto 2nd Avenue');
+      expect(state.etaMinutes, 6);
+      expect(state.distanceKm, 2.1);
+      expect(state.nextTurnInstruction, 'Turn Left onto Bhavani Main Road');
       expect(state.turnDistanceMeters, 250.0);
       expect(state.trafficLevel, DeliveryNavigationTrafficLevel.moderate);
       expect(state.mapZoomLevel, 15.0);
@@ -31,14 +31,14 @@ void main() {
       );
 
       expect(state.order.orderId, '#ORD-789456');
-      expect(state.order.customerName, 'Arun Kumar');
-      expect(state.order.customerPhone, '+91 98765 43210');
+      expect(state.order.customerName, 'Senthilkumar');
+      expect(state.order.customerPhone, '+91 98420 54321');
       expect(state.pickup.label, 'Pickup');
       expect(state.drop.label, 'Drop');
       expect(state.pickup.iconKey, 'pickup');
       expect(state.drop.iconKey, 'drop');
-      expect(state.pickup.address, contains('Whites Road'));
-      expect(state.drop.address, contains('Anna Nagar'));
+      expect(state.pickup.address, contains('Bhavani'));
+      expect(state.drop.address, contains('Kuruppanaickenpalayam'));
       expect(state.status, DeliveryNavigationStatus.loaded);
     });
 

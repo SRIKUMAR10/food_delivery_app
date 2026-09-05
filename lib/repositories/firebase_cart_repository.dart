@@ -110,13 +110,17 @@ class FirebaseCartRepository implements ICartRepository {
     if (buyerId.isEmpty || selectedItems.isEmpty) return null;
 
     final selectedCartItemsPayload = selectedItems.map((item) => {
-      'id': item.id,
+      'id': item.effectiveProductId,
+      'cartItemId': item.id,
+      'productId': item.effectiveProductId,
       'name': item.name,
       'price': item.price,
       'quantity': item.quantity,
       'sellerId': item.sellerId,
       'image': item.image ?? '',
       'selectedAddons': item.selectedAddons,
+      'selectedVariantName': item.selectedVariantName,
+      'selectedVariantPrice': item.selectedVariantPrice,
     }).toList();
 
     final payload = <String, dynamic>{
@@ -158,13 +162,17 @@ class FirebaseCartRepository implements ICartRepository {
     if (buyerId.isEmpty || selectedItems.isEmpty) return null;
 
     final selectedCartItemsPayload = selectedItems.map((item) => {
-      'id': item.id,
+      'id': item.effectiveProductId,
+      'cartItemId': item.id,
+      'productId': item.effectiveProductId,
       'name': item.name,
       'price': item.price,
       'quantity': item.quantity,
       'sellerId': item.sellerId,
       'image': item.image ?? '',
       'selectedAddons': item.selectedAddons,
+      'selectedVariantName': item.selectedVariantName,
+      'selectedVariantPrice': item.selectedVariantPrice,
     }).toList();
 
     final payload = <String, dynamic>{

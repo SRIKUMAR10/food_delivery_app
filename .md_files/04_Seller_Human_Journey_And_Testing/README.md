@@ -4,6 +4,7 @@
 **Target Domain:** Seller (Merchant / Restaurant) BLoC Architecture  
 **Database Engine:** Google Cloud Firestore (`asia-south1`) | **Backend Functions:** Firebase Cloud Functions  
 **Zero-Mock Compliance:** ✅ Strict 100% Real-Time Firestore Integration (No Local Mock Data)  
+**Master Order Lifecycle Blueprint:** [SELLER_ORDER_LIFECYCLE_MANAGEMENT.md](file:///d:/Flutter_Project/food_delivery_app/md_files/04_Seller_Human_Journey_And_Testing/SELLER_ORDER_LIFECYCLE_MANAGEMENT.md) (13 Status Finite State Machine, SLA Rules & 50+ Test Matrix)  
 **Total Seller Modules:** 31 Feature Modules Across 7 Chronological Journey Phases  
 
 ---

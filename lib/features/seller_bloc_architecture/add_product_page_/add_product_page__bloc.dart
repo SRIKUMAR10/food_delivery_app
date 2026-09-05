@@ -25,25 +25,76 @@ class AddProductPageBloc
     on<CategoryChangedEvent>(_onCategoryChanged);
     on<SubcategoryChangedEvent>(_onSubcategoryChanged);
     on<SkuChangedEvent>(_onSkuChanged);
+    on<HsnCodeChangedEvent>(_onHsnCodeChanged);
+    on<GstRateChangedEvent>(_onGstRateChanged);
+    on<TaxTypeChangedEvent>(_onTaxTypeChanged);
     on<VariantsUpdatedEvent>(_onVariantsUpdated);
     on<CustomizationGroupsUpdatedEvent>(_onCustomizationGroupsUpdated);
     on<StatusChangedEvent>(_onStatusChanged);
     on<FoodTypeChangedEvent>(_onFoodTypeChanged);
     on<SpicyLevelChangedEvent>(_onSpicyLevelChanged);
     on<FieldChangedEvent>(_onFieldChanged);
+    on<ToggleProductTypeEvent>(_onToggleProductType);
+    on<SingleInventoryChangedEvent>(_onSingleInventoryChanged);
     on<SubmitProductEvent>(_onSubmitProduct);
     on<ResetFormEvent>(_onResetForm);
     on<FetchGstPercentageEvent>(_onFetchGstPercentage);
   }
 
-  Future<void> _onFetchGstPercentage(FetchGstPercentageEvent event, Emitter<AddProductPageState> emit) async {
+  void _onHsnCodeChanged(
+    HsnCodeChangedEvent event,
+    Emitter<AddProductPageState> emit,
+  ) {
+    emit(state.copyWith(hsnCode: event.hsnCode));
+  }
+
+  void _onGstRateChanged(
+    GstRateChangedEvent event,
+    Emitter<AddProductPageState> emit,
+  ) {
+    emit(state.copyWith(gstPercentage: event.gstPercentage));
+  }
+
+  void _onTaxTypeChanged(
+    TaxTypeChangedEvent event,
+    Emitter<AddProductPageState> emit,
+  ) {
+    emit(state.copyWith(taxType: event.taxType));
+  }
+
+  void _onToggleProductType(
+    ToggleProductTypeEvent event,
+    Emitter<AddProductPageState> emit,
+  ) {
+    emit(state.copyWith(hasVariants: event.hasVariants));
+  }
+
+  void _onSingleInventoryChanged(
+    SingleInventoryChangedEvent event,
+    Emitter<AddProductPageState> emit,
+  ) {
+    emit(state.copyWith(
+      singleBasePrice: event.basePrice ?? state.singleBasePrice,
+      singleDiscountPercentage:
+          event.discountPercentage ?? state.singleDiscountPercentage,
+      gstPercentage: event.gstPercentage ?? state.gstPercentage,
+      taxType: event.taxType ?? state.taxType,
+      singleStock: event.stock ?? state.singleStock,
+      hasUnlimitedStock: event.hasUnlimitedStock ?? state.hasUnlimitedStock,
+      minimumAlert: event.minimumAlert ?? state.minimumAlert,
+    ));
+  }
+
+  Future<void> _onFetchGstPercentage(
+    FetchGstPercentageEvent event,
+    Emitter<AddProductPageState> emit,
+  ) async {
     final userId = authService.currentUserId;
     if (userId != null) {
       try {
         final gst = await sellerRepository.getGstPercentage(userId);
-        emit(state.copyWith(gstPercentage: gst));
-      } catch (_) {
-      }
+        emit(state.copyWith(gstPercentage: gst > 0 ? gst : 5.0));
+      } catch (_) {}
     }
   }
 
@@ -51,32 +102,61 @@ class AddProductPageBloc
     emit(const AddProductPageState());
   }
 
-  void _onLoadProduct(LoadProductEvent event, Emitter<AddProductPageState> emit) async {
+  void _onLoadProduct(
+    LoadProductEvent event,
+    Emitter<AddProductPageState> emit,
+  ) async {
     emit(state.copyWith(status: AddProductStatus.loading));
     try {
-      final product = await repository.getProduct(event.productId, authService.currentUserId ?? '');
+      final product = await repository.getProduct(
+        event.productId,
+        authService.currentUserId ?? '',
+      );
       if (product != null) {
-        emit(state.copyWith(
-          status: AddProductStatus.initial,
-          initialProduct: product,
-          category: product.category,
-          subcategory: product.subcategory,
-          sku: product.sku,
-          isActive: product.isActive,
-          foodType: product.foodType,
-          spicyLevel: product.spicyLevel,
-          hasUnlimitedStock: product.hasUnlimitedStock,
-          isFeatured: product.isFeatured,
-          isBestSeller: product.isBestSeller,
-          existingImages: product.imageUrls,
-          variants: product.variants,
-          customizationGroups: product.customizationGroups,
-        ));
+        final hasVar = product.hasVariants || product.variants.isNotEmpty;
+        emit(
+          state.copyWith(
+            status: AddProductStatus.initial,
+            initialProduct: product,
+            category: product.category,
+            subcategory: product.subcategory,
+            sku: product.sku,
+            hsnCode: product.hsnCode.isNotEmpty ? product.hsnCode : '996331',
+            taxType: product.taxType.isNotEmpty ? product.taxType : 'intraState',
+            isActive: product.isActive,
+            foodType: product.foodType,
+            spicyLevel: product.spicyLevel,
+            hasUnlimitedStock: product.hasUnlimitedStock,
+            isFeatured: product.isFeatured,
+            isBestSeller: product.isBestSeller,
+            existingImages: product.imageUrls,
+            variants: product.variants,
+            customizationGroups: product.customizationGroups,
+            gstPercentage: product.gstPercentage > 0 ? product.gstPercentage : 5.0,
+            hasVariants: hasVar,
+            singleBasePrice:
+                product.basePrice > 0 ? product.basePrice : product.price,
+            singleDiscountPercentage: product.discountPercentage.toDouble(),
+            singleStock: product.availableStock,
+            minimumAlert: product.minimumAlert,
+          ),
+        );
       } else {
-        emit(state.copyWith(status: AddProductStatus.error, errorMessage: 'Product not found'));
+        emit(
+          state.copyWith(
+            status: AddProductStatus.error,
+            errorMessage: 'Product not found',
+          ),
+        );
       }
     } catch (e) {
-      emit(state.copyWith(status: AddProductStatus.error, errorMessage: e.toString()));
+
+      emit(
+        state.copyWith(
+          status: AddProductStatus.error,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 
@@ -189,10 +269,15 @@ class AddProductPageBloc
     emit(state.copyWith(status: AddProductStatus.loading));
 
     try {
-      // Basic validation
-      if (event.name.isEmpty ||
-          event.price <= 0 ||
+      final bool effectiveHasVariants = state.hasVariants;
+      final List<ProductVariant> effectiveVariants = effectiveHasVariants
+          ? (event.variants ?? state.variants)
+          : const <ProductVariant>[];
+
+      // Robust multi-mode validation
+      if (event.name.trim().isEmpty ||
           state.category == null ||
+          state.category!.trim().isEmpty ||
           (state.images.isEmpty && state.existingImages.isEmpty)) {
         emit(
           state.copyWith(
@@ -202,6 +287,38 @@ class AddProductPageBloc
           ),
         );
         return;
+      }
+
+      if (effectiveHasVariants) {
+        if (effectiveVariants.isEmpty) {
+          emit(
+            state.copyWith(
+              status: AddProductStatus.error,
+              errorMessage: 'Please add at least one size variant before publishing.',
+            ),
+          );
+          return;
+        }
+        final hasInvalidVariant = effectiveVariants.any((v) => v.name.trim().isEmpty || v.basePrice <= 0);
+        if (hasInvalidVariant) {
+          emit(
+            state.copyWith(
+              status: AddProductStatus.error,
+              errorMessage: 'All size variants must have a name and base price greater than ₹0.',
+            ),
+          );
+          return;
+        }
+      } else {
+        if (event.basePrice <= 0 && event.price <= 0) {
+          emit(
+            state.copyWith(
+              status: AddProductStatus.error,
+              errorMessage: 'Please enter a valid base price greater than ₹0.',
+            ),
+          );
+          return;
+        }
       }
 
       final initial = state.initialProduct;
@@ -216,22 +333,56 @@ class AddProductPageBloc
         effectiveSku = 'SKU-$shortCat-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
       }
 
+      List<String> effectiveAddons = event.addons?.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList() ?? initial?.addons ?? [];
+      final effectiveGroups = event.customizationGroups ?? state.customizationGroups;
+      if (effectiveAddons.isEmpty && effectiveGroups.isNotEmpty) {
+        final List<String> extracted = [];
+        for (final group in effectiveGroups) {
+          for (final opt in group.options) {
+            if (opt.name.isNotEmpty) {
+              if (opt.price > 0) {
+                final pStr = opt.price.truncateToDouble() == opt.price
+                    ? opt.price.toInt().toString()
+                    : opt.price.toStringAsFixed(2);
+                extracted.add('${opt.name} (+₹$pStr)');
+              } else {
+                extracted.add(opt.name);
+              }
+            }
+          }
+        }
+        effectiveAddons = extracted;
+      }
+
+      double effectiveBasePrice = event.basePrice;
+      double effectivePrice = event.price;
+      double effectiveDiscountPrice = event.discountPrice ?? 0.0;
+      int effectiveStock = event.availableStock ?? state.singleStock;
+
+      if (effectiveHasVariants && effectiveVariants.isNotEmpty) {
+        effectiveBasePrice = effectiveVariants.map((v) => v.basePrice).reduce((a, b) => a < b ? a : b);
+        effectivePrice = effectiveVariants.map((v) => v.finalPrice).reduce((a, b) => a < b ? a : b);
+        effectiveDiscountPrice = effectiveVariants.map((v) => v.effectivePrice).reduce((a, b) => a < b ? a : b);
+        effectiveStock = effectiveVariants.fold<int>(0, (sum, v) => sum + (v.trackInventory ? v.stock : 999));
+      }
+
       final productToSave = Product(
         id: initial?.id ?? '',
-        name: event.name,
+        name: event.name.trim(),
         sku: effectiveSku,
-        price: event.price,
-        basePrice: event.basePrice,
+        price: effectivePrice,
+        basePrice: effectiveBasePrice,
         gstPercentage: event.gstPercentage,
-        discountPrice: event.discountPrice ?? 0.0,
+        discountPrice: effectiveDiscountPrice,
         description: event.description,
         prepTime: int.tryParse(event.prepTime ?? '') ?? initial?.prepTime ?? 0,
         calories: int.tryParse(event.calories ?? '') ?? initial?.calories ?? 0,
         portionSize: event.portionSize ?? '',
-        addons: event.addons?.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList() ?? initial?.addons ?? [],
+        addons: effectiveAddons,
         ingredients: event.ingredients?.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList() ?? initial?.ingredients ?? [],
-        variants: event.variants ?? state.variants,
-        customizationGroups: event.customizationGroups ?? state.customizationGroups,
+        variants: effectiveVariants,
+        hasVariants: effectiveHasVariants,
+        customizationGroups: effectiveGroups,
         category: state.category ?? '',
         subcategory: event.subcategory ?? state.subcategory ?? '',
         foodType: state.foodType ?? '',
@@ -239,18 +390,22 @@ class AddProductPageBloc
         isActive: state.isActive,
         isFeatured: state.isFeatured,
         isBestSeller: state.isBestSeller,
-        hasUnlimitedStock: state.hasUnlimitedStock,
-        status: initial?.status ?? ProductStatus.inStock,
+        hasUnlimitedStock: effectiveHasVariants ? effectiveVariants.every((v) => !v.trackInventory) : state.hasUnlimitedStock,
+        status: initial?.status ?? (effectiveStock <= 0 && !state.hasUnlimitedStock ? ProductStatus.outOfStock : ProductStatus.inStock),
         rating: initial?.rating ?? 0.0,
         reviewCount: initial?.reviewCount ?? 0,
         salesCount: initial?.salesCount ?? 0,
-        availableStock: event.availableStock ?? initial?.availableStock ?? 0,
+        availableStock: effectiveStock,
         createdAt: initial?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
         minimumAlert: event.minimumAlert ?? initial?.minimumAlert ?? 10,
         sellerId: initial?.sellerId ?? '',
         isArchived: initial?.isArchived ?? false,
+        hsnCode: event.hsnCode.isNotEmpty ? event.hsnCode : state.hsnCode,
+        taxType: event.taxType.isNotEmpty ? event.taxType : state.taxType,
       );
+
+
 
       final effectiveSellerId = (authService.currentUserId != null && authService.currentUserId!.isNotEmpty)
           ? authService.currentUserId!

@@ -2,31 +2,99 @@ import 'package:equatable/equatable.dart';
 
 enum ProductStatus { inStock, lowStock, outOfStock }
 
-/// Represents an individual add-on option (e.g., "Extra Cheese", "Bacon Strip").
+enum TaxStrategy {
+  restaurantLevel,
+  productLevel,
+  variantLevel,
+  addonLevel,
+}
+
+/// Represents an individual add-on option (e.g., "Extra Cheese", "Cream Sauce").
+/// Adheres to "Store Raw Data (basePrice, gstPercentage, stock), Compute Derived Data".
 class ProductAddon extends Equatable {
   final String id;
   final String name;
-  final double price;
+  final double basePrice; // Pre-GST Raw base price
+  final double discountPercentage; // Discount % (e.g. 10.0%)
+  final double gstPercentage; // GST slab (e.g. 0.0%, 5.0%, 12.0%, 18.0%, 28.0%)
+  final String taxType; // 'intraState' (CGST + SGST) or 'interState' (IGST)
+  final String hsnCode; // Statutory HSN Code (e.g. '996338' / '996331')
   final bool isAvailable;
+  final bool trackInventory;
+  final int stock;
 
   const ProductAddon({
     required this.id,
     required this.name,
-    this.price = 0.0,
+    this.basePrice = 0.0,
+    this.discountPercentage = 0.0,
+    this.gstPercentage = 5.0,
+    this.taxType = 'intraState',
+    this.hsnCode = '996338',
     this.isAvailable = true,
+    this.trackInventory = false,
+    this.stock = 999,
   });
+
+  /// Computed discount amount for this add-on
+  double get discountAmount => basePrice * (discountPercentage / 100.0);
+
+  /// Computed taxable amount (Base - Discount)
+  double get taxablePrice => (basePrice - discountAmount).clamp(0.0, double.infinity);
+
+  /// Whether tax is inter-state (IGST) or intra-state (CGST + SGST)
+  bool get isInterStateTax => taxType == 'interState';
+
+  /// Computed GST tax rate breakdown
+  double get cgstPercentage => taxType == 'intraState' ? gstPercentage / 2.0 : 0.0;
+  double get sgstPercentage => taxType == 'intraState' ? gstPercentage / 2.0 : 0.0;
+  double get igstPercentage => taxType == 'interState' ? gstPercentage : 0.0;
+
+  /// Computed GST tax amount for this add-on
+  double get gstAmount =>
+      ((taxablePrice * (gstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+  double get taxAmount => gstAmount;
+  double get cgstAmount =>
+      ((taxablePrice * (cgstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+  double get sgstAmount =>
+      ((taxablePrice * (sgstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+  double get igstAmount =>
+      ((taxablePrice * (igstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+
+  /// Computed MRP final price (Taxable Base + GST)
+  double get finalPrice => (taxablePrice + gstAmount).roundToDouble();
+
+  /// Computed round off adjustment
+  double get roundOff =>
+      (((finalPrice - (taxablePrice + gstAmount))) * 100).roundToDouble() / 100.0;
+
+  /// Backwards-compatible price getter
+  double get price => finalPrice > 0 ? finalPrice : basePrice;
 
   ProductAddon copyWith({
     String? id,
     String? name,
-    double? price,
+    double? basePrice,
+    double? discountPercentage,
+    double? gstPercentage,
+    String? taxType,
+    String? hsnCode,
     bool? isAvailable,
+    bool? trackInventory,
+    int? stock,
+    double? price, // For backwards compatibility
   }) {
     return ProductAddon(
       id: id ?? this.id,
       name: name ?? this.name,
-      price: price ?? this.price,
+      basePrice: basePrice ?? (price != null ? price : this.basePrice),
+      discountPercentage: discountPercentage ?? this.discountPercentage,
+      gstPercentage: gstPercentage ?? this.gstPercentage,
+      taxType: taxType ?? this.taxType,
+      hsnCode: hsnCode ?? this.hsnCode,
       isAvailable: isAvailable ?? this.isAvailable,
+      trackInventory: trackInventory ?? this.trackInventory,
+      stock: stock ?? this.stock,
     );
   }
 
@@ -34,22 +102,105 @@ class ProductAddon extends Equatable {
     return {
       'id': id,
       'name': name,
-      'price': price,
+      'basePrice': basePrice,
+      'discountPercentage': discountPercentage,
+      'gstPercentage': gstPercentage,
+      'taxType': taxType,
+      'hsnCode': hsnCode,
       'isAvailable': isAvailable,
+      'trackInventory': trackInventory,
+      'stock': stock,
+      'price': price,
+      'finalPrice': finalPrice,
+      'effectivePrice': finalPrice,
+      'cgstAmount': cgstAmount,
+      'sgstAmount': sgstAmount,
+      'igstAmount': igstAmount,
+      'roundOff': roundOff,
     };
   }
 
   factory ProductAddon.fromMap(Map<String, dynamic> map) {
+    double parsedDiscount = 0.0;
+    if (map['discountPercentage'] != null) {
+      if (map['discountPercentage'] is num) {
+        parsedDiscount = (map['discountPercentage'] as num).toDouble();
+      } else if (map['discountPercentage'] is String) {
+        parsedDiscount = double.tryParse(map['discountPercentage'] as String) ?? 0.0;
+      }
+    }
+
+    double parsedGst = 5.0;
+    if (map['gstPercentage'] != null) {
+      if (map['gstPercentage'] is num) {
+        parsedGst = (map['gstPercentage'] as num).toDouble();
+      } else if (map['gstPercentage'] is String) {
+        parsedGst = double.tryParse(map['gstPercentage'] as String) ?? 5.0;
+      }
+    }
+
+    double parsedBasePrice = 0.0;
+    if (map['basePrice'] != null) {
+      if (map['basePrice'] is num) {
+        parsedBasePrice = (map['basePrice'] as num).toDouble();
+      } else if (map['basePrice'] is String) {
+        parsedBasePrice = double.tryParse(map['basePrice'] as String) ?? 0.0;
+      }
+    }
+    if (parsedBasePrice <= 0.0) {
+      double parsedGross = 0.0;
+      if (map['price'] != null) {
+        parsedGross = (map['price'] is num) ? (map['price'] as num).toDouble() : (double.tryParse(map['price'] as String) ?? 0.0);
+      } else if (map['finalPrice'] != null) {
+        parsedGross = (map['finalPrice'] is num) ? (map['finalPrice'] as num).toDouble() : (double.tryParse(map['finalPrice'] as String) ?? 0.0);
+      } else if (map['additionalPrice'] != null) {
+        parsedGross = (map['additionalPrice'] is num) ? (map['additionalPrice'] as num).toDouble() : (double.tryParse(map['additionalPrice'] as String) ?? 0.0);
+      }
+      if (parsedGross > 0.0) {
+        // Reverse calculate pre-GST base price to prevent double taxation on add-ons
+        parsedBasePrice = parsedGst > 0 ? (parsedGross / (1.0 + (parsedGst / 100.0))) : parsedGross;
+      }
+    }
+
+    int parsedStock = 999;
+    if (map['stock'] != null) {
+      if (map['stock'] is num) {
+        parsedStock = (map['stock'] as num).toInt();
+      } else if (map['stock'] is String) {
+        parsedStock = int.tryParse(map['stock'] as String) ?? 999;
+      }
+    }
+
+    final String parsedTaxType = map['taxType']?.toString() ?? 'intraState';
+    final String parsedHsn = map['hsnCode']?.toString() ?? '996338';
+
     return ProductAddon(
       id: map['id']?.toString() ?? '',
       name: map['name']?.toString() ?? '',
-      price: (map['price'] as num?)?.toDouble() ?? 0.0,
+      basePrice: parsedBasePrice,
+      discountPercentage: parsedDiscount,
+      gstPercentage: parsedGst,
+      taxType: parsedTaxType,
+      hsnCode: parsedHsn,
       isAvailable: map['isAvailable'] as bool? ?? true,
+      trackInventory: map['trackInventory'] as bool? ?? false,
+      stock: parsedStock,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, price, isAvailable];
+  List<Object?> get props => [
+    id,
+    name,
+    basePrice,
+    discountPercentage,
+    gstPercentage,
+    taxType,
+    hsnCode,
+    isAvailable,
+    trackInventory,
+    stock,
+  ];
 }
 
 /// Represents a group of customizations/add-ons (e.g. "Choose Crust", "Extra Toppings").
@@ -97,10 +248,11 @@ class ProductCustomizationGroup extends Equatable {
   factory ProductCustomizationGroup.fromMap(Map<String, dynamic> map) {
     List<ProductAddon> parsedOptions = [];
     if (map['options'] != null && map['options'] is List) {
-      parsedOptions = (map['options'] as List)
-          .whereType<Map<String, dynamic>>()
-          .map((e) => ProductAddon.fromMap(e))
-          .toList();
+      for (final item in (map['options'] as List)) {
+        if (item is Map) {
+          parsedOptions.add(ProductAddon.fromMap(Map<String, dynamic>.from(item)));
+        }
+      }
     }
     return ProductCustomizationGroup(
       groupName: map['groupName']?.toString() ?? '',
@@ -116,38 +268,102 @@ class ProductCustomizationGroup extends Equatable {
 }
 
 /// Represents a product size/variant (e.g. Regular, Medium, Large).
+/// Adheres to "Store Raw Data (basePrice, gstPercentage, discountPercentage, stock)".
 class ProductVariant extends Equatable {
   final String id;
   final String name;
-  final double price;
+  final double basePrice; // Pre-GST Raw base price
+  final double discountPercentage; // Discount % (e.g. 10%)
+  final double gstPercentage; // GST % (e.g. 0.0%, 5.0%, 12.0%, 18.0%, 28.0%)
+  final String taxType; // 'intraState' (CGST + SGST) or 'interState' (IGST)
+  final String hsnCode; // Statutory HSN Code (e.g. '996338')
   final int stock;
   final String sku;
   final bool isAvailable;
+  final bool trackInventory;
 
   const ProductVariant({
     required this.id,
     required this.name,
-    required this.price,
+    this.basePrice = 0.0,
+    this.discountPercentage = 0.0,
+    this.gstPercentage = 5.0,
+    this.taxType = 'intraState',
+    this.hsnCode = '996338',
     this.stock = 0,
     this.sku = '',
     this.isAvailable = true,
+    this.trackInventory = true,
   });
+
+  /// Computed discount amount
+  double get discountAmount => basePrice * (discountPercentage / 100.0);
+
+  /// Computed taxable amount
+  double get taxablePrice => (basePrice - discountAmount).clamp(0.0, double.infinity);
+
+  /// Whether tax is inter-state (IGST) or intra-state (CGST + SGST)
+  bool get isInterStateTax => taxType == 'interState';
+
+  /// Computed GST tax rate breakdown
+  double get cgstPercentage => taxType == 'intraState' ? gstPercentage / 2.0 : 0.0;
+  double get sgstPercentage => taxType == 'intraState' ? gstPercentage / 2.0 : 0.0;
+  double get igstPercentage => taxType == 'interState' ? gstPercentage : 0.0;
+
+  /// Computed GST tax amount
+  double get gstAmount =>
+      ((taxablePrice * (gstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+  double get taxAmount => gstAmount;
+  double get cgstAmount =>
+      ((taxablePrice * (cgstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+  double get sgstAmount =>
+      ((taxablePrice * (sgstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+  double get igstAmount =>
+      ((taxablePrice * (igstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+
+  /// Computed final price with GST and discount applied
+  double get finalPrice => (taxablePrice + gstAmount).roundToDouble();
+
+  /// Computed round off adjustment
+  double get roundOff =>
+      (((finalPrice - (taxablePrice + gstAmount))) * 100).roundToDouble() / 100.0;
+
+  /// Computed effective price
+  double get effectivePrice => finalPrice;
+
+  /// Computed gross base price with GST before discount
+  double get grossBasePriceWithGst =>
+      (basePrice + (basePrice * (gstPercentage / 100.0))).roundToDouble();
+
+  /// Backwards-compatible price getter
+  double get price => finalPrice > 0 ? finalPrice : basePrice;
 
   ProductVariant copyWith({
     String? id,
     String? name,
-    double? price,
+    double? basePrice,
+    double? discountPercentage,
+    double? gstPercentage,
+    String? taxType,
+    String? hsnCode,
     int? stock,
     String? sku,
     bool? isAvailable,
+    bool? trackInventory,
+    double? price, // For backwards compatibility
   }) {
     return ProductVariant(
       id: id ?? this.id,
       name: name ?? this.name,
-      price: price ?? this.price,
+      basePrice: basePrice ?? (price != null ? price : this.basePrice),
+      discountPercentage: discountPercentage ?? this.discountPercentage,
+      gstPercentage: gstPercentage ?? this.gstPercentage,
+      taxType: taxType ?? this.taxType,
+      hsnCode: hsnCode ?? this.hsnCode,
       stock: stock ?? this.stock,
       sku: sku ?? this.sku,
       isAvailable: isAvailable ?? this.isAvailable,
+      trackInventory: trackInventory ?? this.trackInventory,
     );
   }
 
@@ -155,26 +371,113 @@ class ProductVariant extends Equatable {
     return {
       'id': id,
       'name': name,
-      'price': price,
+      'basePrice': basePrice,
+      'discountPercentage': discountPercentage,
+      'gstPercentage': gstPercentage,
+      'taxType': taxType,
+      'hsnCode': hsnCode,
       'stock': stock,
       'sku': sku,
       'isAvailable': isAvailable,
+      'trackInventory': trackInventory,
+      'price': price,
+      'finalPrice': finalPrice,
+      'effectivePrice': effectivePrice,
+      'cgstAmount': cgstAmount,
+      'sgstAmount': sgstAmount,
+      'igstAmount': igstAmount,
+      'roundOff': roundOff,
     };
   }
 
   factory ProductVariant.fromMap(Map<String, dynamic> map) {
+    double parsedBasePrice = 0.0;
+    if (map['basePrice'] != null) {
+      if (map['basePrice'] is num) {
+        parsedBasePrice = (map['basePrice'] as num).toDouble();
+      } else if (map['basePrice'] is String) {
+        parsedBasePrice = double.tryParse(map['basePrice'] as String) ?? 0.0;
+      }
+    }
+    if (parsedBasePrice <= 0.0) {
+      if (map['price'] != null) {
+        if (map['price'] is num) {
+          parsedBasePrice = (map['price'] as num).toDouble();
+        } else if (map['price'] is String) {
+          parsedBasePrice = double.tryParse(map['price'] as String) ?? 0.0;
+        }
+      } else if (map['finalPrice'] != null) {
+        if (map['finalPrice'] is num) {
+          parsedBasePrice = (map['finalPrice'] as num).toDouble();
+        } else if (map['finalPrice'] is String) {
+          parsedBasePrice = double.tryParse(map['finalPrice'] as String) ?? 0.0;
+        }
+      } else if (map['rate'] != null) {
+        if (map['rate'] is num) {
+          parsedBasePrice = (map['rate'] as num).toDouble();
+        } else if (map['rate'] is String) {
+          parsedBasePrice = double.tryParse(map['rate'] as String) ?? 0.0;
+        }
+      }
+    }
+
+    double parsedDiscount = 0.0;
+    if (map['discountPercentage'] != null) {
+      if (map['discountPercentage'] is num) {
+        parsedDiscount = (map['discountPercentage'] as num).toDouble();
+      } else if (map['discountPercentage'] is String) {
+        parsedDiscount = double.tryParse(map['discountPercentage'] as String) ?? 0.0;
+      }
+    }
+
+    double parsedGst = 5.0;
+    if (map['gstPercentage'] != null) {
+      if (map['gstPercentage'] is num) {
+        parsedGst = (map['gstPercentage'] as num).toDouble();
+      } else if (map['gstPercentage'] is String) {
+        parsedGst = double.tryParse(map['gstPercentage'] as String) ?? 5.0;
+      }
+    }
+
+    int parsedStock = 0;
+    if (map['stock'] is num) {
+      parsedStock = (map['stock'] as num).toInt();
+    } else if (map['stock'] is String) {
+      parsedStock = int.tryParse(map['stock'] as String) ?? 0;
+    }
+
+    final String parsedTaxType = map['taxType']?.toString() ?? 'intraState';
+    final String parsedHsn = map['hsnCode']?.toString() ?? '996338';
+
     return ProductVariant(
       id: map['id']?.toString() ?? '',
       name: map['name']?.toString() ?? '',
-      price: (map['price'] as num?)?.toDouble() ?? 0.0,
-      stock: (map['stock'] as num?)?.toInt() ?? 0,
+      basePrice: parsedBasePrice,
+      discountPercentage: parsedDiscount,
+      gstPercentage: parsedGst,
+      taxType: parsedTaxType,
+      hsnCode: parsedHsn,
+      stock: parsedStock,
       sku: map['sku']?.toString() ?? '',
       isAvailable: map['isAvailable'] as bool? ?? true,
+      trackInventory: map['trackInventory'] as bool? ?? true,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, price, stock, sku, isAvailable];
+  List<Object?> get props => [
+    id,
+    name,
+    basePrice,
+    discountPercentage,
+    gstPercentage,
+    taxType,
+    hsnCode,
+    stock,
+    sku,
+    isAvailable,
+    trackInventory,
+  ];
 }
 
 class Product extends Equatable {
@@ -185,6 +488,7 @@ class Product extends Equatable {
   final double basePrice; // Pre-GST
   final double gstPercentage;
   final double discountPrice;
+  final String taxType; // 'intraState' (CGST + SGST) or 'interState' (IGST)
   final String currencyCode;
   final List<String> imageUrls;
   final ProductStatus status;
@@ -204,7 +508,11 @@ class Product extends Equatable {
   final List<String> addons;
   final List<ProductCustomizationGroup> customizationGroups;
   final List<ProductVariant> variants;
+  final bool hasVariants;
   final List<String> ingredients;
+  final List<String> allergens;
+  final TaxStrategy taxStrategy;
+  final String hsnCode;
   final bool isFeatured;
   final bool isBestSeller;
   final bool hasUnlimitedStock;
@@ -223,6 +531,7 @@ class Product extends Equatable {
     this.basePrice = 0.0,
     this.gstPercentage = 0.0,
     this.discountPrice = 0.0,
+    this.taxType = 'intraState',
     this.currencyCode = 'USD',
     this.imageUrls = const [],
     required this.status,
@@ -242,7 +551,11 @@ class Product extends Equatable {
     this.addons = const [],
     this.customizationGroups = const [],
     this.variants = const [],
+    this.hasVariants = false,
     this.ingredients = const [],
+    this.allergens = const [],
+    this.taxStrategy = TaxStrategy.restaurantLevel,
+    this.hsnCode = '996331',
     this.isFeatured = false,
     this.isBestSeller = false,
     this.hasUnlimitedStock = false,
@@ -253,6 +566,43 @@ class Product extends Equatable {
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Whether tax is inter-state (IGST) or intra-state (CGST + SGST)
+  bool get isInterStateTax => taxType == 'interState';
+
+  /// Computed GST tax rate breakdown
+  double get cgstPercentage => taxType == 'intraState' ? gstPercentage / 2.0 : 0.0;
+  double get sgstPercentage => taxType == 'intraState' ? gstPercentage / 2.0 : 0.0;
+  double get igstPercentage => taxType == 'interState' ? gstPercentage : 0.0;
+
+  /// Computed taxable amount
+  double get taxablePrice => (basePrice - (basePrice * (discountPercentage / 100.0))).clamp(0.0, double.infinity);
+
+  /// Computed GST tax amount
+  double get gstAmount =>
+      ((taxablePrice * (gstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+  double get taxAmount => gstAmount;
+  double get finalPrice => effectivePrice;
+  double get cgstAmount =>
+      ((taxablePrice * (cgstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+  double get sgstAmount =>
+      ((taxablePrice * (sgstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+  double get igstAmount =>
+      ((taxablePrice * (igstPercentage / 100.0)) * 100).roundToDouble() / 100.0;
+
+  /// Whether product has size variants
+  bool get isVariableProduct => hasVariants || variants.isNotEmpty;
+
+  /// Computed total available stock across all variants or single stock
+  int get effectiveTotalStock {
+    if (isVariableProduct && variants.isNotEmpty) {
+      return variants.fold<int>(
+        0,
+        (sum, v) => sum + (v.trackInventory ? v.stock : 999),
+      );
+    }
+    return hasUnlimitedStock ? 999999 : availableStock;
+  }
 
   /// Computed primary image for the Buyer and Seller UI
   String? get primaryImage => imageUrls.isNotEmpty ? imageUrls.first : null;
@@ -269,6 +619,35 @@ class Product extends Equatable {
     return 0;
   }
 
+  /// Computed minimum and maximum price for Range display (e.g. ₹95 – ₹187)
+  (double min, double max, bool isRange) get computedPriceRange {
+    if (variants.isNotEmpty) {
+      final active = variants.where((v) => v.isAvailable).toList();
+      final list = active.isNotEmpty ? active : variants;
+      double min = double.infinity;
+      double max = 0.0;
+      for (final v in list) {
+        final p = v.effectivePrice;
+        if (p < min) min = p;
+        if (p > max) max = p;
+      }
+      if (min == double.infinity) min = effectivePrice;
+      if (max <= 0.0) max = effectivePrice;
+      return (min, max, (max - min).abs() > 0.01);
+    }
+    final p = effectivePrice;
+    return (p, p, false);
+  }
+
+  /// Formatted price range string (e.g., "₹95 – ₹187" or "₹100")
+  String get priceRangeFormatted {
+    final range = computedPriceRange;
+    if (range.$3) {
+      return '₹${range.$1.toStringAsFixed(0)} – ₹${range.$2.toStringAsFixed(0)}';
+    }
+    return '₹${range.$1.toStringAsFixed(0)}';
+  }
+
   Product copyWith({
     String? id,
     String? name,
@@ -277,6 +656,7 @@ class Product extends Equatable {
     double? basePrice,
     double? gstPercentage,
     double? discountPrice,
+    String? taxType,
     String? currencyCode,
     List<String>? imageUrls,
     ProductStatus? status,
@@ -296,7 +676,11 @@ class Product extends Equatable {
     List<String>? addons,
     List<ProductCustomizationGroup>? customizationGroups,
     List<ProductVariant>? variants,
+    bool? hasVariants,
     List<String>? ingredients,
+    List<String>? allergens,
+    TaxStrategy? taxStrategy,
+    String? hsnCode,
     bool? isFeatured,
     bool? isBestSeller,
     bool? hasUnlimitedStock,
@@ -315,6 +699,7 @@ class Product extends Equatable {
       basePrice: basePrice ?? this.basePrice,
       gstPercentage: gstPercentage ?? this.gstPercentage,
       discountPrice: discountPrice ?? this.discountPrice,
+      taxType: taxType ?? this.taxType,
       currencyCode: currencyCode ?? this.currencyCode,
       imageUrls: imageUrls ?? this.imageUrls,
       status: status ?? this.status,
@@ -334,7 +719,11 @@ class Product extends Equatable {
       addons: addons ?? this.addons,
       customizationGroups: customizationGroups ?? this.customizationGroups,
       variants: variants ?? this.variants,
+      hasVariants: hasVariants ?? this.hasVariants,
       ingredients: ingredients ?? this.ingredients,
+      allergens: allergens ?? this.allergens,
+      taxStrategy: taxStrategy ?? this.taxStrategy,
+      hsnCode: hsnCode ?? this.hsnCode,
       isFeatured: isFeatured ?? this.isFeatured,
       isBestSeller: isBestSeller ?? this.isBestSeller,
       hasUnlimitedStock: hasUnlimitedStock ?? this.hasUnlimitedStock,
@@ -356,6 +745,7 @@ class Product extends Equatable {
     basePrice,
     gstPercentage,
     discountPrice,
+    taxType,
     currencyCode,
     imageUrls,
     status,
@@ -375,7 +765,11 @@ class Product extends Equatable {
     addons,
     customizationGroups,
     variants,
+    hasVariants,
     ingredients,
+    allergens,
+    taxStrategy,
+    hsnCode,
     isFeatured,
     isBestSeller,
     hasUnlimitedStock,
@@ -395,6 +789,10 @@ class Product extends Equatable {
       'basePrice': basePrice,
       'gstPercentage': gstPercentage,
       'discountPrice': discountPrice,
+      'taxType': taxType,
+      'cgstAmount': cgstAmount,
+      'sgstAmount': sgstAmount,
+      'igstAmount': igstAmount,
       'currencyCode': currencyCode,
       'imageUrls': imageUrls,
       'status': status.name,
@@ -414,7 +812,11 @@ class Product extends Equatable {
       'addons': addons,
       'customizationGroups': customizationGroups.map((e) => e.toMap()).toList(),
       'variants': variants.map((e) => e.toMap()).toList(),
+      'hasVariants': hasVariants || variants.isNotEmpty,
       'ingredients': ingredients,
+      'allergens': allergens,
+      'taxStrategy': taxStrategy.name,
+      'hsnCode': hsnCode,
       'isFeatured': isFeatured,
       'isBestSeller': isBestSeller,
       'hasUnlimitedStock': hasUnlimitedStock,
@@ -468,6 +870,16 @@ class Product extends Equatable {
     int minimumAlert = _parseIntSafely(map['minimumAlert']);
     if (minimumAlert <= 0) minimumAlert = 10;
 
+    // Parse structured variants
+    List<ProductVariant> parsedVariants = [];
+    if (map['variants'] != null && map['variants'] is List) {
+      for (final item in (map['variants'] as List)) {
+        if (item is Map) {
+          parsedVariants.add(ProductVariant.fromMap(Map<String, dynamic>.from(item)));
+        }
+      }
+    }
+
     double price = (map['price'] as num?)?.toDouble() ?? 0.0;
     if (price < 0.0) price = 0.0;
 
@@ -477,6 +889,18 @@ class Product extends Equatable {
     double discountPrice = (map['discountPrice'] as num?)?.toDouble() ?? 0.0;
     if (discountPrice < 0.0) discountPrice = 0.0;
     if (discountPrice > price) discountPrice = price;
+
+    if (price <= 0.0 && parsedVariants.isNotEmpty) {
+      price = parsedVariants.first.effectivePrice > 0
+          ? parsedVariants.first.effectivePrice
+          : parsedVariants.first.price;
+      basePrice = parsedVariants.first.basePrice > 0
+          ? parsedVariants.first.basePrice
+          : price;
+      if (parsedVariants.first.discountPercentage > 0) {
+        discountPrice = price;
+      }
+    }
 
     bool isActive = map['isActive'] ?? true;
     bool isArchived = map['isArchived'] ?? false;
@@ -495,22 +919,24 @@ class Product extends Equatable {
       if (s == 'inStock') parsedStatus = ProductStatus.inStock;
     }
 
-    // Parse structured variants
-    List<ProductVariant> parsedVariants = [];
-    if (map['variants'] != null && map['variants'] is List) {
-      parsedVariants = (map['variants'] as List)
-          .whereType<Map<String, dynamic>>()
-          .map((e) => ProductVariant.fromMap(e))
-          .toList();
-    }
-
     // Parse structured customization groups
     List<ProductCustomizationGroup> parsedCustomizationGroups = [];
     if (map['customizationGroups'] != null && map['customizationGroups'] is List) {
-      parsedCustomizationGroups = (map['customizationGroups'] as List)
-          .whereType<Map<String, dynamic>>()
-          .map((e) => ProductCustomizationGroup.fromMap(e))
-          .toList();
+      for (final item in (map['customizationGroups'] as List)) {
+        if (item is Map) {
+          parsedCustomizationGroups.add(ProductCustomizationGroup.fromMap(Map<String, dynamic>.from(item)));
+        }
+      }
+    }
+
+    TaxStrategy parsedTaxStrategy = TaxStrategy.restaurantLevel;
+    if (map['taxStrategy'] != null) {
+      for (final strategy in TaxStrategy.values) {
+        if (strategy.name == map['taxStrategy']) {
+          parsedTaxStrategy = strategy;
+          break;
+        }
+      }
     }
 
     // Auto-generate SKU fallback if missing
@@ -526,6 +952,8 @@ class Product extends Equatable {
       parsedSku = 'SKU-$cleanCat-$cleanId';
     }
 
+    final String parsedTaxType = map['taxType']?.toString() ?? 'intraState';
+
     return Product(
       id: id,
       name: map['name'] ?? '',
@@ -534,6 +962,7 @@ class Product extends Equatable {
       basePrice: basePrice,
       gstPercentage: gstPercentage,
       discountPrice: discountPrice,
+      taxType: parsedTaxType,
       currencyCode: map['currencyCode'] ?? 'USD',
       imageUrls: parsedImageUrls,
       status: parsedStatus,
@@ -555,9 +984,15 @@ class Product extends Equatable {
           : [],
       customizationGroups: parsedCustomizationGroups,
       variants: parsedVariants,
+      hasVariants: map['hasVariants'] as bool? ?? (parsedVariants.isNotEmpty),
       ingredients: map['ingredients'] != null && map['ingredients'] is List
           ? List<String>.from(map['ingredients'])
           : [],
+      allergens: map['allergens'] != null && map['allergens'] is List
+          ? List<String>.from(map['allergens'])
+          : [],
+      taxStrategy: parsedTaxStrategy,
+      hsnCode: map['hsnCode']?.toString() ?? '996331',
       isFeatured: map['isFeatured'] ?? false,
       isBestSeller: map['isBestSeller'] ?? false,
       hasUnlimitedStock: map['hasUnlimitedStock'] ?? false,
